@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FERAL PRESENTS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Scanline overlay -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- Noise texture overlay -->
+  <div class="noise" aria-hidden="true"></div>
+
+  <!-- Navigation -->
+  <header class="header" id="header">
+    <nav class="nav">
+      <a href="index.html" class="nav__logo">
+        <span class="nav__logo-text" data-text="FERAL PRESENTS">FERAL PRESENTS</span>
+      </a>
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="nav__menu" id="navMenu">
+        <ul class="nav__list">
+          <li class="nav__item"><a href="#events" class="nav__link">Events</a></li>
+          <li class="nav__item"><a href="#about" class="nav__link">About</a></li>
+          <li class="nav__item"><a href="#contact" class="nav__link">Contact</a></li>
+        </ul>
+        <a href="#events" class="btn btn--primary nav__cta">Book Tickets</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="hero">
+    <canvas class="hero__canvas" id="heroCanvas"></canvas>
+    <div class="hero__content">
+      <div class="hero__glitch-wrapper">
+        <h1 class="hero__title glitch" data-text="FERAL PRESENTS">FERAL PRESENTS</h1>
+      </div>
+      <div class="hero__tagline-wrapper">
+        <p class="hero__tagline typewriter" id="typewriter"></p>
+        <span class="hero__cursor">_</span>
+      </div>
+      <div class="hero__scroll-indicator">
+        <span class="hero__scroll-text">SCROLL</span>
+        <div class="hero__scroll-line"></div>
+      </div>
+    </div>
+    <div class="hero__mouse-tracker" id="mouseTracker"></div>
+  </section>
+
+  <!-- Events Section -->
+  <section class="events" id="events">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-header__label">[UPCOMING]</span>
+        <h2 class="section-header__title">Events</h2>
+        <div class="section-header__line"></div>
+      </div>
+
+      <div class="events__grid">
+        <!-- Event 1 -->
+        <a href="event.html?id=001" class="event-card" data-reveal>
+          <div class="event-card__date-badge">
+            <span class="event-card__day">15</span>
+            <span class="event-card__month">MAR</span>
+          </div>
+          <div class="event-card__image-wrapper">
+            <div class="event-card__image event-card__image--1">
+              <div class="event-card__image-overlay"></div>
+              <div class="event-card__image-noise"></div>
+            </div>
+          </div>
+          <div class="event-card__content">
+            <div class="event-card__meta">
+              <span class="event-card__tag">// LIVE EVENT</span>
+              <span class="event-card__id">#001</span>
+            </div>
+            <h3 class="event-card__title">SIGNAL_LOST</h3>
+            <p class="event-card__details">
+              <span class="event-card__detail"><span class="event-card__detail-label">LOC:</span> The Warehouse, London</span>
+              <span class="event-card__detail"><span class="event-card__detail-label">TIME:</span> 22:00 — LATE</span>
+            </p>
+            <div class="event-card__action">
+              <span class="event-card__action-text">GET TICKETS</span>
+              <span class="event-card__action-arrow">&rarr;</span>
+            </div>
+          </div>
+          <div class="event-card__border-glow"></div>
+        </a>
+
+        <!-- Event 2 -->
+        <a href="event.html?id=002" class="event-card" data-reveal>
+          <div class="event-card__date-badge">
+            <span class="event-card__day">26</span>
+            <span class="event-card__month">APR</span>
+          </div>
+          <div class="event-card__image-wrapper">
+            <div class="event-card__image event-card__image--2">
+              <div class="event-card__image-overlay"></div>
+              <div class="event-card__image-noise"></div>
+            </div>
+          </div>
+          <div class="event-card__content">
+            <div class="event-card__meta">
+              <span class="event-card__tag">// LIVE EVENT</span>
+              <span class="event-card__id">#002</span>
+            </div>
+            <h3 class="event-card__title">DEAD_FREQUENCY</h3>
+            <p class="event-card__details">
+              <span class="event-card__detail"><span class="event-card__detail-label">LOC:</span> Basement East, London</span>
+              <span class="event-card__detail"><span class="event-card__detail-label">TIME:</span> 21:00 — LATE</span>
+            </p>
+            <div class="event-card__action">
+              <span class="event-card__action-text">GET TICKETS</span>
+              <span class="event-card__action-arrow">&rarr;</span>
+            </div>
+          </div>
+          <div class="event-card__border-glow"></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section class="about" id="about">
+    <div class="container">
+      <div class="about__grid">
+        <div class="about__text" data-reveal>
+          <span class="section-header__label">[ABOUT]</span>
+          <h2 class="about__title">We don't do<br><span class="text-red">ordinary.</span></h2>
+          <p class="about__description">
+            FERAL PRESENTS is an underground events collective pushing the boundaries of nightlife. We curate experiences that exist somewhere between a fever dream and a system crash. No rules. No mainstream. Just raw, unfiltered energy.
+          </p>
+          <p class="about__description">
+            Every event is a transmission from the other side. If you know, you know.
+          </p>
+        </div>
+        <div class="about__visual" data-reveal>
+          <div class="about__ascii-art" id="asciiArt" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact / Newsletter Section -->
+  <section class="contact" id="contact">
+    <div class="container">
+      <div class="contact__inner" data-reveal>
+        <span class="section-header__label">[TRANSMISSION]</span>
+        <h2 class="contact__title">Stay connected<span class="text-red">_</span></h2>
+        <p class="contact__text">Get early access to tickets and event intel before anyone else.</p>
+        <form class="contact__form" id="signupForm">
+          <div class="contact__input-wrapper">
+            <input type="email" class="contact__input" placeholder="enter_email@" required aria-label="Email address">
+            <button type="submit" class="btn btn--primary contact__submit">SUBMIT</button>
+          </div>
+          <p class="contact__status" id="formStatus"></p>
+        </form>
+        <div class="contact__socials">
+          <a href="#" class="contact__social-link" aria-label="Instagram">IG</a>
+          <a href="#" class="contact__social-link" aria-label="Twitter">TW</a>
+          <a href="#" class="contact__social-link" aria-label="Soundcloud">SC</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <span class="footer__copy">&copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.</span>
+        <span class="footer__status">STATUS: <span class="text-red">ONLINE</span></span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

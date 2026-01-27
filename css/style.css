@@ -646,6 +646,7 @@ img {
   left: 0;
   width: 100%;
   height: 100%;
+  z-index: 1;
   background:
     repeating-linear-gradient(
       90deg,
@@ -654,6 +655,108 @@ img {
       rgba(255, 0, 51, 0.03) 2px,
       rgba(255, 0, 51, 0.03) 4px
     );
+}
+
+/* Event card photo */
+.event-card__photo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Animated color glitch overlay for B&W photos */
+.event-card__image-glitch {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  /* Red scan line that sweeps down */
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent calc(50% - 1px),
+      rgba(255, 0, 51, 0.4) 50%,
+      transparent calc(50% + 1px),
+      transparent 100%
+    );
+  background-size: 100% 300%;
+  animation: scanDown 3s linear infinite;
+  mix-blend-mode: screen;
+}
+
+/* Subtle red color wash that pulses */
+.event-card__image-glitch::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 0, 51, 0.12) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 0, 51, 0.08) 100%
+  );
+  animation: colorPulse 4s ease-in-out infinite;
+  mix-blend-mode: color;
+}
+
+/* Chromatic aberration - occasional horizontal glitch */
+.event-card__image-glitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 0, 51, 0.12) 0%,
+    transparent 20%,
+    transparent 80%,
+    rgba(0, 180, 255, 0.1) 100%
+  );
+  animation: chromaShift 6s ease-in-out infinite;
+}
+
+@keyframes scanDown {
+  0% { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+
+@keyframes colorPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes chromaShift {
+  0%, 82%, 100% {
+    opacity: 0;
+    transform: translateX(0);
+    clip-path: none;
+  }
+  84% {
+    opacity: 0.9;
+    transform: translateX(-3px);
+    clip-path: inset(15% 0 60% 0);
+  }
+  86% {
+    opacity: 0.7;
+    transform: translateX(3px);
+    clip-path: inset(50% 0 20% 0);
+  }
+  88% {
+    opacity: 0.8;
+    transform: translateX(-2px);
+    clip-path: inset(30% 0 40% 0);
+  }
+  90% {
+    opacity: 0;
+    transform: translateX(0);
+    clip-path: none;
+  }
 }
 
 .event-card__image--2 {
@@ -689,7 +792,7 @@ img {
   width: 100%;
   height: 60%;
   background: linear-gradient(to top, var(--gray), transparent);
-  z-index: 1;
+  z-index: 3;
 }
 
 .event-card__image-noise {
@@ -699,7 +802,7 @@ img {
   width: 100%;
   height: 100%;
   opacity: 0.05;
-  z-index: 2;
+  z-index: 4;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
@@ -1411,6 +1514,11 @@ img {
 
   .contact__submit {
     width: 100%;
+  }
+
+  /* On mobile, show left side of banner where the people are */
+  .event-card__photo {
+    object-position: left center;
   }
 }
 

@@ -548,6 +548,7 @@ img {
   font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 3px;
+  padding-left: 3px;
   color: rgba(255, 255, 255, 0.25);
   text-transform: uppercase;
 }
@@ -627,7 +628,7 @@ img {
 
 /* --- Events Section --- */
 .events {
-  padding: 120px 0;
+  padding: 80px 0 120px;
   position: relative;
 }
 
@@ -1451,7 +1452,7 @@ img {
   }
 
   .events {
-    padding: 80px 0;
+    padding: 60px 0 80px;
   }
 
   .about {

@@ -148,7 +148,7 @@
   }
 
 
-  // ---- Typewriter Effect ---- //
+  // ---- Typewriter Effect with Glitch ---- //
   const typewriterEl = document.getElementById('typewriter');
   if (typewriterEl) {
     const phrases = [
@@ -156,32 +156,58 @@
       'NO SIGNAL. NO RULES.',
       'SYSTEM OVERRIDE IN PROGRESS',
       'ENTER THE FREQUENCY',
+      'RAW. UNFILTERED. FERAL.',
     ];
     let phraseIndex = 0;
     let charIndex = 0;
     let isDeleting = false;
     let typeSpeed = 80;
+    var glitchChars = '!@#$%^&*()_+{}|:<>?/\\=-';
+
+    function triggerGlitch() {
+      var original = typewriterEl.textContent;
+      var glitchCount = 0;
+      var maxGlitches = 4;
+      var glitchInterval = setInterval(function() {
+        if (glitchCount >= maxGlitches) {
+          typewriterEl.textContent = original;
+          clearInterval(glitchInterval);
+          return;
+        }
+        var glitched = '';
+        for (var i = 0; i < original.length; i++) {
+          if (Math.random() < 0.3) {
+            glitched += glitchChars[Math.floor(Math.random() * glitchChars.length)];
+          } else {
+            glitched += original[i];
+          }
+        }
+        typewriterEl.textContent = glitched;
+        glitchCount++;
+      }, 60);
+    }
 
     function type() {
-      const currentPhrase = phrases[phraseIndex];
+      var currentPhrase = phrases[phraseIndex];
 
       if (isDeleting) {
         typewriterEl.textContent = currentPhrase.substring(0, charIndex - 1);
         charIndex--;
-        typeSpeed = 40;
+        typeSpeed = 30;
       } else {
         typewriterEl.textContent = currentPhrase.substring(0, charIndex + 1);
         charIndex++;
-        typeSpeed = 80;
+        typeSpeed = 70;
       }
 
       if (!isDeleting && charIndex === currentPhrase.length) {
-        typeSpeed = 2500;
+        triggerGlitch();
+        typeSpeed = 2800;
         isDeleting = true;
       } else if (isDeleting && charIndex === 0) {
         isDeleting = false;
         phraseIndex = (phraseIndex + 1) % phrases.length;
-        typeSpeed = 400;
+        typeSpeed = 500;
       }
 
       setTimeout(type, typeSpeed);

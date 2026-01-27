@@ -170,22 +170,65 @@ img {
   opacity: 0.8;
 }
 
+/* Logo neon laser line — always visible */
 .nav__logo::after {
   content: '';
   position: absolute;
-  bottom: -4px;
+  bottom: -6px;
   left: 0;
   width: 100%;
-  height: 2px;
+  height: 1px;
   background: var(--red);
-  box-shadow: 0 0 8px var(--red-glow), 0 0 2px var(--red);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow:
+    0 0 4px rgba(255, 0, 51, 0.6),
+    0 0 8px rgba(255, 0, 51, 0.3),
+    0 0 1px var(--red);
+  transition: height 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Scanning highlight that sweeps across the line */
+.nav__logo::before {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: -30%;
+  width: 30%;
+  height: 5px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.7),
+    rgba(255, 0, 51, 1),
+    rgba(255, 255, 255, 0.7),
+    transparent
+  );
+  border-radius: 2px;
+  filter: blur(2px);
+  animation: logoScanLine 2.5s ease-in-out infinite;
+  z-index: 1;
+  pointer-events: none;
+  transition: height 0.3s ease, filter 0.3s ease;
 }
 
 .nav__logo:hover::after {
-  transform: scaleX(1);
+  height: 2px;
+  box-shadow:
+    0 0 8px rgba(255, 0, 51, 0.9),
+    0 0 20px rgba(255, 0, 51, 0.5),
+    0 0 40px rgba(255, 0, 51, 0.2),
+    0 0 2px var(--red);
+}
+
+.nav__logo:hover::before {
+  height: 6px;
+  filter: blur(3px);
+  animation-duration: 1.2s;
+}
+
+@keyframes logoScanLine {
+  0% { left: -30%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
 }
 
 .nav__menu {
@@ -338,6 +381,127 @@ img {
   width: 100%;
   height: 100%;
   z-index: 1;
+}
+
+/* Hero background image */
+.hero__bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.hero__bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Animated glitch overlay for hero background */
+.hero__bg-glitch {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent calc(50% - 1px),
+      rgba(255, 0, 51, 0.35) 50%,
+      transparent calc(50% + 1px),
+      transparent 100%
+    );
+  background-size: 100% 300%;
+  animation: heroScan 3s linear infinite;
+  mix-blend-mode: screen;
+}
+
+.hero__bg-glitch::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 0, 51, 0.15) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 0, 51, 0.1) 100%
+  );
+  animation: heroColorPulse 4s ease-in-out infinite;
+  mix-blend-mode: color;
+}
+
+.hero__bg-glitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 0, 51, 0.15) 0%,
+    transparent 20%,
+    transparent 80%,
+    rgba(0, 180, 255, 0.12) 100%
+  );
+  animation: heroChromaShift 6s ease-in-out infinite;
+}
+
+/* Dark overlay for text readability */
+.hero__bg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.4) 40%,
+    rgba(0, 0, 0, 0.5) 60%,
+    rgba(0, 0, 0, 0.75) 100%
+  );
+}
+
+@keyframes heroScan {
+  0% { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+
+@keyframes heroColorPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes heroChromaShift {
+  0%, 82%, 100% {
+    opacity: 0;
+    transform: translateX(0);
+    clip-path: none;
+  }
+  84% {
+    opacity: 0.9;
+    transform: translateX(-3px);
+    clip-path: inset(15% 0 60% 0);
+  }
+  86% {
+    opacity: 0.7;
+    transform: translateX(3px);
+    clip-path: inset(50% 0 20% 0);
+  }
+  88% {
+    opacity: 0.8;
+    transform: translateX(-2px);
+    clip-path: inset(30% 0 40% 0);
+  }
+  90% {
+    opacity: 0;
+    transform: translateX(0);
+    clip-path: none;
+  }
 }
 
 .hero__content {
@@ -657,107 +821,6 @@ img {
     );
 }
 
-/* Event card photo */
-.event-card__photo {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
-
-/* Animated color glitch overlay for B&W photos */
-.event-card__image-glitch {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  overflow: hidden;
-  /* Red scan line that sweeps down */
-  background:
-    linear-gradient(
-      to bottom,
-      transparent 0%,
-      transparent calc(50% - 1px),
-      rgba(255, 0, 51, 0.4) 50%,
-      transparent calc(50% + 1px),
-      transparent 100%
-    );
-  background-size: 100% 300%;
-  animation: scanDown 3s linear infinite;
-  mix-blend-mode: screen;
-}
-
-/* Subtle red color wash that pulses */
-.event-card__image-glitch::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 0, 51, 0.12) 0%,
-    transparent 40%,
-    transparent 60%,
-    rgba(255, 0, 51, 0.08) 100%
-  );
-  animation: colorPulse 4s ease-in-out infinite;
-  mix-blend-mode: color;
-}
-
-/* Chromatic aberration - occasional horizontal glitch */
-.event-card__image-glitch::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 0, 51, 0.12) 0%,
-    transparent 20%,
-    transparent 80%,
-    rgba(0, 180, 255, 0.1) 100%
-  );
-  animation: chromaShift 6s ease-in-out infinite;
-}
-
-@keyframes scanDown {
-  0% { background-position: 0 -100%; }
-  100% { background-position: 0 200%; }
-}
-
-@keyframes colorPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-}
-
-@keyframes chromaShift {
-  0%, 82%, 100% {
-    opacity: 0;
-    transform: translateX(0);
-    clip-path: none;
-  }
-  84% {
-    opacity: 0.9;
-    transform: translateX(-3px);
-    clip-path: inset(15% 0 60% 0);
-  }
-  86% {
-    opacity: 0.7;
-    transform: translateX(3px);
-    clip-path: inset(50% 0 20% 0);
-  }
-  88% {
-    opacity: 0.8;
-    transform: translateX(-2px);
-    clip-path: inset(30% 0 40% 0);
-  }
-  90% {
-    opacity: 0;
-    transform: translateX(0);
-    clip-path: none;
-  }
-}
 
 .event-card__image--2 {
   background: linear-gradient(135deg, #0d0d0d 0%, #1a0000 60%, #0d0d0d 100%);
@@ -1516,8 +1579,8 @@ img {
     width: 100%;
   }
 
-  /* On mobile, show left side of banner where the people are */
-  .event-card__photo {
+  /* On mobile, show left side of hero banner where the people are */
+  .hero__bg-image {
     object-position: left center;
   }
 }

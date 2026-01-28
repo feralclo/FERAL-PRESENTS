@@ -1218,7 +1218,7 @@ img {
 
 .event-content__grid {
   display: grid;
-  grid-template-columns: 1fr 520px;
+  grid-template-columns: 1fr 600px;
   gap: 60px;
 }
 
@@ -1354,6 +1354,21 @@ img {
   .event-tickets {
     position: static;
     order: -1;
+    margin-left: -24px;
+    margin-right: -24px;
+    width: calc(100% + 48px);
+  }
+
+  .event-tickets__box {
+    padding: 24px 16px;
+    border-left: none;
+    border-right: none;
+  }
+
+  .event-tickets__embed {
+    width: calc(100% + 32px);
+    margin-left: -16px;
+    margin-right: -16px;
   }
 }
 

@@ -1877,6 +1877,61 @@ img {
 }
 
 
+/* --- Mobile Compact Lineup --- */
+.mobile-lineup {
+  display: none;
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 1024px) {
+  .mobile-lineup {
+    display: block;
+  }
+}
+
+.mobile-lineup__heading {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--white);
+  margin-bottom: 20px;
+}
+
+.mobile-lineup__az {
+  color: var(--red);
+  font-weight: 400;
+}
+
+.mobile-lineup__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.mobile-lineup__artist {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gray-text);
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all var(--transition-fast);
+}
+
+.mobile-lineup__artist:hover {
+  color: var(--white);
+  border-color: rgba(255, 0, 51, 0.3);
+  background: rgba(255, 0, 51, 0.05);
+}
+
+
 /* --- Mobile Sticky CTA --- */
 .mobile-cta {
   display: none;

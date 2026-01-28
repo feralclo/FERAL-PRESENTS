@@ -1538,7 +1538,7 @@ img {
   }
 
   .hero__bg-image {
-    object-position: right center;
+    object-position: 75% center;
   }
 
   .about__grid {

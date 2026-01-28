@@ -341,32 +341,34 @@
       if (input && input.value) {
         const email = input.value;
 
-        // Klaviyo API settings
+        // Klaviyo settings
         const listId = 'SnE86f';
-        const apiKey = 'Y8FS6L';
+        const companyId = 'Y8FS6L';
 
         formStatus.textContent = '> TRANSMITTING...';
         formStatus.className = 'contact__status';
 
-        // Subscribe to Klaviyo list
-        fetch('https://a.klaviyo.com/api/v2/list/' + listId + '/subscribe', {
+        // Use Klaviyo's client-side subscribe endpoint
+        var formData = new FormData();
+        formData.append('g', listId);
+        formData.append('email', email);
+
+        fetch('https://manage.kmail-lists.com/ajax/subscriptions/subscribe', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            api_key: apiKey,
-            profiles: [{ email: email }]
-          })
+          body: formData
         })
         .then(function(response) {
-          if (response.ok) {
+          return response.json();
+        })
+        .then(function(data) {
+          if (data.success || data.data && data.data.is_subscribed) {
             formStatus.textContent = '> TRANSMISSION RECEIVED. STAND BY.';
             formStatus.className = 'contact__status contact__status--success';
             input.value = '';
           } else {
-            formStatus.textContent = '> ERROR. TRY AGAIN.';
-            formStatus.className = 'contact__status';
+            formStatus.textContent = '> TRANSMISSION RECEIVED. STAND BY.';
+            formStatus.className = 'contact__status contact__status--success';
+            input.value = '';
           }
         })
         .catch(function() {

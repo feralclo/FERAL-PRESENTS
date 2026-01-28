@@ -147,9 +147,35 @@
           <aside class="event-tickets" id="tickets">
             <div class="event-tickets__box">
               <h3 class="event-tickets__heading">Get Tickets<span class="text-red">_</span></h3>
-              <p class="event-tickets__subtext">Secure your entry. Limited availability.</p>
 
-              <a href="https://kompassklub.com/line-up/onlynumbers-basswell-at-kompass/" class="btn btn--primary event-tickets__cta" target="_blank" rel="noopener">BUY TICKETS NOW</a>
+              <div class="countdown" id="countdown">
+                <p class="countdown__label">SALE GOES LIVE IN</p>
+                <div class="countdown__timer">
+                  <div class="countdown__unit">
+                    <span class="countdown__number" id="countdown-days">00</span>
+                    <span class="countdown__text">DAYS</span>
+                  </div>
+                  <div class="countdown__separator">:</div>
+                  <div class="countdown__unit">
+                    <span class="countdown__number" id="countdown-hours">00</span>
+                    <span class="countdown__text">HRS</span>
+                  </div>
+                  <div class="countdown__separator">:</div>
+                  <div class="countdown__unit">
+                    <span class="countdown__number" id="countdown-minutes">00</span>
+                    <span class="countdown__text">MIN</span>
+                  </div>
+                  <div class="countdown__separator">:</div>
+                  <div class="countdown__unit">
+                    <span class="countdown__number" id="countdown-seconds">00</span>
+                    <span class="countdown__text">SEC</span>
+                  </div>
+                </div>
+                <p class="countdown__date">THU 29 JAN — 6PM CET</p>
+                <div class="countdown__pulse"></div>
+              </div>
+
+              <a href="https://kompassklub.com/line-up/onlynumbers-basswell-at-kompass/" class="btn btn--primary event-tickets__cta" id="ticketBtn" style="display: none;" target="_blank" rel="noopener">BUY TICKETS NOW</a>
             </div>
           </aside>
         </div>
@@ -168,5 +194,53 @@
   </footer>
 
   <script src="../../js/main.js"></script>
+  <script>
+    // Countdown Timer for Kompass Klub Ticket Sale
+    // Target: Thursday 29 January 2026, 6PM CET (Belgium time)
+    (function() {
+      // CET is UTC+1, so 6PM CET = 17:00 UTC
+      var targetDate = new Date('2026-01-29T17:00:00Z');
+
+      var countdown = document.getElementById('countdown');
+      var daysEl = document.getElementById('countdown-days');
+      var hoursEl = document.getElementById('countdown-hours');
+      var minutesEl = document.getElementById('countdown-minutes');
+      var secondsEl = document.getElementById('countdown-seconds');
+      var ticketBtn = document.getElementById('ticketBtn');
+
+      function updateCountdown() {
+        var now = new Date().getTime();
+        var distance = targetDate.getTime() - now;
+
+        if (distance <= 0) {
+          // Countdown expired - show buy button
+          if (countdown) {
+            countdown.classList.add('countdown--expired');
+            countdown.querySelector('.countdown__label').textContent = 'TICKETS ARE LIVE!';
+          }
+          if (daysEl) daysEl.textContent = '00';
+          if (hoursEl) hoursEl.textContent = '00';
+          if (minutesEl) minutesEl.textContent = '00';
+          if (secondsEl) secondsEl.textContent = '00';
+          if (ticketBtn) ticketBtn.style.display = 'block';
+          return;
+        }
+
+        var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        if (daysEl) daysEl.textContent = days < 10 ? '0' + days : days;
+        if (hoursEl) hoursEl.textContent = hours < 10 ? '0' + hours : hours;
+        if (minutesEl) minutesEl.textContent = minutes < 10 ? '0' + minutes : minutes;
+        if (secondsEl) secondsEl.textContent = seconds < 10 ? '0' + seconds : seconds;
+      }
+
+      // Update immediately, then every second
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    })();
+  </script>
 </body>
 </html>

@@ -1447,6 +1447,149 @@ img {
 }
 
 
+/* --- Countdown Timer --- */
+.countdown {
+  text-align: center;
+  padding: 20px 0;
+  position: relative;
+}
+
+.countdown__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gray-text);
+  margin-bottom: 20px;
+}
+
+.countdown__timer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.countdown__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+
+.countdown__number {
+  font-family: var(--font-mono);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--white);
+  line-height: 1;
+  position: relative;
+  text-shadow: 0 0 20px rgba(255, 0, 51, 0.3);
+  animation: countdownPulse 2s ease-in-out infinite;
+}
+
+@keyframes countdownPulse {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(255, 0, 51, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(255, 0, 51, 0.5), 0 0 60px rgba(255, 0, 51, 0.2);
+  }
+}
+
+.countdown__text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--gray-text);
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.countdown__separator {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--red);
+  animation: separatorBlink 1s steps(1) infinite;
+  margin-bottom: 18px;
+}
+
+@keyframes separatorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+.countdown__date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--red);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.countdown__pulse {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--red), transparent);
+  animation: countdownScan 2s linear infinite;
+}
+
+@keyframes countdownScan {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0);
+  }
+}
+
+/* Countdown expired state */
+.countdown--expired .countdown__label {
+  color: var(--red);
+  animation: expiredBlink 0.5s ease-in-out infinite;
+}
+
+@keyframes expiredBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.countdown--expired .countdown__number {
+  color: var(--red);
+  animation: none;
+  text-shadow: 0 0 30px rgba(255, 0, 51, 0.6);
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .countdown__unit {
+    min-width: 50px;
+  }
+
+  .countdown__number {
+    font-size: 28px;
+  }
+
+  .countdown__separator {
+    font-size: 22px;
+  }
+}
+
+
 /* ============================================
    RESPONSIVE
    ============================================ */

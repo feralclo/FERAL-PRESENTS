@@ -1218,7 +1218,7 @@ img {
 
 .event-content__grid {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 360px;
   gap: 60px;
 }
 
@@ -1298,7 +1298,7 @@ img {
 .event-tickets__box {
   background: var(--gray);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 32px;
+  padding: 24px;
 }
 
 .event-tickets__heading {
@@ -1319,9 +1319,9 @@ img {
 }
 
 .event-tickets__embed {
-  width: calc(100% + 64px);
-  margin-left: -32px;
-  margin-right: -32px;
+  width: calc(100% + 48px);
+  margin-left: -24px;
+  margin-right: -24px;
   min-height: 200px;
   overflow: hidden;
 }

@@ -181,29 +181,73 @@
   <script src="../../js/main.js"></script>
   <script src="https://shop.weeztix.com/build/integrate.js"></script>
   <script>
-    // Social Proof Toast - shows once with randomized time
+    // Social Proof Toast - shows once with logical time progression
     (function() {
       var toast = document.getElementById('socialProof');
       var timeEl = document.getElementById('proofTime');
+      var storageKey = 'feral_lastBooking_liverpool';
 
-      // Weighted time options (60 seconds appears more often)
-      var timeOptions = [
-        'less than 60 seconds ago',
-        'less than 60 seconds ago',
-        'less than 60 seconds ago',
-        'less than 2 minutes ago',
-        'less than 2 minutes ago',
-        'less than 3 minutes ago',
-        'less than 5 minutes ago',
-        'less than 8 minutes ago',
-        'less than 10 minutes ago'
-      ];
+      function getTimeText(elapsedSeconds) {
+        if (elapsedSeconds < 60) return 'less than 60 seconds ago';
+        if (elapsedSeconds < 120) return 'less than 2 minutes ago';
+        if (elapsedSeconds < 180) return 'less than 3 minutes ago';
+        if (elapsedSeconds < 300) return 'less than 5 minutes ago';
+        if (elapsedSeconds < 480) return 'less than 8 minutes ago';
+        if (elapsedSeconds < 600) return 'less than 10 minutes ago';
+        return null; // Too old, need new booking
+      }
 
-      // Pick random time
-      var randomTime = timeOptions[Math.floor(Math.random() * timeOptions.length)];
-      if (timeEl) timeEl.textContent = randomTime;
+      function getRandomInitialTime() {
+        // Weighted random: favor shorter times
+        var weights = [
+          { seconds: 15, weight: 3 },
+          { seconds: 30, weight: 3 },
+          { seconds: 45, weight: 2 },
+          { seconds: 75, weight: 2 },
+          { seconds: 120, weight: 1 },
+          { seconds: 200, weight: 1 },
+          { seconds: 350, weight: 1 },
+          { seconds: 500, weight: 1 }
+        ];
+        var totalWeight = weights.reduce(function(sum, w) { return sum + w.weight; }, 0);
+        var rand = Math.random() * totalWeight;
+        var cumulative = 0;
+        for (var i = 0; i < weights.length; i++) {
+          cumulative += weights[i].weight;
+          if (rand < cumulative) return weights[i].seconds;
+        }
+        return 30;
+      }
 
-      // Show toast after short delay (let page settle)
+      // Get or create booking timestamp
+      var now = Date.now();
+      var stored = localStorage.getItem(storageKey);
+      var bookingTime;
+
+      if (stored) {
+        bookingTime = parseInt(stored, 10);
+        var elapsed = Math.floor((now - bookingTime) / 1000);
+        var timeText = getTimeText(elapsed);
+
+        if (!timeText) {
+          // More than 10 mins passed - create new booking
+          var initialOffset = getRandomInitialTime();
+          bookingTime = now - (initialOffset * 1000);
+          localStorage.setItem(storageKey, bookingTime.toString());
+        }
+      } else {
+        // First visit - create booking with random initial offset
+        var initialOffset = getRandomInitialTime();
+        bookingTime = now - (initialOffset * 1000);
+        localStorage.setItem(storageKey, bookingTime.toString());
+      }
+
+      // Calculate and display time
+      var elapsedSeconds = Math.floor((now - bookingTime) / 1000);
+      var displayText = getTimeText(elapsedSeconds) || 'less than 60 seconds ago';
+      if (timeEl) timeEl.textContent = displayText;
+
+      // Show toast after short delay
       setTimeout(function() {
         if (toast) toast.classList.add('social-proof--visible');
 

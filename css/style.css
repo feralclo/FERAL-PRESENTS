@@ -1656,6 +1656,10 @@ img {
     right: 16px;
     bottom: 16px;
     max-width: none;
+    background: var(--black);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 3px solid var(--red);
+    padding: 18px 20px;
   }
 }
 

@@ -43,7 +43,9 @@
   <main class="event-page" id="eventPage">
     <!-- Event Hero -->
     <section class="event-hero">
-      <div class="event-hero__bg"></div>
+      <div class="event-hero__bg">
+        <img src="" alt="" class="event-hero__bg-img" id="eventBannerImg">
+      </div>
       <div class="container">
         <div class="event-hero__content">
           <a href="index.html" class="event-hero__back">
@@ -179,6 +181,7 @@
           ],
           useEmbed: false,
           ticketUrl: 'https://kompassklub.com/line-up/onlynumbers-basswell-at-kompass/',
+          bannerImage: 'images/kompass-event-banner.jpg',
         },
         '002': {
           tag: 'ON SALE NOW',
@@ -224,6 +227,13 @@
 
       var descEl = document.getElementById('eventDescription');
       if (descEl) descEl.innerHTML = event.description;
+
+      // Set banner image
+      var bannerImg = document.getElementById('eventBannerImg');
+      if (bannerImg && event.bannerImage) {
+        bannerImg.src = event.bannerImage;
+        bannerImg.alt = event.title;
+      }
 
       // Toggle ticket widget (embed vs button)
       var ticketEmbed = document.getElementById('ticketEmbed');

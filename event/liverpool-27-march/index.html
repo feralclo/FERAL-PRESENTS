@@ -159,6 +159,15 @@
     </section>
   </main>
 
+  <!-- Social Proof Toast -->
+  <div class="social-proof" id="socialProof">
+    <div class="social-proof__title">
+      <span class="social-proof__dot"></span>
+      Selling fast!
+    </div>
+    <p class="social-proof__text">Last ticket booked: <span class="social-proof__time" id="proofTime">less than 60 seconds ago</span></p>
+  </div>
+
   <!-- Footer -->
   <footer class="footer">
     <div class="container">
@@ -171,5 +180,39 @@
 
   <script src="../../js/main.js"></script>
   <script src="https://shop.weeztix.com/build/integrate.js"></script>
+  <script>
+    // Social Proof Toast - shows once with randomized time
+    (function() {
+      var toast = document.getElementById('socialProof');
+      var timeEl = document.getElementById('proofTime');
+
+      // Weighted time options (60 seconds appears more often)
+      var timeOptions = [
+        'less than 60 seconds ago',
+        'less than 60 seconds ago',
+        'less than 60 seconds ago',
+        'less than 2 minutes ago',
+        'less than 2 minutes ago',
+        'less than 3 minutes ago',
+        'less than 5 minutes ago',
+        'less than 8 minutes ago',
+        'less than 10 minutes ago'
+      ];
+
+      // Pick random time
+      var randomTime = timeOptions[Math.floor(Math.random() * timeOptions.length)];
+      if (timeEl) timeEl.textContent = randomTime;
+
+      // Show toast after short delay (let page settle)
+      setTimeout(function() {
+        if (toast) toast.classList.add('social-proof--visible');
+
+        // Hide after 7 seconds
+        setTimeout(function() {
+          if (toast) toast.classList.remove('social-proof--visible');
+        }, 7000);
+      }, 2500);
+    })();
+  </script>
 </body>
 </html>

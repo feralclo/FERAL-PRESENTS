@@ -1590,6 +1590,76 @@ img {
 }
 
 
+/* --- Social Proof Toast --- */
+.social-proof {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  background: var(--gray);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--red);
+  padding: 14px 20px;
+  z-index: 999;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+  max-width: 320px;
+}
+
+.social-proof--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.social-proof__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.social-proof__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.social-proof__text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--gray-text);
+}
+
+.social-proof__time {
+  color: var(--white);
+}
+
+@media (max-width: 480px) {
+  .social-proof {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: none;
+  }
+}
+
+
 /* ============================================
    RESPONSIVE
    ============================================ */

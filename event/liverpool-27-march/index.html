@@ -113,34 +113,36 @@
 
             <!-- Desktop Ticket Scarcity (between About and Lineup) -->
             <div class="ticket-scarcity ticket-scarcity--desktop">
-              <div class="ticket-scarcity__header">
-                <span class="ticket-scarcity__live-dot"></span>
-                <span class="ticket-scarcity__live-text">TICKETS</span>
-              </div>
-              <div class="ticket-scarcity__tiers">
-                <div class="ticket-scarcity__tier ticket-scarcity__tier--sold">
-                  <span class="ticket-scarcity__tier-name">FIRST RELEASE</span>
-                  <span class="ticket-scarcity__tier-status">SOLD OUT</span>
+              <div class="ticket-scarcity__box">
+                <div class="ticket-scarcity__header">
+                  <span class="ticket-scarcity__live-dot"></span>
+                  <span class="ticket-scarcity__live-text">TICKETS</span>
                 </div>
-                <div class="ticket-scarcity__tier ticket-scarcity__tier--active">
-                  <span class="ticket-scarcity__tier-name">GENERAL RELEASE</span>
-                  <span class="ticket-scarcity__tier-price">£24.50</span>
+                <div class="ticket-scarcity__tiers">
+                  <div class="ticket-scarcity__tier ticket-scarcity__tier--sold">
+                    <span class="ticket-scarcity__tier-name">FIRST RELEASE</span>
+                    <span class="ticket-scarcity__tier-status">SOLD OUT</span>
+                  </div>
+                  <div class="ticket-scarcity__tier ticket-scarcity__tier--active">
+                    <span class="ticket-scarcity__tier-name">GENERAL RELEASE</span>
+                    <span class="ticket-scarcity__tier-price">£24.50</span>
+                  </div>
+                  <div class="ticket-scarcity__tier ticket-scarcity__tier--next">
+                    <span class="ticket-scarcity__tier-name">FINAL RELEASE</span>
+                    <span class="ticket-scarcity__tier-price">£27.00</span>
+                  </div>
                 </div>
-                <div class="ticket-scarcity__tier ticket-scarcity__tier--next">
-                  <span class="ticket-scarcity__tier-name">FINAL RELEASE</span>
-                  <span class="ticket-scarcity__tier-price">£27.00</span>
-                </div>
-              </div>
-              <div class="ticket-scarcity__progress">
-                <div class="ticket-scarcity__bar">
-                  <div class="ticket-scarcity__fill" style="width: 78%;"></div>
-                  <div class="ticket-scarcity__glow"></div>
-                </div>
-                <div class="ticket-scarcity__info">
-                  <span class="ticket-scarcity__remaining">
-                    <span class="ticket-scarcity__count">47</span> tickets remaining
-                  </span>
-                  <span class="ticket-scarcity__warning">at this price</span>
+                <div class="ticket-scarcity__progress">
+                  <div class="ticket-scarcity__bar">
+                    <div class="ticket-scarcity__fill" style="width: 78%;"></div>
+                    <div class="ticket-scarcity__glow"></div>
+                  </div>
+                  <div class="ticket-scarcity__info">
+                    <span class="ticket-scarcity__remaining">
+                      <span class="ticket-scarcity__count">47</span> tickets remaining
+                    </span>
+                    <span class="ticket-scarcity__warning">at this price</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -212,9 +214,11 @@
                     <span class="ticket-scarcity__warning">at this price</span>
                   </div>
                 </div>
+
+                <a href="#tickets-embed" class="ticket-scarcity__cta">Book Now</a>
               </div>
 
-              <div class="event-tickets__embed">
+              <div class="event-tickets__embed" id="tickets-embed">
                 <div id="shop-frame" data-url="https://shop.weeztix.com/9313a9e9-60e1-459c-929a-67ffa388e548"></div>
               </div>
             </div>
@@ -223,14 +227,6 @@
       </div>
     </section>
   </main>
-
-  <!-- Mobile Sticky Book Now Button -->
-  <div class="mobile-cta" id="mobileCta">
-    <a href="#tickets" class="mobile-cta__btn">
-      <span class="mobile-cta__text">Book Now</span>
-      <span class="mobile-cta__price">From £24.50</span>
-    </a>
-  </div>
 
   <!-- Social Proof Toast -->
   <div class="social-proof" id="socialProof">
@@ -332,16 +328,16 @@
     })();
   </script>
   <script>
-    // Mobile CTA smooth scroll
+    // Book Now smooth scroll to embed
     (function() {
-      var ctaBtn = document.querySelector('.mobile-cta__btn');
+      var ctaBtn = document.querySelector('.ticket-scarcity__cta');
       if (ctaBtn) {
         ctaBtn.addEventListener('click', function(e) {
           e.preventDefault();
-          var tickets = document.getElementById('tickets');
-          if (tickets) {
+          var embed = document.getElementById('tickets-embed');
+          if (embed) {
             var headerHeight = 64;
-            var y = tickets.getBoundingClientRect().top + window.pageYOffset - headerHeight;
+            var y = embed.getBoundingClientRect().top + window.pageYOffset - headerHeight - 10;
             window.scrollTo({ top: y, behavior: 'smooth' });
           }
         });

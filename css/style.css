@@ -1218,7 +1218,7 @@ img {
 
 .event-content__grid {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 520px;
   gap: 60px;
 }
 
@@ -1319,9 +1319,10 @@ img {
 }
 
 .event-tickets__embed {
-  width: 100%;
+  width: calc(100% + 64px);
+  margin-left: -32px;
+  margin-right: -32px;
   min-height: 200px;
-  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -1332,7 +1333,6 @@ img {
 .event-tickets__embed iframe {
   width: 100% !important;
   border: none;
-  border-radius: 2px;
 }
 
 

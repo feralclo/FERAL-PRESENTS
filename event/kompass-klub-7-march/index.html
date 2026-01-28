@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FERAL PRESENTS — KOMPASS KLUB</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Scanline overlay -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- Noise texture overlay -->
+  <div class="noise" aria-hidden="true"></div>
+
+  <!-- Navigation -->
+  <header class="header" id="header">
+    <nav class="nav">
+      <a href="/" class="nav__logo">
+        <img src="../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="nav__logo-img">
+      </a>
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="nav__menu" id="navMenu">
+        <ul class="nav__list">
+          <li class="nav__item"><a href="/#events" class="nav__link">Events</a></li>
+          <li class="nav__item"><a href="/#about" class="nav__link">About</a></li>
+          <li class="nav__item"><a href="/#contact" class="nav__link">Contact</a></li>
+          <li class="nav__item"><a href="https://www.feralclo.com/" class="nav__link" target="_blank" rel="noopener">Apparel</a></li>
+        </ul>
+        <a href="#tickets" class="btn btn--primary nav__cta">Book Tickets</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Event Page Content -->
+  <main class="event-page" id="eventPage">
+    <!-- Event Hero -->
+    <section class="event-hero">
+      <div class="event-hero__bg">
+        <img src="../../images/kompass-event-banner.jpg" alt="KOMPASS KLUB" class="event-hero__bg-img">
+        <div class="event-hero__scanline"></div>
+      </div>
+      <div class="container">
+        <div class="event-hero__content">
+          <a href="/" class="event-hero__back">
+            <span class="event-hero__back-arrow">&larr;</span>
+            <span>Back to all events</span>
+          </a>
+
+          <div class="event-hero__meta">
+            <span class="event-hero__tag">SALE OPENS THU 29TH JAN 6PM</span>
+          </div>
+
+          <h1 class="event-hero__title glitch" data-text="KOMPASS KLUB">KOMPASS KLUB</h1>
+
+          <div class="event-hero__details">
+            <div class="event-hero__detail">
+              <span class="event-hero__detail-label">DATE</span>
+              <span class="event-hero__detail-value">7 MARCH 2026</span>
+            </div>
+            <div class="event-hero__detail">
+              <span class="event-hero__detail-label">DOORS</span>
+              <span class="event-hero__detail-value">11PM — 7AM</span>
+            </div>
+            <div class="event-hero__detail">
+              <span class="event-hero__detail-label">LOCATION</span>
+              <span class="event-hero__detail-value">Kompass Klub, Ghent</span>
+            </div>
+            <div class="event-hero__detail">
+              <span class="event-hero__detail-label">AGE</span>
+              <span class="event-hero__detail-value">18+</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Event Content -->
+    <section class="event-content">
+      <div class="container">
+        <div class="event-content__grid">
+          <!-- Left: Event Info -->
+          <div class="event-info" id="eventInfo">
+            <div class="event-info__section">
+              <h2 class="event-info__heading">About</h2>
+              <p class="event-info__text">
+                We're gearing up for a rousing debut by <a href="https://www.instagram.com/onlynumbers_uju/" target="_blank" rel="noopener">@onlynumbers_uju</a> & <a href="https://www.instagram.com/vladimircauchemar/" target="_blank" rel="noopener">@vladimircauchemar</a> - backed up by stronghold <a href="https://www.instagram.com/basswell/" target="_blank" rel="noopener">@basswell</a> and the grittiest of local selectors to keep the pressure high.
+              </p>
+            </div>
+
+            <div class="event-info__section">
+              <h2 class="event-info__heading">Lineup</h2>
+              <div class="event-info__lineup">
+                <div class="event-info__artist">
+                  <span class="event-info__artist-name">BASSWELL</span>
+                </div>
+                <div class="event-info__artist">
+                  <span class="event-info__artist-name">ONLYNUMBERS</span>
+                </div>
+                <div class="event-info__artist">
+                  <span class="event-info__artist-name">VLADIMIR CAUCHEMAR</span>
+                </div>
+                <div class="event-info__artist">
+                  <span class="event-info__artist-name">JANE MUSS</span>
+                </div>
+                <div class="event-info__artist">
+                  <span class="event-info__artist-name">VECNA</span>
+                </div>
+                <div class="event-info__artist">
+                  <span class="event-info__artist-name">SANDY KLETZ</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="event-info__section">
+              <h2 class="event-info__heading">Details</h2>
+              <p class="event-info__text">
+                This is an 18+ event. Valid photo ID required at the door. No re-entry. The venue operates a zero-tolerance policy. Accessibility info available on request.
+              </p>
+            </div>
+          </div>
+
+          <!-- Right: Ticket Widget -->
+          <aside class="event-tickets" id="tickets">
+            <div class="event-tickets__box">
+              <h3 class="event-tickets__heading">Get Tickets<span class="text-red">_</span></h3>
+              <p class="event-tickets__subtext">Secure your entry. Limited availability.</p>
+
+              <a href="https://kompassklub.com/line-up/onlynumbers-basswell-at-kompass/" class="btn btn--primary event-tickets__cta" target="_blank" rel="noopener">BUY TICKETS NOW</a>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <span class="footer__copy">&copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.</span>
+        <span class="footer__status">STATUS: <span class="text-red">ONLINE</span></span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../../js/main.js"></script>
+</body>
+</html>

@@ -246,11 +246,6 @@ img {
   transform: translateY(-6.5px) rotate(-45deg);
 }
 
-/* Mobile CTA - hidden on desktop */
-.nav__mobile-cta {
-  display: none;
-}
-
 /* CTA Button */
 .btn {
   display: inline-flex;
@@ -2062,35 +2057,7 @@ img {
   .nav__toggle {
     display: flex;
     position: absolute;
-    left: 24px;
-  }
-
-  .nav__mobile-cta {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    right: 16px;
-    padding: 10px 14px;
-    background: var(--red);
-    color: var(--white);
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    text-decoration: none;
-    z-index: 1001;
-    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
-  }
-
-  .nav__mobile-cta:active {
-    background: #cc0029;
-  }
-
-  /* Keep header visible on mobile - don't hide on scroll */
-  .header--hidden {
-    transform: translateY(0);
+    right: 24px;
   }
 
   .nav__menu {

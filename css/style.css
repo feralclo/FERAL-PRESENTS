@@ -246,6 +246,11 @@ img {
   transform: translateY(-6.5px) rotate(-45deg);
 }
 
+/* Mobile CTA - hidden on desktop */
+.nav__mobile-cta {
+  display: none;
+}
+
 /* CTA Button */
 .btn {
   display: inline-flex;
@@ -2057,7 +2062,27 @@ img {
   .nav__toggle {
     display: flex;
     position: absolute;
-    right: 24px;
+    left: 24px;
+  }
+
+  .nav__mobile-cta {
+    display: flex;
+    position: absolute;
+    right: 16px;
+    padding: 8px 16px;
+    background: var(--red);
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-decoration: none;
+    z-index: 1001;
+  }
+
+  .nav__mobile-cta:active {
+    background: #cc0029;
   }
 
   .nav__menu {

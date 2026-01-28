@@ -168,19 +168,20 @@
           date: '7 MARCH 2026',
           time: '11PM — 7AM',
           location: 'Kompass Klub, Ghent',
-          description: 'A night where the signal drops and the frequency takes over. KOMPASS KLUB is a stripped-back, raw experience deep in the basement of one of Europe\'s most notorious warehouse spaces. Expect nothing. Prepare for everything. No phones. No recordings. Just the sound.',
+          description: 'We\'re gearing up for a rousing debut by <a href="https://www.instagram.com/onlynumbers_uju/" target="_blank" rel="noopener">@onlynumbers_uju</a> & <a href="https://www.instagram.com/vladimircauchemar/" target="_blank" rel="noopener">@vladimircauchemar</a> - backed up by stronghold <a href="https://www.instagram.com/basswell/" target="_blank" rel="noopener">@basswell</a> and the grittiest of local selectors to keep the pressure high.',
           lineup: [
-            { name: 'VEKTROID', tag: 'HEADLINE' },
-            { name: 'NULL_SET', tag: 'LIVE' },
-            { name: 'FREQ.DRIFT', tag: 'DJ SET' },
-            { name: 'CODEC', tag: 'DJ SET' },
-            { name: 'TBA', tag: 'SPECIAL GUEST' },
+            { name: 'BASSWELL', tag: '' },
+            { name: 'ONLYNUMBERS', tag: '' },
+            { name: 'VLADIMIR CAUCHEMAR', tag: '' },
+            { name: 'JANE MUSS', tag: '' },
+            { name: 'VECNA', tag: '' },
+            { name: 'SANDY KLETZ', tag: '' },
           ],
           useEmbed: false,
-          ticketUrl: '#',
+          ticketUrl: 'https://kompassklub.com/line-up/onlynumbers-basswell-at-kompass/',
         },
         '002': {
-          tag: 'BOTH',
+          tag: 'ON SALE NOW',
           title: 'DEAD_FREQUENCY',
           date: '26 APRIL 2026',
           time: '21:00',
@@ -222,7 +223,7 @@
       if (locEl) locEl.textContent = event.location;
 
       var descEl = document.getElementById('eventDescription');
-      if (descEl) descEl.textContent = event.description;
+      if (descEl) descEl.innerHTML = event.description;
 
       // Toggle ticket widget (embed vs button)
       var ticketEmbed = document.getElementById('ticketEmbed');
@@ -235,6 +236,8 @@
         if (ticketButton) {
           ticketButton.style.display = 'block';
           if (event.ticketUrl) ticketButton.href = event.ticketUrl;
+          ticketButton.setAttribute('target', '_blank');
+          ticketButton.setAttribute('rel', 'noopener');
         }
       }
 
@@ -245,9 +248,11 @@
         event.lineup.forEach(function (artist) {
           var div = document.createElement('div');
           div.className = 'event-info__artist';
-          div.innerHTML =
-            '<span class="event-info__artist-name">' + artist.name + '</span>' +
-            '<span class="event-info__artist-tag">' + artist.tag + '</span>';
+          var html = '<span class="event-info__artist-name">' + artist.name + '</span>';
+          if (artist.tag) {
+            html += '<span class="event-info__artist-tag">' + artist.tag + '</span>';
+          }
+          div.innerHTML = html;
           lineupEl.appendChild(div);
         });
       }

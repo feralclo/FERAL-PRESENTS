@@ -2067,22 +2067,30 @@ img {
 
   .nav__mobile-cta {
     display: flex;
+    align-items: center;
+    justify-content: center;
     position: absolute;
     right: 16px;
-    padding: 8px 16px;
+    padding: 10px 14px;
     background: var(--red);
     color: var(--white);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
     text-decoration: none;
     z-index: 1001;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
   }
 
   .nav__mobile-cta:active {
     background: #cc0029;
+  }
+
+  /* Keep header visible on mobile - don't hide on scroll */
+  .header--hidden {
+    transform: translateY(0);
   }
 
   .nav__menu {

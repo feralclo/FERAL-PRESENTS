@@ -132,9 +132,11 @@
               <h3 class="event-tickets__heading">Get Tickets<span class="text-red">_</span></h3>
               <p class="event-tickets__subtext">Secure your entry. Limited availability.</p>
 
-              <div class="event-tickets__embed">
+              <div class="event-tickets__embed" id="ticketEmbed">
                 <div id="shop-frame" data-url="https://shop.weeztix.com/9313a9e9-60e1-459c-929a-67ffa388e548"></div>
               </div>
+
+              <a href="#" class="btn btn--primary event-tickets__cta" id="ticketButton" style="display: none;">BUY TICKETS NOW</a>
             </div>
           </aside>
         </div>
@@ -162,11 +164,11 @@
       const events = {
         '001': {
           tag: 'SALE OPENS THU 29TH JAN 6PM',
-          title: 'SIGNAL_LOST',
-          date: '15 MARCH 2026',
+          title: 'KOMPASS KLUB',
+          date: '7 MARCH 2026',
           time: '11PM — 7AM',
           location: 'Kompass Klub, Ghent',
-          description: 'A night where the signal drops and the frequency takes over. SIGNAL_LOST is a stripped-back, raw experience deep in the basement of one of London\'s most notorious warehouse spaces. Expect nothing. Prepare for everything. No phones. No recordings. Just the sound.',
+          description: 'A night where the signal drops and the frequency takes over. KOMPASS KLUB is a stripped-back, raw experience deep in the basement of one of Europe\'s most notorious warehouse spaces. Expect nothing. Prepare for everything. No phones. No recordings. Just the sound.',
           lineup: [
             { name: 'VEKTROID', tag: 'HEADLINE' },
             { name: 'NULL_SET', tag: 'LIVE' },
@@ -174,9 +176,8 @@
             { name: 'CODEC', tag: 'DJ SET' },
             { name: 'TBA', tag: 'SPECIAL GUEST' },
           ],
-          priceEarly: '\u00A315',
-          priceGeneral: '\u00A320',
-          priceDoor: '\u00A325',
+          useEmbed: false,
+          ticketUrl: '#',
         },
         '002': {
           tag: 'BOTH',
@@ -192,9 +193,7 @@
             { name: 'BURIED_SIGNAL', tag: 'DJ SET' },
             { name: 'NERVE', tag: 'DJ SET' },
           ],
-          priceEarly: '\u00A318',
-          priceGeneral: '\u00A325',
-          priceDoor: '\u00A330',
+          useEmbed: true,
         },
       };
 
@@ -225,14 +224,19 @@
       var descEl = document.getElementById('eventDescription');
       if (descEl) descEl.textContent = event.description;
 
-      var earlyEl = document.getElementById('priceEarly');
-      if (earlyEl) earlyEl.textContent = event.priceEarly;
-
-      var genEl = document.getElementById('priceGeneral');
-      if (genEl) genEl.textContent = event.priceGeneral;
-
-      var doorEl = document.getElementById('priceDoor');
-      if (doorEl) doorEl.textContent = event.priceDoor;
+      // Toggle ticket widget (embed vs button)
+      var ticketEmbed = document.getElementById('ticketEmbed');
+      var ticketButton = document.getElementById('ticketButton');
+      if (event.useEmbed) {
+        if (ticketEmbed) ticketEmbed.style.display = 'block';
+        if (ticketButton) ticketButton.style.display = 'none';
+      } else {
+        if (ticketEmbed) ticketEmbed.style.display = 'none';
+        if (ticketButton) {
+          ticketButton.style.display = 'block';
+          if (event.ticketUrl) ticketButton.href = event.ticketUrl;
+        }
+      }
 
       // Update lineup
       var lineupEl = document.getElementById('eventLineup');

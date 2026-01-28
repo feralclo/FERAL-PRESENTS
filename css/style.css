@@ -1657,7 +1657,7 @@ img {
   margin-top: 16px;
   padding: 14px 20px;
   background: transparent;
-  color: var(--white);
+  color: var(--red);
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
@@ -1665,14 +1665,14 @@ img {
   text-transform: uppercase;
   text-align: center;
   text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 0, 51, 0.4);
   transition: all var(--transition-base);
 }
 
 .ticket-scarcity__cta:hover,
 .ticket-scarcity__cta:active {
   border-color: var(--red);
-  color: var(--red);
+  background: rgba(255, 0, 51, 0.1);
 }
 
 /* Mobile version - shown in ticket widget */

@@ -132,27 +132,8 @@
               <h3 class="event-tickets__heading">Get Tickets<span class="text-red">_</span></h3>
               <p class="event-tickets__subtext">Secure your entry. Limited availability.</p>
 
-              <!-- Embed area for ticket platform -->
-              <div class="event-tickets__embed" id="ticketEmbed">
-                <!-- Replace this div's content with your ticket platform embed code -->
-                [TICKET PLATFORM EMBED]
-              </div>
-
-              <a href="#" class="btn btn--primary event-tickets__cta">BUY TICKETS</a>
-
-              <div class="event-tickets__info">
-                <div class="event-tickets__info-row">
-                  <span class="event-tickets__info-label">Early Bird</span>
-                  <span class="event-tickets__info-value" id="priceEarly">&pound;15</span>
-                </div>
-                <div class="event-tickets__info-row">
-                  <span class="event-tickets__info-label">General</span>
-                  <span class="event-tickets__info-value" id="priceGeneral">&pound;20</span>
-                </div>
-                <div class="event-tickets__info-row">
-                  <span class="event-tickets__info-label">Door</span>
-                  <span class="event-tickets__info-value" id="priceDoor">&pound;25</span>
-                </div>
+              <div class="event-tickets__embed">
+                <div id="shop-frame" data-url="https://shop.weeztix.com/9313a9e9-60e1-459c-929a-67ffa388e548"></div>
               </div>
             </div>
           </aside>
@@ -273,5 +254,6 @@
       }
     })();
   </script>
+  <script src="https://shop.weeztix.com/build/integrate.js"></script>
 </body>
 </html>

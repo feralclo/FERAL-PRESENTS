@@ -1320,51 +1320,19 @@ img {
 
 .event-tickets__embed {
   width: 100%;
-  min-height: 300px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--gray-text);
-  text-transform: uppercase;
-  margin-bottom: 24px;
+  min-height: 200px;
+  border-radius: 2px;
+  overflow: hidden;
 }
 
-.event-tickets__cta {
+.event-tickets__embed #shop-frame {
   width: 100%;
-  padding: 16px;
-  text-align: center;
 }
 
-.event-tickets__info {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.event-tickets__info-row {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-}
-
-.event-tickets__info-label {
-  color: var(--gray-text);
-  text-transform: uppercase;
-}
-
-.event-tickets__info-value {
-  color: var(--white);
-  font-weight: 700;
+.event-tickets__embed iframe {
+  width: 100% !important;
+  border: none;
+  border-radius: 2px;
 }
 
 
@@ -1385,6 +1353,7 @@ img {
 
   .event-tickets {
     position: static;
+    order: -1;
   }
 }
 

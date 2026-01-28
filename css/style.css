@@ -1218,7 +1218,7 @@ img {
 
 .event-content__grid {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 1fr 390px;
   gap: 60px;
 }
 

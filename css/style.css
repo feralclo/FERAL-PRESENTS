@@ -1598,13 +1598,20 @@ img {
   background: var(--gray);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 3px solid var(--red);
-  padding: 14px 20px;
+  padding: 12px 18px;
   z-index: 999;
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.4s ease, transform 0.4s ease;
   pointer-events: none;
-  max-width: 320px;
+}
+
+.social-proof__text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--gray-text);
+  white-space: nowrap;
 }
 
 .social-proof--visible {
@@ -1639,13 +1646,6 @@ img {
   50% { opacity: 0.5; transform: scale(0.8); }
 }
 
-.social-proof__text {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 1px;
-  color: var(--gray-text);
-}
-
 .social-proof__time {
   color: var(--white);
 }
@@ -1655,12 +1655,14 @@ img {
     left: 16px;
     right: 16px;
     bottom: 16px;
-    max-width: none;
     background: var(--black);
-    border: 1px solid rgba(255, 0, 51, 0.4);
-    border-left: 3px solid var(--red);
-    padding: 22px 20px;
-    box-shadow: 0 0 20px rgba(255, 0, 51, 0.1);
+    border: 1px solid rgba(255, 0, 51, 0.5);
+    padding: 18px 20px;
+    box-shadow: 0 0 20px rgba(255, 0, 51, 0.15);
+  }
+
+  .social-proof__text {
+    white-space: normal;
   }
 }
 

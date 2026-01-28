@@ -427,4 +427,10 @@
     document.body.style.opacity = '1';
   });
 
+  // Fix for back button black screen (bfcache restoration)
+  window.addEventListener('pageshow', function(event) {
+    // Always ensure body is visible when page is shown (including from bfcache)
+    document.body.style.opacity = '1';
+  });
+
 })();

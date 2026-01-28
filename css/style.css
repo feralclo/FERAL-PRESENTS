@@ -1654,25 +1654,39 @@ img {
 .ticket-scarcity__cta {
   display: block;
   width: 100%;
-  margin-top: 16px;
-  padding: 14px 20px;
-  background: transparent;
-  color: var(--red);
+  margin-top: 20px;
+  padding: 16px 28px;
+  background: var(--red);
+  color: var(--white);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
   text-align: center;
   text-decoration: none;
-  border: 1px solid rgba(255, 0, 51, 0.4);
+  border: none;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
   transition: all var(--transition-base);
+  animation: cta-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(255, 0, 51, 0.4);
+}
+
+@keyframes cta-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 0, 51, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 0, 51, 0.7), 0 0 40px rgba(255, 0, 51, 0.3);
+  }
 }
 
 .ticket-scarcity__cta:hover,
 .ticket-scarcity__cta:active {
-  border-color: var(--red);
-  background: rgba(255, 0, 51, 0.1);
+  background: var(--white);
+  color: var(--black);
+  box-shadow: 0 0 30px var(--red-glow);
+  animation: none;
 }
 
 /* Mobile version - shown in ticket widget */

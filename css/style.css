@@ -779,6 +779,41 @@ img {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
+/* Animated scan line for event cards */
+.event-card__scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.5), transparent);
+  z-index: 5;
+  opacity: 0;
+  animation: cardScanMove 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.event-card:nth-child(2) .event-card__scanline {
+  animation-delay: 1.5s;
+}
+
+@keyframes cardScanMove {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
 .event-card__content {
   padding: 24px;
   position: relative;
@@ -1089,8 +1124,7 @@ img {
 
 .event-hero {
   position: relative;
-  padding: 80px 0 60px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 80px 0 100px;
   overflow: hidden;
 }
 
@@ -1099,7 +1133,7 @@ img {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% + 120px);
   z-index: 0;
 }
 
@@ -1114,6 +1148,7 @@ img {
   z-index: 0;
 }
 
+/* Subtle red tint overlay */
 .event-hero__bg::before {
   content: '';
   position: absolute;
@@ -1125,23 +1160,48 @@ img {
   z-index: 1;
 }
 
+/* Fade to dark at bottom for seamless transition */
 .event-hero__bg::after {
   content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(to top, var(--gray) 0%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Animated scan line effect */
+.event-hero__scanline {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.03) 2px,
-      rgba(0, 0, 0, 0.03) 4px
-    );
-  z-index: 2;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.6), transparent);
+  z-index: 3;
+  opacity: 0;
+  animation: scanMove 4s ease-in-out infinite;
   pointer-events: none;
+}
+
+@keyframes scanMove {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.8;
+  }
+  95% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 .event-hero__content {
@@ -1509,7 +1569,7 @@ img {
   }
 
   .event-hero {
-    padding: 60px 0 40px;
+    padding: 60px 0 80px;
   }
 
   .event-hero__details {

@@ -53,7 +53,6 @@
 
           <div class="event-hero__meta">
             <span class="event-hero__tag" id="eventTag">LIVE EVENT</span>
-            <span class="event-hero__id" id="eventId">#001</span>
           </div>
 
           <h1 class="event-hero__title glitch" id="eventTitle" data-text="SIGNAL_LOST">SIGNAL_LOST</h1>
@@ -162,12 +161,11 @@
 
       const events = {
         '001': {
-          tag: 'LIVE EVENT',
-          id: '#001',
+          tag: 'SALE OPENS THU 29TH JAN 6PM',
           title: 'SIGNAL_LOST',
           date: '15 MARCH 2026',
-          time: '22:00',
-          location: 'The Warehouse, London',
+          time: '11PM — 7AM',
+          location: 'Kompass Klub, Ghent',
           description: 'A night where the signal drops and the frequency takes over. SIGNAL_LOST is a stripped-back, raw experience deep in the basement of one of London\'s most notorious warehouse spaces. Expect nothing. Prepare for everything. No phones. No recordings. Just the sound.',
           lineup: [
             { name: 'VEKTROID', tag: 'HEADLINE' },
@@ -181,8 +179,7 @@
           priceDoor: '\u00A325',
         },
         '002': {
-          tag: 'LIVE EVENT',
-          id: '#002',
+          tag: 'BOTH',
           title: 'DEAD_FREQUENCY',
           date: '26 APRIL 2026',
           time: '21:00',
@@ -215,9 +212,6 @@
 
       var tagEl = document.getElementById('eventTag');
       if (tagEl) tagEl.textContent = event.tag;
-
-      var idEl = document.getElementById('eventId');
-      if (idEl) idEl.textContent = event.id;
 
       var dateEl = document.getElementById('eventDate');
       if (dateEl) dateEl.textContent = event.date;

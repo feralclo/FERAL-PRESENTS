@@ -328,7 +328,7 @@
     })();
   </script>
   <script>
-    // Book Now smooth scroll to embed
+    // Book Now smooth scroll to embed (no history entry)
     (function() {
       var ctaBtn = document.querySelector('.ticket-scarcity__cta');
       if (ctaBtn) {
@@ -340,6 +340,8 @@
             var extraOffset = 20;
             var y = embed.getBoundingClientRect().top + window.pageYOffset - headerHeight + extraOffset;
             window.scrollTo({ top: y, behavior: 'smooth' });
+            // Don't add hash to URL to avoid back button issues
+            history.replaceState(null, '', window.location.pathname);
           }
         });
       }

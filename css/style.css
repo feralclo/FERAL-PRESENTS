@@ -1326,13 +1326,19 @@ img {
   overflow: hidden;
 }
 
-.event-tickets__embed #shop-frame {
-  width: 100%;
+.event-tickets__embed #shop-frame,
+.event-tickets__embed > div {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
 
 .event-tickets__embed iframe {
   width: 100% !important;
-  border: none;
+  max-width: none !important;
+  min-width: 100% !important;
+  border: none !important;
+  display: block;
 }
 
 

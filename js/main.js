@@ -331,7 +331,7 @@
   }
 
 
-  // ---- Newsletter Form ---- //
+  // ---- Newsletter Form (Klaviyo Integration) ---- //
   const signupForm = document.getElementById('signupForm');
   const formStatus = document.getElementById('formStatus');
   if (signupForm && formStatus) {
@@ -339,14 +339,46 @@
       e.preventDefault();
       const input = signupForm.querySelector('.contact__input');
       if (input && input.value) {
-        formStatus.textContent = '> TRANSMISSION RECEIVED. STAND BY.';
-        formStatus.className = 'contact__status contact__status--success';
-        input.value = '';
+        const email = input.value;
 
-        setTimeout(function () {
-          formStatus.textContent = '';
+        // Klaviyo API settings
+        const listId = 'SnE86f';
+        const apiKey = 'Y8FS6L';
+
+        formStatus.textContent = '> TRANSMITTING...';
+        formStatus.className = 'contact__status';
+
+        // Subscribe to Klaviyo list
+        fetch('https://a.klaviyo.com/api/v2/list/' + listId + '/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            api_key: apiKey,
+            profiles: [{ email: email }]
+          })
+        })
+        .then(function(response) {
+          if (response.ok) {
+            formStatus.textContent = '> TRANSMISSION RECEIVED. STAND BY.';
+            formStatus.className = 'contact__status contact__status--success';
+            input.value = '';
+          } else {
+            formStatus.textContent = '> ERROR. TRY AGAIN.';
+            formStatus.className = 'contact__status';
+          }
+        })
+        .catch(function() {
+          formStatus.textContent = '> CONNECTION FAILED. TRY AGAIN.';
           formStatus.className = 'contact__status';
-        }, 4000);
+        })
+        .finally(function() {
+          setTimeout(function () {
+            formStatus.textContent = '';
+            formStatus.className = 'contact__status';
+          }, 4000);
+        });
       }
     });
   }

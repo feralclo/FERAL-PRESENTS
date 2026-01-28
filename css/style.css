@@ -1590,6 +1590,327 @@ img {
 }
 
 
+/* --- Ticket Scarcity Component --- */
+.ticket-scarcity {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Desktop version - shown on left side */
+.ticket-scarcity--desktop {
+  display: block;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 32px 0 40px 0;
+}
+
+.ticket-scarcity__box {
+  background: var(--gray);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid var(--red);
+  padding: 20px 24px;
+}
+
+.ticket-scarcity--desktop .ticket-scarcity__tier {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ticket-scarcity--desktop .ticket-scarcity__tier--active {
+  background: rgba(255, 0, 51, 0.08);
+}
+
+.ticket-scarcity__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ticket-scarcity__live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: livePulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--red);
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.ticket-scarcity__live-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--white);
+}
+
+/* Inline Book Now button for mobile */
+.ticket-scarcity__cta {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px 20px;
+  background: transparent;
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid rgba(255, 0, 51, 0.4);
+  transition: all var(--transition-base);
+}
+
+.ticket-scarcity__cta:hover,
+.ticket-scarcity__cta:active {
+  border-color: var(--red);
+  background: rgba(255, 0, 51, 0.1);
+}
+
+/* Mobile version - shown in ticket widget */
+.ticket-scarcity--mobile {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .ticket-scarcity--desktop {
+    display: none;
+  }
+
+  .ticket-scarcity--mobile {
+    display: block;
+  }
+}
+
+.ticket-scarcity__tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ticket-scarcity__tier {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all var(--transition-base);
+}
+
+.ticket-scarcity__tier--sold {
+  opacity: 0.4;
+}
+
+.ticket-scarcity__tier--sold .ticket-scarcity__tier-name {
+  text-decoration: line-through;
+  color: var(--gray-text);
+}
+
+.ticket-scarcity__tier-status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--gray-text);
+  text-transform: uppercase;
+}
+
+.ticket-scarcity__tier--active {
+  background: rgba(255, 0, 51, 0.08);
+  border-color: rgba(255, 0, 51, 0.3);
+  position: relative;
+}
+
+.ticket-scarcity__tier--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--red);
+}
+
+.ticket-scarcity__tier--active .ticket-scarcity__tier-name {
+  color: var(--white);
+}
+
+.ticket-scarcity__tier--active .ticket-scarcity__tier-price {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.ticket-scarcity__tier--next {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.ticket-scarcity__tier--next .ticket-scarcity__tier-name {
+  color: var(--gray-text);
+}
+
+.ticket-scarcity__tier--next .ticket-scarcity__tier-price {
+  color: var(--gray-text);
+}
+
+.ticket-scarcity__tier-name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.ticket-scarcity__tier-price {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.ticket-scarcity__progress {
+  position: relative;
+}
+
+.ticket-scarcity__bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.ticket-scarcity__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--red) 0%, #ff3355 100%);
+  transition: width 1s ease-out;
+}
+
+.ticket-scarcity__glow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4));
+  animation: scarcityGlow 2s ease-in-out infinite;
+}
+
+@keyframes scarcityGlow {
+  0%, 100% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.ticket-scarcity__fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 12px;
+  background: var(--red);
+  box-shadow: 0 0 10px var(--red), 0 0 20px var(--red);
+}
+
+.ticket-scarcity__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticket-scarcity__remaining {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--gray-text);
+}
+
+.ticket-scarcity__count {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.ticket-scarcity__warning {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gray-text);
+  animation: warningPulse 2s ease-in-out infinite;
+}
+
+@keyframes warningPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+
+/* --- Mobile Sticky CTA --- */
+.mobile-cta {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 998;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.98) 0%, rgba(0, 0, 0, 0.95) 100%);
+  border-top: 1px solid rgba(255, 0, 51, 0.3);
+}
+
+.mobile-cta__btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 24px;
+  background: var(--red);
+  color: var(--white);
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.mobile-cta__btn:active {
+  transform: scale(0.98);
+  background: var(--red-dark);
+}
+
+.mobile-cta__text {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.mobile-cta__price {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  opacity: 0.9;
+}
+
+
+
 /* --- Social Proof Toast --- */
 .social-proof {
   position: fixed;

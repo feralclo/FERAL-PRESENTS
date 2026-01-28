@@ -95,7 +95,7 @@
             </div>
 
             <div class="event-info__section">
-              <h2 class="event-info__heading">Lineup</h2>
+              <h2 class="event-info__heading" id="lineupHeading">Lineup</h2>
               <div class="event-info__lineup" id="eventLineup">
                 <div class="event-info__artist">
                   <span class="event-info__artist-name">VEKTROID</span>
@@ -185,19 +185,22 @@
         },
         '002': {
           tag: 'ON SALE NOW',
-          title: 'DEAD_FREQUENCY',
-          date: '26 APRIL 2026',
-          time: '21:00',
-          location: 'Basement East, London',
-          description: 'DEAD_FREQUENCY is a descent into the low end. Four rooms. One frequency. Sound systems pushed to the edge. This is not a party — it\'s a ritual. We go deep, we go dark, we don\'t come back the same.',
+          title: 'LIVERPOOL',
+          date: '27 MARCH 2026',
+          time: '9:30PM — 4:00AM',
+          location: 'Invisible Wind Factory, Liverpool',
+          description: 'FERAL takes over Invisible Wind Factory on 27 March with a full 360° setup and the most immersive production build the venue has ever seen. A stacked lineup built as a journey - hard bounce into hard techno, descending into industrial, before finally erupting in hardstyle and rawstyle.',
+          lineupAZ: true,
           lineup: [
-            { name: 'PHANTOM_WIRE', tag: 'HEADLINE' },
-            { name: 'DARKROOM', tag: 'LIVE A/V' },
-            { name: 'STATIC.EXE', tag: 'DJ SET' },
-            { name: 'BURIED_SIGNAL', tag: 'DJ SET' },
-            { name: 'NERVE', tag: 'DJ SET' },
+            { name: 'DARK MATTER', tag: '' },
+            { name: 'MIKA HEGGEMAN', tag: '' },
+            { name: 'NICOLAS JULIAN', tag: '' },
+            { name: 'SANDY KLETZ', tag: '' },
+            { name: 'SO JUICE', tag: '' },
+            { name: 'STEVIE', tag: '' },
           ],
           useEmbed: true,
+          bannerImage: 'images/liverpool-event-banner.jpg',
         },
       };
 
@@ -249,6 +252,12 @@
           ticketButton.setAttribute('target', '_blank');
           ticketButton.setAttribute('rel', 'noopener');
         }
+      }
+
+      // Update lineup heading with A-Z indicator if needed
+      var lineupHeading = document.getElementById('lineupHeading');
+      if (lineupHeading && event.lineupAZ) {
+        lineupHeading.innerHTML = 'Lineup <span class="event-info__az">[A-Z]</span>';
       }
 
       // Update lineup

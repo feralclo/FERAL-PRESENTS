@@ -1268,6 +1268,14 @@ img {
   color: var(--red);
 }
 
+.event-info__az {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--red);
+  margin-left: 8px;
+  opacity: 0.8;
+}
+
 .event-info__text {
   font-size: 15px;
   line-height: 1.8;

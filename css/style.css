@@ -507,8 +507,10 @@ img {
 .hero__scroll-indicator {
   position: absolute;
   bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -1434,14 +1436,6 @@ img {
 
   .hero__bg-image {
     object-position: right center;
-  }
-
-  .hero__scroll-indicator {
-    left: 0;
-    right: 0;
-    transform: none;
-    margin: 0 auto;
-    width: fit-content;
   }
 
   .about__grid {

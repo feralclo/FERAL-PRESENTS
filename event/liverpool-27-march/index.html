@@ -337,7 +337,8 @@
           var embed = document.getElementById('tickets-embed');
           if (embed) {
             var headerHeight = 64;
-            var y = embed.getBoundingClientRect().top + window.pageYOffset - headerHeight - 10;
+            var extraOffset = 20;
+            var y = embed.getBoundingClientRect().top + window.pageYOffset - headerHeight + extraOffset;
             window.scrollTo({ top: y, behavior: 'smooth' });
           }
         });

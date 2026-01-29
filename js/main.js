@@ -347,48 +347,6 @@
   }
 
 
-  // ---- ASCII Art Generator ---- //
-  const asciiArt = document.getElementById('asciiArt');
-  if (asciiArt) {
-    const chars = ['/', '\\', '|', '-', '+', '.', ':', '#', '@', '*', '0', '1'];
-    const cols = 40;
-    const rows = 20;
-    let grid = [];
-
-    function initGrid() {
-      grid = [];
-      for (let y = 0; y < rows; y++) {
-        let row = '';
-        for (let x = 0; x < cols; x++) {
-          row += Math.random() > 0.7
-            ? chars[Math.floor(Math.random() * chars.length)]
-            : ' ';
-        }
-        grid.push(row);
-      }
-    }
-
-    function renderGrid() {
-      asciiArt.textContent = grid.join('\n');
-    }
-
-    function mutateGrid() {
-      const y = Math.floor(Math.random() * rows);
-      const x = Math.floor(Math.random() * cols);
-      const row = grid[y].split('');
-      row[x] = Math.random() > 0.5
-        ? chars[Math.floor(Math.random() * chars.length)]
-        : ' ';
-      grid[y] = row.join('');
-      renderGrid();
-    }
-
-    initGrid();
-    renderGrid();
-    setInterval(mutateGrid, 100);
-  }
-
-
   // ---- Newsletter Form (Klaviyo Integration) ---- //
   const signupForm = document.getElementById('signupForm');
   const formStatus = document.getElementById('formStatus');

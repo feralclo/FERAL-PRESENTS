@@ -280,26 +280,29 @@
       var storageKey = 'feral_lastBooking_liverpool';
 
       function getTimeText(elapsedSeconds) {
-        if (elapsedSeconds < 60) return 'less than 60 seconds ago';
-        if (elapsedSeconds < 120) return 'less than 2 minutes ago';
-        if (elapsedSeconds < 180) return 'less than 3 minutes ago';
-        if (elapsedSeconds < 300) return 'less than 5 minutes ago';
-        if (elapsedSeconds < 480) return 'less than 8 minutes ago';
-        if (elapsedSeconds < 600) return 'less than 10 minutes ago';
+        if (elapsedSeconds < 60) return 'less than a minute ago';
+        if (elapsedSeconds < 120) return 'about a minute ago';
+        if (elapsedSeconds < 180) return 'about 2 minutes ago';
+        if (elapsedSeconds < 300) return 'a few minutes ago';
+        if (elapsedSeconds < 480) return 'about 5 minutes ago';
+        if (elapsedSeconds < 720) return 'about 8 minutes ago';
+        if (elapsedSeconds < 900) return 'about 12 minutes ago';
         return null; // Too old, need new booking
       }
 
       function getRandomInitialTime() {
-        // Weighted random: favor shorter times
+        // Weighted to land mostly in the 1-5 minute range for believability
+        // Sub-60s should be rare, 1-5 mins most common
         var weights = [
-          { seconds: 15, weight: 3 },
-          { seconds: 30, weight: 3 },
-          { seconds: 45, weight: 2 },
-          { seconds: 75, weight: 2 },
-          { seconds: 120, weight: 1 },
-          { seconds: 200, weight: 1 },
-          { seconds: 350, weight: 1 },
-          { seconds: 500, weight: 1 }
+          { seconds: 25, weight: 1 },
+          { seconds: 45, weight: 1 },
+          { seconds: 80, weight: 3 },
+          { seconds: 130, weight: 4 },
+          { seconds: 200, weight: 4 },
+          { seconds: 270, weight: 3 },
+          { seconds: 400, weight: 2 },
+          { seconds: 550, weight: 1 },
+          { seconds: 700, weight: 1 }
         ];
         var totalWeight = weights.reduce(function(sum, w) { return sum + w.weight; }, 0);
         var rand = Math.random() * totalWeight;
@@ -308,7 +311,7 @@
           cumulative += weights[i].weight;
           if (rand < cumulative) return weights[i].seconds;
         }
-        return 30;
+        return 130;
       }
 
       // Get or create booking timestamp
@@ -336,7 +339,7 @@
 
       // Calculate and display time
       var elapsedSeconds = Math.floor((now - bookingTime) / 1000);
-      var displayText = getTimeText(elapsedSeconds) || 'less than 60 seconds ago';
+      var displayText = getTimeText(elapsedSeconds) || 'a few minutes ago';
       if (timeEl) timeEl.textContent = displayText;
 
       // Show toast after short delay

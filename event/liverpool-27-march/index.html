@@ -280,13 +280,13 @@
       var storageKey = 'feral_lastBooking_liverpool';
 
       function getTimeText(elapsedSeconds) {
-        if (elapsedSeconds < 60) return 'less than a minute ago';
-        if (elapsedSeconds < 120) return 'about a minute ago';
-        if (elapsedSeconds < 180) return 'about 2 minutes ago';
-        if (elapsedSeconds < 300) return 'a few minutes ago';
-        if (elapsedSeconds < 480) return 'about 5 minutes ago';
-        if (elapsedSeconds < 720) return 'about 8 minutes ago';
-        if (elapsedSeconds < 900) return 'about 12 minutes ago';
+        if (elapsedSeconds < 60) return 'less than 60 seconds ago';
+        if (elapsedSeconds < 120) return 'less than 2 minutes ago';
+        if (elapsedSeconds < 180) return 'less than 3 minutes ago';
+        if (elapsedSeconds < 300) return 'less than 5 minutes ago';
+        if (elapsedSeconds < 480) return 'less than 8 minutes ago';
+        if (elapsedSeconds < 720) return 'less than 10 minutes ago';
+        if (elapsedSeconds < 900) return 'less than 15 minutes ago';
         return null; // Too old, need new booking
       }
 
@@ -339,7 +339,7 @@
 
       // Calculate and display time
       var elapsedSeconds = Math.floor((now - bookingTime) / 1000);
-      var displayText = getTimeText(elapsedSeconds) || 'a few minutes ago';
+      var displayText = getTimeText(elapsedSeconds) || 'less than 5 minutes ago';
       if (timeEl) timeEl.textContent = displayText;
 
       // Show toast after short delay

@@ -911,7 +911,7 @@ img {
 
 /* --- Events Section --- */
 .events {
-  padding: 80px 0 120px;
+  padding: 80px 0 60px;
   position: relative;
 }
 
@@ -1259,7 +1259,7 @@ img {
 
 /* --- About Section --- */
 .about {
-  padding: 160px 0;
+  padding: 120px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
   overflow: hidden;
 }
@@ -1268,6 +1268,28 @@ img {
 .about__hero {
   text-align: center;
   margin-bottom: 100px;
+}
+
+/* Hero heading: clip reveal from center */
+.about__hero[data-reveal] {
+  opacity: 0;
+  transition: none;
+}
+
+.about__hero[data-reveal].revealed {
+  opacity: 1;
+}
+
+.about__hero .section-header__label {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.about__hero.revealed .section-header__label {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .about__title {
@@ -1279,6 +1301,12 @@ img {
   line-height: 1.15;
   margin-top: 20px;
   margin-bottom: 0;
+  clip-path: inset(0 50% 0 50%);
+  transition: clip-path 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s;
+}
+
+.about__hero.revealed .about__title {
+  clip-path: inset(0 0% 0 0%);
 }
 
 /* Pillar blocks */
@@ -1298,6 +1326,7 @@ img {
   position: relative;
 }
 
+/* Index box */
 .about__pillar-index {
   flex-shrink: 0;
   width: 48px;
@@ -1305,8 +1334,19 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 0, 51, 0.3);
+  border: 1px solid rgba(255, 0, 51, 0.15);
   position: relative;
+  opacity: 0;
+  transform: scale(0.5) rotate(-10deg);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.8s ease 0.5s, border-color 0.8s ease 0.5s;
+}
+
+.about__pillar.revealed .about__pillar-index {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+  box-shadow: 0 0 25px rgba(255, 0, 51, 0.2), inset 0 0 15px rgba(255, 0, 51, 0.05);
+  border-color: rgba(255, 0, 51, 0.6);
 }
 
 .about__pillar-index span {
@@ -1319,8 +1359,10 @@ img {
 
 .about__pillar-content {
   flex: 1;
+  overflow: hidden;
 }
 
+/* Title: slides in from right */
 .about__pillar-title {
   font-family: var(--font-mono);
   font-size: clamp(20px, 3vw, 32px);
@@ -1330,49 +1372,72 @@ img {
   color: var(--white);
   margin-bottom: 16px;
   line-height: 1.2;
+  opacity: 0;
+  transform: translateX(60px);
+  transition: opacity 0.7s ease 0.15s, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s;
 }
 
+.about__pillar.revealed .about__pillar-title {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Body text: fades up with delay */
 .about__pillar-text {
   font-size: clamp(14px, 1.6vw, 16px);
   line-height: 1.9;
   color: var(--gray-text);
   max-width: 600px;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease 0.35s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s;
 }
 
-/* Animated red line separator */
+.about__pillar.revealed .about__pillar-text {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Animated red line separator — draws across */
 .about__pillar-line {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, var(--red), rgba(255, 0, 51, 0.2), transparent);
+  background: linear-gradient(90deg, var(--red), rgba(255, 0, 51, 0.3), transparent);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s;
 }
 
 .about__pillar.revealed .about__pillar-line {
   transform: scaleX(1);
 }
 
-/* Index box glow on reveal */
-.about__pillar.revealed .about__pillar-index {
-  box-shadow: 0 0 20px rgba(255, 0, 51, 0.15), inset 0 0 15px rgba(255, 0, 51, 0.05);
-  border-color: rgba(255, 0, 51, 0.5);
-  transition: box-shadow 0.8s ease 0.3s, border-color 0.8s ease 0.3s;
-}
-
-/* Staggered reveal transitions for pillars */
+/* Pillar container: no default data-reveal transform, children handle it */
 .about__pillar[data-reveal] {
-  opacity: 0;
-  transform: translateY(50px);
-  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 1;
+  transform: none;
+  transition: none;
 }
 
-.about__pillar[data-reveal].revealed {
+/* Red glow flash on pillar reveal */
+.about__pillar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at left center, rgba(255, 0, 51, 0.06), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.5s ease 0.2s;
+  pointer-events: none;
+}
+
+.about__pillar.revealed::after {
   opacity: 1;
-  transform: translateY(0);
 }
 
 /* Closing statement */
@@ -1383,16 +1448,30 @@ img {
   position: relative;
 }
 
+.about__closer[data-reveal] {
+  opacity: 0;
+  transition: none;
+}
+
+.about__closer[data-reveal].revealed {
+  opacity: 1;
+}
+
 .about__closer::before {
   content: '';
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
+  width: 0;
   height: 1px;
   background: var(--red);
-  opacity: 0.5;
+  opacity: 0.6;
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1), left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.about__closer.revealed::before {
+  width: 60px;
+  left: calc(50% - 30px);
 }
 
 .about__closer-text {
@@ -1403,12 +1482,24 @@ img {
   text-transform: uppercase;
   color: var(--white);
   text-shadow: 0 0 40px rgba(255, 0, 51, 0.3);
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 1s ease 0.3s, transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s,
+              text-shadow 1.5s ease 0.5s;
+}
+
+.about__closer.revealed .about__closer-text {
+  opacity: 1;
+  transform: scale(1);
+  text-shadow:
+    0 0 40px rgba(255, 0, 51, 0.5),
+    0 0 80px rgba(255, 0, 51, 0.2);
 }
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .about {
-    padding: 100px 0;
+    padding: 80px 0;
   }
 
   .about__hero {
@@ -1428,6 +1519,10 @@ img {
 
   .about__pillar-index span {
     font-size: 12px;
+  }
+
+  .about__pillar-title {
+    transform: translateX(40px);
   }
 
   .about__closer {

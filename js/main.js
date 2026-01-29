@@ -148,72 +148,92 @@
   }
 
 
-  // ---- Typewriter Effect with Glitch ---- //
-  const typewriterEl = document.getElementById('typewriter');
-  if (typewriterEl) {
-    const phrases = [
-      'ENERGY OF THE FERAL FAMILY',
-      'BORN ON THE DANCE FLOOR',
-      'SYSTEM OVERRIDE IN PROGRESS',
-      'ENTER THE FREQUENCY',
-      'RAW. UNFILTERED. FERAL.',
-    ];
-    let phraseIndex = 0;
-    let charIndex = 0;
-    let isDeleting = false;
-    let typeSpeed = 80;
-    var glitchChars = '!@#$%^&*()_+{}|:<>?/\\=-';
+  // ---- Hero Text Scramble Reveal + Periodic Glitch ---- //
+  var heroTextEl = document.getElementById('heroText');
+  if (heroTextEl) {
+    var finalText = 'BORN ON THE DANCE FLOOR';
+    var scrambleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*<>/\\';
+    var resolved = [];
+    var frameCount = 0;
 
-    function triggerGlitch() {
-      var original = typewriterEl.textContent;
-      var glitchCount = 0;
-      var maxGlitches = 4;
-      var glitchInterval = setInterval(function() {
-        if (glitchCount >= maxGlitches) {
-          typewriterEl.textContent = original;
-          clearInterval(glitchInterval);
-          return;
-        }
-        var glitched = '';
-        for (var i = 0; i < original.length; i++) {
-          if (Math.random() < 0.3) {
-            glitched += glitchChars[Math.floor(Math.random() * glitchChars.length)];
+    // Phase 1: Scramble reveal — random chars resolve one by one
+    heroTextEl.textContent = '';
+    heroTextEl.style.opacity = '1';
+
+    function scrambleReveal() {
+      var output = '';
+      var allResolved = true;
+
+      for (var i = 0; i < finalText.length; i++) {
+        if (resolved[i]) {
+          output += finalText[i];
+        } else if (finalText[i] === ' ') {
+          resolved[i] = true;
+          output += ' ';
+        } else {
+          allResolved = false;
+          // Each letter resolves after enough frames, with stagger
+          if (frameCount > (i * 2) + 8 && Math.random() < 0.3) {
+            resolved[i] = true;
+            output += finalText[i];
           } else {
-            glitched += original[i];
+            output += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
           }
         }
-        typewriterEl.textContent = glitched;
-        glitchCount++;
-      }, 60);
-    }
+      }
 
-    function type() {
-      var currentPhrase = phrases[phraseIndex];
+      heroTextEl.textContent = output;
+      frameCount++;
 
-      if (isDeleting) {
-        typewriterEl.textContent = currentPhrase.substring(0, charIndex - 1);
-        charIndex--;
-        typeSpeed = 30;
+      if (!allResolved) {
+        requestAnimationFrame(scrambleReveal);
       } else {
-        typewriterEl.textContent = currentPhrase.substring(0, charIndex + 1);
-        charIndex++;
-        typeSpeed = 70;
+        heroTextEl.textContent = finalText;
+        // Start periodic glitch after reveal completes
+        startPeriodicGlitch();
       }
-
-      if (!isDeleting && charIndex === currentPhrase.length) {
-        triggerGlitch();
-        typeSpeed = 2800;
-        isDeleting = true;
-      } else if (isDeleting && charIndex === 0) {
-        isDeleting = false;
-        phraseIndex = (phraseIndex + 1) % phrases.length;
-        typeSpeed = 500;
-      }
-
-      setTimeout(type, typeSpeed);
     }
 
-    setTimeout(type, 1200);
+    // Phase 2: Periodic glitch bursts — brief distortion every few seconds
+    function startPeriodicGlitch() {
+      function doGlitch() {
+        var burstCount = 0;
+        var maxBursts = 3 + Math.floor(Math.random() * 4);
+        heroTextEl.classList.add('hero-glitch--active');
+
+        var burstInterval = setInterval(function() {
+          if (burstCount >= maxBursts) {
+            heroTextEl.textContent = finalText;
+            heroTextEl.classList.remove('hero-glitch--active');
+            clearInterval(burstInterval);
+            return;
+          }
+          var glitched = '';
+          for (var i = 0; i < finalText.length; i++) {
+            if (Math.random() < 0.15) {
+              glitched += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+            } else {
+              glitched += finalText[i];
+            }
+          }
+          heroTextEl.textContent = glitched;
+          burstCount++;
+        }, 50);
+      }
+
+      // Random interval between 4-8 seconds
+      function scheduleNext() {
+        var delay = 4000 + Math.random() * 4000;
+        setTimeout(function() {
+          doGlitch();
+          scheduleNext();
+        }, delay);
+      }
+      scheduleNext();
+    }
+
+    // Kick off after initial page load delay
+    setTimeout(scrambleReveal, 800);
   }
 
 

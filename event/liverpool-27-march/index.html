@@ -357,13 +357,14 @@
         }, 7000);
       }
 
-      // Trigger 1: Show after 4.5 second delay
-      setTimeout(showToast, 4500);
+      // Trigger 1: Show after delay (extra 2s on mobile)
+      var isMobile = window.innerWidth <= 1024;
+      setTimeout(showToast, isMobile ? 6500 : 4500);
 
-      // Trigger 2: Show on 25% scroll
+      // Trigger 2: Show on 30% scroll
       function checkScroll() {
         var scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-        if (scrollPercent >= 25) {
+        if (scrollPercent >= 30) {
           showToast();
           window.removeEventListener('scroll', checkScroll);
         }

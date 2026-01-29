@@ -326,6 +326,18 @@
   }
 
 
+  // ---- Events Swipe Hint (hide after user scrolls) ---- //
+  var eventsGrid = document.querySelector('.events__grid');
+  var scrollHint = document.getElementById('eventsScrollHint');
+  if (eventsGrid && scrollHint) {
+    eventsGrid.addEventListener('scroll', function() {
+      if (eventsGrid.scrollLeft > 30) {
+        scrollHint.classList.add('events__scroll-hint--hidden');
+      }
+    }, { passive: true });
+  }
+
+
   // ---- Scroll Reveal ---- //
   const revealElements = document.querySelectorAll('[data-reveal]');
   if (revealElements.length > 0) {

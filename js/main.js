@@ -359,6 +359,147 @@
   }
 
 
+  // ---- About Section: JS-Driven Animations ---- //
+  (function() {
+    var scrambleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&!';
+
+    // Scramble-reveal a text element
+    function scrambleReveal(el, finalText, duration, callback) {
+      var startTime = Date.now();
+      var len = finalText.length;
+      el.style.opacity = '1';
+
+      function tick() {
+        var elapsed = Date.now() - startTime;
+        var progress = Math.min(elapsed / duration, 1);
+        var output = '';
+        for (var i = 0; i < len; i++) {
+          if (finalText[i] === ' ') {
+            output += ' ';
+          } else if (i / len < progress - 0.1) {
+            output += finalText[i];
+          } else if (i / len < progress + 0.3) {
+            output += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+          } else {
+            output += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+          }
+        }
+        el.textContent = output;
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          el.textContent = finalText;
+          if (callback) callback();
+        }
+      }
+      tick();
+    }
+
+    // Word-by-word reveal
+    function wordReveal(el, delayStart) {
+      var text = el.textContent.trim();
+      var words = text.split(/\s+/);
+      el.innerHTML = '';
+      words.forEach(function(word, i) {
+        var span = document.createElement('span');
+        span.className = 'word';
+        span.textContent = word;
+        el.appendChild(span);
+        // Add space after each word except last
+        if (i < words.length - 1) {
+          el.appendChild(document.createTextNode(' '));
+        }
+      });
+      // Stagger reveal
+      var wordEls = el.querySelectorAll('.word');
+      wordEls.forEach(function(w, i) {
+        setTimeout(function() {
+          w.classList.add('visible');
+        }, delayStart + i * 30);
+      });
+    }
+
+    // Counter spin for index numbers
+    function counterSpin(el, finalNum, duration) {
+      var startTime = Date.now();
+      function tick() {
+        var elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+          el.textContent = '0' + Math.floor(Math.random() * 10);
+          requestAnimationFrame(tick);
+        } else {
+          el.textContent = finalNum;
+        }
+      }
+      tick();
+    }
+
+    // Observe each pillar
+    var pillars = document.querySelectorAll('.about__pillar');
+    if (pillars.length > 0) {
+      var pillarObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting && !entry.target.dataset.animated) {
+            entry.target.dataset.animated = 'true';
+            entry.target.classList.add('revealed');
+
+            var pillar = entry.target;
+            var indexSpan = pillar.querySelector('.about__pillar-index span');
+            var titleEl = pillar.querySelector('.about__pillar-title');
+            var textEl = pillar.querySelector('.about__pillar-text');
+
+            // 1. Counter spin the index number
+            if (indexSpan) {
+              var finalNum = indexSpan.textContent;
+              counterSpin(indexSpan, finalNum, 400);
+            }
+
+            // 2. Scramble-reveal the title
+            if (titleEl) {
+              var finalTitle = titleEl.textContent;
+              setTimeout(function() {
+                scrambleReveal(titleEl, finalTitle, 600);
+              }, 200);
+            }
+
+            // 3. Word-by-word reveal the body text
+            if (textEl) {
+              wordReveal(textEl, 500);
+            }
+
+            pillarObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.2, rootMargin: '0px 0px -40px 0px' });
+
+      pillars.forEach(function(p) { pillarObserver.observe(p); });
+    }
+
+    // Closer: scramble reveal
+    var closer = document.querySelector('.about__closer');
+    var closerText = document.querySelector('.about__closer-text');
+    if (closer && closerText) {
+      var closerFinal = closerText.textContent;
+      closerText.textContent = '';
+      var closerObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting && !entry.target.dataset.animated) {
+            entry.target.dataset.animated = 'true';
+            entry.target.classList.add('revealed');
+            setTimeout(function() {
+              scrambleReveal(closerText, closerFinal, 800, function() {
+                closerText.classList.add('anim-done');
+              });
+            }, 300);
+            closerObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.3 });
+      closerObserver.observe(closer);
+    }
+  })();
+
+
   // ---- Newsletter Form (Klaviyo Integration) ---- //
   const signupForm = document.getElementById('signupForm');
   const formStatus = document.getElementById('formStatus');

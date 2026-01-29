@@ -148,82 +148,120 @@
   }
 
 
-  // ---- Hero Text Scramble Reveal + Periodic Glitch ---- //
+  // ---- Hero Text: Scramble Reveal + Strobe Flash + Periodic Glitch ---- //
   var heroTextEl = document.getElementById('heroText');
+  var heroFlash = document.getElementById('heroFlash');
   if (heroTextEl) {
-    var finalText = 'BORN ON THE DANCE FLOOR';
-    var scrambleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*<>/\\';
-    var resolved = [];
-    var frameCount = 0;
+    var lines = heroTextEl.querySelectorAll('.hero-glitch__line');
+    var lineTexts = [];
+    var scrambleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*<>/\\|=-_';
 
-    // Phase 1: Scramble reveal — random chars resolve one by one
-    heroTextEl.textContent = '';
-    heroTextEl.style.opacity = '1';
+    // Store final text for each line and blank them
+    for (var li = 0; li < lines.length; li++) {
+      lineTexts.push(lines[li].textContent);
+      lines[li].textContent = '';
+    }
 
-    function scrambleReveal() {
-      var output = '';
-      var allResolved = true;
+    // Phase 1: Scramble reveal with strobe flash entrance
+    function scrambleRevealLines() {
+      var resolved = [];
+      var frameCount = 0;
 
-      for (var i = 0; i < finalText.length; i++) {
-        if (resolved[i]) {
-          output += finalText[i];
-        } else if (finalText[i] === ' ') {
-          resolved[i] = true;
-          output += ' ';
-        } else {
-          allResolved = false;
-          // Each letter resolves after enough frames, with stagger
-          if (frameCount > (i * 2) + 8 && Math.random() < 0.3) {
-            resolved[i] = true;
-            output += finalText[i];
-          } else {
-            output += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+      for (var li = 0; li < lineTexts.length; li++) {
+        resolved.push([]);
+      }
+
+      // Fire strobe flash
+      if (heroFlash) {
+        heroFlash.classList.add('hero-glitch__flash--active');
+        setTimeout(function() {
+          heroFlash.classList.remove('hero-glitch__flash--active');
+        }, 700);
+      }
+
+      function tick() {
+        var allDone = true;
+
+        for (var li = 0; li < lines.length; li++) {
+          var text = lineTexts[li];
+          var output = '';
+          var lineDone = true;
+
+          for (var i = 0; i < text.length; i++) {
+            if (resolved[li][i]) {
+              output += text[i];
+            } else if (text[i] === ' ') {
+              resolved[li][i] = true;
+              output += ' ';
+            } else {
+              lineDone = false;
+              allDone = false;
+              // Stagger: second line starts later
+              var stagger = li * 12;
+              if (frameCount > (i * 2) + 6 + stagger && Math.random() < 0.35) {
+                resolved[li][i] = true;
+                output += text[i];
+              } else {
+                output += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+              }
+            }
           }
+          lines[li].textContent = output;
+        }
+
+        frameCount++;
+
+        if (!allDone) {
+          requestAnimationFrame(tick);
+        } else {
+          // Restore final text
+          for (var li = 0; li < lines.length; li++) {
+            lines[li].textContent = lineTexts[li];
+          }
+          startPeriodicGlitch();
         }
       }
 
-      heroTextEl.textContent = output;
-      frameCount++;
-
-      if (!allResolved) {
-        requestAnimationFrame(scrambleReveal);
-      } else {
-        heroTextEl.textContent = finalText;
-        // Start periodic glitch after reveal completes
-        startPeriodicGlitch();
-      }
+      tick();
     }
 
-    // Phase 2: Periodic glitch bursts — brief distortion every few seconds
+    // Phase 2: Periodic aggressive glitch bursts
     function startPeriodicGlitch() {
       function doGlitch() {
         var burstCount = 0;
-        var maxBursts = 3 + Math.floor(Math.random() * 4);
+        var maxBursts = 4 + Math.floor(Math.random() * 5);
         heroTextEl.classList.add('hero-glitch--active');
 
         var burstInterval = setInterval(function() {
           if (burstCount >= maxBursts) {
-            heroTextEl.textContent = finalText;
+            // Restore clean text
+            for (var li = 0; li < lines.length; li++) {
+              lines[li].textContent = lineTexts[li];
+            }
             heroTextEl.classList.remove('hero-glitch--active');
             clearInterval(burstInterval);
             return;
           }
-          var glitched = '';
-          for (var i = 0; i < finalText.length; i++) {
-            if (Math.random() < 0.15) {
-              glitched += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
-            } else {
-              glitched += finalText[i];
+
+          // Corrupt characters in each line
+          for (var li = 0; li < lines.length; li++) {
+            var text = lineTexts[li];
+            var glitched = '';
+            for (var i = 0; i < text.length; i++) {
+              if (Math.random() < 0.2) {
+                glitched += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+              } else {
+                glitched += text[i];
+              }
             }
+            lines[li].textContent = glitched;
           }
-          heroTextEl.textContent = glitched;
           burstCount++;
         }, 50);
       }
 
-      // Random interval between 4-8 seconds
       function scheduleNext() {
-        var delay = 4000 + Math.random() * 4000;
+        var delay = 3000 + Math.random() * 5000;
         setTimeout(function() {
           doGlitch();
           scheduleNext();
@@ -232,8 +270,8 @@
       scheduleNext();
     }
 
-    // Kick off after initial page load delay
-    setTimeout(scrambleReveal, 800);
+    // Kick off after page load
+    setTimeout(scrambleRevealLines, 600);
   }
 
 

@@ -65,7 +65,12 @@
     <canvas class="hero__canvas" id="heroCanvas"></canvas>
     <div class="hero__content">
       <div class="hero__tagline-wrapper">
-        <p class="hero__tagline hero-glitch" id="heroText" data-text="BORN ON THE DANCE FLOOR">BORN ON THE DANCE FLOOR</p>
+        <div class="hero-glitch" id="heroText" data-text="BORN ON THE DANCE FLOOR" aria-label="BORN ON THE DANCE FLOOR">
+          <span class="hero-glitch__line" data-text="BORN ON THE">BORN ON THE</span>
+          <span class="hero-glitch__line" data-text="DANCE FLOOR">DANCE FLOOR</span>
+        </div>
+        <div class="hero-glitch__scanline"></div>
+        <div class="hero-glitch__flash" id="heroFlash"></div>
       </div>
       <a href="#events" class="hero__cta" id="heroCta">
         <span class="hero__cta-text" data-text="SEE EVENTS">SEE EVENTS</span>

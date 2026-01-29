@@ -152,11 +152,11 @@
   const typewriterEl = document.getElementById('typewriter');
   if (typewriterEl) {
     const phrases = [
+      'ENERGY OF THE FERAL FAMILY',
+      'BORN ON THE DANCE FLOOR',
       'SYSTEM OVERRIDE IN PROGRESS',
       'ENTER THE FREQUENCY',
       'RAW. UNFILTERED. FERAL.',
-      'BORN ON THE DANCE FLOOR',
-      'ENERGY OF THE FERAL FAMILY',
     ];
     let phraseIndex = 0;
     let charIndex = 0;

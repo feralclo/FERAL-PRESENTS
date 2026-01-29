@@ -340,14 +340,32 @@
       if (timeEl) timeEl.textContent = displayText;
 
       // Show toast after short delay
-      setTimeout(function() {
+      var hasShownToast = false;
+
+      function showToast() {
+        if (hasShownToast) return;
+        hasShownToast = true;
+
         if (toast) toast.classList.add('social-proof--visible');
 
         // Hide after 7 seconds
         setTimeout(function() {
           if (toast) toast.classList.remove('social-proof--visible');
         }, 7000);
-      }, 2500);
+      }
+
+      // Trigger 1: Show after 4.5 second delay
+      setTimeout(showToast, 4500);
+
+      // Trigger 2: Show on 25% scroll
+      function checkScroll() {
+        var scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+        if (scrollPercent >= 25) {
+          showToast();
+          window.removeEventListener('scroll', checkScroll);
+        }
+      }
+      window.addEventListener('scroll', checkScroll);
     })();
   </script>
   <script>

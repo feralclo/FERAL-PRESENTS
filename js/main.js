@@ -392,7 +392,9 @@
       const target = document.querySelector(this.getAttribute('href'));
       if (target) {
         e.preventDefault();
-        const headerOffset = 24;
+        // Hero CTA scrolls a bit further into the events section
+        const isHeroCta = anchor.classList.contains('hero__cta');
+        const headerOffset = isHeroCta ? -60 : 24;
         const elementPosition = target.getBoundingClientRect().top;
         const offsetPosition = elementPosition + window.scrollY - headerOffset;
 

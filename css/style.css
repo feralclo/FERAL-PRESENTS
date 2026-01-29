@@ -503,6 +503,118 @@ img {
   51%, 100% { opacity: 0; }
 }
 
+/* --- Hero CTA Button --- */
+.hero__cta {
+  display: inline-block;
+  position: relative;
+  margin-top: 48px;
+  padding: 18px 48px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--white);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid var(--red);
+  overflow: hidden;
+  animation: heroReveal 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+  opacity: 0;
+  transform: translateY(40px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.hero__cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.hero__cta:hover::before {
+  left: 100%;
+}
+
+.hero__cta:hover {
+  background: rgba(255, 0, 51, 0.1);
+  box-shadow:
+    0 0 20px rgba(255, 0, 51, 0.4),
+    0 0 40px rgba(255, 0, 51, 0.2),
+    inset 0 0 20px rgba(255, 0, 51, 0.1);
+  text-shadow: 0 0 10px rgba(255, 0, 51, 0.5);
+}
+
+.hero__cta-text {
+  position: relative;
+  z-index: 2;
+}
+
+.hero__cta-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(ellipse at center, rgba(255, 0, 51, 0.15), transparent 70%);
+  opacity: 0;
+  animation: ctaPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ctaPulse {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+.hero__cta-glitch {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--red);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero__cta:hover .hero__cta-glitch {
+  animation: ctaGlitch 0.3s ease;
+}
+
+@keyframes ctaGlitch {
+  0%, 100% { opacity: 0; transform: translateX(0); }
+  20% { opacity: 0.1; transform: translateX(-3px); }
+  40% { opacity: 0; transform: translateX(3px); }
+  60% { opacity: 0.1; transform: translateX(-2px); }
+  80% { opacity: 0; transform: translateX(2px); }
+}
+
+/* Scanline effect on button */
+.hero__cta::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 /* --- Scroll Indicator --- */
 .hero__scroll-indicator {
   position: absolute;

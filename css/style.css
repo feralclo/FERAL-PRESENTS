@@ -21,6 +21,7 @@
   --gray-text: #888888;
   --font-mono: 'Space Mono', monospace;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --banner-height: 30px;
   --header-height: 80px;
   --container-max: 1200px;
   --transition-fast: 0.15s ease;
@@ -126,13 +127,14 @@ img {
   top: 0;
   left: 0;
   width: 100%;
-  height: var(--header-height);
   z-index: 1000;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   transition: transform var(--transition-base), background var(--transition-base);
+  display: flex;
+  flex-direction: column;
 }
 
 .header--hidden {
@@ -143,7 +145,7 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 100%;
+  height: var(--header-height);
   max-width: var(--container-max);
   margin: 0 auto;
   padding: 0 24px;
@@ -1712,7 +1714,7 @@ img {
    ============================================ */
 
 .event-page {
-  padding-top: var(--header-height);
+  padding-top: calc(var(--header-height) + var(--banner-height));
 }
 
 .event-hero {
@@ -2004,20 +2006,16 @@ img {
   margin-bottom: 24px;
 }
 
-/* Announcement Banner */
+/* Announcement Banner (inside header) */
 .announcement-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 7px 16px;
   background: var(--red);
   color: var(--white);
+  width: 100%;
 }
 
 .announcement-banner__shield {
@@ -2039,19 +2037,6 @@ img {
   text-transform: uppercase;
   font-weight: 700;
   color: var(--white);
-}
-
-/* Offset header and content when announcement banner is present */
-.announcement-banner ~ .header {
-  top: 36px;
-}
-
-.announcement-banner ~ .header.header--hidden {
-  transform: translateY(calc(-100% - 36px));
-}
-
-.announcement-banner ~ main .event-hero {
-  margin-top: 36px;
 }
 
 .event-tickets__embed {

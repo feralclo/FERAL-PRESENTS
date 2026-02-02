@@ -2004,38 +2004,55 @@ img {
   margin-bottom: 24px;
 }
 
-/* Official Store Badge */
-.official-store-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  margin-bottom: 20px;
-  border: 1px solid rgba(255, 0, 51, 0.3);
-  border-radius: 2px;
-  background: rgba(255, 0, 51, 0.06);
-}
-
-.official-store-badge__icon {
+/* Announcement Banner */
+.announcement-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+  gap: 8px;
+  padding: 8px 16px;
   background: var(--red);
+  color: var(--white);
+}
+
+.announcement-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
   color: var(--white);
   font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
-.official-store-badge__text {
+.announcement-banner__text {
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--white);
+  font-weight: 700;
+}
+
+/* Offset header and content when announcement banner is present */
+.announcement-banner ~ .header {
+  top: 36px;
+}
+
+.announcement-banner ~ .header.header--hidden {
+  transform: translateY(calc(-100% - 36px));
+}
+
+.announcement-banner ~ main .event-hero {
+  margin-top: 36px;
 }
 
 .event-tickets__embed {

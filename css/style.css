@@ -2014,11 +2014,10 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 9px 16px;
-  background: linear-gradient(90deg, #000 0%, #0a0a0a 50%, #000 100%);
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--red);
   color: var(--white);
-  border-bottom: 1px solid rgba(255, 0, 51, 0.3);
 }
 
 .announcement-banner__shield {
@@ -2026,23 +2025,11 @@ img {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  animation: shield-pulse 2.5s ease-in-out infinite;
 }
 
 .announcement-banner__shield svg {
-  width: 16px;
-  height: 16px;
-}
-
-@keyframes shield-pulse {
-  0%, 100% { opacity: 0.9; }
-  50% { opacity: 1; filter: drop-shadow(0 0 4px rgba(255, 0, 51, 0.6)); }
-}
-
-.announcement-banner__content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  width: 14px;
+  height: 14px;
 }
 
 .announcement-banner__verified {
@@ -2054,73 +2041,17 @@ img {
   color: var(--white);
 }
 
-.announcement-banner__sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--red);
-  flex-shrink: 0;
-}
-
-.announcement-banner__sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--gray-text);
-}
-
-@media (max-width: 480px) {
-  .announcement-banner {
-    gap: 8px;
-    padding: 8px 12px;
-  }
-
-  .announcement-banner__content {
-    flex-direction: column;
-    gap: 1px;
-    align-items: flex-start;
-  }
-
-  .announcement-banner__sep {
-    display: none;
-  }
-
-  .announcement-banner__verified {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-  }
-
-  .announcement-banner__sub {
-    font-size: 9px;
-  }
-}
-
 /* Offset header and content when announcement banner is present */
 .announcement-banner ~ .header {
-  top: 40px;
+  top: 36px;
 }
 
 .announcement-banner ~ .header.header--hidden {
-  transform: translateY(calc(-100% - 40px));
+  transform: translateY(calc(-100% - 36px));
 }
 
 .announcement-banner ~ main .event-hero {
-  margin-top: 40px;
-}
-
-@media (max-width: 480px) {
-  .announcement-banner ~ .header {
-    top: 50px;
-  }
-
-  .announcement-banner ~ .header.header--hidden {
-    transform: translateY(calc(-100% - 50px));
-  }
-
-  .announcement-banner ~ main .event-hero {
-    margin-top: 50px;
-  }
+  margin-top: 36px;
 }
 
 .event-tickets__embed {

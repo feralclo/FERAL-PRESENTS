@@ -146,6 +146,7 @@ img {
   align-items: center;
   justify-content: space-between;
   height: var(--header-height);
+  width: 100%;
   max-width: var(--container-max);
   margin: 0 auto;
   padding: 0 24px;
@@ -2811,6 +2812,7 @@ img {
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-base);
+    z-index: 1000;
   }
 
   .nav__menu.active {

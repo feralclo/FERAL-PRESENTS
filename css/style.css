@@ -2004,6 +2004,40 @@ img {
   margin-bottom: 24px;
 }
 
+/* Official Store Badge */
+.official-store-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 0, 51, 0.3);
+  border-radius: 2px;
+  background: rgba(255, 0, 51, 0.06);
+}
+
+.official-store-badge__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.official-store-badge__text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
 .event-tickets__embed {
   width: calc(100% + 48px);
   margin-left: -24px;

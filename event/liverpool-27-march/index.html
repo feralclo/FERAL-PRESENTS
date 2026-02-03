@@ -253,15 +253,6 @@
     </section>
   </main>
 
-  <!-- Social Proof Toast (positioned above bottom bar) -->
-  <div class="social-proof" id="socialProof">
-    <div class="social-proof__title">
-      <span class="social-proof__dot"></span>
-      Selling fast!
-    </div>
-    <p class="social-proof__text">Last ticket booked: <span class="social-proof__time" id="proofTime">less than 60 seconds ago</span></p>
-  </div>
-
   <!-- Fixed Bottom Bar -->
   <div class="bottom-bar" id="bottomBar">
     <div class="bottom-bar__inner">
@@ -406,106 +397,6 @@
       }
 
       update();
-    })();
-  </script>
-  <script>
-    // Social Proof Toast - shows once with logical time progression
-    (function() {
-      var toast = document.getElementById('socialProof');
-      var timeEl = document.getElementById('proofTime');
-      var storageKey = 'feral_lastBooking_liverpool';
-
-      function getTimeText(elapsedSeconds) {
-        if (elapsedSeconds < 60) return 'less than 60 seconds ago';
-        if (elapsedSeconds < 120) return 'less than 2 minutes ago';
-        if (elapsedSeconds < 180) return 'less than 3 minutes ago';
-        if (elapsedSeconds < 300) return 'less than 5 minutes ago';
-        if (elapsedSeconds < 480) return 'less than 8 minutes ago';
-        if (elapsedSeconds < 720) return 'less than 10 minutes ago';
-        if (elapsedSeconds < 900) return 'less than 15 minutes ago';
-        return null; // Too old, need new booking
-      }
-
-      function getRandomInitialTime() {
-        // Weighted to land mostly in the 1-5 minute range for believability
-        // Sub-60s should be rare, 1-5 mins most common
-        var weights = [
-          { seconds: 25, weight: 1 },
-          { seconds: 45, weight: 1 },
-          { seconds: 80, weight: 3 },
-          { seconds: 130, weight: 4 },
-          { seconds: 200, weight: 4 },
-          { seconds: 270, weight: 3 },
-          { seconds: 400, weight: 2 },
-          { seconds: 550, weight: 1 },
-          { seconds: 700, weight: 1 }
-        ];
-        var totalWeight = weights.reduce(function(sum, w) { return sum + w.weight; }, 0);
-        var rand = Math.random() * totalWeight;
-        var cumulative = 0;
-        for (var i = 0; i < weights.length; i++) {
-          cumulative += weights[i].weight;
-          if (rand < cumulative) return weights[i].seconds;
-        }
-        return 130;
-      }
-
-      // Get or create booking timestamp
-      var now = Date.now();
-      var stored = localStorage.getItem(storageKey);
-      var bookingTime;
-
-      if (stored) {
-        bookingTime = parseInt(stored, 10);
-        var elapsed = Math.floor((now - bookingTime) / 1000);
-        var timeText = getTimeText(elapsed);
-
-        if (!timeText) {
-          // More than 10 mins passed - create new booking
-          var initialOffset = getRandomInitialTime();
-          bookingTime = now - (initialOffset * 1000);
-          localStorage.setItem(storageKey, bookingTime.toString());
-        }
-      } else {
-        // First visit - create booking with random initial offset
-        var initialOffset = getRandomInitialTime();
-        bookingTime = now - (initialOffset * 1000);
-        localStorage.setItem(storageKey, bookingTime.toString());
-      }
-
-      // Calculate and display time
-      var elapsedSeconds = Math.floor((now - bookingTime) / 1000);
-      var displayText = getTimeText(elapsedSeconds) || 'less than 5 minutes ago';
-      if (timeEl) timeEl.textContent = displayText;
-
-      // Show toast after short delay
-      var hasShownToast = false;
-
-      function showToast() {
-        if (hasShownToast) return;
-        hasShownToast = true;
-
-        if (toast) toast.classList.add('social-proof--visible');
-
-        // Hide after 7 seconds
-        setTimeout(function() {
-          if (toast) toast.classList.remove('social-proof--visible');
-        }, 7000);
-      }
-
-      // Trigger 1: Show after delay (extra 2s on mobile)
-      var isMobile = window.innerWidth <= 1024;
-      setTimeout(showToast, isMobile ? 10000 : 8000);
-
-      // Trigger 2: Show on 30% scroll
-      function checkScroll() {
-        var scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-        if (scrollPercent >= 30) {
-          showToast();
-          window.removeEventListener('scroll', checkScroll);
-        }
-      }
-      window.addEventListener('scroll', checkScroll);
     })();
   </script>
   <script defer src="/_vercel/insights/script.js"></script>

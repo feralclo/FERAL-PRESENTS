@@ -2004,6 +2004,14 @@
 
     document.body.appendChild(signedPage);
 
+    // Lock browser history — prevent back button from returning to unsigned contract
+    history.replaceState({ signed: true }, '', window.location.href);
+    history.pushState({ signed: true }, '', window.location.href);
+    window.addEventListener('popstate', function() {
+      // If they press back, immediately push them forward again
+      history.pushState({ signed: true }, '', window.location.href);
+    });
+
     // Attach button handlers
     document.getElementById('sdPrint').addEventListener('click', function() {
       // Temporarily show contract for printing, then restore signed screen

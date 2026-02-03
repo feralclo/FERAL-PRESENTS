@@ -122,42 +122,6 @@
               </p>
             </div>
 
-            <!-- Desktop Ticket Scarcity (between About and Lineup) -->
-            <div class="ticket-scarcity ticket-scarcity--desktop">
-              <div class="ticket-scarcity__box">
-                <div class="ticket-scarcity__header">
-                  <span class="ticket-scarcity__live-dot"></span>
-                  <span class="ticket-scarcity__live-text">TICKETS</span>
-                </div>
-                <div class="ticket-scarcity__tiers">
-                  <div class="ticket-scarcity__tier ticket-scarcity__tier--sold">
-                    <span class="ticket-scarcity__tier-name">FIRST RELEASE</span>
-                    <span class="ticket-scarcity__tier-status">SOLD OUT</span>
-                  </div>
-                  <div class="ticket-scarcity__tier ticket-scarcity__tier--active">
-                    <span class="ticket-scarcity__tier-name">GENERAL RELEASE</span>
-                    <span class="ticket-scarcity__tier-price">£24.50</span>
-                  </div>
-                  <div class="ticket-scarcity__tier ticket-scarcity__tier--next">
-                    <span class="ticket-scarcity__tier-name">FINAL RELEASE</span>
-                    <span class="ticket-scarcity__tier-price">£29.95</span>
-                  </div>
-                </div>
-                <div class="ticket-scarcity__progress">
-                  <div class="ticket-scarcity__bar">
-                    <div class="ticket-scarcity__fill" style="width: 78%;"></div>
-                    <div class="ticket-scarcity__glow"></div>
-                  </div>
-                  <div class="ticket-scarcity__info">
-                    <span class="ticket-scarcity__remaining">
-                      <span class="ticket-scarcity__count">22%</span> remaining
-                    </span>
-                    <span class="ticket-scarcity__warning">at this price</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div class="event-info__section">
               <h2 class="event-info__heading">Lineup <span class="event-info__az">[A-Z]</span></h2>
               <div class="event-info__lineup">
@@ -255,8 +219,10 @@
                       <button class="feral-tickets__btn feral-tickets__btn--plus" data-action="add" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Add ticket">+</button>
                     </div>
                   </div>
+
+                  <!-- Checkout button -->
+                  <button class="feral-tickets__checkout" id="checkoutBtn" disabled>Select tickets to continue</button>
                 </div>
-                <!-- Eventix checkout is on separate page -->
               </div>
             </div>
           </aside>
@@ -302,6 +268,7 @@
       var TICKET_PRICE = 24.50;
       var qty = 0;
       var qtyEl = document.getElementById('qty-6b45169f-cf51-4600-8682-d6f79dcb59ae');
+      var checkoutBtn = document.getElementById('checkoutBtn');
       var bottomBar = document.getElementById('bottomBar');
       var bottomBarCta = document.getElementById('bottomBarCta');
       var bottomBarAmount = bottomBar ? bottomBar.querySelector('.bottom-bar__amount') : null;
@@ -315,6 +282,16 @@
 
       function update() {
         if (qtyEl) qtyEl.textContent = qty;
+        // Update checkout button
+        if (checkoutBtn) {
+          if (qty > 0) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.textContent = 'Checkout \u2014 \u00A3' + (qty * TICKET_PRICE).toFixed(2);
+          } else {
+            checkoutBtn.disabled = true;
+            checkoutBtn.textContent = 'Select tickets to continue';
+          }
+        }
         // Update bottom bar
         if (bottomBarAmount) {
           bottomBarAmount.textContent = qty > 0
@@ -334,6 +311,13 @@
           update();
         });
       });
+
+      // Checkout button in ticket widget
+      if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function() {
+          goToCheckout();
+        });
+      }
 
       // Bottom bar CTA: if tickets selected go to checkout, otherwise scroll to widget
       if (bottomBarCta) {
@@ -463,26 +447,6 @@
         }
       }
       window.addEventListener('scroll', checkScroll);
-    })();
-  </script>
-  <script>
-    // Book Now smooth scroll to embed (no history entry)
-    (function() {
-      var ctaBtn = document.querySelector('.ticket-scarcity__cta');
-      if (ctaBtn) {
-        ctaBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          var embed = document.getElementById('tickets-embed');
-          if (embed) {
-            var headerHeight = 64;
-            var extraOffset = 20;
-            var y = embed.getBoundingClientRect().top + window.pageYOffset - headerHeight + extraOffset;
-            window.scrollTo({ top: y, behavior: 'smooth' });
-            // Don't add hash to URL to avoid back button issues
-            history.replaceState(null, '', window.location.pathname);
-          }
-        });
-      }
     })();
   </script>
   <script defer src="/_vercel/insights/script.js"></script>

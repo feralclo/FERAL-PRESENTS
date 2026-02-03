@@ -315,79 +315,127 @@
   <script src="https://v1.widget.shop.eventix.io/injector.js"></script>
   <script>
     // WeeZTix ShopInjector — custom ticket selector
-    (function() {
+    (async function() {
       var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
-      var TICKETS = {
-        '2ca29d82-538a-4d30-8050-940756adcc50': { name: 'Friday Ticket', qty: 0, price: 0 },
-        '6b45169f-cf51-4600-8682-d6f79dcb59ae': { name: 'General Release', qty: 0, price: 0 }
-      };
-      var shop = null;
       var totalEl = document.getElementById('feral-total');
       var checkoutBtn = document.getElementById('feral-checkout-btn');
       var ticketSelector = document.getElementById('feral-tickets');
 
-      function updateUI() {
-        var total = 0;
-        var hasTickets = false;
-        for (var id in TICKETS) {
-          var t = TICKETS[id];
-          var qtyEl = document.getElementById('qty-' + id);
-          if (qtyEl) qtyEl.textContent = t.qty;
-          total += t.qty * t.price;
-          if (t.qty > 0) hasTickets = true;
+      // Read persisted campaign data (sessionStorage or cookies)
+      function getCookie(name) {
+        var nameEQ = name + '=';
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+          var c = ca[i];
+          while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+          if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
         }
-        totalEl.textContent = '\u00A3' + total.toFixed(2);
+        return null;
+      }
+
+      function getPersistedValues() {
+        var sessionValue = window.sessionStorage.getItem('@openticket:persist-campaign-data:entries');
+        if (sessionValue) return JSON.parse(sessionValue);
+        var cookieValue = getCookie('@openticket:persist-campaign-data:entries');
+        if (cookieValue) return JSON.parse(cookieValue);
+        return {};
+      }
+
+      // Cart change handler
+      function onCartChange(data) {
+        var total = data.checkout_details.total_price;
+        var totalFormatted = (total / 100).toFixed(2);
+        totalEl.textContent = '\u00A3' + totalFormatted;
+
+        var ticketCounts = {};
+        var hasTickets = false;
+        var entries = Object.entries(data.tickets);
+        for (var i = 0; i < entries.length; i++) {
+          var ticketId = entries[i][0];
+          var ticketInfo = entries[i][1];
+          var count = ticketInfo.count;
+          var subTotal = ticketInfo.pricing.total_price;
+          ticketCounts[ticketId] = { count: count, subTotal: subTotal };
+          if (count > 0) hasTickets = true;
+        }
+
+        // Update all quantity displays
+        document.querySelectorAll('.feral-tickets__qty').forEach(function(el) {
+          var id = el.id.replace('qty-', '');
+          var info = ticketCounts[id];
+          if (info && info.count > 0) {
+            el.textContent = info.count;
+            // Update price display with subtotal
+            var row = el.closest('.feral-tickets__row');
+            if (row) {
+              var priceEl = row.querySelector('.feral-tickets__price');
+              if (priceEl) priceEl.textContent = '\u00A3' + (info.subTotal / 100).toFixed(2);
+            }
+          } else {
+            el.textContent = '0';
+          }
+        });
+
         checkoutBtn.disabled = !hasTickets;
         checkoutBtn.textContent = hasTickets ? 'CHECKOUT \u2192' : 'SELECT TICKETS TO CONTINUE';
       }
 
-      function initShop() {
-        if (typeof window.ShopInjector === 'undefined') {
-          setTimeout(initShop, 200);
-          return;
-        }
-        shop = new window.ShopInjector(SHOP_ID, document.getElementById('eventix-shop-container'));
-
-        shop.onCartData(function(cartData) {
-          if (cartData && cartData.tickets) {
-            for (var id in TICKETS) {
-              TICKETS[id].qty = 0;
-              TICKETS[id].price = 0;
+      // Wait for OpenTicket to be available
+      function waitForOpenTicket() {
+        return new Promise(function(resolve) {
+          function check() {
+            if (window.OpenTicket && window.OpenTicket.ShopInjector) {
+              resolve();
+            } else {
+              setTimeout(check, 200);
             }
-            for (var i = 0; i < cartData.tickets.length; i++) {
-              var ct = cartData.tickets[i];
-              if (TICKETS[ct.id]) {
-                TICKETS[ct.id].qty = ct.amount || 0;
-                TICKETS[ct.id].price = ct.price || 0;
-              }
-            }
-            // Set initial prices from cart data
-            var priFriday = document.getElementById('price-friday');
-            var priGeneral = document.getElementById('price-general');
-            var fri = TICKETS['2ca29d82-538a-4d30-8050-940756adcc50'];
-            var gen = TICKETS['6b45169f-cf51-4600-8682-d6f79dcb59ae'];
-            if (priFriday && fri.price) priFriday.textContent = '\u00A3' + fri.price.toFixed(2);
-            if (priGeneral && gen.price) priGeneral.textContent = '\u00A3' + gen.price.toFixed(2);
-            updateUI();
           }
+          check();
         });
       }
+
+      await waitForOpenTicket();
+
+      // Build config
+      var config = {
+        url: 'https://shop.weeztix.com/' + SHOP_ID,
+        guid: SHOP_ID,
+        container: 'eventix-shop-container',
+        cookiePreferences: {
+          functional: true,
+          analytical: true,
+          organiserMarketing: true,
+          embeddedContent: true
+        }
+      };
+
+      var persistedValues = getPersistedValues();
+      if (Object.keys(persistedValues).length !== 0) {
+        config.trackingInfo = persistedValues;
+      }
+
+      // Initialize ShopInjector
+      window.ShopInjector = new window.OpenTicket.ShopInjector();
+      await window.ShopInjector.init(config);
+
+      // Listen for cart changes
+      window.ShopInjector.shop.onCartData(onCartChange);
 
       // Button click handlers
       document.querySelectorAll('.feral-tickets__btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          if (!shop) return;
+          if (!window.ShopInjector || !window.ShopInjector.shop) return;
           var ticketId = btn.getAttribute('data-ticket');
           var action = btn.getAttribute('data-action');
-          if (action === 'add') {
-            shop.sendMessage('addTicket', { ticketId: ticketId });
-          } else if (action === 'remove') {
-            shop.sendMessage('removeTicket', { ticketId: ticketId });
-          }
+          window.ShopInjector.shop.sendMessage({
+            action: action,
+            guid: ticketId,
+            type: 'ticket'
+          });
         });
       });
 
-      // Checkout button — show the eventix container and scroll to it
+      // Checkout button — reveal the eventix checkout and scroll to it
       checkoutBtn.addEventListener('click', function() {
         if (checkoutBtn.disabled) return;
         var container = document.getElementById('eventix-shop-container');
@@ -395,8 +443,6 @@
         container.classList.add('active');
         container.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
-
-      initShop();
     })();
   </script>
   <script>

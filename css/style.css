@@ -2269,10 +2269,25 @@ img {
   text-transform: uppercase;
 }
 
+.feral-tickets__tier-pricing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
 .feral-tickets__tier-price-tag {
   font-family: var(--font-mono);
   font-size: 13px;
   letter-spacing: 1px;
+}
+
+.feral-tickets__tier-breakdown {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  color: var(--gray-text);
+  opacity: 0.7;
 }
 
 /* Progress bar inside ticket widget */
@@ -3245,12 +3260,20 @@ img {
   }
 
   .event-hero {
-    padding: 60px 0 80px;
+    padding: 40px 0 40px;
+  }
+
+  .event-hero__bg {
+    height: calc(100% + 40px);
+  }
+
+  .event-hero__title {
+    font-size: clamp(2rem, 10vw, 3.5rem);
   }
 
   .event-hero__details {
     flex-direction: column;
-    gap: 20px;
+    gap: 12px;
   }
 
   .event-content {
@@ -3283,5 +3306,26 @@ img {
 
   .hero__cursor {
     font-size: 16px;
+  }
+
+  .event-hero {
+    padding: 32px 0 28px;
+  }
+
+  .event-hero__back {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
+  .event-hero__meta {
+    margin-bottom: 8px;
+  }
+
+  .event-hero__details {
+    gap: 8px;
+  }
+
+  .event-hero__detail {
+    padding: 6px 0;
   }
 }

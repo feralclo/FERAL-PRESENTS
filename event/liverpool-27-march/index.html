@@ -193,11 +193,17 @@
                     </div>
                     <div class="feral-tickets__tier feral-tickets__tier--active">
                       <span class="feral-tickets__tier-name">GENERAL RELEASE</span>
-                      <span class="feral-tickets__tier-price-tag">&pound;24.50</span>
+                      <div class="feral-tickets__tier-pricing">
+                        <span class="feral-tickets__tier-price-tag">&pound;26.46</span>
+                        <span class="feral-tickets__tier-breakdown">&pound;24.50 + &pound;1.96 BF</span>
+                      </div>
                     </div>
                     <div class="feral-tickets__tier feral-tickets__tier--next">
                       <span class="feral-tickets__tier-name">FINAL RELEASE</span>
-                      <span class="feral-tickets__tier-price-tag">&pound;29.95</span>
+                      <div class="feral-tickets__tier-pricing">
+                        <span class="feral-tickets__tier-price-tag">&pound;32.35</span>
+                        <span class="feral-tickets__tier-breakdown">&pound;29.95 + &pound;2.40 BF</span>
+                      </div>
                     </div>
                   </div>
 
@@ -244,8 +250,8 @@
   <div class="bottom-bar" id="bottomBar">
     <div class="bottom-bar__inner">
       <div class="bottom-bar__price">
-        <span class="bottom-bar__amount">&pound;24.50</span>
-        <span class="bottom-bar__subtitle">The price you'll pay. No surprises.</span>
+        <span class="bottom-bar__amount">&pound;26.46</span>
+        <span class="bottom-bar__subtitle">Incl. booking fee. No surprises.</span>
       </div>
       <button class="bottom-bar__cta" id="bottomBarCta">Buy Now</button>
     </div>
@@ -265,7 +271,9 @@
   <script>
     // Ticket quantity selector + bottom bar
     (function() {
-      var TICKET_PRICE = 24.50;
+      var TICKET_PRICE_BASE = 24.50;
+      var BOOKING_FEE_RATE = 0.08;
+      var TICKET_PRICE = Math.round(TICKET_PRICE_BASE * (1 + BOOKING_FEE_RATE) * 100) / 100; // £26.46 incl. BF
       var qty = 0;
       var qtyEl = document.getElementById('qty-6b45169f-cf51-4600-8682-d6f79dcb59ae');
       var checkoutBtn = document.getElementById('checkoutBtn');

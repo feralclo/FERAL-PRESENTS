@@ -572,16 +572,40 @@
   </div>
 
   <script>
+    // dataLayer initialisation
+    window.dataLayer = window.dataLayer || [];
+
     (function() {
+      var TICKET_ID = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
       var TICKET_PRICE_BASE = 24.50;
       var BOOKING_FEE_RATE = 0.08;
       var TICKET_PRICE = Math.round(TICKET_PRICE_BASE * (1 + BOOKING_FEE_RATE) * 100) / 100; // £26.46 incl. BF
       var qty = 0;
-      var qtyEl = document.getElementById('qty-6b45169f-cf51-4600-8682-d6f79dcb59ae');
+      var qtyEl = document.getElementById('qty-' + TICKET_ID);
       var checkoutBtn = document.getElementById('checkoutBtn');
+
+      // --- dataLayer: ViewContent on tickets page load ---
+      window.dataLayer.push({
+        event: 'view_content',
+        content_name: 'FERAL Liverpool — 27 March 2026 — Tickets',
+        content_ids: [TICKET_ID],
+        content_type: 'product',
+        value: TICKET_PRICE,
+        currency: 'GBP'
+      });
 
       function goToCheckout() {
         if (qty < 1) return;
+        // --- dataLayer: InitiateCheckout ---
+        window.dataLayer.push({
+          event: 'initiate_checkout',
+          content_name: 'FERAL Liverpool — 27 March 2026',
+          content_ids: [TICKET_ID],
+          content_type: 'product',
+          value: qty * TICKET_PRICE,
+          currency: 'GBP',
+          num_items: qty
+        });
         window.location.assign('/event/liverpool-27-march/checkout/?qty=' + qty);
       }
 
@@ -601,8 +625,32 @@
       document.querySelectorAll('.feral-tickets__btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var action = btn.getAttribute('data-action');
-          if (action === 'add') qty++;
-          if (action === 'remove' && qty > 0) qty--;
+          if (action === 'add') {
+            qty++;
+            // --- dataLayer: AddToCart ---
+            window.dataLayer.push({
+              event: 'add_to_cart',
+              content_name: 'General Release — FERAL Liverpool',
+              content_ids: [TICKET_ID],
+              content_type: 'product',
+              value: TICKET_PRICE,
+              currency: 'GBP',
+              num_items: qty
+            });
+          }
+          if (action === 'remove' && qty > 0) {
+            qty--;
+            // --- dataLayer: RemoveFromCart ---
+            window.dataLayer.push({
+              event: 'remove_from_cart',
+              content_name: 'General Release — FERAL Liverpool',
+              content_ids: [TICKET_ID],
+              content_type: 'product',
+              value: TICKET_PRICE,
+              currency: 'GBP',
+              num_items: qty
+            });
+          }
           update();
         });
       });

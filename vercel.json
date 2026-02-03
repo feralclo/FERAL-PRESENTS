@@ -2,21 +2,23 @@
   "rewrites": [
     {
       "source": "/contract/:path*",
-      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
+      "has": [{ "type": "host", "value": "www.agencyferal.com" }],
       "destination": "/contract/:path*"
     },
     {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
-      "destination": "/agencyferal/index.html"
-    }
-  ],
-  "redirects": [
+      "source": "/contract/:path*",
+      "has": [{ "type": "host", "value": "agencyferal.com" }],
+      "destination": "/contract/:path*"
+    },
     {
-      "source": "/agencyferal/:path*",
-      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
-      "destination": "/",
-      "permanent": false
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.agencyferal.com" }],
+      "destination": "/agencyferal/index.html"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "agencyferal.com" }],
+      "destination": "/agencyferal/index.html"
     }
   ]
 }

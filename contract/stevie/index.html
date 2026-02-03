@@ -1482,10 +1482,20 @@
   }
 
   function restoreData(data) {
+    var FEE_FIELDS = ['booking_fee', 'artist_fee', 'catering_buyout'];
+    var CURRENCY_MAP = { GBP: '£', EUR: '€', USD: '$' };
+    var currSym = CURRENCY_MAP[data.currency] || '£';
+
     document.querySelectorAll('.field').forEach(function(el) {
       var key = el.getAttribute('data-field');
       if (key && data[key]) {
-        el.textContent = data[key];
+        var val = data[key];
+        if (FEE_FIELDS.indexOf(key) !== -1 && val) {
+          var num = val.toString().replace(/[^0-9.,]/g, '');
+          el.textContent = num ? currSym + num : val;
+        } else {
+          el.textContent = val;
+        }
       }
     });
     // Restore date picker
@@ -1586,8 +1596,12 @@
     var today = getTodayFormatted();
     var isBooking = (type === 'booking');
 
+    var CURRENCY_SYMBOLS = { GBP: '£', EUR: '€', USD: '$' };
+    var currSym = CURRENCY_SYMBOLS[d.currency] || '£';
+
     var title = isBooking ? 'BOOKING FEE INVOICE' : 'ARTIST FEE INVOICE';
-    var amount = isBooking ? (d.booking_fee || 'N/A') : (d.artist_fee || 'N/A');
+    var rawAmount = isBooking ? (d.booking_fee || 'N/A') : (d.artist_fee || 'N/A');
+    var amount = (rawAmount && rawAmount !== 'N/A') ? currSym + rawAmount.toString().replace(/[^0-9.,]/g, '') : 'N/A';
     var paymentTerms = isBooking ? 'Due on receipt' : ('Due ' + (d.fee_due_date || 'as per contract'));
 
     var bankName, bankSort, bankAcc, bankHolder;
@@ -1615,8 +1629,10 @@
     html += '<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">';
     html += '<style>';
     html += '*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }';
-    html += 'body { background: #000; color: #fff; font-family: "Inter", sans-serif; line-height: 1.6; }';
-    html += '@media print { body { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .no-print { display: none !important; } }';
+    html += 'html { background: #000 !important; }';
+    html += 'body { background: #000; color: #fff; font-family: "Inter", sans-serif; line-height: 1.6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }';
+    html += '* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }';
+    html += '@media print { html, body { background: #000 !important; color: #fff !important; } .no-print { display: none !important; } @page { margin: 0.5cm; } }';
     html += '</style></head><body>';
     html += '<div style="max-width:700px;margin:0 auto;padding:48px 40px;">';
 

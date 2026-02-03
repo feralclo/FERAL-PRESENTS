@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -529,6 +530,46 @@
 
     .form-input:focus { border-color: var(--red); }
     .form-input::placeholder { color: var(--text-dim); }
+
+    .fee-input-group {
+      display: flex;
+      align-items: stretch;
+    }
+    .fee-currency-label {
+      padding: 12px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-right: none;
+      color: var(--red);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      min-width: 38px;
+      justify-content: center;
+    }
+    .fee-input-group .form-input { border-left: none; }
+
+    .form-select {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 12L2 6h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    .form-select:focus { border-color: var(--red); }
 
     .form-row {
       display: grid;
@@ -1374,12 +1415,30 @@
 
       <div class="form-row">
         <div class="form-group">
+          <label class="form-label">Currency</label>
+          <select class="form-select" id="fCurrency" onchange="updateCurrencyLabels()">
+            <option value="GBP">£ GBP — British Pound</option>
+            <option value="EUR">€ EUR — Euro</option>
+            <option value="USD">$ USD — US Dollar</option>
+          </select>
+        </div>
+        <div class="form-group"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
           <label class="form-label">Booking Fee</label>
-          <input type="text" class="form-input" id="fBookingFee" placeholder="e.g., £500">
+          <div class="fee-input-group">
+            <span class="fee-currency-label" id="lblBookingCurrency">£</span>
+            <input type="text" class="form-input" id="fBookingFee" placeholder="e.g., 500">
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Artist Fee</label>
-          <input type="text" class="form-input" id="fArtistFee" placeholder="e.g., £2,000">
+          <div class="fee-input-group">
+            <span class="fee-currency-label" id="lblArtistCurrency">£</span>
+            <input type="text" class="form-input" id="fArtistFee" placeholder="e.g., 2,000">
+          </div>
         </div>
       </div>
 
@@ -1390,7 +1449,10 @@
         </div>
         <div class="form-group">
           <label class="form-label">Catering Buy-out</label>
-          <input type="text" class="form-input" id="fCatering" placeholder="e.g., £30">
+          <div class="fee-input-group">
+            <span class="fee-currency-label" id="lblCateringCurrency">£</span>
+            <input type="text" class="form-input" id="fCatering" placeholder="e.g., 30">
+          </div>
         </div>
       </div>
 
@@ -1635,6 +1697,109 @@
   var ARTISTS_KEY = 'agencyferal_artists';
   var BANK_PASS = 'Parker5656!';
 
+  // ============================================
+  // SUPABASE CONFIG — Replace these with your Supabase project credentials
+  // Go to https://supabase.com → Create Project → Settings → API
+  // ============================================
+  var SUPABASE_URL = '';  // e.g., 'https://xyzcompany.supabase.co'
+  var SUPABASE_ANON_KEY = '';  // Your anon/public key
+  var supabase = null;
+  var dbReady = false;
+
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    dbReady = true;
+    console.log('[AGENCY FERAL] Supabase connected — data will persist across devices');
+  } else {
+    console.log('[AGENCY FERAL] Supabase not configured — using local storage only. To enable cloud sync, set SUPABASE_URL and SUPABASE_ANON_KEY.');
+  }
+
+  // ============================================
+  // DATABASE LAYER — syncs localStorage ↔ Supabase
+  // ============================================
+  function dbSaveContracts(contracts) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+    if (!dbReady) return;
+    // Upsert all contracts to Supabase
+    contracts.forEach(function(c) {
+      supabase.from('contracts').upsert({
+        id: c.id,
+        ref: c.ref,
+        data: c.data,
+        status: c.status,
+        created: c.created,
+        sent: c.sent,
+        signed: c.signed,
+        booking_fee_received: c.booking_fee_received || false,
+        artist_fee_received: c.artist_fee_received || false,
+        promoter_link: c.promoter_link,
+        promoter_company: c.promoter_company || null,
+        promoter_address: c.promoter_address || null,
+        promoter_email: c.promoter_email || null,
+        promoter_phone: c.promoter_phone || null,
+        _sig_promoter: c._sig_promoter || null
+      }, { onConflict: 'id' }).then(function(res) {
+        if (res.error) console.error('[DB] Contract save error:', res.error);
+      });
+    });
+  }
+
+  function dbDeleteContract(id) {
+    if (!dbReady) return;
+    supabase.from('contracts').delete().eq('id', id).then(function(res) {
+      if (res.error) console.error('[DB] Contract delete error:', res.error);
+    });
+  }
+
+  function dbSaveSettings(data) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+    if (!dbReady) return;
+    supabase.from('settings').upsert({
+      id: 'main',
+      data: data
+    }, { onConflict: 'id' }).then(function(res) {
+      if (res.error) console.error('[DB] Settings save error:', res.error);
+    });
+  }
+
+  function dbSaveArtists(data) {
+    localStorage.setItem(ARTISTS_KEY, JSON.stringify(data));
+    if (!dbReady) return;
+    supabase.from('artists').upsert({
+      id: 'all',
+      data: data
+    }, { onConflict: 'id' }).then(function(res) {
+      if (res.error) console.error('[DB] Artists save error:', res.error);
+    });
+  }
+
+  // Load data from Supabase into localStorage on login
+  async function dbSyncFromCloud() {
+    if (!dbReady) return;
+    try {
+      // Load contracts
+      var cRes = await supabase.from('contracts').select('*');
+      if (cRes.data && cRes.data.length > 0) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cRes.data));
+        console.log('[DB] Loaded ' + cRes.data.length + ' contracts from cloud');
+      }
+      // Load settings
+      var sRes = await supabase.from('settings').select('*').eq('id', 'main').single();
+      if (sRes.data && sRes.data.data) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(sRes.data.data));
+        console.log('[DB] Loaded settings from cloud');
+      }
+      // Load artists
+      var aRes = await supabase.from('artists').select('*').eq('id', 'all').single();
+      if (aRes.data && aRes.data.data) {
+        localStorage.setItem(ARTISTS_KEY, JSON.stringify(aRes.data.data));
+        console.log('[DB] Loaded artists from cloud');
+      }
+    } catch(e) {
+      console.error('[DB] Cloud sync error:', e);
+    }
+  }
+
   var ROSTER = [
     { id: 'stevie', name: 'STEVIE' }
   ];
@@ -1791,8 +1956,10 @@
     document.getElementById(id).classList.add('active');
   }
 
-  function showDash() {
+  async function showDash() {
     showView('dashView');
+    // Sync from cloud first if available
+    await dbSyncFromCloud();
     renderRoster();
     renderContracts();
   }
@@ -1806,6 +1973,8 @@
     ['fPromoter','fEventName','fVenue','fPerfTime','fBookingFee','fArtistFee','fFeeDue','fCatering','fAgencyPrintName'].forEach(function(id) {
       document.getElementById(id).value = '';
     });
+    document.getElementById('fCurrency').value = 'GBP';
+    updateCurrencyLabels();
     dpAgreement.clear();
     dpEvent.clear();
     clearCreateSig();
@@ -1826,7 +1995,7 @@
   }
 
   function saveSettingsData(data) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+    dbSaveSettings(data);
   }
 
   function showSettings() {
@@ -1891,7 +2060,7 @@
   }
 
   function saveArtistsData(data) {
-    localStorage.setItem(ARTISTS_KEY, JSON.stringify(data));
+    dbSaveArtists(data);
   }
 
   function showArtistProfile(artistId) {
@@ -1931,6 +2100,30 @@
   }
 
   // ============================================
+  // CURRENCY HELPERS
+  // ============================================
+  var CURRENCY_SYMBOLS = { GBP: '£', EUR: '€', USD: '$' };
+
+  function getCurrencySymbol(code) {
+    return CURRENCY_SYMBOLS[code] || '£';
+  }
+
+  function updateCurrencyLabels() {
+    var sel = document.getElementById('fCurrency');
+    var sym = getCurrencySymbol(sel.value);
+    document.getElementById('lblBookingCurrency').textContent = sym;
+    document.getElementById('lblArtistCurrency').textContent = sym;
+    document.getElementById('lblCateringCurrency').textContent = sym;
+  }
+
+  function formatFee(amount, currencyCode) {
+    if (!amount || amount === 'N/A') return 'N/A';
+    var sym = getCurrencySymbol(currencyCode || 'GBP');
+    var num = amount.toString().replace(/[^0-9.,]/g, '');
+    return sym + num;
+  }
+
+  // ============================================
   // CONTRACTS STORAGE
   // ============================================
   function getContracts() {
@@ -1939,7 +2132,7 @@
   }
 
   function saveContracts(contracts) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+    dbSaveContracts(contracts);
   }
 
   function generateId() {
@@ -1956,6 +2149,7 @@
       venue: document.getElementById('fVenue').value,
       event_date: dpEvent.getValue(),
       performance_time: document.getElementById('fPerfTime').value,
+      currency: document.getElementById('fCurrency').value,
       booking_fee: document.getElementById('fBookingFee').value,
       artist_fee: document.getElementById('fArtistFee').value,
       fee_due_date: document.getElementById('fFeeDue').value,
@@ -2055,7 +2249,8 @@
     var isBooking = (type === 'booking');
 
     var title = isBooking ? 'BOOKING FEE INVOICE' : 'ARTIST FEE INVOICE';
-    var amount = isBooking ? (d.booking_fee || 'N/A') : (d.artist_fee || 'N/A');
+    var rawAmount = isBooking ? (d.booking_fee || 'N/A') : (d.artist_fee || 'N/A');
+    var amount = formatFee(rawAmount, d.currency);
     var paymentTerms = isBooking ? 'Due on receipt' : ('Due ' + (d.fee_due_date || 'as per contract'));
 
     // Determine bank details
@@ -2084,8 +2279,10 @@
     html += '<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">';
     html += '<style>';
     html += '*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }';
-    html += 'body { background: #000; color: #fff; font-family: "Inter", sans-serif; line-height: 1.6; }';
-    html += '@media print { body { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .no-print { display: none !important; } }';
+    html += 'html { background: #000 !important; }';
+    html += 'body { background: #000; color: #fff; font-family: "Inter", sans-serif; line-height: 1.6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }';
+    html += '* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }';
+    html += '@media print { html, body { background: #000 !important; color: #fff !important; } .no-print { display: none !important; } @page { margin: 0.5cm; } }';
     html += '</style></head><body>';
     html += '<div style="max-width:700px;margin:0 auto;padding:48px 40px;">';
 
@@ -2229,10 +2426,12 @@
 
       // Payments column
       html += '<td data-label="Payments"><div class="payments-cell">';
+      var bfDisplay = c.data.booking_fee ? formatFee(c.data.booking_fee, c.data.currency) : 'Booking Fee';
+      var afDisplay = c.data.artist_fee ? formatFee(c.data.artist_fee, c.data.currency) : 'Artist Fee';
       html += '<button class="payment-toggle payment-toggle--' + (bfPaid ? 'paid' : 'unpaid') + '" onclick="togglePayment(\'' + c.id + '\',\'booking_fee_received\')">';
-      html += (bfPaid ? '&#10003; ' : '') + 'Booking Fee</button>';
+      html += (bfPaid ? '&#10003; ' : '') + bfDisplay + '</button>';
       html += '<button class="payment-toggle payment-toggle--' + (afPaid ? 'paid' : 'unpaid') + '" onclick="togglePayment(\'' + c.id + '\',\'artist_fee_received\')">';
-      html += (afPaid ? '&#10003; ' : '') + 'Artist Fee</button>';
+      html += (afPaid ? '&#10003; ' : '') + afDisplay + '</button>';
       html += '</div></td>';
 
       html += '<td data-label="Actions"><div class="actions-cell">';
@@ -2271,6 +2470,8 @@
     document.getElementById('fVenue').value = c.data.venue || '';
     dpEvent.setValue(c.data.event_date || '');
     document.getElementById('fPerfTime').value = c.data.performance_time || '';
+    document.getElementById('fCurrency').value = c.data.currency || 'GBP';
+    updateCurrencyLabels();
     document.getElementById('fBookingFee').value = c.data.booking_fee || '';
     document.getElementById('fArtistFee').value = c.data.artist_fee || '';
     document.getElementById('fFeeDue').value = c.data.fee_due_date || '';
@@ -2287,6 +2488,7 @@
 
   function deleteContract(id) {
     if (!confirm('Delete this contract?')) return;
+    dbDeleteContract(id);
     var contracts = getContracts().filter(function(c) { return c.id !== id; });
     saveContracts(contracts);
     renderContracts();

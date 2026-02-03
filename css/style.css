@@ -2189,6 +2189,149 @@ img {
   cursor: not-allowed;
 }
 
+/* --- Unified Ticket Widget: Tiers + Progress + Selector --- */
+.feral-tickets__tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.feral-tickets__tier {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all var(--transition-base);
+}
+
+.feral-tickets__tier--sold {
+  opacity: 0.4;
+}
+
+.feral-tickets__tier--sold .feral-tickets__tier-name {
+  text-decoration: line-through;
+  color: var(--gray-text);
+}
+
+.feral-tickets__tier-status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--gray-text);
+  text-transform: uppercase;
+}
+
+.feral-tickets__tier--active {
+  background: rgba(255, 0, 51, 0.08);
+  border-color: rgba(255, 0, 51, 0.3);
+  position: relative;
+}
+
+.feral-tickets__tier--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--red);
+}
+
+.feral-tickets__tier--active .feral-tickets__tier-name {
+  color: var(--white);
+}
+
+.feral-tickets__tier--active .feral-tickets__tier-price-tag {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.feral-tickets__tier--next {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.feral-tickets__tier--next .feral-tickets__tier-name {
+  color: var(--gray-text);
+}
+
+.feral-tickets__tier--next .feral-tickets__tier-price-tag {
+  color: var(--gray-text);
+}
+
+.feral-tickets__tier-name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.feral-tickets__tier-price-tag {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+/* Progress bar inside ticket widget */
+.feral-tickets__progress {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.feral-tickets__bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.feral-tickets__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--red) 0%, #ff3355 100%);
+  transition: width 1s ease-out;
+}
+
+.feral-tickets__fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 12px;
+  background: var(--red);
+  box-shadow: 0 0 10px var(--red), 0 0 20px var(--red);
+}
+
+.feral-tickets__remaining {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--gray-text);
+}
+
+.feral-tickets__count {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Quantity row: centred controls */
+.feral-tickets__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 #eventix-shop-container {
   height: 0;
   overflow: hidden;
@@ -2782,10 +2925,104 @@ img {
 
 
 
+/* --- Fixed Bottom Bar --- */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 997;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 0, 51, 0.3);
+  padding: 12px 20px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateY(0);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.bottom-bar--hidden {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+.bottom-bar__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bottom-bar__price {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bottom-bar__label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gray-text);
+}
+
+.bottom-bar__amount {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.5px;
+}
+
+.bottom-bar__cta {
+  padding: 14px 32px;
+  background: var(--red);
+  color: var(--white);
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.bottom-bar__cta:hover {
+  background: var(--red-dark);
+  box-shadow: 0 0 20px var(--red-glow);
+}
+
+.bottom-bar__cta:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 480px) {
+  .bottom-bar {
+    padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .bottom-bar__amount {
+    font-size: 1.1rem;
+  }
+
+  .bottom-bar__cta {
+    padding: 12px 24px;
+    font-size: 12px;
+  }
+}
+
+
 /* --- Social Proof Toast --- */
 .social-proof {
   position: fixed;
-  bottom: 24px;
+  bottom: 90px;
   left: 24px;
   background: var(--gray);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2846,7 +3083,7 @@ img {
   .social-proof {
     left: 16px;
     right: 16px;
-    bottom: 16px;
+    bottom: 80px;
     background: var(--black);
     border: 1px solid rgba(255, 0, 51, 0.5);
     padding: 18px 20px;

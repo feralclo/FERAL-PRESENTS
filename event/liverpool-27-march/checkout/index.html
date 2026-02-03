@@ -18,7 +18,7 @@
     }
 
     html, body {
-      background: #1c1c1c;
+      background: #0e0e0e;
       color: #fff;
       min-height: 100vh;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -26,75 +26,266 @@
       overflow-x: hidden;
     }
 
-    /* --- Header: matches main site style --- */
-    .checkout-header {
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 0 24px;
-      height: 80px;
+    /* ========================================
+       LOADING INTERSTITIAL
+       ======================================== */
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0e0e0e;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      position: relative;
+      transition: opacity 0.5s ease;
     }
 
-    .checkout-header__back {
+    .loading-screen--hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-screen__logo {
+      width: 140px;
+      height: auto;
+      margin-bottom: 48px;
+      opacity: 0.9;
+    }
+
+    .loading-screen__status {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 24px;
+    }
+
+    .loading-screen__bar {
+      width: 200px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loading-screen__progress {
       position: absolute;
-      right: 24px;
-      top: 50%;
-      transform: translateY(-50%);
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      background: #f60434;
+      transition: width 0.3s ease;
+    }
+
+    .loading-screen__detail {
+      margin-top: 20px;
       font-family: 'Space Mono', monospace;
       font-size: 10px;
       letter-spacing: 1.5px;
+      color: #333;
       text-transform: uppercase;
-      color: #666;
+    }
+
+    /* Subtle scanline on loading screen */
+    .loading-screen::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.01) 2px,
+        rgba(255, 255, 255, 0.01) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* ========================================
+       HEADER
+       ======================================== */
+    .checkout-header {
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .checkout-header__left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .checkout-header__back {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #555;
       text-decoration: none;
       transition: color 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .checkout-header__back:hover {
       color: #fff;
     }
 
+    .checkout-header__back-arrow {
+      font-size: 14px;
+      line-height: 1;
+    }
+
     .checkout-header__logo {
-      height: 48px;
+      height: 32px;
       width: auto;
       display: block;
+      opacity: 0.85;
     }
 
-    /* --- Secure checkout strip --- */
-    .checkout-strip {
-      background: #1c1c1c;
-      border-bottom: 2px solid #f60434;
-      padding: 14px 24px;
+    .checkout-header__secure {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
+      gap: 6px;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #444;
     }
 
-    .checkout-strip__lock {
-      width: 12px;
-      height: 12px;
+    .checkout-header__lock {
+      width: 11px;
+      height: 11px;
       color: #f60434;
     }
 
-    .checkout-strip__text {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: #fff;
+    /* ========================================
+       COUNTDOWN TIMER
+       ======================================== */
+    .checkout-timer {
+      background: #0e0e0e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
     }
 
-    /* --- Embed: full width, no constraints --- */
+    .checkout-timer__label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    .checkout-timer__time {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #fff;
+      min-width: 56px;
+    }
+
+    .checkout-timer__bar {
+      flex: 1;
+      max-width: 120px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .checkout-timer__fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      background: #f60434;
+      transition: width 1s linear;
+      transform-origin: left;
+    }
+
+    /* Urgent state: under 2 minutes */
+    .checkout-timer--urgent .checkout-timer__time {
+      color: #f60434;
+    }
+
+    .checkout-timer--urgent .checkout-timer__label {
+      color: #f60434;
+      animation: timerPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes timerPulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    /* Expired state */
+    .checkout-timer--expired .checkout-timer__time {
+      color: #f60434;
+    }
+
+    .checkout-timer--expired .checkout-timer__label {
+      color: #f60434;
+    }
+
+    /* ========================================
+       ORDER SUMMARY STRIP
+       ======================================== */
+    .checkout-summary {
+      background: rgba(246, 4, 52, 0.04);
+      border-bottom: 1px solid rgba(246, 4, 52, 0.15);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .checkout-summary__text {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    .checkout-summary__qty {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .checkout-summary__price {
+      color: #f60434;
+      font-weight: 700;
+    }
+
+    /* ========================================
+       EMBED CONTAINER
+       ======================================== */
     #eventix-shop-container {
       background: #1c1c1c;
       width: 100%;
-      min-height: 100vh;
+      min-height: calc(100vh - 120px);
       overflow: visible;
     }
 
@@ -117,68 +308,154 @@
       background: #1c1c1c;
     }
 
-    /* --- Loading: simple text, no animation --- */
-    .checkout-loading {
+    /* ========================================
+       FOOTER
+       ======================================== */
+    .checkout-footer {
+      background: #0e0e0e;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 16px 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 80px 20px;
-    }
-
-    .checkout-loading__text {
-      font-family: 'Space Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 2px;
-      color: #555;
-      text-transform: uppercase;
-    }
-
-    /* --- Footer --- */
-    .checkout-footer {
-      background: rgba(0, 0, 0, 0.85);
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 20px 24px;
-      text-align: center;
+      gap: 24px;
     }
 
     .checkout-footer__event {
       font-family: 'Space Mono', monospace;
       font-size: 9px;
       letter-spacing: 1.5px;
-      color: #4a4a4a;
+      color: #333;
       text-transform: uppercase;
+    }
+
+    .checkout-footer__secure {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: #333;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .checkout-footer__lock {
+      width: 10px;
+      height: 10px;
+      color: #333;
+    }
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+    @media (max-width: 600px) {
+      .checkout-header {
+        height: 56px;
+        padding: 0 16px;
+      }
+
+      .checkout-header__logo {
+        height: 26px;
+      }
+
+      .checkout-header__secure {
+        display: none;
+      }
+
+      .checkout-timer {
+        padding: 10px 16px;
+        gap: 8px;
+      }
+
+      .checkout-timer__label {
+        font-size: 9px;
+        letter-spacing: 1.5px;
+      }
+
+      .checkout-timer__time {
+        font-size: 13px;
+      }
+
+      .checkout-summary {
+        padding: 8px 16px;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .checkout-summary__text {
+        font-size: 9px;
+      }
+
+      .loading-screen__logo {
+        width: 110px;
+      }
     }
   </style>
 </head>
 <body>
 
+  <!-- Loading Interstitial -->
+  <div class="loading-screen" id="loadingScreen">
+    <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="loading-screen__logo">
+    <div class="loading-screen__status" id="loadingStatus">Preparing your tickets</div>
+    <div class="loading-screen__bar">
+      <div class="loading-screen__progress" id="loadingProgress"></div>
+    </div>
+    <div class="loading-screen__detail" id="loadingDetail">Connecting to checkout&hellip;</div>
+  </div>
+
   <!-- Header -->
   <div class="checkout-header">
-    <a href="/event/liverpool-27-march/">
-      <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-header__logo">
-    </a>
-    <a href="/event/liverpool-27-march/" class="checkout-header__back">Back &rarr;</a>
-  </div>
-
-  <!-- Secure checkout strip -->
-  <div class="checkout-strip">
-    <svg class="checkout-strip__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-      <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <span class="checkout-strip__text">Secure Checkout</span>
-  </div>
-
-  <!-- Embed -->
-  <div id="eventix-shop-container">
-    <div class="checkout-loading" id="checkout-loading">
-      <div class="checkout-loading__text">Loading checkout&hellip;</div>
+    <div class="checkout-header__left">
+      <a href="/event/liverpool-27-march/" class="checkout-header__back">
+        <span class="checkout-header__back-arrow">&larr;</span>
+        <span>Back</span>
+      </a>
+      <a href="/event/liverpool-27-march/">
+        <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-header__logo">
+      </a>
+    </div>
+    <div class="checkout-header__secure">
+      <svg class="checkout-header__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>Secure Checkout</span>
     </div>
   </div>
 
+  <!-- Countdown Timer -->
+  <div class="checkout-timer" id="checkoutTimer">
+    <span class="checkout-timer__label">Reservation expires</span>
+    <span class="checkout-timer__time" id="timerDisplay">08:00</span>
+    <div class="checkout-timer__bar">
+      <div class="checkout-timer__fill" id="timerBar"></div>
+    </div>
+  </div>
+
+  <!-- Order Summary Strip -->
+  <div class="checkout-summary" id="checkoutSummary">
+    <span class="checkout-summary__text">
+      <span class="checkout-summary__qty" id="summaryQty">1</span> &times; General Release
+      &mdash;
+      <span class="checkout-summary__price" id="summaryPrice">&pound;24.50</span>
+    </span>
+  </div>
+
+  <!-- Embed -->
+  <div id="eventix-shop-container"></div>
+
   <!-- Footer -->
   <div class="checkout-footer">
-    <div class="checkout-footer__event">FERAL Liverpool &mdash; Invisible Wind Factory &mdash; 27 Mar 2026</div>
+    <div class="checkout-footer__secure">
+      <svg class="checkout-footer__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>SSL Encrypted</span>
+    </div>
+    <div class="checkout-footer__event">FERAL Liverpool &mdash; 27 Mar 2026</div>
   </div>
 
   <script src="https://v1.widget.shop.eventix.io/injector.js"></script>
@@ -186,10 +463,77 @@
     (async function() {
       var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
       var TICKET_ID = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
+      var TICKET_PRICE = 24.50;
+      var TIMER_SECONDS = 8 * 60; // 8 minutes
 
       var params = new URLSearchParams(window.location.search);
       var qty = parseInt(params.get('qty')) || 1;
 
+      // --- Update order summary ---
+      var summaryQty = document.getElementById('summaryQty');
+      var summaryPrice = document.getElementById('summaryPrice');
+      if (summaryQty) summaryQty.textContent = qty;
+      if (summaryPrice) summaryPrice.textContent = '\u00A3' + (qty * TICKET_PRICE).toFixed(2);
+
+      // --- Loading screen ---
+      var loadingScreen = document.getElementById('loadingScreen');
+      var loadingProgress = document.getElementById('loadingProgress');
+      var loadingStatus = document.getElementById('loadingStatus');
+      var loadingDetail = document.getElementById('loadingDetail');
+
+      function setLoadingProgress(pct, detail) {
+        if (loadingProgress) loadingProgress.style.width = pct + '%';
+        if (detail && loadingDetail) loadingDetail.textContent = detail;
+      }
+
+      function hideLoadingScreen() {
+        if (loadingScreen) loadingScreen.classList.add('loading-screen--hidden');
+        // Start countdown timer when checkout becomes visible
+        startTimer();
+      }
+
+      setLoadingProgress(10, 'Connecting to checkout\u2026');
+
+      // --- 8-minute countdown timer ---
+      var timerDisplay = document.getElementById('timerDisplay');
+      var timerBar = document.getElementById('timerBar');
+      var checkoutTimer = document.getElementById('checkoutTimer');
+      var timerStarted = false;
+      var timerRemaining = TIMER_SECONDS;
+
+      function formatTime(s) {
+        var m = Math.floor(s / 60);
+        var sec = s % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+      }
+
+      function startTimer() {
+        if (timerStarted) return;
+        timerStarted = true;
+
+        var interval = setInterval(function() {
+          timerRemaining--;
+
+          if (timerRemaining <= 0) {
+            timerRemaining = 0;
+            clearInterval(interval);
+            if (timerDisplay) timerDisplay.textContent = '00:00';
+            if (timerBar) timerBar.style.width = '0%';
+            if (checkoutTimer) checkoutTimer.classList.add('checkout-timer--expired');
+            return;
+          }
+
+          if (timerDisplay) timerDisplay.textContent = formatTime(timerRemaining);
+          if (timerBar) timerBar.style.width = ((timerRemaining / TIMER_SECONDS) * 100) + '%';
+
+          // Urgent at 2 minutes
+          if (timerRemaining <= 120 && checkoutTimer) {
+            checkoutTimer.classList.add('checkout-timer--urgent');
+          }
+        }, 1000);
+      }
+
+      // --- WeeZTix ShopInjector ---
       function getCookie(name) {
         var nameEQ = name + '=';
         var ca = document.cookie.split(';');
@@ -222,7 +566,9 @@
         });
       }
 
+      setLoadingProgress(25, 'Loading payment system\u2026');
       await waitForOpenTicket();
+      setLoadingProgress(40, 'Initialising shop\u2026');
 
       var config = {
         url: 'https://shop.weeztix.com/' + SHOP_ID,
@@ -244,15 +590,8 @@
       window.ShopInjector = new window.OpenTicket.ShopInjector();
       await window.ShopInjector.init(config);
 
-      // Hide loading text once embed is ready
-      var loadingHidden = false;
-      window.ShopInjector.shop.onCartData(function() {
-        if (!loadingHidden) {
-          var loader = document.getElementById('checkout-loading');
-          if (loader) loader.style.display = 'none';
-          loadingHidden = true;
-        }
-      });
+      setLoadingProgress(60, 'Adding ' + qty + (qty === 1 ? ' ticket' : ' tickets') + ' to cart\u2026');
+      if (loadingStatus) loadingStatus.textContent = 'Securing your tickets';
 
       // Resize iframe to fill viewport
       var container = document.getElementById('eventix-shop-container');
@@ -262,9 +601,11 @@
           function resizeIframe() {
             var used = 0;
             var hdr = document.querySelector('.checkout-header');
-            var strip = document.querySelector('.checkout-strip');
+            var timer = document.querySelector('.checkout-timer');
+            var summary = document.querySelector('.checkout-summary');
             if (hdr) used += hdr.offsetHeight;
-            if (strip) used += strip.offsetHeight;
+            if (timer) used += timer.offsetHeight;
+            if (summary) used += summary.offsetHeight;
             var h = Math.max(window.innerHeight - used, 600);
             iframe.style.height = h + 'px';
             iframe.style.minHeight = h + 'px';
@@ -274,7 +615,7 @@
 
           window.addEventListener('message', function(e) {
             if (e.data && typeof e.data.height === 'number') {
-              var minH = Math.max(window.innerHeight - 120, 600);
+              var minH = Math.max(window.innerHeight - 160, 600);
               iframe.style.height = Math.max(minH, e.data.height) + 'px';
               iframe.style.minHeight = iframe.style.height;
             }
@@ -285,16 +626,12 @@
       });
       observer.observe(container, { childList: true, subtree: true });
 
-      // Add tickets: wait for cart confirmation after each one
-      // This guarantees every ticket is registered before adding the next
+      // Add tickets sequentially with cart confirmation
       var ticketsAdded = 0;
-      var cartListener = null;
+      var expectedCount = 0;
 
       function addNextTicket() {
-        if (ticketsAdded >= qty) {
-          // All tickets added — remove listener
-          return;
-        }
+        if (ticketsAdded >= qty) return;
         window.ShopInjector.shop.sendMessage({
           action: 'add',
           guid: TICKET_ID,
@@ -302,30 +639,51 @@
         });
       }
 
-      // Listen for cart updates — each one confirms a ticket was added
-      var expectedCount = 0;
       window.ShopInjector.shop.onCartData(function(data) {
         if (ticketsAdded >= qty) return;
 
-        // Check how many of our ticket are in cart
         var currentCount = 0;
         if (data && data.tickets && data.tickets[TICKET_ID]) {
           currentCount = data.tickets[TICKET_ID].count || 0;
         }
 
-        // If the count increased, the last add worked
         if (currentCount > expectedCount) {
           expectedCount = currentCount;
           ticketsAdded = currentCount;
 
-          if (ticketsAdded < qty) {
-            // Small delay then add next
+          // Update loading progress
+          var pct = 60 + Math.round((ticketsAdded / qty) * 35);
+          setLoadingProgress(pct, 'Added ' + ticketsAdded + ' of ' + qty + (qty === 1 ? ' ticket' : ' tickets'));
+
+          if (ticketsAdded >= qty) {
+            // All tickets added — show checkout
+            setLoadingProgress(100, 'Ready');
+            if (loadingStatus) loadingStatus.textContent = 'All set';
+            setTimeout(hideLoadingScreen, 400);
+          } else {
             setTimeout(addNextTicket, 150);
           }
         }
       });
 
-      // Wait a moment for the shop to be fully ready, then start adding
+      // Also hide loading if embed loads before tickets are confirmed
+      var embedReady = false;
+      window.ShopInjector.shop.onCartData(function() {
+        if (!embedReady) {
+          embedReady = true;
+          // If qty is 0 or loading is taking too long, hide after a timeout
+        }
+      });
+
+      // Fallback: hide loading screen after 12s no matter what
+      setTimeout(function() {
+        if (!loadingScreen.classList.contains('loading-screen--hidden')) {
+          setLoadingProgress(100, 'Ready');
+          setTimeout(hideLoadingScreen, 300);
+        }
+      }, 12000);
+
+      // Start adding tickets
       setTimeout(function() {
         addNextTicket();
       }, 500);

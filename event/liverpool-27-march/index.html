@@ -218,58 +218,43 @@
               <h3 class="event-tickets__heading">Get Tickets<span class="text-red">_</span></h3>
               <p class="event-tickets__subtext">Secure your entry. Limited availability.</p>
 
-              <!-- Ticket Scarcity Component (Mobile Only) -->
-              <div class="ticket-scarcity ticket-scarcity--mobile">
-                <div class="ticket-scarcity__tiers">
-                  <div class="ticket-scarcity__tier ticket-scarcity__tier--sold">
-                    <span class="ticket-scarcity__tier-name">FIRST RELEASE</span>
-                    <span class="ticket-scarcity__tier-status">SOLD OUT</span>
-                  </div>
-                  <div class="ticket-scarcity__tier ticket-scarcity__tier--active">
-                    <span class="ticket-scarcity__tier-name">GENERAL RELEASE</span>
-                    <span class="ticket-scarcity__tier-price">£24.50</span>
-                  </div>
-                  <div class="ticket-scarcity__tier ticket-scarcity__tier--next">
-                    <span class="ticket-scarcity__tier-name">FINAL RELEASE</span>
-                    <span class="ticket-scarcity__tier-price">£29.95</span>
-                  </div>
-                </div>
-
-                <div class="ticket-scarcity__progress">
-                  <div class="ticket-scarcity__bar">
-                    <div class="ticket-scarcity__fill" style="width: 78%;"></div>
-                    <div class="ticket-scarcity__glow"></div>
-                  </div>
-                  <div class="ticket-scarcity__info">
-                    <span class="ticket-scarcity__remaining">
-                      <span class="ticket-scarcity__count">22%</span> remaining
-                    </span>
-                    <span class="ticket-scarcity__warning">at this price</span>
-                  </div>
-                </div>
-
-                <a href="#tickets-embed" class="ticket-scarcity__cta">Book Now &darr;</a>
-              </div>
-
+              <!-- Unified ticket widget: tiers + selector -->
               <div class="event-tickets__embed" id="tickets-embed">
-                <!-- Custom ticket selector (ShopInjector) -->
                 <div class="feral-tickets" id="feral-tickets">
-                  <div class="feral-tickets__row" data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae">
-                    <div class="feral-tickets__info">
-                      <span class="feral-tickets__name">GENERAL RELEASE</span>
-                      <span class="feral-tickets__price" id="price-general"></span>
+                  <!-- Tier display -->
+                  <div class="feral-tickets__tiers">
+                    <div class="feral-tickets__tier feral-tickets__tier--sold">
+                      <span class="feral-tickets__tier-name">FIRST RELEASE</span>
+                      <span class="feral-tickets__tier-status">SOLD OUT</span>
                     </div>
+                    <div class="feral-tickets__tier feral-tickets__tier--active">
+                      <span class="feral-tickets__tier-name">GENERAL RELEASE</span>
+                      <span class="feral-tickets__tier-price-tag">&pound;24.50</span>
+                    </div>
+                    <div class="feral-tickets__tier feral-tickets__tier--next">
+                      <span class="feral-tickets__tier-name">FINAL RELEASE</span>
+                      <span class="feral-tickets__tier-price-tag">&pound;29.95</span>
+                    </div>
+                  </div>
+
+                  <!-- Progress bar -->
+                  <div class="feral-tickets__progress">
+                    <div class="feral-tickets__bar">
+                      <div class="feral-tickets__fill" style="width: 78%;"></div>
+                    </div>
+                    <div class="feral-tickets__remaining">
+                      <span><span class="feral-tickets__count">22%</span> remaining at this price</span>
+                    </div>
+                  </div>
+
+                  <!-- Quantity selector -->
+                  <div class="feral-tickets__row" data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae">
                     <div class="feral-tickets__controls">
                       <button class="feral-tickets__btn feral-tickets__btn--minus" data-action="remove" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Remove ticket">&minus;</button>
                       <span class="feral-tickets__qty" id="qty-6b45169f-cf51-4600-8682-d6f79dcb59ae">0</span>
                       <button class="feral-tickets__btn feral-tickets__btn--plus" data-action="add" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Add ticket">+</button>
                     </div>
                   </div>
-                  <div class="feral-tickets__total">
-                    <span class="feral-tickets__total-label">TOTAL</span>
-                    <span class="feral-tickets__total-value" id="feral-total">&pound;0.00</span>
-                  </div>
-                  <button class="feral-tickets__checkout" id="feral-checkout-btn" disabled>SELECT TICKETS TO CONTINUE</button>
                 </div>
                 <!-- Eventix checkout is on separate page -->
               </div>
@@ -280,13 +265,24 @@
     </section>
   </main>
 
-  <!-- Social Proof Toast -->
+  <!-- Social Proof Toast (positioned above bottom bar) -->
   <div class="social-proof" id="socialProof">
     <div class="social-proof__title">
       <span class="social-proof__dot"></span>
       Selling fast!
     </div>
     <p class="social-proof__text">Last ticket booked: <span class="social-proof__time" id="proofTime">less than 60 seconds ago</span></p>
+  </div>
+
+  <!-- Fixed Bottom Bar -->
+  <div class="bottom-bar" id="bottomBar">
+    <div class="bottom-bar__inner">
+      <div class="bottom-bar__price">
+        <span class="bottom-bar__label">From</span>
+        <span class="bottom-bar__amount">&pound;24.50</span>
+      </div>
+      <button class="bottom-bar__cta" id="bottomBarCta">Buy Tickets</button>
+    </div>
   </div>
 
   <!-- Footer -->
@@ -301,22 +297,33 @@
 
   <script src="../../js/main.js"></script>
   <script>
-    // Ticket quantity selector — navigates to checkout page
+    // Ticket quantity selector + bottom bar
     (function() {
       var TICKET_PRICE = 24.50;
       var qty = 0;
-      var totalEl = document.getElementById('feral-total');
-      var checkoutBtn = document.getElementById('feral-checkout-btn');
       var qtyEl = document.getElementById('qty-6b45169f-cf51-4600-8682-d6f79dcb59ae');
-      var priceEl = document.getElementById('price-general');
+      var bottomBar = document.getElementById('bottomBar');
+      var bottomBarCta = document.getElementById('bottomBarCta');
+      var bottomBarAmount = bottomBar ? bottomBar.querySelector('.bottom-bar__amount') : null;
 
-      if (priceEl) priceEl.textContent = '\u00A3' + TICKET_PRICE.toFixed(2);
+      function goToCheckout() {
+        if (qty < 1) return;
+        document.body.style.transition = 'none';
+        document.body.style.opacity = '1';
+        window.location.assign('/event/liverpool-27-march/checkout/?qty=' + qty);
+      }
 
       function update() {
         if (qtyEl) qtyEl.textContent = qty;
-        totalEl.textContent = '\u00A3' + (qty * TICKET_PRICE).toFixed(2);
-        checkoutBtn.disabled = qty < 1;
-        checkoutBtn.textContent = qty > 0 ? 'CHECKOUT \u2192' : 'SELECT TICKETS TO CONTINUE';
+        // Update bottom bar
+        if (bottomBarAmount) {
+          bottomBarAmount.textContent = qty > 0
+            ? '\u00A3' + (qty * TICKET_PRICE).toFixed(2)
+            : '\u00A3' + TICKET_PRICE.toFixed(2);
+        }
+        if (bottomBarCta) {
+          bottomBarCta.textContent = qty > 0 ? 'Buy ' + qty + (qty === 1 ? ' Ticket' : ' Tickets') : 'Buy Tickets';
+        }
       }
 
       document.querySelectorAll('.feral-tickets__btn').forEach(function(btn) {
@@ -328,14 +335,32 @@
         });
       });
 
-      checkoutBtn.addEventListener('click', function(e) {
-        if (qty < 1) return;
-        e.stopPropagation();
-        // Bypass any page transition animation — navigate instantly
-        document.body.style.transition = 'none';
-        document.body.style.opacity = '1';
-        window.location.assign('/event/liverpool-27-march/checkout/?qty=' + qty);
-      });
+      // Bottom bar CTA: if tickets selected go to checkout, otherwise scroll to widget
+      if (bottomBarCta) {
+        bottomBarCta.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (qty > 0) {
+            goToCheckout();
+          } else {
+            var embed = document.getElementById('tickets-embed');
+            if (embed) {
+              var y = embed.getBoundingClientRect().top + window.pageYOffset - 100;
+              window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+          }
+        });
+      }
+
+      // Show/hide bottom bar based on scroll (hide when ticket widget is visible)
+      function checkBottomBar() {
+        var embed = document.getElementById('tickets-embed');
+        if (!embed || !bottomBar) return;
+        var rect = embed.getBoundingClientRect();
+        var visible = rect.top < window.innerHeight && rect.bottom > 0;
+        bottomBar.classList.toggle('bottom-bar--hidden', visible);
+      }
+      window.addEventListener('scroll', checkBottomBar, { passive: true });
+      checkBottomBar();
 
       update();
     })();

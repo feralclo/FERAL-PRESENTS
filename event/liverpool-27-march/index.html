@@ -333,17 +333,6 @@
         });
       }
 
-      // Show/hide bottom bar based on scroll (hide when ticket widget is visible)
-      function checkBottomBar() {
-        var embed = document.getElementById('tickets-embed');
-        if (!embed || !bottomBar) return;
-        var rect = embed.getBoundingClientRect();
-        var visible = rect.top < window.innerHeight && rect.bottom > 0;
-        bottomBar.classList.toggle('bottom-bar--hidden', visible);
-      }
-      window.addEventListener('scroll', checkBottomBar, { passive: true });
-      checkBottomBar();
-
       update();
     })();
   </script>

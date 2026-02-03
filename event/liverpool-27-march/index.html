@@ -328,9 +328,13 @@
         });
       });
 
-      checkoutBtn.addEventListener('click', function() {
+      checkoutBtn.addEventListener('click', function(e) {
         if (qty < 1) return;
-        window.location.href = '/event/liverpool-27-march/checkout/?qty=' + qty;
+        e.stopPropagation();
+        // Bypass any page transition animation — navigate instantly
+        document.body.style.transition = 'none';
+        document.body.style.opacity = '1';
+        window.location.assign('/event/liverpool-27-march/checkout/?qty=' + qty);
       });
 
       update();

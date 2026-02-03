@@ -2,217 +2,228 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Checkout — FERAL Liverpool | 27 March 2026</title>
   <meta name="robots" content="noindex, nofollow">
 
-  <link rel="stylesheet" href="../../../css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    body {
-      background: var(--black);
-      color: var(--white);
-      min-height: 100vh;
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    .checkout-header {
+    html, body {
+      background: #1c1c1c;
+      color: #fff;
+      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* --- Top bar: logo + back link --- */
+    .checkout-topbar {
+      background: #111;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 14px 20px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 24px 24px 0;
+      justify-content: space-between;
     }
 
-    .checkout-header__logo {
-      height: 32px;
+    .checkout-topbar__logo {
+      height: 22px;
       width: auto;
-    }
-
-    .checkout-wrap {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 32px 24px 60px;
-    }
-
-    .checkout-heading {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-
-    .checkout-heading__title {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: var(--white);
-      margin-bottom: 8px;
-    }
-
-    .checkout-heading__sub {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 1.5px;
-      color: var(--gray-text);
-      text-transform: uppercase;
-    }
-
-    .checkout-divider {
-      width: 40px;
-      height: 2px;
-      background: var(--red);
-      margin: 0 auto 32px;
-    }
-
-    .checkout-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--gray-text);
-      text-decoration: none;
-      transition: color var(--transition-fast);
-      margin-bottom: 24px;
-    }
-
-    .checkout-back:hover {
-      color: var(--white);
-    }
-
-    /* --- Embed container: no box, full width, no constraints --- */
-    .checkout-container {
-      background: transparent;
-      border: none;
-      padding: 0;
-      min-height: 500px;
-      overflow: visible;
-    }
-
-    /* --- Make iframe fill all available space --- */
-    .checkout-container iframe {
-      width: 100% !important;
-      max-width: none !important;
-      min-width: 100% !important;
-      min-height: 600px;
-      border: none !important;
       display: block;
     }
 
-    .checkout-container > div {
-      width: 100% !important;
-      max-width: none !important;
-      margin: 0 !important;
+    .checkout-topbar__back {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #888;
+      text-decoration: none;
+      transition: color 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .checkout-loading {
+    .checkout-topbar__back:hover {
+      color: #fff;
+    }
+
+    /* --- Branded header that merges into embed --- */
+    .checkout-banner {
+      background: #1c1c1c;
+      padding: 28px 20px 20px;
       text-align: center;
-      padding: 80px 24px;
-      font-family: var(--font-mono);
+      border-bottom: 2px solid #f60434;
+    }
+
+    .checkout-banner__title {
+      font-family: 'Space Mono', monospace;
       font-size: 12px;
-      letter-spacing: 2px;
-      color: var(--gray-text);
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .checkout-banner__sub {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: #888;
       text-transform: uppercase;
     }
 
+    .checkout-banner__secure {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #4a4a4a;
+    }
+
+    .checkout-banner__lock {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* --- Embed: full width, no constraints, grows with content --- */
+    #eventix-shop-container {
+      background: #1c1c1c;
+      width: 100%;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    #eventix-shop-container > div,
+    #eventix-shop-container > div > div {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    #eventix-shop-container iframe {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 100% !important;
+      height: 100vh;
+      min-height: 100vh;
+      border: none !important;
+      display: block;
+      background: #1c1c1c;
+    }
+
+    /* --- Loading state --- */
+    .checkout-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      gap: 16px;
+    }
+
     .checkout-loading__spinner {
-      width: 24px;
-      height: 24px;
-      border: 2px solid var(--gray-light);
-      border-top-color: var(--red);
+      width: 28px;
+      height: 28px;
+      border: 2px solid #333;
+      border-top-color: #f60434;
       border-radius: 50%;
-      margin: 0 auto 16px;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .checkout-loading__text {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #888;
+      text-transform: uppercase;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
+    /* --- Footer --- */
     .checkout-footer {
+      background: #111;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 20px;
       text-align: center;
-      margin-top: 32px;
-      padding-top: 24px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .checkout-footer__secure {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: var(--gray-text);
-    }
-
-    .checkout-footer__lock {
-      width: 12px;
-      height: 12px;
-      opacity: 0.6;
-    }
-
-    .checkout-event {
-      text-align: center;
-      margin-top: 12px;
-      font-family: var(--font-mono);
-      font-size: 10px;
+    .checkout-footer__event {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
       letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.2);
+      color: #4a4a4a;
       text-transform: uppercase;
     }
 
-    @media (max-width: 640px) {
-      .checkout-wrap {
-        padding: 24px 16px 48px;
-      }
+    .checkout-footer__powered {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px;
+      letter-spacing: 1px;
+      color: #333;
+      text-transform: uppercase;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
 
-  <!-- Logo -->
-  <div class="checkout-header">
+  <!-- Top bar -->
+  <div class="checkout-topbar">
     <a href="/event/liverpool-27-march/">
-      <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-header__logo">
+      <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-topbar__logo">
+    </a>
+    <a href="/event/liverpool-27-march/#tickets-embed" class="checkout-topbar__back">
+      <span>&larr;</span>
+      <span>Back</span>
     </a>
   </div>
 
-  <div class="checkout-wrap">
-    <a href="/event/liverpool-27-march/#tickets-embed" class="checkout-back">
-      <span>&larr;</span>
-      <span>Back to event</span>
-    </a>
-
-    <div class="checkout-heading">
-      <div class="checkout-heading__title">Secure Checkout</div>
-      <div class="checkout-heading__sub">Complete your booking below</div>
+  <!-- Branded header that merges into the embed -->
+  <div class="checkout-banner">
+    <div class="checkout-banner__title">Secure Checkout</div>
+    <div class="checkout-banner__sub">Complete your booking below</div>
+    <div class="checkout-banner__secure">
+      <svg class="checkout-banner__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Secure &amp; encrypted
     </div>
-    <div class="checkout-divider"></div>
+  </div>
 
-    <!-- Eventix shop container -->
-    <div class="checkout-container" id="eventix-shop-container">
-      <div class="checkout-loading" id="checkout-loading">
-        <div class="checkout-loading__spinner"></div>
-        Loading secure checkout&hellip;
-      </div>
+  <!-- Embed container: full width, no box, grows to fit -->
+  <div id="eventix-shop-container">
+    <div class="checkout-loading" id="checkout-loading">
+      <div class="checkout-loading__spinner"></div>
+      <div class="checkout-loading__text">Loading checkout&hellip;</div>
     </div>
+  </div>
 
-    <div class="checkout-footer">
-      <span class="checkout-footer__secure">
-        <svg class="checkout-footer__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-          <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        Secure payment via WeeZTix
-      </span>
-      <div class="checkout-event">FERAL Liverpool &mdash; Invisible Wind Factory &mdash; 27 March 2026</div>
-    </div>
+  <!-- Footer -->
+  <div class="checkout-footer">
+    <div class="checkout-footer__event">FERAL Liverpool &mdash; Invisible Wind Factory &mdash; 27 Mar 2026</div>
+    <div class="checkout-footer__powered">Powered by WeeZTix</div>
   </div>
 
   <script src="https://v1.widget.shop.eventix.io/injector.js"></script>
@@ -221,11 +232,9 @@
       var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
       var TICKET_ID = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
 
-      // Get ticket count from URL params
       var params = new URLSearchParams(window.location.search);
       var qty = parseInt(params.get('qty')) || 1;
 
-      // Read persisted campaign data
       function getCookie(name) {
         var nameEQ = name + '=';
         var ca = document.cookie.split(';');
@@ -245,7 +254,6 @@
         return {};
       }
 
-      // Wait for OpenTicket
       function waitForOpenTicket() {
         return new Promise(function(resolve) {
           function check() {
@@ -281,7 +289,7 @@
       window.ShopInjector = new window.OpenTicket.ShopInjector();
       await window.ShopInjector.init(config);
 
-      // Hide loading spinner once cart data arrives
+      // Hide loading once ready
       var loadingHidden = false;
       window.ShopInjector.shop.onCartData(function() {
         if (!loadingHidden) {
@@ -291,26 +299,40 @@
         }
       });
 
-      // Auto-resize iframe to fit its content
+      // Watch for iframe and make it fill the viewport
       var container = document.getElementById('eventix-shop-container');
-      var resizeObserver = new MutationObserver(function() {
+      var observer = new MutationObserver(function() {
         var iframe = container.querySelector('iframe');
         if (iframe) {
-          iframe.style.height = '';
-          iframe.style.minHeight = '700px';
-          iframe.setAttribute('scrolling', 'no');
-          // Listen for postMessage resize events from the iframe
+          // Calculate available height: full viewport minus topbar and banner
+          function resizeIframe() {
+            var used = 0;
+            var topbar = document.querySelector('.checkout-topbar');
+            var banner = document.querySelector('.checkout-banner');
+            if (topbar) used += topbar.offsetHeight;
+            if (banner) used += banner.offsetHeight;
+            var h = Math.max(window.innerHeight - used, 600);
+            iframe.style.height = h + 'px';
+            iframe.style.minHeight = h + 'px';
+          }
+          resizeIframe();
+          window.addEventListener('resize', resizeIframe);
+
+          // Also listen for height messages from the iframe
           window.addEventListener('message', function(e) {
-            if (e.data && e.data.height && iframe) {
-              iframe.style.minHeight = Math.max(700, e.data.height) + 'px';
+            if (e.data && typeof e.data.height === 'number') {
+              var minH = Math.max(window.innerHeight - 120, 600);
+              iframe.style.height = Math.max(minH, e.data.height) + 'px';
+              iframe.style.minHeight = iframe.style.height;
             }
           });
-          resizeObserver.disconnect();
+
+          observer.disconnect();
         }
       });
-      resizeObserver.observe(container, { childList: true, subtree: true });
+      observer.observe(container, { childList: true, subtree: true });
 
-      // Add the selected tickets to cart
+      // Add tickets to cart
       for (var i = 0; i < qty; i++) {
         window.ShopInjector.shop.sendMessage({
           action: 'add',

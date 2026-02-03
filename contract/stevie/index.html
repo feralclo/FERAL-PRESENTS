@@ -1284,8 +1284,32 @@
   async function syncSignedToCloud(contractId, updateData) {
     if (!dbClient) return;
     try {
-      await dbClient.from('contracts').update(updateData).eq('id', contractId);
-      console.log('[DB] Signed contract synced to cloud');
+      // First fetch the existing contract from cloud
+      var res = await dbClient.from('contracts').select('*').eq('id', contractId).single();
+      if (res.error || !res.data) {
+        console.error('[DB] Could not fetch contract:', res.error);
+        return;
+      }
+      var existing = res.data;
+      // Merge signed data into the existing record
+      existing.signed = true;
+      existing._sig_promoter = updateData.promoter_sig || null;
+      existing.promoter_company = updateData.promoter_company || null;
+      existing.promoter_address = updateData.promoter_address || null;
+      existing.promoter_email = updateData.promoter_email || null;
+      existing.promoter_phone = updateData.promoter_phone || null;
+      // Store extra signed fields in the data JSONB
+      if (existing.data && typeof existing.data === 'object') {
+        existing.data._signed = true;
+        existing.data._signed_at = updateData.signed_at;
+        existing.data._signed_by = updateData.signed_by;
+      }
+      var upRes = await dbClient.from('contracts').upsert(existing, { onConflict: 'id' });
+      if (upRes.error) {
+        console.error('[DB] Upsert error:', upRes.error);
+      } else {
+        console.log('[DB] Signed contract synced to cloud');
+      }
     } catch(e) {
       console.error('[DB] Cloud sync error:', e);
     }

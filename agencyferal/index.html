@@ -1769,22 +1769,28 @@
     if (!dbReady) return;
     // Upsert all contracts to Supabase
     contracts.forEach(function(c) {
+      // Store signed_by/signed_at inside data JSONB so they survive round-trips
+      var dataToSave = Object.assign({}, c.data || {});
+      if (c.signed_by) dataToSave._signed_by = c.signed_by;
+      if (c.signed_at) dataToSave._signed_at = c.signed_at;
+      if (c.signed) dataToSave._signed = true;
+
       dbClient.from('contracts').upsert({
         id: c.id,
         ref: c.ref,
-        data: c.data,
+        data: dataToSave,
         status: c.status,
         created: c.created,
         sent: c.sent,
-        signed: c.signed,
+        signed: c.signed || false,
         booking_fee_received: c.booking_fee_received || false,
         artist_fee_received: c.artist_fee_received || false,
-        promoter_link: c.promoter_link,
+        promoter_link: c.promoter_link || null,
         promoter_company: c.promoter_company || null,
         promoter_address: c.promoter_address || null,
         promoter_email: c.promoter_email || null,
         promoter_phone: c.promoter_phone || null,
-        _sig_promoter: c._sig_promoter || null
+        _sig_promoter: c.promoter_sig || c._sig_promoter || null
       }, { onConflict: 'id' }).then(function(res) {
         if (res.error) console.error('[DB] Contract save error:', res.error);
       });
@@ -1827,8 +1833,17 @@
       // Load contracts
       var cRes = await dbClient.from('contracts').select('*');
       if (cRes.data && cRes.data.length > 0) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cRes.data));
-        console.log('[DB] Loaded ' + cRes.data.length + ' contracts from cloud');
+        // Map Supabase column names to local field names
+        var mapped = cRes.data.map(function(c) {
+          // Extract signed metadata from data JSONB if present
+          if (c.data && c.data._signed_by) c.signed_by = c.data._signed_by;
+          if (c.data && c.data._signed_at) c.signed_at = c.data._signed_at;
+          // Map _sig_promoter column to promoter_sig for local use
+          if (c._sig_promoter) c.promoter_sig = c._sig_promoter;
+          return c;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+        console.log('[DB] Loaded ' + mapped.length + ' contracts from cloud');
       }
       // Load settings
       var sRes = await dbClient.from('settings').select('*').eq('id', 'main').single();
@@ -2579,7 +2594,7 @@
     var fullData = Object.assign({}, c.data);
     if (c.signed) fullData._signed = true;
     if (c.signed_by) fullData.promoter_print_name = c.signed_by;
-    if (c.promoter_sig) fullData._sig_promoter = c.promoter_sig;
+    if (c.promoter_sig || c._sig_promoter) fullData._sig_promoter = c.promoter_sig || c._sig_promoter;
     if (c.promoter_company) fullData._promoter_company = c.promoter_company;
     if (c.promoter_address) fullData._promoter_address = c.promoter_address;
     if (c.promoter_email) fullData._promoter_email = c.promoter_email;

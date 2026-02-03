@@ -405,19 +405,8 @@
       }
     }
   </style>
-  <!-- Google Tag Manager -->
-  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-  })(window,document,'script','dataLayer','GTM-MPZMXXBD');</script>
-  <!-- End Google Tag Manager -->
 </head>
 <body>
-  <!-- Google Tag Manager (noscript) -->
-  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MPZMXXBD"
-  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-  <!-- End Google Tag Manager (noscript) -->
 
   <!-- Loading Interstitial -->
   <div class="loading-screen" id="loadingScreen">
@@ -480,30 +469,13 @@
 
   <script src="https://v1.widget.shop.eventix.io/injector.js"></script>
   <script>
-    // dataLayer initialisation
-    window.dataLayer = window.dataLayer || [];
-
     (async function() {
       var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
       var TICKET_ID = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
-      var TICKET_PRICE_BASE = 24.50;
-      var BOOKING_FEE_RATE = 0.08;
-      var TICKET_PRICE = Math.round(TICKET_PRICE_BASE * (1 + BOOKING_FEE_RATE) * 100) / 100;
       var TIMER_SECONDS = (8 * 60) + 2; // 8 minutes 2 seconds (offset for embed timer)
 
       var params = new URLSearchParams(window.location.search);
       var qty = parseInt(params.get('qty')) || 1;
-
-      // --- dataLayer: InitiateCheckout on checkout page load ---
-      window.dataLayer.push({
-        event: 'initiate_checkout',
-        content_name: 'FERAL Liverpool — 27 March 2026',
-        content_ids: [TICKET_ID],
-        content_type: 'product',
-        value: qty * TICKET_PRICE,
-        currency: 'GBP',
-        num_items: qty
-      });
 
       // --- Update order summary ---
       var summaryQty = document.getElementById('summaryQty');

@@ -521,6 +521,96 @@
       gap: 12px;
     }
 
+    /* Signature pad in create form */
+    .form-sig {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .form-sig__canvas-wrap {
+      border: 1px solid var(--border);
+      position: relative;
+      height: 100px;
+      margin-bottom: 8px;
+      background: var(--surface);
+      cursor: crosshair;
+    }
+
+    .form-sig__canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .form-sig__clear {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .form-sig__clear:hover {
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    /* Payment toggles */
+    .payment-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border: 1px solid;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: none;
+      white-space: nowrap;
+    }
+
+    .payment-toggle--unpaid {
+      color: var(--text-dim);
+      border-color: var(--border);
+    }
+
+    .payment-toggle--unpaid:hover {
+      border-color: var(--text-muted);
+      color: var(--text-muted);
+    }
+
+    .payment-toggle--paid {
+      color: var(--green);
+      border-color: rgba(0, 204, 102, 0.3);
+    }
+
+    .payment-toggle--paid:hover {
+      border-color: var(--green);
+    }
+
+    .payments-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Reference number */
+    .ref-num {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+
     /* ====== VIEW CONTRACT ====== */
     .view-contract { display: none; }
     .view-contract.active { display: block; }
@@ -1044,6 +1134,15 @@
         </div>
       </div>
 
+      <!-- Agency Signature -->
+      <div class="form-sig">
+        <label class="form-label">Your Signature (Agency)</label>
+        <div class="form-sig__canvas-wrap">
+          <canvas id="createSigCanvas"></canvas>
+        </div>
+        <button type="button" class="form-sig__clear" id="createSigClear">Clear</button>
+      </div>
+
       <div class="form-actions">
         <button class="btn btn--red" onclick="saveAndSendContract()">Save & Generate Link</button>
         <button class="btn btn--dark" onclick="saveDraft()">Save as Draft</button>
@@ -1265,6 +1364,95 @@
   var editingContractId = null;
 
   // ============================================
+  // SIGNATURE PAD (create form)
+  // ============================================
+  var createSigCanvas = document.getElementById('createSigCanvas');
+  var createSigCtx = createSigCanvas.getContext('2d');
+  var sigDrawing = false;
+  var sigLastX, sigLastY;
+
+  function resizeCreateSig() {
+    var wrap = createSigCanvas.parentElement;
+    var data = createSigCanvas.toDataURL();
+    createSigCanvas.width = wrap.offsetWidth;
+    createSigCanvas.height = wrap.offsetHeight;
+    if (data && data !== 'data:,') {
+      var img = new Image();
+      img.onload = function() { createSigCtx.drawImage(img, 0, 0); };
+      img.src = data;
+    }
+    createSigCtx.strokeStyle = '#fff';
+    createSigCtx.lineWidth = 2;
+    createSigCtx.lineCap = 'round';
+    createSigCtx.lineJoin = 'round';
+  }
+
+  function getSigPos(e) {
+    var rect = createSigCanvas.getBoundingClientRect();
+    var touch = e.touches ? e.touches[0] : e;
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+  }
+
+  createSigCanvas.addEventListener('mousedown', function(e) { e.preventDefault(); sigDrawing = true; var p = getSigPos(e); sigLastX = p.x; sigLastY = p.y; });
+  createSigCanvas.addEventListener('mousemove', function(e) { if (!sigDrawing) return; e.preventDefault(); var p = getSigPos(e); createSigCtx.beginPath(); createSigCtx.moveTo(sigLastX, sigLastY); createSigCtx.lineTo(p.x, p.y); createSigCtx.stroke(); sigLastX = p.x; sigLastY = p.y; });
+  createSigCanvas.addEventListener('mouseup', function() { sigDrawing = false; });
+  createSigCanvas.addEventListener('mouseleave', function() { sigDrawing = false; });
+  createSigCanvas.addEventListener('touchstart', function(e) { e.preventDefault(); sigDrawing = true; var p = getSigPos(e); sigLastX = p.x; sigLastY = p.y; }, { passive: false });
+  createSigCanvas.addEventListener('touchmove', function(e) { if (!sigDrawing) return; e.preventDefault(); var p = getSigPos(e); createSigCtx.beginPath(); createSigCtx.moveTo(sigLastX, sigLastY); createSigCtx.lineTo(p.x, p.y); createSigCtx.stroke(); sigLastX = p.x; sigLastY = p.y; }, { passive: false });
+  createSigCanvas.addEventListener('touchend', function() { sigDrawing = false; });
+
+  document.getElementById('createSigClear').addEventListener('click', function() {
+    createSigCtx.clearRect(0, 0, createSigCanvas.width, createSigCanvas.height);
+  });
+
+  // Resize on view change (since canvas may be hidden initially)
+  var sigResizeObserver = new MutationObserver(function() {
+    if (document.getElementById('createView').classList.contains('active')) {
+      setTimeout(resizeCreateSig, 50);
+    }
+  });
+  sigResizeObserver.observe(document.getElementById('createView'), { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('resize', resizeCreateSig);
+
+  function getCreateSigData() {
+    return createSigCanvas.toDataURL();
+  }
+
+  function clearCreateSig() {
+    createSigCtx.clearRect(0, 0, createSigCanvas.width, createSigCanvas.height);
+  }
+
+  function restoreCreateSig(dataUrl) {
+    if (!dataUrl || dataUrl === 'data:,') return;
+    var img = new Image();
+    img.onload = function() {
+      createSigCtx.clearRect(0, 0, createSigCanvas.width, createSigCanvas.height);
+      createSigCtx.drawImage(img, 0, 0);
+    };
+    img.src = dataUrl;
+  }
+
+  // ============================================
+  // REFERENCE NUMBER
+  // ============================================
+  function generateRefNumber() {
+    var contracts = getContracts();
+    var maxNum = 0;
+    contracts.forEach(function(c) {
+      if (c.ref) {
+        var match = c.ref.match(/AF-(\d+)/);
+        if (match) {
+          var num = parseInt(match[1]);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+    });
+    var next = maxNum + 1;
+    var padded = ('0000' + next).slice(-4);
+    return 'AF-' + padded;
+  }
+
+  // ============================================
   // AUTH
   // ============================================
   function isAuthed() {
@@ -1322,6 +1510,7 @@
     });
     dpAgreement.clear();
     dpEvent.clear();
+    clearCreateSig();
     showView('createView');
   }
 
@@ -1354,23 +1543,27 @@
       booking_fee: document.getElementById('fBookingFee').value,
       artist_fee: document.getElementById('fArtistFee').value,
       fee_due_date: document.getElementById('fFeeDue').value,
-      catering_buyout: document.getElementById('fCatering').value
+      catering_buyout: document.getElementById('fCatering').value,
+      _sig_agency: getCreateSigData()
     };
   }
 
   function saveDraft() {
     var data = collectFormData();
     var contracts = getContracts();
+    var existingContract = editingContractId ? contracts.find(function(c) { return c.id === editingContractId; }) : null;
     var contract = {
       id: editingContractId || generateId(),
+      ref: existingContract ? existingContract.ref : generateRefNumber(),
       data: data,
       status: 'draft',
-      created: new Date().toISOString(),
+      created: existingContract ? existingContract.created : new Date().toISOString(),
       sent: null,
       signed: false,
+      booking_fee_received: existingContract ? (existingContract.booking_fee_received || false) : false,
+      artist_fee_received: existingContract ? (existingContract.artist_fee_received || false) : false,
       promoter_link: null
     };
-    // Update or add
     var idx = contracts.findIndex(function(c) { return c.id === contract.id; });
     if (idx >= 0) { contracts[idx] = contract; }
     else { contracts.unshift(contract); }
@@ -1388,17 +1581,23 @@
 
     var contracts = getContracts();
     var contractId = editingContractId || generateId();
+    var existingContract = editingContractId ? contracts.find(function(c) { return c.id === editingContractId; }) : null;
+    var ref = existingContract ? existingContract.ref : generateRefNumber();
+
     var encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
     var base = window.location.origin;
     var promoterLink = base + '/contract/stevie/?sign=' + contractId + '&d=' + encodedData;
 
     var contract = {
       id: contractId,
+      ref: ref,
       data: data,
       status: 'sent',
-      created: new Date().toISOString(),
+      created: existingContract ? existingContract.created : new Date().toISOString(),
       sent: new Date().toISOString(),
       signed: false,
+      booking_fee_received: existingContract ? (existingContract.booking_fee_received || false) : false,
+      artist_fee_received: existingContract ? (existingContract.artist_fee_received || false) : false,
       promoter_link: promoterLink
     };
 
@@ -1407,11 +1606,23 @@
     else { contracts.unshift(contract); }
     saveContracts(contracts);
 
-    // Show send animation
     showSendAnimation(function() {
       document.getElementById('linkModalUrl').value = promoterLink;
       document.getElementById('linkModal').classList.add('active');
     });
+  }
+
+  // ============================================
+  // PAYMENT TRACKING
+  // ============================================
+  function togglePayment(contractId, field) {
+    var contracts = getContracts();
+    var c = contracts.find(function(x) { return x.id === contractId; });
+    if (!c) return;
+    c[field] = !c[field];
+    saveContracts(contracts);
+    renderContracts();
+    showToast(field === 'booking_fee_received' ? 'Booking fee updated' : 'Artist fee updated');
   }
 
   // ============================================
@@ -1440,7 +1651,7 @@
     }
 
     var html = '<table class="contract-table"><thead><tr>';
-    html += '<th>Artist</th><th>Promoter / Event</th><th>Date</th><th>Status</th><th>Actions</th>';
+    html += '<th>Ref</th><th>Artist</th><th>Promoter / Event</th><th>Date</th><th>Status</th><th>Payments</th><th>Actions</th>';
     html += '</tr></thead><tbody>';
 
     contracts.forEach(function(c) {
@@ -1449,13 +1660,25 @@
       if (c.signed) { statusClass = 'signed'; statusLabel = 'Signed'; }
       else if (c.status === 'sent') { statusClass = 'sent'; statusLabel = 'Sent'; }
 
+      var bfPaid = c.booking_fee_received;
+      var afPaid = c.artist_fee_received;
+
       html += '<tr>';
+      html += '<td data-label="Ref"><span class="ref-num">' + (c.ref || '—') + '</span></td>';
       html += '<td data-label="Artist" class="mono">' + (c.data.artist_name || '—') + '</td>';
       html += '<td data-label="Event"><strong>' + (c.data.promoter_name || '—') + '</strong><br><span style="color:var(--text-muted);font-size:12px;">' + (c.data.event_name || '') + '</span></td>';
       html += '<td data-label="Date" class="mono" style="font-size:11px;color:var(--text-muted);">' + (c.data.event_date || '—') + '</td>';
       html += '<td data-label="Status"><span class="status-badge status-badge--' + statusClass + '"><span class="status-badge__dot"></span>' + statusLabel + '</span></td>';
-      html += '<td data-label="Actions"><div class="actions-cell">';
 
+      // Payments column
+      html += '<td data-label="Payments"><div class="payments-cell">';
+      html += '<button class="payment-toggle payment-toggle--' + (bfPaid ? 'paid' : 'unpaid') + '" onclick="togglePayment(\'' + c.id + '\',\'booking_fee_received\')">';
+      html += (bfPaid ? '&#10003; ' : '') + 'Booking Fee</button>';
+      html += '<button class="payment-toggle payment-toggle--' + (afPaid ? 'paid' : 'unpaid') + '" onclick="togglePayment(\'' + c.id + '\',\'artist_fee_received\')">';
+      html += (afPaid ? '&#10003; ' : '') + 'Artist Fee</button>';
+      html += '</div></td>';
+
+      html += '<td data-label="Actions"><div class="actions-cell">';
       if (c.promoter_link) {
         html += '<button class="btn btn--outline btn--small" onclick="copyContractLink(\'' + c.id + '\')">Copy Link</button>';
       }
@@ -1491,6 +1714,11 @@
     document.getElementById('fFeeDue').value = c.data.fee_due_date || '';
     document.getElementById('fCatering').value = c.data.catering_buyout || '';
     showView('createView');
+    // Restore signature after view is visible
+    setTimeout(function() {
+      resizeCreateSig();
+      restoreCreateSig(c.data._sig_agency || '');
+    }, 100);
   }
 
   function deleteContract(id) {
@@ -1547,7 +1775,6 @@
   // ============================================
   function showSendAnimation(callback) {
     var overlay = document.getElementById('sendOverlay');
-    // Reset animations by cloning
     var parent = overlay.parentNode;
     var clone = overlay.cloneNode(true);
     parent.replaceChild(clone, overlay);

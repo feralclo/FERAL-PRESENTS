@@ -1485,6 +1485,25 @@
       return;
     }
 
+    // Mark contract as signed in localStorage (for dashboard sync)
+    var params = new URLSearchParams(window.location.search);
+    var contractId = params.get('sign');
+    if (contractId) {
+      try {
+        var STORAGE_KEY = 'agencyferal_contracts';
+        var contracts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        var idx = contracts.findIndex(function(c) { return c.id === contractId; });
+        if (idx >= 0) {
+          contracts[idx].signed = true;
+          contracts[idx].signed_at = new Date().toISOString();
+          contracts[idx].signed_by = name.textContent.trim();
+          // Save promoter signature data
+          contracts[idx].promoter_sig = sigPromoter.canvas.toDataURL();
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+        }
+      } catch(e) { /* localStorage may not be available on different domain */ }
+    }
+
     // Show signed overlay animation
     var overlay = document.getElementById('signedOverlay');
     var parent = overlay.parentNode;

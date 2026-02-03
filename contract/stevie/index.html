@@ -952,6 +952,36 @@
       text-transform: uppercase;
       color: #ccc;
     }
+
+    /* Print styles — preserve black background and all colors */
+    html, body {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    @media print {
+      html, body {
+        background: #000 !important;
+        color: #fff !important;
+      }
+      body::before, body::after {
+        display: none !important;
+      }
+      .contract-wrapper {
+        padding: 20px 30px !important;
+      }
+      .signed-overlay {
+        display: none !important;
+      }
+      @page {
+        margin: 0.5cm;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1792,7 +1822,45 @@
     document.getElementById('sigCanvasPromoter').style.pointerEvents = 'none';
     var clears = document.querySelectorAll('.sig-clear');
     clears.forEach(function(b) { b.style.display = 'none'; });
-    document.getElementById('statusText').textContent = 'View Only';
+
+    // Restore promoter signature if contract was signed
+    if (data._sig_promoter) {
+      var promImg = new Image();
+      promImg.onload = function() {
+        sigPromoter.ctx.clearRect(0, 0, sigPromoter.canvas.width, sigPromoter.canvas.height);
+        sigPromoter.ctx.drawImage(promImg, 0, 0);
+      };
+      promImg.src = data._sig_promoter;
+    }
+
+    // Show promoter sign date if signed
+    if (data._signed_at) {
+      var signDate = document.querySelector('[data-field="promoter_sign_date"]');
+      if (signDate && !signDate.textContent.trim()) {
+        var d = new Date(data._signed_at);
+        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        signDate.textContent = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+      }
+    }
+
+    // Show promoter details section if we have them
+    if (data._promoter_company || data._promoter_email) {
+      var pdSection = document.getElementById('promoterDetails');
+      if (pdSection) {
+        pdSection.classList.add('visible');
+        var pdCompanyEl = document.getElementById('pdCompany');
+        var pdAddressEl = document.getElementById('pdAddress');
+        var pdEmailEl = document.getElementById('pdEmail');
+        var pdPhoneEl = document.getElementById('pdPhone');
+        if (pdCompanyEl) { pdCompanyEl.value = data._promoter_company || ''; pdCompanyEl.disabled = true; }
+        if (pdAddressEl) { pdAddressEl.value = data._promoter_address || ''; pdAddressEl.disabled = true; }
+        if (pdEmailEl) { pdEmailEl.value = data._promoter_email || ''; pdEmailEl.disabled = true; }
+        if (pdPhoneEl) { pdPhoneEl.value = data._promoter_phone || ''; pdPhoneEl.disabled = true; }
+      }
+    }
+
+    var statusLabel = data._signed ? 'Signed' : 'View Only';
+    document.getElementById('statusText').textContent = statusLabel;
     document.getElementById('actionsBar').innerHTML =
       '<button class="btn-contract btn-contract--secondary" onclick="window.print()">Print Contract</button>';
   }

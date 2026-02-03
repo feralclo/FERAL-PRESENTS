@@ -2499,7 +2499,17 @@
     var contracts = getContracts();
     var c = contracts.find(function(x) { return x.id === id; });
     if (!c) return;
-    var encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(c.data))));
+    // Merge signed data into the contract data for the view
+    var fullData = Object.assign({}, c.data);
+    if (c.signed) fullData._signed = true;
+    if (c.signed_by) fullData.promoter_print_name = c.signed_by;
+    if (c.promoter_sig) fullData._sig_promoter = c.promoter_sig;
+    if (c.promoter_company) fullData._promoter_company = c.promoter_company;
+    if (c.promoter_address) fullData._promoter_address = c.promoter_address;
+    if (c.promoter_email) fullData._promoter_email = c.promoter_email;
+    if (c.promoter_phone) fullData._promoter_phone = c.promoter_phone;
+    if (c.signed_at) fullData._signed_at = c.signed_at;
+    var encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(fullData))));
     var url = window.location.origin + '/contract/stevie/?view=' + c.id + '&d=' + encodedData;
     window.open(url, '_blank');
   }

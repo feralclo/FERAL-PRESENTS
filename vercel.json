@@ -1,0 +1,33 @@
+{
+  "rewrites": [
+    {
+      "source": "/login",
+      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
+      "destination": "/agencyferal/index.html"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
+      "destination": "/agencyferal/index.html"
+    },
+    {
+      "source": "/contract/:path*",
+      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
+      "destination": "/contract/:path*"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/agencyferal",
+      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/agencyferal/",
+      "has": [{ "type": "host", "value": "(?:www\\.)?agencyferal\\.com" }],
+      "destination": "/",
+      "permanent": false
+    }
+  ]
+}

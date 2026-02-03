@@ -196,6 +196,28 @@
       color: var(--red);
     }
 
+    .topbar__settings {
+      background: none;
+      border: 1px solid var(--border-light);
+      color: var(--text-muted);
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .topbar__settings:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .topbar__settings svg {
+      width: 14px;
+      height: 14px;
+    }
+
     /* ====== DASHBOARD ====== */
     .dash {
       max-width: 1100px;
@@ -244,6 +266,8 @@
     .btn--outline { background: none; border: 1px solid var(--border-light); color: var(--text-muted); }
     .btn--outline:hover { border-color: var(--red); color: var(--red); }
     .btn--small { padding: 8px 16px; font-size: 9px; }
+    .btn--green { background: var(--green); color: var(--black); }
+    .btn--green:hover { background: #00aa55; }
 
     /* Roster section */
     .roster {
@@ -398,6 +422,7 @@
     .actions-cell {
       display: flex;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     @media (max-width: 768px) {
@@ -967,6 +992,107 @@
       background: rgba(255, 0, 51, 0.06);
     }
 
+    /* ====== SETTINGS VIEW ====== */
+    .settings-content {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    @media (max-width: 600px) { .settings-content { padding: 24px 16px; } }
+
+    .settings-section {
+      margin-bottom: 40px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .settings-section__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--red);
+    }
+
+    .settings-section__lock {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-section__lock svg {
+      flex-shrink: 0;
+    }
+
+    .bank-password-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .bank-password-row .form-input { flex: 1; }
+
+    .bank-password-row .btn { flex-shrink: 0; }
+
+    /* ====== ARTIST PROFILE VIEW ====== */
+    .profile-content {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    @media (max-width: 600px) { .profile-content { padding: 24px 16px; } }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      background: var(--red);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+    }
+
+    .profile-name {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .profile-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
     /* Print styles */
     @media print {
       body::before, body::after { display: none; }
@@ -1002,6 +1128,9 @@
       </div>
       <div class="topbar__right">
         <span class="topbar__user" id="topbarUser"></span>
+        <button class="topbar__settings" onclick="showSettings()" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
         <button class="topbar__logout" onclick="logout()">Logout</button>
       </div>
     </div>
@@ -1023,6 +1152,137 @@
           Contracts <span class="contracts-section__count" id="contractCount">0</span>
         </div>
         <div id="contractsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== ARTIST PROFILE VIEW ====== -->
+  <div class="view" id="profileView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">Artist Profile</span>
+      </div>
+      <div class="topbar__right">
+        <button class="topbar__logout" onclick="showDash()">Back</button>
+      </div>
+    </div>
+
+    <div class="profile-content">
+      <button class="create-form__back" onclick="showDash()">&larr; Back to Dashboard</button>
+
+      <div class="profile-header">
+        <div class="profile-avatar" id="profileAvatar"></div>
+        <div>
+          <div class="profile-name" id="profileName"></div>
+          <div class="profile-sub">FERAL Roster Artist</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section__title">Artist Bank Details</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono);letter-spacing:1px;">These details will appear on the Artist Fee Invoice.</p>
+        <div class="form-group">
+          <label class="form-label">Bank Name</label>
+          <input type="text" class="form-input" id="artistBankName" placeholder="e.g., Monzo, Barclays">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Sort Code</label>
+            <input type="text" class="form-input" id="artistSortCode" placeholder="00-00-00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Account Number</label>
+            <input type="text" class="form-input" id="artistAccNumber" placeholder="00000000">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Account Holder</label>
+          <input type="text" class="form-input" id="artistAccHolder" placeholder="Full name on account">
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn--red" onclick="saveArtistProfile()">Save Artist Details</button>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <button class="btn btn--red" id="profileCreateBtn">Create Contract</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SETTINGS VIEW ====== -->
+  <div class="view" id="settingsView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">Settings</span>
+      </div>
+      <div class="topbar__right">
+        <button class="topbar__logout" onclick="showDash()">Back</button>
+      </div>
+    </div>
+
+    <div class="settings-content">
+      <button class="create-form__back" onclick="showDash()">&larr; Back to Dashboard</button>
+      <div class="create-form__title" style="margin-bottom:32px;">Agency Settings</div>
+
+      <!-- Rep Info -->
+      <div class="settings-section">
+        <div class="settings-section__title">Representative Info</div>
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="setRepName" placeholder="Your full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="setRepEmail" placeholder="email@agencyferal.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" class="form-input" id="setRepPhone" placeholder="+44 7000 000000">
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn--red" onclick="saveRepInfo()">Save Rep Info</button>
+        </div>
+      </div>
+
+      <!-- Bank Details -->
+      <div class="settings-section">
+        <div class="settings-section__title">Agency Bank Details</div>
+        <div class="settings-section__lock">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Bank details require a separate password to edit</span>
+        </div>
+        <div class="bank-password-row" id="bankPassRow">
+          <input type="password" class="form-input" id="bankPassInput" placeholder="Enter bank details password">
+          <button class="btn btn--red" onclick="unlockBankDetails()">Unlock</button>
+        </div>
+        <div id="bankFieldsContainer" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">Bank Name</label>
+            <input type="text" class="form-input" id="setBankName" placeholder="e.g., Monzo, Barclays">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Sort Code</label>
+              <input type="text" class="form-input" id="setBankSort" placeholder="00-00-00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Account Number</label>
+              <input type="text" class="form-input" id="setBankAcc" placeholder="00000000">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Account Holder</label>
+            <input type="text" class="form-input" id="setBankHolder" placeholder="Full name on account">
+          </div>
+          <div style="margin-top:16px;">
+            <button class="btn btn--red" onclick="saveBankDetails()">Save Bank Details</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1134,9 +1394,18 @@
         </div>
       </div>
 
-      <!-- Agency Signature -->
+      <!-- Print Name + Date before Signature -->
       <div class="form-sig">
-        <label class="form-label">Your Signature (Agency)</label>
+        <div class="form-group">
+          <label class="form-label">Print Name (Agency)</label>
+          <input type="text" class="form-input" id="fAgencyPrintName" placeholder="Full name of signatory">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Signing Date</label>
+          <input type="text" class="form-input" id="fAgencySignDate" placeholder="Date" readonly style="cursor:default;">
+        </div>
+
+        <label class="form-label" style="margin-top:20px;">Your Signature (Agency)</label>
         <div class="form-sig__canvas-wrap">
           <canvas id="createSigCanvas"></canvas>
         </div>
@@ -1325,6 +1594,16 @@
         viewMonth = now.getMonth();
         viewYear = now.getFullYear();
         render();
+      },
+      setToToday: function() {
+        selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        viewMonth = now.getMonth();
+        viewYear = now.getFullYear();
+        textEl.textContent = formatDate(selectedDate);
+        render();
+      },
+      formatNow: function() {
+        return formatDate(now);
       }
     };
   }
@@ -1352,6 +1631,9 @@
   var CREDS = { user: 'Kaia', pass: 'fuckingferal' };
   var STORAGE_KEY = 'agencyferal_contracts';
   var AUTH_KEY = 'agencyferal_auth';
+  var SETTINGS_KEY = 'agencyferal_settings';
+  var ARTISTS_KEY = 'agencyferal_artists';
+  var BANK_PASS = 'Parker5656!';
 
   var ROSTER = [
     { id: 'stevie', name: 'STEVIE' }
@@ -1362,6 +1644,7 @@
   // ============================================
   var currentArtist = null;
   var editingContractId = null;
+  var bankUnlocked = false;
 
   // ============================================
   // SIGNATURE PAD (create form)
@@ -1453,6 +1736,20 @@
   }
 
   // ============================================
+  // DATE HELPERS
+  // ============================================
+  function getTodayFormatted() {
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var now = new Date();
+    var d = now.getDate();
+    var s = 'th';
+    if (d === 1 || d === 21 || d === 31) s = 'st';
+    else if (d === 2 || d === 22) s = 'nd';
+    else if (d === 3 || d === 23) s = 'rd';
+    return d + s + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+  }
+
+  // ============================================
   // AUTH
   // ============================================
   function isAuthed() {
@@ -1474,6 +1771,7 @@
 
   function logout() {
     sessionStorage.removeItem(AUTH_KEY);
+    bankUnlocked = false;
     showView('loginView');
   }
 
@@ -1505,13 +1803,131 @@
     editingContractId = null;
     document.getElementById('createArtistLabel').textContent = 'Artist: ' + currentArtist.name;
     // Clear form
-    ['fPromoter','fEventName','fVenue','fPerfTime','fBookingFee','fArtistFee','fFeeDue','fCatering'].forEach(function(id) {
+    ['fPromoter','fEventName','fVenue','fPerfTime','fBookingFee','fArtistFee','fFeeDue','fCatering','fAgencyPrintName'].forEach(function(id) {
       document.getElementById(id).value = '';
     });
     dpAgreement.clear();
     dpEvent.clear();
     clearCreateSig();
+
+    // Auto-fill agreement date and sign date to today for new contracts
+    dpAgreement.setToToday();
+    document.getElementById('fAgencySignDate').value = getTodayFormatted();
+
     showView('createView');
+  }
+
+  // ============================================
+  // SETTINGS
+  // ============================================
+  function getSettings() {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
+    catch(e) { return {}; }
+  }
+
+  function saveSettingsData(data) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+  }
+
+  function showSettings() {
+    var s = getSettings();
+    document.getElementById('setRepName').value = s.rep_name || '';
+    document.getElementById('setRepEmail').value = s.rep_email || '';
+    document.getElementById('setRepPhone').value = s.rep_phone || '';
+
+    // Reset bank lock state
+    bankUnlocked = false;
+    document.getElementById('bankPassRow').style.display = 'flex';
+    document.getElementById('bankFieldsContainer').style.display = 'none';
+    document.getElementById('bankPassInput').value = '';
+
+    showView('settingsView');
+  }
+
+  function saveRepInfo() {
+    var s = getSettings();
+    s.rep_name = document.getElementById('setRepName').value.trim();
+    s.rep_email = document.getElementById('setRepEmail').value.trim();
+    s.rep_phone = document.getElementById('setRepPhone').value.trim();
+    saveSettingsData(s);
+    showToast('Representative info saved');
+  }
+
+  function unlockBankDetails() {
+    var pass = document.getElementById('bankPassInput').value;
+    if (pass === BANK_PASS) {
+      bankUnlocked = true;
+      document.getElementById('bankPassRow').style.display = 'none';
+      document.getElementById('bankFieldsContainer').style.display = 'block';
+      // Load existing bank details
+      var s = getSettings();
+      document.getElementById('setBankName').value = s.bank_name || '';
+      document.getElementById('setBankSort').value = s.bank_sort || '';
+      document.getElementById('setBankAcc').value = s.bank_acc || '';
+      document.getElementById('setBankHolder').value = s.bank_holder || '';
+      showToast('Bank details unlocked');
+    } else {
+      showToast('Incorrect password');
+    }
+  }
+
+  function saveBankDetails() {
+    if (!bankUnlocked) return;
+    var s = getSettings();
+    s.bank_name = document.getElementById('setBankName').value.trim();
+    s.bank_sort = document.getElementById('setBankSort').value.trim();
+    s.bank_acc = document.getElementById('setBankAcc').value.trim();
+    s.bank_holder = document.getElementById('setBankHolder').value.trim();
+    saveSettingsData(s);
+    showToast('Bank details saved');
+  }
+
+  // ============================================
+  // ARTIST PROFILES
+  // ============================================
+  function getArtists() {
+    try { return JSON.parse(localStorage.getItem(ARTISTS_KEY)) || {}; }
+    catch(e) { return {}; }
+  }
+
+  function saveArtistsData(data) {
+    localStorage.setItem(ARTISTS_KEY, JSON.stringify(data));
+  }
+
+  function showArtistProfile(artistId) {
+    currentArtist = ROSTER.find(function(a) { return a.id === artistId; });
+    if (!currentArtist) return;
+
+    document.getElementById('profileName').textContent = currentArtist.name;
+    document.getElementById('profileAvatar').textContent = currentArtist.name.charAt(0);
+
+    // Load artist data
+    var artists = getArtists();
+    var a = artists[artistId] || {};
+    document.getElementById('artistBankName').value = a.bank_name || '';
+    document.getElementById('artistSortCode').value = a.sort_code || '';
+    document.getElementById('artistAccNumber').value = a.acc_number || '';
+    document.getElementById('artistAccHolder').value = a.acc_holder || '';
+
+    // Set up create contract button
+    document.getElementById('profileCreateBtn').onclick = function() {
+      showCreate(artistId);
+    };
+
+    showView('profileView');
+  }
+
+  function saveArtistProfile() {
+    if (!currentArtist) return;
+    var artists = getArtists();
+    artists[currentArtist.id] = {
+      bank_name: document.getElementById('artistBankName').value.trim(),
+      sort_code: document.getElementById('artistSortCode').value.trim(),
+      acc_number: document.getElementById('artistAccNumber').value.trim(),
+      acc_holder: document.getElementById('artistAccHolder').value.trim()
+    };
+    saveArtistsData(artists);
+    showToast('Artist details saved');
   }
 
   // ============================================
@@ -1544,6 +1960,8 @@
       artist_fee: document.getElementById('fArtistFee').value,
       fee_due_date: document.getElementById('fFeeDue').value,
       catering_buyout: document.getElementById('fCatering').value,
+      agency_print_name: document.getElementById('fAgencyPrintName').value,
+      agency_sign_date: document.getElementById('fAgencySignDate').value,
       _sig_agency: getCreateSigData()
     };
   }
@@ -1626,6 +2044,145 @@
   }
 
   // ============================================
+  // INVOICE GENERATION
+  // ============================================
+  function generateInvoiceHTML(type, contract) {
+    var settings = getSettings();
+    var artists = getArtists();
+    var artistData = artists[contract.data.artist_id] || {};
+    var d = contract.data;
+    var today = getTodayFormatted();
+    var isBooking = (type === 'booking');
+
+    var title = isBooking ? 'BOOKING FEE INVOICE' : 'ARTIST FEE INVOICE';
+    var amount = isBooking ? (d.booking_fee || 'N/A') : (d.artist_fee || 'N/A');
+    var paymentTerms = isBooking ? 'Due on receipt' : ('Due ' + (d.fee_due_date || 'as per contract'));
+
+    // Determine bank details
+    var bankName, bankSort, bankAcc, bankHolder;
+    if (isBooking) {
+      bankName = settings.bank_name || '';
+      bankSort = settings.bank_sort || '';
+      bankAcc = settings.bank_acc || '';
+      bankHolder = settings.bank_holder || '';
+    } else {
+      bankName = artistData.bank_name || '';
+      bankSort = artistData.sort_code || '';
+      bankAcc = artistData.acc_number || '';
+      bankHolder = artistData.acc_holder || '';
+    }
+
+    var warningHTML = '';
+    if (isBooking) {
+      warningHTML = '<div style="background:#ff0033;color:#fff;padding:20px 24px;margin:32px 0;font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:1px;line-height:1.8;font-weight:700;text-align:center;">THIS INVOICE MUST BE PAID IMMEDIATELY TO SECURE THE ARTIST.<br>PROMOTION OF THIS EVENT IS NOT PERMITTED UNTIL PAYMENT IS RECEIVED.</div>';
+    } else {
+      warningHTML = '<div style="border:3px solid #ff0033;background:rgba(255,0,51,0.1);color:#ff0033;padding:20px 24px;margin:32px 0;font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:1px;line-height:1.8;font-weight:700;text-align:center;">IMPORTANT: DO NOT PAY THE ARTIST FEE INTO THE BOOKING FEE ACCOUNT.<br>PLEASE USE THE ARTIST BANK DETAILS BELOW.</div>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
+    html += '<title>' + title + ' - ' + (contract.ref || '') + '</title>';
+    html += '<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">';
+    html += '<style>';
+    html += '*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }';
+    html += 'body { background: #000; color: #fff; font-family: "Inter", sans-serif; line-height: 1.6; }';
+    html += '@media print { body { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .no-print { display: none !important; } }';
+    html += '</style></head><body>';
+    html += '<div style="max-width:700px;margin:0 auto;padding:48px 40px;">';
+
+    // Print/Download buttons
+    html += '<div class="no-print" style="display:flex;gap:12px;margin-bottom:32px;">';
+    html += '<button onclick="window.print()" style="padding:12px 24px;background:#ff0033;color:#fff;border:none;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">Print / Download PDF</button>';
+    html += '<button onclick="window.close()" style="padding:12px 24px;background:#111;color:#fff;border:1px solid #222;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Close</button>';
+    html += '</div>';
+
+    // Logo
+    html += '<div style="text-align:center;padding-bottom:32px;border-bottom:2px solid #fff;">';
+    html += '<img src="../images/FERAL%20LOGO.svg" alt="FERAL" style="height:48px;margin-bottom:24px;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:6px;text-transform:uppercase;font-weight:700;">' + title + '</div>';
+    html += '<div style="width:40px;height:2px;background:#ff0033;margin:16px auto 0;"></div>';
+    html += '</div>';
+
+    // Invoice meta
+    html += '<div style="display:flex;justify-content:space-between;margin-top:32px;padding:20px 24px;border:1px solid #222;background:#0a0a0a;">';
+    html += '<div><span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;display:block;">Reference</span><span style="font-family:\'Space Mono\',monospace;font-size:13px;">' + (contract.ref || 'N/A') + '</span></div>';
+    html += '<div style="text-align:right;"><span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;display:block;">Invoice Date</span><span style="font-family:\'Space Mono\',monospace;font-size:13px;">' + today + '</span></div>';
+    html += '</div>';
+
+    // From / To
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px;">';
+    html += '<div style="padding:20px 24px;border:1px solid #222;border-left:3px solid #ff0033;background:#0a0a0a;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#ff0033;margin-bottom:12px;">From</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">AGENCY FERAL</div>';
+    if (settings.rep_name) html += '<div style="font-size:13px;color:#ccc;">' + settings.rep_name + '</div>';
+    if (settings.rep_email) html += '<div style="font-size:13px;color:#888;">' + settings.rep_email + '</div>';
+    if (settings.rep_phone) html += '<div style="font-size:13px;color:#888;">' + settings.rep_phone + '</div>';
+    html += '</div>';
+
+    html += '<div style="padding:20px 24px;border:1px solid #222;border-left:3px solid #fff;background:#0a0a0a;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:12px;">To</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">' + (contract.promoter_company || d.promoter_name || 'N/A') + '</div>';
+    if (contract.promoter_address) html += '<div style="font-size:13px;color:#ccc;">' + contract.promoter_address + '</div>';
+    if (contract.promoter_email) html += '<div style="font-size:13px;color:#888;">' + contract.promoter_email + '</div>';
+    if (contract.promoter_phone) html += '<div style="font-size:13px;color:#888;">' + contract.promoter_phone + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Event details
+    html += '<div style="margin-top:24px;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #222;">Event Details</div>';
+    html += '<table style="width:100%;border-collapse:collapse;">';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;width:160px;">Event Name</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.event_name || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Event Date</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.event_date || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Artist</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.artist_name || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Venue</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.venue || 'N/A') + '</td></tr>';
+    html += '</table>';
+    html += '</div>';
+
+    // Amount
+    html += '<div style="margin-top:24px;padding:24px;border:2px solid #ff0033;background:rgba(255,0,51,0.05);text-align:center;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:8px;">' + (isBooking ? 'Booking Fee' : 'Artist Fee') + '</div>';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:28px;font-weight:700;color:#fff;">' + amount + '</div>';
+    html += '</div>';
+
+    // Warning
+    html += warningHTML;
+
+    // Bank details
+    html += '<div style="margin-top:24px;padding:20px 24px;border:1px solid #222;background:#0a0a0a;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#ff0033;margin-bottom:16px;">' + (isBooking ? 'Agency Bank Details' : 'Artist Bank Details') + '</div>';
+    html += '<table style="width:100%;border-collapse:collapse;">';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;width:160px;">Bank Name</td><td style="padding:8px 0;font-size:14px;">' + (bankName || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Sort Code</td><td style="padding:8px 0;font-size:14px;">' + (bankSort || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Account Number</td><td style="padding:8px 0;font-size:14px;">' + (bankAcc || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Account Holder</td><td style="padding:8px 0;font-size:14px;">' + (bankHolder || 'N/A') + '</td></tr>';
+    html += '</table>';
+    html += '</div>';
+
+    // Payment terms
+    html += '<div style="margin-top:24px;padding:16px 24px;border:1px solid #222;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:1px;color:#888;">';
+    html += 'Payment Terms: <span style="color:#fff;">' + paymentTerms + '</span>';
+    html += '</div>';
+
+    // Footer
+    html += '<div style="margin-top:48px;padding-top:16px;border-top:1px solid #222;text-align:center;font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#555;">';
+    html += '&copy; 2026 FERAL PRESENTS. All rights reserved. &mdash; Confidential Document';
+    html += '</div>';
+
+    html += '</div></body></html>';
+    return html;
+  }
+
+  function openInvoice(type, contractId) {
+    var contracts = getContracts();
+    var c = contracts.find(function(x) { return x.id === contractId; });
+    if (!c) { showToast('Contract not found'); return; }
+    var html = generateInvoiceHTML(type, c);
+    var w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+  }
+
+  // ============================================
   // RENDER
   // ============================================
   function renderRoster() {
@@ -1635,7 +2192,7 @@
       var card = document.createElement('div');
       card.className = 'roster__card';
       card.innerHTML = '<span class="roster__dot"></span><span class="roster__name">' + artist.name + '</span>';
-      card.addEventListener('click', function() { showCreate(artist.id); });
+      card.addEventListener('click', function() { showArtistProfile(artist.id); });
       grid.appendChild(card);
     });
   }
@@ -1686,6 +2243,11 @@
         html += '<button class="btn btn--outline btn--small" onclick="editContract(\'' + c.id + '\')">Edit</button>';
       }
       html += '<button class="btn btn--outline btn--small" onclick="viewContractPage(\'' + c.id + '\')">View</button>';
+      // Invoice buttons for signed contracts
+      if (c.signed) {
+        html += '<button class="btn btn--outline btn--small" style="color:var(--green);border-color:rgba(0,204,102,0.3);" onclick="openInvoice(\'booking\',\'' + c.id + '\')">Booking Invoice</button>';
+        html += '<button class="btn btn--outline btn--small" style="color:var(--green);border-color:rgba(0,204,102,0.3);" onclick="openInvoice(\'artist\',\'' + c.id + '\')">Artist Invoice</button>';
+      }
       html += '<button class="btn btn--outline btn--small" onclick="deleteContract(\'' + c.id + '\')" style="color:var(--red);border-color:rgba(255,0,51,0.3);">Delete</button>';
       html += '</div></td>';
       html += '</tr>';
@@ -1713,6 +2275,8 @@
     document.getElementById('fArtistFee').value = c.data.artist_fee || '';
     document.getElementById('fFeeDue').value = c.data.fee_due_date || '';
     document.getElementById('fCatering').value = c.data.catering_buyout || '';
+    document.getElementById('fAgencyPrintName').value = c.data.agency_print_name || '';
+    document.getElementById('fAgencySignDate').value = c.data.agency_sign_date || '';
     showView('createView');
     // Restore signature after view is visible
     setTimeout(function() {

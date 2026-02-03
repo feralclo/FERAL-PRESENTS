@@ -1,7 +1,19 @@
 {
   "exportFormatVersion": 2,
-  "exportTime": "2026-02-03 00:00:00",
+  "exportTime": "2026-02-03T00:00:00.000Z",
   "containerVersion": {
+    "path": "accounts/0/containers/0/versions/0",
+    "accountId": "0",
+    "containerId": "0",
+    "containerVersionId": "0",
+    "container": {
+      "path": "accounts/0/containers/0",
+      "accountId": "0",
+      "containerId": "0",
+      "name": "FERAL Meta Pixel",
+      "publicId": "GTM-XXXXXX",
+      "usageContext": ["WEB"]
+    },
     "tag": [
       {
         "accountId": "0",
@@ -21,9 +33,11 @@
             "value": "false"
           }
         ],
-        "firingTriggerId": ["2147479553"],
+        "firingTriggerId": [
+          "2147479553"
+        ],
         "tagFiringOption": "ONCE_PER_EVENT",
-        "notes": "Loads Meta Pixel base code on every page. Set your Pixel ID in the 'Meta Pixel ID' variable (Variables > User-Defined)."
+        "fingerprint": "1706900000001"
       },
       {
         "accountId": "0",
@@ -43,9 +57,11 @@
             "value": "false"
           }
         ],
-        "firingTriggerId": ["100"],
+        "firingTriggerId": [
+          "100"
+        ],
         "tagFiringOption": "ONCE_PER_EVENT",
-        "notes": "Fires Meta ViewContent when dataLayer event 'view_content' is pushed (product page + tickets page)."
+        "fingerprint": "1706900000002"
       },
       {
         "accountId": "0",
@@ -65,9 +81,11 @@
             "value": "false"
           }
         ],
-        "firingTriggerId": ["101"],
+        "firingTriggerId": [
+          "101"
+        ],
         "tagFiringOption": "ONCE_PER_EVENT",
-        "notes": "Fires Meta AddToCart when dataLayer event 'add_to_cart' is pushed (user clicks + button)."
+        "fingerprint": "1706900000003"
       },
       {
         "accountId": "0",
@@ -87,9 +105,11 @@
             "value": "false"
           }
         ],
-        "firingTriggerId": ["102"],
+        "firingTriggerId": [
+          "102"
+        ],
         "tagFiringOption": "ONCE_PER_EVENT",
-        "notes": "Fires Meta InitiateCheckout when dataLayer event 'initiate_checkout' is pushed (checkout button click or checkout page load)."
+        "fingerprint": "1706900000004"
       }
     ],
     "trigger": [
@@ -103,11 +123,20 @@
           {
             "type": "EQUALS",
             "parameter": [
-              { "type": "TEMPLATE", "key": "arg0", "value": "{{_event}}" },
-              { "type": "TEMPLATE", "key": "arg1", "value": "view_content" }
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "view_content"
+              }
             ]
           }
-        ]
+        ],
+        "fingerprint": "1706900000005"
       },
       {
         "accountId": "0",
@@ -119,11 +148,20 @@
           {
             "type": "EQUALS",
             "parameter": [
-              { "type": "TEMPLATE", "key": "arg0", "value": "{{_event}}" },
-              { "type": "TEMPLATE", "key": "arg1", "value": "add_to_cart" }
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "add_to_cart"
+              }
             ]
           }
-        ]
+        ],
+        "fingerprint": "1706900000006"
       },
       {
         "accountId": "0",
@@ -135,11 +173,20 @@
           {
             "type": "EQUALS",
             "parameter": [
-              { "type": "TEMPLATE", "key": "arg0", "value": "{{_event}}" },
-              { "type": "TEMPLATE", "key": "arg1", "value": "initiate_checkout" }
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "initiate_checkout"
+              }
             ]
           }
-        ]
+        ],
+        "fingerprint": "1706900000007"
       }
     ],
     "variable": [
@@ -156,7 +203,7 @@
             "value": "YOUR_PIXEL_ID_HERE"
           }
         ],
-        "notes": "CHANGE THIS to your Meta Pixel ID. Go to Variables > User-Defined > 'Meta Pixel ID' > edit the value."
+        "fingerprint": "1706900000008"
       },
       {
         "accountId": "0",
@@ -180,7 +227,8 @@
             "key": "name",
             "value": "content_name"
           }
-        ]
+        ],
+        "fingerprint": "1706900000009"
       },
       {
         "accountId": "0",
@@ -204,7 +252,8 @@
             "key": "name",
             "value": "content_ids"
           }
-        ]
+        ],
+        "fingerprint": "1706900000010"
       },
       {
         "accountId": "0",
@@ -228,7 +277,8 @@
             "key": "name",
             "value": "content_type"
           }
-        ]
+        ],
+        "fingerprint": "1706900000011"
       },
       {
         "accountId": "0",
@@ -252,7 +302,8 @@
             "key": "name",
             "value": "value"
           }
-        ]
+        ],
+        "fingerprint": "1706900000012"
       },
       {
         "accountId": "0",
@@ -276,7 +327,8 @@
             "key": "name",
             "value": "currency"
           }
-        ]
+        ],
+        "fingerprint": "1706900000013"
       },
       {
         "accountId": "0",
@@ -300,8 +352,10 @@
             "key": "name",
             "value": "num_items"
           }
-        ]
+        ],
+        "fingerprint": "1706900000014"
       }
-    ]
+    ],
+    "fingerprint": "1706900000000"
   }
 }

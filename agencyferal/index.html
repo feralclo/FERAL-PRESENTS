@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGENCY FERAL — Contract Management</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --black: #000000;
+      --white: #ffffff;
+      --red: #ff0033;
+      --red-dark: #cc0029;
+      --surface: #0a0a0a;
+      --surface-2: #111111;
+      --border: #1a1a1a;
+      --border-light: #222222;
+      --text: #ffffff;
+      --text-muted: #888888;
+      --text-dim: #555555;
+      --green: #00cc66;
+      --yellow: #ffaa00;
+      --font-mono: 'Space Mono', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    html { -webkit-font-smoothing: antialiased; }
+
+    body {
+      background: var(--black);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Noise overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px;
+    }
+
+    /* Scanlines */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.006) 2px, rgba(255,255,255,0.006) 4px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app { position: relative; z-index: 1; min-height: 100vh; }
+
+    /* ====== VIEWS ====== */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ====== LOGIN ====== */
+    .login-view {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .login-view.active { display: flex; }
+
+    .login-box {
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+
+    .login-logo { height: 48px; margin-bottom: 40px; }
+
+    .login-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .login-field {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .login-field:focus { border-color: var(--red); }
+    .login-field::placeholder { color: var(--text-dim); }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--red);
+      color: var(--white);
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+
+    .login-btn:hover { background: var(--red-dark); }
+
+    .login-error {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 16px;
+      display: none;
+    }
+
+    /* ====== TOP BAR ====== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar__left { display: flex; align-items: center; gap: 16px; }
+    .topbar__logo { height: 32px; }
+
+    .topbar__sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border-light);
+    }
+
+    .topbar__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .topbar__right { display: flex; align-items: center; gap: 16px; }
+
+    .topbar__user {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .topbar__logout {
+      background: none;
+      border: 1px solid var(--border-light);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .topbar__logout:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ====== DASHBOARD ====== */
+    .dash {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    @media (max-width: 600px) { .dash { padding: 24px 16px; } }
+
+    .dash__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .dash__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 12px 24px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn--red { background: var(--red); color: var(--white); }
+    .btn--red:hover { background: var(--red-dark); }
+    .btn--dark { background: var(--surface-2); color: var(--white); border: 1px solid var(--border-light); }
+    .btn--dark:hover { border-color: var(--text-muted); }
+    .btn--outline { background: none; border: 1px solid var(--border-light); color: var(--text-muted); }
+    .btn--outline:hover { border-color: var(--red); color: var(--red); }
+    .btn--small { padding: 8px 16px; font-size: 9px; }
+
+    /* Roster section */
+    .roster {
+      margin-bottom: 48px;
+    }
+
+    .roster__heading {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .roster__grid {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .roster__card {
+      padding: 16px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .roster__card:hover {
+      border-color: var(--red);
+    }
+
+    .roster__card.selected {
+      border-color: var(--red);
+      background: rgba(255, 0, 51, 0.06);
+    }
+
+    .roster__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+    }
+
+    .roster__name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    /* Contracts table */
+    .contracts-section { margin-bottom: 40px; }
+
+    .contracts-section__heading {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .contracts-section__count {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .contract-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .contract-table th {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .contract-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .contract-table tr:hover td {
+      background: var(--surface);
+    }
+
+    .contract-table .mono {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border: 1px solid;
+    }
+
+    .status-badge--draft { color: var(--text-muted); border-color: var(--border-light); }
+    .status-badge--sent { color: var(--yellow); border-color: rgba(255, 170, 0, 0.3); }
+    .status-badge--signed { color: var(--green); border-color: rgba(0, 204, 102, 0.3); }
+
+    .status-badge__dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      border: 1px dashed var(--border-light);
+    }
+
+    .empty-state__text {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .contract-table, .contract-table thead, .contract-table tbody,
+      .contract-table th, .contract-table td, .contract-table tr {
+        display: block;
+      }
+      .contract-table thead { display: none; }
+      .contract-table tr {
+        margin-bottom: 12px;
+        border: 1px solid var(--border);
+        padding: 12px;
+      }
+      .contract-table td {
+        padding: 6px 0;
+        border: none;
+        font-size: 12px;
+      }
+      .contract-table td::before {
+        content: attr(data-label);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        display: block;
+        margin-bottom: 2px;
+      }
+    }
+
+    /* ====== CREATE CONTRACT VIEW ====== */
+    .create-view { display: none; }
+    .create-view.active { display: block; }
+
+    .create-form {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    @media (max-width: 600px) { .create-form { padding: 24px 16px; } }
+
+    .create-form__back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      margin-bottom: 32px;
+      transition: color 0.2s;
+    }
+
+    .create-form__back:hover { color: var(--white); }
+
+    .create-form__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .create-form__artist {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--red);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus { border-color: var(--red); }
+    .form-input::placeholder { color: var(--text-dim); }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+
+    .form-actions {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+    }
+
+    /* ====== VIEW CONTRACT ====== */
+    .view-contract { display: none; }
+    .view-contract.active { display: block; }
+
+    /* ====== SEND ANIMATION OVERLAY ====== */
+    .send-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--black);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .send-overlay.active { display: flex; }
+
+    .send-overlay__logo {
+      height: 60px;
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: send-logo-in 0.6s ease forwards;
+    }
+
+    @keyframes send-logo-in {
+      0% { opacity: 0; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .send-overlay__text {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      opacity: 0;
+      animation: send-text-in 0.5s ease 0.4s forwards;
+    }
+
+    @keyframes send-text-in {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .send-overlay__bar {
+      width: 200px;
+      height: 2px;
+      background: var(--border-light);
+      margin-top: 24px;
+      overflow: hidden;
+      opacity: 0;
+      animation: send-text-in 0.3s ease 0.6s forwards;
+    }
+
+    .send-overlay__progress {
+      width: 0%;
+      height: 100%;
+      background: var(--red);
+      animation: send-progress 1.8s ease 0.8s forwards;
+    }
+
+    @keyframes send-progress {
+      0% { width: 0%; }
+      60% { width: 80%; }
+      100% { width: 100%; }
+    }
+
+    .send-overlay__check {
+      opacity: 0;
+      margin-top: 24px;
+      animation: send-check 0.4s ease 2.8s forwards;
+    }
+
+    @keyframes send-check {
+      0% { opacity: 0; transform: scale(0.5); }
+      50% { transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .send-overlay__done {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--green);
+      opacity: 0;
+      animation: send-text-in 0.4s ease 3s forwards;
+    }
+
+    /* ====== LINK MODAL ====== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 9998;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--surface-2);
+      border: 1px solid var(--border-light);
+      padding: 40px;
+      max-width: 560px;
+      width: 90%;
+    }
+
+    .modal__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .modal__text {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .modal__link-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--white);
+      word-break: break-all;
+      margin-bottom: 16px;
+      outline: none;
+    }
+
+    .modal__link-input:focus { border-color: var(--red); }
+
+    .modal__actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .modal__close {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+    }
+
+    .modal__close:hover { color: var(--white); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-light);
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 14px 24px;
+      z-index: 10000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.visible { transform: translateY(0); opacity: 1; }
+
+    /* Print styles */
+    @media print {
+      body::before, body::after { display: none; }
+      .topbar, .actions-bar, .form-actions, .send-overlay, .modal-overlay, .toast { display: none !important; }
+      body { background: #fff; color: #000; }
+      .contract-print { color: #000; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ====== LOGIN VIEW ====== -->
+  <div class="view login-view active" id="loginView">
+    <div class="login-box">
+      <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="login-logo">
+      <div class="login-title">Agency Portal</div>
+      <input type="text" class="login-field" id="loginUser" placeholder="Username" autocomplete="off">
+      <input type="password" class="login-field" id="loginPass" placeholder="Password">
+      <button class="login-btn" id="loginBtn">Access</button>
+      <div class="login-error" id="loginError">Invalid credentials</div>
+    </div>
+  </div>
+
+  <!-- ====== DASHBOARD VIEW ====== -->
+  <div class="view" id="dashView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">Agency</span>
+      </div>
+      <div class="topbar__right">
+        <span class="topbar__user" id="topbarUser"></span>
+        <button class="topbar__logout" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="dash">
+      <div class="dash__header">
+        <h1 class="dash__title">Dashboard</h1>
+      </div>
+
+      <!-- Roster -->
+      <div class="roster">
+        <div class="roster__heading">Roster</div>
+        <div class="roster__grid" id="rosterGrid"></div>
+      </div>
+
+      <!-- Contracts -->
+      <div class="contracts-section">
+        <div class="contracts-section__heading">
+          Contracts <span class="contracts-section__count" id="contractCount">0</span>
+        </div>
+        <div id="contractsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== CREATE CONTRACT VIEW ====== -->
+  <div class="view create-view" id="createView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">New Contract</span>
+      </div>
+      <div class="topbar__right">
+        <button class="topbar__logout" onclick="showDash()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="create-form">
+      <button class="create-form__back" onclick="showDash()">&larr; Back to Dashboard</button>
+      <div class="create-form__title">New Booking Contract</div>
+      <div class="create-form__artist" id="createArtistLabel"></div>
+
+      <div class="form-group">
+        <label class="form-label">Agreement Date</label>
+        <input type="text" class="form-input" id="fAgreementDate" placeholder="e.g., 3 February 2026">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Promoter / Company</label>
+        <input type="text" class="form-input" id="fPromoter" placeholder="Promoter name or company">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Event Name</label>
+        <input type="text" class="form-input" id="fEventName" placeholder="Name of event">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Venue</label>
+        <input type="text" class="form-input" id="fVenue" placeholder="Venue name & address">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Event Date</label>
+          <input type="text" class="form-input" id="fEventDate" placeholder="Day, Date, Month, Year">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Performance Time</label>
+          <input type="text" class="form-input" id="fPerfTime" placeholder="e.g., 01:00 - 02:30">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Booking Fee</label>
+          <input type="text" class="form-input" id="fBookingFee" placeholder="e.g., £500">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Artist Fee</label>
+          <input type="text" class="form-input" id="fArtistFee" placeholder="e.g., £2,000">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Artist Fee Due Date</label>
+          <input type="text" class="form-input" id="fFeeDue" placeholder="30 days before event">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Catering Buy-out</label>
+          <input type="text" class="form-input" id="fCatering" placeholder="e.g., £30">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn--red" onclick="saveAndSendContract()">Save & Generate Link</button>
+        <button class="btn btn--dark" onclick="saveDraft()">Save as Draft</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Send Animation Overlay -->
+<div class="send-overlay" id="sendOverlay">
+  <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="send-overlay__logo">
+  <div class="send-overlay__text">Generating contract</div>
+  <div class="send-overlay__bar">
+    <div class="send-overlay__progress"></div>
+  </div>
+  <div class="send-overlay__check">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="11" stroke="#00cc66" stroke-width="2"/>
+      <path d="M7 12.5l3 3 7-7" stroke="#00cc66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="send-overlay__done">Contract sent</div>
+</div>
+
+<!-- Link Modal -->
+<div class="modal-overlay" id="linkModal">
+  <div class="modal" style="position:relative;">
+    <button class="modal__close" onclick="closeLinkModal()">&times;</button>
+    <h3 class="modal__title">Promoter Link Ready</h3>
+    <p class="modal__text">Send this link to the promoter. They can review the full contract and sign their section.</p>
+    <input type="text" class="modal__link-input" id="linkModalUrl" readonly>
+    <div class="modal__actions">
+      <button class="btn btn--red" onclick="copyPromoterLink()">Copy Link</button>
+      <button class="btn btn--dark" onclick="closeLinkModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============================================
+  // CONFIG
+  // ============================================
+  var CREDS = { user: 'Kaia', pass: 'fuckingferal' };
+  var STORAGE_KEY = 'agencyferal_contracts';
+  var AUTH_KEY = 'agencyferal_auth';
+
+  var ROSTER = [
+    { id: 'stevie', name: 'STEVIE' }
+  ];
+
+  // ============================================
+  // STATE
+  // ============================================
+  var currentArtist = null;
+  var editingContractId = null;
+
+  // ============================================
+  // AUTH
+  // ============================================
+  function isAuthed() {
+    return sessionStorage.getItem(AUTH_KEY) === 'true';
+  }
+
+  function login() {
+    var u = document.getElementById('loginUser').value.trim();
+    var p = document.getElementById('loginPass').value;
+    if (u === CREDS.user && p === CREDS.pass) {
+      sessionStorage.setItem(AUTH_KEY, 'true');
+      document.getElementById('topbarUser').textContent = u;
+      showDash();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+      document.getElementById('loginPass').value = '';
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem(AUTH_KEY);
+    showView('loginView');
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', login);
+  document.getElementById('loginPass').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') login();
+  });
+  document.getElementById('loginUser').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('loginPass').focus();
+  });
+
+  // ============================================
+  // VIEWS
+  // ============================================
+  function showView(id) {
+    document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showDash() {
+    showView('dashView');
+    renderRoster();
+    renderContracts();
+  }
+
+  function showCreate(artistId) {
+    currentArtist = ROSTER.find(function(a) { return a.id === artistId; });
+    if (!currentArtist) return;
+    editingContractId = null;
+    document.getElementById('createArtistLabel').textContent = 'Artist: ' + currentArtist.name;
+    // Clear form
+    ['fAgreementDate','fPromoter','fEventName','fVenue','fEventDate','fPerfTime','fBookingFee','fArtistFee','fFeeDue','fCatering'].forEach(function(id) {
+      document.getElementById(id).value = '';
+    });
+    showView('createView');
+  }
+
+  // ============================================
+  // CONTRACTS STORAGE
+  // ============================================
+  function getContracts() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch(e) { return []; }
+  }
+
+  function saveContracts(contracts) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+  }
+
+  function generateId() {
+    return 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+  }
+
+  function collectFormData() {
+    return {
+      agreement_date: document.getElementById('fAgreementDate').value,
+      promoter_name: document.getElementById('fPromoter').value,
+      artist_name: currentArtist ? currentArtist.name : '',
+      artist_id: currentArtist ? currentArtist.id : '',
+      event_name: document.getElementById('fEventName').value,
+      venue: document.getElementById('fVenue').value,
+      event_date: document.getElementById('fEventDate').value,
+      performance_time: document.getElementById('fPerfTime').value,
+      booking_fee: document.getElementById('fBookingFee').value,
+      artist_fee: document.getElementById('fArtistFee').value,
+      fee_due_date: document.getElementById('fFeeDue').value,
+      catering_buyout: document.getElementById('fCatering').value
+    };
+  }
+
+  function saveDraft() {
+    var data = collectFormData();
+    var contracts = getContracts();
+    var contract = {
+      id: editingContractId || generateId(),
+      data: data,
+      status: 'draft',
+      created: new Date().toISOString(),
+      sent: null,
+      signed: false,
+      promoter_link: null
+    };
+    // Update or add
+    var idx = contracts.findIndex(function(c) { return c.id === contract.id; });
+    if (idx >= 0) { contracts[idx] = contract; }
+    else { contracts.unshift(contract); }
+    saveContracts(contracts);
+    showToast('Draft saved');
+    showDash();
+  }
+
+  function saveAndSendContract() {
+    var data = collectFormData();
+    if (!data.promoter_name || !data.event_name) {
+      showToast('Please fill in at least Promoter and Event Name');
+      return;
+    }
+
+    var contracts = getContracts();
+    var contractId = editingContractId || generateId();
+    var encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    var base = window.location.origin;
+    var promoterLink = base + '/contract/stevie/?sign=' + contractId + '&d=' + encodedData;
+
+    var contract = {
+      id: contractId,
+      data: data,
+      status: 'sent',
+      created: new Date().toISOString(),
+      sent: new Date().toISOString(),
+      signed: false,
+      promoter_link: promoterLink
+    };
+
+    var idx = contracts.findIndex(function(c) { return c.id === contract.id; });
+    if (idx >= 0) { contracts[idx] = contract; }
+    else { contracts.unshift(contract); }
+    saveContracts(contracts);
+
+    // Show send animation
+    showSendAnimation(function() {
+      document.getElementById('linkModalUrl').value = promoterLink;
+      document.getElementById('linkModal').classList.add('active');
+    });
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
+  function renderRoster() {
+    var grid = document.getElementById('rosterGrid');
+    grid.innerHTML = '';
+    ROSTER.forEach(function(artist) {
+      var card = document.createElement('div');
+      card.className = 'roster__card';
+      card.innerHTML = '<span class="roster__dot"></span><span class="roster__name">' + artist.name + '</span>';
+      card.addEventListener('click', function() { showCreate(artist.id); });
+      grid.appendChild(card);
+    });
+  }
+
+  function renderContracts() {
+    var contracts = getContracts();
+    var container = document.getElementById('contractsContainer');
+    document.getElementById('contractCount').textContent = contracts.length;
+
+    if (contracts.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state__text">No contracts yet</div><button class="btn btn--outline btn--small" onclick="showCreate(\'stevie\')">Create First Contract</button></div>';
+      return;
+    }
+
+    var html = '<table class="contract-table"><thead><tr>';
+    html += '<th>Artist</th><th>Promoter / Event</th><th>Date</th><th>Status</th><th>Actions</th>';
+    html += '</tr></thead><tbody>';
+
+    contracts.forEach(function(c) {
+      var statusClass = 'draft';
+      var statusLabel = 'Draft';
+      if (c.signed) { statusClass = 'signed'; statusLabel = 'Signed'; }
+      else if (c.status === 'sent') { statusClass = 'sent'; statusLabel = 'Sent'; }
+
+      html += '<tr>';
+      html += '<td data-label="Artist" class="mono">' + (c.data.artist_name || '—') + '</td>';
+      html += '<td data-label="Event"><strong>' + (c.data.promoter_name || '—') + '</strong><br><span style="color:var(--text-muted);font-size:12px;">' + (c.data.event_name || '') + '</span></td>';
+      html += '<td data-label="Date" class="mono" style="font-size:11px;color:var(--text-muted);">' + (c.data.event_date || '—') + '</td>';
+      html += '<td data-label="Status"><span class="status-badge status-badge--' + statusClass + '"><span class="status-badge__dot"></span>' + statusLabel + '</span></td>';
+      html += '<td data-label="Actions"><div class="actions-cell">';
+
+      if (c.promoter_link) {
+        html += '<button class="btn btn--outline btn--small" onclick="copyContractLink(\'' + c.id + '\')">Copy Link</button>';
+      }
+      if (c.status === 'draft') {
+        html += '<button class="btn btn--outline btn--small" onclick="editContract(\'' + c.id + '\')">Edit</button>';
+      }
+      html += '<button class="btn btn--outline btn--small" onclick="viewContractPage(\'' + c.id + '\')">View</button>';
+      html += '<button class="btn btn--outline btn--small" onclick="deleteContract(\'' + c.id + '\')" style="color:var(--red);border-color:rgba(255,0,51,0.3);">Delete</button>';
+      html += '</div></td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function editContract(id) {
+    var contracts = getContracts();
+    var c = contracts.find(function(x) { return x.id === id; });
+    if (!c) return;
+
+    currentArtist = ROSTER.find(function(a) { return a.id === c.data.artist_id; }) || ROSTER[0];
+    editingContractId = c.id;
+    document.getElementById('createArtistLabel').textContent = 'Artist: ' + currentArtist.name;
+    document.getElementById('fAgreementDate').value = c.data.agreement_date || '';
+    document.getElementById('fPromoter').value = c.data.promoter_name || '';
+    document.getElementById('fEventName').value = c.data.event_name || '';
+    document.getElementById('fVenue').value = c.data.venue || '';
+    document.getElementById('fEventDate').value = c.data.event_date || '';
+    document.getElementById('fPerfTime').value = c.data.performance_time || '';
+    document.getElementById('fBookingFee').value = c.data.booking_fee || '';
+    document.getElementById('fArtistFee').value = c.data.artist_fee || '';
+    document.getElementById('fFeeDue').value = c.data.fee_due_date || '';
+    document.getElementById('fCatering').value = c.data.catering_buyout || '';
+    showView('createView');
+  }
+
+  function deleteContract(id) {
+    if (!confirm('Delete this contract?')) return;
+    var contracts = getContracts().filter(function(c) { return c.id !== id; });
+    saveContracts(contracts);
+    renderContracts();
+    showToast('Contract deleted');
+  }
+
+  function viewContractPage(id) {
+    var contracts = getContracts();
+    var c = contracts.find(function(x) { return x.id === id; });
+    if (!c) return;
+    var encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(c.data))));
+    var url = window.location.origin + '/contract/stevie/?view=' + c.id + '&d=' + encodedData;
+    window.open(url, '_blank');
+  }
+
+  function copyContractLink(id) {
+    var contracts = getContracts();
+    var c = contracts.find(function(x) { return x.id === id; });
+    if (!c || !c.promoter_link) return;
+    copyToClipboard(c.promoter_link);
+    showToast('Promoter link copied');
+  }
+
+  function copyPromoterLink() {
+    var input = document.getElementById('linkModalUrl');
+    copyToClipboard(input.value);
+    showToast('Link copied to clipboard');
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  }
+
+  function closeLinkModal() {
+    document.getElementById('linkModal').classList.remove('active');
+    showDash();
+  }
+
+  // ============================================
+  // SEND ANIMATION
+  // ============================================
+  function showSendAnimation(callback) {
+    var overlay = document.getElementById('sendOverlay');
+    // Reset animations by cloning
+    var parent = overlay.parentNode;
+    var clone = overlay.cloneNode(true);
+    parent.replaceChild(clone, overlay);
+    clone.classList.add('active');
+
+    setTimeout(function() {
+      clone.classList.remove('active');
+      if (callback) callback();
+    }, 3800);
+  }
+
+  // ============================================
+  // TOAST
+  // ============================================
+  function showToast(msg) {
+    var toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    setTimeout(function() { toast.classList.remove('visible'); }, 2500);
+  }
+
+  // ============================================
+  // INIT
+  // ============================================
+  (function() {
+    if (isAuthed()) {
+      document.getElementById('topbarUser').textContent = CREDS.user;
+      showDash();
+    }
+  })();
+</script>
+
+</body>
+</html>

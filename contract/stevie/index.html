@@ -575,6 +575,86 @@
       color: var(--white);
     }
 
+    /* Signed animation overlay */
+    .signed-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--black);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .signed-overlay.active { display: flex; }
+
+    .signed-overlay__logo {
+      height: 60px;
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: so-logo 0.6s ease forwards;
+    }
+
+    @keyframes so-logo {
+      0% { opacity: 0; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .signed-overlay__check {
+      opacity: 0;
+      margin-bottom: 24px;
+      animation: so-check 0.5s ease 0.8s forwards;
+    }
+
+    @keyframes so-check {
+      0% { opacity: 0; transform: scale(0.3) rotate(-10deg); }
+      60% { transform: scale(1.15) rotate(2deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+
+    .signed-overlay__title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #00cc66;
+      opacity: 0;
+      animation: so-fade 0.4s ease 1.4s forwards;
+    }
+
+    .signed-overlay__sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      margin-top: 8px;
+      opacity: 0;
+      animation: so-fade 0.4s ease 1.8s forwards;
+    }
+
+    @keyframes so-fade {
+      0% { opacity: 0; transform: translateY(8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .signed-overlay__actions {
+      margin-top: 32px;
+      opacity: 0;
+      animation: so-fade 0.4s ease 2.4s forwards;
+    }
+
+    .btn-contract--green {
+      background: #00cc66;
+      color: var(--black);
+    }
+
+    .btn-contract--green:hover {
+      background: #00aa55;
+    }
+
     /* Footer */
     .contract-footer {
       margin-top: 64px;
@@ -803,6 +883,22 @@
   </div>
 </div>
 
+<!-- Signed Animation Overlay -->
+<div class="signed-overlay" id="signedOverlay">
+  <img src="../../images/FERAL%20LOGO.svg" alt="FERAL" class="signed-overlay__logo">
+  <div class="signed-overlay__check">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="11" stroke="#00cc66" stroke-width="2"/>
+      <path d="M7 12.5l3 3 7-7" stroke="#00cc66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="signed-overlay__title">Contract Signed</div>
+  <div class="signed-overlay__sub">Agreement confirmed</div>
+  <div class="signed-overlay__actions">
+    <button class="btn-contract btn-contract--green" onclick="printAfterSign()">Print Your Copy</button>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast">Link copied to clipboard</div>
 
@@ -960,7 +1056,6 @@
   // Promoter view — lock agency fields
   // ============================================
   function enterPromoterView(data) {
-    // Restore all data from the agency
     restoreData(data);
 
     // Lock all fields except promoter signature fields
@@ -973,10 +1068,11 @@
       }
     });
 
-    // Hide agency signature pad (show as image)
+    // Hide agency signature pad
     var agencyCanvas = document.getElementById('sigCanvasAgency');
     agencyCanvas.style.pointerEvents = 'none';
-    document.querySelector('#sigBlockAgency .sig-clear').style.display = 'none';
+    var agencyClear = document.querySelector('#sigBlockAgency .sig-clear');
+    if (agencyClear) agencyClear.style.display = 'none';
 
     // Update status
     document.getElementById('statusText').textContent = 'Awaiting Promoter Signature';
@@ -984,9 +1080,53 @@
     // Show locked notice
     document.getElementById('lockedNotice').style.display = 'block';
 
-    // Change actions
+    // Change actions — Confirm & Sign + Print
     document.getElementById('actionsBar').innerHTML =
-      '<button class="btn-contract btn-contract--primary" onclick="window.print()">Print & Sign</button>';
+      '<button class="btn-contract btn-contract--primary" onclick="confirmSign()">Confirm & Sign</button>' +
+      '<button class="btn-contract btn-contract--secondary" onclick="window.print()">Print Contract</button>';
+  }
+
+  // Read-only view (for agency viewing their own contracts)
+  function enterReadOnlyView(data) {
+    restoreData(data);
+    document.querySelectorAll('.field').forEach(function(el) {
+      el.setAttribute('contenteditable', 'false');
+      el.classList.add('field--locked');
+    });
+    document.getElementById('sigCanvasAgency').style.pointerEvents = 'none';
+    document.getElementById('sigCanvasPromoter').style.pointerEvents = 'none';
+    var clears = document.querySelectorAll('.sig-clear');
+    clears.forEach(function(b) { b.style.display = 'none'; });
+    document.getElementById('statusText').textContent = 'View Only';
+    document.getElementById('actionsBar').innerHTML =
+      '<button class="btn-contract btn-contract--secondary" onclick="window.print()">Print Contract</button>';
+  }
+
+  // Confirm & Sign — show animation then print option
+  function confirmSign() {
+    var name = document.querySelector('[data-field="promoter_print_name"]');
+    if (!name || !name.textContent.trim()) {
+      alert('Please enter your name before signing.');
+      return;
+    }
+
+    // Show signed overlay animation
+    var overlay = document.getElementById('signedOverlay');
+    var parent = overlay.parentNode;
+    var clone = overlay.cloneNode(true);
+    parent.replaceChild(clone, overlay);
+    clone.classList.add('active');
+
+    // Re-attach the print button listener
+    clone.querySelector('button').addEventListener('click', function() {
+      clone.classList.remove('active');
+      window.print();
+    });
+  }
+
+  function printAfterSign() {
+    document.getElementById('signedOverlay').classList.remove('active');
+    window.print();
   }
 
   // ============================================
@@ -994,12 +1134,25 @@
   // ============================================
   (function() {
     var params = new URLSearchParams(window.location.search);
-    var signData = params.get('sign');
-    if (signData) {
-      var data = decodeData(signData);
-      if (data) {
-        enterPromoterView(data);
-      }
+
+    // Dashboard format: ?sign=contractId&d=encodedData
+    // or old format: ?sign=encodedData (no & in the value means old format)
+    var signParam = params.get('sign');
+    var dataParam = params.get('d');
+    var viewParam = params.get('view');
+
+    if (signParam && dataParam) {
+      // New dashboard format — promoter view
+      var data = decodeData(dataParam);
+      if (data) enterPromoterView(data);
+    } else if (viewParam && dataParam) {
+      // Agency viewing their own contract
+      var data = decodeData(dataParam);
+      if (data) enterReadOnlyView(data);
+    } else if (signParam && !dataParam) {
+      // Old format — signParam IS the encoded data
+      var data = decodeData(signParam);
+      if (data) enterPromoterView(data);
     }
   })();
 </script>

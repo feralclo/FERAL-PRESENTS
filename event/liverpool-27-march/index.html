@@ -319,18 +319,16 @@
         });
       }
 
-      // Bottom bar CTA: if tickets selected go to checkout, otherwise scroll to widget
+      // Bottom bar CTA: if tickets selected go to checkout, otherwise go to tickets page
       if (bottomBarCta) {
         bottomBarCta.addEventListener('click', function(e) {
           e.stopPropagation();
           if (qty > 0) {
             goToCheckout();
           } else {
-            var embed = document.getElementById('tickets-embed');
-            if (embed) {
-              var y = embed.getBoundingClientRect().top + window.pageYOffset - 100;
-              window.scrollTo({ top: y, behavior: 'smooth' });
-            }
+            document.body.style.transition = 'none';
+            document.body.style.opacity = '1';
+            window.location.assign('/event/liverpool-27-march/tickets/');
           }
         });
       }

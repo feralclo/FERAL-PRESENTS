@@ -2063,6 +2063,142 @@ img {
   display: block;
 }
 
+/* --- Custom FERAL Ticket Selector (ShopInjector) --- */
+.feral-tickets {
+  padding: 0 24px 24px;
+}
+
+.feral-tickets__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--gray-light);
+}
+
+.feral-tickets__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feral-tickets__name {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.feral-tickets__price {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--gray-text);
+}
+
+.feral-tickets__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.feral-tickets__qty {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--white);
+  min-width: 24px;
+  text-align: center;
+}
+
+.feral-tickets__btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--gray-light);
+  background: transparent;
+  color: var(--white);
+  font-size: 1.2rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  border-radius: 0;
+}
+
+.feral-tickets__btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: rgba(255, 0, 51, 0.08);
+}
+
+.feral-tickets__btn:active {
+  background: rgba(255, 0, 51, 0.15);
+}
+
+.feral-tickets__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0 16px;
+  border-top: 2px solid var(--red);
+  margin-top: 8px;
+}
+
+.feral-tickets__total-label {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gray-text);
+  letter-spacing: 0.1em;
+}
+
+.feral-tickets__total-value {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.feral-tickets__checkout {
+  width: 100%;
+  padding: 16px 24px;
+  background: var(--red);
+  color: var(--white);
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: 8px;
+}
+
+.feral-tickets__checkout:hover:not(:disabled) {
+  background: var(--red-dark);
+  box-shadow: 0 0 20px var(--red-glow);
+}
+
+.feral-tickets__checkout:disabled {
+  background: var(--gray-light);
+  color: var(--gray-text);
+  cursor: not-allowed;
+}
+
+#eventix-shop-container {
+  display: none;
+  padding: 0 24px 24px;
+}
+
+#eventix-shop-container iframe {
+  width: 100% !important;
+  border: none !important;
+}
+
 .event-tickets__cta {
   display: block;
   width: 100%;

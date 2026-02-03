@@ -2190,7 +2190,14 @@ img {
 }
 
 #eventix-shop-container {
-  display: none;
+  height: 0;
+  overflow: hidden;
+  padding: 0 24px;
+}
+
+#eventix-shop-container.active {
+  height: auto;
+  overflow: visible;
   padding: 0 24px 24px;
 }
 

@@ -136,6 +136,7 @@
     // Show banner with slight delay for smooth entrance
     setTimeout(function() {
       banner.classList.add('cookie-banner--visible');
+      document.body.classList.add('cookie-banner-active');
     }, 800);
 
     // Wire up events
@@ -148,6 +149,7 @@
     function hideBanner() {
       banner.classList.remove('cookie-banner--visible');
       panel.classList.remove('cookie-panel--visible');
+      document.body.classList.remove('cookie-banner-active');
       setTimeout(function() {
         if (banner.parentNode) banner.parentNode.removeChild(banner);
         if (panel.parentNode) panel.parentNode.removeChild(panel);

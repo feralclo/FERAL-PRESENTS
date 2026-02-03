@@ -2953,6 +2953,7 @@ img {
   left: 0;
   right: 0;
   z-index: 997;
+  transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   background: #111;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 14px 24px;
@@ -3371,16 +3372,16 @@ img {
    ======================================== */
 .cookie-banner {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 9998;
   background: rgba(14, 14, 14, 0.97);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 18px 24px;
-  transform: translateY(-100%);
+  transform: translateY(100%);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -3446,12 +3447,12 @@ img {
 /* Preferences Panel */
 .cookie-panel {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 9999;
   background: #111;
-  border-bottom: 1px solid rgba(246, 4, 52, 0.2);
+  border-top: 1px solid rgba(246, 4, 52, 0.2);
   padding: 0;
   max-height: 0;
   overflow: hidden;
@@ -3592,6 +3593,18 @@ img {
 .cookie-panel__actions {
   display: flex;
   gap: 10px;
+}
+
+/* Shift sticky bottom bar up when cookie banner is visible */
+body.cookie-banner-active .bottom-bar {
+  bottom: 72px;
+  transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 600px) {
+  body.cookie-banner-active .bottom-bar {
+    bottom: 110px;
+  }
 }
 
 @media (max-width: 600px) {

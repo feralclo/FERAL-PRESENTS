@@ -1,0 +1,24 @@
+{
+  "rewrites": [
+    {
+      "source": "/contract/:path*",
+      "has": [{ "type": "host", "value": "www.agencyferal.com" }],
+      "destination": "/contract/:path*"
+    },
+    {
+      "source": "/contract/:path*",
+      "has": [{ "type": "host", "value": "agencyferal.com" }],
+      "destination": "/contract/:path*"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.agencyferal.com" }],
+      "destination": "/agencyferal/index.html"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "agencyferal.com" }],
+      "destination": "/agencyferal/index.html"
+    }
+  ]
+}

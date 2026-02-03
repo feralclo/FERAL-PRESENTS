@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FERAL — Performance Agreement</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --black: #000000;
+      --white: #ffffff;
+      --red: #ff0033;
+      --gray-light: #111111;
+      --gray-border: #222222;
+      --gray-text: #888888;
+      --font-mono: 'Space Mono', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--font-sans);
+      line-height: 1.7;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Subtle animated noise background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0.035;
+      pointer-events: none;
+      z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    /* Scanline effect */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.008) 2px,
+        rgba(255, 255, 255, 0.008) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .contract-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 60px 40px 80px;
+    }
+
+    @media (max-width: 600px) {
+      .contract-wrapper { padding: 32px 20px 60px; }
+    }
+
+    /* Header */
+    .contract-header {
+      text-align: center;
+      padding-bottom: 48px;
+      margin-bottom: 48px;
+      border-bottom: 2px solid var(--white);
+    }
+
+    .contract-logo {
+      height: 52px;
+      margin-bottom: 32px;
+      filter: none;
+    }
+
+    .contract-header h1 {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .contract-header .contract-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+    }
+
+    /* Red accent line */
+    .accent-line {
+      width: 40px;
+      height: 2px;
+      background: var(--red);
+      margin: 20px auto 0;
+    }
+
+    /* Status badge */
+    .contract-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 20px;
+      padding: 6px 14px;
+      border: 1px solid var(--gray-border);
+      border-radius: 2px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+    }
+
+    .contract-status__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* Intro paragraph */
+    .contract-intro {
+      font-size: 15px;
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+
+    .contract-intro strong {
+      font-weight: 600;
+    }
+
+    /* Editable fields */
+    .field {
+      display: inline-block;
+      border-bottom: 1.5px solid var(--red);
+      padding: 1px 4px;
+      min-width: 140px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--white);
+      outline: none;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      background: rgba(255, 0, 51, 0.06);
+    }
+
+    .field:hover {
+      background: rgba(255, 0, 51, 0.1);
+    }
+
+    .field:focus {
+      background: rgba(255, 0, 51, 0.12);
+      border-bottom-color: var(--white);
+    }
+
+    .field:empty::before {
+      content: attr(data-placeholder);
+      color: #555;
+      font-style: italic;
+    }
+
+    .field--locked {
+      border-bottom-color: var(--gray-border);
+      background: var(--gray-light);
+      color: var(--gray-text);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Parties block */
+    .parties {
+      margin: 32px 0 48px;
+      padding: 28px 32px;
+      border: 1px solid var(--gray-border);
+      border-left: 3px solid var(--red);
+      background: var(--gray-light);
+    }
+
+    .parties p {
+      font-size: 14px;
+      margin-bottom: 10px;
+      line-height: 1.8;
+    }
+
+    .parties p:last-child { margin-bottom: 0; }
+
+    .parties__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Section headings */
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section__heading {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--gray-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section__number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--red);
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* Schedule table */
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+    }
+
+    .schedule-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 2px solid var(--white);
+      background: var(--gray-light);
+    }
+
+    .schedule-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--gray-border);
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    .schedule-table td:first-child {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      width: 200px;
+      font-weight: 600;
+    }
+
+    .schedule-table tr:last-child td {
+      border-bottom: 2px solid var(--white);
+    }
+
+    .schedule-table .field {
+      width: 100%;
+      display: block;
+    }
+
+    @media (max-width: 600px) {
+      .schedule-table td:first-child { width: 120px; font-size: 10px; }
+      .schedule-table td { padding: 10px 12px; }
+    }
+
+    /* Contract clauses */
+    .clause {
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 14px;
+    }
+
+    .clause strong {
+      font-weight: 600;
+    }
+
+    .clause-list {
+      margin: 12px 0 12px 20px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .clause-list li {
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+
+    .clause-list li::marker {
+      color: var(--red);
+    }
+
+    /* Signatures */
+    .signatures {
+      margin-top: 56px;
+      padding-top: 40px;
+      border-top: 2px solid var(--white);
+    }
+
+    .signatures__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 32px;
+    }
+
+    .sig-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+    }
+
+    @media (max-width: 600px) {
+      .sig-grid { grid-template-columns: 1fr; gap: 40px; }
+    }
+
+    .sig-block {
+      padding: 24px;
+      border: 1px solid var(--gray-border);
+    }
+
+    .sig-block__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .sig-block__row {
+      margin-bottom: 16px;
+    }
+
+    .sig-block__row:last-child { margin-bottom: 0; }
+
+    .sig-block__row-label {
+      font-size: 12px;
+      color: var(--gray-text);
+      margin-bottom: 4px;
+    }
+
+    .sig-canvas-wrap {
+      border: 1px solid var(--gray-border);
+      border-radius: 2px;
+      position: relative;
+      height: 100px;
+      margin-bottom: 6px;
+      background: #0a0a0a;
+      cursor: crosshair;
+    }
+
+    .sig-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .sig-clear {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      background: none;
+      border: 1px solid var(--gray-border);
+      padding: 3px 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .sig-clear:hover {
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    /* Promoter details section (shown in promoter signing view) */
+    .promoter-details {
+      margin-top: 32px;
+      padding: 24px;
+      border: 1px solid var(--gray-border);
+      border-left: 3px solid var(--red);
+      background: var(--gray-light);
+      display: none;
+    }
+
+    .promoter-details.visible { display: block; }
+
+    .promoter-details__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 16px;
+    }
+
+    .promoter-details__note {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+      margin-bottom: 16px;
+    }
+
+    .pd-group {
+      margin-bottom: 14px;
+    }
+
+    .pd-group:last-child { margin-bottom: 0; }
+
+    .pd-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .pd-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0a0a0a;
+      border: 1px solid var(--gray-border);
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .pd-input:focus { border-color: var(--red); }
+    .pd-input::placeholder { color: #555; }
+
+    .pd-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 500px) { .pd-row { grid-template-columns: 1fr; } }
+
+    /* Actions bar */
+    .actions {
+      margin-top: 56px;
+      padding-top: 32px;
+      border-top: 1px solid var(--gray-border);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-contract {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 14px 28px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-contract--primary {
+      background: var(--red);
+      color: var(--white);
+    }
+
+    .btn-contract--primary:hover {
+      background: #cc0029;
+    }
+
+    .btn-contract--secondary {
+      background: var(--black);
+      color: var(--white);
+    }
+
+    .btn-contract--secondary:hover {
+      background: #222;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: #111;
+      border: 1px solid var(--gray-border);
+      padding: 40px;
+      max-width: 520px;
+      width: 90%;
+      position: relative;
+      color: var(--white);
+    }
+
+    .modal__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--white);
+    }
+
+    .modal__text {
+      font-size: 14px;
+      color: var(--gray-text);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .modal__link {
+      width: 100%;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      border: 1px solid var(--gray-border);
+      background: #0a0a0a;
+      color: var(--white);
+      word-break: break-all;
+      margin-bottom: 16px;
+      display: block;
+      outline: none;
+    }
+
+    .modal__link:focus {
+      border-color: var(--red);
+    }
+
+    .modal__actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal__close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--gray-text);
+      font-family: var(--font-mono);
+    }
+
+    .modal__close:hover { color: var(--black); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 14px 24px;
+      z-index: 10000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Promoter view locked notice */
+    .locked-notice {
+      display: none;
+      text-align: center;
+      padding: 16px 24px;
+      margin-bottom: 32px;
+      border: 1px solid var(--gray-border);
+      border-left: 3px solid var(--red);
+      background: var(--gray-light);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+    }
+
+    .locked-notice strong {
+      color: var(--white);
+    }
+
+    /* Signed animation overlay */
+    .signed-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--black);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .signed-overlay.active { display: flex; }
+
+    .signed-overlay__logo {
+      height: 60px;
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: so-logo 0.6s ease forwards;
+    }
+
+    @keyframes so-logo {
+      0% { opacity: 0; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .signed-overlay__check {
+      opacity: 0;
+      margin-bottom: 24px;
+      animation: so-check 0.5s ease 0.8s forwards;
+    }
+
+    @keyframes so-check {
+      0% { opacity: 0; transform: scale(0.3) rotate(-10deg); }
+      60% { transform: scale(1.15) rotate(2deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+
+    .signed-overlay__title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #00cc66;
+      opacity: 0;
+      animation: so-fade 0.4s ease 1.4s forwards;
+    }
+
+    .signed-overlay__sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      margin-top: 8px;
+      opacity: 0;
+      animation: so-fade 0.4s ease 1.8s forwards;
+    }
+
+    @keyframes so-fade {
+      0% { opacity: 0; transform: translateY(8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .signed-overlay__actions {
+      margin-top: 32px;
+      opacity: 0;
+      animation: so-fade 0.4s ease 2.4s forwards;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .signed-overlay__actions-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-contract--green {
+      background: #00cc66;
+      color: var(--black);
+    }
+
+    .btn-contract--green:hover {
+      background: #00aa55;
+    }
+
+    .btn-contract--outline-white {
+      background: none;
+      border: 1px solid var(--gray-border);
+      color: var(--white);
+    }
+
+    .btn-contract--outline-white:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Date picker */
+    .date-picker-wrap {
+      display: inline-block;
+      position: relative;
+    }
+
+    .date-picker-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1.5px solid var(--red);
+      padding: 1px 4px;
+      min-width: 160px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--white);
+      background: rgba(255, 0, 51, 0.06);
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      user-select: none;
+    }
+
+    .date-picker-trigger:hover {
+      background: rgba(255, 0, 51, 0.1);
+    }
+
+    .date-picker-trigger.active {
+      background: rgba(255, 0, 51, 0.12);
+      border-bottom-color: var(--white);
+    }
+
+    .date-picker-trigger__icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      opacity: 0.5;
+    }
+
+    .date-picker-trigger__text {
+      flex: 1;
+    }
+
+    .date-picker-trigger__text:empty::before {
+      content: attr(data-placeholder);
+      color: #555;
+      font-style: italic;
+    }
+
+    .date-picker-trigger--locked {
+      border-bottom-color: var(--gray-border);
+      background: var(--gray-light);
+      color: var(--gray-text);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .date-picker-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 5000;
+      background: #0a0a0a;
+      border: 1px solid var(--gray-border);
+      padding: 16px;
+      min-width: 280px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .date-picker-dropdown.open {
+      display: block;
+    }
+
+    .dp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .dp-header__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .dp-header__btn {
+      background: none;
+      border: 1px solid var(--gray-border);
+      color: var(--gray-text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-header__btn:hover {
+      border-color: var(--red);
+      color: var(--white);
+    }
+
+    .dp-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0;
+      margin-bottom: 4px;
+    }
+
+    .dp-weekdays span {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      text-align: center;
+      padding: 4px 0;
+    }
+
+    .dp-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .dp-day {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--white);
+      background: none;
+      border: 1px solid transparent;
+      padding: 6px 2px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-day:hover {
+      border-color: var(--red);
+      background: rgba(255, 0, 51, 0.1);
+    }
+
+    .dp-day--empty {
+      pointer-events: none;
+    }
+
+    .dp-day--today {
+      border-color: var(--gray-border);
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .dp-day--selected {
+      background: var(--red);
+      color: var(--white);
+      font-weight: 700;
+      border-color: var(--red);
+    }
+
+    .dp-day--selected:hover {
+      background: #cc0029;
+    }
+
+    .dp-day--other-month {
+      color: #333;
+    }
+
+    .dp-today-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: none;
+      border: 1px solid var(--gray-border);
+      color: var(--gray-text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-today-btn:hover {
+      border-color: var(--red);
+      color: var(--white);
+    }
+
+    /* Footer */
+    .contract-footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-border);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #ccc;
+    }
+
+    /* Print styles — preserve black background and all colors */
+    html, body {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    @media print {
+      html, body {
+        background: #000 !important;
+        color: #fff !important;
+      }
+      body::before, body::after {
+        display: none !important;
+      }
+      .contract-wrapper {
+        padding: 20px 30px !important;
+      }
+      .signed-overlay {
+        display: none !important;
+      }
+      @page {
+        margin: 0.5cm;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="contract-wrapper" id="contractWrapper">
+
+  <!-- Header -->
+  <div class="contract-header">
+    <img src="../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="contract-logo">
+    <h1>Performance Agreement</h1>
+    <span class="contract-sub">Booking Contract</span>
+    <div class="accent-line"></div>
+    <div class="contract-status">
+      <span class="contract-status__dot"></span>
+      <span id="statusText">Draft — Editable</span>
+    </div>
+  </div>
+
+  <!-- Locked notice (shown in promoter view) -->
+  <div class="locked-notice" id="lockedNotice">
+    <strong>This contract has been sent to you for review and signature.</strong><br>
+    Please review all details below and sign in the Promoter section.
+  </div>
+
+  <!-- Intro -->
+  <p class="contract-intro">
+    THIS AGREEMENT is made on
+    <span class="date-picker-wrap" id="dpAgreement">
+      <span class="date-picker-trigger" id="dpAgreementTrigger">
+        <svg class="date-picker-trigger__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="4" width="18" height="18" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 9h18" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span class="date-picker-trigger__text" id="dpAgreementText" data-placeholder="Select Date" data-field="agreement_date"></span>
+      </span>
+      <div class="date-picker-dropdown" id="dpAgreementDropdown">
+        <div class="dp-header">
+          <button class="dp-header__btn" id="dpPrev">&larr;</button>
+          <span class="dp-header__title" id="dpMonthYear"></span>
+          <button class="dp-header__btn" id="dpNext">&rarr;</button>
+        </div>
+        <div class="dp-weekdays">
+          <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+        </div>
+        <div class="dp-days" id="dpDays"></div>
+        <button class="dp-today-btn" id="dpToday">Today</button>
+      </div>
+    </span>
+    between:
+  </p>
+
+  <!-- Parties -->
+  <div class="parties">
+    <p>
+      <span class="parties__label">The Brand / Agency</span>
+      AGENCY FERAL, representing the Artist.
+    </p>
+    <p>
+      <span class="parties__label">The Promoter</span>
+      <span class="field" contenteditable="true" data-placeholder="Promoter Name / Company" data-field="promoter_name"></span>
+    </p>
+    <p>
+      <span class="parties__label">The Artist</span>
+      <span class="field" contenteditable="true" data-placeholder="Artist Name" data-field="artist_name"></span>
+    </p>
+  </div>
+
+  <!-- 1. The Schedule -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">1</span> The Schedule</h2>
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Event Name</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Name of Event" data-field="event_name"></span></td>
+        </tr>
+        <tr>
+          <td>Venue</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Venue Name & Address" data-field="venue"></span></td>
+        </tr>
+        <tr>
+          <td>Date of Event</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Day, Date, Month, Year" data-field="event_date"></span></td>
+        </tr>
+        <tr>
+          <td>Performance Time</td>
+          <td><span class="field" contenteditable="true" data-placeholder="e.g., 01:00 - 02:30" data-field="performance_time"></span></td>
+        </tr>
+        <tr>
+          <td>Booking Fee</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Amount" data-field="booking_fee"></span> <span style="color: var(--gray-text); font-size: 12px;">(Secures the date)</span></td>
+        </tr>
+        <tr>
+          <td>Artist Fee</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Amount" data-field="artist_fee"></span> <span style="color: var(--gray-text); font-size: 12px;">(Performance fee)</span></td>
+        </tr>
+        <tr>
+          <td>Artist Fee Due Date</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Date — 30 days before event" data-field="fee_due_date"></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 2. Securing the Booking -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">2</span> Securing the Booking</h2>
+    <p class="clause"><strong>The "Secured" Status:</strong> A booking is only considered "Secured" once both of the following have been completed:</p>
+    <ol class="clause-list">
+      <li>This contract is signed by the Promoter.</li>
+      <li>The Booking Fee has been paid in full to the Brand/Agency.</li>
+    </ol>
+    <p class="clause"><strong>Promotion Restriction:</strong> The Promoter is strictly prohibited from using the Artist's name, likeness, or branding in any public promotion (social media, flyers, website) until the booking is officially Secured.</p>
+  </div>
+
+  <!-- 3. Financial Terms -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">3</span> Financial Terms</h2>
+    <p class="clause"><strong>Artist Fee:</strong> The remaining Artist Fee must be paid no later than 30 days prior to the scheduled performance date.</p>
+    <p class="clause"><strong>Non-Payment:</strong> If the Artist Fee is not received by the due date, the Artist is not obligated to perform, and the initial Booking Fee remains non-refundable.</p>
+    <p class="clause"><strong>Artist Default:</strong> If the Artist fails to appear for the performance (excluding Force Majeure), all fees paid by the Promoter will be refunded.</p>
+  </div>
+
+  <!-- 4. Travel & Accommodation -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">4</span> Travel & Accommodation</h2>
+    <p class="clause"><strong>Travel:</strong> The Promoter agrees to provide travel (Flights/Train/Petrol) as agreed in writing.</p>
+    <p class="clause"><strong>Ground Transport:</strong> The Promoter will provide transport between the Airport/Station, Hotel, and Venue.</p>
+    <p class="clause"><strong>Accommodation:</strong> For overnight stays, the Promoter will provide a minimum 4-star hotel room with Wi-Fi and breakfast, booked in the Artist's name.</p>
+  </div>
+
+  <!-- 5. Promotion & Content -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">5</span> Promotion & Content</h2>
+    <p class="clause"><strong>Creative Freedom:</strong> Once the booking is secured, the Promoter is encouraged to be creative with promotion. The Brand/Agency will provide a press kit (photos/logos) to assist, but the Promoter is not restricted to these assets.</p>
+    <p class="clause"><strong>Recordings:</strong> The Promoter and venue are permitted to record audio or video of the performance for promotional and social media purposes.</p>
+  </div>
+
+  <!-- 6. Technical & Hospitality -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">6</span> Technical & Hospitality</h2>
+    <p class="clause"><strong>Equipment:</strong> The Promoter agrees to provide professional-grade equipment as specified in the Technical Rider.</p>
+    <p class="clause"><strong>Catering:</strong> The Promoter will provide a "buy-out" of <span class="field" contenteditable="true" data-placeholder="Amount" data-field="catering_buyout"></span> for a meal OR provide a quality hot meal at the venue.</p>
+    <p class="clause"><strong>Drinks:</strong> A reasonable rider of water, soft drinks, and standard alcohol will be provided in the booth during the performance.</p>
+  </div>
+
+  <!-- 7. Cancellation & Safety -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">7</span> Cancellation & Safety</h2>
+    <p class="clause"><strong>Cancellation by Promoter:</strong> If the event is cancelled after the booking is secured, the Booking Fee is non-refundable. If cancelled within 7 days of the event, 100% of the Artist Fee is also due.</p>
+    <p class="clause"><strong>Force Majeure:</strong> Neither party is liable for failure to appear due to "Acts of God" (natural disasters, flight cancellations, or serious illness). Both parties will attempt to reschedule.</p>
+    <p class="clause"><strong>Safety:</strong> The Promoter is responsible for the safety of the Artist and their equipment while at the venue.</p>
+  </div>
+
+  <!-- Promoter Details (shown only in promoter signing view) -->
+  <div class="promoter-details" id="promoterDetails">
+    <div class="promoter-details__title">Your Details</div>
+    <div class="promoter-details__note">Please provide your details below before signing the contract.</div>
+    <div class="pd-group">
+      <label class="pd-label">Company / Name</label>
+      <input type="text" class="pd-input" id="pdCompany" placeholder="Your company or full name">
+    </div>
+    <div class="pd-group">
+      <label class="pd-label">Address</label>
+      <input type="text" class="pd-input" id="pdAddress" placeholder="Business address">
+    </div>
+    <div class="pd-row">
+      <div class="pd-group">
+        <label class="pd-label">Email</label>
+        <input type="email" class="pd-input" id="pdEmail" placeholder="email@company.com">
+      </div>
+      <div class="pd-group">
+        <label class="pd-label">Phone Number</label>
+        <input type="text" class="pd-input" id="pdPhone" placeholder="+44 7000 000000">
+      </div>
+    </div>
+  </div>
+
+  <!-- Signatures -->
+  <div class="signatures">
+    <h2 class="signatures__title">Signatures</h2>
+    <div class="sig-grid">
+      <!-- Brand/Agency signature -->
+      <div class="sig-block" id="sigBlockAgency">
+        <span class="sig-block__label">For the Brand / Agency (on behalf of the Artist)</span>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Signature</div>
+          <div class="sig-canvas-wrap">
+            <canvas id="sigCanvasAgency"></canvas>
+          </div>
+          <button class="sig-clear" onclick="clearSig('Agency')">Clear</button>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Print Name</div>
+          <span class="field" contenteditable="true" data-placeholder="Full Name" data-field="agency_print_name"></span>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Date</div>
+          <span class="field" contenteditable="true" data-placeholder="Date" data-field="agency_sign_date"></span>
+        </div>
+      </div>
+
+      <!-- Promoter signature -->
+      <div class="sig-block" id="sigBlockPromoter">
+        <span class="sig-block__label">For the Promoter</span>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Signature</div>
+          <div class="sig-canvas-wrap">
+            <canvas id="sigCanvasPromoter"></canvas>
+          </div>
+          <button class="sig-clear" onclick="clearSig('Promoter')">Clear</button>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Print Name</div>
+          <span class="field" contenteditable="true" data-placeholder="Full Name" data-field="promoter_print_name"></span>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Date</div>
+          <span class="field" contenteditable="true" data-placeholder="Date" data-field="promoter_sign_date"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions" id="actionsBar">
+    <button class="btn-contract btn-contract--primary" onclick="generatePromoterLink()">
+      Generate Promoter Link
+    </button>
+    <button class="btn-contract btn-contract--secondary" onclick="window.print()">
+      Print Contract
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <div class="contract-footer">
+    &copy; 2026 FERAL PRESENTS. All rights reserved. &nbsp;&mdash;&nbsp; Confidential Document
+  </div>
+</div>
+
+<!-- Modal for generated link -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="modal__close" onclick="closeModal()">&times;</button>
+    <h3 class="modal__title">Promoter Link Generated</h3>
+    <p class="modal__text">Send this link to the promoter. They will be able to review the contract details and sign their section. All other fields will be locked.</p>
+    <input type="text" class="modal__link" id="modalLink" readonly>
+    <div class="modal__actions">
+      <button class="btn-contract btn-contract--primary" onclick="copyLink()">Copy Link</button>
+      <button class="btn-contract btn-contract--secondary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Signed Animation Overlay -->
+<div class="signed-overlay" id="signedOverlay">
+  <img src="../../images/FERAL%20LOGO.svg" alt="FERAL" class="signed-overlay__logo">
+  <div class="signed-overlay__check">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="11" stroke="#00cc66" stroke-width="2"/>
+      <path d="M7 12.5l3 3 7-7" stroke="#00cc66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="signed-overlay__title">Contract Signed</div>
+  <div class="signed-overlay__sub">Agreement confirmed</div>
+  <div class="signed-overlay__actions">
+    <div class="signed-overlay__actions-row">
+      <button class="btn-contract btn-contract--green" onclick="printAfterSign()">Print Your Copy</button>
+    </div>
+    <div class="signed-overlay__actions-row" id="invoiceButtonsRow" style="display:none;">
+      <button class="btn-contract btn-contract--outline-white" onclick="openSignedInvoice('booking')">Download Booking Fee Invoice</button>
+      <button class="btn-contract btn-contract--outline-white" onclick="openSignedInvoice('artist')">Download Artist Fee Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">Link copied to clipboard</div>
+
+<script>
+  // ============================================
+  // SUPABASE — cloud sync for signed contracts
+  // ============================================
+  var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+  var _sbLib = window.supabase;
+  var dbClient = null;
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && _sbLib && _sbLib.createClient) {
+    dbClient = _sbLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  async function syncSignedToCloud(contractId, updateData) {
+    if (!dbClient) return;
+    try {
+      // First fetch the existing contract from cloud
+      var res = await dbClient.from('contracts').select('*').eq('id', contractId).single();
+      if (res.error || !res.data) {
+        console.error('[DB] Could not fetch contract:', res.error);
+        return;
+      }
+      var existing = res.data;
+      // Merge signed data into the existing record
+      existing.signed = true;
+      existing._sig_promoter = updateData.promoter_sig || null;
+      existing.promoter_company = updateData.promoter_company || null;
+      existing.promoter_address = updateData.promoter_address || null;
+      existing.promoter_email = updateData.promoter_email || null;
+      existing.promoter_phone = updateData.promoter_phone || null;
+      // Store extra signed fields in the data JSONB
+      if (existing.data && typeof existing.data === 'object') {
+        existing.data._signed = true;
+        existing.data._signed_at = updateData.signed_at;
+        existing.data._signed_by = updateData.signed_by;
+      }
+      var upRes = await dbClient.from('contracts').upsert(existing, { onConflict: 'id' });
+      if (upRes.error) {
+        console.error('[DB] Upsert error:', upRes.error);
+      } else {
+        console.log('[DB] Signed contract synced to cloud');
+      }
+    } catch(e) {
+      console.error('[DB] Cloud sync error:', e);
+    }
+  }
+
+  // ============================================
+  // Signature Pad (simple canvas drawing)
+  // ============================================
+  function initSigPad(canvasId) {
+    var canvas = document.getElementById(canvasId);
+    var ctx = canvas.getContext('2d');
+    var drawing = false;
+    var lastX, lastY;
+
+    function resize() {
+      var wrap = canvas.parentElement;
+      var data = canvas.toDataURL();
+      canvas.width = wrap.offsetWidth;
+      canvas.height = wrap.offsetHeight;
+      // Restore after resize
+      if (data && data !== 'data:,') {
+        var img = new Image();
+        img.onload = function() { ctx.drawImage(img, 0, 0); };
+        img.src = data;
+      }
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+
+    function getPos(e) {
+      var rect = canvas.getBoundingClientRect();
+      var touch = e.touches ? e.touches[0] : e;
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+
+    function start(e) {
+      e.preventDefault();
+      drawing = true;
+      var pos = getPos(e);
+      lastX = pos.x;
+      lastY = pos.y;
+    }
+
+    function move(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      var pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      lastX = pos.x;
+      lastY = pos.y;
+    }
+
+    function stop() { drawing = false; }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', stop);
+    canvas.addEventListener('mouseleave', stop);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', stop);
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    return { canvas: canvas, ctx: ctx, resize: resize };
+  }
+
+  var sigAgency = initSigPad('sigCanvasAgency');
+  var sigPromoter = initSigPad('sigCanvasPromoter');
+
+  function clearSig(which) {
+    var pad = which === 'Agency' ? sigAgency : sigPromoter;
+    pad.ctx.clearRect(0, 0, pad.canvas.width, pad.canvas.height);
+  }
+
+  // ============================================
+  // Custom Date Picker
+  // ============================================
+  (function() {
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var trigger = document.getElementById('dpAgreementTrigger');
+    var dropdown = document.getElementById('dpAgreementDropdown');
+    var textEl = document.getElementById('dpAgreementText');
+    var daysEl = document.getElementById('dpDays');
+    var monthYearEl = document.getElementById('dpMonthYear');
+    var prevBtn = document.getElementById('dpPrev');
+    var nextBtn = document.getElementById('dpNext');
+    var todayBtn = document.getElementById('dpToday');
+
+    var now = new Date();
+    var viewMonth = now.getMonth();
+    var viewYear = now.getFullYear();
+    var selectedDate = null;
+
+    function formatDate(d) {
+      var day = d.getDate();
+      var suffix = 'th';
+      if (day === 1 || day === 21 || day === 31) suffix = 'st';
+      else if (day === 2 || day === 22) suffix = 'nd';
+      else if (day === 3 || day === 23) suffix = 'rd';
+      return day + suffix + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    }
+
+    function render() {
+      monthYearEl.textContent = MONTHS[viewMonth] + ' ' + viewYear;
+      daysEl.innerHTML = '';
+
+      var firstDay = new Date(viewYear, viewMonth, 1).getDay();
+      // Adjust so Monday = 0
+      var startOffset = (firstDay + 6) % 7;
+      var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      var todayStr = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate();
+      var selStr = selectedDate ? selectedDate.getFullYear() + '-' + selectedDate.getMonth() + '-' + selectedDate.getDate() : '';
+
+      // Empty cells before first day
+      for (var e = 0; e < startOffset; e++) {
+        var empty = document.createElement('span');
+        empty.className = 'dp-day dp-day--empty';
+        daysEl.appendChild(empty);
+      }
+
+      for (var d = 1; d <= daysInMonth; d++) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dp-day';
+        btn.textContent = d;
+
+        var thisStr = viewYear + '-' + viewMonth + '-' + d;
+        if (thisStr === todayStr) btn.classList.add('dp-day--today');
+        if (thisStr === selStr) btn.classList.add('dp-day--selected');
+
+        btn.setAttribute('data-day', d);
+        btn.addEventListener('click', function() {
+          var day = parseInt(this.getAttribute('data-day'));
+          selectedDate = new Date(viewYear, viewMonth, day);
+          textEl.textContent = formatDate(selectedDate);
+          close();
+          render();
+        });
+
+        daysEl.appendChild(btn);
+      }
+    }
+
+    function open() {
+      dropdown.classList.add('open');
+      trigger.classList.add('active');
+    }
+
+    function close() {
+      dropdown.classList.remove('open');
+      trigger.classList.remove('active');
+    }
+
+    function toggle() {
+      if (dropdown.classList.contains('open')) close();
+      else open();
+    }
+
+    trigger.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggle();
+    });
+
+    prevBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      viewMonth--;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      render();
+    });
+
+    nextBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      viewMonth++;
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      render();
+    });
+
+    todayBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      viewMonth = now.getMonth();
+      viewYear = now.getFullYear();
+      textEl.textContent = formatDate(selectedDate);
+      close();
+      render();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+      if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
+        close();
+      }
+    });
+
+    dropdown.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+
+    render();
+
+    // Expose for collect/restore
+    window.dpAgreement = {
+      getText: function() { return textEl.textContent; },
+      setText: function(val) {
+        textEl.textContent = val;
+        // Try to parse back the selected date for highlighting
+        if (val) {
+          var parsed = new Date(val.replace(/(\d+)(st|nd|rd|th)/, '$1'));
+          if (!isNaN(parsed.getTime())) {
+            selectedDate = parsed;
+            viewMonth = parsed.getMonth();
+            viewYear = parsed.getFullYear();
+            render();
+          }
+        }
+      },
+      lock: function() {
+        trigger.classList.add('date-picker-trigger--locked');
+      }
+    };
+  })();
+
+  // ============================================
+  // Collect / Restore field data
+  // ============================================
+  function collectData() {
+    var data = {};
+    document.querySelectorAll('.field').forEach(function(el) {
+      var key = el.getAttribute('data-field');
+      if (key) data[key] = el.textContent;
+    });
+    // Also collect date picker value
+    var dpText = document.getElementById('dpAgreementText');
+    if (dpText) data['agreement_date'] = dpText.textContent;
+    // Capture agency signature
+    data._sig_agency = sigAgency.canvas.toDataURL();
+    return data;
+  }
+
+  function restoreData(data) {
+    var FEE_FIELDS = ['booking_fee', 'artist_fee', 'catering_buyout'];
+    var CURRENCY_MAP = { GBP: '£', EUR: '€', USD: '$' };
+    var currSym = CURRENCY_MAP[data.currency] || '£';
+
+    document.querySelectorAll('.field').forEach(function(el) {
+      var key = el.getAttribute('data-field');
+      if (key && data[key]) {
+        var val = data[key];
+        if (FEE_FIELDS.indexOf(key) !== -1 && val) {
+          var num = val.toString().replace(/[^0-9.,]/g, '');
+          el.textContent = num ? currSym + num : val;
+        } else {
+          el.textContent = val;
+        }
+      }
+    });
+    // Restore date picker
+    if (data['agreement_date'] && window.dpAgreement) {
+      window.dpAgreement.setText(data['agreement_date']);
+    }
+    if (data._sig_agency) {
+      var img = new Image();
+      img.onload = function() {
+        sigAgency.ctx.clearRect(0, 0, sigAgency.canvas.width, sigAgency.canvas.height);
+        sigAgency.ctx.drawImage(img, 0, 0);
+      };
+      img.src = data._sig_agency;
+    }
+  }
+
+  // ============================================
+  // URL encode/decode for promoter link
+  // ============================================
+  function encodeData(data) {
+    var json = JSON.stringify(data);
+    return btoa(unescape(encodeURIComponent(json)));
+  }
+
+  function decodeData(str) {
+    try {
+      var json = decodeURIComponent(escape(atob(str)));
+      return JSON.parse(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ============================================
+  // Generate promoter link
+  // ============================================
+  function generatePromoterLink() {
+    var data = collectData();
+    var encoded = encodeData(data);
+    var base = window.location.origin + window.location.pathname;
+    var link = base + '?sign=' + encoded;
+    document.getElementById('modalLink').value = link;
+    document.getElementById('modalOverlay').classList.add('active');
+  }
+
+  function copyLink() {
+    var input = document.getElementById('modalLink');
+    input.select();
+    document.execCommand('copy');
+    var toast = document.getElementById('toast');
+    toast.classList.add('visible');
+    setTimeout(function() { toast.classList.remove('visible'); }, 2500);
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+
+  // ============================================
+  // Date helper
+  // ============================================
+  function getTodayFormatted() {
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var now = new Date();
+    var d = now.getDate();
+    var s = 'th';
+    if (d === 1 || d === 21 || d === 31) s = 'st';
+    else if (d === 2 || d === 22) s = 'nd';
+    else if (d === 3 || d === 23) s = 'rd';
+    return d + s + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+  }
+
+  // ============================================
+  // Invoice Generation (from promoter side)
+  // ============================================
+  var currentContractId = null;
+
+  function generateInvoiceFromContract(type) {
+    var STORAGE_KEY = 'agencyferal_contracts';
+    var SETTINGS_KEY = 'agencyferal_settings';
+    var ARTISTS_KEY = 'agencyferal_artists';
+
+    var contracts = [];
+    var settings = {};
+    var artists = {};
+    try { contracts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) {}
+    try { settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch(e) {}
+    try { artists = JSON.parse(localStorage.getItem(ARTISTS_KEY)) || {}; } catch(e) {}
+
+    var contract = null;
+    if (currentContractId) {
+      contract = contracts.find(function(c) { return c.id === currentContractId; });
+    }
+    if (!contract) return null;
+
+    var d = contract.data;
+    var artistData = artists[d.artist_id] || {};
+    var today = getTodayFormatted();
+    var isBooking = (type === 'booking');
+
+    var CURRENCY_SYMBOLS = { GBP: '£', EUR: '€', USD: '$' };
+    var currSym = CURRENCY_SYMBOLS[d.currency] || '£';
+
+    var title = isBooking ? 'BOOKING FEE INVOICE' : 'ARTIST FEE INVOICE';
+    var rawAmount = isBooking ? (d.booking_fee || 'N/A') : (d.artist_fee || 'N/A');
+    var amount = (rawAmount && rawAmount !== 'N/A') ? currSym + rawAmount.toString().replace(/[^0-9.,]/g, '') : 'N/A';
+    var paymentTerms = isBooking ? 'Due on receipt' : ('Due ' + (d.fee_due_date || 'as per contract'));
+
+    var bankName, bankSort, bankAcc, bankHolder;
+    if (isBooking) {
+      bankName = settings.bank_name || '';
+      bankSort = settings.bank_sort || '';
+      bankAcc = settings.bank_acc || '';
+      bankHolder = settings.bank_holder || '';
+    } else {
+      bankName = artistData.bank_name || '';
+      bankSort = artistData.sort_code || '';
+      bankAcc = artistData.acc_number || '';
+      bankHolder = artistData.acc_holder || '';
+    }
+
+    var warningHTML = '';
+    if (isBooking) {
+      warningHTML = '<div style="background:#ff0033;color:#fff;padding:20px 24px;margin:32px 0;font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:1px;line-height:1.8;font-weight:700;text-align:center;">THIS INVOICE MUST BE PAID IMMEDIATELY TO SECURE THE ARTIST.<br>PROMOTION OF THIS EVENT IS NOT PERMITTED UNTIL PAYMENT IS RECEIVED.</div>';
+    } else {
+      warningHTML = '<div style="border:3px solid #ff0033;background:rgba(255,0,51,0.1);color:#ff0033;padding:20px 24px;margin:32px 0;font-family:\'Space Mono\',monospace;font-size:12px;letter-spacing:1px;line-height:1.8;font-weight:700;text-align:center;">IMPORTANT: DO NOT PAY THE ARTIST FEE INTO THE BOOKING FEE ACCOUNT.<br>PLEASE USE THE ARTIST BANK DETAILS BELOW.</div>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
+    html += '<title>' + title + ' - ' + (contract.ref || '') + '</title>';
+    html += '<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">';
+    html += '<style>';
+    html += '*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }';
+    html += 'html { background: #000 !important; }';
+    html += 'body { background: #000; color: #fff; font-family: "Inter", sans-serif; line-height: 1.6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }';
+    html += '* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }';
+    html += '@media print { html, body { background: #000 !important; color: #fff !important; } .no-print { display: none !important; } @page { margin: 0.5cm; } }';
+    html += '</style></head><body>';
+    html += '<div style="max-width:700px;margin:0 auto;padding:48px 40px;">';
+
+    // Print/Download buttons
+    html += '<div class="no-print" style="display:flex;gap:12px;margin-bottom:32px;">';
+    html += '<button onclick="window.print()" style="padding:12px 24px;background:#ff0033;color:#fff;border:none;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;">Print / Download PDF</button>';
+    html += '<button onclick="window.close()" style="padding:12px 24px;background:#111;color:#fff;border:1px solid #222;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">Close</button>';
+    html += '</div>';
+
+    // Logo
+    html += '<div style="text-align:center;padding-bottom:32px;border-bottom:2px solid #fff;">';
+    html += '<img src="../../images/FERAL%20LOGO.svg" alt="FERAL" style="height:48px;margin-bottom:24px;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:14px;letter-spacing:6px;text-transform:uppercase;font-weight:700;">' + title + '</div>';
+    html += '<div style="width:40px;height:2px;background:#ff0033;margin:16px auto 0;"></div>';
+    html += '</div>';
+
+    // Invoice meta
+    html += '<div style="display:flex;justify-content:space-between;margin-top:32px;padding:20px 24px;border:1px solid #222;background:#0a0a0a;">';
+    html += '<div><span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;display:block;">Reference</span><span style="font-family:\'Space Mono\',monospace;font-size:13px;">' + (contract.ref || 'N/A') + '</span></div>';
+    html += '<div style="text-align:right;"><span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;display:block;">Invoice Date</span><span style="font-family:\'Space Mono\',monospace;font-size:13px;">' + today + '</span></div>';
+    html += '</div>';
+
+    // From / To
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px;">';
+    html += '<div style="padding:20px 24px;border:1px solid #222;border-left:3px solid #ff0033;background:#0a0a0a;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#ff0033;margin-bottom:12px;">From</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">' + (settings.biz_name || 'AGENCY FERAL') + '</div>';
+    if (settings.biz_address) html += '<div style="font-size:12px;color:#ccc;white-space:pre-line;margin-bottom:4px;">' + settings.biz_address + '</div>';
+    if (settings.rep_name) html += '<div style="font-size:13px;color:#ccc;">' + settings.rep_name + '</div>';
+    if (settings.rep_email) html += '<div style="font-size:13px;color:#888;">' + settings.rep_email + '</div>';
+    if (settings.rep_phone) html += '<div style="font-size:13px;color:#888;">' + settings.rep_phone + '</div>';
+    html += '</div>';
+
+    html += '<div style="padding:20px 24px;border:1px solid #222;border-left:3px solid #fff;background:#0a0a0a;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:12px;">To</div>';
+    html += '<div style="font-weight:700;margin-bottom:4px;">' + (contract.promoter_company || d.promoter_name || 'N/A') + '</div>';
+    if (contract.promoter_address) html += '<div style="font-size:13px;color:#ccc;">' + contract.promoter_address + '</div>';
+    if (contract.promoter_email) html += '<div style="font-size:13px;color:#888;">' + contract.promoter_email + '</div>';
+    if (contract.promoter_phone) html += '<div style="font-size:13px;color:#888;">' + contract.promoter_phone + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Event details
+    html += '<div style="margin-top:24px;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #222;">Event Details</div>';
+    html += '<table style="width:100%;border-collapse:collapse;">';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;width:160px;">Event Name</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.event_name || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Event Date</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.event_date || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Artist</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.artist_name || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Venue</td><td style="padding:10px 16px;border-bottom:1px solid #1a1a1a;font-size:14px;">' + (d.venue || 'N/A') + '</td></tr>';
+    html += '</table>';
+    html += '</div>';
+
+    // Amount
+    html += '<div style="margin-top:24px;padding:24px;border:2px solid #ff0033;background:rgba(255,0,51,0.05);text-align:center;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:8px;">' + (isBooking ? 'Booking Fee' : 'Artist Fee') + '</div>';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:28px;font-weight:700;color:#fff;">' + amount + '</div>';
+    html += '</div>';
+
+    // Warning
+    html += warningHTML;
+
+    // Bank details
+    html += '<div style="margin-top:24px;padding:20px 24px;border:1px solid #222;background:#0a0a0a;">';
+    html += '<div style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#ff0033;margin-bottom:16px;">' + (isBooking ? 'Agency Bank Details' : 'Artist Bank Details') + '</div>';
+    html += '<table style="width:100%;border-collapse:collapse;">';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;width:160px;">Bank Name</td><td style="padding:8px 0;font-size:14px;">' + (bankName || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Sort Code</td><td style="padding:8px 0;font-size:14px;">' + (bankSort || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Account Number</td><td style="padding:8px 0;font-size:14px;">' + (bankAcc || 'N/A') + '</td></tr>';
+    html += '<tr><td style="padding:8px 0;font-family:\'Space Mono\',monospace;font-size:11px;color:#888;">Account Holder</td><td style="padding:8px 0;font-size:14px;">' + (bankHolder || 'N/A') + '</td></tr>';
+    html += '</table>';
+    html += '</div>';
+
+    // Payment terms
+    html += '<div style="margin-top:24px;padding:16px 24px;border:1px solid #222;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:1px;color:#888;">';
+    html += 'Payment Terms: <span style="color:#fff;">' + paymentTerms + '</span>';
+    html += '</div>';
+
+    // Footer
+    html += '<div style="margin-top:48px;padding-top:16px;border-top:1px solid #222;text-align:center;font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#555;">';
+    var footerParts = ['&copy; 2026 ' + (settings.biz_name || 'AGENCY FERAL')];
+    if (settings.biz_company_no) footerParts.push('Company No: ' + settings.biz_company_no);
+    if (settings.biz_vat) footerParts.push('VAT: ' + settings.biz_vat);
+    html += footerParts.join(' &mdash; ');
+    html += '</div>';
+
+    html += '</div></body></html>';
+    return html;
+  }
+
+  function openSignedInvoice(type) {
+    var html = generateInvoiceFromContract(type);
+    if (!html) {
+      showToastMsg('Invoice data not available');
+      return;
+    }
+    var w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+  }
+
+  function showToastMsg(msg) {
+    var toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    setTimeout(function() { toast.classList.remove('visible'); }, 2500);
+  }
+
+  // ============================================
+  // Promoter view — lock agency fields
+  // ============================================
+  function enterPromoterView(data, contractId) {
+    restoreData(data);
+
+    // Store contract ID for invoice generation
+    currentContractId = contractId || null;
+
+    // Lock all fields except promoter signature fields
+    var promoterFields = ['promoter_print_name', 'promoter_sign_date'];
+    document.querySelectorAll('.field').forEach(function(el) {
+      var key = el.getAttribute('data-field');
+      if (promoterFields.indexOf(key) === -1) {
+        el.setAttribute('contenteditable', 'false');
+        el.classList.add('field--locked');
+      }
+    });
+
+    // Lock date picker
+    if (window.dpAgreement) window.dpAgreement.lock();
+
+    // Hide agency signature pad
+    var agencyCanvas = document.getElementById('sigCanvasAgency');
+    agencyCanvas.style.pointerEvents = 'none';
+    var agencyClear = document.querySelector('#sigBlockAgency .sig-clear');
+    if (agencyClear) agencyClear.style.display = 'none';
+
+    // Update status
+    document.getElementById('statusText').textContent = 'Awaiting Promoter Signature';
+
+    // Show locked notice
+    document.getElementById('lockedNotice').style.display = 'block';
+
+    // Show promoter details form
+    document.getElementById('promoterDetails').classList.add('visible');
+
+    // Change actions — Confirm & Sign + Print
+    document.getElementById('actionsBar').innerHTML =
+      '<button class="btn-contract btn-contract--primary" onclick="confirmSign()">Confirm & Sign</button>' +
+      '<button class="btn-contract btn-contract--secondary" onclick="window.print()">Print Contract</button>';
+  }
+
+  // Read-only view (for agency viewing their own contracts)
+  function enterReadOnlyView(data) {
+    restoreData(data);
+    document.querySelectorAll('.field').forEach(function(el) {
+      el.setAttribute('contenteditable', 'false');
+      el.classList.add('field--locked');
+    });
+    if (window.dpAgreement) window.dpAgreement.lock();
+    document.getElementById('sigCanvasAgency').style.pointerEvents = 'none';
+    document.getElementById('sigCanvasPromoter').style.pointerEvents = 'none';
+    var clears = document.querySelectorAll('.sig-clear');
+    clears.forEach(function(b) { b.style.display = 'none'; });
+
+    // Restore promoter signature if contract was signed
+    if (data._sig_promoter) {
+      var promImg = new Image();
+      promImg.onload = function() {
+        sigPromoter.ctx.clearRect(0, 0, sigPromoter.canvas.width, sigPromoter.canvas.height);
+        sigPromoter.ctx.drawImage(promImg, 0, 0);
+      };
+      promImg.src = data._sig_promoter;
+    }
+
+    // Show promoter sign date if signed
+    if (data._signed_at) {
+      var signDate = document.querySelector('[data-field="promoter_sign_date"]');
+      if (signDate && !signDate.textContent.trim()) {
+        var d = new Date(data._signed_at);
+        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        signDate.textContent = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+      }
+    }
+
+    // Show promoter details section if we have them
+    if (data._promoter_company || data._promoter_email) {
+      var pdSection = document.getElementById('promoterDetails');
+      if (pdSection) {
+        pdSection.classList.add('visible');
+        var pdCompanyEl = document.getElementById('pdCompany');
+        var pdAddressEl = document.getElementById('pdAddress');
+        var pdEmailEl = document.getElementById('pdEmail');
+        var pdPhoneEl = document.getElementById('pdPhone');
+        if (pdCompanyEl) { pdCompanyEl.value = data._promoter_company || ''; pdCompanyEl.disabled = true; }
+        if (pdAddressEl) { pdAddressEl.value = data._promoter_address || ''; pdAddressEl.disabled = true; }
+        if (pdEmailEl) { pdEmailEl.value = data._promoter_email || ''; pdEmailEl.disabled = true; }
+        if (pdPhoneEl) { pdPhoneEl.value = data._promoter_phone || ''; pdPhoneEl.disabled = true; }
+      }
+    }
+
+    var statusLabel = data._signed ? 'Signed' : 'View Only';
+    document.getElementById('statusText').textContent = statusLabel;
+    document.getElementById('actionsBar').innerHTML =
+      '<button class="btn-contract btn-contract--secondary" onclick="window.print()">Print Contract</button>';
+  }
+
+  // Confirm & Sign — show animation then print option
+  function confirmSign() {
+    var name = document.querySelector('[data-field="promoter_print_name"]');
+    if (!name || !name.textContent.trim()) {
+      alert('Please enter your name before signing.');
+      return;
+    }
+
+    // Validate promoter details
+    var pdCompany = document.getElementById('pdCompany').value.trim();
+    var pdAddress = document.getElementById('pdAddress').value.trim();
+    var pdEmail = document.getElementById('pdEmail').value.trim();
+    var pdPhone = document.getElementById('pdPhone').value.trim();
+
+    if (!pdCompany) {
+      alert('Please enter your company name or full name.');
+      return;
+    }
+    if (!pdEmail) {
+      alert('Please enter your email address.');
+      return;
+    }
+
+    // Build update data for cloud sync
+    var signedAt = new Date().toISOString();
+    var promoterSig = sigPromoter.canvas.toDataURL();
+    var updateData = {
+      signed: true,
+      signed_at: signedAt,
+      signed_by: name.textContent.trim(),
+      promoter_sig: promoterSig,
+      promoter_company: pdCompany,
+      promoter_address: pdAddress,
+      promoter_email: pdEmail,
+      promoter_phone: pdPhone
+    };
+
+    // Mark contract as signed in localStorage (for dashboard sync)
+    var params = new URLSearchParams(window.location.search);
+    var contractId = params.get('sign');
+    if (contractId) {
+      try {
+        var STORAGE_KEY = 'agencyferal_contracts';
+        var contracts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        var idx = contracts.findIndex(function(c) { return c.id === contractId; });
+        if (idx >= 0) {
+          Object.assign(contracts[idx], updateData);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+        }
+      } catch(e) { /* localStorage may not be available on different domain */ }
+
+      // Sync to Supabase cloud
+      syncSignedToCloud(contractId, updateData);
+    }
+
+    // Replace entire page with permanent signed dashboard
+    showSignedDashboard();
+  }
+
+  function showSignedDashboard() {
+    // Completely replace the page body so there's no going back
+    var wrapper = document.getElementById('contractWrapper');
+    var overlay = document.getElementById('signedOverlay');
+
+    // Hide contract content, show permanent signed screen
+    wrapper.style.display = 'none';
+    if (overlay) overlay.remove();
+
+    var signedPage = document.createElement('div');
+    signedPage.id = 'signedDashboard';
+    signedPage.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;';
+
+    var hasInvoices = !!currentContractId;
+
+    signedPage.innerHTML = ''
+      + '<img src="../../images/FERAL%20LOGO.svg" alt="FERAL" style="height:48px;margin-bottom:40px;opacity:0.9;">'
+      + '<div style="width:64px;height:64px;border-radius:50%;border:2px solid #00cc66;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">'
+      + '<svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M7 12.5l3 3 7-7" stroke="#00cc66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '</div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:18px;letter-spacing:6px;text-transform:uppercase;font-weight:700;color:#fff;margin-bottom:8px;">Contract Signed</div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:48px;">Agreement confirmed — thank you</div>'
+      + '<div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:360px;">'
+      + '<button id="sdPrint" style="padding:14px 24px;background:#00cc66;color:#000;border:none;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;width:100%;">Print Your Copy</button>'
+      + (hasInvoices ? '<button id="sdBookingInv" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">Download Booking Fee Invoice</button>' : '')
+      + (hasInvoices ? '<button id="sdArtistInv" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">Download Artist Fee Invoice</button>' : '')
+      + '</div>';
+
+    document.body.appendChild(signedPage);
+
+    // Lock browser history — prevent back button from returning to unsigned contract
+    history.replaceState({ signed: true }, '', window.location.href);
+    history.pushState({ signed: true }, '', window.location.href);
+    window.addEventListener('popstate', function() {
+      // If they press back, immediately push them forward again
+      history.pushState({ signed: true }, '', window.location.href);
+    });
+
+    // Attach button handlers
+    document.getElementById('sdPrint').addEventListener('click', function() {
+      // Temporarily show contract for printing, then restore signed screen
+      signedPage.style.display = 'none';
+      wrapper.style.display = '';
+      window.print();
+      wrapper.style.display = 'none';
+      signedPage.style.display = 'flex';
+    });
+
+    if (hasInvoices) {
+      document.getElementById('sdBookingInv').addEventListener('click', function() {
+        openSignedInvoice('booking');
+      });
+      document.getElementById('sdArtistInv').addEventListener('click', function() {
+        openSignedInvoice('artist');
+      });
+    }
+  }
+
+  // ============================================
+  // Check URL on load
+  // ============================================
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+
+    // Dashboard format: ?sign=contractId&d=encodedData
+    // or old format: ?sign=encodedData (no & in the value means old format)
+    var signParam = params.get('sign');
+    var dataParam = params.get('d');
+    var viewParam = params.get('view');
+
+    if (signParam && dataParam) {
+      // New dashboard format — promoter view
+      var data = decodeData(dataParam);
+      if (data) {
+        currentContractId = signParam;
+        enterPromoterView(data, signParam);
+      }
+    } else if (viewParam && dataParam) {
+      // Agency viewing their own contract
+      var data = decodeData(dataParam);
+      if (data) enterReadOnlyView(data);
+    } else if (signParam && !dataParam) {
+      // Old format — signParam IS the encoded data
+      var data = decodeData(signParam);
+      if (data) enterPromoterView(data, null);
+    }
+  })();
+</script>
+
+</body>
+</html>

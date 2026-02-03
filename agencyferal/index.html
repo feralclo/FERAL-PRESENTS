@@ -1703,15 +1703,17 @@
   // ============================================
   var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
-  var supabase = null;
+  var dbClient = null;
   var dbReady = false;
 
-  if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Must save reference BEFORE var declaration overwrites window.supabase
+  var _supabaseLib = window.supabase;
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && _supabaseLib && _supabaseLib.createClient) {
+    dbClient = _supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     dbReady = true;
     console.log('[AGENCY FERAL] Supabase connected — data will persist across devices');
   } else {
-    console.log('[AGENCY FERAL] Supabase not configured — using local storage only. To enable cloud sync, set SUPABASE_URL and SUPABASE_ANON_KEY.');
+    console.log('[AGENCY FERAL] Supabase not configured — using local storage only.');
   }
 
   // ============================================
@@ -1722,7 +1724,7 @@
     if (!dbReady) return;
     // Upsert all contracts to Supabase
     contracts.forEach(function(c) {
-      supabase.from('contracts').upsert({
+      dbClient.from('contracts').upsert({
         id: c.id,
         ref: c.ref,
         data: c.data,
@@ -1746,7 +1748,7 @@
 
   function dbDeleteContract(id) {
     if (!dbReady) return;
-    supabase.from('contracts').delete().eq('id', id).then(function(res) {
+    dbClient.from('contracts').delete().eq('id', id).then(function(res) {
       if (res.error) console.error('[DB] Contract delete error:', res.error);
     });
   }
@@ -1754,7 +1756,7 @@
   function dbSaveSettings(data) {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
     if (!dbReady) return;
-    supabase.from('settings').upsert({
+    dbClient.from('settings').upsert({
       id: 'main',
       data: data
     }, { onConflict: 'id' }).then(function(res) {
@@ -1765,7 +1767,7 @@
   function dbSaveArtists(data) {
     localStorage.setItem(ARTISTS_KEY, JSON.stringify(data));
     if (!dbReady) return;
-    supabase.from('artists').upsert({
+    dbClient.from('artists').upsert({
       id: 'all',
       data: data
     }, { onConflict: 'id' }).then(function(res) {
@@ -1778,19 +1780,19 @@
     if (!dbReady) return;
     try {
       // Load contracts
-      var cRes = await supabase.from('contracts').select('*');
+      var cRes = await dbClient.from('contracts').select('*');
       if (cRes.data && cRes.data.length > 0) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cRes.data));
         console.log('[DB] Loaded ' + cRes.data.length + ' contracts from cloud');
       }
       // Load settings
-      var sRes = await supabase.from('settings').select('*').eq('id', 'main').single();
+      var sRes = await dbClient.from('settings').select('*').eq('id', 'main').single();
       if (sRes.data && sRes.data.data) {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(sRes.data.data));
         console.log('[DB] Loaded settings from cloud');
       }
       // Load artists
-      var aRes = await supabase.from('artists').select('*').eq('id', 'all').single();
+      var aRes = await dbClient.from('artists').select('*').eq('id', 'all').single();
       if (aRes.data && aRes.data.data) {
         localStorage.setItem(ARTISTS_KEY, JSON.stringify(aRes.data.data));
         console.log('[DB] Loaded artists from cloud');

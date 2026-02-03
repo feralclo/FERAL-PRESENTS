@@ -1931,8 +1931,10 @@
       var text = btn.textContent.trim();
       if (text === 'Print Your Copy') {
         btn.addEventListener('click', function() {
-          clone.classList.remove('active');
+          // Temporarily hide overlay for printing, then restore it
+          clone.style.display = 'none';
           window.print();
+          clone.style.display = '';
         });
       } else if (text === 'Download Booking Fee Invoice') {
         btn.addEventListener('click', function() {

@@ -271,8 +271,7 @@
                   </div>
                   <button class="feral-tickets__checkout" id="feral-checkout-btn" disabled>SELECT TICKETS TO CONTINUE</button>
                 </div>
-                <!-- Eventix checkout container -->
-                <div id="eventix-shop-container"></div>
+                <!-- Eventix checkout is on separate page -->
               </div>
             </div>
           </aside>
@@ -301,155 +300,40 @@
   </footer>
 
   <script src="../../js/main.js"></script>
-  <script src="https://v1.widget.shop.eventix.io/injector.js"></script>
   <script>
-    // WeeZTix ShopInjector — custom ticket selector
-    (async function() {
-      var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
+    // Ticket quantity selector — navigates to checkout page
+    (function() {
+      var TICKET_PRICE = 24.50;
+      var qty = 0;
       var totalEl = document.getElementById('feral-total');
       var checkoutBtn = document.getElementById('feral-checkout-btn');
-      var ticketSelector = document.getElementById('feral-tickets');
+      var qtyEl = document.getElementById('qty-6b45169f-cf51-4600-8682-d6f79dcb59ae');
+      var priceEl = document.getElementById('price-general');
 
-      // Read persisted campaign data (sessionStorage or cookies)
-      function getCookie(name) {
-        var nameEQ = name + '=';
-        var ca = document.cookie.split(';');
-        for (var i = 0; i < ca.length; i++) {
-          var c = ca[i];
-          while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-          if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-        }
-        return null;
+      if (priceEl) priceEl.textContent = '\u00A3' + TICKET_PRICE.toFixed(2);
+
+      function update() {
+        if (qtyEl) qtyEl.textContent = qty;
+        totalEl.textContent = '\u00A3' + (qty * TICKET_PRICE).toFixed(2);
+        checkoutBtn.disabled = qty < 1;
+        checkoutBtn.textContent = qty > 0 ? 'CHECKOUT \u2192' : 'SELECT TICKETS TO CONTINUE';
       }
 
-      function getPersistedValues() {
-        var sessionValue = window.sessionStorage.getItem('@openticket:persist-campaign-data:entries');
-        if (sessionValue) return JSON.parse(sessionValue);
-        var cookieValue = getCookie('@openticket:persist-campaign-data:entries');
-        if (cookieValue) return JSON.parse(cookieValue);
-        return {};
-      }
-
-      // Cart change handler
-      function onCartChange(data) {
-        var total = data.checkout_details.total_price;
-        var totalFormatted = (total / 100).toFixed(2);
-        totalEl.textContent = '\u00A3' + totalFormatted;
-
-        var ticketCounts = {};
-        var hasTickets = false;
-        var entries = Object.entries(data.tickets);
-        for (var i = 0; i < entries.length; i++) {
-          var ticketId = entries[i][0];
-          var ticketInfo = entries[i][1];
-          var count = ticketInfo.count;
-          var subTotal = ticketInfo.pricing.total_price;
-          ticketCounts[ticketId] = { count: count, subTotal: subTotal };
-          if (count > 0) hasTickets = true;
-        }
-
-        // Update all quantity displays
-        document.querySelectorAll('.feral-tickets__qty').forEach(function(el) {
-          var id = el.id.replace('qty-', '');
-          var info = ticketCounts[id];
-          if (info && info.count > 0) {
-            el.textContent = info.count;
-            // Update price display with subtotal
-            var row = el.closest('.feral-tickets__row');
-            if (row) {
-              var priceEl = row.querySelector('.feral-tickets__price');
-              if (priceEl) priceEl.textContent = '\u00A3' + (info.subTotal / 100).toFixed(2);
-            }
-          } else {
-            el.textContent = '0';
-          }
-        });
-
-        checkoutBtn.disabled = !hasTickets;
-        checkoutBtn.textContent = hasTickets ? 'CHECKOUT \u2192' : 'SELECT TICKETS TO CONTINUE';
-      }
-
-      // Wait for OpenTicket to be available
-      function waitForOpenTicket() {
-        return new Promise(function(resolve) {
-          function check() {
-            if (window.OpenTicket && window.OpenTicket.ShopInjector) {
-              resolve();
-            } else {
-              setTimeout(check, 200);
-            }
-          }
-          check();
-        });
-      }
-
-      await waitForOpenTicket();
-
-      // Build config
-      var config = {
-        url: 'https://shop.weeztix.com/' + SHOP_ID,
-        guid: SHOP_ID,
-        container: 'eventix-shop-container',
-        cookiePreferences: {
-          functional: true,
-          analytical: true,
-          organiserMarketing: true,
-          embeddedContent: true
-        }
-      };
-
-      var persistedValues = getPersistedValues();
-      if (Object.keys(persistedValues).length !== 0) {
-        config.trackingInfo = persistedValues;
-      }
-
-      // Initialize ShopInjector
-      window.ShopInjector = new window.OpenTicket.ShopInjector();
-      await window.ShopInjector.init(config);
-
-      // Listen for cart changes
-      window.ShopInjector.shop.onCartData(onCartChange);
-
-      // Optimistic local count for instant feedback
-      var localQty = {};
-
-      // Button click handlers — instant UI update, then send to server
       document.querySelectorAll('.feral-tickets__btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          if (!window.ShopInjector || !window.ShopInjector.shop) return;
-          var ticketId = btn.getAttribute('data-ticket');
           var action = btn.getAttribute('data-action');
-
-          // Instant optimistic update
-          if (!localQty[ticketId]) localQty[ticketId] = 0;
-          if (action === 'add') {
-            localQty[ticketId]++;
-          } else if (action === 'remove' && localQty[ticketId] > 0) {
-            localQty[ticketId]--;
-          }
-          var qtyEl = document.getElementById('qty-' + ticketId);
-          if (qtyEl) qtyEl.textContent = localQty[ticketId];
-          var hasAny = localQty[ticketId] > 0;
-          checkoutBtn.disabled = !hasAny;
-          checkoutBtn.textContent = hasAny ? 'CHECKOUT \u2192' : 'SELECT TICKETS TO CONTINUE';
-
-          // Send to server (onCartChange will correct with real data)
-          window.ShopInjector.shop.sendMessage({
-            action: action,
-            guid: ticketId,
-            type: 'ticket'
-          });
+          if (action === 'add') qty++;
+          if (action === 'remove' && qty > 0) qty--;
+          update();
         });
       });
 
-      // Checkout button — reveal the eventix checkout and scroll to it
       checkoutBtn.addEventListener('click', function() {
-        if (checkoutBtn.disabled) return;
-        var container = document.getElementById('eventix-shop-container');
-        ticketSelector.style.display = 'none';
-        container.classList.add('active');
-        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (qty < 1) return;
+        window.location.href = '/event/liverpool-27-march/checkout/?qty=' + qty;
       });
+
+      update();
     })();
   </script>
   <script>

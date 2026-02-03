@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1270,6 +1271,27 @@
 
 <script>
   // ============================================
+  // SUPABASE — cloud sync for signed contracts
+  // ============================================
+  var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+  var _sbLib = window.supabase;
+  var dbClient = null;
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && _sbLib && _sbLib.createClient) {
+    dbClient = _sbLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  async function syncSignedToCloud(contractId, updateData) {
+    if (!dbClient) return;
+    try {
+      await dbClient.from('contracts').update(updateData).eq('id', contractId);
+      console.log('[DB] Signed contract synced to cloud');
+    } catch(e) {
+      console.error('[DB] Cloud sync error:', e);
+    }
+  }
+
+  // ============================================
   // Signature Pad (simple canvas drawing)
   // ============================================
   function initSigPad(canvasId) {
@@ -1892,6 +1914,20 @@
       return;
     }
 
+    // Build update data for cloud sync
+    var signedAt = new Date().toISOString();
+    var promoterSig = sigPromoter.canvas.toDataURL();
+    var updateData = {
+      signed: true,
+      signed_at: signedAt,
+      signed_by: name.textContent.trim(),
+      promoter_sig: promoterSig,
+      promoter_company: pdCompany,
+      promoter_address: pdAddress,
+      promoter_email: pdEmail,
+      promoter_phone: pdPhone
+    };
+
     // Mark contract as signed in localStorage (for dashboard sync)
     var params = new URLSearchParams(window.location.search);
     var contractId = params.get('sign');
@@ -1901,60 +1937,67 @@
         var contracts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         var idx = contracts.findIndex(function(c) { return c.id === contractId; });
         if (idx >= 0) {
-          contracts[idx].signed = true;
-          contracts[idx].signed_at = new Date().toISOString();
-          contracts[idx].signed_by = name.textContent.trim();
-          // Save promoter signature data
-          contracts[idx].promoter_sig = sigPromoter.canvas.toDataURL();
-          // Save promoter details
-          contracts[idx].promoter_company = pdCompany;
-          contracts[idx].promoter_address = pdAddress;
-          contracts[idx].promoter_email = pdEmail;
-          contracts[idx].promoter_phone = pdPhone;
+          Object.assign(contracts[idx], updateData);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
         }
       } catch(e) { /* localStorage may not be available on different domain */ }
+
+      // Sync to Supabase cloud
+      syncSignedToCloud(contractId, updateData);
     }
 
-    // Show signed overlay animation
-    var overlay = document.getElementById('signedOverlay');
-    var parent = overlay.parentNode;
-    var clone = overlay.cloneNode(true);
-    parent.replaceChild(clone, overlay);
-    clone.classList.add('active');
-
-    // Show invoice buttons row
-    var invoiceRow = clone.querySelector('#invoiceButtonsRow');
-    if (invoiceRow && currentContractId) {
-      invoiceRow.style.display = 'flex';
-    }
-
-    // Re-attach button listeners on the clone
-    var buttons = clone.querySelectorAll('button');
-    buttons.forEach(function(btn) {
-      var text = btn.textContent.trim();
-      if (text === 'Print Your Copy') {
-        btn.addEventListener('click', function() {
-          // Temporarily hide overlay for printing, then restore it
-          clone.style.display = 'none';
-          window.print();
-          clone.style.display = '';
-        });
-      } else if (text === 'Download Booking Fee Invoice') {
-        btn.addEventListener('click', function() {
-          openSignedInvoice('booking');
-        });
-      } else if (text === 'Download Artist Fee Invoice') {
-        btn.addEventListener('click', function() {
-          openSignedInvoice('artist');
-        });
-      }
-    });
+    // Replace entire page with permanent signed dashboard
+    showSignedDashboard();
   }
 
-  function printAfterSign() {
-    document.getElementById('signedOverlay').classList.remove('active');
-    window.print();
+  function showSignedDashboard() {
+    // Completely replace the page body so there's no going back
+    var wrapper = document.getElementById('contractWrapper');
+    var overlay = document.getElementById('signedOverlay');
+
+    // Hide contract content, show permanent signed screen
+    wrapper.style.display = 'none';
+    if (overlay) overlay.remove();
+
+    var signedPage = document.createElement('div');
+    signedPage.id = 'signedDashboard';
+    signedPage.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;';
+
+    var hasInvoices = !!currentContractId;
+
+    signedPage.innerHTML = ''
+      + '<img src="../../images/FERAL%20LOGO.svg" alt="FERAL" style="height:48px;margin-bottom:40px;opacity:0.9;">'
+      + '<div style="width:64px;height:64px;border-radius:50%;border:2px solid #00cc66;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">'
+      + '<svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M7 12.5l3 3 7-7" stroke="#00cc66" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '</div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:18px;letter-spacing:6px;text-transform:uppercase;font-weight:700;color:#fff;margin-bottom:8px;">Contract Signed</div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:48px;">Agreement confirmed — thank you</div>'
+      + '<div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:360px;">'
+      + '<button id="sdPrint" style="padding:14px 24px;background:#00cc66;color:#000;border:none;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;width:100%;">Print Your Copy</button>'
+      + (hasInvoices ? '<button id="sdBookingInv" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">Download Booking Fee Invoice</button>' : '')
+      + (hasInvoices ? '<button id="sdArtistInv" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">Download Artist Fee Invoice</button>' : '')
+      + '</div>';
+
+    document.body.appendChild(signedPage);
+
+    // Attach button handlers
+    document.getElementById('sdPrint').addEventListener('click', function() {
+      // Temporarily show contract for printing, then restore signed screen
+      signedPage.style.display = 'none';
+      wrapper.style.display = '';
+      window.print();
+      wrapper.style.display = 'none';
+      signedPage.style.display = 'flex';
+    });
+
+    if (hasInvoices) {
+      document.getElementById('sdBookingInv').addEventListener('click', function() {
+        openSignedInvoice('booking');
+      });
+      document.getElementById('sdArtistInv').addEventListener('click', function() {
+        openSignedInvoice('artist');
+      });
+    }
   }
 
   // ============================================

@@ -490,7 +490,7 @@
 
       // Trigger 1: Show after delay (extra 2s on mobile)
       var isMobile = window.innerWidth <= 1024;
-      setTimeout(showToast, isMobile ? 6500 : 4500);
+      setTimeout(showToast, isMobile ? 10000 : 8000);
 
       // Trigger 2: Show on 30% scroll
       function checkScroll() {

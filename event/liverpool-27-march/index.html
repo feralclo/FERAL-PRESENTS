@@ -254,17 +254,6 @@
               <div class="event-tickets__embed" id="tickets-embed">
                 <!-- Custom ticket selector (ShopInjector) -->
                 <div class="feral-tickets" id="feral-tickets">
-                  <div class="feral-tickets__row" data-ticket-id="2ca29d82-538a-4d30-8050-940756adcc50">
-                    <div class="feral-tickets__info">
-                      <span class="feral-tickets__name">FRIDAY TICKET</span>
-                      <span class="feral-tickets__price" id="price-friday"></span>
-                    </div>
-                    <div class="feral-tickets__controls">
-                      <button class="feral-tickets__btn feral-tickets__btn--minus" data-action="remove" data-ticket="2ca29d82-538a-4d30-8050-940756adcc50" aria-label="Remove ticket">&minus;</button>
-                      <span class="feral-tickets__qty" id="qty-2ca29d82-538a-4d30-8050-940756adcc50">0</span>
-                      <button class="feral-tickets__btn feral-tickets__btn--plus" data-action="add" data-ticket="2ca29d82-538a-4d30-8050-940756adcc50" aria-label="Add ticket">+</button>
-                    </div>
-                  </div>
                   <div class="feral-tickets__row" data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae">
                     <div class="feral-tickets__info">
                       <span class="feral-tickets__name">GENERAL RELEASE</span>
@@ -421,12 +410,30 @@
       // Listen for cart changes
       window.ShopInjector.shop.onCartData(onCartChange);
 
-      // Button click handlers
+      // Optimistic local count for instant feedback
+      var localQty = {};
+
+      // Button click handlers — instant UI update, then send to server
       document.querySelectorAll('.feral-tickets__btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
           if (!window.ShopInjector || !window.ShopInjector.shop) return;
           var ticketId = btn.getAttribute('data-ticket');
           var action = btn.getAttribute('data-action');
+
+          // Instant optimistic update
+          if (!localQty[ticketId]) localQty[ticketId] = 0;
+          if (action === 'add') {
+            localQty[ticketId]++;
+          } else if (action === 'remove' && localQty[ticketId] > 0) {
+            localQty[ticketId]--;
+          }
+          var qtyEl = document.getElementById('qty-' + ticketId);
+          if (qtyEl) qtyEl.textContent = localQty[ticketId];
+          var hasAny = localQty[ticketId] > 0;
+          checkoutBtn.disabled = !hasAny;
+          checkoutBtn.textContent = hasAny ? 'CHECKOUT \u2192' : 'SELECT TICKETS TO CONTINUE';
+
+          // Send to server (onCartChange will correct with real data)
           window.ShopInjector.shop.sendMessage({
             action: action,
             guid: ticketId,

@@ -26,70 +26,60 @@
       overflow-x: hidden;
     }
 
-    /* --- Top bar: logo + back link --- */
-    .checkout-topbar {
-      background: #111;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    /* --- Header: logo centred, back link, flows into content --- */
+    .checkout-header {
+      background: #1c1c1c;
+      padding: 24px 20px 0;
+      text-align: center;
+      position: relative;
     }
 
-    .checkout-topbar__logo {
-      height: 22px;
-      width: auto;
-      display: block;
-    }
-
-    .checkout-topbar__back {
+    .checkout-header__back {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
       font-family: 'Space Mono', monospace;
       font-size: 10px;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: #888;
+      color: #666;
       text-decoration: none;
       transition: color 0.15s ease;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
-    .checkout-topbar__back:hover {
+    .checkout-header__back:hover {
       color: #fff;
     }
 
-    /* --- Branded header that merges into embed --- */
-    .checkout-banner {
+    .checkout-header__logo {
+      height: 28px;
+      width: auto;
+      display: inline-block;
+    }
+
+    /* --- Info strip below logo --- */
+    .checkout-info {
       background: #1c1c1c;
-      padding: 28px 20px 20px;
       text-align: center;
+      padding: 20px 20px 16px;
       border-bottom: 2px solid #f60434;
     }
 
-    .checkout-banner__title {
+    .checkout-info__title {
       font-family: 'Space Mono', monospace;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 4px;
+      letter-spacing: 3px;
       text-transform: uppercase;
       color: #fff;
       margin-bottom: 6px;
     }
 
-    .checkout-banner__sub {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 1.5px;
-      color: #888;
-      text-transform: uppercase;
-    }
-
-    .checkout-banner__secure {
+    .checkout-info__secure {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      margin-top: 12px;
       font-family: 'Space Mono', monospace;
       font-size: 9px;
       letter-spacing: 1.5px;
@@ -97,7 +87,7 @@
       color: #4a4a4a;
     }
 
-    .checkout-banner__lock {
+    .checkout-info__lock {
       width: 10px;
       height: 10px;
     }
@@ -188,23 +178,19 @@
 </head>
 <body>
 
-  <!-- Top bar -->
-  <div class="checkout-topbar">
+  <!-- Header -->
+  <div class="checkout-header">
+    <a href="/event/liverpool-27-march/" class="checkout-header__back">&larr; Back</a>
     <a href="/event/liverpool-27-march/">
-      <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-topbar__logo">
-    </a>
-    <a href="/event/liverpool-27-march/#tickets-embed" class="checkout-topbar__back">
-      <span>&larr;</span>
-      <span>Back</span>
+      <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-header__logo">
     </a>
   </div>
 
-  <!-- Branded header that merges into the embed -->
-  <div class="checkout-banner">
-    <div class="checkout-banner__title">Secure Checkout</div>
-    <div class="checkout-banner__sub">Complete your booking below</div>
-    <div class="checkout-banner__secure">
-      <svg class="checkout-banner__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Info strip that flows into embed -->
+  <div class="checkout-info">
+    <div class="checkout-info__title">Secure Checkout</div>
+    <div class="checkout-info__secure">
+      <svg class="checkout-info__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
         <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
@@ -307,10 +293,10 @@
           // Calculate available height: full viewport minus topbar and banner
           function resizeIframe() {
             var used = 0;
-            var topbar = document.querySelector('.checkout-topbar');
-            var banner = document.querySelector('.checkout-banner');
-            if (topbar) used += topbar.offsetHeight;
-            if (banner) used += banner.offsetHeight;
+            var hdr = document.querySelector('.checkout-header');
+            var info = document.querySelector('.checkout-info');
+            if (hdr) used += hdr.offsetHeight;
+            if (info) used += info.offsetHeight;
             var h = Math.max(window.innerHeight - used, 600);
             iframe.style.height = h + 'px';
             iframe.style.minHeight = h + 'px';
@@ -332,14 +318,21 @@
       });
       observer.observe(container, { childList: true, subtree: true });
 
-      // Add tickets to cart
-      for (var i = 0; i < qty; i++) {
+      // Add tickets to cart — stagger to ensure each one registers
+      function addTicketsSequentially(remaining) {
+        if (remaining <= 0) return;
         window.ShopInjector.shop.sendMessage({
           action: 'add',
           guid: TICKET_ID,
           type: 'ticket'
         });
+        if (remaining > 1) {
+          setTimeout(function() {
+            addTicketsSequentially(remaining - 1);
+          }, 300);
+        }
       }
+      addTicketsSequentially(qty);
     })();
   </script>
 </body>

@@ -698,6 +698,185 @@
 
     .toast.visible { transform: translateY(0); opacity: 1; }
 
+    /* ====== DATE PICKER ====== */
+    .dp-wrap {
+      position: relative;
+    }
+
+    .dp-trigger {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      user-select: none;
+    }
+
+    .dp-trigger:hover { border-color: var(--border-light); }
+    .dp-trigger.active { border-color: var(--red); }
+
+    .dp-trigger__icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0.4;
+    }
+
+    .dp-trigger__text {
+      flex: 1;
+    }
+
+    .dp-trigger__text:empty::before {
+      content: attr(data-placeholder);
+      color: var(--text-dim);
+    }
+
+    .dp-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 5000;
+      background: #0a0a0a;
+      border: 1px solid var(--border-light);
+      padding: 16px;
+      min-width: 300px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+    }
+
+    .dp-dropdown.open { display: block; }
+
+    .dp-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .dp-nav__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .dp-nav__btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-nav__btn:hover {
+      border-color: var(--red);
+      color: var(--white);
+    }
+
+    .dp-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      margin-bottom: 4px;
+    }
+
+    .dp-weekdays span {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: center;
+      padding: 6px 0;
+    }
+
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .dp-cell {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--white);
+      background: none;
+      border: 1px solid transparent;
+      padding: 8px 2px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-cell:hover {
+      border-color: var(--red);
+      background: rgba(255, 0, 51, 0.08);
+    }
+
+    .dp-cell--empty { pointer-events: none; }
+
+    .dp-cell--today {
+      border-color: var(--border-light);
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .dp-cell--selected {
+      background: var(--red);
+      color: var(--white);
+      font-weight: 700;
+      border-color: var(--red);
+    }
+
+    .dp-cell--selected:hover {
+      background: var(--red-dark);
+    }
+
+    .dp-footer {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .dp-footer__btn {
+      flex: 1;
+      padding: 7px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-footer__btn:hover {
+      border-color: var(--red);
+      color: var(--white);
+    }
+
+    .dp-footer__btn--today {
+      background: rgba(255, 0, 51, 0.06);
+    }
+
     /* Print styles */
     @media print {
       body::before, body::after { display: none; }
@@ -778,7 +957,25 @@
 
       <div class="form-group">
         <label class="form-label">Agreement Date</label>
-        <input type="text" class="form-input" id="fAgreementDate" placeholder="e.g., 3 February 2026">
+        <div class="dp-wrap" id="dpAgreementWrap">
+          <div class="dp-trigger" id="dpAgreementTrigger">
+            <svg class="dp-trigger__icon" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.5"/><path d="M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span class="dp-trigger__text" id="dpAgreementText" data-placeholder="Select agreement date"></span>
+          </div>
+          <div class="dp-dropdown" id="dpAgreementDrop">
+            <div class="dp-nav">
+              <button type="button" class="dp-nav__btn" data-dp="agreement" data-dir="prev">&larr;</button>
+              <span class="dp-nav__title" id="dpAgreementTitle"></span>
+              <button type="button" class="dp-nav__btn" data-dp="agreement" data-dir="next">&rarr;</button>
+            </div>
+            <div class="dp-weekdays"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+            <div class="dp-grid" id="dpAgreementGrid"></div>
+            <div class="dp-footer">
+              <button type="button" class="dp-footer__btn dp-footer__btn--today" data-dp="agreement" data-action="today">Today</button>
+              <button type="button" class="dp-footer__btn" data-dp="agreement" data-action="clear">Clear</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="form-group">
@@ -799,7 +996,25 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Event Date</label>
-          <input type="text" class="form-input" id="fEventDate" placeholder="Day, Date, Month, Year">
+          <div class="dp-wrap" id="dpEventWrap">
+            <div class="dp-trigger" id="dpEventTrigger">
+              <svg class="dp-trigger__icon" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.5"/><path d="M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <span class="dp-trigger__text" id="dpEventText" data-placeholder="Select event date"></span>
+            </div>
+            <div class="dp-dropdown" id="dpEventDrop">
+              <div class="dp-nav">
+                <button type="button" class="dp-nav__btn" data-dp="event" data-dir="prev">&larr;</button>
+                <span class="dp-nav__title" id="dpEventTitle"></span>
+                <button type="button" class="dp-nav__btn" data-dp="event" data-dir="next">&rarr;</button>
+              </div>
+              <div class="dp-weekdays"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+              <div class="dp-grid" id="dpEventGrid"></div>
+              <div class="dp-footer">
+                <button type="button" class="dp-footer__btn dp-footer__btn--today" data-dp="event" data-action="today">Today</button>
+                <button type="button" class="dp-footer__btn" data-dp="event" data-action="clear">Clear</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Performance Time</label>
@@ -873,6 +1088,166 @@
 
 <script>
   // ============================================
+  // DATE PICKER
+  // ============================================
+  function createDatePicker(config) {
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var trigger = document.getElementById(config.triggerId);
+    var dropdown = document.getElementById(config.dropdownId);
+    var textEl = document.getElementById(config.textId);
+    var gridEl = document.getElementById(config.gridId);
+    var titleEl = document.getElementById(config.titleId);
+
+    var now = new Date();
+    var viewMonth = now.getMonth();
+    var viewYear = now.getFullYear();
+    var selectedDate = null;
+
+    function ordinal(n) {
+      var s = 'th';
+      if (n === 1 || n === 21 || n === 31) s = 'st';
+      else if (n === 2 || n === 22) s = 'nd';
+      else if (n === 3 || n === 23) s = 'rd';
+      return n + s;
+    }
+
+    function formatDate(d) {
+      return ordinal(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    }
+
+    function render() {
+      titleEl.textContent = MONTHS[viewMonth] + ' ' + viewYear;
+      gridEl.innerHTML = '';
+
+      var firstDay = new Date(viewYear, viewMonth, 1).getDay();
+      var startOffset = (firstDay + 6) % 7;
+      var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      var todayStr = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate();
+      var selStr = selectedDate ? selectedDate.getFullYear() + '-' + selectedDate.getMonth() + '-' + selectedDate.getDate() : '';
+
+      for (var e = 0; e < startOffset; e++) {
+        var empty = document.createElement('span');
+        empty.className = 'dp-cell dp-cell--empty';
+        gridEl.appendChild(empty);
+      }
+
+      for (var d = 1; d <= daysInMonth; d++) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dp-cell';
+        btn.textContent = d;
+        var thisStr = viewYear + '-' + viewMonth + '-' + d;
+        if (thisStr === todayStr) btn.classList.add('dp-cell--today');
+        if (thisStr === selStr) btn.classList.add('dp-cell--selected');
+        btn.setAttribute('data-day', d);
+        btn.addEventListener('click', function() {
+          var day = parseInt(this.getAttribute('data-day'));
+          selectedDate = new Date(viewYear, viewMonth, day);
+          textEl.textContent = formatDate(selectedDate);
+          close();
+          render();
+        });
+        gridEl.appendChild(btn);
+      }
+    }
+
+    function open() { dropdown.classList.add('open'); trigger.classList.add('active'); }
+    function close() { dropdown.classList.remove('open'); trigger.classList.remove('active'); }
+
+    trigger.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dropdown.classList.contains('open') ? close() : open();
+    });
+
+    // Nav buttons
+    dropdown.querySelectorAll('.dp-nav__btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (this.getAttribute('data-dir') === 'prev') {
+          viewMonth--;
+          if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+        } else {
+          viewMonth++;
+          if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+        }
+        render();
+      });
+    });
+
+    // Footer buttons
+    dropdown.querySelectorAll('.dp-footer__btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var action = this.getAttribute('data-action');
+        if (action === 'today') {
+          selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          viewMonth = now.getMonth();
+          viewYear = now.getFullYear();
+          textEl.textContent = formatDate(selectedDate);
+          close();
+          render();
+        } else if (action === 'clear') {
+          selectedDate = null;
+          textEl.textContent = '';
+          close();
+          render();
+        }
+      });
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+      if (!dropdown.contains(e.target) && !trigger.contains(e.target)) close();
+    });
+    dropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+
+    render();
+
+    return {
+      getValue: function() { return textEl.textContent; },
+      setValue: function(val) {
+        textEl.textContent = val || '';
+        if (val) {
+          var parsed = new Date(val.replace(/(\d+)(st|nd|rd|th)/, '$1'));
+          if (!isNaN(parsed.getTime())) {
+            selectedDate = parsed;
+            viewMonth = parsed.getMonth();
+            viewYear = parsed.getFullYear();
+            render();
+          }
+        } else {
+          selectedDate = null;
+          render();
+        }
+      },
+      clear: function() {
+        selectedDate = null;
+        textEl.textContent = '';
+        viewMonth = now.getMonth();
+        viewYear = now.getFullYear();
+        render();
+      }
+    };
+  }
+
+  // Init both pickers
+  var dpAgreement = createDatePicker({
+    triggerId: 'dpAgreementTrigger',
+    dropdownId: 'dpAgreementDrop',
+    textId: 'dpAgreementText',
+    gridId: 'dpAgreementGrid',
+    titleId: 'dpAgreementTitle'
+  });
+
+  var dpEvent = createDatePicker({
+    triggerId: 'dpEventTrigger',
+    dropdownId: 'dpEventDrop',
+    textId: 'dpEventText',
+    gridId: 'dpEventGrid',
+    titleId: 'dpEventTitle'
+  });
+
+  // ============================================
   // CONFIG
   // ============================================
   var CREDS = { user: 'Kaia', pass: 'fuckingferal' };
@@ -942,9 +1317,11 @@
     editingContractId = null;
     document.getElementById('createArtistLabel').textContent = 'Artist: ' + currentArtist.name;
     // Clear form
-    ['fAgreementDate','fPromoter','fEventName','fVenue','fEventDate','fPerfTime','fBookingFee','fArtistFee','fFeeDue','fCatering'].forEach(function(id) {
+    ['fPromoter','fEventName','fVenue','fPerfTime','fBookingFee','fArtistFee','fFeeDue','fCatering'].forEach(function(id) {
       document.getElementById(id).value = '';
     });
+    dpAgreement.clear();
+    dpEvent.clear();
     showView('createView');
   }
 
@@ -966,13 +1343,13 @@
 
   function collectFormData() {
     return {
-      agreement_date: document.getElementById('fAgreementDate').value,
+      agreement_date: dpAgreement.getValue(),
       promoter_name: document.getElementById('fPromoter').value,
       artist_name: currentArtist ? currentArtist.name : '',
       artist_id: currentArtist ? currentArtist.id : '',
       event_name: document.getElementById('fEventName').value,
       venue: document.getElementById('fVenue').value,
-      event_date: document.getElementById('fEventDate').value,
+      event_date: dpEvent.getValue(),
       performance_time: document.getElementById('fPerfTime').value,
       booking_fee: document.getElementById('fBookingFee').value,
       artist_fee: document.getElementById('fArtistFee').value,
@@ -1103,11 +1480,11 @@
     currentArtist = ROSTER.find(function(a) { return a.id === c.data.artist_id; }) || ROSTER[0];
     editingContractId = c.id;
     document.getElementById('createArtistLabel').textContent = 'Artist: ' + currentArtist.name;
-    document.getElementById('fAgreementDate').value = c.data.agreement_date || '';
+    dpAgreement.setValue(c.data.agreement_date || '');
     document.getElementById('fPromoter').value = c.data.promoter_name || '';
     document.getElementById('fEventName').value = c.data.event_name || '';
     document.getElementById('fVenue').value = c.data.venue || '';
-    document.getElementById('fEventDate').value = c.data.event_date || '';
+    dpEvent.setValue(c.data.event_date || '');
     document.getElementById('fPerfTime').value = c.data.performance_time || '';
     document.getElementById('fBookingFee').value = c.data.booking_fee || '';
     document.getElementById('fArtistFee').value = c.data.artist_fee || '';

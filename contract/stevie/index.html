@@ -655,6 +655,200 @@
       background: #00aa55;
     }
 
+    /* Date picker */
+    .date-picker-wrap {
+      display: inline-block;
+      position: relative;
+    }
+
+    .date-picker-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1.5px solid var(--red);
+      padding: 1px 4px;
+      min-width: 160px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--white);
+      background: rgba(255, 0, 51, 0.06);
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      user-select: none;
+    }
+
+    .date-picker-trigger:hover {
+      background: rgba(255, 0, 51, 0.1);
+    }
+
+    .date-picker-trigger.active {
+      background: rgba(255, 0, 51, 0.12);
+      border-bottom-color: var(--white);
+    }
+
+    .date-picker-trigger__icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      opacity: 0.5;
+    }
+
+    .date-picker-trigger__text {
+      flex: 1;
+    }
+
+    .date-picker-trigger__text:empty::before {
+      content: attr(data-placeholder);
+      color: #555;
+      font-style: italic;
+    }
+
+    .date-picker-trigger--locked {
+      border-bottom-color: var(--gray-border);
+      background: var(--gray-light);
+      color: var(--gray-text);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .date-picker-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 5000;
+      background: #0a0a0a;
+      border: 1px solid var(--gray-border);
+      padding: 16px;
+      min-width: 280px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .date-picker-dropdown.open {
+      display: block;
+    }
+
+    .dp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .dp-header__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .dp-header__btn {
+      background: none;
+      border: 1px solid var(--gray-border);
+      color: var(--gray-text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-header__btn:hover {
+      border-color: var(--red);
+      color: var(--white);
+    }
+
+    .dp-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0;
+      margin-bottom: 4px;
+    }
+
+    .dp-weekdays span {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      text-align: center;
+      padding: 4px 0;
+    }
+
+    .dp-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .dp-day {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--white);
+      background: none;
+      border: 1px solid transparent;
+      padding: 6px 2px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-day:hover {
+      border-color: var(--red);
+      background: rgba(255, 0, 51, 0.1);
+    }
+
+    .dp-day--empty {
+      pointer-events: none;
+    }
+
+    .dp-day--today {
+      border-color: var(--gray-border);
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .dp-day--selected {
+      background: var(--red);
+      color: var(--white);
+      font-weight: 700;
+      border-color: var(--red);
+    }
+
+    .dp-day--selected:hover {
+      background: #cc0029;
+    }
+
+    .dp-day--other-month {
+      color: #333;
+    }
+
+    .dp-today-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: none;
+      border: 1px solid var(--gray-border);
+      color: var(--gray-text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dp-today-btn:hover {
+      border-color: var(--red);
+      color: var(--white);
+    }
+
     /* Footer */
     .contract-footer {
       margin-top: 64px;
@@ -694,7 +888,28 @@
   <!-- Intro -->
   <p class="contract-intro">
     THIS AGREEMENT is made on
-    <span class="field" contenteditable="true" data-placeholder="Date" data-field="agreement_date"></span>
+    <span class="date-picker-wrap" id="dpAgreement">
+      <span class="date-picker-trigger" id="dpAgreementTrigger">
+        <svg class="date-picker-trigger__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="4" width="18" height="18" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 9h18" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span class="date-picker-trigger__text" id="dpAgreementText" data-placeholder="Select Date" data-field="agreement_date"></span>
+      </span>
+      <div class="date-picker-dropdown" id="dpAgreementDropdown">
+        <div class="dp-header">
+          <button class="dp-header__btn" id="dpPrev">&larr;</button>
+          <span class="dp-header__title" id="dpMonthYear"></span>
+          <button class="dp-header__btn" id="dpNext">&rarr;</button>
+        </div>
+        <div class="dp-weekdays">
+          <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+        </div>
+        <div class="dp-days" id="dpDays"></div>
+        <button class="dp-today-btn" id="dpToday">Today</button>
+      </div>
+    </span>
     between:
   </p>
 
@@ -980,6 +1195,155 @@
   }
 
   // ============================================
+  // Custom Date Picker
+  // ============================================
+  (function() {
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var trigger = document.getElementById('dpAgreementTrigger');
+    var dropdown = document.getElementById('dpAgreementDropdown');
+    var textEl = document.getElementById('dpAgreementText');
+    var daysEl = document.getElementById('dpDays');
+    var monthYearEl = document.getElementById('dpMonthYear');
+    var prevBtn = document.getElementById('dpPrev');
+    var nextBtn = document.getElementById('dpNext');
+    var todayBtn = document.getElementById('dpToday');
+
+    var now = new Date();
+    var viewMonth = now.getMonth();
+    var viewYear = now.getFullYear();
+    var selectedDate = null;
+
+    function formatDate(d) {
+      var day = d.getDate();
+      var suffix = 'th';
+      if (day === 1 || day === 21 || day === 31) suffix = 'st';
+      else if (day === 2 || day === 22) suffix = 'nd';
+      else if (day === 3 || day === 23) suffix = 'rd';
+      return day + suffix + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    }
+
+    function render() {
+      monthYearEl.textContent = MONTHS[viewMonth] + ' ' + viewYear;
+      daysEl.innerHTML = '';
+
+      var firstDay = new Date(viewYear, viewMonth, 1).getDay();
+      // Adjust so Monday = 0
+      var startOffset = (firstDay + 6) % 7;
+      var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      var todayStr = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate();
+      var selStr = selectedDate ? selectedDate.getFullYear() + '-' + selectedDate.getMonth() + '-' + selectedDate.getDate() : '';
+
+      // Empty cells before first day
+      for (var e = 0; e < startOffset; e++) {
+        var empty = document.createElement('span');
+        empty.className = 'dp-day dp-day--empty';
+        daysEl.appendChild(empty);
+      }
+
+      for (var d = 1; d <= daysInMonth; d++) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dp-day';
+        btn.textContent = d;
+
+        var thisStr = viewYear + '-' + viewMonth + '-' + d;
+        if (thisStr === todayStr) btn.classList.add('dp-day--today');
+        if (thisStr === selStr) btn.classList.add('dp-day--selected');
+
+        btn.setAttribute('data-day', d);
+        btn.addEventListener('click', function() {
+          var day = parseInt(this.getAttribute('data-day'));
+          selectedDate = new Date(viewYear, viewMonth, day);
+          textEl.textContent = formatDate(selectedDate);
+          close();
+          render();
+        });
+
+        daysEl.appendChild(btn);
+      }
+    }
+
+    function open() {
+      dropdown.classList.add('open');
+      trigger.classList.add('active');
+    }
+
+    function close() {
+      dropdown.classList.remove('open');
+      trigger.classList.remove('active');
+    }
+
+    function toggle() {
+      if (dropdown.classList.contains('open')) close();
+      else open();
+    }
+
+    trigger.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggle();
+    });
+
+    prevBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      viewMonth--;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      render();
+    });
+
+    nextBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      viewMonth++;
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      render();
+    });
+
+    todayBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      viewMonth = now.getMonth();
+      viewYear = now.getFullYear();
+      textEl.textContent = formatDate(selectedDate);
+      close();
+      render();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+      if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
+        close();
+      }
+    });
+
+    dropdown.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+
+    render();
+
+    // Expose for collect/restore
+    window.dpAgreement = {
+      getText: function() { return textEl.textContent; },
+      setText: function(val) {
+        textEl.textContent = val;
+        // Try to parse back the selected date for highlighting
+        if (val) {
+          var parsed = new Date(val.replace(/(\d+)(st|nd|rd|th)/, '$1'));
+          if (!isNaN(parsed.getTime())) {
+            selectedDate = parsed;
+            viewMonth = parsed.getMonth();
+            viewYear = parsed.getFullYear();
+            render();
+          }
+        }
+      },
+      lock: function() {
+        trigger.classList.add('date-picker-trigger--locked');
+      }
+    };
+  })();
+
+  // ============================================
   // Collect / Restore field data
   // ============================================
   function collectData() {
@@ -988,6 +1352,9 @@
       var key = el.getAttribute('data-field');
       if (key) data[key] = el.textContent;
     });
+    // Also collect date picker value
+    var dpText = document.getElementById('dpAgreementText');
+    if (dpText) data['agreement_date'] = dpText.textContent;
     // Capture agency signature
     data._sig_agency = sigAgency.canvas.toDataURL();
     return data;
@@ -1000,6 +1367,10 @@
         el.textContent = data[key];
       }
     });
+    // Restore date picker
+    if (data['agreement_date'] && window.dpAgreement) {
+      window.dpAgreement.setText(data['agreement_date']);
+    }
     if (data._sig_agency) {
       var img = new Image();
       img.onload = function() {
@@ -1068,6 +1439,9 @@
       }
     });
 
+    // Lock date picker
+    if (window.dpAgreement) window.dpAgreement.lock();
+
     // Hide agency signature pad
     var agencyCanvas = document.getElementById('sigCanvasAgency');
     agencyCanvas.style.pointerEvents = 'none';
@@ -1093,6 +1467,7 @@
       el.setAttribute('contenteditable', 'false');
       el.classList.add('field--locked');
     });
+    if (window.dpAgreement) window.dpAgreement.lock();
     document.getElementById('sigCanvasAgency').style.pointerEvents = 'none';
     document.getElementById('sigCanvasPromoter').style.pointerEvents = 'none';
     var clears = document.querySelectorAll('.sig-clear');

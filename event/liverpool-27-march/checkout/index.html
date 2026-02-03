@@ -31,7 +31,7 @@
     }
 
     .checkout-wrap {
-      max-width: 600px;
+      max-width: 720px;
       margin: 0 auto;
       padding: 32px 24px 60px;
     }
@@ -66,24 +66,52 @@
       margin: 0 auto 32px;
     }
 
-    .checkout-container {
-      background: var(--gray);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 24px;
-      min-height: 400px;
+    .checkout-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      text-decoration: none;
+      transition: color var(--transition-fast);
+      margin-bottom: 24px;
     }
 
+    .checkout-back:hover {
+      color: var(--white);
+    }
+
+    /* --- Embed container: no box, full width, no constraints --- */
+    .checkout-container {
+      background: transparent;
+      border: none;
+      padding: 0;
+      min-height: 500px;
+      overflow: visible;
+    }
+
+    /* --- Make iframe fill all available space --- */
     .checkout-container iframe {
       width: 100% !important;
       max-width: none !important;
       min-width: 100% !important;
+      min-height: 600px;
       border: none !important;
       display: block;
     }
 
+    .checkout-container > div {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+    }
+
     .checkout-loading {
       text-align: center;
-      padding: 60px 24px;
+      padding: 80px 24px;
       font-family: var(--font-mono);
       font-size: 12px;
       letter-spacing: 2px;
@@ -103,24 +131,6 @@
 
     @keyframes spin {
       to { transform: rotate(360deg); }
-    }
-
-    .checkout-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--gray-text);
-      text-decoration: none;
-      transition: color var(--transition-fast);
-      margin-bottom: 24px;
-    }
-
-    .checkout-back:hover {
-      color: var(--white);
     }
 
     .checkout-footer {
@@ -155,6 +165,12 @@
       letter-spacing: 1.5px;
       color: rgba(255,255,255,0.2);
       text-transform: uppercase;
+    }
+
+    @media (max-width: 640px) {
+      .checkout-wrap {
+        padding: 24px 16px 48px;
+      }
     }
   </style>
 </head>
@@ -274,6 +290,25 @@
           loadingHidden = true;
         }
       });
+
+      // Auto-resize iframe to fit its content
+      var container = document.getElementById('eventix-shop-container');
+      var resizeObserver = new MutationObserver(function() {
+        var iframe = container.querySelector('iframe');
+        if (iframe) {
+          iframe.style.height = '';
+          iframe.style.minHeight = '700px';
+          iframe.setAttribute('scrolling', 'no');
+          // Listen for postMessage resize events from the iframe
+          window.addEventListener('message', function(e) {
+            if (e.data && e.data.height && iframe) {
+              iframe.style.minHeight = Math.max(700, e.data.height) + 'px';
+            }
+          });
+          resizeObserver.disconnect();
+        }
+      });
+      resizeObserver.observe(container, { childList: true, subtree: true });
 
       // Add the selected tickets to cart
       for (var i = 0; i < qty; i++) {

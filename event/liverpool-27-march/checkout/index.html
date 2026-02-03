@@ -113,22 +113,20 @@
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       padding: 0 24px;
-      height: 64px;
+      height: 80px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       position: sticky;
       top: 0;
       z-index: 100;
     }
 
-    .checkout-header__left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
     .checkout-header__back {
+      position: absolute;
+      left: 24px;
+      top: 50%;
+      transform: translateY(-50%);
       font-family: 'Space Mono', monospace;
       font-size: 10px;
       letter-spacing: 1px;
@@ -151,13 +149,16 @@
     }
 
     .checkout-header__logo {
-      height: 32px;
+      height: 44px;
       width: auto;
       display: block;
-      opacity: 0.85;
     }
 
     .checkout-header__secure {
+      position: absolute;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -351,16 +352,28 @@
        ======================================== */
     @media (max-width: 600px) {
       .checkout-header {
-        height: 56px;
+        height: 64px;
         padding: 0 16px;
       }
 
+      .checkout-header__back {
+        left: 16px;
+      }
+
       .checkout-header__logo {
-        height: 26px;
+        height: 34px;
       }
 
       .checkout-header__secure {
-        display: none;
+        right: 16px;
+        font-size: 8px;
+        letter-spacing: 1.5px;
+        gap: 4px;
+      }
+
+      .checkout-header__lock {
+        width: 10px;
+        height: 10px;
       }
 
       .checkout-timer {
@@ -407,15 +420,13 @@
 
   <!-- Header -->
   <div class="checkout-header">
-    <div class="checkout-header__left">
-      <a href="/event/liverpool-27-march/" class="checkout-header__back">
-        <span class="checkout-header__back-arrow">&larr;</span>
-        <span>Back</span>
-      </a>
-      <a href="/event/liverpool-27-march/">
-        <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-header__logo">
-      </a>
-    </div>
+    <a href="/event/liverpool-27-march/" class="checkout-header__back">
+      <span class="checkout-header__back-arrow">&larr;</span>
+      <span>Back</span>
+    </a>
+    <a href="/event/liverpool-27-march/">
+      <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="checkout-header__logo">
+    </a>
     <div class="checkout-header__secure">
       <svg class="checkout-header__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
@@ -428,7 +439,7 @@
   <!-- Countdown Timer -->
   <div class="checkout-timer" id="checkoutTimer">
     <span class="checkout-timer__label">Reservation expires</span>
-    <span class="checkout-timer__time" id="timerDisplay">08:00</span>
+    <span class="checkout-timer__time" id="timerDisplay">08:02</span>
     <div class="checkout-timer__bar">
       <div class="checkout-timer__fill" id="timerBar"></div>
     </div>
@@ -438,8 +449,6 @@
   <div class="checkout-summary" id="checkoutSummary">
     <span class="checkout-summary__text">
       <span class="checkout-summary__qty" id="summaryQty">1</span> &times; General Release
-      &mdash;
-      <span class="checkout-summary__price" id="summaryPrice">&pound;24.50</span>
     </span>
   </div>
 
@@ -464,16 +473,14 @@
       var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
       var TICKET_ID = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
       var TICKET_PRICE = 24.50;
-      var TIMER_SECONDS = 8 * 60; // 8 minutes
+      var TIMER_SECONDS = (8 * 60) + 2; // 8 minutes 2 seconds (offset for embed timer)
 
       var params = new URLSearchParams(window.location.search);
       var qty = parseInt(params.get('qty')) || 1;
 
       // --- Update order summary ---
       var summaryQty = document.getElementById('summaryQty');
-      var summaryPrice = document.getElementById('summaryPrice');
       if (summaryQty) summaryQty.textContent = qty;
-      if (summaryPrice) summaryPrice.textContent = '\u00A3' + (qty * TICKET_PRICE).toFixed(2);
 
       // --- Loading screen ---
       var loadingScreen = document.getElementById('loadingScreen');

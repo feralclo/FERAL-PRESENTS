@@ -2932,12 +2932,10 @@ img {
   left: 0;
   right: 0;
   z-index: 997;
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 0, 51, 0.3);
-  padding: 12px 20px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: #111;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 24px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
   transform: translateY(0);
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
@@ -2959,30 +2957,30 @@ img {
 .bottom-bar__price {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.bottom-bar__label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--gray-text);
+  gap: 3px;
 }
 
 .bottom-bar__amount {
-  font-family: var(--font-mono);
-  font-size: 1.3rem;
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--white);
-  letter-spacing: 0.5px;
+  letter-spacing: -0.01em;
+}
+
+.bottom-bar__subtitle {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: #777;
+  letter-spacing: 0;
 }
 
 .bottom-bar__cta {
-  padding: 14px 32px;
+  padding: 14px 36px;
   background: var(--red);
   color: var(--white);
   border: none;
+  border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
@@ -2994,8 +2992,8 @@ img {
 }
 
 .bottom-bar__cta:hover {
-  background: var(--red-dark);
-  box-shadow: 0 0 20px var(--red-glow);
+  background: #d4032c;
+  box-shadow: 0 0 24px rgba(246, 4, 52, 0.35);
 }
 
 .bottom-bar__cta:active {
@@ -3004,12 +3002,16 @@ img {
 
 @media (max-width: 480px) {
   .bottom-bar {
-    padding: 10px 16px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 
   .bottom-bar__amount {
     font-size: 1.1rem;
+  }
+
+  .bottom-bar__subtitle {
+    font-size: 10px;
   }
 
   .bottom-bar__cta {

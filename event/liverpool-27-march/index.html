@@ -244,10 +244,10 @@
   <div class="bottom-bar" id="bottomBar">
     <div class="bottom-bar__inner">
       <div class="bottom-bar__price">
-        <span class="bottom-bar__label">From</span>
         <span class="bottom-bar__amount">&pound;24.50</span>
+        <span class="bottom-bar__subtitle">The price you'll pay. No surprises.</span>
       </div>
-      <button class="bottom-bar__cta" id="bottomBarCta">Buy Tickets</button>
+      <button class="bottom-bar__cta" id="bottomBarCta">Buy Now</button>
     </div>
   </div>
 
@@ -299,7 +299,7 @@
             : '\u00A3' + TICKET_PRICE.toFixed(2);
         }
         if (bottomBarCta) {
-          bottomBarCta.textContent = qty > 0 ? 'Buy ' + qty + (qty === 1 ? ' Ticket' : ' Tickets') : 'Buy Tickets';
+          bottomBarCta.textContent = qty > 0 ? 'Buy ' + qty + (qty === 1 ? ' Ticket' : ' Tickets') : 'Buy Now';
         }
       }
 

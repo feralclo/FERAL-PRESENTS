@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FERAL — Performance Agreement</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --black: #000000;
+      --white: #ffffff;
+      --red: #ff0033;
+      --gray-light: #f5f5f5;
+      --gray-border: #e0e0e0;
+      --gray-text: #666666;
+      --font-mono: 'Space Mono', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+    body {
+      background: var(--white);
+      color: var(--black);
+      font-family: var(--font-sans);
+      line-height: 1.7;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Subtle animated noise background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0.018;
+      pointer-events: none;
+      z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    /* Scanline effect - very subtle on white */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.008) 2px,
+        rgba(0, 0, 0, 0.008) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .contract-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 60px 40px 80px;
+    }
+
+    @media (max-width: 600px) {
+      .contract-wrapper { padding: 32px 20px 60px; }
+    }
+
+    /* Header */
+    .contract-header {
+      text-align: center;
+      padding-bottom: 48px;
+      margin-bottom: 48px;
+      border-bottom: 2px solid var(--black);
+    }
+
+    .contract-logo {
+      height: 52px;
+      margin-bottom: 32px;
+    }
+
+    .contract-header h1 {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .contract-header .contract-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+    }
+
+    /* Red accent line */
+    .accent-line {
+      width: 40px;
+      height: 2px;
+      background: var(--red);
+      margin: 20px auto 0;
+    }
+
+    /* Status badge */
+    .contract-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 20px;
+      padding: 6px 14px;
+      border: 1px solid var(--gray-border);
+      border-radius: 2px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+    }
+
+    .contract-status__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* Intro paragraph */
+    .contract-intro {
+      font-size: 15px;
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+
+    .contract-intro strong {
+      font-weight: 600;
+    }
+
+    /* Editable fields */
+    .field {
+      display: inline-block;
+      border-bottom: 1.5px solid var(--red);
+      padding: 1px 4px;
+      min-width: 140px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--black);
+      outline: none;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      background: rgba(255, 0, 51, 0.03);
+    }
+
+    .field:hover {
+      background: rgba(255, 0, 51, 0.06);
+    }
+
+    .field:focus {
+      background: rgba(255, 0, 51, 0.08);
+      border-bottom-color: var(--black);
+    }
+
+    .field:empty::before {
+      content: attr(data-placeholder);
+      color: #bbb;
+      font-style: italic;
+    }
+
+    .field--locked {
+      border-bottom-color: var(--gray-border);
+      background: var(--gray-light);
+      color: var(--gray-text);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Parties block */
+    .parties {
+      margin: 32px 0 48px;
+      padding: 28px 32px;
+      border: 1px solid var(--gray-border);
+      border-left: 3px solid var(--red);
+      background: var(--gray-light);
+    }
+
+    .parties p {
+      font-size: 14px;
+      margin-bottom: 10px;
+      line-height: 1.8;
+    }
+
+    .parties p:last-child { margin-bottom: 0; }
+
+    .parties__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Section headings */
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section__heading {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--gray-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section__number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* Schedule table */
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+    }
+
+    .schedule-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 2px solid var(--black);
+      background: var(--gray-light);
+    }
+
+    .schedule-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--gray-border);
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    .schedule-table td:first-child {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      width: 200px;
+      font-weight: 600;
+    }
+
+    .schedule-table tr:last-child td {
+      border-bottom: 2px solid var(--black);
+    }
+
+    .schedule-table .field {
+      width: 100%;
+      display: block;
+    }
+
+    @media (max-width: 600px) {
+      .schedule-table td:first-child { width: 120px; font-size: 10px; }
+      .schedule-table td { padding: 10px 12px; }
+    }
+
+    /* Contract clauses */
+    .clause {
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 14px;
+    }
+
+    .clause strong {
+      font-weight: 600;
+    }
+
+    .clause-list {
+      margin: 12px 0 12px 20px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .clause-list li {
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+
+    .clause-list li::marker {
+      color: var(--red);
+    }
+
+    /* Signatures */
+    .signatures {
+      margin-top: 56px;
+      padding-top: 40px;
+      border-top: 2px solid var(--black);
+    }
+
+    .signatures__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 32px;
+    }
+
+    .sig-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+    }
+
+    @media (max-width: 600px) {
+      .sig-grid { grid-template-columns: 1fr; gap: 40px; }
+    }
+
+    .sig-block {
+      padding: 24px;
+      border: 1px solid var(--gray-border);
+    }
+
+    .sig-block__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .sig-block__row {
+      margin-bottom: 16px;
+    }
+
+    .sig-block__row:last-child { margin-bottom: 0; }
+
+    .sig-block__row-label {
+      font-size: 12px;
+      color: var(--gray-text);
+      margin-bottom: 4px;
+    }
+
+    .sig-canvas-wrap {
+      border: 1px solid var(--gray-border);
+      border-radius: 2px;
+      position: relative;
+      height: 100px;
+      margin-bottom: 6px;
+      background: var(--gray-light);
+      cursor: crosshair;
+    }
+
+    .sig-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .sig-clear {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      background: none;
+      border: 1px solid var(--gray-border);
+      padding: 3px 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .sig-clear:hover {
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    /* Actions bar */
+    .actions {
+      margin-top: 56px;
+      padding-top: 32px;
+      border-top: 1px solid var(--gray-border);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-contract {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 14px 28px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-contract--primary {
+      background: var(--red);
+      color: var(--white);
+    }
+
+    .btn-contract--primary:hover {
+      background: #cc0029;
+    }
+
+    .btn-contract--secondary {
+      background: var(--black);
+      color: var(--white);
+    }
+
+    .btn-contract--secondary:hover {
+      background: #222;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--white);
+      padding: 40px;
+      max-width: 520px;
+      width: 90%;
+      position: relative;
+    }
+
+    .modal__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .modal__text {
+      font-size: 14px;
+      color: var(--gray-text);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .modal__link {
+      width: 100%;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      border: 1px solid var(--gray-border);
+      background: var(--gray-light);
+      color: var(--black);
+      word-break: break-all;
+      margin-bottom: 16px;
+      display: block;
+      outline: none;
+    }
+
+    .modal__link:focus {
+      border-color: var(--red);
+    }
+
+    .modal__actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal__close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--gray-text);
+      font-family: var(--font-mono);
+    }
+
+    .modal__close:hover { color: var(--black); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 14px 24px;
+      z-index: 10000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Promoter view locked notice */
+    .locked-notice {
+      display: none;
+      text-align: center;
+      padding: 16px 24px;
+      margin-bottom: 32px;
+      border: 1px solid var(--gray-border);
+      border-left: 3px solid var(--red);
+      background: var(--gray-light);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+    }
+
+    .locked-notice strong {
+      color: var(--black);
+    }
+
+    /* Footer */
+    .contract-footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-border);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+<div class="contract-wrapper" id="contractWrapper">
+
+  <!-- Header -->
+  <div class="contract-header">
+    <img src="../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="contract-logo" style="filter: brightness(0);">
+    <h1>Performance Agreement</h1>
+    <span class="contract-sub">Booking Contract</span>
+    <div class="accent-line"></div>
+    <div class="contract-status">
+      <span class="contract-status__dot"></span>
+      <span id="statusText">Draft — Editable</span>
+    </div>
+  </div>
+
+  <!-- Locked notice (shown in promoter view) -->
+  <div class="locked-notice" id="lockedNotice">
+    <strong>This contract has been sent to you for review and signature.</strong><br>
+    Please review all details below and sign in the Promoter section.
+  </div>
+
+  <!-- Intro -->
+  <p class="contract-intro">
+    THIS AGREEMENT is made on
+    <span class="field" contenteditable="true" data-placeholder="Date" data-field="agreement_date"></span>
+    between:
+  </p>
+
+  <!-- Parties -->
+  <div class="parties">
+    <p>
+      <span class="parties__label">The Brand / Agency</span>
+      <span class="field" contenteditable="true" data-placeholder="Brand / Agency Name" data-field="brand_name"></span>, representing the Artist.
+    </p>
+    <p>
+      <span class="parties__label">The Promoter</span>
+      <span class="field" contenteditable="true" data-placeholder="Promoter Name / Company" data-field="promoter_name"></span>
+    </p>
+    <p>
+      <span class="parties__label">The Artist</span>
+      <span class="field" contenteditable="true" data-placeholder="Artist Name" data-field="artist_name"></span>
+    </p>
+  </div>
+
+  <!-- 1. The Schedule -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">1</span> The Schedule</h2>
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Event Name</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Name of Event" data-field="event_name"></span></td>
+        </tr>
+        <tr>
+          <td>Venue</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Venue Name & Address" data-field="venue"></span></td>
+        </tr>
+        <tr>
+          <td>Date of Event</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Day, Date, Month, Year" data-field="event_date"></span></td>
+        </tr>
+        <tr>
+          <td>Performance Time</td>
+          <td><span class="field" contenteditable="true" data-placeholder="e.g., 01:00 - 02:30" data-field="performance_time"></span></td>
+        </tr>
+        <tr>
+          <td>Booking Fee</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Amount" data-field="booking_fee"></span> <span style="color: var(--gray-text); font-size: 12px;">(Secures the date)</span></td>
+        </tr>
+        <tr>
+          <td>Artist Fee</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Amount" data-field="artist_fee"></span> <span style="color: var(--gray-text); font-size: 12px;">(Performance fee)</span></td>
+        </tr>
+        <tr>
+          <td>Artist Fee Due Date</td>
+          <td><span class="field" contenteditable="true" data-placeholder="Date — 30 days before event" data-field="fee_due_date"></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 2. Securing the Booking -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">2</span> Securing the Booking</h2>
+    <p class="clause"><strong>The "Secured" Status:</strong> A booking is only considered "Secured" once both of the following have been completed:</p>
+    <ol class="clause-list">
+      <li>This contract is signed by the Promoter.</li>
+      <li>The Booking Fee has been paid in full to the Brand/Agency.</li>
+    </ol>
+    <p class="clause"><strong>Promotion Restriction:</strong> The Promoter is strictly prohibited from using the Artist's name, likeness, or branding in any public promotion (social media, flyers, website) until the booking is officially Secured.</p>
+  </div>
+
+  <!-- 3. Financial Terms -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">3</span> Financial Terms</h2>
+    <p class="clause"><strong>Artist Fee:</strong> The remaining Artist Fee must be paid no later than 30 days prior to the scheduled performance date.</p>
+    <p class="clause"><strong>Non-Payment:</strong> If the Artist Fee is not received by the due date, the Artist is not obligated to perform, and the initial Booking Fee remains non-refundable.</p>
+    <p class="clause"><strong>Artist Default:</strong> If the Artist fails to appear for the performance (excluding Force Majeure), all fees paid by the Promoter will be refunded.</p>
+  </div>
+
+  <!-- 4. Travel & Accommodation -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">4</span> Travel & Accommodation</h2>
+    <p class="clause"><strong>Travel:</strong> The Promoter agrees to provide travel (Flights/Train/Petrol) as agreed in writing.</p>
+    <p class="clause"><strong>Ground Transport:</strong> The Promoter will provide transport between the Airport/Station, Hotel, and Venue.</p>
+    <p class="clause"><strong>Accommodation:</strong> For overnight stays, the Promoter will provide a minimum 4-star hotel room with Wi-Fi and breakfast, booked in the Artist's name.</p>
+  </div>
+
+  <!-- 5. Promotion & Content -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">5</span> Promotion & Content</h2>
+    <p class="clause"><strong>Creative Freedom:</strong> Once the booking is secured, the Promoter is encouraged to be creative with promotion. The Brand/Agency will provide a press kit (photos/logos) to assist, but the Promoter is not restricted to these assets.</p>
+    <p class="clause"><strong>Recordings:</strong> The Promoter and venue are permitted to record audio or video of the performance for promotional and social media purposes.</p>
+  </div>
+
+  <!-- 6. Technical & Hospitality -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">6</span> Technical & Hospitality</h2>
+    <p class="clause"><strong>Equipment:</strong> The Promoter agrees to provide professional-grade equipment as specified in the Technical Rider.</p>
+    <p class="clause"><strong>Catering:</strong> The Promoter will provide a "buy-out" of <span class="field" contenteditable="true" data-placeholder="Amount" data-field="catering_buyout"></span> for a meal OR provide a quality hot meal at the venue.</p>
+    <p class="clause"><strong>Drinks:</strong> A reasonable rider of water, soft drinks, and standard alcohol will be provided in the booth during the performance.</p>
+  </div>
+
+  <!-- 7. Cancellation & Safety -->
+  <div class="section">
+    <h2 class="section__heading"><span class="section__number">7</span> Cancellation & Safety</h2>
+    <p class="clause"><strong>Cancellation by Promoter:</strong> If the event is cancelled after the booking is secured, the Booking Fee is non-refundable. If cancelled within 7 days of the event, 100% of the Artist Fee is also due.</p>
+    <p class="clause"><strong>Force Majeure:</strong> Neither party is liable for failure to appear due to "Acts of God" (natural disasters, flight cancellations, or serious illness). Both parties will attempt to reschedule.</p>
+    <p class="clause"><strong>Safety:</strong> The Promoter is responsible for the safety of the Artist and their equipment while at the venue.</p>
+  </div>
+
+  <!-- Signatures -->
+  <div class="signatures">
+    <h2 class="signatures__title">Signatures</h2>
+    <div class="sig-grid">
+      <!-- Brand/Agency signature -->
+      <div class="sig-block" id="sigBlockAgency">
+        <span class="sig-block__label">For the Brand / Agency (on behalf of the Artist)</span>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Signature</div>
+          <div class="sig-canvas-wrap">
+            <canvas id="sigCanvasAgency"></canvas>
+          </div>
+          <button class="sig-clear" onclick="clearSig('Agency')">Clear</button>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Print Name</div>
+          <span class="field" contenteditable="true" data-placeholder="Full Name" data-field="agency_print_name"></span>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Date</div>
+          <span class="field" contenteditable="true" data-placeholder="Date" data-field="agency_sign_date"></span>
+        </div>
+      </div>
+
+      <!-- Promoter signature -->
+      <div class="sig-block" id="sigBlockPromoter">
+        <span class="sig-block__label">For the Promoter</span>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Signature</div>
+          <div class="sig-canvas-wrap">
+            <canvas id="sigCanvasPromoter"></canvas>
+          </div>
+          <button class="sig-clear" onclick="clearSig('Promoter')">Clear</button>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Print Name</div>
+          <span class="field" contenteditable="true" data-placeholder="Full Name" data-field="promoter_print_name"></span>
+        </div>
+        <div class="sig-block__row">
+          <div class="sig-block__row-label">Date</div>
+          <span class="field" contenteditable="true" data-placeholder="Date" data-field="promoter_sign_date"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions" id="actionsBar">
+    <button class="btn-contract btn-contract--primary" onclick="generatePromoterLink()">
+      Generate Promoter Link
+    </button>
+    <button class="btn-contract btn-contract--secondary" onclick="window.print()">
+      Print Contract
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <div class="contract-footer">
+    &copy; 2026 FERAL PRESENTS. All rights reserved. &nbsp;&mdash;&nbsp; Confidential Document
+  </div>
+</div>
+
+<!-- Modal for generated link -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="modal__close" onclick="closeModal()">&times;</button>
+    <h3 class="modal__title">Promoter Link Generated</h3>
+    <p class="modal__text">Send this link to the promoter. They will be able to review the contract details and sign their section. All other fields will be locked.</p>
+    <input type="text" class="modal__link" id="modalLink" readonly>
+    <div class="modal__actions">
+      <button class="btn-contract btn-contract--primary" onclick="copyLink()">Copy Link</button>
+      <button class="btn-contract btn-contract--secondary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">Link copied to clipboard</div>
+
+<script>
+  // ============================================
+  // Signature Pad (simple canvas drawing)
+  // ============================================
+  function initSigPad(canvasId) {
+    var canvas = document.getElementById(canvasId);
+    var ctx = canvas.getContext('2d');
+    var drawing = false;
+    var lastX, lastY;
+
+    function resize() {
+      var wrap = canvas.parentElement;
+      var data = canvas.toDataURL();
+      canvas.width = wrap.offsetWidth;
+      canvas.height = wrap.offsetHeight;
+      // Restore after resize
+      if (data && data !== 'data:,') {
+        var img = new Image();
+        img.onload = function() { ctx.drawImage(img, 0, 0); };
+        img.src = data;
+      }
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+
+    function getPos(e) {
+      var rect = canvas.getBoundingClientRect();
+      var touch = e.touches ? e.touches[0] : e;
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+
+    function start(e) {
+      e.preventDefault();
+      drawing = true;
+      var pos = getPos(e);
+      lastX = pos.x;
+      lastY = pos.y;
+    }
+
+    function move(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      var pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      lastX = pos.x;
+      lastY = pos.y;
+    }
+
+    function stop() { drawing = false; }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', stop);
+    canvas.addEventListener('mouseleave', stop);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', stop);
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    return { canvas: canvas, ctx: ctx, resize: resize };
+  }
+
+  var sigAgency = initSigPad('sigCanvasAgency');
+  var sigPromoter = initSigPad('sigCanvasPromoter');
+
+  function clearSig(which) {
+    var pad = which === 'Agency' ? sigAgency : sigPromoter;
+    pad.ctx.clearRect(0, 0, pad.canvas.width, pad.canvas.height);
+  }
+
+  // ============================================
+  // Collect / Restore field data
+  // ============================================
+  function collectData() {
+    var data = {};
+    document.querySelectorAll('.field').forEach(function(el) {
+      var key = el.getAttribute('data-field');
+      if (key) data[key] = el.textContent;
+    });
+    // Capture agency signature
+    data._sig_agency = sigAgency.canvas.toDataURL();
+    return data;
+  }
+
+  function restoreData(data) {
+    document.querySelectorAll('.field').forEach(function(el) {
+      var key = el.getAttribute('data-field');
+      if (key && data[key]) {
+        el.textContent = data[key];
+      }
+    });
+    if (data._sig_agency) {
+      var img = new Image();
+      img.onload = function() {
+        sigAgency.ctx.clearRect(0, 0, sigAgency.canvas.width, sigAgency.canvas.height);
+        sigAgency.ctx.drawImage(img, 0, 0);
+      };
+      img.src = data._sig_agency;
+    }
+  }
+
+  // ============================================
+  // URL encode/decode for promoter link
+  // ============================================
+  function encodeData(data) {
+    var json = JSON.stringify(data);
+    return btoa(unescape(encodeURIComponent(json)));
+  }
+
+  function decodeData(str) {
+    try {
+      var json = decodeURIComponent(escape(atob(str)));
+      return JSON.parse(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ============================================
+  // Generate promoter link
+  // ============================================
+  function generatePromoterLink() {
+    var data = collectData();
+    var encoded = encodeData(data);
+    var base = window.location.origin + window.location.pathname;
+    var link = base + '?sign=' + encoded;
+    document.getElementById('modalLink').value = link;
+    document.getElementById('modalOverlay').classList.add('active');
+  }
+
+  function copyLink() {
+    var input = document.getElementById('modalLink');
+    input.select();
+    document.execCommand('copy');
+    var toast = document.getElementById('toast');
+    toast.classList.add('visible');
+    setTimeout(function() { toast.classList.remove('visible'); }, 2500);
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+
+  // ============================================
+  // Promoter view — lock agency fields
+  // ============================================
+  function enterPromoterView(data) {
+    // Restore all data from the agency
+    restoreData(data);
+
+    // Lock all fields except promoter signature fields
+    var promoterFields = ['promoter_print_name', 'promoter_sign_date'];
+    document.querySelectorAll('.field').forEach(function(el) {
+      var key = el.getAttribute('data-field');
+      if (promoterFields.indexOf(key) === -1) {
+        el.setAttribute('contenteditable', 'false');
+        el.classList.add('field--locked');
+      }
+    });
+
+    // Hide agency signature pad (show as image)
+    var agencyCanvas = document.getElementById('sigCanvasAgency');
+    agencyCanvas.style.pointerEvents = 'none';
+    document.querySelector('#sigBlockAgency .sig-clear').style.display = 'none';
+
+    // Update status
+    document.getElementById('statusText').textContent = 'Awaiting Promoter Signature';
+
+    // Show locked notice
+    document.getElementById('lockedNotice').style.display = 'block';
+
+    // Change actions
+    document.getElementById('actionsBar').innerHTML =
+      '<button class="btn-contract btn-contract--primary" onclick="window.print()">Print & Sign</button>';
+  }
+
+  // ============================================
+  // Check URL on load
+  // ============================================
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var signData = params.get('sign');
+    if (signData) {
+      var data = decodeData(signData);
+      if (data) {
+        enterPromoterView(data);
+      }
+    }
+  })();
+</script>
+
+</body>
+</html>

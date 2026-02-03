@@ -1,361 +1,448 @@
 {
-  "exportFormatVersion": 2,
-  "exportTime": "2026-02-03T00:00:00.000Z",
-  "containerVersion": {
-    "path": "accounts/0/containers/0/versions/0",
-    "accountId": "0",
-    "containerId": "0",
-    "containerVersionId": "0",
-    "container": {
-      "path": "accounts/0/containers/0",
-      "accountId": "0",
-      "containerId": "0",
-      "name": "FERAL Meta Pixel",
-      "publicId": "GTM-XXXXXX",
-      "usageContext": ["WEB"]
-    },
-    "tag": [
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "tagId": "1",
-        "name": "Meta Pixel - Base Code",
-        "type": "html",
-        "parameter": [
-          {
-            "type": "TEMPLATE",
-            "key": "html",
-            "value": "<script>\n!function(f,b,e,v,n,t,s)\n{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\nn.callMethod.apply(n,arguments):n.queue.push(arguments)};\nif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\nn.queue=[];t=b.createElement(e);t.async=!0;\nt.src=v;s=b.getElementsByTagName(e)[0];\ns.parentNode.insertBefore(t,s)}(window, document,'script',\n'https://connect.facebook.net/en_US/fbevents.js');\nfbq('init', {{Meta Pixel ID}});\nfbq('track', 'PageView');\n</script>\n<noscript><img height=\"1\" width=\"1\" style=\"display:none\"\nsrc=\"https://www.facebook.com/tr?id={{Meta Pixel ID}}&ev=PageView&noscript=1\"\n/></noscript>"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "supportDocumentWrite",
-            "value": "false"
-          }
-        ],
-        "firingTriggerId": [
-          "2147479553"
-        ],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "fingerprint": "1706900000001"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "tagId": "2",
-        "name": "Meta Pixel - ViewContent",
-        "type": "html",
-        "parameter": [
-          {
-            "type": "TEMPLATE",
-            "key": "html",
-            "value": "<script>\nfbq('track', 'ViewContent', {\n  content_name: {{DLV - content_name}},\n  content_ids: {{DLV - content_ids}},\n  content_type: {{DLV - content_type}},\n  value: {{DLV - value}},\n  currency: {{DLV - currency}}\n});\n</script>"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "supportDocumentWrite",
-            "value": "false"
-          }
-        ],
-        "firingTriggerId": [
-          "100"
-        ],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "fingerprint": "1706900000002"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "tagId": "3",
-        "name": "Meta Pixel - AddToCart",
-        "type": "html",
-        "parameter": [
-          {
-            "type": "TEMPLATE",
-            "key": "html",
-            "value": "<script>\nfbq('track', 'AddToCart', {\n  content_name: {{DLV - content_name}},\n  content_ids: {{DLV - content_ids}},\n  content_type: {{DLV - content_type}},\n  value: {{DLV - value}},\n  currency: {{DLV - currency}},\n  num_items: {{DLV - num_items}}\n});\n</script>"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "supportDocumentWrite",
-            "value": "false"
-          }
-        ],
-        "firingTriggerId": [
-          "101"
-        ],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "fingerprint": "1706900000003"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "tagId": "4",
-        "name": "Meta Pixel - InitiateCheckout",
-        "type": "html",
-        "parameter": [
-          {
-            "type": "TEMPLATE",
-            "key": "html",
-            "value": "<script>\nfbq('track', 'InitiateCheckout', {\n  content_name: {{DLV - content_name}},\n  content_ids: {{DLV - content_ids}},\n  content_type: {{DLV - content_type}},\n  value: {{DLV - value}},\n  currency: {{DLV - currency}},\n  num_items: {{DLV - num_items}}\n});\n</script>"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "supportDocumentWrite",
-            "value": "false"
-          }
-        ],
-        "firingTriggerId": [
-          "102"
-        ],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "fingerprint": "1706900000004"
-      }
-    ],
-    "trigger": [
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "triggerId": "100",
-        "name": "CE - view_content",
-        "type": "CUSTOM_EVENT",
-        "customEventFilter": [
-          {
-            "type": "EQUALS",
-            "parameter": [
-              {
-                "type": "TEMPLATE",
-                "key": "arg0",
-                "value": "{{_event}}"
-              },
-              {
-                "type": "TEMPLATE",
-                "key": "arg1",
-                "value": "view_content"
-              }
+    "exportFormatVersion": 2,
+    "exportTime": "2026-02-03 12:00:00",
+    "containerVersion": {
+        "path": "accounts/186990263/containers/49071764/versions/0",
+        "accountId": "186990263",
+        "containerId": "49071764",
+        "containerVersionId": "0",
+        "container": {
+            "path": "accounts/186990263/containers/49071764",
+            "accountId": "186990263",
+            "containerId": "49071764",
+            "name": "FERAL Meta Pixel Import",
+            "publicId": "GTM-K5K3RJB",
+            "usageContext": [
+                "WEB"
+            ],
+            "fingerprint": "1627384200502",
+            "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/186990263/containers/49071764/workspaces?apiLink=container",
+            "features": {
+                "supportUserPermissions": true,
+                "supportEnvironments": true,
+                "supportWorkspaces": true,
+                "supportGtagConfigs": false,
+                "supportBuiltInVariables": true,
+                "supportClients": false,
+                "supportFolders": true,
+                "supportTags": true,
+                "supportTemplates": true,
+                "supportTriggers": true,
+                "supportVariables": true,
+                "supportVersions": true,
+                "supportZones": true,
+                "supportTransformations": false
+            },
+            "tagIds": [
+                "GTM-K5K3RJB"
             ]
-          }
+        },
+        "tag": [
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "tagId": "200",
+                "name": "FERAL - Meta Pixel Base Code",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>\n!function(f,b,e,v,n,t,s)\n{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\nn.callMethod.apply(n,arguments):n.queue.push(arguments)};\nif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\nn.queue=[];t=b.createElement(e);t.async=!0;\nt.src=v;s=b.getElementsByTagName(e)[0];\ns.parentNode.insertBefore(t,s)}(window, document,'script',\n'https://connect.facebook.net/en_US/fbevents.js');\nfbq('init', {{FERAL - Meta Pixel ID}});\nfbq('track', 'PageView');\n</script>\n<noscript><img height=\"1\" width=\"1\" style=\"display:none\"\nsrc=\"https://www.facebook.com/tr?id={{FERAL - Meta Pixel ID}}&ev=PageView&noscript=1\"\n/></noscript>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1706900000001",
+                "firingTriggerId": [
+                    "2147479553"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "tagId": "201",
+                "name": "FERAL - Meta Pixel ViewContent",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>\nfbq('track', 'ViewContent', {\n  content_name: {{FERAL - DLV content_name}},\n  content_ids: {{FERAL - DLV content_ids}},\n  content_type: {{FERAL - DLV content_type}},\n  value: {{FERAL - DLV value}},\n  currency: {{FERAL - DLV currency}}\n});\n</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1706900000002",
+                "firingTriggerId": [
+                    "300"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "tagId": "202",
+                "name": "FERAL - Meta Pixel AddToCart",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>\nfbq('track', 'AddToCart', {\n  content_name: {{FERAL - DLV content_name}},\n  content_ids: {{FERAL - DLV content_ids}},\n  content_type: {{FERAL - DLV content_type}},\n  value: {{FERAL - DLV value}},\n  currency: {{FERAL - DLV currency}},\n  num_items: {{FERAL - DLV num_items}}\n});\n</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1706900000003",
+                "firingTriggerId": [
+                    "301"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "tagId": "203",
+                "name": "FERAL - Meta Pixel InitiateCheckout",
+                "type": "html",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>\nfbq('track', 'InitiateCheckout', {\n  content_name: {{FERAL - DLV content_name}},\n  content_ids: {{FERAL - DLV content_ids}},\n  content_type: {{FERAL - DLV content_type}},\n  value: {{FERAL - DLV value}},\n  currency: {{FERAL - DLV currency}},\n  num_items: {{FERAL - DLV num_items}}\n});\n</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1706900000004",
+                "firingTriggerId": [
+                    "302"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            }
         ],
-        "fingerprint": "1706900000005"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "triggerId": "101",
-        "name": "CE - add_to_cart",
-        "type": "CUSTOM_EVENT",
-        "customEventFilter": [
-          {
-            "type": "EQUALS",
-            "parameter": [
-              {
-                "type": "TEMPLATE",
-                "key": "arg0",
-                "value": "{{_event}}"
-              },
-              {
-                "type": "TEMPLATE",
-                "key": "arg1",
-                "value": "add_to_cart"
-              }
-            ]
-          }
+        "trigger": [
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "triggerId": "300",
+                "name": "FERAL - CE view_content",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "view_content"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1706900000005"
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "triggerId": "301",
+                "name": "FERAL - CE add_to_cart",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "add_to_cart"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1706900000006"
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "triggerId": "302",
+                "name": "FERAL - CE initiate_checkout",
+                "type": "CUSTOM_EVENT",
+                "customEventFilter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{_event}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "initiate_checkout"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1706900000007"
+            }
         ],
-        "fingerprint": "1706900000006"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "triggerId": "102",
-        "name": "CE - initiate_checkout",
-        "type": "CUSTOM_EVENT",
-        "customEventFilter": [
-          {
-            "type": "EQUALS",
-            "parameter": [
-              {
-                "type": "TEMPLATE",
-                "key": "arg0",
-                "value": "{{_event}}"
-              },
-              {
-                "type": "TEMPLATE",
-                "key": "arg1",
-                "value": "initiate_checkout"
-              }
-            ]
-          }
+        "variable": [
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "variableId": "400",
+                "name": "FERAL - Meta Pixel ID",
+                "type": "c",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "value",
+                        "value": "YOUR_PIXEL_ID_HERE"
+                    }
+                ],
+                "fingerprint": "1706900000008",
+                "formatValue": {}
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "variableId": "401",
+                "name": "FERAL - DLV content_name",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "content_name"
+                    }
+                ],
+                "fingerprint": "1706900000009",
+                "formatValue": {}
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "variableId": "402",
+                "name": "FERAL - DLV content_ids",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "content_ids"
+                    }
+                ],
+                "fingerprint": "1706900000010",
+                "formatValue": {}
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "variableId": "403",
+                "name": "FERAL - DLV content_type",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "content_type"
+                    }
+                ],
+                "fingerprint": "1706900000011",
+                "formatValue": {}
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "variableId": "404",
+                "name": "FERAL - DLV value",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "value"
+                    }
+                ],
+                "fingerprint": "1706900000012",
+                "formatValue": {}
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "variableId": "405",
+                "name": "FERAL - DLV currency",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "currency"
+                    }
+                ],
+                "fingerprint": "1706900000013",
+                "formatValue": {}
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "variableId": "406",
+                "name": "FERAL - DLV num_items",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "num_items"
+                    }
+                ],
+                "fingerprint": "1706900000014",
+                "formatValue": {}
+            }
         ],
-        "fingerprint": "1706900000007"
-      }
-    ],
-    "variable": [
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "200",
-        "name": "Meta Pixel ID",
-        "type": "c",
-        "parameter": [
-          {
-            "type": "TEMPLATE",
-            "key": "value",
-            "value": "YOUR_PIXEL_ID_HERE"
-          }
+        "builtInVariable": [
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "type": "PAGE_URL",
+                "name": "Page URL"
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "type": "PAGE_HOSTNAME",
+                "name": "Page Hostname"
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "type": "PAGE_PATH",
+                "name": "Page Path"
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "type": "REFERRER",
+                "name": "Referrer"
+            },
+            {
+                "accountId": "186990263",
+                "containerId": "49071764",
+                "type": "EVENT",
+                "name": "Event"
+            }
         ],
-        "fingerprint": "1706900000008"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "201",
-        "name": "DLV - content_name",
-        "type": "v",
-        "parameter": [
-          {
-            "type": "INTEGER",
-            "key": "dataLayerVersion",
-            "value": "2"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "setDefaultValue",
-            "value": "false"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "name",
-            "value": "content_name"
-          }
-        ],
-        "fingerprint": "1706900000009"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "202",
-        "name": "DLV - content_ids",
-        "type": "v",
-        "parameter": [
-          {
-            "type": "INTEGER",
-            "key": "dataLayerVersion",
-            "value": "2"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "setDefaultValue",
-            "value": "false"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "name",
-            "value": "content_ids"
-          }
-        ],
-        "fingerprint": "1706900000010"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "203",
-        "name": "DLV - content_type",
-        "type": "v",
-        "parameter": [
-          {
-            "type": "INTEGER",
-            "key": "dataLayerVersion",
-            "value": "2"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "setDefaultValue",
-            "value": "false"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "name",
-            "value": "content_type"
-          }
-        ],
-        "fingerprint": "1706900000011"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "204",
-        "name": "DLV - value",
-        "type": "v",
-        "parameter": [
-          {
-            "type": "INTEGER",
-            "key": "dataLayerVersion",
-            "value": "2"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "setDefaultValue",
-            "value": "false"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "name",
-            "value": "value"
-          }
-        ],
-        "fingerprint": "1706900000012"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "205",
-        "name": "DLV - currency",
-        "type": "v",
-        "parameter": [
-          {
-            "type": "INTEGER",
-            "key": "dataLayerVersion",
-            "value": "2"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "setDefaultValue",
-            "value": "false"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "name",
-            "value": "currency"
-          }
-        ],
-        "fingerprint": "1706900000013"
-      },
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "206",
-        "name": "DLV - num_items",
-        "type": "v",
-        "parameter": [
-          {
-            "type": "INTEGER",
-            "key": "dataLayerVersion",
-            "value": "2"
-          },
-          {
-            "type": "BOOLEAN",
-            "key": "setDefaultValue",
-            "value": "false"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "name",
-            "value": "num_items"
-          }
-        ],
-        "fingerprint": "1706900000014"
-      }
-    ],
-    "fingerprint": "1706900000000"
-  }
+        "fingerprint": "1706900000000",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/186990263/containers/49071764/versions/0?apiLink=version"
+    }
 }

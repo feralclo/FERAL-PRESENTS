@@ -288,7 +288,6 @@
       width: 100%;
       min-height: calc(100vh - 120px);
       overflow: visible;
-      padding-bottom: 80px;
     }
 
     #eventix-shop-container > div,
@@ -303,8 +302,8 @@
       width: 100% !important;
       max-width: none !important;
       min-width: 100% !important;
-      height: 100vh;
-      min-height: 100vh;
+      height: calc(100vh + 200px);
+      min-height: calc(100vh + 200px);
       border: none !important;
       display: block;
       background: #1c1c1c;
@@ -617,7 +616,7 @@
             if (hdr) used += hdr.offsetHeight;
             if (timer) used += timer.offsetHeight;
             if (summary) used += summary.offsetHeight;
-            var h = Math.max(window.innerHeight - used, 600);
+            var h = Math.max(window.innerHeight - used + 200, 800);
             iframe.style.height = h + 'px';
             iframe.style.minHeight = h + 'px';
           }
@@ -626,8 +625,8 @@
 
           window.addEventListener('message', function(e) {
             if (e.data && typeof e.data.height === 'number') {
-              var minH = Math.max(window.innerHeight - 160, 600);
-              iframe.style.height = Math.max(minH, e.data.height) + 'px';
+              var minH = Math.max(window.innerHeight - 160 + 200, 800);
+              iframe.style.height = Math.max(minH, e.data.height + 200) + 'px';
               iframe.style.minHeight = iframe.style.height;
             }
           });

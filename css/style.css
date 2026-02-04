@@ -2132,6 +2132,7 @@ img {
   justify-content: center;
   transition: all var(--transition-fast);
   border-radius: 0;
+  touch-action: manipulation;
 }
 
 .feral-tickets__btn:hover {
@@ -2953,13 +2954,15 @@ img {
   left: 0;
   right: 0;
   z-index: 997;
-  transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   background: #111;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 14px 24px;
   padding-bottom: calc(14px + env(safe-area-inset-bottom));
   transform: translateY(0);
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.3s ease, bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .bottom-bar--hidden {
@@ -3011,6 +3014,7 @@ img {
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
+  touch-action: manipulation;
 }
 
 .bottom-bar__cta:hover {

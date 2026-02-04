@@ -302,50 +302,13 @@
       width: 100% !important;
       max-width: none !important;
       min-width: 100% !important;
-      height: calc(100vh + 200px);
-      min-height: calc(100vh + 200px);
+      height: 100vh;
+      min-height: 100vh;
       border: none !important;
       display: block;
       background: #1c1c1c;
     }
 
-    /* ========================================
-       FOOTER
-       ======================================== */
-    .checkout-footer {
-      background: #0e0e0e;
-      border-top: 1px solid rgba(255, 255, 255, 0.04);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 24px;
-    }
-
-    .checkout-footer__event {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px;
-      letter-spacing: 1.5px;
-      color: #777;
-      text-transform: uppercase;
-    }
-
-    .checkout-footer__secure {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px;
-      letter-spacing: 1.5px;
-      color: #777;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .checkout-footer__lock {
-      width: 10px;
-      height: 10px;
-      color: #777;
-    }
 
     /* ========================================
        RESPONSIVE
@@ -459,17 +422,6 @@
   <!-- Embed -->
   <div id="eventix-shop-container"></div>
 
-  <!-- Footer -->
-  <div class="checkout-footer">
-    <div class="checkout-footer__secure">
-      <svg class="checkout-footer__lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
-        <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      <span>SSL Encrypted</span>
-    </div>
-    <div class="checkout-footer__event">FERAL Liverpool &mdash; 27 Mar 2026</div>
-  </div>
 
   <script src="https://v1.widget.shop.eventix.io/injector.js"></script>
   <script>
@@ -616,7 +568,7 @@
             if (hdr) used += hdr.offsetHeight;
             if (timer) used += timer.offsetHeight;
             if (summary) used += summary.offsetHeight;
-            var h = Math.max(window.innerHeight - used + 200, 800);
+            var h = Math.max(window.innerHeight - used, 600);
             iframe.style.height = h + 'px';
             iframe.style.minHeight = h + 'px';
           }
@@ -625,8 +577,8 @@
 
           window.addEventListener('message', function(e) {
             if (e.data && typeof e.data.height === 'number') {
-              var minH = Math.max(window.innerHeight - 160 + 200, 800);
-              iframe.style.height = Math.max(minH, e.data.height + 200) + 'px';
+              var minH = Math.max(window.innerHeight - 160, 600);
+              iframe.style.height = Math.max(minH, e.data.height) + 'px';
               iframe.style.minHeight = iframe.style.height;
             }
           });

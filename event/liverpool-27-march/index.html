@@ -733,8 +733,11 @@
         screen.classList.add('dp-screen--active');
       }
 
-      // Trigger: ANY of exit intent, 8s delay, or 50% scroll
+      // Triggers — ANY one fires the popup (first wins)
+      // Desktop: 8s delay, 60% scroll, or exit intent
+      // Mobile: 15s delay, 60% scroll, or rapid-scroll-up exit signal
       var shown = false;
+      var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
       function tryShow() {
         if (shown) return;
@@ -742,21 +745,41 @@
         showPopup();
       }
 
-      // 1. After 8 seconds
-      setTimeout(tryShow, 8000);
+      // 1. Time delay — desktop 8s, mobile 15s
+      setTimeout(tryShow, isMobile ? 15000 : 8000);
 
-      // 2. After 50% scroll
+      // 2. Scroll depth — 60% (works on both, avoids false triggers on short pages)
       window.addEventListener('scroll', function() {
         if (shown) return;
         var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-        if (scrollPct >= 0.50) tryShow();
+        if (scrollPct >= 0.60) tryShow();
       });
 
-      // 3. Exit intent (mouse leaves viewport at top)
-      document.addEventListener('mouseout', function(e) {
-        if (shown) return;
-        if (e.clientY <= 0 && e.relatedTarget === null) tryShow();
-      });
+      // 3. Exit intent
+      if (isMobile) {
+        // Mobile: detect rapid scroll toward top (user about to leave)
+        var lastScrollY = window.scrollY;
+        var lastScrollTime = Date.now();
+        window.addEventListener('scroll', function() {
+          if (shown) return;
+          var now = Date.now();
+          var dy = window.scrollY - lastScrollY;
+          var dt = now - lastScrollTime;
+          // Fast upward scroll (> 800px/s) while near the top 20% of page
+          if (dy < 0 && dt > 0 && dt < 300 && Math.abs(dy / dt) > 0.8) {
+            var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+            if (scrollPct < 0.20) tryShow();
+          }
+          lastScrollY = window.scrollY;
+          lastScrollTime = now;
+        });
+      } else {
+        // Desktop: mouse leaves viewport at top
+        document.addEventListener('mouseout', function(e) {
+          if (shown) return;
+          if (e.clientY <= 0 && e.relatedTarget === null) tryShow();
+        });
+      }
 
       // Close button
       document.getElementById('dpClose').addEventListener('click', hidePopup);

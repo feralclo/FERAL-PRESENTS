@@ -302,8 +302,8 @@
       width: 100% !important;
       max-width: none !important;
       min-width: 100% !important;
-      height: 100vh;
-      min-height: 100vh;
+      height: 2400px;
+      min-height: 2400px;
       border: none !important;
       display: block;
       background: #1c1c1c;
@@ -555,31 +555,18 @@
       setLoadingProgress(60, 'Adding ' + qty + (qty === 1 ? ' ticket' : ' tickets') + ' to cart\u2026');
       if (loadingStatus) loadingStatus.textContent = 'Securing your tickets';
 
-      // Resize iframe to fill viewport
+      // Resize iframe — use content height from embed if available, otherwise stay large
       var container = document.getElementById('eventix-shop-container');
       var observer = new MutationObserver(function() {
         var iframe = container.querySelector('iframe');
         if (iframe) {
-          function resizeIframe() {
-            var used = 0;
-            var hdr = document.querySelector('.checkout-header');
-            var timer = document.querySelector('.checkout-timer');
-            var summary = document.querySelector('.checkout-summary');
-            if (hdr) used += hdr.offsetHeight;
-            if (timer) used += timer.offsetHeight;
-            if (summary) used += summary.offsetHeight;
-            var h = Math.max(window.innerHeight - used, 600);
-            iframe.style.height = h + 'px';
-            iframe.style.minHeight = h + 'px';
-          }
-          resizeIframe();
-          window.addEventListener('resize', resizeIframe);
-
+          // Listen for the embed reporting its actual content height
           window.addEventListener('message', function(e) {
             if (e.data && typeof e.data.height === 'number') {
-              var minH = Math.max(window.innerHeight - 160, 600);
-              iframe.style.height = Math.max(minH, e.data.height) + 'px';
-              iframe.style.minHeight = iframe.style.height;
+              // Use reported height but never shrink below 2400px
+              var h = Math.max(2400, e.data.height + 100);
+              iframe.style.height = h + 'px';
+              iframe.style.minHeight = h + 'px';
             }
           });
 

@@ -744,19 +744,20 @@
       var captured = false;
       var _learnq = window._learnq = window._learnq || [];
 
+      // Debug: log prefix
+      var D = '[FERAL-Klaviyo]';
+
       function captureEmail(email, firstName, lastName) {
         if (captured || !email) return;
-        // Basic email validation
         if (email.indexOf('@') === -1) return;
         captured = true;
+        console.log(D, 'EMAIL CAPTURED:', email, firstName || '', lastName || '');
 
-        // Identify user in Klaviyo
         var identity = { '$email': email };
         if (firstName) identity['$first_name'] = firstName;
         if (lastName) identity['$last_name'] = lastName;
         _learnq.push(['identify', identity]);
 
-        // Track "Started Checkout" event for abandoned cart flow
         var params = new URLSearchParams(window.location.search);
         var qty = parseInt(params.get('qty')) || 1;
         _learnq.push(['track', 'Started Checkout', {
@@ -766,7 +767,6 @@
           'CheckoutURL': window.location.href
         }]);
 
-        // Subscribe to abandoned cart list
         var formData = new FormData();
         formData.append('g', KLAVIYO_LIST_ID);
         formData.append('email', email);
@@ -775,10 +775,30 @@
         fetch('https://manage.kmail-lists.com/ajax/subscriptions/subscribe', {
           method: 'POST',
           body: formData
-        }).catch(function() {});
+        })
+        .then(function(r) { return r.text(); })
+        .then(function(t) { console.log(D, 'Klaviyo subscribe response:', t); })
+        .catch(function(err) { console.error(D, 'Klaviyo subscribe error:', err); });
       }
 
-      // Monitor dataLayer for Eventix events containing email
+      // Helper: recursively search an object for anything that looks like an email
+      function deepSearchEmail(obj, depth) {
+        if (!obj || typeof obj !== 'object' || depth > 4) return;
+        for (var key in obj) {
+          if (!obj.hasOwnProperty(key)) continue;
+          var val = obj[key];
+          if (typeof val === 'string' && val.indexOf('@') > 0 && val.indexOf('.') > 0) {
+            console.log(D, 'Found email-like value at key "' + key + '":', val);
+            captureEmail(val);
+            return;
+          }
+          if (typeof val === 'object' && val !== null) {
+            deepSearchEmail(val, depth + 1);
+          }
+        }
+      }
+
+      // Monitor dataLayer for Eventix events
       window.dataLayer = window.dataLayer || [];
       var origPush = window.dataLayer.push;
       window.dataLayer.push = function() {
@@ -786,38 +806,53 @@
         for (var i = 0; i < arguments.length; i++) {
           var obj = arguments[i];
           if (!obj || typeof obj !== 'object') continue;
+          console.log(D, 'dataLayer push:', JSON.stringify(obj).substring(0, 300));
           if (obj.receiver && obj.receiver.email) {
             captureEmail(obj.receiver.email, obj.receiver.firstName, obj.receiver.lastName);
-          }
-          if (obj.order && obj.order.email) {
+          } else if (obj.order && obj.order.email) {
             captureEmail(obj.order.email);
+          } else if (!captured) {
+            deepSearchEmail(obj, 0);
           }
         }
         return result;
       };
 
-      // Also listen for postMessage from Eventix iframe
+      // Listen for ALL postMessage from Eventix iframe
       window.addEventListener('message', function(e) {
-        if (!e.data || captured) return;
+        if (!e.data) return;
         var data = e.data;
         if (typeof data === 'string') {
+          // Log short strings, skip very long ones
+          if (data.length < 500) console.log(D, 'postMessage (string):', data);
           try { data = JSON.parse(data); } catch(x) { return; }
         }
+        // Log the message structure (truncated)
+        if (typeof data === 'object') {
+          var keys = Object.keys(data);
+          console.log(D, 'postMessage keys:', keys.join(', '),
+            keys.length < 10 ? JSON.stringify(data).substring(0, 400) : '(large object)');
+        }
+        if (captured) return;
+        // Check known paths
         if (data.receiver && data.receiver.email) {
           captureEmail(data.receiver.email, data.receiver.firstName, data.receiver.lastName);
-        }
-        if (data.order && data.order.email) {
+        } else if (data.order && data.order.email) {
           captureEmail(data.order.email);
-        }
-        if (data.data) {
+        } else if (data.data) {
           if (data.data.receiver && data.data.receiver.email) {
             captureEmail(data.data.receiver.email, data.data.receiver.firstName, data.data.receiver.lastName);
-          }
-          if (data.data.order && data.data.order.email) {
+          } else if (data.data.order && data.data.order.email) {
             captureEmail(data.data.order.email);
+          } else {
+            deepSearchEmail(data, 0);
           }
+        } else {
+          deepSearchEmail(data, 0);
         }
       });
+
+      console.log(D, 'Checkout email capture initialised. Waiting for email data...');
     })();
   </script>
 </body>

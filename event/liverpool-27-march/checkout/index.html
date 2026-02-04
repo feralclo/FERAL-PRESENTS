@@ -736,25 +736,19 @@
     })();
   </script>
 
-  <!-- Klaviyo: Capture checkout emails for abandoned cart flows -->
+  <!-- Klaviyo: Capture checkout emails via GTM postMessage from Eventix iframe -->
   <script async src="https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=Y8FS6L"></script>
   <script>
     (function() {
       var KLAVIYO_LIST_ID = 'W3LNS8';
       var captured = false;
       var _learnq = window._learnq = window._learnq || [];
-      var D = '[FERAL-Klaviyo]';
 
-      function captureEmail(email, firstName, lastName) {
-        if (captured || !email) return;
-        if (email.indexOf('@') === -1) return;
+      function sendToKlaviyo(email) {
+        if (captured || !email || email.indexOf('@') === -1) return;
         captured = true;
-        console.log(D, 'EMAIL CAPTURED:', email, firstName || '', lastName || '');
 
-        var identity = { '$email': email };
-        if (firstName) identity['$first_name'] = firstName;
-        if (lastName) identity['$last_name'] = lastName;
-        _learnq.push(['identify', identity]);
+        _learnq.push(['identify', { '$email': email }]);
 
         var params = new URLSearchParams(window.location.search);
         var qty = parseInt(params.get('qty')) || 1;
@@ -768,144 +762,19 @@
         var formData = new FormData();
         formData.append('g', KLAVIYO_LIST_ID);
         formData.append('email', email);
-        if (firstName) formData.append('$first_name', firstName);
-        if (lastName) formData.append('$last_name', lastName);
         fetch('https://manage.kmail-lists.com/ajax/subscriptions/subscribe', {
           method: 'POST',
           body: formData
-        })
-        .then(function(r) { return r.text(); })
-        .then(function(t) { console.log(D, 'Subscribe response:', t); })
-        .catch(function(err) { console.error(D, 'Subscribe error:', err); });
+        }).catch(function() {});
       }
 
-      function deepSearchEmail(obj, depth) {
-        if (!obj || typeof obj !== 'object' || depth > 5) return;
-        for (var key in obj) {
-          if (!obj.hasOwnProperty(key)) continue;
-          var val = obj[key];
-          if (typeof val === 'string' && val.indexOf('@') > 0 && val.indexOf('.') > 0 && val.length < 200) {
-            console.log(D, 'Email found at "' + key + '":', val);
-            captureEmail(val);
-            return;
-          }
-          if (typeof val === 'object' && val !== null) {
-            deepSearchEmail(val, depth + 1);
-          }
-        }
-      }
-
-      // === DISCOVERY: Enumerate ShopInjector.shop methods ===
-      function discoverShopAPI() {
-        if (!window.ShopInjector || !window.ShopInjector.shop) {
-          console.log(D, 'ShopInjector not ready, retrying...');
-          setTimeout(discoverShopAPI, 1000);
-          return;
-        }
-        var shop = window.ShopInjector.shop;
-
-        // List all own properties and methods
-        var props = [];
-        for (var key in shop) {
-          var type = typeof shop[key];
-          props.push(key + ' (' + type + ')');
-        }
-        console.log(D, 'ShopInjector.shop properties:', props.join(', '));
-
-        // Also check prototype
-        var proto = Object.getPrototypeOf(shop);
-        if (proto) {
-          var protoProps = Object.getOwnPropertyNames(proto).filter(function(k) { return k !== 'constructor'; });
-          console.log(D, 'ShopInjector.shop prototype methods:', protoProps.join(', '));
-
-          // Try to register for ANY on* callback
-          protoProps.forEach(function(method) {
-            if (method.indexOf('on') === 0 && typeof shop[method] === 'function' && method !== 'onCartData') {
-              console.log(D, 'Hooking into shop.' + method + '()');
-              try {
-                shop[method](function(data) {
-                  console.log(D, 'shop.' + method + ' fired:', JSON.stringify(data).substring(0, 500));
-                  if (!captured) deepSearchEmail(data, 0);
-                });
-              } catch(e) {
-                console.log(D, 'Failed to hook ' + method + ':', e.message);
-              }
-            }
-          });
-        }
-
-        // Also check ShopInjector itself
-        var injectorProps = [];
-        for (var k in window.ShopInjector) {
-          injectorProps.push(k + ' (' + typeof window.ShopInjector[k] + ')');
-        }
-        console.log(D, 'ShopInjector properties:', injectorProps.join(', '));
-
-        // Intercept shop.sendMessage to see outbound messages
-        if (typeof shop.sendMessage === 'function') {
-          var origSend = shop.sendMessage.bind(shop);
-          shop.sendMessage = function(msg) {
-            console.log(D, 'sendMessage →', JSON.stringify(msg).substring(0, 300));
-            return origSend(msg);
-          };
-        }
-
-        // Hook into onCartData to deep-search for email in cart updates
-        shop.onCartData(function(data) {
-          console.log(D, 'onCartData:', JSON.stringify(data).substring(0, 500));
-          if (!captured) deepSearchEmail(data, 0);
-        });
-      }
-
-      // Start discovery after a delay to let ShopInjector init
-      setTimeout(discoverShopAPI, 3000);
-
-      // === Monitor dataLayer ===
-      window.dataLayer = window.dataLayer || [];
-      var origPush = window.dataLayer.push;
-      window.dataLayer.push = function() {
-        var result = origPush.apply(this, arguments);
-        for (var i = 0; i < arguments.length; i++) {
-          var obj = arguments[i];
-          if (!obj || typeof obj !== 'object') continue;
-          console.log(D, 'dataLayer push:', JSON.stringify(obj).substring(0, 300));
-          if (!captured) deepSearchEmail(obj, 0);
-        }
-        return result;
-      };
-
-      // === Listen for ALL postMessage ===
+      // Listen for the custom postMessage sent by the GTM tag inside the Eventix iframe
       window.addEventListener('message', function(e) {
-        if (!e.data) return;
-        var data = e.data;
-        if (typeof data === 'string') {
-          if (data.length < 500) console.log(D, 'postMessage (str):', data);
-          try { data = JSON.parse(data); } catch(x) { return; }
+        if (!e.data || typeof e.data !== 'object') return;
+        if (e.data.type === 'feral-checkout-email' && e.data.email) {
+          sendToKlaviyo(e.data.email);
         }
-        if (typeof data === 'object') {
-          var keys = Object.keys(data);
-          console.log(D, 'postMessage:', keys.join(', '),
-            keys.length < 15 ? JSON.stringify(data).substring(0, 500) : '(large)');
-        }
-        if (!captured) deepSearchEmail(data, 0);
       });
-
-      // === Monitor fetch/XHR to Eventix API for order submission ===
-      var origFetch = window.fetch;
-      window.fetch = function(url, opts) {
-        if (typeof url === 'string' && (url.indexOf('openticket') > -1 || url.indexOf('eventix') > -1 || url.indexOf('weeztix') > -1)) {
-          console.log(D, 'fetch:', url);
-          if (opts && opts.body) {
-            try {
-              var body = typeof opts.body === 'string' ? opts.body : '';
-              if (body) console.log(D, 'fetch body:', body.substring(0, 400));
-            } catch(e) {}
-          }
-        }
-        return origFetch.apply(this, arguments);
-      };
-
-      console.log(D, 'Initialised — discovery mode. Fill in your email in checkout and check console.');
     })();
   </script>
 </body>

@@ -516,10 +516,10 @@
 
     .dp-btn--secondary {
       background: transparent;
-      color: #555;
+      color: rgba(255, 255, 255, 0.5);
       border: 1px solid #333;
     }
-    .dp-btn--secondary:hover { color: #999; border-color: #555; }
+    .dp-btn--secondary:hover { color: rgba(255, 255, 255, 0.7); border-color: #555; }
 
     /* Email input */
     .dp-input {
@@ -681,8 +681,9 @@
       var POPUP_KEY = 'feral_dp_shown';
       var TIMER_TOTAL = 299; // 4:59
 
-      // Don't show if already dismissed/completed
-      if (localStorage.getItem(POPUP_KEY)) return;
+      // Don't show if dismissed/completed within last 30 days
+      var lastShown = localStorage.getItem(POPUP_KEY);
+      if (lastShown && (Date.now() - parseInt(lastShown, 10)) < 30 * 24 * 60 * 60 * 1000) return;
 
       var overlay = document.getElementById('dpOverlay');
       var screen1 = document.getElementById('dpScreen1');
@@ -722,7 +723,7 @@
         overlay.classList.remove('dp-overlay--visible');
         document.body.style.overflow = '';
         clearInterval(timerInterval);
-        localStorage.setItem(POPUP_KEY, '1');
+        localStorage.setItem(POPUP_KEY, Date.now().toString());
       }
 
       function goToScreen(screen) {
@@ -732,40 +733,30 @@
         screen.classList.add('dp-screen--active');
       }
 
-      // Trigger: 8 seconds delay + 35% scroll depth (whichever comes LAST)
-      var timeReady = false;
-      var scrollReady = false;
+      // Trigger: ANY of exit intent, 8s delay, or 50% scroll
       var shown = false;
 
       function tryShow() {
         if (shown) return;
-        if (timeReady && scrollReady) {
-          shown = true;
-          showPopup();
-        }
+        shown = true;
+        showPopup();
       }
 
-      setTimeout(function() {
-        timeReady = true;
-        tryShow();
-      }, 8000);
+      // 1. After 8 seconds
+      setTimeout(tryShow, 8000);
 
+      // 2. After 50% scroll
       window.addEventListener('scroll', function() {
-        if (scrollReady) return;
+        if (shown) return;
         var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-        if (scrollPct >= 0.35) {
-          scrollReady = true;
-          tryShow();
-        }
+        if (scrollPct >= 0.50) tryShow();
       });
 
-      // Fallback: show after 25 seconds even without scroll
-      setTimeout(function() {
-        if (!shown) {
-          scrollReady = true;
-          tryShow();
-        }
-      }, 25000);
+      // 3. Exit intent (mouse leaves viewport at top)
+      document.addEventListener('mouseout', function(e) {
+        if (shown) return;
+        if (e.clientY <= 0 && e.relatedTarget === null) tryShow();
+      });
 
       // Close button
       document.getElementById('dpClose').addEventListener('click', hidePopup);
@@ -825,7 +816,7 @@
         // Show code screen
         goToScreen(screen3);
         clearInterval(timerInterval);
-        localStorage.setItem(POPUP_KEY, '1');
+        localStorage.setItem(POPUP_KEY, Date.now().toString());
       });
 
       // Screen 3: "Got It" button

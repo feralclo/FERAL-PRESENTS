@@ -743,8 +743,6 @@
       var KLAVIYO_LIST_ID = 'W3LNS8';
       var captured = false;
       var _learnq = window._learnq = window._learnq || [];
-
-      // Debug: log prefix
       var D = '[FERAL-Klaviyo]';
 
       function captureEmail(email, firstName, lastName) {
@@ -777,18 +775,17 @@
           body: formData
         })
         .then(function(r) { return r.text(); })
-        .then(function(t) { console.log(D, 'Klaviyo subscribe response:', t); })
-        .catch(function(err) { console.error(D, 'Klaviyo subscribe error:', err); });
+        .then(function(t) { console.log(D, 'Subscribe response:', t); })
+        .catch(function(err) { console.error(D, 'Subscribe error:', err); });
       }
 
-      // Helper: recursively search an object for anything that looks like an email
       function deepSearchEmail(obj, depth) {
-        if (!obj || typeof obj !== 'object' || depth > 4) return;
+        if (!obj || typeof obj !== 'object' || depth > 5) return;
         for (var key in obj) {
           if (!obj.hasOwnProperty(key)) continue;
           var val = obj[key];
-          if (typeof val === 'string' && val.indexOf('@') > 0 && val.indexOf('.') > 0) {
-            console.log(D, 'Found email-like value at key "' + key + '":', val);
+          if (typeof val === 'string' && val.indexOf('@') > 0 && val.indexOf('.') > 0 && val.length < 200) {
+            console.log(D, 'Email found at "' + key + '":', val);
             captureEmail(val);
             return;
           }
@@ -798,7 +795,72 @@
         }
       }
 
-      // Monitor dataLayer for Eventix events
+      // === DISCOVERY: Enumerate ShopInjector.shop methods ===
+      function discoverShopAPI() {
+        if (!window.ShopInjector || !window.ShopInjector.shop) {
+          console.log(D, 'ShopInjector not ready, retrying...');
+          setTimeout(discoverShopAPI, 1000);
+          return;
+        }
+        var shop = window.ShopInjector.shop;
+
+        // List all own properties and methods
+        var props = [];
+        for (var key in shop) {
+          var type = typeof shop[key];
+          props.push(key + ' (' + type + ')');
+        }
+        console.log(D, 'ShopInjector.shop properties:', props.join(', '));
+
+        // Also check prototype
+        var proto = Object.getPrototypeOf(shop);
+        if (proto) {
+          var protoProps = Object.getOwnPropertyNames(proto).filter(function(k) { return k !== 'constructor'; });
+          console.log(D, 'ShopInjector.shop prototype methods:', protoProps.join(', '));
+
+          // Try to register for ANY on* callback
+          protoProps.forEach(function(method) {
+            if (method.indexOf('on') === 0 && typeof shop[method] === 'function' && method !== 'onCartData') {
+              console.log(D, 'Hooking into shop.' + method + '()');
+              try {
+                shop[method](function(data) {
+                  console.log(D, 'shop.' + method + ' fired:', JSON.stringify(data).substring(0, 500));
+                  if (!captured) deepSearchEmail(data, 0);
+                });
+              } catch(e) {
+                console.log(D, 'Failed to hook ' + method + ':', e.message);
+              }
+            }
+          });
+        }
+
+        // Also check ShopInjector itself
+        var injectorProps = [];
+        for (var k in window.ShopInjector) {
+          injectorProps.push(k + ' (' + typeof window.ShopInjector[k] + ')');
+        }
+        console.log(D, 'ShopInjector properties:', injectorProps.join(', '));
+
+        // Intercept shop.sendMessage to see outbound messages
+        if (typeof shop.sendMessage === 'function') {
+          var origSend = shop.sendMessage.bind(shop);
+          shop.sendMessage = function(msg) {
+            console.log(D, 'sendMessage →', JSON.stringify(msg).substring(0, 300));
+            return origSend(msg);
+          };
+        }
+
+        // Hook into onCartData to deep-search for email in cart updates
+        shop.onCartData(function(data) {
+          console.log(D, 'onCartData:', JSON.stringify(data).substring(0, 500));
+          if (!captured) deepSearchEmail(data, 0);
+        });
+      }
+
+      // Start discovery after a delay to let ShopInjector init
+      setTimeout(discoverShopAPI, 3000);
+
+      // === Monitor dataLayer ===
       window.dataLayer = window.dataLayer || [];
       var origPush = window.dataLayer.push;
       window.dataLayer.push = function() {
@@ -807,52 +869,43 @@
           var obj = arguments[i];
           if (!obj || typeof obj !== 'object') continue;
           console.log(D, 'dataLayer push:', JSON.stringify(obj).substring(0, 300));
-          if (obj.receiver && obj.receiver.email) {
-            captureEmail(obj.receiver.email, obj.receiver.firstName, obj.receiver.lastName);
-          } else if (obj.order && obj.order.email) {
-            captureEmail(obj.order.email);
-          } else if (!captured) {
-            deepSearchEmail(obj, 0);
-          }
+          if (!captured) deepSearchEmail(obj, 0);
         }
         return result;
       };
 
-      // Listen for ALL postMessage from Eventix iframe
+      // === Listen for ALL postMessage ===
       window.addEventListener('message', function(e) {
         if (!e.data) return;
         var data = e.data;
         if (typeof data === 'string') {
-          // Log short strings, skip very long ones
-          if (data.length < 500) console.log(D, 'postMessage (string):', data);
+          if (data.length < 500) console.log(D, 'postMessage (str):', data);
           try { data = JSON.parse(data); } catch(x) { return; }
         }
-        // Log the message structure (truncated)
         if (typeof data === 'object') {
           var keys = Object.keys(data);
-          console.log(D, 'postMessage keys:', keys.join(', '),
-            keys.length < 10 ? JSON.stringify(data).substring(0, 400) : '(large object)');
+          console.log(D, 'postMessage:', keys.join(', '),
+            keys.length < 15 ? JSON.stringify(data).substring(0, 500) : '(large)');
         }
-        if (captured) return;
-        // Check known paths
-        if (data.receiver && data.receiver.email) {
-          captureEmail(data.receiver.email, data.receiver.firstName, data.receiver.lastName);
-        } else if (data.order && data.order.email) {
-          captureEmail(data.order.email);
-        } else if (data.data) {
-          if (data.data.receiver && data.data.receiver.email) {
-            captureEmail(data.data.receiver.email, data.data.receiver.firstName, data.data.receiver.lastName);
-          } else if (data.data.order && data.data.order.email) {
-            captureEmail(data.data.order.email);
-          } else {
-            deepSearchEmail(data, 0);
-          }
-        } else {
-          deepSearchEmail(data, 0);
-        }
+        if (!captured) deepSearchEmail(data, 0);
       });
 
-      console.log(D, 'Checkout email capture initialised. Waiting for email data...');
+      // === Monitor fetch/XHR to Eventix API for order submission ===
+      var origFetch = window.fetch;
+      window.fetch = function(url, opts) {
+        if (typeof url === 'string' && (url.indexOf('openticket') > -1 || url.indexOf('eventix') > -1 || url.indexOf('weeztix') > -1)) {
+          console.log(D, 'fetch:', url);
+          if (opts && opts.body) {
+            try {
+              var body = typeof opts.body === 'string' ? opts.body : '';
+              if (body) console.log(D, 'fetch body:', body.substring(0, 400));
+            } catch(e) {}
+          }
+        }
+        return origFetch.apply(this, arguments);
+      };
+
+      console.log(D, 'Initialised — discovery mode. Fill in your email in checkout and check console.');
     })();
   </script>
 </body>

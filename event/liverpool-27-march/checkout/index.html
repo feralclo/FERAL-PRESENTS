@@ -735,5 +735,90 @@
       }, 500);
     })();
   </script>
+
+  <!-- Klaviyo: Capture checkout emails for abandoned cart flows -->
+  <script async src="https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=Y8FS6L"></script>
+  <script>
+    (function() {
+      var KLAVIYO_LIST_ID = 'W3LNS8';
+      var captured = false;
+      var _learnq = window._learnq = window._learnq || [];
+
+      function captureEmail(email, firstName, lastName) {
+        if (captured || !email) return;
+        // Basic email validation
+        if (email.indexOf('@') === -1) return;
+        captured = true;
+
+        // Identify user in Klaviyo
+        var identity = { '$email': email };
+        if (firstName) identity['$first_name'] = firstName;
+        if (lastName) identity['$last_name'] = lastName;
+        _learnq.push(['identify', identity]);
+
+        // Track "Started Checkout" event for abandoned cart flow
+        var params = new URLSearchParams(window.location.search);
+        var qty = parseInt(params.get('qty')) || 1;
+        _learnq.push(['track', 'Started Checkout', {
+          'Event': 'FERAL Liverpool — 27 March 2026',
+          'Venue': 'Invisible Wind Factory',
+          'Quantity': qty,
+          'CheckoutURL': window.location.href
+        }]);
+
+        // Subscribe to abandoned cart list
+        var formData = new FormData();
+        formData.append('g', KLAVIYO_LIST_ID);
+        formData.append('email', email);
+        if (firstName) formData.append('$first_name', firstName);
+        if (lastName) formData.append('$last_name', lastName);
+        fetch('https://manage.kmail-lists.com/ajax/subscriptions/subscribe', {
+          method: 'POST',
+          body: formData
+        }).catch(function() {});
+      }
+
+      // Monitor dataLayer for Eventix events containing email
+      window.dataLayer = window.dataLayer || [];
+      var origPush = window.dataLayer.push;
+      window.dataLayer.push = function() {
+        var result = origPush.apply(this, arguments);
+        for (var i = 0; i < arguments.length; i++) {
+          var obj = arguments[i];
+          if (!obj || typeof obj !== 'object') continue;
+          if (obj.receiver && obj.receiver.email) {
+            captureEmail(obj.receiver.email, obj.receiver.firstName, obj.receiver.lastName);
+          }
+          if (obj.order && obj.order.email) {
+            captureEmail(obj.order.email);
+          }
+        }
+        return result;
+      };
+
+      // Also listen for postMessage from Eventix iframe
+      window.addEventListener('message', function(e) {
+        if (!e.data || captured) return;
+        var data = e.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch(x) { return; }
+        }
+        if (data.receiver && data.receiver.email) {
+          captureEmail(data.receiver.email, data.receiver.firstName, data.receiver.lastName);
+        }
+        if (data.order && data.order.email) {
+          captureEmail(data.order.email);
+        }
+        if (data.data) {
+          if (data.data.receiver && data.data.receiver.email) {
+            captureEmail(data.data.receiver.email, data.data.receiver.firstName, data.data.receiver.lastName);
+          }
+          if (data.data.order && data.data.order.email) {
+            captureEmail(data.data.order.email);
+          }
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

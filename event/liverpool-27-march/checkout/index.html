@@ -771,7 +771,12 @@
       // Listen for the custom postMessage sent by the GTM tag inside the Eventix iframe
       window.addEventListener('message', function(e) {
         if (!e.data || typeof e.data !== 'object') return;
+        // Log all OpenTicket messages to help debug
+        if (e.data.type && e.data.type.indexOf('feral') > -1) {
+          console.log('[FERAL-Klaviyo] Received postMessage:', e.data.type, e.data.email || '(no email)');
+        }
         if (e.data.type === 'feral-checkout-email' && e.data.email) {
+          console.log('[FERAL-Klaviyo] Sending to Klaviyo:', e.data.email);
           sendToKlaviyo(e.data.email);
         }
       });

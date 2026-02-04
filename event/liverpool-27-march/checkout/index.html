@@ -281,88 +281,6 @@
     }
 
     /* ========================================
-       EMAIL CAPTURE
-       ======================================== */
-    .email-gate {
-      background: #151515;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 18px 24px;
-    }
-
-    .email-gate__inner {
-      max-width: 440px;
-      margin: 0 auto;
-    }
-
-    .email-gate__label {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #666;
-      margin-bottom: 10px;
-      display: block;
-      text-align: center;
-    }
-
-    .email-gate__row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .email-gate__input {
-      flex: 1;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #fff;
-      font-family: 'Inter', sans-serif;
-      font-size: 14px;
-      padding: 11px 14px;
-      outline: none;
-      transition: border-color 0.15s ease;
-    }
-
-    .email-gate__input::placeholder { color: #444; }
-    .email-gate__input:focus { border-color: rgba(246, 4, 52, 0.5); }
-
-    .email-gate__btn {
-      background: #f60434;
-      color: #fff;
-      border: none;
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      padding: 11px 18px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s ease;
-    }
-
-    .email-gate__btn:hover { background: #ff1a4a; }
-
-    .email-gate__done {
-      display: none;
-      text-align: center;
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #5a5;
-      padding: 4px 0;
-    }
-
-    .email-gate--submitted .email-gate__row,
-    .email-gate--submitted .email-gate__label { display: none; }
-    .email-gate--submitted .email-gate__done { display: block; }
-
-    @media (max-width: 600px) {
-      .email-gate { padding: 14px 16px; }
-      .email-gate__row { flex-direction: column; }
-      .email-gate__btn { width: 100%; padding: 13px 18px; }
-    }
-
-    /* ========================================
        EMBED CONTAINER
        ======================================== */
     #eventix-shop-container {
@@ -598,18 +516,6 @@
     </span>
   </div>
 
-  <!-- Email Capture -->
-  <div class="email-gate" id="emailGate">
-    <div class="email-gate__inner">
-      <span class="email-gate__label">Enter your email for order updates</span>
-      <form class="email-gate__row" id="emailGateForm">
-        <input type="email" class="email-gate__input" id="gateEmail" placeholder="your@email.com" required autocomplete="email">
-        <button type="submit" class="email-gate__btn">Continue</button>
-      </form>
-      <div class="email-gate__done">Email saved</div>
-    </div>
-  </div>
-
   <!-- Embed -->
   <div id="eventix-shop-container"></div>
 
@@ -830,44 +736,5 @@
     })();
   </script>
 
-  <!-- Klaviyo: Capture checkout emails -->
-  <script async src="https://static.klaviyo.com/onsite/js/klaviyo.js?company_id=Y8FS6L"></script>
-  <script>
-    (function() {
-      var KLAVIYO_LIST_ID = 'W3LNS8';
-      var _learnq = window._learnq = window._learnq || [];
-
-      document.getElementById('emailGateForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        var email = document.getElementById('gateEmail').value.trim();
-        if (!email || email.indexOf('@') === -1) return;
-
-        // Show confirmed state
-        document.getElementById('emailGate').classList.add('email-gate--submitted');
-
-        // Identify in Klaviyo
-        _learnq.push(['identify', { '$email': email }]);
-
-        // Track Started Checkout event
-        var params = new URLSearchParams(window.location.search);
-        var qty = parseInt(params.get('qty')) || 1;
-        _learnq.push(['track', 'Started Checkout', {
-          'Event': 'FERAL Liverpool — 27 March 2026',
-          'Venue': 'Invisible Wind Factory',
-          'Quantity': qty,
-          'CheckoutURL': window.location.href
-        }]);
-
-        // Subscribe to Klaviyo list
-        var formData = new FormData();
-        formData.append('g', KLAVIYO_LIST_ID);
-        formData.append('email', email);
-        fetch('https://manage.kmail-lists.com/ajax/subscriptions/subscribe', {
-          method: 'POST',
-          body: formData
-        }).catch(function() {});
-      });
-    })();
-  </script>
 </body>
 </html>

@@ -405,22 +405,23 @@
   <style>
     /* Overlay */
     .dp-overlay {
-      display: none;
       position: fixed;
       inset: 0;
       z-index: 10000;
       background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
+      display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      visibility: hidden;
+      transition: opacity 0.45s ease, visibility 0.45s ease;
     }
     .dp-overlay--visible {
-      display: flex;
       opacity: 1;
+      visibility: visible;
     }
 
     /* Modal */
@@ -431,6 +432,13 @@
       max-width: 400px;
       position: relative;
       overflow: hidden;
+      transform: translateY(18px) scale(0.97);
+      opacity: 0;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    }
+    .dp-overlay--visible .dp-modal {
+      transform: translateY(0) scale(1);
+      opacity: 1;
     }
 
     /* Close */
@@ -734,8 +742,11 @@
       }
 
       // Triggers — ANY one fires the popup (first wins)
-      // Desktop: 8s delay, 60% scroll, or exit intent
-      // Mobile: 15s delay, 60% scroll, or rapid-scroll-up exit signal
+      // This is a short page so scroll % fires fast. Strategy:
+      //   Desktop: exit intent (primary), 20s delay (fallback)
+      //            — no scroll trigger (page is ~1.5 viewports tall, scroll % is unreliable)
+      //   Mobile:  15s delay or 50% scroll (whichever first)
+      //            — no exit intent (unreliable on mobile)
       var shown = false;
       var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
@@ -745,40 +756,23 @@
         showPopup();
       }
 
-      // 1. Time delay — desktop 8s, mobile 15s
-      setTimeout(tryShow, isMobile ? 15000 : 8000);
-
-      // 2. Scroll depth — 60% (works on both, avoids false triggers on short pages)
-      window.addEventListener('scroll', function() {
-        if (shown) return;
-        var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-        if (scrollPct >= 0.60) tryShow();
-      });
-
-      // 3. Exit intent
       if (isMobile) {
-        // Mobile: detect rapid scroll toward top (user about to leave)
-        var lastScrollY = window.scrollY;
-        var lastScrollTime = Date.now();
+        // Mobile: 15s delay
+        setTimeout(tryShow, 15000);
+        // Mobile: 50% scroll (pages are taller relative to viewport on mobile)
         window.addEventListener('scroll', function() {
           if (shown) return;
-          var now = Date.now();
-          var dy = window.scrollY - lastScrollY;
-          var dt = now - lastScrollTime;
-          // Fast upward scroll (> 800px/s) while near the top 20% of page
-          if (dy < 0 && dt > 0 && dt < 300 && Math.abs(dy / dt) > 0.8) {
-            var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-            if (scrollPct < 0.20) tryShow();
-          }
-          lastScrollY = window.scrollY;
-          lastScrollTime = now;
+          var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+          if (scrollPct >= 0.50) tryShow();
         });
       } else {
-        // Desktop: mouse leaves viewport at top
+        // Desktop: exit intent — mouse leaves viewport at top
         document.addEventListener('mouseout', function(e) {
           if (shown) return;
           if (e.clientY <= 0 && e.relatedTarget === null) tryShow();
         });
+        // Desktop: 20s fallback if user hasn't triggered exit intent
+        setTimeout(tryShow, 20000);
       }
 
       // Close button

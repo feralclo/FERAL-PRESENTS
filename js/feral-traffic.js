@@ -6,6 +6,31 @@
 (function() {
   'use strict';
 
+  // ===== DEV MODE - Skip tracking for your own browsing =====
+  // Visit any page with ?devmode=1 to enable (persists forever)
+  // Visit with ?devmode=0 to disable and resume tracking
+  var DEV_MODE_KEY = 'feral_dev_mode';
+
+  // Check URL params to set/clear dev mode
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('devmode') === '1') {
+    localStorage.setItem(DEV_MODE_KEY, 'true');
+    console.log('[FERAL Traffic] DEV MODE ENABLED - Your traffic will not be tracked');
+  } else if (urlParams.get('devmode') === '0') {
+    localStorage.removeItem(DEV_MODE_KEY);
+    console.log('[FERAL Traffic] Dev mode disabled - Tracking resumed');
+  }
+
+  // Check if dev mode is active
+  var isDevMode = localStorage.getItem(DEV_MODE_KEY) === 'true';
+  if (isDevMode) {
+    console.log('[FERAL Traffic] Dev mode active - Skipping all tracking');
+    // Still expose empty functions so other scripts don't error
+    window.feralTrackEngagement = function() {};
+    window.feralTrackPurchase = function() {};
+    return; // Exit early, don't set up any tracking
+  }
+
   // Supabase configuration
   var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';

@@ -452,6 +452,143 @@
     }
 
     /* ========================================
+       EMAIL POPUP OVERLAY
+       ======================================== */
+    .feral-popup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .feral-popup-overlay.feral-popup--visible {
+      display: flex;
+    }
+    .feral-popup-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .feral-popup-box {
+      position: relative;
+      z-index: 1;
+      background: #111;
+      border: 1px solid rgba(255, 0, 51, 0.4);
+      max-width: 400px;
+      width: 100%;
+      padding: 32px 28px;
+      text-align: center;
+    }
+    .feral-popup-box::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(135deg, rgba(255, 0, 51, 0.15), transparent 60%);
+      z-index: -1;
+      pointer-events: none;
+    }
+    .feral-popup-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      transition: color 0.15s ease;
+    }
+    .feral-popup-close:hover {
+      color: var(--white);
+    }
+    .feral-popup-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+    .feral-popup-title {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .feral-popup-subtitle {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .feral-popup-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .feral-popup-input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--white);
+      text-align: center;
+      transition: border-color 0.15s ease;
+    }
+    .feral-popup-input:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+    .feral-popup-input::placeholder {
+      color: #555;
+    }
+    .feral-popup-btn {
+      background: var(--red);
+      border: none;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--white);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .feral-popup-btn:hover {
+      background: var(--red-dark);
+      box-shadow: 0 0 20px var(--red-glow);
+    }
+    .feral-popup-skip {
+      background: none;
+      border: none;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #555;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: color 0.15s ease;
+    }
+    .feral-popup-skip:hover {
+      color: var(--gray-text);
+    }
+    @media (max-width: 600px) {
+      .feral-popup-box {
+        padding: 28px 20px;
+      }
+    }
+
+    /* ========================================
        SOCIAL PROOF TOAST
        ======================================== */
     .social-proof {
@@ -585,6 +722,22 @@
   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- End Google Tag Manager (noscript) -->
   <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- Email Capture Popup -->
+  <div class="feral-popup-overlay" id="feralPopup">
+    <div class="feral-popup-backdrop" id="feralPopupBackdrop"></div>
+    <div class="feral-popup-box">
+      <button class="feral-popup-close" id="feralPopupClose" aria-label="Close">&times;</button>
+      <div class="feral-popup-icon">&#127881;</div>
+      <h3 class="feral-popup-title">Don't Miss Out<span style="color:var(--red)">_</span></h3>
+      <p class="feral-popup-subtitle">Get exclusive early access to future FERAL events + special offers. No spam, just drops.</p>
+      <form class="feral-popup-form" id="feralPopupForm">
+        <input type="email" class="feral-popup-input" id="feralPopupEmail" placeholder="your@email.com" required>
+        <button type="submit" class="feral-popup-btn">Get Early Access</button>
+      </form>
+      <button class="feral-popup-skip" id="feralPopupSkip">Maybe later</button>
+    </div>
+  </div>
 
   <!-- Header -->
   <div class="tickets-header">
@@ -845,5 +998,118 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- FERAL Traffic Analytics -->
   <script src="../../../js/feral-traffic.js"></script>
+
+  <!-- Email Capture Popup Script -->
+  <script>
+  (function() {
+    'use strict';
+
+    // Use same localStorage key as landing page to ensure popup only shows once across all pages
+    var POPUP_KEY = 'feral_dp_shown';
+    var POPUP_EXPIRY_DAYS = 30;
+
+    var overlay = document.getElementById('feralPopup');
+    var backdrop = document.getElementById('feralPopupBackdrop');
+    var closeBtn = document.getElementById('feralPopupClose');
+    var skipBtn = document.getElementById('feralPopupSkip');
+    var form = document.getElementById('feralPopupForm');
+    var emailInput = document.getElementById('feralPopupEmail');
+
+    var shown = false;
+
+    function hasSeenPopup() {
+      var stored = localStorage.getItem(POPUP_KEY);
+      if (!stored) return false;
+      try {
+        var data = JSON.parse(stored);
+        // Check if expired (30 days)
+        if (data.timestamp && Date.now() - data.timestamp > POPUP_EXPIRY_DAYS * 24 * 60 * 60 * 1000) {
+          localStorage.removeItem(POPUP_KEY);
+          return false;
+        }
+        return true;
+      } catch (e) {
+        // If it's not JSON, it's probably old format - treat as seen
+        return true;
+      }
+    }
+
+    function markPopupSeen(action) {
+      localStorage.setItem(POPUP_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        action: action || 'dismissed'
+      }));
+    }
+
+    function showPopup() {
+      if (shown || hasSeenPopup()) return;
+      shown = true;
+      overlay.classList.add('feral-popup--visible');
+      document.body.style.overflow = 'hidden';
+      // Track popup display
+      if (typeof feralTrackEngagement === 'function') {
+        feralTrackEngagement('popup_shown_tickets');
+      }
+    }
+
+    function hidePopup(action) {
+      overlay.classList.remove('feral-popup--visible');
+      document.body.style.overflow = '';
+      markPopupSeen(action);
+    }
+
+    // Close handlers
+    if (closeBtn) closeBtn.addEventListener('click', function() { hidePopup('closed'); });
+    if (skipBtn) skipBtn.addEventListener('click', function() { hidePopup('skipped'); });
+    if (backdrop) backdrop.addEventListener('click', function() { hidePopup('backdrop'); });
+
+    // Form submission
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var email = emailInput.value.trim();
+        if (!email) return;
+
+        // Track email capture
+        if (typeof feralTrackEngagement === 'function') {
+          feralTrackEngagement('email_captured_tickets');
+        }
+
+        // Store email in Supabase popup_events table
+        if (window.supabase) {
+          var client = window.supabase.createClient(
+            'https://rqtfghzhkkdytkegcifm.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc'
+          );
+          client.from('popup_events').insert({
+            event_type: 'email_submit',
+            email: email,
+            page: 'tickets',
+            event_name: 'liverpool-27-march',
+            timestamp: new Date().toISOString()
+          }).then(function(res) {
+            if (res.error) console.log('[Popup] Error:', res.error.message);
+            else console.log('[Popup] Email captured successfully');
+          });
+        }
+
+        hidePopup('subscribed');
+        // Show quick thank you
+        overlay.innerHTML = '<div class="feral-popup-backdrop"></div><div class="feral-popup-box" style="padding:40px 28px;"><div style="font-size:32px;margin-bottom:12px;">&#10003;</div><h3 class="feral-popup-title">You\'re in<span style="color:var(--red)">_</span></h3><p class="feral-popup-subtitle">We\'ll hit you up with early access + exclusive drops.</p></div>';
+        overlay.classList.add('feral-popup--visible');
+        setTimeout(function() {
+          overlay.classList.remove('feral-popup--visible');
+          document.body.style.overflow = '';
+        }, 2500);
+      });
+    }
+
+    // Only show popup if not already seen
+    // Tickets page: shorter delay (4s) since they're already showing purchase intent
+    if (!hasSeenPopup()) {
+      setTimeout(showPopup, 4000);
+    }
+  })();
+  </script>
 </body>
 </html>

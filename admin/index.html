@@ -327,8 +327,9 @@
     .funnel__steps {
       display: flex;
       align-items: flex-end;
-      gap: 2px;
+      gap: 16px;
       height: 120px;
+      padding: 0 20px;
     }
 
     .funnel__step {
@@ -336,13 +337,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      height: 100%;
+      justify-content: flex-end;
     }
 
     .funnel__bar {
       width: 100%;
+      max-width: 80px;
       background: var(--red);
       opacity: 0.8;
-      transition: opacity 0.15s ease;
+      transition: opacity 0.15s ease, height 0.3s ease;
+      min-height: 4px;
     }
 
     .funnel__bar:hover {
@@ -544,6 +549,12 @@
           </div>
         </div>
 
+        <!-- Debug Info -->
+        <div class="actions" style="margin-bottom: 16px;">
+          <h2 class="actions__title">Debug — Raw localStorage</h2>
+          <pre id="debugRaw" style="background: #0a0a0a; border: 1px solid #222; padding: 12px; font-family: 'Space Mono', monospace; font-size: 11px; color: #888; overflow-x: auto; margin-top: 12px;">Loading...</pre>
+        </div>
+
         <!-- Actions -->
         <div class="actions">
           <h2 class="actions__title">Actions</h2>
@@ -604,12 +615,19 @@
 
       // Load and display stats
       function loadStats() {
-        var stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+        var rawData = localStorage.getItem(STATS_KEY);
+        var stats = JSON.parse(rawData || '{}');
         var impressions = stats.impressions || 0;
         var engaged = stats.engaged || 0;
         var conversions = stats.conversions || 0;
         var dismissed = stats.dismissed || 0;
         var closed = stats.closed || 0;
+
+        // Debug output
+        var debugEl = document.getElementById('debugRaw');
+        if (debugEl) {
+          debugEl.textContent = 'feral_popup_stats: ' + (rawData || '(empty - no data yet)') + '\n\nferal_dp_shown: ' + (localStorage.getItem('feral_dp_shown') || '(not set)');
+        }
 
         // Update stat cards
         document.getElementById('statImpressions').textContent = impressions;

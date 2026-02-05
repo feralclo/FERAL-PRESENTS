@@ -1037,13 +1037,13 @@
       var today = new Date();
 
       artistContracts.forEach(function(c) {
-        if (!c.data || !c.data.booking_fee) return;
+        if (!c.data || !c.data.artist_fee) return;
 
-        var feeStr = c.data.booking_fee.replace(/[^0-9.]/g, '');
+        var feeStr = c.data.artist_fee.replace(/[^0-9.]/g, '');
         var fee = parseFloat(feeStr) || 0;
 
         total += fee;
-        if (c.booking_fee_received) {
+        if (c.artist_fee_received) {
           paid += fee;
         } else {
           pending += fee;
@@ -1115,13 +1115,13 @@
       var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       var month = eventDate ? monthNames[eventDate.getMonth()] : '---';
 
-      var feeStr = (data.booking_fee || '0').replace(/[^0-9.]/g, '');
+      var feeStr = (data.artist_fee || '0').replace(/[^0-9.]/g, '');
       var fee = parseFloat(feeStr) || 0;
       var symbol = getCurrencySymbol(data.currency);
 
-      var isPaid = contract.booking_fee_received;
+      var isPaid = contract.artist_fee_received;
       var statusClass = isPaid ? 'confirmed' : 'pending';
-      var statusText = isPaid ? 'Confirmed' : 'Pending';
+      var statusText = isPaid ? 'Paid' : 'Pending';
 
       return '<div class="booking-card" onclick="openBookingModal(' + idx + ')">' +
         '<div class="booking-card__date">' +
@@ -1130,7 +1130,7 @@
         '</div>' +
         '<div class="booking-card__info">' +
           '<div class="booking-card__event">' + (data.event_name || 'Event') + '</div>' +
-          '<div class="booking-card__venue">' + (data.venue_name || '') + (data.venue_city ? ', ' + data.venue_city : '') + '</div>' +
+          '<div class="booking-card__venue">' + (data.venue || '') + '</div>' +
         '</div>' +
         '<div class="booking-card__status">' +
           '<div class="booking-card__fee">' + symbol + fee.toFixed(2) + '</div>' +
@@ -1215,7 +1215,7 @@
 
         if (booking) {
           classes.push('has-booking');
-          var isPaid = booking.booking_fee_received;
+          var isPaid = booking.artist_fee_received;
           classes.push(isPaid ? 'booking-confirmed' : 'booking-pending');
           dot = '<div class="calendar-day__dot ' + (isPaid ? 'confirmed' : 'pending') + '"></div>';
 
@@ -1256,11 +1256,11 @@
       var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
       artistContracts.forEach(function(c) {
-        if (!c.data || !c.data.booking_fee) return;
+        if (!c.data || !c.data.artist_fee) return;
 
-        var feeStr = c.data.booking_fee.replace(/[^0-9.]/g, '');
+        var feeStr = c.data.artist_fee.replace(/[^0-9.]/g, '');
         var fee = parseFloat(feeStr) || 0;
-        var isPaid = c.booking_fee_received;
+        var isPaid = c.artist_fee_received;
 
         var eventDate = parseEventDate(c.data.event_date);
         var monthKey = eventDate ? monthNames[eventDate.getMonth()] + ' ' + eventDate.getFullYear() : 'Unknown';
@@ -1343,18 +1343,16 @@
       if (!contract) return;
 
       var data = contract.data;
-      var feeStr = (data.booking_fee || '0').replace(/[^0-9.]/g, '');
+      var feeStr = (data.artist_fee || '0').replace(/[^0-9.]/g, '');
       var fee = parseFloat(feeStr) || 0;
       var symbol = getCurrencySymbol(data.currency);
-      var isPaid = contract.booking_fee_received;
+      var isPaid = contract.artist_fee_received;
 
       var html = '' +
         '<div class="detail-row"><div class="detail-row__label">Event</div><div class="detail-row__value">' + (data.event_name || '-') + '</div></div>' +
         '<div class="detail-row"><div class="detail-row__label">Date</div><div class="detail-row__value">' + (data.event_date || '-') + '</div></div>' +
-        '<div class="detail-row"><div class="detail-row__label">Venue</div><div class="detail-row__value">' + (data.venue_name || '-') + '</div></div>' +
-        '<div class="detail-row"><div class="detail-row__label">Location</div><div class="detail-row__value">' + (data.venue_city || '-') + '</div></div>' +
-        '<div class="detail-row"><div class="detail-row__label">Set Time</div><div class="detail-row__value">' + (data.set_time || '-') + '</div></div>' +
-        '<div class="detail-row"><div class="detail-row__label">Set Length</div><div class="detail-row__value">' + (data.set_length || '-') + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Venue</div><div class="detail-row__value">' + (data.venue || '-') + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Performance Time</div><div class="detail-row__value">' + (data.performance_time || '-') + '</div></div>' +
         '<div class="detail-row"><div class="detail-row__label">Promoter</div><div class="detail-row__value">' + (data.promoter_name || '-') + '</div></div>' +
         '<div class="detail-row"><div class="detail-row__label">Your Fee</div><div class="detail-row__value">' + symbol + fee.toFixed(2) + '</div></div>' +
         '<div class="detail-row"><div class="detail-row__label">Payment Status</div><div class="detail-row__value ' + (isPaid ? 'success' : 'pending') + '">' + (isPaid ? 'Paid' : 'Pending') + '</div></div>';

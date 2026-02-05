@@ -1284,28 +1284,110 @@
       flex-shrink: 0;
     }
 
-    .doc-editor__preview {
-      padding: 24px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      max-height: 400px;
-      overflow-y: auto;
+    .doc-editor__split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      height: 100%;
     }
 
-    .doc-editor__preview-title {
+    @media (max-width: 900px) {
+      .doc-editor__split {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+    }
+
+    .doc-editor__panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .doc-editor__panel-title {
       font-family: var(--font-mono);
       font-size: 10px;
       letter-spacing: 2px;
       text-transform: uppercase;
       color: var(--text-muted);
-      margin-bottom: 16px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
     }
 
-    .doc-editor__preview-content {
+    .doc-editor__textarea {
+      width: 100%;
+      flex: 1;
+      min-height: 300px;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--white);
+      font-family: var(--font-sans);
       font-size: 14px;
       line-height: 1.8;
-      color: #ccc;
-      white-space: pre-wrap;
+      resize: none;
+    }
+
+    .doc-editor__preview {
+      flex: 1;
+      padding: 20px;
+      background: #000;
+      border: 1px solid var(--border);
+      overflow-y: auto;
+      min-height: 300px;
+    }
+
+    .doc-editor__preview-section {
+      margin-bottom: 20px;
+    }
+
+    .doc-editor__preview-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .doc-editor__preview-heading {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .doc-editor__preview-text {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #bbb;
+    }
+
+    .doc-editor__preview-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .doc-editor__preview-list li {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #bbb;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .doc-editor__preview-list li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: #666;
+    }
+
+    .doc-editor__hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
     }
 
     /* Print styles */
@@ -1471,13 +1553,23 @@
 
   <!-- Bio Editor Modal -->
   <div class="doc-editor-overlay" id="bioEditorOverlay">
-    <div class="doc-editor">
+    <div class="doc-editor" style="max-width:1000px;">
       <div class="doc-editor__header">
         <span class="doc-editor__title">Edit Artist Bio</span>
         <button class="doc-editor__close" onclick="closeDocEditor('bio')">&times;</button>
       </div>
       <div class="doc-editor__content">
-        <textarea class="doc-editor__textarea" id="bioEditorText" placeholder="Enter artist biography..."></textarea>
+        <div class="doc-editor__split">
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Edit Content</div>
+            <textarea class="doc-editor__textarea" id="bioEditorText" placeholder="Enter artist biography..." oninput="updateBioPreview()"></textarea>
+            <div class="doc-editor__hint">Separate paragraphs with blank lines</div>
+          </div>
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Live Preview — How Promoters Will See It</div>
+            <div class="doc-editor__preview" id="bioPreview"></div>
+          </div>
+        </div>
       </div>
       <div class="doc-editor__footer">
         <button class="btn btn--red" onclick="saveDocContent('bio')">Save Bio</button>
@@ -1488,13 +1580,23 @@
 
   <!-- Rider Editor Modal -->
   <div class="doc-editor-overlay" id="riderEditorOverlay">
-    <div class="doc-editor">
+    <div class="doc-editor" style="max-width:1000px;">
       <div class="doc-editor__header">
         <span class="doc-editor__title">Edit Technical Rider</span>
         <button class="doc-editor__close" onclick="closeDocEditor('rider')">&times;</button>
       </div>
       <div class="doc-editor__content">
-        <textarea class="doc-editor__textarea" id="riderEditorText" placeholder="Enter technical and hospitality rider..."></textarea>
+        <div class="doc-editor__split">
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Edit Content</div>
+            <textarea class="doc-editor__textarea" id="riderEditorText" placeholder="Enter technical and hospitality rider..." oninput="updateRiderPreview()"></textarea>
+            <div class="doc-editor__hint">First line of each section = red heading. Lines starting with "-" = bullet list</div>
+          </div>
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Live Preview — How Promoters Will See It</div>
+            <div class="doc-editor__preview" id="riderPreview"></div>
+          </div>
+        </div>
       </div>
       <div class="doc-editor__footer">
         <button class="btn btn--red" onclick="saveDocContent('rider')">Save Rider</button>
@@ -2430,11 +2532,62 @@
 
     document.getElementById(type + 'EditorOverlay').classList.add('active');
     document.body.style.overflow = 'hidden';
+
+    // Update preview immediately
+    if (type === 'bio') updateBioPreview();
+    else updateRiderPreview();
   }
 
   function closeDocEditor(type) {
     document.getElementById(type + 'EditorOverlay').classList.remove('active');
     document.body.style.overflow = '';
+  }
+
+  // Live preview for Bio
+  function updateBioPreview() {
+    var text = document.getElementById('bioEditorText').value;
+    var preview = document.getElementById('bioPreview');
+    if (!text.trim()) {
+      preview.innerHTML = '<p style="color:#666;font-style:italic;">Start typing to see preview...</p>';
+      return;
+    }
+
+    var paragraphs = text.split('\n\n').filter(function(p) { return p.trim(); });
+    preview.innerHTML = paragraphs.map(function(p) {
+      return '<div class="doc-editor__preview-section"><p class="doc-editor__preview-text">' + p.replace(/\n/g, '<br>') + '</p></div>';
+    }).join('');
+  }
+
+  // Live preview for Rider
+  function updateRiderPreview() {
+    var text = document.getElementById('riderEditorText').value;
+    var preview = document.getElementById('riderPreview');
+    if (!text.trim()) {
+      preview.innerHTML = '<p style="color:#666;font-style:italic;">Start typing to see preview...</p>';
+      return;
+    }
+
+    var sections = text.split('\n\n').filter(function(s) { return s.trim(); });
+    preview.innerHTML = sections.map(function(section) {
+      var lines = section.split('\n');
+      var title = lines[0];
+      var items = lines.slice(1);
+      var html = '<div class="doc-editor__preview-section">';
+      html += '<div class="doc-editor__preview-heading">' + title + '</div>';
+      if (items.length > 0 && items[0].trim().startsWith('-')) {
+        html += '<ul class="doc-editor__preview-list">';
+        items.forEach(function(item) {
+          if (item.trim()) {
+            html += '<li>' + item.replace(/^-\s*/, '') + '</li>';
+          }
+        });
+        html += '</ul>';
+      } else if (items.length > 0) {
+        html += '<p class="doc-editor__preview-text">' + items.join('<br>') + '</p>';
+      }
+      html += '</div>';
+      return html;
+    }).join('');
   }
 
   function saveDocContent(type) {

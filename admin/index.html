@@ -557,6 +557,36 @@
       flex-shrink: 0;
     }
 
+    .engagement-row__status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--text-muted);
+    }
+
+    .engagement-row__status--good {
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(0, 255, 102, 0.5);
+    }
+
+    .engagement-row__status--ok {
+      background: var(--yellow);
+      box-shadow: 0 0 6px rgba(255, 204, 0, 0.5);
+    }
+
+    .engagement-row__status--bad {
+      background: var(--red);
+      box-shadow: 0 0 6px rgba(255, 0, 51, 0.5);
+    }
+
+    .engagement-benchmark {
+      font-size: 9px;
+      color: var(--text-muted);
+      margin-left: 4px;
+      opacity: 0.6;
+    }
+
     .engagement-summary {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -989,53 +1019,61 @@
             <div class="engagement-grid">
               <!-- Scroll Depth -->
               <div class="engagement-section">
-                <h3 class="engagement-label">Scroll Depth</h3>
+                <h3 class="engagement-label">Scroll Depth <span class="engagement-benchmark">(target: 50%+ reach halfway)</span></h3>
                 <div class="engagement-bars">
                   <div class="engagement-row">
                     <span class="engagement-row__label">100%</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll100" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engScroll100Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll100Status"></span>
                   </div>
                   <div class="engagement-row">
                     <span class="engagement-row__label">75%</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll75" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engScroll75Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll75Status"></span>
                   </div>
                   <div class="engagement-row">
                     <span class="engagement-row__label">50%</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll50" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engScroll50Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll50Status"></span>
                   </div>
                   <div class="engagement-row">
                     <span class="engagement-row__label">25%</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll25" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engScroll25Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll25Status"></span>
                   </div>
                 </div>
               </div>
               <!-- Time on Page -->
               <div class="engagement-section">
-                <h3 class="engagement-label">Time on Page</h3>
+                <h3 class="engagement-label">Time on Page <span class="engagement-benchmark">(target: 50%+ stay 30s)</span></h3>
                 <div class="engagement-bars">
                   <div class="engagement-row">
                     <span class="engagement-row__label">&gt;2min</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime120" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engTime120Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime120Status"></span>
                   </div>
                   <div class="engagement-row">
                     <span class="engagement-row__label">&gt;60s</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime60" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engTime60Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime60Status"></span>
                   </div>
                   <div class="engagement-row">
                     <span class="engagement-row__label">&gt;30s</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime30" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engTime30Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime30Status"></span>
                   </div>
                   <div class="engagement-row">
                     <span class="engagement-row__label">&gt;10s</span>
                     <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime10" style="width: 0%;"></div></div>
                     <span class="engagement-row__pct" id="engTime10Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime10Status"></span>
                   </div>
                 </div>
               </div>
@@ -1043,9 +1081,10 @@
             <!-- Engagement Quality Summary -->
             <div class="engagement-summary">
               <div class="engagement-quality">
-                <span class="engagement-quality__label">Bouncers</span>
+                <span class="engagement-quality__label">Bouncers <span class="engagement-row__status" id="engBouncersStatus" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span></span>
                 <span class="engagement-quality__desc">&lt;10s, no scroll</span>
-                <span class="engagement-quality__pct stat-card__value--red" id="engBouncers">0%</span>
+                <span class="engagement-quality__pct" id="engBouncers">0%</span>
+                <span class="engagement-benchmark" style="display:block;margin-top:2px;">Target: &lt;30%</span>
               </div>
               <div class="engagement-quality">
                 <span class="engagement-quality__label">Skimmers</span>
@@ -1058,9 +1097,10 @@
                 <span class="engagement-quality__pct stat-card__value--blue" id="engReaders">0%</span>
               </div>
               <div class="engagement-quality">
-                <span class="engagement-quality__label">Engaged</span>
+                <span class="engagement-quality__label">Engaged <span class="engagement-row__status" id="engEngagedStatus" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span></span>
                 <span class="engagement-quality__desc">Interacted</span>
-                <span class="engagement-quality__pct stat-card__value--green" id="engEngaged">0%</span>
+                <span class="engagement-quality__pct" id="engEngaged">0%</span>
+                <span class="engagement-benchmark" style="display:block;margin-top:2px;">Target: &gt;15%</span>
               </div>
             </div>
             <!-- Insight -->
@@ -1405,6 +1445,31 @@
         document.getElementById('engScroll75Pct').textContent = scrollPct75 + '%';
         document.getElementById('engScroll100Pct').textContent = scrollPct100 + '%';
 
+        // Apply benchmark status indicators
+        function setStatus(elId, value, goodThreshold, okThreshold, inverted) {
+          var el = document.getElementById(elId);
+          if (!el) return;
+          el.className = 'engagement-row__status';
+          if (landing === 0) return; // No data yet
+          if (inverted) {
+            // Lower is better (e.g., bouncers)
+            if (value < goodThreshold) el.classList.add('engagement-row__status--good');
+            else if (value <= okThreshold) el.classList.add('engagement-row__status--ok');
+            else el.classList.add('engagement-row__status--bad');
+          } else {
+            // Higher is better
+            if (value >= goodThreshold) el.classList.add('engagement-row__status--good');
+            else if (value >= okThreshold) el.classList.add('engagement-row__status--ok');
+            else el.classList.add('engagement-row__status--bad');
+          }
+        }
+
+        // Scroll depth benchmarks: 25% (>80/60), 50% (>60/40), 75% (>40/25), 100% (>25/15)
+        setStatus('engScroll25Status', scrollPct25, 80, 60, false);
+        setStatus('engScroll50Status', scrollPct50, 60, 40, false);
+        setStatus('engScroll75Status', scrollPct75, 40, 25, false);
+        setStatus('engScroll100Status', scrollPct100, 25, 15, false);
+
         var timePct10 = landing > 0 ? Math.round((engagement.time_10s / landing) * 100) : 0;
         var timePct30 = landing > 0 ? Math.round((engagement.time_30s / landing) * 100) : 0;
         var timePct60 = landing > 0 ? Math.round((engagement.time_60s / landing) * 100) : 0;
@@ -1418,6 +1483,12 @@
         document.getElementById('engTime30Pct').textContent = timePct30 + '%';
         document.getElementById('engTime60Pct').textContent = timePct60 + '%';
         document.getElementById('engTime120Pct').textContent = timePct120 + '%';
+
+        // Time benchmarks: 10s (>80/60), 30s (>50/30), 60s (>30/15), 120s (>15/8)
+        setStatus('engTime10Status', timePct10, 80, 60, false);
+        setStatus('engTime30Status', timePct30, 50, 30, false);
+        setStatus('engTime60Status', timePct60, 30, 15, false);
+        setStatus('engTime120Status', timePct120, 15, 8, false);
 
         // Calculate engagement quality
         var totalSessions = Object.keys(sessionEngagement).length;
@@ -1439,6 +1510,10 @@
         document.getElementById('engSkimmers').textContent = skimmersPct + '%';
         document.getElementById('engReaders').textContent = readersPct + '%';
         document.getElementById('engEngaged').textContent = engagedPct + '%';
+
+        // Apply quality benchmark status: Bouncers (<30 good, 30-50 ok, >50 bad), Engaged (>20 good, 10-20 ok, <10 bad)
+        setStatus('engBouncersStatus', bouncersPct, 30, 50, true);
+        setStatus('engEngagedStatus', engagedPct, 20, 10, false);
 
         // Generate insight
         var insightText = document.querySelector('#engInsight .engagement-insight__text');

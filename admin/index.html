@@ -1515,20 +1515,85 @@
         setStatus('engBouncersStatus', bouncersPct, 30, 50, true);
         setStatus('engEngagedStatus', engagedPct, 20, 10, false);
 
-        // Generate insight
+        // Generate insight with priority-based messaging
+        var insightEl = document.getElementById('engInsight');
+        var insightIcon = document.querySelector('#engInsight .engagement-insight__icon');
         var insightText = document.querySelector('#engInsight .engagement-insight__text');
+
+        // Calculate ticket conversion rate for insights
+        var ticketConvRate = landing > 0 ? Math.round((tickets / landing) * 100) : 0;
+
+        // Reset insight styling
+        insightEl.style.background = 'rgba(255, 0, 51, 0.08)';
+        insightEl.style.borderLeftColor = 'var(--red)';
+        insightIcon.style.color = 'var(--red)';
+        insightIcon.textContent = '!';
+
         if (landing === 0) {
+          // No data
+          insightEl.style.background = 'rgba(102, 102, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--text-muted)';
+          insightIcon.style.color = 'var(--text-muted)';
+          insightIcon.textContent = '?';
           insightText.textContent = 'No landing page data yet. Run your ads and check back.';
+        } else if (landing < 20) {
+          // Not enough data
+          insightEl.style.background = 'rgba(102, 102, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--text-muted)';
+          insightIcon.style.color = 'var(--text-muted)';
+          insightIcon.textContent = '?';
+          insightText.textContent = 'Only ' + landing + ' visitors so far. Need 20+ for reliable insights.';
+        } else if (bouncersPct > 50) {
+          // Critical: massive bounce
+          insightText.textContent = 'PROBLEM: ' + bouncersPct + '% bounce immediately. Your headline or hero image isn\'t grabbing attention - test a new hook.';
         } else if (bouncersPct > 40) {
-          insightText.textContent = bouncersPct + '% bounce immediately - your headline/hero image needs to hook visitors faster.';
-        } else if (scrollPct50 < 50) {
-          insightText.textContent = 'Only ' + scrollPct50 + '% scroll past halfway - content above the fold isn\'t compelling enough.';
-        } else if (timePct30 < 40) {
-          insightText.textContent = 'Only ' + timePct30 + '% stay 30+ seconds - visitors aren\'t finding what they need quickly.';
-        } else if (engagedPct > 20) {
-          insightText.textContent = 'Good engagement! ' + engagedPct + '% of visitors interact with the page. Focus on conversion now.';
+          // High bounce
+          insightText.textContent = bouncersPct + '% bounce immediately - your headline/hero needs to hook visitors faster.';
+        } else if (scrollPct25 < 60) {
+          // People not even scrolling a little
+          insightText.textContent = 'Only ' + scrollPct25 + '% scroll at all. The top of your page isn\'t giving them a reason to explore.';
+        } else if (scrollPct50 < 40) {
+          // Low mid-page scroll
+          insightText.textContent = 'Only ' + scrollPct50 + '% scroll past halfway. Content above the fold isn\'t compelling enough.';
+        } else if (timePct10 < 60) {
+          // Very short visits
+          insightText.textContent = 'Only ' + timePct10 + '% stay longer than 10 seconds. Page may be loading slowly or first impression is off.';
+        } else if (timePct30 < 30) {
+          // Short visits
+          insightText.textContent = 'Only ' + timePct30 + '% stay 30+ seconds. Visitors aren\'t finding what they need quickly.';
+        } else if (ticketConvRate < 5 && engagedPct > 15) {
+          // Good engagement but not converting
+          insightEl.style.background = 'rgba(255, 204, 0, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--yellow)';
+          insightIcon.style.color = 'var(--yellow)';
+          insightText.textContent = 'People are engaging (' + engagedPct + '%) but only ' + ticketConvRate + '% click tickets. Make the ticket section more prominent.';
+        } else if (bouncersPct < 25 && scrollPct50 > 60 && timePct30 > 50 && engagedPct > 20) {
+          // Everything looks great
+          insightEl.style.background = 'rgba(0, 255, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--green)';
+          insightIcon.style.color = 'var(--green)';
+          insightIcon.textContent = '✓';
+          insightText.textContent = 'GREAT! Low bounce (' + bouncersPct + '%), good scroll (' + scrollPct50 + '%), strong engagement (' + engagedPct + '%). Landing page is working well!';
+        } else if (bouncersPct < 30 && scrollPct50 > 50) {
+          // Good performance
+          insightEl.style.background = 'rgba(0, 255, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--green)';
+          insightIcon.style.color = 'var(--green)';
+          insightIcon.textContent = '✓';
+          insightText.textContent = 'Looking good! ' + (100 - bouncersPct) + '% of visitors engage with your page. Focus on ticket conversion now.';
+        } else if (engagedPct > 15) {
+          // Decent engagement
+          insightEl.style.background = 'rgba(0, 153, 255, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--blue)';
+          insightIcon.style.color = 'var(--blue)';
+          insightIcon.textContent = 'i';
+          insightText.textContent = engagedPct + '% of visitors interact with the page. Solid engagement - keep testing to improve.';
         } else {
-          insightText.textContent = 'Collecting data... refresh once you have more traffic.';
+          // Default - needs more optimization
+          insightEl.style.background = 'rgba(255, 204, 0, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--yellow)';
+          insightIcon.style.color = 'var(--yellow)';
+          insightText.textContent = 'Metrics are okay but could be better. Test different headlines or hero images to improve engagement.';
         }
 
         // Update debug

@@ -1141,6 +1141,173 @@
       margin-top: 4px;
     }
 
+    /* ====== BIO/RIDER EDITOR ====== */
+    .artist-docs-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .artist-docs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .artist-docs-grid { grid-template-columns: 1fr; }
+    }
+
+    .artist-doc-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+    }
+
+    .artist-doc-card:hover {
+      border-color: var(--red);
+    }
+
+    .artist-doc-card__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .artist-doc-card__title svg {
+      width: 16px;
+      height: 16px;
+      color: var(--red);
+    }
+
+    .artist-doc-card__desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Bio/Rider Editor Modal */
+    .doc-editor-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .doc-editor-overlay.active {
+      display: flex;
+    }
+
+    .doc-editor {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .doc-editor__header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .doc-editor__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .doc-editor__close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0;
+      line-height: 1;
+    }
+
+    .doc-editor__close:hover {
+      color: var(--white);
+    }
+
+    .doc-editor__content {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .doc-editor__textarea {
+      width: 100%;
+      min-height: 400px;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--white);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.8;
+      resize: vertical;
+    }
+
+    .doc-editor__textarea:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+
+    .doc-editor__footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .doc-editor__preview {
+      padding: 24px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .doc-editor__preview-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .doc-editor__preview-content {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #ccc;
+      white-space: pre-wrap;
+    }
+
     /* Print styles */
     @media print {
       body::before, body::after { display: none; }
@@ -1265,8 +1432,73 @@
         </div>
       </div>
 
+      <!-- Artist Documents Section -->
+      <div class="artist-docs-section">
+        <div class="settings-section__title">Artist Documents</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono);letter-spacing:1px;">Manage bio and rider shown to promoters on contracts.</p>
+
+        <div class="artist-docs-grid">
+          <div class="artist-doc-card" onclick="openDocEditor('bio')">
+            <div class="artist-doc-card__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Artist Bio
+            </div>
+            <div class="artist-doc-card__desc">Edit the artist biography shown to promoters</div>
+          </div>
+          <div class="artist-doc-card" onclick="openDocEditor('rider')">
+            <div class="artist-doc-card__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Technical Rider
+            </div>
+            <div class="artist-doc-card__desc">Edit equipment and hospitality requirements</div>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:24px;">
         <button class="btn btn--red" id="profileCreateBtn">Create Contract</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bio Editor Modal -->
+  <div class="doc-editor-overlay" id="bioEditorOverlay">
+    <div class="doc-editor">
+      <div class="doc-editor__header">
+        <span class="doc-editor__title">Edit Artist Bio</span>
+        <button class="doc-editor__close" onclick="closeDocEditor('bio')">&times;</button>
+      </div>
+      <div class="doc-editor__content">
+        <textarea class="doc-editor__textarea" id="bioEditorText" placeholder="Enter artist biography..."></textarea>
+      </div>
+      <div class="doc-editor__footer">
+        <button class="btn btn--red" onclick="saveDocContent('bio')">Save Bio</button>
+        <button class="btn btn--outline" onclick="closeDocEditor('bio')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rider Editor Modal -->
+  <div class="doc-editor-overlay" id="riderEditorOverlay">
+    <div class="doc-editor">
+      <div class="doc-editor__header">
+        <span class="doc-editor__title">Edit Technical Rider</span>
+        <button class="doc-editor__close" onclick="closeDocEditor('rider')">&times;</button>
+      </div>
+      <div class="doc-editor__content">
+        <textarea class="doc-editor__textarea" id="riderEditorText" placeholder="Enter technical and hospitality rider..."></textarea>
+      </div>
+      <div class="doc-editor__footer">
+        <button class="btn btn--red" onclick="saveDocContent('rider')">Save Rider</button>
+        <button class="btn btn--outline" onclick="closeDocEditor('rider')">Cancel</button>
       </div>
     </div>
   </div>
@@ -2167,15 +2399,73 @@
   function saveArtistProfile() {
     if (!currentArtist) return;
     var artists = getArtists();
+    var existing = artists[currentArtist.id] || {};
     artists[currentArtist.id] = {
       bank_name: document.getElementById('artistBankName').value.trim(),
       sort_code: document.getElementById('artistSortCode').value.trim(),
       acc_number: document.getElementById('artistAccNumber').value.trim(),
-      acc_holder: document.getElementById('artistAccHolder').value.trim()
+      acc_holder: document.getElementById('artistAccHolder').value.trim(),
+      bio: existing.bio || '',
+      rider: existing.rider || ''
     };
     saveArtistsData(artists);
     showToast('Artist details saved');
   }
+
+  // ============================================
+  // BIO / RIDER EDITOR
+  // ============================================
+  var DEFAULT_BIO = 'STEVIE is a Liverpool-based techno DJ and producer emerging from the UK\'s industrial underground. Her sound operates at the harder edge of techno, built on punishing low-end, distorted mechanical textures, and relentless rhythms designed for dark rooms, warehouse floors, and high-pressure sound systems.\n\nBorn and raised in Liverpool, STEVIE was drawn into the city\'s rave culture after attending her first hard techno event. She began DJing at 21, initially performing as part of a duo before stepping away to develop a distinct and uncompromising solo identity. Entirely self-taught, her progression from bedroom setups to club and rave environments was rapid.\n\nHer DJ sets are functional, confrontational, and tightly controlled—prioritising sustained intensity over predictable structures or quick release. Drawing from industrial and hard techno influences, her performances lock dancers into continuous pressure through aggressive percussion, distorted synth work, and heavy bass weight.\n\nAlongside her DJ career, STEVIE has built a strong profile as a producer, releasing nine tracks to date with a combined total of over 900,000 streams across all platforms. Her standout release, the Jamaican edit, marked a key breakthrough and remains her most recognised work to date.\n\nShe has performed across the UK and expanded internationally with European appearances in Malta (May 2025) and Poland (November 2025). With Liverpool as her home base, STEVIE continues to build momentum as a rising artist within the industrial and hard techno circuit, defined by raw power, precision, and uncompromising energy.';
+
+  var DEFAULT_RIDER = 'EQUIPMENT RIDER\nAt a minimum the promoter must provide:\n- 2x Pioneer 2000 CDJ NXS2\n- 1x Pioneer DJM900NXS or latest update\n- Set up must be flat and not raised\n- High quality sound system\n\nUK RIDER\n- 4x glass bottles of full fat Coke (no diet or Coke Zero)\n- 1x bottle of Malibu\n- 1x bottle of tequila rose\n- 1x mango juice\n- 2x bottles of water\n- 1x bottle of lemonade\n\nEU RIDER\n- 4x glass bottles of full fat Coke (no diet or Coke Zero)\n- 1x bottle of Malibu\n- 1x bottle of vodka\n- 1x bottle of tequila rose\n- 6x redbulls\n- 2x bottles of water\n- 1x bottle of lemonade\n\nHOSPITALITY\n- All hotels across UK & EU should be no less than a minimum of 4 star with late checkout, unless agreed otherwise with STEVIE\'s manager\n- Hotel distance from venue < 10km if possible\n- Meal buyout of £/€50 per person each day\n- STEVIE must have 5 guest list with a minimum of 3 being AAA';
+
+  function openDocEditor(type) {
+    if (!currentArtist) return;
+    var artists = getArtists();
+    var a = artists[currentArtist.id] || {};
+
+    var textarea = document.getElementById(type + 'EditorText');
+    var defaultContent = type === 'bio' ? DEFAULT_BIO : DEFAULT_RIDER;
+    textarea.value = a[type] || defaultContent;
+
+    document.getElementById(type + 'EditorOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDocEditor(type) {
+    document.getElementById(type + 'EditorOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function saveDocContent(type) {
+    if (!currentArtist) return;
+    var artists = getArtists();
+    var existing = artists[currentArtist.id] || {};
+
+    existing[type] = document.getElementById(type + 'EditorText').value;
+
+    // Preserve bank details
+    artists[currentArtist.id] = {
+      bank_name: existing.bank_name || '',
+      sort_code: existing.sort_code || '',
+      acc_number: existing.acc_number || '',
+      acc_holder: existing.acc_holder || '',
+      bio: existing.bio || '',
+      rider: existing.rider || ''
+    };
+
+    saveArtistsData(artists);
+    closeDocEditor(type);
+    showToast((type === 'bio' ? 'Bio' : 'Rider') + ' saved — changes will appear on contracts');
+  }
+
+  // Close editor on background click
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('doc-editor-overlay')) {
+      var type = e.target.id.replace('EditorOverlay', '');
+      closeDocEditor(type);
+    }
+  });
 
   // ============================================
   // CURRENCY HELPERS

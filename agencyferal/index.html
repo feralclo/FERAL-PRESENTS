@@ -1731,6 +1731,30 @@
         </div>
       </div>
 
+      <!-- Artist Portal Access -->
+      <div class="settings-section" style="margin-top:32px;">
+        <div class="settings-section__title">Artist Portal Access</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono);">Generate an invite link for the artist to set up their portal login</p>
+
+        <div class="invite-status" id="inviteStatus" style="margin-bottom:16px;"></div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn--outline" onclick="generateArtistInvite()" id="generateInviteBtn">Generate Invite Link</button>
+          <button class="btn btn--outline" onclick="viewArtistPortal()" style="color:var(--success);border-color:var(--success);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            View Artist Portal
+          </button>
+        </div>
+
+        <div id="inviteLinkContainer" style="display:none;margin-top:16px;">
+          <label class="form-label">Invite Link (send this to the artist)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" class="form-input" id="inviteLinkInput" readonly style="flex:1;font-family:var(--font-mono);font-size:11px;">
+            <button class="btn btn--red" onclick="copyInviteLink()" style="white-space:nowrap;">Copy Link</button>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:24px;">
         <button class="btn btn--red" id="profileCreateBtn">Create Contract</button>
       </div>
@@ -2733,6 +2757,12 @@
       showCreate(artistId);
     };
 
+    // Reset and check artist portal invite status
+    document.getElementById('inviteStatus').innerHTML = '';
+    document.getElementById('inviteLinkContainer').style.display = 'none';
+    document.getElementById('generateInviteBtn').style.display = '';
+    checkInviteStatus();
+
     showView('profileView');
   }
 
@@ -2972,6 +3002,126 @@
       closeDocEditor(type);
     }
   });
+
+  // ============================================
+  // ARTIST PORTAL INVITES
+  // ============================================
+  function generateInviteToken() {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var token = '';
+    for (var i = 0; i < 32; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return token;
+  }
+
+  async function generateArtistInvite() {
+    if (!currentArtist || !dbReady) {
+      showToast('Unable to generate invite');
+      return;
+    }
+
+    var btn = document.getElementById('generateInviteBtn');
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+
+    try {
+      // Check if artist already has an account
+      var userCheck = await dbClient.from('artist_users').select('*').eq('artist_id', currentArtist.id);
+      if (userCheck.data && userCheck.data.length > 0) {
+        showToast('Artist already has a portal account');
+        btn.disabled = false;
+        btn.textContent = 'Generate Invite Link';
+        checkInviteStatus();
+        return;
+      }
+
+      // Check for existing unused invite
+      var existingInvite = await dbClient.from('artist_invites').select('*').eq('artist_id', currentArtist.id).eq('used', false);
+
+      var token;
+      if (existingInvite.data && existingInvite.data.length > 0) {
+        // Use existing invite
+        token = existingInvite.data[0].token;
+      } else {
+        // Create new invite
+        token = generateInviteToken();
+        var username = currentArtist.id; // Use artist ID as username (e.g., "stevie")
+
+        var insertRes = await dbClient.from('artist_invites').insert({
+          token: token,
+          artist_id: currentArtist.id,
+          username: username,
+          used: false,
+          created_at: new Date().toISOString()
+        });
+
+        if (insertRes.error) {
+          throw insertRes.error;
+        }
+      }
+
+      // Show the invite link
+      var baseUrl = window.location.origin + window.location.pathname.replace('/agencyferal/', '/artist-invite/');
+      var inviteLink = baseUrl + '?token=' + token;
+
+      document.getElementById('inviteLinkInput').value = inviteLink;
+      document.getElementById('inviteLinkContainer').style.display = 'block';
+      showToast('Invite link generated!');
+
+    } catch (e) {
+      console.error('Error generating invite:', e);
+      showToast('Failed to generate invite');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Generate Invite Link';
+  }
+
+  function copyInviteLink() {
+    var input = document.getElementById('inviteLinkInput');
+    input.select();
+    document.execCommand('copy');
+    showToast('Invite link copied to clipboard!');
+  }
+
+  function viewArtistPortal() {
+    window.open('../artist-login/', '_blank');
+  }
+
+  async function checkInviteStatus() {
+    if (!currentArtist || !dbReady) return;
+
+    var statusEl = document.getElementById('inviteStatus');
+
+    try {
+      // Check if artist has an account
+      var userCheck = await dbClient.from('artist_users').select('*').eq('artist_id', currentArtist.id);
+      if (userCheck.data && userCheck.data.length > 0) {
+        statusEl.innerHTML = '<span style="color:var(--success);font-family:var(--font-mono);font-size:12px;">✓ Artist has portal access (username: ' + userCheck.data[0].username + ')</span>';
+        document.getElementById('generateInviteBtn').style.display = 'none';
+        return;
+      }
+
+      // Check for pending invite
+      var inviteCheck = await dbClient.from('artist_invites').select('*').eq('artist_id', currentArtist.id).eq('used', false);
+      if (inviteCheck.data && inviteCheck.data.length > 0) {
+        statusEl.innerHTML = '<span style="color:var(--warning);font-family:var(--font-mono);font-size:12px;">⏳ Invite pending — link created but not yet used</span>';
+
+        // Show the existing link
+        var baseUrl = window.location.origin + window.location.pathname.replace('/agencyferal/', '/artist-invite/');
+        var inviteLink = baseUrl + '?token=' + inviteCheck.data[0].token;
+        document.getElementById('inviteLinkInput').value = inviteLink;
+        document.getElementById('inviteLinkContainer').style.display = 'block';
+        return;
+      }
+
+      statusEl.innerHTML = '<span style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">No portal access yet</span>';
+
+    } catch (e) {
+      console.error('Error checking invite status:', e);
+    }
+  }
 
   // ============================================
   // CURRENCY HELPERS

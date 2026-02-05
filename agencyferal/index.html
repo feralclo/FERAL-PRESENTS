@@ -1390,6 +1390,189 @@
       letter-spacing: 0.5px;
     }
 
+    /* ====== EARNINGS DASHBOARD ====== */
+    .earnings-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .earnings-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .earnings-summary { grid-template-columns: 1fr; }
+    }
+
+    .earnings-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .earnings-card--highlight {
+      border-color: var(--red);
+      background: rgba(255, 0, 51, 0.05);
+    }
+
+    .earnings-card__label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .earnings-card__amount {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .earnings-card__amount--pending {
+      color: #ffaa00;
+    }
+
+    .earnings-card__amount--paid {
+      color: #00cc66;
+    }
+
+    .earnings-breakdown {
+      margin-top: 20px;
+    }
+
+    .earnings-breakdown__title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .earnings-month {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+
+    .earnings-month__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      cursor: pointer;
+    }
+
+    .earnings-month__header:hover {
+      background: var(--surface);
+    }
+
+    .earnings-month__name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .earnings-month__total {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .earnings-month__items {
+      display: none;
+      border-top: 1px solid var(--border);
+    }
+
+    .earnings-month.expanded .earnings-month__items {
+      display: block;
+    }
+
+    .earnings-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .earnings-item:last-child {
+      border-bottom: none;
+    }
+
+    .earnings-item__info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .earnings-item__event {
+      color: var(--white);
+    }
+
+    .earnings-item__date {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .earnings-item__amount {
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    .earnings-item__status {
+      display: inline-block;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-radius: 2px;
+      margin-left: 8px;
+    }
+
+    .earnings-item__status--pending {
+      background: rgba(255, 170, 0, 0.2);
+      color: #ffaa00;
+    }
+
+    .earnings-item__status--paid {
+      background: rgba(0, 204, 102, 0.2);
+      color: #00cc66;
+    }
+
+    .earnings-empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .earnings-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 16px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+      padding: 12px;
+      background: var(--surface-2);
+      border-left: 2px solid var(--red);
+    }
+
     /* Print styles */
     @media print {
       body::before, body::after { display: none; }
@@ -1542,6 +1725,36 @@
             </div>
             <div class="artist-doc-card__desc">Edit equipment and hospitality requirements</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Earnings Dashboard -->
+      <div class="earnings-section">
+        <div class="settings-section__title">Earnings Dashboard</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono);letter-spacing:1px;">50% commission on booking fees</p>
+
+        <div class="earnings-summary">
+          <div class="earnings-card earnings-card--highlight">
+            <div class="earnings-card__label">Total Earned</div>
+            <div class="earnings-card__amount" id="earningsTotal">£0</div>
+          </div>
+          <div class="earnings-card">
+            <div class="earnings-card__label">Pending</div>
+            <div class="earnings-card__amount earnings-card__amount--pending" id="earningsPending">£0</div>
+          </div>
+          <div class="earnings-card">
+            <div class="earnings-card__label">Paid Out</div>
+            <div class="earnings-card__amount earnings-card__amount--paid" id="earningsPaid">£0</div>
+          </div>
+        </div>
+
+        <div class="earnings-breakdown">
+          <div class="earnings-breakdown__title">Monthly Breakdown</div>
+          <div id="earningsMonthly"></div>
+        </div>
+
+        <div class="earnings-note">
+          Commission is calculated as 50% of booking fees. Mark booking fees as received in the contracts table to move them from "Pending" to "Paid".
         </div>
       </div>
 
@@ -2495,7 +2708,117 @@
       showCreate(artistId);
     };
 
+    // Calculate and display earnings
+    calculateEarnings(artistId);
+
     showView('profileView');
+  }
+
+  // ============================================
+  // EARNINGS CALCULATION
+  // ============================================
+  function calculateEarnings(artistId) {
+    var contracts = getContracts();
+    var COMMISSION_RATE = 0.5; // 50% of booking fees
+
+    // Filter contracts for this artist
+    var artistContracts = contracts.filter(function(c) {
+      return c.data && c.data.artist_id === artistId && c.data.booking_fee;
+    });
+
+    var totalEarnings = 0;
+    var pendingEarnings = 0;
+    var paidEarnings = 0;
+    var monthlyData = {};
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    artistContracts.forEach(function(c) {
+      // Parse booking fee (remove currency symbols and commas)
+      var feeStr = c.data.booking_fee.replace(/[^0-9.]/g, '');
+      var fee = parseFloat(feeStr) || 0;
+      var commission = fee * COMMISSION_RATE;
+      var currency = c.data.currency || 'GBP';
+      var symbol = getCurrencySymbol(currency);
+      var isPaid = c.booking_fee_received;
+
+      totalEarnings += commission;
+      if (isPaid) {
+        paidEarnings += commission;
+      } else {
+        pendingEarnings += commission;
+      }
+
+      // Group by month (using event date or agreement date)
+      var dateStr = c.data.event_date || c.data.agreement_date || '';
+      var monthKey = 'Unknown';
+      if (dateStr) {
+        var parts = dateStr.split(' ');
+        if (parts.length >= 2) {
+          monthKey = parts[1] + ' ' + (parts[2] || new Date().getFullYear());
+        }
+      }
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { total: 0, items: [], symbol: symbol };
+      }
+      monthlyData[monthKey].total += commission;
+      monthlyData[monthKey].items.push({
+        event: c.data.event_name || 'Unnamed Event',
+        promoter: c.data.promoter_name || '',
+        date: dateStr,
+        amount: commission,
+        symbol: symbol,
+        isPaid: isPaid,
+        ref: c.ref
+      });
+    });
+
+    // Update summary cards
+    document.getElementById('earningsTotal').textContent = '£' + totalEarnings.toFixed(2);
+    document.getElementById('earningsPending').textContent = '£' + pendingEarnings.toFixed(2);
+    document.getElementById('earningsPaid').textContent = '£' + paidEarnings.toFixed(2);
+
+    // Render monthly breakdown
+    var monthlyContainer = document.getElementById('earningsMonthly');
+    if (Object.keys(monthlyData).length === 0) {
+      monthlyContainer.innerHTML = '<div class="earnings-empty">No earnings yet. Earnings will appear here once contracts are created.</div>';
+      return;
+    }
+
+    // Sort months (most recent first)
+    var sortedMonths = Object.keys(monthlyData).sort(function(a, b) {
+      if (a === 'Unknown') return 1;
+      if (b === 'Unknown') return -1;
+      return b.localeCompare(a);
+    });
+
+    var html = '';
+    sortedMonths.forEach(function(month, idx) {
+      var data = monthlyData[month];
+      var isExpanded = idx === 0 ? ' expanded' : '';
+      html += '<div class="earnings-month' + isExpanded + '" onclick="this.classList.toggle(\'expanded\')">';
+      html += '<div class="earnings-month__header">';
+      html += '<span class="earnings-month__name">' + month + '</span>';
+      html += '<span class="earnings-month__total">' + data.symbol + data.total.toFixed(2) + '</span>';
+      html += '</div>';
+      html += '<div class="earnings-month__items">';
+      data.items.forEach(function(item) {
+        html += '<div class="earnings-item" onclick="event.stopPropagation()">';
+        html += '<div class="earnings-item__info">';
+        html += '<span class="earnings-item__event">' + item.event + '</span>';
+        html += '<span class="earnings-item__date">' + (item.ref || '') + (item.promoter ? ' • ' + item.promoter : '') + '</span>';
+        html += '</div>';
+        html += '<div>';
+        html += '<span class="earnings-item__amount">' + item.symbol + item.amount.toFixed(2) + '</span>';
+        html += '<span class="earnings-item__status earnings-item__status--' + (item.isPaid ? 'paid' : 'pending') + '">' + (item.isPaid ? 'Paid' : 'Pending') + '</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '</div>';
+    });
+
+    monthlyContainer.innerHTML = html;
   }
 
   function saveArtistProfile() {

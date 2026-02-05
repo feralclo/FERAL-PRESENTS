@@ -780,11 +780,10 @@
       }
 
       // Triggers — ANY one fires the popup (first wins)
-      // This is a short page so scroll % fires fast. Strategy:
-      //   Desktop: exit intent (primary), 20s delay (fallback)
-      //            — no scroll trigger (page is ~1.5 viewports tall, scroll % is unreliable)
-      //   Mobile:  15s delay or 50% scroll (whichever first)
-      //            — no exit intent (unreliable on mobile)
+      // Strategy for a short page where CTA is visible immediately:
+      //   Mobile:  10s delay (primary), 25% scroll, or "Buy Now" interception
+      //   Desktop: exit intent (primary), 15s fallback, or "Buy Now" interception
+      // If user navigates to checkout without seeing popup, it shows there instead.
       var shown = false;
       var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
@@ -794,14 +793,31 @@
         showPopup();
       }
 
+      // Intercept "Buy Now" clicks — if popup hasn't shown, show it first then navigate
+      function interceptBuyNow() {
+        var buyBtns = document.querySelectorAll('#bottomBarCta, #checkoutBtn');
+        buyBtns.forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            if (!shown && !localStorage.getItem(POPUP_KEY)) {
+              e.preventDefault();
+              e.stopPropagation();
+              tryShow();
+              // Store that we intercepted, so checkout knows not to show
+              localStorage.setItem(POPUP_KEY, Date.now().toString());
+            }
+          }, true); // capture phase to run before other handlers
+        });
+      }
+      interceptBuyNow();
+
       if (isMobile) {
-        // Mobile: 15s delay
-        setTimeout(tryShow, 15000);
-        // Mobile: 50% scroll (pages are taller relative to viewport on mobile)
+        // Mobile: 10s delay (users on mobile are impatient, CTA visible immediately)
+        setTimeout(tryShow, 10000);
+        // Mobile: 25% scroll (low threshold since most won't scroll far)
         window.addEventListener('scroll', function() {
           if (shown) return;
           var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-          if (scrollPct >= 0.50) tryShow();
+          if (scrollPct >= 0.25) tryShow();
         });
       } else {
         // Desktop: exit intent — mouse leaves viewport at top
@@ -809,8 +825,8 @@
           if (shown) return;
           if (e.clientY <= 0 && e.relatedTarget === null) tryShow();
         });
-        // Desktop: 20s fallback if user hasn't triggered exit intent
-        setTimeout(tryShow, 20000);
+        // Desktop: 15s fallback
+        setTimeout(tryShow, 15000);
       }
 
       // Close button

@@ -1608,6 +1608,9 @@
       </div>
       <div class="topbar__right">
         <span class="topbar__user" id="topbarUser"></span>
+        <button class="topbar__settings" onclick="showEarnings()" title="My Earnings" style="color:#00cc66;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </button>
         <button class="topbar__settings" onclick="showSettings()" title="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
@@ -1725,36 +1728,6 @@
             </div>
             <div class="artist-doc-card__desc">Edit equipment and hospitality requirements</div>
           </div>
-        </div>
-      </div>
-
-      <!-- Earnings Dashboard -->
-      <div class="earnings-section">
-        <div class="settings-section__title">Earnings Dashboard</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono);letter-spacing:1px;">50% commission on booking fees</p>
-
-        <div class="earnings-summary">
-          <div class="earnings-card earnings-card--highlight">
-            <div class="earnings-card__label">Total Earned</div>
-            <div class="earnings-card__amount" id="earningsTotal">£0</div>
-          </div>
-          <div class="earnings-card">
-            <div class="earnings-card__label">Pending</div>
-            <div class="earnings-card__amount earnings-card__amount--pending" id="earningsPending">£0</div>
-          </div>
-          <div class="earnings-card">
-            <div class="earnings-card__label">Paid Out</div>
-            <div class="earnings-card__amount earnings-card__amount--paid" id="earningsPaid">£0</div>
-          </div>
-        </div>
-
-        <div class="earnings-breakdown">
-          <div class="earnings-breakdown__title">Monthly Breakdown</div>
-          <div id="earningsMonthly"></div>
-        </div>
-
-        <div class="earnings-note">
-          Commission is calculated as 50% of booking fees. Mark booking fees as received in the contracts table to move them from "Pending" to "Paid".
         </div>
       </div>
 
@@ -1916,6 +1889,50 @@
             <button class="btn btn--red" onclick="saveBankDetails()">Save Bank Details</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== EARNINGS VIEW ====== -->
+  <div class="view" id="earningsView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">My Earnings</span>
+      </div>
+      <div class="topbar__right">
+        <button class="topbar__logout" onclick="showDash()">Back</button>
+      </div>
+    </div>
+
+    <div class="settings-content">
+      <button class="create-form__back" onclick="showDash()">&larr; Back to Dashboard</button>
+      <div class="create-form__title" style="margin-bottom:8px;">Earnings Dashboard</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:32px;font-family:var(--font-mono);letter-spacing:1px;">50% commission on all booking fees</p>
+
+      <div class="earnings-summary">
+        <div class="earnings-card earnings-card--highlight">
+          <div class="earnings-card__label">Total Earned</div>
+          <div class="earnings-card__amount" id="earningsTotal">£0</div>
+        </div>
+        <div class="earnings-card">
+          <div class="earnings-card__label">Pending</div>
+          <div class="earnings-card__amount earnings-card__amount--pending" id="earningsPending">£0</div>
+        </div>
+        <div class="earnings-card">
+          <div class="earnings-card__label">Paid Out</div>
+          <div class="earnings-card__amount earnings-card__amount--paid" id="earningsPaid">£0</div>
+        </div>
+      </div>
+
+      <div class="earnings-breakdown">
+        <div class="earnings-breakdown__title">Monthly Breakdown</div>
+        <div id="earningsMonthly"></div>
+      </div>
+
+      <div class="earnings-note">
+        Commission is calculated as 50% of booking fees. When a booking fee is marked as "received" in the main contracts table, it moves from Pending to Paid.
       </div>
     </div>
   </div>
@@ -2628,6 +2645,14 @@
     showView('settingsView');
   }
 
+  // ============================================
+  // EARNINGS VIEW
+  // ============================================
+  function showEarnings() {
+    calculateEarnings();
+    showView('earningsView');
+  }
+
   function saveRepInfo() {
     var s = getSettings();
     s.rep_name = document.getElementById('setRepName').value.trim();
@@ -2708,31 +2733,27 @@
       showCreate(artistId);
     };
 
-    // Calculate and display earnings
-    calculateEarnings(artistId);
-
     showView('profileView');
   }
 
   // ============================================
   // EARNINGS CALCULATION
   // ============================================
-  function calculateEarnings(artistId) {
+  function calculateEarnings() {
     var contracts = getContracts();
     var COMMISSION_RATE = 0.5; // 50% of booking fees
 
-    // Filter contracts for this artist
-    var artistContracts = contracts.filter(function(c) {
-      return c.data && c.data.artist_id === artistId && c.data.booking_fee;
+    // Filter all contracts with booking fees (all artists managed by Kaia)
+    var allContracts = contracts.filter(function(c) {
+      return c.data && c.data.booking_fee;
     });
 
     var totalEarnings = 0;
     var pendingEarnings = 0;
     var paidEarnings = 0;
     var monthlyData = {};
-    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    artistContracts.forEach(function(c) {
+    allContracts.forEach(function(c) {
       // Parse booking fee (remove currency symbols and commas)
       var feeStr = c.data.booking_fee.replace(/[^0-9.]/g, '');
       var fee = parseFloat(feeStr) || 0;
@@ -2740,6 +2761,14 @@
       var currency = c.data.currency || 'GBP';
       var symbol = getCurrencySymbol(currency);
       var isPaid = c.booking_fee_received;
+
+      // Get artist name for display
+      var artistName = 'Unknown Artist';
+      var artistId = c.data.artist_id;
+      if (artistId) {
+        var artist = ROSTER.find(function(a) { return a.id === artistId; });
+        if (artist) artistName = artist.name;
+      }
 
       totalEarnings += commission;
       if (isPaid) {
@@ -2764,6 +2793,7 @@
       monthlyData[monthKey].total += commission;
       monthlyData[monthKey].items.push({
         event: c.data.event_name || 'Unnamed Event',
+        artist: artistName,
         promoter: c.data.promoter_name || '',
         date: dateStr,
         amount: commission,
@@ -2805,7 +2835,7 @@
       data.items.forEach(function(item) {
         html += '<div class="earnings-item" onclick="event.stopPropagation()">';
         html += '<div class="earnings-item__info">';
-        html += '<span class="earnings-item__event">' + item.event + '</span>';
+        html += '<span class="earnings-item__event">' + item.event + ' <span style="color:var(--text-muted);font-weight:400;">(' + item.artist + ')</span></span>';
         html += '<span class="earnings-item__date">' + (item.ref || '') + (item.promoter ? ' • ' + item.promoter : '') + '</span>';
         html += '</div>';
         html += '<div>';

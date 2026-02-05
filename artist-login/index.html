@@ -268,16 +268,10 @@
       }, 3000);
     }
 
-    // Simple hash function (must match invite page)
-    function simpleHash(str) {
-      var hash = 0;
-      for (var i = 0; i < str.length; i++) {
-        var char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-      }
-      return 'feral_' + Math.abs(hash).toString(16) + '_' + str.length;
-    }
+    // Artist credentials (simple like agency login)
+    var ARTIST_LOGINS = {
+      'stevie': { password: 'feralstevie', artist_id: 'stevie' }
+    };
 
     async function handleLogin(e) {
       e.preventDefault();
@@ -294,63 +288,28 @@
       loginBtn.disabled = true;
       loginBtn.innerHTML = '<span class="spinner"></span>Signing in...';
 
-      try {
-        // Look up user in database
-        var res = await dbClient.from('artist_users').select('*').eq('username', username).single();
-
-        console.log('Login lookup result:', res);
-
-        if (res.error) {
-          console.error('Database error:', res.error);
-          if (res.error.code === 'PGRST116') {
-            showToast('User not found - check username', 'error');
-          } else if (res.error.message && res.error.message.includes('does not exist')) {
-            showToast('Database table not set up yet', 'error');
-          } else {
-            showToast('Invalid username or password', 'error');
-          }
-          loginBtn.disabled = false;
-          loginBtn.textContent = 'Sign In';
-          return false;
-        }
-
-        if (!res.data) {
-          showToast('User not found', 'error');
-          loginBtn.disabled = false;
-          loginBtn.textContent = 'Sign In';
-          return false;
-        }
-
-        // Check password
-        var hashedPassword = simpleHash(password);
-        console.log('Comparing hashes:', { stored: res.data.password_hash, entered: hashedPassword });
-        if (res.data.password_hash !== hashedPassword) {
-          showToast('Invalid username or password', 'error');
-          loginBtn.disabled = false;
-          loginBtn.textContent = 'Sign In';
-          return false;
-        }
-
-        // Success - store session and redirect
-        var session = {
-          username: res.data.username,
-          artist_id: res.data.artist_id,
-          logged_in_at: new Date().toISOString()
-        };
-
-        sessionStorage.setItem('artist_session', JSON.stringify(session));
-        showToast('Welcome back!', 'success');
-
-        setTimeout(function() {
-          window.location.href = '../artist/';
-        }, 500);
-
-      } catch (e) {
-        console.error('Login error:', e);
-        showToast('Login failed. Please try again.', 'error');
+      // Check credentials
+      var artist = ARTIST_LOGINS[username];
+      if (!artist || artist.password !== password) {
+        showToast('Invalid username or password', 'error');
         loginBtn.disabled = false;
         loginBtn.textContent = 'Sign In';
+        return false;
       }
+
+      // Success - store session and redirect
+      var session = {
+        username: username,
+        artist_id: artist.artist_id,
+        logged_in_at: new Date().toISOString()
+      };
+
+      sessionStorage.setItem('artist_session', JSON.stringify(session));
+      showToast('Welcome back!', 'success');
+
+      setTimeout(function() {
+        window.location.href = '../artist/';
+      }, 500);
 
       return false;
     }

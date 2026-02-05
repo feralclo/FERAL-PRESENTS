@@ -862,7 +862,7 @@
       <div class="stat-card">
         <div class="stat-card__label">Total Earnings</div>
         <div class="stat-card__value" id="statTotal">£0</div>
-        <div class="stat-card__sub">50% commission</div>
+        <div class="stat-card__sub">Artist fee</div>
       </div>
       <div class="stat-card">
         <div class="stat-card__label">Paid Out</div>
@@ -1030,7 +1030,6 @@
 
     // Update stats cards
     function updateStats() {
-      var COMMISSION_RATE = 0.5;
       var total = 0;
       var paid = 0;
       var pending = 0;
@@ -1042,13 +1041,12 @@
 
         var feeStr = c.data.booking_fee.replace(/[^0-9.]/g, '');
         var fee = parseFloat(feeStr) || 0;
-        var commission = fee * COMMISSION_RATE;
 
-        total += commission;
+        total += fee;
         if (c.booking_fee_received) {
-          paid += commission;
+          paid += fee;
         } else {
-          pending += commission;
+          pending += fee;
         }
 
         // Count upcoming gigs
@@ -1119,7 +1117,6 @@
 
       var feeStr = (data.booking_fee || '0').replace(/[^0-9.]/g, '');
       var fee = parseFloat(feeStr) || 0;
-      var commission = fee * 0.5;
       var symbol = getCurrencySymbol(data.currency);
 
       var isPaid = contract.booking_fee_received;
@@ -1136,7 +1133,7 @@
           '<div class="booking-card__venue">' + (data.venue_name || '') + (data.venue_city ? ', ' + data.venue_city : '') + '</div>' +
         '</div>' +
         '<div class="booking-card__status">' +
-          '<div class="booking-card__fee">' + symbol + commission.toFixed(2) + '</div>' +
+          '<div class="booking-card__fee">' + symbol + fee.toFixed(2) + '</div>' +
           '<div class="booking-card__badge ' + statusClass + '">' + statusText + '</div>' +
         '</div>' +
       '</div>';
@@ -1255,7 +1252,6 @@
 
     // Earnings view
     function renderEarnings() {
-      var COMMISSION_RATE = 0.5;
       var monthlyData = {};
       var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1264,7 +1260,6 @@
 
         var feeStr = c.data.booking_fee.replace(/[^0-9.]/g, '');
         var fee = parseFloat(feeStr) || 0;
-        var commission = fee * COMMISSION_RATE;
         var isPaid = c.booking_fee_received;
 
         var eventDate = parseEventDate(c.data.event_date);
@@ -1274,17 +1269,17 @@
           monthlyData[monthKey] = { paid: 0, pending: 0, total: 0, items: [] };
         }
 
-        monthlyData[monthKey].total += commission;
+        monthlyData[monthKey].total += fee;
         if (isPaid) {
-          monthlyData[monthKey].paid += commission;
+          monthlyData[monthKey].paid += fee;
         } else {
-          monthlyData[monthKey].pending += commission;
+          monthlyData[monthKey].pending += fee;
         }
 
         monthlyData[monthKey].items.push({
           event: c.data.event_name || 'Event',
           date: c.data.event_date || '',
-          amount: commission,
+          amount: fee,
           isPaid: isPaid,
           symbol: getCurrencySymbol(c.data.currency)
         });
@@ -1350,7 +1345,6 @@
       var data = contract.data;
       var feeStr = (data.booking_fee || '0').replace(/[^0-9.]/g, '');
       var fee = parseFloat(feeStr) || 0;
-      var commission = fee * 0.5;
       var symbol = getCurrencySymbol(data.currency);
       var isPaid = contract.booking_fee_received;
 
@@ -1362,7 +1356,7 @@
         '<div class="detail-row"><div class="detail-row__label">Set Time</div><div class="detail-row__value">' + (data.set_time || '-') + '</div></div>' +
         '<div class="detail-row"><div class="detail-row__label">Set Length</div><div class="detail-row__value">' + (data.set_length || '-') + '</div></div>' +
         '<div class="detail-row"><div class="detail-row__label">Promoter</div><div class="detail-row__value">' + (data.promoter_name || '-') + '</div></div>' +
-        '<div class="detail-row"><div class="detail-row__label">Your Fee (50%)</div><div class="detail-row__value">' + symbol + commission.toFixed(2) + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Your Fee</div><div class="detail-row__value">' + symbol + fee.toFixed(2) + '</div></div>' +
         '<div class="detail-row"><div class="detail-row__label">Payment Status</div><div class="detail-row__value ' + (isPaid ? 'success' : 'pending') + '">' + (isPaid ? 'Paid' : 'Pending') + '</div></div>';
 
       document.getElementById('modalBody').innerHTML = html;

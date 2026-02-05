@@ -433,6 +433,8 @@
       }
     }
   </style>
+  <!-- Supabase for persistent analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -583,6 +585,19 @@
       var SESSION_KEY = 'feral_admin_session';
       var STATS_KEY = 'feral_popup_stats';
 
+      // Supabase configuration
+      var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+      var supabaseClient = null;
+      var dbReady = false;
+
+      // Initialize Supabase
+      if (window.supabase && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        dbReady = true;
+        console.log('[FERAL Admin] Supabase connected');
+      }
+
       // Elements
       var loginScreen = document.getElementById('loginScreen');
       var dashboard = document.getElementById('dashboard');
@@ -623,20 +638,65 @@
         loadStats();
       }
 
-      // Load and display stats
-      function loadStats() {
-        var rawData = localStorage.getItem(STATS_KEY);
-        var stats = JSON.parse(rawData || '{}');
-        var impressions = stats.impressions || 0;
-        var engaged = stats.engaged || 0;
-        var conversions = stats.conversions || 0;
-        var dismissed = stats.dismissed || 0;
-        var closed = stats.closed || 0;
+      // Load and display stats from Supabase (with localStorage fallback)
+      async function loadStats() {
+        var impressions = 0, engaged = 0, conversions = 0, dismissed = 0, closed = 0;
+        var debugInfo = '';
+
+        if (dbReady) {
+          try {
+            // Fetch all popup events from Supabase and count by type
+            var res = await supabaseClient.from('popup_events').select('event_type');
+            if (res.error) {
+              debugInfo = 'Supabase error: ' + res.error.message + '\nFalling back to localStorage';
+              console.log('[FERAL Admin]', debugInfo);
+              // Fall back to localStorage
+              var rawData = localStorage.getItem(STATS_KEY);
+              var stats = JSON.parse(rawData || '{}');
+              impressions = stats.impressions || 0;
+              engaged = stats.engaged || 0;
+              conversions = stats.conversions || 0;
+              dismissed = stats.dismissed || 0;
+              closed = stats.closed || 0;
+            } else if (res.data) {
+              // Count events by type
+              res.data.forEach(function(row) {
+                if (row.event_type === 'impressions') impressions++;
+                else if (row.event_type === 'engaged') engaged++;
+                else if (row.event_type === 'conversions') conversions++;
+                else if (row.event_type === 'dismissed') dismissed++;
+                else if (row.event_type === 'closed') closed++;
+              });
+              debugInfo = 'Data source: Supabase (cloud)\nTotal events: ' + res.data.length + '\n\nBreakdown:\n- impressions: ' + impressions + '\n- engaged: ' + engaged + '\n- conversions: ' + conversions + '\n- dismissed: ' + dismissed + '\n- closed: ' + closed;
+              console.log('[FERAL Admin] Loaded from Supabase:', { impressions: impressions, engaged: engaged, conversions: conversions, dismissed: dismissed, closed: closed });
+            }
+          } catch (err) {
+            debugInfo = 'Error: ' + err.message + '\nFalling back to localStorage';
+            console.log('[FERAL Admin]', debugInfo);
+            var rawData = localStorage.getItem(STATS_KEY);
+            var stats = JSON.parse(rawData || '{}');
+            impressions = stats.impressions || 0;
+            engaged = stats.engaged || 0;
+            conversions = stats.conversions || 0;
+            dismissed = stats.dismissed || 0;
+            closed = stats.closed || 0;
+          }
+        } else {
+          // No Supabase — use localStorage
+          debugInfo = 'Data source: localStorage (browser only)\nSupabase not available';
+          var rawData = localStorage.getItem(STATS_KEY);
+          var stats = JSON.parse(rawData || '{}');
+          impressions = stats.impressions || 0;
+          engaged = stats.engaged || 0;
+          conversions = stats.conversions || 0;
+          dismissed = stats.dismissed || 0;
+          closed = stats.closed || 0;
+        }
 
         // Debug output
         var debugEl = document.getElementById('debugRaw');
         if (debugEl) {
-          debugEl.textContent = 'feral_popup_stats: ' + (rawData || '(empty - no data yet)') + '\n\nferal_dp_shown: ' + (localStorage.getItem('feral_dp_shown') || '(not set)');
+          debugEl.textContent = debugInfo;
         }
 
         // Update stat cards
@@ -675,10 +735,18 @@
       // Refresh stats button
       document.getElementById('refreshStats').addEventListener('click', loadStats);
 
-      // Reset stats button
-      document.getElementById('resetStats').addEventListener('click', function() {
+      // Reset stats button — now resets Supabase data too
+      document.getElementById('resetStats').addEventListener('click', async function() {
         if (confirm('Are you sure you want to reset all popup analytics data? This cannot be undone.')) {
           localStorage.removeItem(STATS_KEY);
+          if (dbReady) {
+            try {
+              await supabaseClient.from('popup_events').delete().neq('id', 0);
+              console.log('[FERAL Admin] Supabase data cleared');
+            } catch (err) {
+              console.log('[FERAL Admin] Error clearing Supabase:', err.message);
+            }
+          }
           loadStats();
         }
       });

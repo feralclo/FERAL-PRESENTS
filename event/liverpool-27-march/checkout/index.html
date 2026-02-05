@@ -1033,6 +1033,9 @@
     </div>
   </div>
 
+  <!-- Supabase for persistent analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     (function() {
       var KLAVIYO_LIST_ID = 'SnE86f';
@@ -1040,12 +1043,40 @@
       var TIMER_TOTAL = 299; // 4:59
       var STATS_KEY = 'feral_popup_stats';
 
-      // Analytics tracking
+      // Supabase configuration
+      var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+      var supabaseClient = null;
+
+      // Initialize Supabase
+      if (window.supabase && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('[FERAL Popup] Supabase connected for analytics (checkout)');
+      }
+
+      // Analytics tracking — sends to Supabase + localStorage fallback
       function trackPopup(action) {
+        // Local storage fallback for immediate feedback
         var stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
         stats[action] = (stats[action] || 0) + 1;
         localStorage.setItem(STATS_KEY, JSON.stringify(stats));
         console.log('[FERAL Popup] Tracked:', action, '| Stats:', JSON.stringify(stats));
+
+        // Send to Supabase for persistent storage
+        if (supabaseClient) {
+          supabaseClient.from('popup_events').insert({
+            event_type: action,
+            page: 'liverpool-checkout',
+            timestamp: new Date().toISOString(),
+            user_agent: navigator.userAgent.substring(0, 500)
+          }).then(function(res) {
+            if (res.error) {
+              console.log('[FERAL Popup] Supabase error:', res.error.message);
+            } else {
+              console.log('[FERAL Popup] Saved to Supabase:', action);
+            }
+          });
+        }
       }
 
       // Don't show if already dismissed/completed within last 30 days

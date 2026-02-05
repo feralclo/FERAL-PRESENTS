@@ -1573,6 +1573,280 @@
       border-left: 2px solid var(--red);
     }
 
+    /* ========== AGENCY CALENDAR STYLES ========== */
+    .agency-calendar-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .agency-calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .agency-calendar-header__title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .agency-calendar-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .agency-calendar-nav__btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .agency-calendar-nav__btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .agency-calendar-nav__month {
+      font-size: 15px;
+      font-weight: 600;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .agency-calendar-grid {
+      padding: 16px;
+    }
+
+    .agency-calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .agency-calendar-weekday {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      padding: 8px;
+    }
+
+    .agency-calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .agency-calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text-muted);
+      position: relative;
+      cursor: default;
+      transition: all 0.2s ease;
+    }
+
+    .agency-calendar-day.other-month {
+      background: transparent;
+      color: #333;
+    }
+
+    .agency-calendar-day.today {
+      border: 1px solid var(--red);
+    }
+
+    .agency-calendar-day.has-booking {
+      cursor: pointer;
+    }
+
+    .agency-calendar-day.has-booking:hover {
+      transform: scale(1.05);
+    }
+
+    .agency-calendar-day.booking-confirmed {
+      background: rgba(0, 204, 102, 0.15);
+      color: #00cc66;
+      font-weight: 600;
+    }
+
+    .agency-calendar-day.booking-pending {
+      background: rgba(255, 170, 0, 0.15);
+      color: #ffaa00;
+      font-weight: 600;
+    }
+
+    .agency-calendar-day__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      position: absolute;
+      bottom: 6px;
+    }
+
+    .agency-calendar-day__dot.confirmed { background: #00cc66; }
+    .agency-calendar-day__dot.pending { background: #ffaa00; }
+
+    .agency-bookings-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-top: 24px;
+    }
+
+    .agency-bookings-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .agency-bookings-header__title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .agency-bookings-list {
+      padding: 16px;
+    }
+
+    .agency-booking-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .agency-booking-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .agency-booking-card:hover {
+      border-color: #444;
+      transform: translateX(4px);
+    }
+
+    .agency-booking-card__date {
+      min-width: 60px;
+      text-align: center;
+      padding: 12px;
+      background: var(--surface);
+      border-radius: 8px;
+    }
+
+    .agency-booking-card__day {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .agency-booking-card__month {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+      margin-top: 4px;
+    }
+
+    .agency-booking-card__info {
+      flex: 1;
+    }
+
+    .agency-booking-card__event {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .agency-booking-card__venue {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .agency-booking-card__artist {
+      font-size: 11px;
+      color: var(--red);
+      font-family: var(--font-mono);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .agency-booking-card__status {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .agency-booking-card__status--confirmed {
+      background: rgba(0, 204, 102, 0.15);
+      color: #00cc66;
+    }
+
+    .agency-booking-card__status--pending {
+      background: rgba(255, 170, 0, 0.15);
+      color: #ffaa00;
+    }
+
+    .agency-bookings-empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .calendar-legend {
+      display: flex;
+      gap: 24px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .calendar-legend__item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .calendar-legend__dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .calendar-legend__dot--confirmed { background: #00cc66; }
+    .calendar-legend__dot--pending { background: #ffaa00; }
+
     /* Print styles */
     @media print {
       body::before, body::after { display: none; }
@@ -1608,6 +1882,9 @@
       </div>
       <div class="topbar__right">
         <span class="topbar__user" id="topbarUser"></span>
+        <button class="topbar__settings" onclick="showCalendar()" title="Booking Calendar" style="color:#3b82f6;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
         <button class="topbar__settings" onclick="showEarnings()" title="My Earnings" style="color:#00cc66;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </button>
@@ -1634,9 +1911,9 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Create Contract
         </button>
-        <button class="btn btn--outline create-cta__btn-sm" onclick="editArtistFromSelector()" title="Edit artist bank details">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit Artist
+        <button class="btn btn--outline create-cta__btn-sm" onclick="editArtistFromSelector()" title="View artist profile">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          View Artist
         </button>
       </div>
 
@@ -1960,6 +2237,74 @@
 
       <div class="earnings-note">
         Commission is calculated as 50% of booking fees. When a booking fee is marked as "received" in the main contracts table, it moves from Pending to Paid.
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== CALENDAR VIEW ====== -->
+  <div class="view" id="calendarView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">Booking Calendar</span>
+      </div>
+      <div class="topbar__right">
+        <button class="topbar__logout" onclick="showDash()">Back</button>
+      </div>
+    </div>
+
+    <div class="settings-content">
+      <button class="create-form__back" onclick="showDash()">&larr; Back to Dashboard</button>
+      <div class="create-form__title" style="margin-bottom:8px;">All Bookings Calendar</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:32px;font-family:var(--font-mono);letter-spacing:1px;">View all artist bookings at a glance</p>
+
+      <div class="agency-calendar-section">
+        <div class="agency-calendar-header">
+          <div class="agency-calendar-header__title">Calendar</div>
+          <div class="agency-calendar-nav">
+            <button class="agency-calendar-nav__btn" onclick="changeAgencyMonth(-1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="agency-calendar-nav__month" id="agencyCalendarMonth">February 2025</span>
+            <button class="agency-calendar-nav__btn" onclick="changeAgencyMonth(1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="agency-calendar-grid">
+          <div class="agency-calendar-weekdays">
+            <div class="agency-calendar-weekday">Mon</div>
+            <div class="agency-calendar-weekday">Tue</div>
+            <div class="agency-calendar-weekday">Wed</div>
+            <div class="agency-calendar-weekday">Thu</div>
+            <div class="agency-calendar-weekday">Fri</div>
+            <div class="agency-calendar-weekday">Sat</div>
+            <div class="agency-calendar-weekday">Sun</div>
+          </div>
+          <div class="agency-calendar-days" id="agencyCalendarDays">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <div class="calendar-legend">
+          <div class="calendar-legend__item">
+            <div class="calendar-legend__dot calendar-legend__dot--confirmed"></div>
+            <span>Confirmed (Booking Fee Paid)</span>
+          </div>
+          <div class="calendar-legend__item">
+            <div class="calendar-legend__dot calendar-legend__dot--pending"></div>
+            <span>Pending</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="agency-bookings-section">
+        <div class="agency-bookings-header">
+          <div class="agency-bookings-header__title" id="agencyMonthBookingsTitle">Bookings This Month</div>
+        </div>
+        <div class="agency-bookings-list" id="agencyMonthBookings">
+          <!-- Populated by JS -->
+        </div>
       </div>
     </div>
   </div>
@@ -2678,6 +3023,198 @@
   function showEarnings() {
     calculateEarnings();
     showView('earningsView');
+  }
+
+  // ============================================
+  // CALENDAR VIEW
+  // ============================================
+  var agencyCalendarDate = new Date();
+
+  function showCalendar() {
+    renderAgencyCalendar();
+    showView('calendarView');
+  }
+
+  function changeAgencyMonth(delta) {
+    agencyCalendarDate.setMonth(agencyCalendarDate.getMonth() + delta);
+    renderAgencyCalendar();
+  }
+
+  function parseAgencyEventDate(dateStr) {
+    if (!dateStr) return null;
+    // Handle formats like "15 Feb 2025", "2025-02-15", "15/02/2025"
+    var parts;
+    if (dateStr.includes('-')) {
+      parts = dateStr.split('-');
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } else if (dateStr.includes('/')) {
+      parts = dateStr.split('/');
+      return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    } else {
+      // Try parsing "15 Feb 2025" format
+      var d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+
+  function renderAgencyCalendar() {
+    var year = agencyCalendarDate.getFullYear();
+    var month = agencyCalendarDate.getMonth();
+
+    var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    document.getElementById('agencyCalendarMonth').textContent = monthNames[month] + ' ' + year;
+    document.getElementById('agencyMonthBookingsTitle').textContent = 'Bookings in ' + monthNames[month];
+
+    // Get first day of month and total days
+    var firstDay = new Date(year, month, 1);
+    var lastDay = new Date(year, month + 1, 0);
+    var startDay = (firstDay.getDay() + 6) % 7; // Monday = 0
+    var totalDays = lastDay.getDate();
+
+    // Get all contracts
+    var allContracts = getContracts();
+
+    // Get bookings for this month (all artists)
+    var monthBookings = {};
+    allContracts.forEach(function(c) {
+      var eventDate = parseAgencyEventDate(c.data && c.data.event_date);
+      if (eventDate && eventDate.getMonth() === month && eventDate.getFullYear() === year) {
+        var day = eventDate.getDate();
+        if (!monthBookings[day]) {
+          monthBookings[day] = [];
+        }
+        monthBookings[day].push(c);
+      }
+    });
+
+    // Build calendar grid
+    var html = '';
+    var today = new Date();
+
+    // Previous month days
+    var prevMonthDays = new Date(year, month, 0).getDate();
+    for (var i = startDay - 1; i >= 0; i--) {
+      html += '<div class="agency-calendar-day other-month">' + (prevMonthDays - i) + '</div>';
+    }
+
+    // Current month days
+    for (var d = 1; d <= totalDays; d++) {
+      var classes = ['agency-calendar-day'];
+      var isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
+      if (isToday) classes.push('today');
+
+      var dayBookings = monthBookings[d];
+      var onclick = '';
+      var dot = '';
+
+      if (dayBookings && dayBookings.length > 0) {
+        classes.push('has-booking');
+        // Check if any booking is confirmed (booking_fee_received)
+        var anyConfirmed = dayBookings.some(function(b) { return b.booking_fee_received; });
+        var anyPending = dayBookings.some(function(b) { return !b.booking_fee_received; });
+
+        if (anyConfirmed && !anyPending) {
+          classes.push('booking-confirmed');
+        } else if (!anyConfirmed && anyPending) {
+          classes.push('booking-pending');
+        } else {
+          // Mixed - show pending color
+          classes.push('booking-pending');
+        }
+
+        var dotClass = anyConfirmed ? 'confirmed' : 'pending';
+        dot = '<div class="agency-calendar-day__dot ' + dotClass + '"></div>';
+
+        onclick = ' onclick="scrollToAgencyBookings(' + d + ')"';
+      }
+
+      html += '<div class="' + classes.join(' ') + '"' + onclick + '>' + d + dot + '</div>';
+    }
+
+    // Next month days
+    var remaining = (7 - ((startDay + totalDays) % 7)) % 7;
+    for (var n = 1; n <= remaining; n++) {
+      html += '<div class="agency-calendar-day other-month">' + n + '</div>';
+    }
+
+    document.getElementById('agencyCalendarDays').innerHTML = html;
+
+    // Render month bookings list
+    var monthList = allContracts.filter(function(c) {
+      var eventDate = parseAgencyEventDate(c.data && c.data.event_date);
+      return eventDate && eventDate.getMonth() === month && eventDate.getFullYear() === year;
+    }).sort(function(a, b) {
+      var dateA = parseAgencyEventDate(a.data && a.data.event_date);
+      var dateB = parseAgencyEventDate(b.data && b.data.event_date);
+      return dateA - dateB;
+    });
+
+    var monthContainer = document.getElementById('agencyMonthBookings');
+    if (monthList.length === 0) {
+      monthContainer.innerHTML = '<div class="agency-bookings-empty">No bookings this month</div>';
+    } else {
+      monthContainer.innerHTML = monthList.map(function(c) {
+        return renderAgencyBookingCard(c);
+      }).join('');
+    }
+  }
+
+  function renderAgencyBookingCard(contract) {
+    var data = contract.data || {};
+    var eventDate = parseAgencyEventDate(data.event_date);
+    var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    var day = eventDate ? eventDate.getDate() : '--';
+    var monthStr = eventDate ? monthNames[eventDate.getMonth()] : '--';
+
+    var isConfirmed = contract.booking_fee_received;
+    var statusText = isConfirmed ? 'Confirmed' : 'Pending';
+    var statusClass = isConfirmed ? 'agency-booking-card__status--confirmed' : 'agency-booking-card__status--pending';
+
+    // Find artist name
+    var artist = ROSTER.find(function(a) { return a.id === data.artist_id; });
+    var artistName = artist ? artist.name : (data.artist_id || 'Unknown');
+
+    return '<div class="agency-booking-card" data-day="' + day + '" onclick="viewContractFromCalendar(\'' + contract.id + '\')">' +
+      '<div class="agency-booking-card__date">' +
+        '<div class="agency-booking-card__day">' + day + '</div>' +
+        '<div class="agency-booking-card__month">' + monthStr + '</div>' +
+      '</div>' +
+      '<div class="agency-booking-card__info">' +
+        '<div class="agency-booking-card__event">' + (data.event_name || 'Event') + '</div>' +
+        '<div class="agency-booking-card__venue">' + (data.venue || '-') + '</div>' +
+        '<div class="agency-booking-card__artist">' + artistName + '</div>' +
+      '</div>' +
+      '<div class="agency-booking-card__status ' + statusClass + '">' + statusText + '</div>' +
+    '</div>';
+  }
+
+  function scrollToAgencyBookings(day) {
+    // Scroll to bookings list and highlight the day's bookings
+    var container = document.getElementById('agencyMonthBookings');
+    var cards = container.querySelectorAll('.agency-booking-card[data-day="' + day + '"]');
+    if (cards.length > 0) {
+      cards[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Brief highlight
+      cards.forEach(function(card) {
+        card.style.borderColor = 'var(--red)';
+        setTimeout(function() {
+          card.style.borderColor = '';
+        }, 1500);
+      });
+    }
+  }
+
+  function viewContractFromCalendar(contractId) {
+    // Find the contract and open it
+    var allContracts = getContracts();
+    var contract = allContracts.find(function(c) { return c.id === contractId; });
+    if (contract) {
+      currentArtist = ROSTER.find(function(a) { return a.id === contract.data.artist_id; });
+      if (currentArtist) {
+        viewContract(contractId);
+      }
+    }
   }
 
   function saveRepInfo() {

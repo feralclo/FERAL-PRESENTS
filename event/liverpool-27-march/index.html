@@ -909,10 +909,9 @@
       }
 
       // Triggers — ANY one fires the popup (first wins)
-      // Strategy for a short page where CTA is visible immediately:
-      //   Mobile:  10s delay (primary), 25% scroll, or "Buy Now" interception
-      //   Desktop: exit intent (primary), 15s fallback, or "Buy Now" interception
-      // If user navigates to checkout without seeing popup, it shows there instead.
+      // Strategy optimized for mobile-first audience:
+      //   Mobile:  6s delay (fast, before bounce), scroll-to-tickets (intent), or "Buy Now" interception
+      //   Desktop: exit intent (primary), 12s fallback, or "Buy Now" interception
       var shown = false;
       var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
@@ -940,22 +939,31 @@
       interceptBuyNow();
 
       if (isMobile) {
-        // Mobile: 10s delay (users on mobile are impatient, CTA visible immediately)
-        setTimeout(tryShow, 10000);
-        // Mobile: 25% scroll (low threshold since most won't scroll far)
-        window.addEventListener('scroll', function() {
-          if (shown) return;
-          var scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-          if (scrollPct >= 0.25) tryShow();
-        });
+        // Mobile: 6s delay — faster trigger to catch visitors before they bounce
+        // Mobile users from ads decide quickly (3-5s), this catches them just after
+        setTimeout(tryShow, 6000);
+
+        // Mobile: Scroll-to-tickets trigger — when they reach the ticket section, they've shown intent
+        // This is more relevant timing than arbitrary scroll percentage
+        var ticketSection = document.getElementById('feral-tickets');
+        if (ticketSection) {
+          var ticketObserver = new IntersectionObserver(function(entries) {
+            if (entries[0].isIntersecting && !shown) {
+              // Small delay so they see the tickets first
+              setTimeout(tryShow, 800);
+              ticketObserver.disconnect();
+            }
+          }, { threshold: 0.3 }); // Trigger when 30% of ticket widget is visible
+          ticketObserver.observe(ticketSection);
+        }
       } else {
         // Desktop: exit intent — mouse leaves viewport at top
         document.addEventListener('mouseout', function(e) {
           if (shown) return;
           if (e.clientY <= 0 && e.relatedTarget === null) tryShow();
         });
-        // Desktop: 15s fallback
-        setTimeout(tryShow, 15000);
+        // Desktop: 12s fallback (slightly faster)
+        setTimeout(tryShow, 12000);
       }
 
       // Close button

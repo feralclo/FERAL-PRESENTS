@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FERAL Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111;
+      --surface-2: #1a1a1a;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #fff;
+      --text-muted: #666;
+      --red: #ff0033;
+      --green: #00ff66;
+      --font-mono: 'Space Mono', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ===== LOGIN SCREEN ===== */
+    .login {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login__box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 40px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .login__logo {
+      display: block;
+      width: 120px;
+      margin: 0 auto 32px;
+      opacity: 0.9;
+    }
+
+    .login__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .login__field {
+      margin-bottom: 16px;
+    }
+
+    .login__label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .login__input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .login__input:focus {
+      border-color: var(--red);
+    }
+
+    .login__btn {
+      width: 100%;
+      background: var(--red);
+      border: none;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 14px 20px;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .login__btn:hover {
+      background: #e6002e;
+    }
+
+    .login__error {
+      background: rgba(255, 0, 51, 0.1);
+      border: 1px solid rgba(255, 0, 51, 0.3);
+      color: var(--red);
+      font-size: 12px;
+      padding: 10px 12px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .login__error--visible {
+      display: block;
+    }
+
+    /* ===== DASHBOARD ===== */
+    .dashboard {
+      display: none;
+      min-height: 100vh;
+    }
+
+    .dashboard--visible {
+      display: block;
+    }
+
+    /* Header */
+    .dash-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .dash-header__logo {
+      height: 28px;
+      opacity: 0.9;
+    }
+
+    .dash-header__right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dash-header__user {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .dash-header__user span {
+      color: var(--green);
+    }
+
+    .dash-header__logout {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dash-header__logout:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Layout */
+    .dash-layout {
+      display: flex;
+      min-height: calc(100vh - 61px);
+    }
+
+    /* Sidebar */
+    .dash-sidebar {
+      width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      flex-shrink: 0;
+    }
+
+    .dash-nav__item {
+      display: block;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 12px 24px;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .dash-nav__item:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .dash-nav__item--active {
+      color: var(--text);
+      border-left-color: var(--red);
+      background: rgba(255, 0, 51, 0.05);
+    }
+
+    .dash-nav__section {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      padding: 24px 24px 8px;
+      opacity: 0.5;
+    }
+
+    /* Main content */
+    .dash-main {
+      flex: 1;
+      padding: 32px;
+      max-width: 1200px;
+    }
+
+    .dash-title {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .dash-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+    }
+
+    .stat-card__label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-card__value {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stat-card__value--red {
+      color: var(--red);
+    }
+
+    .stat-card__value--green {
+      color: var(--green);
+    }
+
+    .stat-card__change {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Funnel */
+    .funnel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .funnel__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    .funnel__steps {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 120px;
+    }
+
+    .funnel__step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .funnel__bar {
+      width: 100%;
+      background: var(--red);
+      opacity: 0.8;
+      transition: opacity 0.15s ease;
+    }
+
+    .funnel__bar:hover {
+      opacity: 1;
+    }
+
+    .funnel__label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .funnel__count {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    /* Actions */
+    .actions {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+    }
+
+    .actions__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .actions__btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 10px 16px;
+      margin-right: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .actions__btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    .actions__btn--danger:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Hide login when dashboard visible */
+    .login--hidden {
+      display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .dash-sidebar {
+        display: none;
+      }
+      .dash-main {
+        padding: 20px;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login Screen -->
+  <div class="login" id="loginScreen">
+    <div class="login__box">
+      <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="login__logo">
+      <h1 class="login__title">Admin Access</h1>
+      <form id="loginForm">
+        <div class="login__field">
+          <label class="login__label">Username</label>
+          <input type="text" class="login__input" id="loginUser" autocomplete="username" required>
+        </div>
+        <div class="login__field">
+          <label class="login__label">Password</label>
+          <input type="password" class="login__input" id="loginPass" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="login__btn">Access Dashboard</button>
+        <div class="login__error" id="loginError">Invalid credentials. Try again.</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard">
+    <header class="dash-header">
+      <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="dash-header__logo">
+      <div class="dash-header__right">
+        <span class="dash-header__user">Logged in as <span id="dashUser">HARRY</span></span>
+        <button class="dash-header__logout" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <div class="dash-layout">
+      <aside class="dash-sidebar">
+        <nav>
+          <div class="dash-nav__section">Analytics</div>
+          <a class="dash-nav__item dash-nav__item--active" data-page="popup">Popup Performance</a>
+          <a class="dash-nav__item" data-page="traffic" style="opacity: 0.4; pointer-events: none;">Traffic (Coming Soon)</a>
+          <a class="dash-nav__item" data-page="sales" style="opacity: 0.4; pointer-events: none;">Sales (Coming Soon)</a>
+
+          <div class="dash-nav__section">Events</div>
+          <a class="dash-nav__item" data-page="liverpool" style="opacity: 0.4; pointer-events: none;">Liverpool 27 Mar</a>
+
+          <div class="dash-nav__section">Settings</div>
+          <a class="dash-nav__item" data-page="settings" style="opacity: 0.4; pointer-events: none;">Configuration</a>
+        </nav>
+      </aside>
+
+      <main class="dash-main">
+        <h1 class="dash-title">Popup Performance</h1>
+        <p class="dash-subtitle">Liverpool Event Page — Discount Popup Analytics</p>
+
+        <!-- Key metrics -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card__label">Impressions</div>
+            <div class="stat-card__value" id="statImpressions">0</div>
+            <div class="stat-card__change">Popup views</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">Engaged</div>
+            <div class="stat-card__value" id="statEngaged">0</div>
+            <div class="stat-card__change">Clicked "Save My Discount"</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">Conversions</div>
+            <div class="stat-card__value stat-card__value--green" id="statConversions">0</div>
+            <div class="stat-card__change">Email captured</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">Conversion Rate</div>
+            <div class="stat-card__value stat-card__value--red" id="statRate">0%</div>
+            <div class="stat-card__change">Impressions → Conversions</div>
+          </div>
+        </div>
+
+        <!-- Funnel visualization -->
+        <div class="funnel">
+          <h2 class="funnel__title">Conversion Funnel</h2>
+          <div class="funnel__steps">
+            <div class="funnel__step">
+              <div class="funnel__bar" id="funnelBar1" style="height: 100%;"></div>
+              <span class="funnel__label">Impressions</span>
+              <span class="funnel__count" id="funnelCount1">0</span>
+            </div>
+            <div class="funnel__step">
+              <div class="funnel__bar" id="funnelBar2" style="height: 60%;"></div>
+              <span class="funnel__label">Engaged</span>
+              <span class="funnel__count" id="funnelCount2">0</span>
+            </div>
+            <div class="funnel__step">
+              <div class="funnel__bar" id="funnelBar3" style="height: 30%;"></div>
+              <span class="funnel__label">Converted</span>
+              <span class="funnel__count" id="funnelCount3">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dismissal stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card__label">Dismissed (Screen 1)</div>
+            <div class="stat-card__value" id="statDismissed1">0</div>
+            <div class="stat-card__change">Clicked "Nah, I'll Pay Full Price"</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">Closed (X Button)</div>
+            <div class="stat-card__value" id="statClosed">0</div>
+            <div class="stat-card__change">Closed without engaging</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">Engagement Rate</div>
+            <div class="stat-card__value" id="statEngagementRate">0%</div>
+            <div class="stat-card__change">Impressions → Engaged</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__label">Email Capture Rate</div>
+            <div class="stat-card__value" id="statEmailRate">0%</div>
+            <div class="stat-card__change">Engaged → Converted</div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+          <h2 class="actions__title">Actions</h2>
+          <button class="actions__btn" id="refreshStats">Refresh Stats</button>
+          <button class="actions__btn actions__btn--danger" id="resetStats">Reset All Data</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Credentials (client-side only — not secure for sensitive data)
+      var VALID_USER = 'HARRY';
+      var VALID_PASS = 'Parker5656!';
+      var SESSION_KEY = 'feral_admin_session';
+      var STATS_KEY = 'feral_popup_stats';
+
+      // Elements
+      var loginScreen = document.getElementById('loginScreen');
+      var dashboard = document.getElementById('dashboard');
+      var loginForm = document.getElementById('loginForm');
+      var loginError = document.getElementById('loginError');
+      var logoutBtn = document.getElementById('logoutBtn');
+      var dashUser = document.getElementById('dashUser');
+
+      // Check session on load
+      if (sessionStorage.getItem(SESSION_KEY) === 'true') {
+        showDashboard();
+      }
+
+      // Login form
+      loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var user = document.getElementById('loginUser').value.trim();
+        var pass = document.getElementById('loginPass').value;
+
+        if (user === VALID_USER && pass === VALID_PASS) {
+          sessionStorage.setItem(SESSION_KEY, 'true');
+          showDashboard();
+        } else {
+          loginError.classList.add('login__error--visible');
+        }
+      });
+
+      // Logout
+      logoutBtn.addEventListener('click', function() {
+        sessionStorage.removeItem(SESSION_KEY);
+        location.reload();
+      });
+
+      function showDashboard() {
+        loginScreen.classList.add('login--hidden');
+        dashboard.classList.add('dashboard--visible');
+        dashUser.textContent = VALID_USER;
+        loadStats();
+      }
+
+      // Load and display stats
+      function loadStats() {
+        var stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+        var impressions = stats.impressions || 0;
+        var engaged = stats.engaged || 0;
+        var conversions = stats.conversions || 0;
+        var dismissed = stats.dismissed || 0;
+        var closed = stats.closed || 0;
+
+        // Update stat cards
+        document.getElementById('statImpressions').textContent = impressions;
+        document.getElementById('statEngaged').textContent = engaged;
+        document.getElementById('statConversions').textContent = conversions;
+        document.getElementById('statDismissed1').textContent = dismissed;
+        document.getElementById('statClosed').textContent = closed;
+
+        // Calculate rates
+        var convRate = impressions > 0 ? ((conversions / impressions) * 100).toFixed(1) : 0;
+        var engageRate = impressions > 0 ? ((engaged / impressions) * 100).toFixed(1) : 0;
+        var emailRate = engaged > 0 ? ((conversions / engaged) * 100).toFixed(1) : 0;
+
+        document.getElementById('statRate').textContent = convRate + '%';
+        document.getElementById('statEngagementRate').textContent = engageRate + '%';
+        document.getElementById('statEmailRate').textContent = emailRate + '%';
+
+        // Update funnel
+        document.getElementById('funnelCount1').textContent = impressions;
+        document.getElementById('funnelCount2').textContent = engaged;
+        document.getElementById('funnelCount3').textContent = conversions;
+
+        // Funnel bar heights (relative to impressions)
+        var maxHeight = 100;
+        document.getElementById('funnelBar1').style.height = maxHeight + 'px';
+        document.getElementById('funnelBar2').style.height = (impressions > 0 ? (engaged / impressions) * maxHeight : 0) + 'px';
+        document.getElementById('funnelBar3').style.height = (impressions > 0 ? (conversions / impressions) * maxHeight : 0) + 'px';
+      }
+
+      // Refresh stats button
+      document.getElementById('refreshStats').addEventListener('click', loadStats);
+
+      // Reset stats button
+      document.getElementById('resetStats').addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset all popup analytics data? This cannot be undone.')) {
+          localStorage.removeItem(STATS_KEY);
+          loadStats();
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>

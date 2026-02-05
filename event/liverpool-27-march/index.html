@@ -595,6 +595,31 @@
       margin-top: 8px;
     }
 
+    /* Urgency timer on screen 3 */
+    .dp-urgency {
+      background: rgba(255, 0, 51, 0.06);
+      border: 1px solid rgba(255, 0, 51, 0.15);
+      padding: 12px 16px;
+      margin: 16px 0 8px;
+      text-align: center;
+    }
+    .dp-urgency__label {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 4px;
+    }
+    .dp-urgency__countdown {
+      font-family: 'Space Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: #ff0033;
+      letter-spacing: 2px;
+    }
+
     .dp-done-btn {
       width: 100%;
       margin-top: 20px;
@@ -675,8 +700,12 @@
           <div class="dp-code">
             <span class="dp-code__value">FERALRAVER10</span>
           </div>
-          <p class="dp-note">Save this code now — it won't be shown again.</p>
-          <button class="dp-btn dp-btn--primary dp-done-btn" id="dpDone">Got It, Let's Go</button>
+          <div class="dp-urgency">
+            <div class="dp-urgency__label">Code expires in</div>
+            <div class="dp-urgency__countdown" id="dpCodeExpiry">24:00:00</div>
+          </div>
+          <p class="dp-note">This code won't be shown again. Use it now before it expires.</p>
+          <button class="dp-btn dp-btn--primary dp-done-btn" id="dpDone">Use Code Now</button>
         </div>
       </div>
     </div>
@@ -688,6 +717,14 @@
       var KLAVIYO_LIST_ID = 'SnE86f';
       var POPUP_KEY = 'feral_dp_shown';
       var TIMER_TOTAL = 299; // 4:59
+      var STATS_KEY = 'feral_popup_stats';
+
+      // Analytics tracking
+      function trackPopup(action) {
+        var stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+        stats[action] = (stats[action] || 0) + 1;
+        localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+      }
 
       // Don't show if dismissed/completed within last 30 days
       var lastShown = localStorage.getItem(POPUP_KEY);
@@ -725,6 +762,7 @@
         overlay.classList.add('dp-overlay--visible');
         document.body.style.overflow = 'hidden';
         startTimer();
+        trackPopup('impressions');
       }
 
       function hidePopup() {
@@ -776,7 +814,10 @@
       }
 
       // Close button
-      document.getElementById('dpClose').addEventListener('click', hidePopup);
+      document.getElementById('dpClose').addEventListener('click', function() {
+        trackPopup('closed');
+        hidePopup();
+      });
 
       // Click overlay to close
       overlay.addEventListener('click', function(e) {
@@ -791,13 +832,17 @@
       // Screen 1: "Save My Discount"
       document.getElementById('dpYes').addEventListener('click', function() {
         goToScreen(screen2);
+        trackPopup('engaged');
         setTimeout(function() {
           document.getElementById('dpEmail').focus();
         }, 100);
       });
 
       // Screen 1: "Nah, I'll Pay Full Price"
-      document.getElementById('dpNo').addEventListener('click', hidePopup);
+      document.getElementById('dpNo').addEventListener('click', function() {
+        trackPopup('dismissed');
+        hidePopup();
+      });
 
       // Screen 2: Email form submit
       document.getElementById('dpForm').addEventListener('submit', function(e) {
@@ -830,15 +875,51 @@
           }]);
         }
 
-        // Show code screen
+        // Show code screen and start 24h countdown
         goToScreen(screen3);
         clearInterval(timerInterval);
         localStorage.setItem(POPUP_KEY, Date.now().toString());
+        trackPopup('conversions');
+        startCodeExpiry();
       });
 
-      // Screen 3: "Got It" button
+      // 24-hour code expiry countdown
+      var CODE_EXPIRY_KEY = 'feral_code_expiry';
+      var expiryInterval = null;
+
+      function startCodeExpiry() {
+        var expiryEl = document.getElementById('dpCodeExpiry');
+        // Set expiry to 24 hours from now (or use existing)
+        var expiry = localStorage.getItem(CODE_EXPIRY_KEY);
+        if (!expiry) {
+          expiry = Date.now() + (24 * 60 * 60 * 1000);
+          localStorage.setItem(CODE_EXPIRY_KEY, expiry.toString());
+        } else {
+          expiry = parseInt(expiry, 10);
+        }
+
+        function updateExpiry() {
+          var remaining = Math.max(0, expiry - Date.now());
+          var hours = Math.floor(remaining / (1000 * 60 * 60));
+          var minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+          var seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+          expiryEl.textContent =
+            (hours < 10 ? '0' : '') + hours + ':' +
+            (minutes < 10 ? '0' : '') + minutes + ':' +
+            (seconds < 10 ? '0' : '') + seconds;
+          if (remaining <= 0) {
+            expiryEl.textContent = 'EXPIRED';
+            clearInterval(expiryInterval);
+          }
+        }
+        updateExpiry();
+        expiryInterval = setInterval(updateExpiry, 1000);
+      }
+
+      // Screen 3: "Use Code Now" button — go to tickets
       document.getElementById('dpDone').addEventListener('click', function() {
         hidePopup();
+        window.location.href = '#tickets';
       });
     })();
   </script>

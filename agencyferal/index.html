@@ -3057,6 +3057,8 @@
 
       // Create the account
       var hashedPassword = simpleHash(password);
+      console.log('Creating account with hash:', hashedPassword);
+
       var insertRes = await dbClient.from('artist_users').insert({
         username: username,
         password_hash: hashedPassword,
@@ -3064,8 +3066,18 @@
         created_at: new Date().toISOString()
       });
 
+      console.log('Insert result:', insertRes);
+
       if (insertRes.error) {
-        throw insertRes.error;
+        console.error('Insert error:', insertRes.error);
+        if (insertRes.error.message && insertRes.error.message.includes('does not exist')) {
+          showToast('Database table not set up - run SQL in Supabase first');
+        } else {
+          showToast('Error: ' + insertRes.error.message);
+        }
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
       }
 
       showToast('Account created! Username: ' + username);

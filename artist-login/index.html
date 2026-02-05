@@ -298,8 +298,24 @@
         // Look up user in database
         var res = await dbClient.from('artist_users').select('*').eq('username', username).single();
 
-        if (res.error || !res.data) {
-          showToast('Invalid username or password', 'error');
+        console.log('Login lookup result:', res);
+
+        if (res.error) {
+          console.error('Database error:', res.error);
+          if (res.error.code === 'PGRST116') {
+            showToast('User not found - check username', 'error');
+          } else if (res.error.message && res.error.message.includes('does not exist')) {
+            showToast('Database table not set up yet', 'error');
+          } else {
+            showToast('Invalid username or password', 'error');
+          }
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Sign In';
+          return false;
+        }
+
+        if (!res.data) {
+          showToast('User not found', 'error');
           loginBtn.disabled = false;
           loginBtn.textContent = 'Sign In';
           return false;
@@ -307,6 +323,7 @@
 
         // Check password
         var hashedPassword = simpleHash(password);
+        console.log('Comparing hashes:', { stored: res.data.password_hash, entered: hashedPassword });
         if (res.data.password_hash !== hashedPassword) {
           showToast('Invalid username or password', 'error');
           loginBtn.disabled = false;

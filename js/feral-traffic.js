@@ -115,6 +115,33 @@
     });
   }
 
+  // Track engagement events (scroll, time, interactions)
+  window.feralTrackEngagement = function(engagementType) {
+    initSupabase();
+
+    if (!supabaseClient) return;
+
+    var eventName = getEventName();
+    var sessionId = getSessionId();
+
+    var data = {
+      event_type: engagementType,
+      page_path: window.location.pathname,
+      event_name: eventName,
+      session_id: sessionId,
+      timestamp: new Date().toISOString(),
+      user_agent: navigator.userAgent.substring(0, 500)
+    };
+
+    console.log('[FERAL Traffic] Engagement:', engagementType);
+
+    supabaseClient.from('traffic_events').insert(data).then(function(res) {
+      if (res.error) {
+        console.log('[FERAL Traffic] Engagement error:', res.error.message);
+      }
+    });
+  };
+
   // Manual tracking for purchases (call this from checkout success)
   window.feralTrackPurchase = function(orderDetails) {
     initSupabase();

@@ -716,6 +716,101 @@
   <!-- FERAL Traffic Analytics -->
   <script src="../../js/feral-traffic.js"></script>
 
+  <!-- Engagement Tracking (scroll depth, time on page, interactions) -->
+  <script>
+  (function() {
+    'use strict';
+
+    // Wait for feralTrackEngagement to be available
+    function track(type) {
+      if (window.feralTrackEngagement) {
+        window.feralTrackEngagement(type);
+      }
+    }
+
+    // ===== SCROLL DEPTH TRACKING =====
+    var scrollMilestones = { 25: false, 50: false, 75: false, 100: false };
+
+    function checkScroll() {
+      var docHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+      var viewportHeight = window.innerHeight;
+      var scrollTop = window.scrollY || window.pageYOffset;
+      var scrollPct = Math.round((scrollTop / (docHeight - viewportHeight)) * 100);
+
+      // Clamp to 0-100
+      scrollPct = Math.max(0, Math.min(100, scrollPct));
+
+      [25, 50, 75, 100].forEach(function(milestone) {
+        if (scrollPct >= milestone && !scrollMilestones[milestone]) {
+          scrollMilestones[milestone] = true;
+          track('scroll_' + milestone);
+        }
+      });
+    }
+
+    // Throttled scroll handler (fires max every 200ms)
+    var scrollTimeout = null;
+    window.addEventListener('scroll', function() {
+      if (!scrollTimeout) {
+        scrollTimeout = setTimeout(function() {
+          scrollTimeout = null;
+          checkScroll();
+        }, 200);
+      }
+    }, { passive: true });
+
+    // ===== TIME ON PAGE TRACKING =====
+    var timeMilestones = { 10: false, 30: false, 60: false, 120: false };
+    var pageStartTime = Date.now();
+
+    setInterval(function() {
+      var elapsed = Math.floor((Date.now() - pageStartTime) / 1000);
+      [10, 30, 60, 120].forEach(function(milestone) {
+        if (elapsed >= milestone && !timeMilestones[milestone]) {
+          timeMilestones[milestone] = true;
+          track('time_' + milestone + 's');
+        }
+      });
+    }, 1000);
+
+    // ===== INTERACTION TRACKING =====
+    var interactions = { lineup: false, tickets: false };
+
+    // Track lineup click (desktop shows full lineup, mobile shows compact)
+    var lineupEl = document.querySelector('.event-info__lineup') || document.querySelector('.lineup-widget');
+    if (lineupEl) {
+      lineupEl.addEventListener('click', function() {
+        if (!interactions.lineup) {
+          interactions.lineup = true;
+          track('click_lineup');
+        }
+      });
+    }
+
+    // Track ticket widget interaction (touch or click)
+    var ticketsEl = document.getElementById('feral-tickets');
+    if (ticketsEl) {
+      ticketsEl.addEventListener('touchstart', function() {
+        if (!interactions.tickets) {
+          interactions.tickets = true;
+          track('interact_tickets');
+        }
+      }, { passive: true });
+      ticketsEl.addEventListener('click', function() {
+        if (!interactions.tickets) {
+          interactions.tickets = true;
+          track('interact_tickets');
+        }
+      });
+    }
+
+    console.log('[FERAL Engagement] Tracking initialized');
+  })();
+  </script>
+
   <!-- Popup JavaScript -->
   <script>
     (function() {

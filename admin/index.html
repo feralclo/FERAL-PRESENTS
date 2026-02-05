@@ -482,6 +482,150 @@
       margin-top: 4px;
     }
 
+    /* Engagement section */
+    .engagement-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .engagement-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .engagement-section {
+      min-width: 0;
+    }
+
+    .engagement-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .engagement-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .engagement-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .engagement-row__label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 45px;
+      flex-shrink: 0;
+    }
+
+    .engagement-row__track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .engagement-row__bar {
+      height: 100%;
+      background: var(--red);
+      transition: width 0.3s ease;
+    }
+
+    .engagement-row__bar--blue {
+      background: var(--blue);
+    }
+
+    .engagement-row__pct {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text);
+      width: 40px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .engagement-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .engagement-summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .engagement-quality {
+      text-align: center;
+      padding: 12px 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+    }
+
+    .engagement-quality__label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .engagement-quality__desc {
+      display: block;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .engagement-quality__pct {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .engagement-insight {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      background: rgba(255, 0, 51, 0.08);
+      border-left: 3px solid var(--red);
+    }
+
+    .engagement-insight__icon {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--red);
+      flex-shrink: 0;
+    }
+
+    .engagement-insight__text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
     /* Time filter */
     .time-filter {
       display: flex;
@@ -839,6 +983,93 @@
             </div>
           </div>
 
+          <!-- Landing Page Engagement -->
+          <div class="sources" style="margin-bottom: 32px;">
+            <h2 class="sources__title">Landing Page Engagement</h2>
+            <div class="engagement-grid">
+              <!-- Scroll Depth -->
+              <div class="engagement-section">
+                <h3 class="engagement-label">Scroll Depth</h3>
+                <div class="engagement-bars">
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">100%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll100" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll100Pct">0%</span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">75%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll75" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll75Pct">0%</span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">50%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll50" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll50Pct">0%</span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">25%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll25" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll25Pct">0%</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Time on Page -->
+              <div class="engagement-section">
+                <h3 class="engagement-label">Time on Page</h3>
+                <div class="engagement-bars">
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;2min</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime120" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime120Pct">0%</span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;60s</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime60" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime60Pct">0%</span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;30s</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime30" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime30Pct">0%</span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;10s</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime10" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime10Pct">0%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Engagement Quality Summary -->
+            <div class="engagement-summary">
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Bouncers</span>
+                <span class="engagement-quality__desc">&lt;10s, no scroll</span>
+                <span class="engagement-quality__pct stat-card__value--red" id="engBouncers">0%</span>
+              </div>
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Skimmers</span>
+                <span class="engagement-quality__desc">Scroll, &lt;30s</span>
+                <span class="engagement-quality__pct stat-card__value--yellow" id="engSkimmers">0%</span>
+              </div>
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Readers</span>
+                <span class="engagement-quality__desc">Scroll, &gt;30s</span>
+                <span class="engagement-quality__pct stat-card__value--blue" id="engReaders">0%</span>
+              </div>
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Engaged</span>
+                <span class="engagement-quality__desc">Interacted</span>
+                <span class="engagement-quality__pct stat-card__value--green" id="engEngaged">0%</span>
+              </div>
+            </div>
+            <!-- Insight -->
+            <div class="engagement-insight" id="engInsight">
+              <span class="engagement-insight__icon">!</span>
+              <span class="engagement-insight__text">Collecting data...</span>
+            </div>
+          </div>
+
           <!-- Debug Info -->
           <div class="actions" style="margin-bottom: 16px;">
             <h2 class="actions__title">Debug — Raw Data</h2>
@@ -1050,6 +1281,15 @@
         var sources = {};
         var debugInfo = '';
 
+        // Engagement tracking
+        var engagement = {
+          scroll_25: 0, scroll_50: 0, scroll_75: 0, scroll_100: 0,
+          time_10s: 0, time_30s: 0, time_60s: 0, time_120s: 0,
+          click_lineup: 0, interact_tickets: 0
+        };
+        // Track per-session engagement for quality calculation
+        var sessionEngagement = {}; // session_id -> { scrolled, time10, time30, interacted }
+
         if (dbReady) {
           try {
             // Calculate date filter
@@ -1067,23 +1307,57 @@
             if (dateFilter) {
               query = query.gte('timestamp', dateFilter);
             }
-            
+
             var res = await query;
-            
+
             if (res.error) {
               debugInfo = 'Supabase error: ' + res.error.message + '\n\nNote: Make sure to run the traffic_events SQL migration first.\nSee: supabase-traffic-table.sql';
               console.log('[FERAL Admin]', debugInfo);
             } else if (res.data) {
               res.data.forEach(function(row) {
+                var sid = row.session_id;
+
                 // Count by event type
-                if (row.event_type === 'landing') landing++;
-                else if (row.event_type === 'tickets') tickets++;
+                if (row.event_type === 'landing') {
+                  landing++;
+                  // Initialize session engagement tracking
+                  if (sid && !sessionEngagement[sid]) {
+                    sessionEngagement[sid] = { scrolled: false, time10: false, time30: false, interacted: false, proceeded: false };
+                  }
+                }
+                else if (row.event_type === 'tickets') {
+                  tickets++;
+                  if (sid && sessionEngagement[sid]) sessionEngagement[sid].proceeded = true;
+                }
                 else if (row.event_type === 'checkout') checkout++;
                 else if (row.event_type === 'purchase') purchase++;
 
+                // Engagement events
+                else if (row.event_type.startsWith('scroll_')) {
+                  var scrollLevel = row.event_type.replace('scroll_', '');
+                  if (engagement.hasOwnProperty('scroll_' + scrollLevel)) {
+                    engagement['scroll_' + scrollLevel]++;
+                  }
+                  if (sid && sessionEngagement[sid]) sessionEngagement[sid].scrolled = true;
+                }
+                else if (row.event_type.startsWith('time_')) {
+                  var timeLevel = row.event_type;
+                  if (engagement.hasOwnProperty(timeLevel)) {
+                    engagement[timeLevel]++;
+                  }
+                  if (sid && sessionEngagement[sid]) {
+                    if (timeLevel === 'time_10s') sessionEngagement[sid].time10 = true;
+                    if (timeLevel === 'time_30s') sessionEngagement[sid].time30 = true;
+                  }
+                }
+                else if (row.event_type === 'click_lineup' || row.event_type === 'interact_tickets') {
+                  engagement[row.event_type]++;
+                  if (sid && sessionEngagement[sid]) sessionEngagement[sid].interacted = true;
+                }
+
                 // Track unique sessions
-                if (row.session_id) {
-                  sessions.add(row.session_id);
+                if (sid) {
+                  sessions.add(sid);
                 }
 
                 // Track sources
@@ -1101,6 +1375,12 @@
               debugInfo += '- tickets: ' + tickets + '\n';
               debugInfo += '- checkout: ' + checkout + '\n';
               debugInfo += '- purchase: ' + purchase + '\n\n';
+              debugInfo += 'Engagement:\n';
+              debugInfo += '- scroll_25: ' + engagement.scroll_25 + '\n';
+              debugInfo += '- scroll_50: ' + engagement.scroll_50 + '\n';
+              debugInfo += '- time_10s: ' + engagement.time_10s + '\n';
+              debugInfo += '- time_30s: ' + engagement.time_30s + '\n';
+              debugInfo += '- interactions: ' + (engagement.click_lineup + engagement.interact_tickets) + '\n\n';
               debugInfo += 'Unique sessions: ' + sessions.size;
             }
           } catch (err) {
@@ -1108,6 +1388,72 @@
           }
         } else {
           debugInfo = 'Supabase not available.\nTraffic analytics requires database connection.';
+        }
+
+        // Update engagement section
+        var scrollPct25 = landing > 0 ? Math.round((engagement.scroll_25 / landing) * 100) : 0;
+        var scrollPct50 = landing > 0 ? Math.round((engagement.scroll_50 / landing) * 100) : 0;
+        var scrollPct75 = landing > 0 ? Math.round((engagement.scroll_75 / landing) * 100) : 0;
+        var scrollPct100 = landing > 0 ? Math.round((engagement.scroll_100 / landing) * 100) : 0;
+
+        document.getElementById('engScroll25').style.width = scrollPct25 + '%';
+        document.getElementById('engScroll50').style.width = scrollPct50 + '%';
+        document.getElementById('engScroll75').style.width = scrollPct75 + '%';
+        document.getElementById('engScroll100').style.width = scrollPct100 + '%';
+        document.getElementById('engScroll25Pct').textContent = scrollPct25 + '%';
+        document.getElementById('engScroll50Pct').textContent = scrollPct50 + '%';
+        document.getElementById('engScroll75Pct').textContent = scrollPct75 + '%';
+        document.getElementById('engScroll100Pct').textContent = scrollPct100 + '%';
+
+        var timePct10 = landing > 0 ? Math.round((engagement.time_10s / landing) * 100) : 0;
+        var timePct30 = landing > 0 ? Math.round((engagement.time_30s / landing) * 100) : 0;
+        var timePct60 = landing > 0 ? Math.round((engagement.time_60s / landing) * 100) : 0;
+        var timePct120 = landing > 0 ? Math.round((engagement.time_120s / landing) * 100) : 0;
+
+        document.getElementById('engTime10').style.width = timePct10 + '%';
+        document.getElementById('engTime30').style.width = timePct30 + '%';
+        document.getElementById('engTime60').style.width = timePct60 + '%';
+        document.getElementById('engTime120').style.width = timePct120 + '%';
+        document.getElementById('engTime10Pct').textContent = timePct10 + '%';
+        document.getElementById('engTime30Pct').textContent = timePct30 + '%';
+        document.getElementById('engTime60Pct').textContent = timePct60 + '%';
+        document.getElementById('engTime120Pct').textContent = timePct120 + '%';
+
+        // Calculate engagement quality
+        var totalSessions = Object.keys(sessionEngagement).length;
+        var bouncers = 0, skimmers = 0, readers = 0, engaged = 0;
+
+        Object.values(sessionEngagement).forEach(function(s) {
+          if (s.interacted) engaged++;
+          else if (s.scrolled && s.time30) readers++;
+          else if (s.scrolled && !s.time30) skimmers++;
+          else if (!s.scrolled && !s.time10) bouncers++;
+        });
+
+        var bouncersPct = totalSessions > 0 ? Math.round((bouncers / totalSessions) * 100) : 0;
+        var skimmersPct = totalSessions > 0 ? Math.round((skimmers / totalSessions) * 100) : 0;
+        var readersPct = totalSessions > 0 ? Math.round((readers / totalSessions) * 100) : 0;
+        var engagedPct = totalSessions > 0 ? Math.round((engaged / totalSessions) * 100) : 0;
+
+        document.getElementById('engBouncers').textContent = bouncersPct + '%';
+        document.getElementById('engSkimmers').textContent = skimmersPct + '%';
+        document.getElementById('engReaders').textContent = readersPct + '%';
+        document.getElementById('engEngaged').textContent = engagedPct + '%';
+
+        // Generate insight
+        var insightText = document.querySelector('#engInsight .engagement-insight__text');
+        if (landing === 0) {
+          insightText.textContent = 'No landing page data yet. Run your ads and check back.';
+        } else if (bouncersPct > 40) {
+          insightText.textContent = bouncersPct + '% bounce immediately - your headline/hero image needs to hook visitors faster.';
+        } else if (scrollPct50 < 50) {
+          insightText.textContent = 'Only ' + scrollPct50 + '% scroll past halfway - content above the fold isn\'t compelling enough.';
+        } else if (timePct30 < 40) {
+          insightText.textContent = 'Only ' + timePct30 + '% stay 30+ seconds - visitors aren\'t finding what they need quickly.';
+        } else if (engagedPct > 20) {
+          insightText.textContent = 'Good engagement! ' + engagedPct + '% of visitors interact with the page. Focus on conversion now.';
+        } else {
+          insightText.textContent = 'Collecting data... refresh once you have more traffic.';
         }
 
         // Update debug

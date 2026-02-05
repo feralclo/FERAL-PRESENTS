@@ -368,6 +368,13 @@
       margin-top: 4px;
     }
 
+    .funnel__pct {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 2px;
+    }
+
     /* Actions */
     .actions {
       background: var(--surface);
@@ -509,18 +516,21 @@
           <div class="funnel__steps">
             <div class="funnel__step">
               <div class="funnel__bar" id="funnelBar1" style="height: 100%;"></div>
-              <span class="funnel__label">Impressions</span>
+              <span class="funnel__label">Saw Popup</span>
               <span class="funnel__count" id="funnelCount1">0</span>
+              <span class="funnel__pct" id="funnelPct1">100%</span>
             </div>
             <div class="funnel__step">
               <div class="funnel__bar" id="funnelBar2" style="height: 60%;"></div>
-              <span class="funnel__label">Engaged</span>
+              <span class="funnel__label">Clicked Yes</span>
               <span class="funnel__count" id="funnelCount2">0</span>
+              <span class="funnel__pct" id="funnelPct2">0%</span>
             </div>
             <div class="funnel__step">
               <div class="funnel__bar" id="funnelBar3" style="height: 30%;"></div>
-              <span class="funnel__label">Converted</span>
+              <span class="funnel__label">Got Code</span>
               <span class="funnel__count" id="funnelCount3">0</span>
+              <span class="funnel__pct" id="funnelPct3">0%</span>
             </div>
           </div>
         </div>
@@ -645,16 +655,21 @@
         document.getElementById('statEngagementRate').textContent = engageRate + '%';
         document.getElementById('statEmailRate').textContent = emailRate + '%';
 
-        // Update funnel
+        // Update funnel counts
         document.getElementById('funnelCount1').textContent = impressions;
         document.getElementById('funnelCount2').textContent = engaged;
         document.getElementById('funnelCount3').textContent = conversions;
 
+        // Update funnel percentages
+        document.getElementById('funnelPct1').textContent = '100%';
+        document.getElementById('funnelPct2').textContent = engageRate + '%';
+        document.getElementById('funnelPct3').textContent = convRate + '%';
+
         // Funnel bar heights (relative to impressions)
         var maxHeight = 100;
         document.getElementById('funnelBar1').style.height = maxHeight + 'px';
-        document.getElementById('funnelBar2').style.height = (impressions > 0 ? (engaged / impressions) * maxHeight : 0) + 'px';
-        document.getElementById('funnelBar3').style.height = (impressions > 0 ? (conversions / impressions) * maxHeight : 0) + 'px';
+        document.getElementById('funnelBar2').style.height = (impressions > 0 ? Math.max(4, (engaged / impressions) * maxHeight) : 4) + 'px';
+        document.getElementById('funnelBar3').style.height = (impressions > 0 ? Math.max(4, (conversions / impressions) * maxHeight) : 4) + 'px';
       }
 
       // Refresh stats button

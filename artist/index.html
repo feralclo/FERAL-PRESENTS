@@ -1119,9 +1119,9 @@
       var fee = parseFloat(feeStr) || 0;
       var symbol = getCurrencySymbol(data.currency);
 
-      var isPaid = contract.artist_fee_received;
-      var statusClass = isPaid ? 'confirmed' : 'pending';
-      var statusText = isPaid ? 'Paid' : 'Pending';
+      var isConfirmed = contract.booking_fee_received; // Show confirmed when booking fee paid
+      var statusClass = isConfirmed ? 'confirmed' : 'pending';
+      var statusText = isConfirmed ? 'Confirmed' : 'Pending';
 
       return '<div class="booking-card" onclick="openBookingModal(' + idx + ')">' +
         '<div class="booking-card__date">' +
@@ -1215,9 +1215,9 @@
 
         if (booking) {
           classes.push('has-booking');
-          var isPaid = booking.artist_fee_received;
-          classes.push(isPaid ? 'booking-confirmed' : 'booking-pending');
-          dot = '<div class="calendar-day__dot ' + (isPaid ? 'confirmed' : 'pending') + '"></div>';
+          var isConfirmed = booking.booking_fee_received; // Show confirmed when booking fee paid
+          classes.push(isConfirmed ? 'booking-confirmed' : 'booking-pending');
+          dot = '<div class="calendar-day__dot ' + (isConfirmed ? 'confirmed' : 'pending') + '"></div>';
 
           var idx = artistContracts.indexOf(booking);
           onclick = ' onclick="openBookingModal(' + idx + ')"';

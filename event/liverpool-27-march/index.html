@@ -198,78 +198,66 @@
               <h3 class="event-tickets__heading">Get Tickets<span class="text-red">_</span></h3>
               <p class="event-tickets__subtext">Secure your entry. Limited availability.</p>
 
-              <!-- Unified ticket widget: tiers + selector -->
+              <!-- Unified ticket widget -->
               <div class="event-tickets__embed" id="tickets-embed">
                 <div class="feral-tickets" id="feral-tickets">
-                  <!-- Tier display -->
-                  <div class="feral-tickets__tiers">
-                    <div class="feral-tickets__tier feral-tickets__tier--sold">
-                      <span class="feral-tickets__tier-name">FIRST RELEASE</span>
-                      <span class="feral-tickets__tier-status">SOLD OUT</span>
-                    </div>
-                    <div class="feral-tickets__tier feral-tickets__tier--active">
-                      <span class="feral-tickets__tier-name">GENERAL RELEASE</span>
-                      <div class="feral-tickets__tier-pricing">
-                        <span class="feral-tickets__tier-price-tag">&pound;26.46</span>
-                        <span class="feral-tickets__tier-breakdown">&pound;24.50 + &pound;1.96 BF</span>
+                  <!-- Standard Ticket -->
+                  <div class="ticket-option" data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae">
+                    <div class="ticket-option__row">
+                      <div class="ticket-option__info">
+                        <span class="ticket-option__name">General Release</span>
+                        <span class="ticket-option__perks">Standard entry</span>
+                        <span class="ticket-option__tier">2nd tier &bull; <span class="tier-highlight">22% remaining</span></span>
                       </div>
+                      <span class="ticket-option__price">&pound;26.46</span>
                     </div>
-                    <div class="feral-tickets__tier feral-tickets__tier--next">
-                      <span class="feral-tickets__tier-name">FINAL RELEASE</span>
-                      <div class="feral-tickets__tier-pricing">
-                        <span class="feral-tickets__tier-price-tag">&pound;32.35</span>
-                        <span class="feral-tickets__tier-breakdown">&pound;29.95 + &pound;2.40 BF</span>
+                    <div class="ticket-option__bottom">
+                      <span></span>
+                      <div class="ticket-option__controls">
+                        <button class="ticket-option__btn" data-action="remove" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Remove">&minus;</button>
+                        <span class="ticket-option__qty" id="qty-6b45169f-cf51-4600-8682-d6f79dcb59ae">0</span>
+                        <button class="ticket-option__btn" data-action="add" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Add">+</button>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Progress bar -->
-                  <div class="feral-tickets__progress">
-                    <div class="feral-tickets__bar">
-                      <div class="feral-tickets__fill" style="width: 78%;"></div>
+                  <!-- VIP Section Header -->
+                  <div class="vip-section-header">VIP Experiences<span style="color:#d4af37">_</span></div>
+
+                  <!-- VIP Ticket -->
+                  <div class="ticket-option ticket-option--vip" data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">
+                    <div class="ticket-option__row">
+                      <div class="ticket-option__info">
+                        <span class="ticket-option__name">VIP Ticket</span>
+                        <span class="ticket-option__perks">Queue Jump &amp; Balcony access</span>
+                      </div>
+                      <span class="ticket-option__price">&pound;35</span>
                     </div>
-                    <div class="feral-tickets__remaining">
-                      <span><span class="feral-tickets__count">22%</span> remaining at this price</span>
+                    <div class="ticket-option__bottom">
+                      <span></span>
+                      <div class="ticket-option__controls">
+                        <button class="ticket-option__btn" data-action="remove" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Remove">&minus;</button>
+                        <span class="ticket-option__qty" id="qty-bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">0</span>
+                        <button class="ticket-option__btn" data-action="add" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Add">+</button>
+                      </div>
                     </div>
                   </div>
 
-                  <!-- Quantity selector -->
-                  <div class="feral-tickets__row" data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae">
-                    <div class="feral-tickets__controls">
-                      <button class="feral-tickets__btn feral-tickets__btn--minus" data-action="remove" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Remove ticket">&minus;</button>
-                      <span class="feral-tickets__qty" id="qty-6b45169f-cf51-4600-8682-d6f79dcb59ae">0</span>
-                      <button class="feral-tickets__btn feral-tickets__btn--plus" data-action="add" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Add ticket">+</button>
+                  <!-- VIP + Tee (Featured) -->
+                  <div class="ticket-option ticket-option--vip ticket-option--featured" data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734">
+                    <div class="ticket-option__row">
+                      <div class="ticket-option__info">
+                        <span class="ticket-option__name">VIP + FERAL Tee</span>
+                        <span class="ticket-option__perks">Queue Jump &amp; Balcony + Exclusive event tee</span>
+                      </div>
+                      <span class="ticket-option__price">&pound;65</span>
                     </div>
-                  </div>
-
-                  <!-- VIP Section -->
-                  <div class="vip-section">
-                    <h4 class="vip-section__heading">VIP Experiences<span style="color:#d4af37">_</span></h4>
-                    <p class="vip-section__subtext">Queue Jump & Balcony access</p>
-
-                    <!-- VIP + Tee -->
-                    <div class="vip-ticket" data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734">
-                      <div class="vip-ticket__header">
-                        <span class="vip-ticket__name">VIP + FERAL Tee</span>
-                        <span class="vip-ticket__price">&pound;65</span>
-                      </div>
-                      <div class="vip-ticket__controls">
-                        <button class="vip-ticket__btn" data-action="remove" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Remove ticket">&minus;</button>
-                        <span class="vip-ticket__qty" id="qty-53c5262b-93ba-412e-bb5c-84ebc445a734">0</span>
-                        <button class="vip-ticket__btn" data-action="add" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Add ticket">+</button>
-                      </div>
-                    </div>
-
-                    <!-- VIP Only -->
-                    <div class="vip-ticket" data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">
-                      <div class="vip-ticket__header">
-                        <span class="vip-ticket__name">VIP Ticket</span>
-                        <span class="vip-ticket__price">&pound;35</span>
-                      </div>
-                      <div class="vip-ticket__controls">
-                        <button class="vip-ticket__btn" data-action="remove" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Remove ticket">&minus;</button>
-                        <span class="vip-ticket__qty" id="qty-bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">0</span>
-                        <button class="vip-ticket__btn" data-action="add" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Add ticket">+</button>
+                    <div class="ticket-option__bottom">
+                      <button class="ticket-option__view-tee" id="viewTeeBtn">View Tee</button>
+                      <div class="ticket-option__controls">
+                        <button class="ticket-option__btn" data-action="remove" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Remove">&minus;</button>
+                        <span class="ticket-option__qty" id="qty-53c5262b-93ba-412e-bb5c-84ebc445a734">0</span>
+                        <button class="ticket-option__btn" data-action="add" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Add">+</button>
                       </div>
                     </div>
                   </div>
@@ -293,6 +281,27 @@
         <span class="bottom-bar__subtitle">Incl. booking fee. No surprises.</span>
       </div>
       <button class="bottom-bar__cta" id="bottomBarCta">Buy Now</button>
+    </div>
+  </div>
+
+  <!-- Tee Modal -->
+  <div class="tee-modal-overlay" id="teeModal">
+    <div class="tee-modal">
+      <button class="tee-modal__close" id="teeModalClose">&times;</button>
+      <div class="tee-modal__header">
+        <span class="tee-modal__title">Liverpool March Tee</span>
+      </div>
+      <div class="tee-modal__images">
+        <img src="../../images/LIVERPOOL%20MARCH%20FRONT.png" alt="FERAL Liverpool Tee Front" class="tee-modal__img">
+        <img src="../../images/LIVERPOOL%20MARCH%20BACK.png" alt="FERAL Liverpool Tee Back" class="tee-modal__img">
+      </div>
+      <div class="tee-modal__labels">
+        <span class="tee-modal__label">Front</span>
+        <span class="tee-modal__label">Back</span>
+      </div>
+      <div class="tee-modal__footer">
+        <span class="tee-modal__price">Included with VIP + Tee &mdash; <strong>&pound;65</strong></span>
+      </div>
     </div>
   </div>
 
@@ -433,8 +442,8 @@
         }
       }
 
-      // Handle all ticket buttons (General Release + VIP)
-      document.querySelectorAll('.feral-tickets__btn, .vip-ticket__btn').forEach(function(btn) {
+      // Handle all ticket buttons
+      document.querySelectorAll('.ticket-option__btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var ticketId = btn.getAttribute('data-ticket');
           var action = btn.getAttribute('data-action');
@@ -493,6 +502,41 @@
       }
 
       updateDisplay();
+
+      // --- Tee Modal ---
+      var teeModal = document.getElementById('teeModal');
+      var viewTeeBtn = document.getElementById('viewTeeBtn');
+      var teeModalClose = document.getElementById('teeModalClose');
+
+      function openTeeModal() {
+        teeModal.classList.add('tee-modal-overlay--visible');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeTeeModal() {
+        teeModal.classList.remove('tee-modal-overlay--visible');
+        document.body.style.overflow = '';
+      }
+
+      if (viewTeeBtn) {
+        viewTeeBtn.addEventListener('click', openTeeModal);
+      }
+
+      if (teeModalClose) {
+        teeModalClose.addEventListener('click', closeTeeModal);
+      }
+
+      if (teeModal) {
+        teeModal.addEventListener('click', function(e) {
+          if (e.target === teeModal) closeTeeModal();
+        });
+      }
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && teeModal.classList.contains('tee-modal-overlay--visible')) {
+          closeTeeModal();
+        }
+      });
     })();
   </script>
   <!-- ============================================

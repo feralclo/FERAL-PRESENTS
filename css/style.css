@@ -2946,40 +2946,30 @@ img {
 }
 
 
-/* --- VIP Section --- */
-.vip-section {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.vip-section__heading {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #d4af37;
-  margin-bottom: 4px;
-}
-
-.vip-section__subtext {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: var(--gray-text);
-  margin-bottom: 12px;
-}
-
-.vip-ticket {
-  background: rgba(212, 175, 55, 0.06);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  padding: 12px;
-  margin-bottom: 8px;
+/* --- Unified Ticket Options --- */
+.ticket-option {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px;
+  margin-bottom: 10px;
   position: relative;
+  transition: all var(--transition-base);
 }
 
-.vip-ticket::before {
+.ticket-option:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ticket-option--vip {
+  background: rgba(212, 175, 55, 0.05);
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
+.ticket-option--vip:hover {
+  border-color: rgba(212, 175, 55, 0.45);
+}
+
+.ticket-option--vip::before {
   content: '';
   position: absolute;
   left: 0;
@@ -2989,68 +2979,282 @@ img {
   background: #d4af37;
 }
 
-.vip-ticket__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+.ticket-option--featured {
+  background: rgba(212, 175, 55, 0.08);
 }
 
-.vip-ticket__name {
+.ticket-option__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.ticket-option__info {
+  flex: 1;
+}
+
+.ticket-option__name {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
+  color: var(--white);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ticket-option--vip .ticket-option__name {
   color: #d4af37;
 }
 
-.vip-ticket__price {
+.ticket-option__perks {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--gray-text);
+  display: block;
+}
+
+.ticket-option__price {
+  font-family: var(--font-mono);
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--white);
+  flex-shrink: 0;
 }
 
-.vip-ticket__controls {
+.ticket-option__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticket-option__controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ticket-option__btn {
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-}
-
-.vip-ticket__btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  color: #d4af37;
-  font-size: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--white);
+  font-size: 15px;
   cursor: pointer;
   transition: all var(--transition-base);
   touch-action: manipulation;
 }
 
-.vip-ticket__btn:hover {
+.ticket-option__btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.ticket-option--vip .ticket-option__btn {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.35);
+  color: #d4af37;
+}
+
+.ticket-option--vip .ticket-option__btn:hover {
   background: rgba(212, 175, 55, 0.2);
   border-color: #d4af37;
 }
 
-.vip-ticket__btn:active {
+.ticket-option__btn:active {
   transform: scale(0.95);
 }
 
-.vip-ticket__qty {
+.ticket-option__qty {
   font-family: var(--font-mono);
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--white);
-  min-width: 24px;
+  min-width: 28px;
   text-align: center;
+}
+
+/* View Tee Button */
+.ticket-option__view-tee {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #d4af37;
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ticket-option__view-tee:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: #d4af37;
+}
+
+/* Tier info for standard ticket */
+.ticket-option__tier {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--gray-text);
+  display: block;
+  margin-top: 2px;
+}
+
+.ticket-option__tier .tier-highlight {
+  color: var(--red);
+}
+
+/* --- Tee Modal --- */
+.tee-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.tee-modal-overlay--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.tee-modal {
+  background: #0e0e0e;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tee-modal-overlay--visible .tee-modal {
+  transform: scale(1) translateY(0);
+}
+
+.tee-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 26px;
+  cursor: pointer;
+  z-index: 10;
+  line-height: 1;
+  padding: 4px 8px;
+  transition: color 0.15s ease;
+}
+
+.tee-modal__close:hover {
+  color: #fff;
+}
+
+.tee-modal__header {
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  text-align: center;
+}
+
+.tee-modal__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #d4af37;
+}
+
+.tee-modal__images {
+  padding: 24px 16px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(246, 4, 52, 0.12) 0%, transparent 65%);
+}
+
+.tee-modal__img {
+  width: 44%;
+  max-width: 150px;
+  height: auto;
+  filter: drop-shadow(0 0 25px rgba(246, 4, 52, 0.5));
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.tee-modal__img:hover {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 35px rgba(246, 4, 52, 0.7));
+}
+
+.tee-modal__labels {
+  display: flex;
+  justify-content: center;
+  gap: 90px;
+  padding-bottom: 12px;
+}
+
+.tee-modal__label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.tee-modal__footer {
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.tee-modal__price {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #777;
+}
+
+.tee-modal__price strong {
+  color: #d4af37;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* VIP Section Header (compact) */
+.vip-section-header {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #d4af37;
+  margin: 16px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 

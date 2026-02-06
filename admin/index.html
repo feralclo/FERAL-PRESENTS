@@ -796,7 +796,7 @@
           <a class="dash-nav__item dash-nav__item--disabled" data-page="sales">Sales (Coming Soon)</a>
 
           <div class="dash-nav__section">Events</div>
-          <a class="dash-nav__item dash-nav__item--disabled" data-page="liverpool">Liverpool 27 Mar</a>
+          <a class="dash-nav__item" data-page="liverpool">Liverpool 27 Mar</a>
 
           <div class="dash-nav__section">Settings</div>
           <a class="dash-nav__item dash-nav__item--disabled" data-page="settings">Configuration</a>
@@ -1123,6 +1123,125 @@
             <button class="actions__btn actions__btn--danger" id="resetTraffic">Reset Traffic Data</button>
           </div>
         </div>
+
+        <!-- ===== LIVERPOOL EVENT EDITOR PAGE ===== -->
+        <div class="page-view" id="pageLiverpool">
+          <h1 class="dash-title">Liverpool 27 Mar</h1>
+          <p class="dash-subtitle">Event Settings & Configuration</p>
+
+          <!-- Theme Selector -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Theme</h2>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <select id="eventTheme" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 13px; padding: 10px 14px; min-width: 200px; cursor: pointer;">
+                <option value="default">Default (Full Hero)</option>
+                <option value="minimal">Minimal (Compact)</option>
+              </select>
+              <span style="font-size: 12px; color: var(--text-muted);">Changes apply on save</span>
+            </div>
+          </div>
+
+          <!-- Event Details -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Event Details</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Name</label>
+                <input type="text" id="eventName" value="FERAL Liverpool" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Date</label>
+                <input type="text" id="eventDate" value="27 MARCH 2026" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Doors</label>
+                <input type="text" id="eventDoors" value="9:30PM — 4:00AM" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Venue</label>
+                <input type="text" id="eventVenue" value="Invisible Wind Factory, Liverpool" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Settings -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Hero</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Background Image URL</label>
+                <input type="text" id="eventHeroImage" value="/images/liverpool-event-banner.jpg" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Release Tag</label>
+                <input type="text" id="eventReleaseTag" value="SECOND RELEASE NOW ACTIVE" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Lineup -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Lineup</h2>
+            <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Artists (one per line)</label>
+            <textarea id="eventLineup" rows="6" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 13px; padding: 12px 14px; resize: vertical;">DARK MATTER
+MIKA HEGGEMAN
+NICOLAS JULIAN
+SANDY KLETZ
+SO JUICE
+STEVIE</textarea>
+          </div>
+
+          <!-- Ticket Prices -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Ticket Prices</h2>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">General (£)</label>
+                <input type="number" id="priceGeneral" value="26.46" step="0.01" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">VIP (£)</label>
+                <input type="number" id="priceVip" value="35.00" step="0.01" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">VIP Black (£)</label>
+                <input type="number" id="priceVipBlack" value="65.00" step="0.01" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Tee Info -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Exclusive Tee</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Tee Name</label>
+                <input type="text" id="teeName" value="Liverpool March 2026 Tee" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Front Image URL</label>
+                <input type="text" id="teeFront" value="/images/LIVERPOOL MARCH FRONT.png" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Back Image URL</label>
+                <input type="text" id="teeBack" value="/images/LIVERPOOL MARCH BACK.png" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="saveEventSettings" style="background: var(--red); border-color: var(--red); color: #fff;">Save Changes</button>
+            <button class="actions__btn" id="previewEvent">Preview Event Page</button>
+            <button class="actions__btn actions__btn--danger" id="resetEventSettings">Reset to Default</button>
+          </div>
+
+          <!-- Save confirmation -->
+          <div id="saveConfirm" style="display: none; margin-top: 16px; padding: 12px 16px; background: rgba(0, 255, 102, 0.1); border: 1px solid rgba(0, 255, 102, 0.3); color: var(--green); font-family: var(--font-mono); font-size: 12px;">
+            Settings saved successfully!
+          </div>
+        </div>
       </main>
     </div>
   </div>
@@ -1222,8 +1341,91 @@
         } else if (page === 'traffic') {
           document.getElementById('pageTraffic').classList.add('page-view--active');
           loadTrafficStats();
+        } else if (page === 'liverpool') {
+          document.getElementById('pageLiverpool').classList.add('page-view--active');
+          loadEventSettings();
         }
       }
+
+      // ===== LIVERPOOL EVENT SETTINGS =====
+      var EVENT_SETTINGS_KEY = 'feral_event_liverpool';
+
+      var DEFAULT_EVENT_SETTINGS = {
+        theme: 'default',
+        name: 'FERAL Liverpool',
+        date: '27 MARCH 2026',
+        doors: '9:30PM — 4:00AM',
+        venue: 'Invisible Wind Factory, Liverpool',
+        heroImage: '/images/liverpool-event-banner.jpg',
+        releaseTag: 'SECOND RELEASE NOW ACTIVE',
+        lineup: 'DARK MATTER\nMIKA HEGGEMAN\nNICOLAS JULIAN\nSANDY KLETZ\nSO JUICE\nSTEVIE',
+        priceGeneral: 26.46,
+        priceVip: 35.00,
+        priceVipBlack: 65.00,
+        teeName: 'Liverpool March 2026 Tee',
+        teeFront: '/images/LIVERPOOL MARCH FRONT.png',
+        teeBack: '/images/LIVERPOOL MARCH BACK.png'
+      };
+
+      function loadEventSettings() {
+        var stored = localStorage.getItem(EVENT_SETTINGS_KEY);
+        var settings = stored ? JSON.parse(stored) : DEFAULT_EVENT_SETTINGS;
+
+        document.getElementById('eventTheme').value = settings.theme || 'default';
+        document.getElementById('eventName').value = settings.name || '';
+        document.getElementById('eventDate').value = settings.date || '';
+        document.getElementById('eventDoors').value = settings.doors || '';
+        document.getElementById('eventVenue').value = settings.venue || '';
+        document.getElementById('eventHeroImage').value = settings.heroImage || '';
+        document.getElementById('eventReleaseTag').value = settings.releaseTag || '';
+        document.getElementById('eventLineup').value = settings.lineup || '';
+        document.getElementById('priceGeneral').value = settings.priceGeneral || 0;
+        document.getElementById('priceVip').value = settings.priceVip || 0;
+        document.getElementById('priceVipBlack').value = settings.priceVipBlack || 0;
+        document.getElementById('teeName').value = settings.teeName || '';
+        document.getElementById('teeFront').value = settings.teeFront || '';
+        document.getElementById('teeBack').value = settings.teeBack || '';
+      }
+
+      function saveEventSettings() {
+        var settings = {
+          theme: document.getElementById('eventTheme').value,
+          name: document.getElementById('eventName').value,
+          date: document.getElementById('eventDate').value,
+          doors: document.getElementById('eventDoors').value,
+          venue: document.getElementById('eventVenue').value,
+          heroImage: document.getElementById('eventHeroImage').value,
+          releaseTag: document.getElementById('eventReleaseTag').value,
+          lineup: document.getElementById('eventLineup').value,
+          priceGeneral: parseFloat(document.getElementById('priceGeneral').value) || 0,
+          priceVip: parseFloat(document.getElementById('priceVip').value) || 0,
+          priceVipBlack: parseFloat(document.getElementById('priceVipBlack').value) || 0,
+          teeName: document.getElementById('teeName').value,
+          teeFront: document.getElementById('teeFront').value,
+          teeBack: document.getElementById('teeBack').value
+        };
+        localStorage.setItem(EVENT_SETTINGS_KEY, JSON.stringify(settings));
+
+        var confirmEl = document.getElementById('saveConfirm');
+        confirmEl.style.display = 'block';
+        setTimeout(function() {
+          confirmEl.style.display = 'none';
+        }, 3000);
+      }
+
+      // Event settings button handlers
+      document.getElementById('saveEventSettings').addEventListener('click', saveEventSettings);
+
+      document.getElementById('previewEvent').addEventListener('click', function() {
+        window.open('/event/liverpool-27-march/', '_blank');
+      });
+
+      document.getElementById('resetEventSettings').addEventListener('click', function() {
+        if (confirm('Reset all event settings to default values?')) {
+          localStorage.removeItem(EVENT_SETTINGS_KEY);
+          loadEventSettings();
+        }
+      });
 
       // Time filter handling
       document.querySelectorAll('.time-filter__btn').forEach(function(btn) {

@@ -3174,7 +3174,7 @@ img {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    105deg,
+    110deg,
     transparent 0%,
     transparent 35%,
     rgba(255, 255, 255, 0.06) 40%,
@@ -3185,7 +3185,7 @@ img {
     transparent 65%,
     transparent 100%
   );
-  background-size: 250% 100%;
+  background-size: 200% 100%;
   animation: silverShine 3s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
@@ -3193,7 +3193,7 @@ img {
 
 @keyframes silverShine {
   0% { background-position: 200% center; }
-  100% { background-position: -100% center; }
+  100% { background-position: -200% center; }
 }
 
 /* VIP Black text - crisp white with subtle glow */
@@ -4925,6 +4925,15 @@ body.cookie-banner-active .bottom-bar {
 .theme-minimal.has-cover-image .event-hero__content {
   position: relative;
   z-index: 2;
+}
+
+/* Ensure scanlines and noise overlay appear on top of cover image */
+.theme-minimal.has-cover-image ~ .scanlines,
+.theme-minimal.has-cover-image ~ .noise,
+.scanlines,
+.noise {
+  z-index: 9999;
+  pointer-events: none;
 }
 
 /* Compact hero section - centered */

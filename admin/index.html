@@ -1204,6 +1204,33 @@
           <!-- Hero Settings -->
           <div class="sources" style="margin-bottom: 24px;">
             <h2 class="sources__title">Hero</h2>
+
+            <!-- Hero/Banner Image -->
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Banner Image</label>
+              <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Main banner image. Also used as cover image in minimal theme.</p>
+
+              <!-- Current Image Preview -->
+              <div id="heroImagePreview" style="margin-bottom: 12px;">
+                <div style="position: relative; display: inline-block;">
+                  <img id="heroPreviewImg" src="/images/liverpool-event-banner.jpg" style="max-width: 100%; max-height: 120px; border: 1px solid var(--border);">
+                </div>
+              </div>
+
+              <!-- Upload Zone -->
+              <div id="heroDropZone" style="border: 2px dashed var(--border); padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
+                <span style="font-size: 12px; color: var(--text-muted);">Drag & drop new image, or click to select</span>
+                <input type="file" id="heroFileInput" accept="image/*" style="display: none;">
+              </div>
+
+              <!-- URL fallback -->
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="eventHeroImage" value="/images/liverpool-event-banner.jpg" placeholder="Or enter image URL" style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 12px; padding: 8px;">
+                <button id="loadHeroUrlBtn" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 12px; font-size: 11px; cursor: pointer;">Load URL</button>
+              </div>
+            </div>
+
+            <!-- Release Tag -->
             <div>
               <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Release Tag</label>
               <input type="text" id="eventReleaseTag" value="SECOND RELEASE NOW ACTIVE" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
@@ -1322,18 +1349,51 @@ STEVIE</textarea>
           <!-- Tee Info -->
           <div class="sources" style="margin-bottom: 24px;">
             <h2 class="sources__title">Exclusive Tee</h2>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+
+            <!-- Tee Name -->
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Tee Name</label>
+              <input type="text" id="teeName" value="Liverpool March 2026 Tee" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+            </div>
+
+            <!-- Tee Images Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+              <!-- Tee Front -->
               <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Tee Name</label>
-                <input type="text" id="teeName" value="Liverpool March 2026 Tee" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Front Image</label>
+
+                <!-- Preview -->
+                <div id="teeFrontPreview" style="margin-bottom: 12px;">
+                  <img id="teeFrontImg" src="/images/LIVERPOOL MARCH FRONT.png" style="max-width: 100%; max-height: 150px; border: 1px solid var(--border); background: #111;">
+                </div>
+
+                <!-- Drop Zone -->
+                <div id="teeFrontDropZone" style="border: 2px dashed var(--border); padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
+                  <span style="font-size: 11px; color: var(--text-muted);">Drag & drop or click</span>
+                  <input type="file" id="teeFrontInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- URL Input -->
+                <input type="text" id="teeFront" value="/images/LIVERPOOL MARCH FRONT.png" placeholder="Or enter URL" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 11px; padding: 8px;">
               </div>
+
+              <!-- Tee Back -->
               <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Front Image URL</label>
-                <input type="text" id="teeFront" value="/images/LIVERPOOL MARCH FRONT.png" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
-              </div>
-              <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Back Image URL</label>
-                <input type="text" id="teeBack" value="/images/LIVERPOOL MARCH BACK.png" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Back Image</label>
+
+                <!-- Preview -->
+                <div id="teeBackPreview" style="margin-bottom: 12px;">
+                  <img id="teeBackImg" src="/images/LIVERPOOL MARCH BACK.png" style="max-width: 100%; max-height: 150px; border: 1px solid var(--border); background: #111;">
+                </div>
+
+                <!-- Drop Zone -->
+                <div id="teeBackDropZone" style="border: 2px dashed var(--border); padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
+                  <span style="font-size: 11px; color: var(--text-muted);">Drag & drop or click</span>
+                  <input type="file" id="teeBackInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- URL Input -->
+                <input type="text" id="teeBack" value="/images/LIVERPOOL MARCH BACK.png" placeholder="Or enter URL" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 11px; padding: 8px;">
               </div>
             </div>
           </div>
@@ -1661,6 +1721,7 @@ STEVIE</textarea>
         minimalBgEnabled: false,
         minimalBlurStrength: 20,
         minimalBgImage: '',
+        heroImage: '/images/liverpool-event-banner.jpg',
         name: 'FERAL Liverpool',
         date: '2026-03-27',
         doors: '9:30PM — 4:00AM',
@@ -1694,6 +1755,17 @@ STEVIE</textarea>
         document.getElementById('teeName').value = settings.teeName || '';
         document.getElementById('teeFront').value = settings.teeFront || '';
         document.getElementById('teeBack').value = settings.teeBack || '';
+
+        // Load hero image
+        var heroImage = settings.heroImage || '/images/liverpool-event-banner.jpg';
+        document.getElementById('eventHeroImage').value = heroImage;
+        document.getElementById('heroPreviewImg').src = heroImage;
+
+        // Load tee image previews
+        var teeFrontUrl = settings.teeFront || '/images/LIVERPOOL MARCH FRONT.png';
+        var teeBackUrl = settings.teeBack || '/images/LIVERPOOL MARCH BACK.png';
+        document.getElementById('teeFrontImg').src = teeFrontUrl;
+        document.getElementById('teeBackImg').src = teeBackUrl;
 
         // Load minimal theme options
         document.getElementById('minimalEnableBg').checked = settings.minimalBgEnabled || false;
@@ -1778,6 +1850,120 @@ STEVIE</textarea>
             document.getElementById('bgPreview').style.display = 'none';
             document.getElementById('bgPreviewImg').src = '';
           });
+
+          // ===== HERO IMAGE HANDLERS =====
+          var heroDropZone = document.getElementById('heroDropZone');
+          var heroFileInput = document.getElementById('heroFileInput');
+          var heroUrlInput = document.getElementById('eventHeroImage');
+          var heroPreviewImg = document.getElementById('heroPreviewImg');
+
+          heroDropZone.addEventListener('click', function() { heroFileInput.click(); });
+
+          heroDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            heroDropZone.style.borderColor = 'var(--red)';
+            heroDropZone.style.background = 'rgba(255,0,51,0.05)';
+          });
+
+          heroDropZone.addEventListener('dragleave', function() {
+            heroDropZone.style.borderColor = 'var(--border)';
+            heroDropZone.style.background = 'transparent';
+          });
+
+          heroDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            heroDropZone.style.borderColor = 'var(--border)';
+            heroDropZone.style.background = 'transparent';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleHeroImageUpload(file);
+            }
+          });
+
+          heroFileInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleHeroImageUpload(this.files[0]);
+            }
+          });
+
+          document.getElementById('loadHeroUrlBtn').addEventListener('click', function() {
+            var url = heroUrlInput.value.trim();
+            if (url) {
+              heroPreviewImg.src = url;
+            }
+          });
+
+          // ===== TEE FRONT IMAGE HANDLERS =====
+          var teeFrontDropZone = document.getElementById('teeFrontDropZone');
+          var teeFrontInput = document.getElementById('teeFrontInput');
+          var teeFrontUrl = document.getElementById('teeFront');
+          var teeFrontImg = document.getElementById('teeFrontImg');
+
+          teeFrontDropZone.addEventListener('click', function() { teeFrontInput.click(); });
+
+          teeFrontDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            teeFrontDropZone.style.borderColor = 'var(--red)';
+          });
+
+          teeFrontDropZone.addEventListener('dragleave', function() {
+            teeFrontDropZone.style.borderColor = 'var(--border)';
+          });
+
+          teeFrontDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            teeFrontDropZone.style.borderColor = 'var(--border)';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleTeeImageUpload(file, 'front');
+            }
+          });
+
+          teeFrontInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleTeeImageUpload(this.files[0], 'front');
+            }
+          });
+
+          teeFrontUrl.addEventListener('change', function() {
+            teeFrontImg.src = this.value;
+          });
+
+          // ===== TEE BACK IMAGE HANDLERS =====
+          var teeBackDropZone = document.getElementById('teeBackDropZone');
+          var teeBackInput = document.getElementById('teeBackInput');
+          var teeBackUrl = document.getElementById('teeBack');
+          var teeBackImg = document.getElementById('teeBackImg');
+
+          teeBackDropZone.addEventListener('click', function() { teeBackInput.click(); });
+
+          teeBackDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            teeBackDropZone.style.borderColor = 'var(--red)';
+          });
+
+          teeBackDropZone.addEventListener('dragleave', function() {
+            teeBackDropZone.style.borderColor = 'var(--border)';
+          });
+
+          teeBackDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            teeBackDropZone.style.borderColor = 'var(--border)';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleTeeImageUpload(file, 'back');
+            }
+          });
+
+          teeBackInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleTeeImageUpload(this.files[0], 'back');
+            }
+          });
+
+          teeBackUrl.addEventListener('change', function() {
+            teeBackImg.src = this.value;
+          });
         }
       }
 
@@ -1793,6 +1979,12 @@ STEVIE</textarea>
       }
 
       function handleBgImageUpload(file) {
+        // Check file size (max 500KB to stay under localStorage limits)
+        if (file.size > 500 * 1024) {
+          alert('Image too large (' + Math.round(file.size / 1024) + 'KB). Please use an image under 500KB for reliable saving.');
+          return;
+        }
+
         var reader = new FileReader();
         reader.onload = function(e) {
           window.minimalBgImageData = e.target.result;
@@ -1800,6 +1992,34 @@ STEVIE</textarea>
           document.getElementById('bgPreviewImg').src = e.target.result;
           document.getElementById('bgPreviewImg').style.filter = 'blur(' + blur + 'px)';
           document.getElementById('bgPreview').style.display = 'block';
+          console.log('[FERAL Admin] Cover image loaded, size:', Math.round(e.target.result.length / 1024) + 'KB');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function handleHeroImageUpload(file) {
+        // For hero images, we just update the preview and URL field
+        // The actual image should be uploaded to server or use a URL
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('heroPreviewImg').src = e.target.result;
+          // Note: In production, this should upload to server and set the returned URL
+          // For now, we show a preview but the URL field should be set manually
+          console.log('[FERAL Admin] Hero image preview loaded');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function handleTeeImageUpload(file, side) {
+        // For tee images, we update preview and could update URL
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          if (side === 'front') {
+            document.getElementById('teeFrontImg').src = e.target.result;
+          } else {
+            document.getElementById('teeBackImg').src = e.target.result;
+          }
+          console.log('[FERAL Admin] Tee ' + side + ' image preview loaded');
         };
         reader.readAsDataURL(file);
       }
@@ -1810,6 +2030,7 @@ STEVIE</textarea>
           minimalBgEnabled: document.getElementById('minimalEnableBg').checked,
           minimalBlurStrength: parseInt(document.getElementById('minimalBlurStrength').value) || 20,
           minimalBgImage: window.minimalBgImageData || '',
+          heroImage: document.getElementById('eventHeroImage').value,
           name: document.getElementById('eventName').value,
           date: document.getElementById('eventDate').value,
           doors: document.getElementById('eventDoors').value,
@@ -1823,13 +2044,24 @@ STEVIE</textarea>
           teeFront: document.getElementById('teeFront').value,
           teeBack: document.getElementById('teeBack').value
         };
-        localStorage.setItem(EVENT_SETTINGS_KEY, JSON.stringify(settings));
 
-        var confirmEl = document.getElementById('saveConfirm');
-        confirmEl.style.display = 'block';
-        setTimeout(function() {
-          confirmEl.style.display = 'none';
-        }, 3000);
+        try {
+          localStorage.setItem(EVENT_SETTINGS_KEY, JSON.stringify(settings));
+          console.log('[FERAL Admin] Settings saved successfully');
+
+          var confirmEl = document.getElementById('saveConfirm');
+          confirmEl.style.display = 'block';
+          setTimeout(function() {
+            confirmEl.style.display = 'none';
+          }, 3000);
+        } catch (e) {
+          console.error('[FERAL Admin] Save failed:', e);
+          if (e.name === 'QuotaExceededError' || e.message.indexOf('quota') !== -1) {
+            alert('Storage limit exceeded. The cover image may be too large. Try using a smaller image (under 500KB).');
+          } else {
+            alert('Failed to save settings: ' + e.message);
+          }
+        }
       }
 
       // ===== KOMPASS KLUB EVENT SETTINGS =====

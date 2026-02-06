@@ -4978,25 +4978,19 @@ body.cookie-banner-active .bottom-bar {
   flex-direction: row;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0;
+  gap: 8px 0;
+  row-gap: 16px;
 }
 
 .theme-minimal .event-hero__detail {
   text-align: center;
-  padding: 0 20px;
+  padding: 0 28px;
   position: relative;
 }
 
-/* Vertical separator between details */
+/* Vertical separator between details - removed red lines */
 .theme-minimal .event-hero__detail:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 0, 51, 0.4);
+  display: none;
 }
 
 /* Detail label styling - red accent */
@@ -5023,6 +5017,19 @@ body.cookie-banner-active .bottom-bar {
   padding: 20px 0;
   margin-bottom: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* LINER label above lineup */
+.theme-minimal .lineup-widget::before {
+  content: 'LINER';
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--red);
+  margin-bottom: 14px;
+  text-transform: uppercase;
 }
 
 .theme-minimal .lineup-widget__header {
@@ -5184,7 +5191,7 @@ body.cookie-banner-active .bottom-bar {
   }
 
   .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot):not(:last-of-type) {
-    border-bottom: 1px solid rgba(255, 0, 51, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
 

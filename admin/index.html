@@ -1160,6 +1160,14 @@
                   </div>
                 </div>
 
+                <div style="margin-bottom: 16px;">
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">STATIC INTENSITY <span style="opacity: 0.6;">(0 = no static)</span></label>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="minimalStaticStrength" min="0" max="100" value="50" style="flex: 1; accent-color: var(--red);">
+                    <span id="staticValue" style="font-family: var(--font-mono); font-size: 12px; min-width: 40px; color: var(--text);">50%</span>
+                  </div>
+                </div>
+
                 <div>
                   <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">COVER IMAGE</label>
                   <div id="bgDropZone" style="border: 2px dashed var(--border); padding: 24px; text-align: center; cursor: pointer; transition: all 0.15s;">
@@ -1201,39 +1209,42 @@
             </div>
           </div>
 
-          <!-- Hero Settings -->
-          <div class="sources" style="margin-bottom: 24px;">
-            <h2 class="sources__title">Hero</h2>
+          <!-- Hero Settings (hidden when minimal theme selected) -->
+          <div id="heroSection">
+            <div class="sources" style="margin-bottom: 24px;">
+              <h2 class="sources__title">Hero</h2>
 
-            <!-- Hero/Banner Image -->
-            <div style="margin-bottom: 16px;">
-              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Banner Image</label>
-              <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Main banner image. Also used as cover image in minimal theme.</p>
+              <!-- Hero/Banner Image -->
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Banner Image</label>
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Main banner image for the event page header.</p>
 
-              <!-- Current Image Preview -->
-              <div id="heroImagePreview" style="margin-bottom: 12px;">
-                <div style="position: relative; display: inline-block;">
-                  <img id="heroPreviewImg" src="/images/liverpool-event-banner.jpg" style="max-width: 100%; max-height: 120px; border: 1px solid var(--border);">
+                <!-- Current Image Preview -->
+                <div id="heroImagePreview" style="margin-bottom: 12px;">
+                  <div style="position: relative; display: inline-block;">
+                    <img id="heroPreviewImg" src="/images/liverpool-event-banner.jpg" style="max-width: 100%; max-height: 120px; border: 1px solid var(--border);">
+                  </div>
+                  <button id="removeHeroBtn" class="actions__btn actions__btn--danger" style="display: block; margin-top: 8px; font-size: 10px; padding: 6px 12px;">Remove Image</button>
+                </div>
+
+                <!-- Upload Zone -->
+                <div id="heroDropZone" style="border: 2px dashed var(--border); padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
+                  <span style="font-size: 12px; color: var(--text-muted);">Drag & drop new image, or click to select</span>
+                  <input type="file" id="heroFileInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- URL fallback -->
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="text" id="eventHeroImage" value="/images/liverpool-event-banner.jpg" placeholder="Or enter image URL" style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 12px; padding: 8px;">
+                  <button id="loadHeroUrlBtn" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 12px; font-size: 11px; cursor: pointer;">Load URL</button>
                 </div>
               </div>
 
-              <!-- Upload Zone -->
-              <div id="heroDropZone" style="border: 2px dashed var(--border); padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
-                <span style="font-size: 12px; color: var(--text-muted);">Drag & drop new image, or click to select</span>
-                <input type="file" id="heroFileInput" accept="image/*" style="display: none;">
+              <!-- Release Tag -->
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Release Tag</label>
+                <input type="text" id="eventReleaseTag" value="SECOND RELEASE NOW ACTIVE" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
               </div>
-
-              <!-- URL fallback -->
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="text" id="eventHeroImage" value="/images/liverpool-event-banner.jpg" placeholder="Or enter image URL" style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 12px; padding: 8px;">
-                <button id="loadHeroUrlBtn" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 12px; font-size: 11px; cursor: pointer;">Load URL</button>
-              </div>
-            </div>
-
-            <!-- Release Tag -->
-            <div>
-              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Release Tag</label>
-              <input type="text" id="eventReleaseTag" value="SECOND RELEASE NOW ACTIVE" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
             </div>
           </div>
 
@@ -1365,6 +1376,7 @@ STEVIE</textarea>
                 <!-- Preview -->
                 <div id="teeFrontPreview" style="margin-bottom: 12px;">
                   <img id="teeFrontImg" src="/images/LIVERPOOL MARCH FRONT.png" style="max-width: 100%; max-height: 150px; border: 1px solid var(--border); background: #111;">
+                  <button id="removeTeeFrontBtn" class="actions__btn actions__btn--danger" style="display: block; margin-top: 6px; font-size: 10px; padding: 4px 10px;">Remove</button>
                 </div>
 
                 <!-- Drop Zone -->
@@ -1384,6 +1396,7 @@ STEVIE</textarea>
                 <!-- Preview -->
                 <div id="teeBackPreview" style="margin-bottom: 12px;">
                   <img id="teeBackImg" src="/images/LIVERPOOL MARCH BACK.png" style="max-width: 100%; max-height: 150px; border: 1px solid var(--border); background: #111;">
+                  <button id="removeTeeBackBtn" class="actions__btn actions__btn--danger" style="display: block; margin-top: 6px; font-size: 10px; padding: 4px 10px;">Remove</button>
                 </div>
 
                 <!-- Drop Zone -->

@@ -2025,23 +2025,92 @@ STEVIE</textarea>
         document.getElementById('staticValue').textContent = staticVal + '%';
       }
 
+      // ===== IMAGE COMPRESSION UTILITY =====
+      function compressImage(file, maxWidth, quality, callback) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var img = new Image();
+          img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+
+            // Calculate dimensions maintaining aspect ratio
+            var width = img.width;
+            var height = img.height;
+
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Convert to JPEG with quality setting
+            var compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+            callback(compressedDataUrl, e.target.result.length, compressedDataUrl.length);
+          };
+          img.onerror = function() {
+            callback(e.target.result, file.size, file.size);
+          };
+          img.src = e.target.result;
+        };
+        reader.onerror = function() {
+          callback(null, 0, 0);
+        };
+        reader.readAsDataURL(file);
+      }
+
       function handleBgImageUpload(file) {
-        // Check file size (max 500KB to stay under localStorage limits)
-        if (file.size > 500 * 1024) {
-          alert('Image too large (' + Math.round(file.size / 1024) + 'KB). Please use an image under 500KB for reliable saving.');
+        var MAX_ORIGINAL = 3 * 1024 * 1024;  // 3MB original allowed
+        var MAX_COMPRESSED = 400 * 1024;      // 400KB target after compression
+        var MAX_WIDTH = 1400;
+        var QUALITY = 0.70;  // 70% quality - blur hides quality loss
+
+        if (file.size > MAX_ORIGINAL) {
+          alert('Image too large (' + Math.round(file.size / 1024 / 1024 * 10) / 10 + 'MB). Maximum is 3MB.');
           return;
         }
 
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          window.minimalBgImageData = e.target.result;
+        // Show compressing state
+        var dropZone = document.getElementById('bgDropZone');
+        var originalHTML = dropZone.innerHTML;
+        dropZone.innerHTML = '<span style="color: var(--red);">Compressing image...</span>';
+
+        compressImage(file, MAX_WIDTH, QUALITY, function(dataUrl, origSize, compSize) {
+          dropZone.innerHTML = originalHTML;
+
+          if (!dataUrl) {
+            alert('Failed to process image. Please try a different file.');
+            return;
+          }
+
+          // If still too large, try lower quality
+          if (compSize > MAX_COMPRESSED) {
+            compressImage(file, MAX_WIDTH, 0.5, function(dataUrl2, o, compSize2) {
+              if (compSize2 > MAX_COMPRESSED) {
+                alert('Image still too large after compression (' + Math.round(compSize2 / 1024) + 'KB). Please use a smaller image.');
+                return;
+              }
+              applyCompressedImage(dataUrl2, origSize, compSize2);
+            });
+            return;
+          }
+
+          applyCompressedImage(dataUrl, origSize, compSize);
+        });
+
+        function applyCompressedImage(dataUrl, origSize, compSize) {
+          window.minimalBgImageData = dataUrl;
           var blur = document.getElementById('minimalBlurStrength').value;
-          document.getElementById('bgPreviewImg').src = e.target.result;
+          document.getElementById('bgPreviewImg').src = dataUrl;
           document.getElementById('bgPreviewImg').style.filter = 'blur(' + blur + 'px)';
           document.getElementById('bgPreview').style.display = 'block';
-          console.log('[FERAL Admin] Cover image loaded, size:', Math.round(e.target.result.length / 1024) + 'KB');
-        };
-        reader.readAsDataURL(file);
+
+          var reduction = Math.round((1 - compSize / origSize) * 100);
+          console.log('[FERAL Admin] Cover image compressed: ' + Math.round(origSize / 1024) + 'KB -> ' + Math.round(compSize / 1024) + 'KB (' + reduction + '% reduction)');
+        }
       }
 
       function handleHeroImageUpload(file) {

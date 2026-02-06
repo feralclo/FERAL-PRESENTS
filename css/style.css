@@ -3052,12 +3052,12 @@ img {
 
 .ticket-option--vip {
   background: rgba(229, 228, 226, 0.04);
-  border-color: rgba(229, 228, 226, 0.25);
+  border: 1.5px solid rgba(229, 228, 226, 0.35);
   overflow: hidden;
 }
 
 .ticket-option--vip:hover {
-  border-color: rgba(229, 228, 226, 0.5);
+  border-color: rgba(229, 228, 226, 0.55);
 }
 
 .ticket-option--vip::before {
@@ -3093,26 +3093,22 @@ img {
   100% { background-position: -200% center; }
 }
 
+/* Featured VIP + Tee - enhanced premium styling */
 .ticket-option--featured {
   background: rgba(229, 228, 226, 0.06);
+  border: 1.5px solid rgba(229, 228, 226, 0.45);
+  box-shadow: 0 0 20px rgba(229, 228, 226, 0.08);
 }
 
-/* Star badge for featured VIP ticket */
-.ticket-option--featured .ticket-option__name::after {
-  content: '';
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  margin-left: 6px;
-  vertical-align: middle;
-  background: var(--platinum);
-  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-  animation: premiumStarPulse 2s ease-in-out infinite;
+.ticket-option--featured:hover {
+  border-color: rgba(229, 228, 226, 0.65);
+  box-shadow: 0 0 30px rgba(229, 228, 226, 0.12);
 }
 
-@keyframes premiumStarPulse {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
+/* Exclusive label for VIP + Tee */
+.ticket-option--featured::before {
+  width: 4px;
+  background: linear-gradient(180deg, var(--platinum-light) 0%, var(--platinum) 40%, var(--platinum-dark) 100%);
 }
 
 .ticket-option__row {
@@ -3282,8 +3278,50 @@ img {
   transform: scale(0.95) translateY(10px);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 0 60px rgba(229, 228, 226, 0.15);
-  max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
+}
+
+/* Desktop: wider horizontal layout */
+@media (min-width: 768px) {
+  .tee-modal {
+    max-width: 800px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .tee-modal__header {
+    grid-column: 1 / -1;
+  }
+
+  .tee-modal__viewer {
+    grid-row: 2 / 4;
+  }
+
+  .tee-modal__exclusive {
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .tee-modal__sizes {
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .tee-modal__cart {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .tee-modal__add-btn {
+    width: auto;
+    min-width: 200px;
+  }
 }
 
 .tee-modal-overlay--visible .tee-modal {
@@ -3830,6 +3868,137 @@ img {
   .tee-modal__exclusive-headline {
     font-size: 11px;
   }
+}
+
+/* --- Quick Size Selector Popup --- */
+.size-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10003;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.size-popup-overlay--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.size-popup {
+  background: #0a0a0a;
+  border: 1.5px solid rgba(229, 228, 226, 0.4);
+  padding: 28px 32px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 0 40px rgba(229, 228, 226, 0.1);
+}
+
+.size-popup__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.15s ease;
+}
+
+.size-popup__close:hover {
+  color: #fff;
+}
+
+.size-popup__title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--platinum);
+  margin-bottom: 6px;
+}
+
+.size-popup__subtitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--gray-text);
+  margin-bottom: 20px;
+}
+
+.size-popup__options {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.size-popup__btn {
+  min-width: 48px;
+  height: 44px;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.size-popup__btn:hover {
+  background: rgba(229, 228, 226, 0.15);
+  border-color: rgba(229, 228, 226, 0.5);
+  color: var(--platinum);
+}
+
+.size-popup__btn--selected {
+  background: rgba(229, 228, 226, 0.2);
+  border-color: var(--platinum);
+  color: var(--platinum);
+  box-shadow: 0 0 15px rgba(229, 228, 226, 0.25);
+}
+
+.size-popup__confirm {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--platinum-light) 0%, var(--platinum) 50%, var(--platinum-dark) 100%);
+  color: #000;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.size-popup__confirm:hover {
+  box-shadow: 0 0 25px rgba(229, 228, 226, 0.4);
+}
+
+.size-popup__confirm:disabled {
+  background: #333;
+  color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* VIP Section Header (compact) */

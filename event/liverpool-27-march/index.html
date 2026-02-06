@@ -226,7 +226,7 @@
                       <div class="ticket-option__info">
                         <span class="ticket-option__name">General Release</span>
                         <span class="ticket-option__perks">Standard entry</span>
-                        <span class="ticket-option__tier">2nd tier &bull; <span class="tier-highlight">22% remaining</span></span>
+                        <span class="ticket-option__tier"><span class="tier-highlight">Last few tickets left!</span></span>
                       </div>
                       <span class="ticket-option__price">&pound;26.46</span>
                     </div>
@@ -398,6 +398,24 @@
     </div>
   </div>
 
+  <!-- Quick Size Selector Popup -->
+  <div class="size-popup-overlay" id="sizePopup">
+    <div class="size-popup">
+      <button class="size-popup__close" id="sizePopupClose">&times;</button>
+      <div class="size-popup__title">Select Your Size</div>
+      <div class="size-popup__subtitle">VIP + Limited Edition Tee</div>
+      <div class="size-popup__options" id="sizePopupOptions">
+        <button class="size-popup__btn" data-size="XS">XS</button>
+        <button class="size-popup__btn" data-size="S">S</button>
+        <button class="size-popup__btn size-popup__btn--selected" data-size="M">M</button>
+        <button class="size-popup__btn" data-size="L">L</button>
+        <button class="size-popup__btn" data-size="XL">XL</button>
+        <button class="size-popup__btn" data-size="XXL">XXL</button>
+      </div>
+      <button class="size-popup__confirm" id="sizePopupConfirm">Add to Cart</button>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="footer">
     <div class="container">
@@ -535,6 +553,70 @@
         }
       }
 
+      // --- Size Popup for VIP + Tee ---
+      var sizePopup = document.getElementById('sizePopup');
+      var sizePopupClose = document.getElementById('sizePopupClose');
+      var sizePopupConfirm = document.getElementById('sizePopupConfirm');
+      var sizePopupOptions = document.getElementById('sizePopupOptions');
+      var popupSelectedSize = 'M';
+
+      function openSizePopup() {
+        if (sizePopup) {
+          sizePopup.classList.add('size-popup-overlay--visible');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      function closeSizePopup() {
+        if (sizePopup) {
+          sizePopup.classList.remove('size-popup-overlay--visible');
+          document.body.style.overflow = '';
+        }
+      }
+
+      if (sizePopupClose) {
+        sizePopupClose.addEventListener('click', closeSizePopup);
+      }
+
+      if (sizePopup) {
+        sizePopup.addEventListener('click', function(e) {
+          if (e.target === sizePopup) closeSizePopup();
+        });
+      }
+
+      // Size selection in popup
+      if (sizePopupOptions) {
+        sizePopupOptions.querySelectorAll('.size-popup__btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            sizePopupOptions.querySelectorAll('.size-popup__btn').forEach(function(b) {
+              b.classList.remove('size-popup__btn--selected');
+            });
+            this.classList.add('size-popup__btn--selected');
+            popupSelectedSize = this.getAttribute('data-size');
+          });
+        });
+      }
+
+      // Confirm size and add to cart
+      if (sizePopupConfirm) {
+        sizePopupConfirm.addEventListener('click', function() {
+          var ticket = TICKETS['vip-tee'];
+          ticket.qty++;
+          window.dataLayer.push({
+            event: 'add_to_cart',
+            content_name: ticket.name + ' (' + popupSelectedSize + ') \u2014 FERAL Liverpool',
+            content_ids: [ticket.id],
+            content_type: 'product',
+            value: ticket.price,
+            currency: 'GBP',
+            num_items: ticket.qty,
+            size: popupSelectedSize
+          });
+          updateDisplay();
+          closeSizePopup();
+        });
+      }
+
       // Handle all ticket buttons
       document.querySelectorAll('.ticket-option__btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -544,6 +626,12 @@
           if (!key) return;
 
           var ticket = TICKETS[key];
+
+          // For VIP + Tee add, show size popup instead of direct add
+          if (key === 'vip-tee' && action === 'add') {
+            openSizePopup();
+            return;
+          }
 
           if (action === 'add') {
             ticket.qty++;

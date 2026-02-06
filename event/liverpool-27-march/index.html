@@ -10,9 +10,26 @@
           var settings = JSON.parse(stored);
           if (settings.theme === 'minimal') {
             document.documentElement.classList.add('theme-minimal');
+            // Cover image support
+            if (settings.minimalBgEnabled) {
+              document.documentElement.classList.add('has-cover-image');
+              var blur = settings.minimalBlurStrength || 0;
+              document.documentElement.style.setProperty('--cover-blur', blur + 'px');
+              // Store image data for DOMContentLoaded
+              window._feralCoverImage = settings.minimalBgImage || null;
+            }
           }
         }
       } catch (e) {}
+      // Apply custom cover image after DOM loads
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window._feralCoverImage) {
+          var bgImg = document.querySelector('.event-hero__bg-img');
+          if (bgImg) {
+            bgImg.src = window._feralCoverImage;
+          }
+        }
+      });
     })();
   </script>
   <meta charset="UTF-8">

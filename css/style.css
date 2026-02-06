@@ -3168,7 +3168,7 @@ img {
   z-index: 3;
 }
 
-/* Holographic iridescent shimmer - premium card effect */
+/* Silver metallic shimmer - premium card effect */
 .ticket-option--vip-black::after {
   content: '';
   position: absolute;
@@ -3177,48 +3177,23 @@ img {
     105deg,
     transparent 0%,
     transparent 35%,
-    rgba(255, 0, 51, 0.08) 42%,
-    rgba(255, 255, 255, 0.15) 45%,
-    rgba(0, 200, 255, 0.08) 48%,
-    rgba(255, 0, 255, 0.05) 52%,
-    rgba(255, 255, 255, 0.12) 55%,
-    rgba(255, 0, 51, 0.06) 58%,
+    rgba(255, 255, 255, 0.06) 40%,
+    rgba(255, 255, 255, 0.18) 45%,
+    rgba(200, 200, 200, 0.12) 50%,
+    rgba(255, 255, 255, 0.18) 55%,
+    rgba(255, 255, 255, 0.06) 60%,
     transparent 65%,
     transparent 100%
   );
   background-size: 250% 100%;
-  animation: holographicShine 3s ease-in-out infinite;
+  animation: silverShine 3s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
 }
 
-@keyframes holographicShine {
+@keyframes silverShine {
   0% { background-position: 200% center; }
   100% { background-position: -100% center; }
-}
-
-/* Animated scanning line - security card feel */
-.ticket-option--vip-black .ticket-option__row::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.6) 50%,
-    transparent 100%
-  );
-  animation: scanLine 2s ease-in-out infinite;
-  z-index: 4;
-}
-
-@keyframes scanLine {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
 }
 
 /* VIP Black text - crisp white with subtle glow */
@@ -3246,10 +3221,10 @@ img {
   z-index: 2;
 }
 
-/* VIP Black custom button styling - red accent */
+/* VIP Black custom button styling - neutral */
 .ticket-option--vip-black .ticket-option__btn {
-  background: rgba(255, 0, 51, 0.15);
-  border: 1px solid rgba(255, 0, 51, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: #fff;
   position: relative;
   z-index: 2;
@@ -3257,24 +3232,22 @@ img {
 }
 
 .ticket-option--vip-black .ticket-option__btn:hover {
-  background: rgba(255, 0, 51, 0.3);
-  border-color: rgba(255, 0, 51, 0.8);
-  box-shadow: 0 0 20px rgba(255, 0, 51, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.45);
   color: #fff;
 }
 
-/* VIP Black view tee button */
+/* VIP Black view tee button - neutral */
 .ticket-option--vip-black .ticket-option__view-tee {
   color: #fff;
-  border-color: rgba(255, 0, 51, 0.5);
+  border-color: rgba(255, 255, 255, 0.3);
   position: relative;
   z-index: 2;
 }
 
 .ticket-option--vip-black .ticket-option__view-tee:hover {
-  background: rgba(255, 0, 51, 0.2);
-  border-color: rgba(255, 0, 51, 0.8);
-  box-shadow: 0 0 15px rgba(255, 0, 51, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Bottom row positioning */
@@ -4908,9 +4881,50 @@ body.cookie-banner-active .bottom-bar {
    faster scroll to tickets, visual polish
    ============================================ */
 
-/* Hide background image in minimal theme */
+/* Hide background image in minimal theme by default */
 .theme-minimal .event-hero__bg {
   display: none;
+}
+
+/* ===== COVER IMAGE - Optional blurred background for minimal theme ===== */
+.theme-minimal.has-cover-image .event-hero__bg {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.theme-minimal.has-cover-image .event-hero__bg-img {
+  filter: blur(var(--cover-blur, 0px));
+  transform: scale(1.1);
+  opacity: 0.4;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.theme-minimal.has-cover-image .event-hero__darken {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+.theme-minimal.has-cover-image .event-hero {
+  position: relative;
+}
+
+.theme-minimal.has-cover-image .event-hero__content {
+  position: relative;
+  z-index: 2;
 }
 
 /* Compact hero section - centered */
@@ -4994,15 +5008,19 @@ body.cookie-banner-active .bottom-bar {
   display: none;
 }
 
-/* ===== MINIMAL LINEUP - Horizontal with // separators ===== */
+/* ===== MINIMAL LINEUP - Clean, impactful, properly sized ===== */
 .theme-minimal .lineup-widget {
   background: transparent;
-  padding: 16px 0;
+  padding: 20px 0;
   margin-bottom: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.theme-minimal .lineup-widget__title {
+.theme-minimal .lineup-widget__header {
+  display: none;
+}
+
+.theme-minimal .lineup-widget__line {
   display: none;
 }
 
@@ -5010,59 +5028,72 @@ body.cookie-banner-active .bottom-bar {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0;
+  align-items: center;
+  gap: 4px 0;
+  row-gap: 12px;
 }
 
-.theme-minimal .lineup-widget__artist {
+/* Hide the dot separators - we use // instead */
+.theme-minimal .lineup-widget__dot {
+  display: none;
+}
+
+/* Target the actual span elements (artist names) */
+.theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot) {
   display: inline-flex;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
   transition: color 0.2s ease;
 }
 
-.theme-minimal .lineup-widget__artist:hover {
+.theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot):hover {
   color: var(--red);
 }
 
-.theme-minimal .lineup-widget__artist::after {
+/* Add // separator after each artist except the last */
+.theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot)::after {
   content: '//';
   color: var(--red);
-  margin: 0 10px;
+  margin: 0 14px;
   font-weight: 700;
-  font-size: 10px;
+  font-size: 12px;
 }
 
-.theme-minimal .lineup-widget__artist:last-child::after {
+/* Hide separator after last artist span (accounting for dots) */
+.theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot):last-of-type::after {
   display: none;
 }
 
-/* Horizontal lineup with / separators (for event-info) */
+/* Horizontal lineup with // separators (for event-info section) */
 .theme-minimal .event-info__lineup {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0;
+  gap: 4px 0;
+  row-gap: 12px;
 }
 
 .theme-minimal .event-info__artist {
   display: inline-flex;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .theme-minimal .event-info__artist::after {
   content: '//';
   color: var(--red);
-  margin: 0 10px;
+  margin: 0 14px;
   font-weight: 700;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .theme-minimal .event-info__artist:last-child::after {
@@ -5098,34 +5129,30 @@ body.cookie-banner-active .bottom-bar {
     height: 18px;
   }
 
-  /* FIXED: Lineup on mobile - BIGGER, bolder, proper gaps */
+  /* Mobile lineup - clean and impactful */
   .theme-minimal .lineup-widget {
-    padding: 12px 0;
+    padding: 16px 0;
     margin-bottom: 6px;
   }
 
   .theme-minimal .lineup-widget__artists {
-    gap: 6px 0;
     row-gap: 10px;
   }
 
-  .theme-minimal .lineup-widget__artist {
+  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot) {
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 1.5px;
-    color: rgba(255, 255, 255, 0.9);
-    white-space: nowrap;
     padding: 2px 0;
   }
 
-  .theme-minimal .lineup-widget__artist::after {
-    margin: 0 8px;
-    font-size: 10px;
-    flex-shrink: 0;
+  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot)::after {
+    margin: 0 10px;
+    font-size: 11px;
   }
 }
 
-/* Very small screens - stack lineup vertically */
+/* Very small screens - stack lineup vertically for clarity */
 @media (max-width: 400px) {
   .theme-minimal .lineup-widget__artists {
     flex-direction: column;
@@ -5133,22 +5160,22 @@ body.cookie-banner-active .bottom-bar {
     align-items: center;
   }
 
-  .theme-minimal .lineup-widget__artist {
-    font-size: 13px;
+  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot) {
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 2px;
+    letter-spacing: 2.5px;
     text-align: center;
     width: 100%;
-    padding: 6px 0;
+    padding: 10px 0;
     color: #fff;
   }
 
-  .theme-minimal .lineup-widget__artist::after {
+  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot)::after {
     display: none;
   }
 
-  .theme-minimal .lineup-widget__artist:not(:last-child) {
-    border-bottom: 1px solid rgba(255, 0, 51, 0.3);
+  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot):not(:last-of-type) {
+    border-bottom: 1px solid rgba(255, 0, 51, 0.25);
   }
 }
 

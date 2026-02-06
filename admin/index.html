@@ -1148,20 +1148,20 @@
 
               <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 16px;">
                 <input type="checkbox" id="minimalEnableBg" style="accent-color: var(--red);">
-                <span style="font-size: 13px;">Enable blurred background image</span>
+                <span style="font-size: 13px;">Enable cover image</span>
               </label>
 
               <div id="minimalBgOptions" style="display: none;">
                 <div style="margin-bottom: 16px;">
-                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">BLUR STRENGTH</label>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">BLUR STRENGTH <span style="opacity: 0.6;">(0 = no blur)</span></label>
                   <div style="display: flex; align-items: center; gap: 12px;">
-                    <input type="range" id="minimalBlurStrength" min="5" max="50" value="20" style="flex: 1; accent-color: var(--red);">
+                    <input type="range" id="minimalBlurStrength" min="0" max="50" value="20" style="flex: 1; accent-color: var(--red);">
                     <span id="blurValue" style="font-family: var(--font-mono); font-size: 12px; min-width: 40px; color: var(--text);">20px</span>
                   </div>
                 </div>
 
                 <div>
-                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">BACKGROUND IMAGE</label>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">COVER IMAGE</label>
                   <div id="bgDropZone" style="border: 2px dashed var(--border); padding: 24px; text-align: center; cursor: pointer; transition: all 0.15s;">
                     <span style="font-size: 12px; color: var(--text-muted);">Drag & drop image here, or click to select</span>
                     <input type="file" id="bgFileInput" accept="image/*" style="display: none;">
@@ -1173,7 +1173,6 @@
                     </div>
                     <button id="removeBgBtn" class="actions__btn actions__btn--danger" style="margin-top: 8px; font-size: 10px; padding: 6px 12px;">Remove Image</button>
                   </div>
-                  <span style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 8px;">Or use existing hero image URL below</span>
                 </div>
               </div>
             </div>
@@ -1205,15 +1204,9 @@
           <!-- Hero Settings -->
           <div class="sources" style="margin-bottom: 24px;">
             <h2 class="sources__title">Hero</h2>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Background Image URL</label>
-                <input type="text" id="eventHeroImage" value="/images/liverpool-event-banner.jpg" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
-              </div>
-              <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Release Tag</label>
-                <input type="text" id="eventReleaseTag" value="SECOND RELEASE NOW ACTIVE" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
-              </div>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Release Tag</label>
+              <input type="text" id="eventReleaseTag" value="SECOND RELEASE NOW ACTIVE" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
             </div>
           </div>
 
@@ -1672,7 +1665,6 @@ STEVIE</textarea>
         date: '2026-03-27',
         doors: '9:30PM — 4:00AM',
         venue: 'Invisible Wind Factory, Liverpool',
-        heroImage: '/images/liverpool-event-banner.jpg',
         releaseTag: 'SECOND RELEASE NOW ACTIVE',
         lineup: 'DARK MATTER\nMIKA HEGGEMAN\nNICOLAS JULIAN\nSANDY KLETZ\nSO JUICE\nSTEVIE',
         priceGeneral: 26.46,
@@ -1694,7 +1686,6 @@ STEVIE</textarea>
         document.getElementById('eventDate').value = settings.date || '';
         document.getElementById('eventDoors').value = settings.doors || '';
         document.getElementById('eventVenue').value = settings.venue || '';
-        document.getElementById('eventHeroImage').value = settings.heroImage || '';
         document.getElementById('eventReleaseTag').value = settings.releaseTag || '';
         document.getElementById('eventLineup').value = settings.lineup || '';
         document.getElementById('priceGeneral').value = settings.priceGeneral || 0;
@@ -1823,7 +1814,6 @@ STEVIE</textarea>
           date: document.getElementById('eventDate').value,
           doors: document.getElementById('eventDoors').value,
           venue: document.getElementById('eventVenue').value,
-          heroImage: document.getElementById('eventHeroImage').value,
           releaseTag: document.getElementById('eventReleaseTag').value,
           lineup: document.getElementById('eventLineup').value,
           priceGeneral: parseFloat(document.getElementById('priceGeneral').value) || 0,
@@ -1955,13 +1945,113 @@ STEVIE</textarea>
         }, 3000);
       }
 
-      // ===== CREATE NEW EVENT =====
+      // ===== EVENT MANAGEMENT SYSTEM =====
       var EVENTS_LIST_KEY = 'feral_events_list';
 
       var DEFAULT_EVENTS = [
-        { id: 'kompass-klub-7-march', name: 'Kompass Klub 7 Mar', date: '2026-03-07', ticketType: 'offsite' },
-        { id: 'liverpool-27-march', name: 'Liverpool 27 Mar', date: '2026-03-27', ticketType: 'onsite' }
+        { id: 'kompass-klub-7-march', name: 'Kompass Klub 7 Mar', date: '2026-03-07', ticketType: 'offsite', status: 'live', archived: false },
+        { id: 'liverpool-27-march', name: 'Liverpool 27 Mar', date: '2026-03-27', ticketType: 'onsite', status: 'live', archived: false }
       ];
+
+      // Check and auto-archive past events on load
+      function checkAutoArchive() {
+        var events = getEventsList();
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var changed = false;
+
+        events.forEach(function(e) {
+          if (!e.archived && e.date) {
+            var eventDate = new Date(e.date);
+            // Archive if event date is more than 1 day in the past
+            if (eventDate < today) {
+              e.archived = true;
+              changed = true;
+            }
+          }
+        });
+
+        if (changed) {
+          saveEventsList(events);
+        }
+        return events;
+      }
+
+      // Delete event with confirmation
+      function deleteEvent(eventId) {
+        if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) {
+          return;
+        }
+        var events = getEventsList();
+        events = events.filter(function(e) { return e.id !== eventId; });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
+
+      // Manually archive an event
+      function archiveEvent(eventId) {
+        var events = getEventsList();
+        events.forEach(function(e) {
+          if (e.id === eventId) {
+            e.archived = true;
+          }
+        });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
+
+      // Unarchive (restore) an event
+      function unarchiveEvent(eventId) {
+        var events = getEventsList();
+        events.forEach(function(e) {
+          if (e.id === eventId) {
+            e.archived = false;
+          }
+        });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
+
+      // Duplicate an event (creates draft copy)
+      function duplicateEvent(eventId) {
+        var events = getEventsList();
+        var original = events.find(function(e) { return e.id === eventId; });
+        if (!original) return;
+
+        var newSlug = original.id + '-copy';
+        var counter = 1;
+        while (events.some(function(e) { return e.id === newSlug; })) {
+          counter++;
+          newSlug = original.id + '-copy-' + counter;
+        }
+
+        var duplicate = {
+          id: newSlug,
+          name: original.name + ' (Copy)',
+          date: '',
+          venue: original.venue || '',
+          ticketType: original.ticketType,
+          status: 'draft',
+          archived: false
+        };
+
+        events.push(duplicate);
+        saveEventsList(events);
+        updateEventsListPreview();
+        alert('Event duplicated as "' + duplicate.name + '". Set a new date and publish when ready.');
+      }
+
+      // Toggle event status between draft and live
+      function toggleEventStatus(eventId) {
+        var events = getEventsList();
+        events.forEach(function(e) {
+          if (e.id === eventId) {
+            e.status = (e.status === 'live') ? 'draft' : 'live';
+          }
+        });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
 
       var createEventInitialized = false;
 
@@ -1991,20 +2081,67 @@ STEVIE</textarea>
       }
 
       function updateEventsListPreview() {
+        // Run auto-archive check first
+        checkAutoArchive();
+
         var events = getEventsList();
-        // Sort by date
-        events.sort(function(a, b) {
-          return new Date(a.date) - new Date(b.date);
+        // Separate active and archived events
+        var activeEvents = events.filter(function(e) { return !e.archived; });
+        var archivedEvents = events.filter(function(e) { return e.archived; });
+
+        // Sort active events by date (upcoming first)
+        activeEvents.sort(function(a, b) {
+          return new Date(a.date || '9999-12-31') - new Date(b.date || '9999-12-31');
         });
 
-        var html = events.map(function(e, i) {
+        // Sort archived by date descending (most recent first)
+        archivedEvents.sort(function(a, b) {
+          return new Date(b.date || '0000-01-01') - new Date(a.date || '0000-01-01');
+        });
+
+        // Build active events HTML
+        var activeHtml = activeEvents.map(function(e, i) {
           var typeLabel = e.ticketType === 'offsite' ? '<span style="color: var(--yellow);">[Off-site]</span>' : '<span style="color: var(--green);">[On-site]</span>';
-          return '<div style="padding: 8px 0; border-bottom: 1px solid var(--border);">' +
-            '<strong>' + (i + 1) + '.</strong> ' + e.name + ' ' + typeLabel +
-            '<br><span style="color: var(--text-muted);">/' + e.id + '/ — ' + formatDate(e.date) + '</span></div>';
+          var statusBadge = (e.status === 'draft')
+            ? '<span style="background: var(--yellow); color: #000; padding: 2px 6px; font-size: 9px; font-weight: 700; margin-left: 8px;">DRAFT</span>'
+            : '<span style="background: var(--green); color: #000; padding: 2px 6px; font-size: 9px; font-weight: 700; margin-left: 8px;">LIVE</span>';
+          var dateStr = e.date ? formatDate(e.date) : '<span style="color: var(--red);">No date set</span>';
+
+          return '<div style="padding: 12px 0; border-bottom: 1px solid var(--border);">' +
+            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">' +
+              '<div><strong>' + e.name + '</strong> ' + typeLabel + statusBadge + '</div>' +
+            '</div>' +
+            '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">/' + e.id + '/ — ' + dateStr + '</div>' +
+            '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
+              '<button onclick="toggleEventStatus(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">' + (e.status === 'live' ? 'Set Draft' : 'Publish') + '</button>' +
+              '<button onclick="archiveEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Archive</button>' +
+              '<button onclick="duplicateEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Duplicate</button>' +
+              '<button onclick="deleteEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid rgba(255,0,51,0.5); color: var(--red); cursor: pointer;">Delete</button>' +
+            '</div>' +
+          '</div>';
         }).join('');
 
-        document.getElementById('eventsListPreview').innerHTML = html || '<span>No events yet</span>';
+        // Build archived events HTML
+        var archivedHtml = '';
+        if (archivedEvents.length > 0) {
+          archivedHtml = '<div style="margin-top: 24px;">' +
+            '<h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;" onclick="document.getElementById(\'archivedEventsContent\').style.display = document.getElementById(\'archivedEventsContent\').style.display === \'none\' ? \'block\' : \'none\';">Archived Events (' + archivedEvents.length + ') ▼</h4>' +
+            '<div id="archivedEventsContent" style="display: none;">' +
+            archivedEvents.map(function(e) {
+              return '<div style="padding: 10px 0; border-bottom: 1px solid var(--border); opacity: 0.7;">' +
+                '<div style="margin-bottom: 6px;"><strong>' + e.name + '</strong></div>' +
+                '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">/' + e.id + '/ — ' + formatDate(e.date) + '</div>' +
+                '<div style="display: flex; gap: 8px;">' +
+                  '<button onclick="unarchiveEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Restore</button>' +
+                  '<button onclick="duplicateEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Duplicate</button>' +
+                  '<button onclick="deleteEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid rgba(255,0,51,0.5); color: var(--red); cursor: pointer;">Delete</button>' +
+                '</div>' +
+              '</div>';
+            }).join('') +
+            '</div></div>';
+        }
+
+        document.getElementById('eventsListPreview').innerHTML = (activeHtml || '<span style="color: var(--text-muted);">No active events</span>') + archivedHtml;
       }
 
       function formatDate(dateStr) {
@@ -2034,13 +2171,15 @@ STEVIE</textarea>
           return;
         }
 
-        // Add new event
+        // Add new event (starts as draft)
         events.push({
           id: slug,
           name: name,
           date: date,
           venue: venue,
-          ticketType: ticketType
+          ticketType: ticketType,
+          status: 'draft',
+          archived: false
         });
 
         saveEventsList(events);

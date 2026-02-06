@@ -292,8 +292,8 @@
       <!-- Header with legendary badge -->
       <div class="tee-modal__header">
         <div class="tee-modal__legendary">
-          <span class="tee-modal__legendary-icon">&#128293;</span>
-          <span class="tee-modal__legendary-tag">EVENT EXCLUSIVE</span>
+          <span class="tee-modal__legendary-icon"></span>
+          <span class="tee-modal__legendary-tag">Event Exclusive</span>
         </div>
         <span class="tee-modal__title">Liverpool March 2026 Tee</span>
       </div>
@@ -307,6 +307,7 @@
         <div class="tee-modal__image-container">
           <img src="../../images/LIVERPOOL%20MARCH%20FRONT.png" alt="FERAL Liverpool Tee Front" class="tee-modal__img tee-modal__img--active" data-view="front">
           <img src="../../images/LIVERPOOL%20MARCH%20BACK.png" alt="FERAL Liverpool Tee Back" class="tee-modal__img" data-view="back">
+          <span class="tee-modal__zoom-hint">Click to zoom</span>
         </div>
       </div>
 
@@ -317,8 +318,8 @@
           This design exists only for Liverpool March 2026. Once they're gone, they're gone forever.
         </p>
         <div class="tee-modal__badges">
-          <span class="tee-modal__badge">&#9733; Limited Edition</span>
-          <span class="tee-modal__badge">&#128274; Event Exclusive</span>
+          <span class="tee-modal__badge">Limited Edition</span>
+          <span class="tee-modal__badge">Collector's Piece</span>
         </div>
       </div>
 
@@ -345,6 +346,12 @@
         <button class="tee-modal__add-btn" id="teeModalAddBtn">Add to Cart &mdash; &pound;65</button>
       </div>
     </div>
+  </div>
+
+  <!-- Fullscreen Zoom Overlay -->
+  <div class="tee-modal__fullscreen" id="teeFullscreen">
+    <button class="tee-modal__fullscreen-close">ESC to close</button>
+    <img src="" alt="FERAL Liverpool Tee" id="teeFullscreenImg">
   </div>
 
   <!-- Footer -->
@@ -613,6 +620,49 @@
             }
           });
         });
+      });
+
+      // Fullscreen zoom functionality
+      var fullscreenOverlay = document.getElementById('teeFullscreen');
+      var fullscreenImg = document.getElementById('teeFullscreenImg');
+      var fullscreenClose = fullscreenOverlay ? fullscreenOverlay.querySelector('.tee-modal__fullscreen-close') : null;
+
+      function openFullscreen(imgSrc) {
+        if (fullscreenOverlay && fullscreenImg) {
+          fullscreenImg.src = imgSrc;
+          fullscreenOverlay.classList.add('tee-modal__fullscreen--visible');
+        }
+      }
+
+      function closeFullscreen() {
+        if (fullscreenOverlay) {
+          fullscreenOverlay.classList.remove('tee-modal__fullscreen--visible');
+        }
+      }
+
+      // Click on tee image to zoom
+      document.querySelectorAll('.tee-modal__img').forEach(function(img) {
+        img.addEventListener('click', function() {
+          openFullscreen(this.src);
+        });
+      });
+
+      // Close fullscreen on click
+      if (fullscreenOverlay) {
+        fullscreenOverlay.addEventListener('click', closeFullscreen);
+      }
+      if (fullscreenClose) {
+        fullscreenClose.addEventListener('click', function(e) {
+          e.stopPropagation();
+          closeFullscreen();
+        });
+      }
+
+      // ESC to close fullscreen
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && fullscreenOverlay && fullscreenOverlay.classList.contains('tee-modal__fullscreen--visible')) {
+          closeFullscreen();
+        }
       });
 
       // Size selection

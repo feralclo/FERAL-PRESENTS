@@ -242,6 +242,38 @@
                     </div>
                   </div>
 
+                  <!-- VIP Section -->
+                  <div class="vip-section">
+                    <h4 class="vip-section__heading">VIP Experiences<span style="color:#d4af37">_</span></h4>
+                    <p class="vip-section__subtext">Queue Jump & Balcony access</p>
+
+                    <!-- VIP + Tee -->
+                    <div class="vip-ticket" data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734">
+                      <div class="vip-ticket__header">
+                        <span class="vip-ticket__name">VIP + FERAL Tee</span>
+                        <span class="vip-ticket__price">&pound;65</span>
+                      </div>
+                      <div class="vip-ticket__controls">
+                        <button class="vip-ticket__btn" data-action="remove" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Remove ticket">&minus;</button>
+                        <span class="vip-ticket__qty" id="qty-53c5262b-93ba-412e-bb5c-84ebc445a734">0</span>
+                        <button class="vip-ticket__btn" data-action="add" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Add ticket">+</button>
+                      </div>
+                    </div>
+
+                    <!-- VIP Only -->
+                    <div class="vip-ticket" data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">
+                      <div class="vip-ticket__header">
+                        <span class="vip-ticket__name">VIP Ticket</span>
+                        <span class="vip-ticket__price">&pound;35</span>
+                      </div>
+                      <div class="vip-ticket__controls">
+                        <button class="vip-ticket__btn" data-action="remove" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Remove ticket">&minus;</button>
+                        <span class="vip-ticket__qty" id="qty-bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">0</span>
+                        <button class="vip-ticket__btn" data-action="add" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Add ticket">+</button>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Checkout button -->
                   <button class="feral-tickets__checkout" id="checkoutBtn" disabled>Select tickets to continue</button>
                 </div>
@@ -279,99 +311,163 @@
     // dataLayer initialisation
     window.dataLayer = window.dataLayer || [];
 
-    // Ticket quantity selector + bottom bar
+    // Multi-ticket quantity selector + bottom bar
     (function() {
-      var TICKET_ID = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
-      var TICKET_PRICE_BASE = 24.50;
-      var BOOKING_FEE_RATE = 0.08;
-      var TICKET_PRICE = Math.round(TICKET_PRICE_BASE * (1 + BOOKING_FEE_RATE) * 100) / 100; // £26.46 incl. BF
-      var qty = 0;
-      var qtyEl = document.getElementById('qty-' + TICKET_ID);
+      // All ticket types
+      var TICKETS = {
+        'general': {
+          id: '6b45169f-cf51-4600-8682-d6f79dcb59ae',
+          name: 'General Release',
+          price: 26.46,
+          qty: 0
+        },
+        'vip-tee': {
+          id: '53c5262b-93ba-412e-bb5c-84ebc445a734',
+          name: 'VIP Ticket + Limited Edition FERAL Tee',
+          price: 65.00,
+          qty: 0
+        },
+        'vip': {
+          id: 'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf',
+          name: 'VIP Ticket',
+          price: 35.00,
+          qty: 0
+        }
+      };
+
+      // Map IDs to keys
+      var ID_TO_KEY = {};
+      Object.keys(TICKETS).forEach(function(key) {
+        ID_TO_KEY[TICKETS[key].id] = key;
+      });
+
       var checkoutBtn = document.getElementById('checkoutBtn');
       var bottomBar = document.getElementById('bottomBar');
       var bottomBarCta = document.getElementById('bottomBarCta');
       var bottomBarAmount = bottomBar ? bottomBar.querySelector('.bottom-bar__amount') : null;
 
       // --- dataLayer: ViewContent on page load ---
+      var allIds = Object.keys(TICKETS).map(function(k) { return TICKETS[k].id; });
       window.dataLayer.push({
         event: 'view_content',
         content_name: 'FERAL Liverpool — 27 March 2026',
-        content_ids: [TICKET_ID],
+        content_ids: allIds,
         content_type: 'product',
-        value: TICKET_PRICE,
         currency: 'GBP'
       });
 
+      function getTotalQty() {
+        return Object.keys(TICKETS).reduce(function(sum, k) {
+          return sum + TICKETS[k].qty;
+        }, 0);
+      }
+
+      function getTotalPrice() {
+        return Object.keys(TICKETS).reduce(function(sum, k) {
+          return sum + (TICKETS[k].qty * TICKETS[k].price);
+        }, 0);
+      }
+
+      function getCartParam() {
+        var items = [];
+        Object.keys(TICKETS).forEach(function(k) {
+          if (TICKETS[k].qty > 0) {
+            items.push(TICKETS[k].id + ':' + TICKETS[k].qty);
+          }
+        });
+        return items.join(',');
+      }
+
       function goToCheckout() {
-        if (qty < 1) return;
-        // --- dataLayer: InitiateCheckout ---
+        var totalQty = getTotalQty();
+        if (totalQty < 1) return;
+
+        var contentIds = [];
+        Object.keys(TICKETS).forEach(function(k) {
+          if (TICKETS[k].qty > 0) contentIds.push(TICKETS[k].id);
+        });
+
         window.dataLayer.push({
           event: 'initiate_checkout',
           content_name: 'FERAL Liverpool — 27 March 2026',
-          content_ids: [TICKET_ID],
+          content_ids: contentIds,
           content_type: 'product',
-          value: qty * TICKET_PRICE,
+          value: getTotalPrice(),
           currency: 'GBP',
-          num_items: qty
+          num_items: totalQty
         });
         document.body.style.transition = 'none';
         document.body.style.opacity = '1';
-        window.location.assign('/event/liverpool-27-march/checkout/?qty=' + qty);
+        window.location.assign('/event/liverpool-27-march/checkout/?cart=' + encodeURIComponent(getCartParam()));
       }
 
-      function update() {
-        if (qtyEl) qtyEl.textContent = qty;
+      function updateDisplay() {
+        // Update all quantity displays
+        Object.keys(TICKETS).forEach(function(k) {
+          var qtyEl = document.getElementById('qty-' + TICKETS[k].id);
+          if (qtyEl) qtyEl.textContent = TICKETS[k].qty;
+        });
+
+        var totalQty = getTotalQty();
+        var totalPrice = getTotalPrice();
+
         // Update checkout button
         if (checkoutBtn) {
-          if (qty > 0) {
+          if (totalQty > 0) {
             checkoutBtn.disabled = false;
-            checkoutBtn.textContent = 'Checkout \u2014 \u00A3' + (qty * TICKET_PRICE).toFixed(2);
+            checkoutBtn.textContent = 'Checkout \u2014 \u00A3' + totalPrice.toFixed(2);
           } else {
             checkoutBtn.disabled = true;
             checkoutBtn.textContent = 'Select tickets to continue';
           }
         }
+
         // Update bottom bar
         if (bottomBarAmount) {
-          bottomBarAmount.textContent = qty > 0
-            ? '\u00A3' + (qty * TICKET_PRICE).toFixed(2)
-            : '\u00A3' + TICKET_PRICE.toFixed(2);
+          bottomBarAmount.textContent = totalQty > 0
+            ? '\u00A3' + totalPrice.toFixed(2)
+            : '\u00A326.46';
         }
         if (bottomBarCta) {
-          bottomBarCta.textContent = qty > 0 ? 'Buy ' + qty + (qty === 1 ? ' Ticket' : ' Tickets') : 'Buy Now';
+          bottomBarCta.textContent = totalQty > 0 ? 'Buy ' + totalQty + (totalQty === 1 ? ' Ticket' : ' Tickets') : 'Buy Now';
         }
       }
 
-      document.querySelectorAll('.feral-tickets__btn').forEach(function(btn) {
+      // Handle all ticket buttons (General Release + VIP)
+      document.querySelectorAll('.feral-tickets__btn, .vip-ticket__btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
+          var ticketId = btn.getAttribute('data-ticket');
           var action = btn.getAttribute('data-action');
+          var key = ID_TO_KEY[ticketId];
+          if (!key) return;
+
+          var ticket = TICKETS[key];
+
           if (action === 'add') {
-            qty++;
-            // --- dataLayer: AddToCart ---
+            ticket.qty++;
             window.dataLayer.push({
               event: 'add_to_cart',
-              content_name: 'General Release — FERAL Liverpool',
-              content_ids: [TICKET_ID],
+              content_name: ticket.name + ' — FERAL Liverpool',
+              content_ids: [ticket.id],
               content_type: 'product',
-              value: TICKET_PRICE,
+              value: ticket.price,
               currency: 'GBP',
-              num_items: qty
+              num_items: ticket.qty
             });
           }
-          if (action === 'remove' && qty > 0) {
-            qty--;
-            // --- dataLayer: RemoveFromCart ---
+          if (action === 'remove' && ticket.qty > 0) {
+            ticket.qty--;
             window.dataLayer.push({
               event: 'remove_from_cart',
-              content_name: 'General Release — FERAL Liverpool',
-              content_ids: [TICKET_ID],
+              content_name: ticket.name + ' — FERAL Liverpool',
+              content_ids: [ticket.id],
               content_type: 'product',
-              value: TICKET_PRICE,
+              value: ticket.price,
               currency: 'GBP',
-              num_items: qty
+              num_items: ticket.qty
             });
           }
-          update();
+          updateDisplay();
         });
       });
 
@@ -386,7 +482,7 @@
       if (bottomBarCta) {
         bottomBarCta.addEventListener('click', function(e) {
           e.stopPropagation();
-          if (qty > 0) {
+          if (getTotalQty() > 0) {
             goToCheckout();
           } else {
             document.body.style.transition = 'none';
@@ -396,7 +492,7 @@
         });
       }
 
-      update();
+      updateDisplay();
     })();
   </script>
   <!-- ============================================

@@ -2946,6 +2946,113 @@ img {
 }
 
 
+/* --- VIP Section --- */
+.vip-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vip-section__heading {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #d4af37;
+  margin-bottom: 4px;
+}
+
+.vip-section__subtext {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--gray-text);
+  margin-bottom: 12px;
+}
+
+.vip-ticket {
+  background: rgba(212, 175, 55, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  padding: 12px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.vip-ticket::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #d4af37;
+}
+
+.vip-ticket__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.vip-ticket__name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #d4af37;
+}
+
+.vip-ticket__price {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--white);
+}
+
+.vip-ticket__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.vip-ticket__btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #d4af37;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  touch-action: manipulation;
+}
+
+.vip-ticket__btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #d4af37;
+}
+
+.vip-ticket__btn:active {
+  transform: scale(0.95);
+}
+
+.vip-ticket__qty {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--white);
+  min-width: 24px;
+  text-align: center;
+}
+
 
 /* --- Fixed Bottom Bar --- */
 .bottom-bar {

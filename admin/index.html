@@ -2126,7 +2126,18 @@ STEVIE</textarea>
           document.getElementById('bgPreview').style.display = 'block';
 
           var reduction = Math.round((1 - compSize / origSize) * 100);
-          console.log('[FERAL Admin] Cover image compressed: ' + Math.round(origSize / 1024) + 'KB -> ' + Math.round(compSize / 1024) + 'KB (' + reduction + '% reduction)');
+          var finalSizeKB = Math.round(compSize / 1024);
+          console.log('[FERAL Admin] Cover image compressed: ' + Math.round(origSize / 1024) + 'KB -> ' + finalSizeKB + 'KB (' + reduction + '% reduction)');
+
+          // Auto-save after successful image upload
+          saveEventSettings();
+
+          // Show size info to user
+          var sizeInfo = document.createElement('div');
+          sizeInfo.style.cssText = 'margin-top: 8px; font-size: 11px; color: var(--green);';
+          sizeInfo.textContent = 'Image saved! (' + finalSizeKB + 'KB)';
+          document.getElementById('bgPreview').appendChild(sizeInfo);
+          setTimeout(function() { sizeInfo.remove(); }, 3000);
         }
       }
 
@@ -2180,18 +2191,29 @@ STEVIE</textarea>
         };
 
         try {
-          localStorage.setItem(EVENT_SETTINGS_KEY, JSON.stringify(settings));
-          console.log('[FERAL Admin] Settings saved successfully');
+          var settingsJson = JSON.stringify(settings);
+          var totalSizeKB = Math.round(settingsJson.length / 1024);
+          console.log('[FERAL Admin] Saving settings, total size: ' + totalSizeKB + 'KB');
+
+          if (totalSizeKB > 4500) {
+            alert('Data too large to save (' + totalSizeKB + 'KB). Please use a smaller cover image.');
+            return;
+          }
+
+          localStorage.setItem(EVENT_SETTINGS_KEY, settingsJson);
+          console.log('[FERAL Admin] Settings saved successfully (' + totalSizeKB + 'KB)');
 
           var confirmEl = document.getElementById('saveConfirm');
+          confirmEl.textContent = 'Settings saved! (' + totalSizeKB + 'KB)';
           confirmEl.style.display = 'block';
           setTimeout(function() {
             confirmEl.style.display = 'none';
+            confirmEl.textContent = 'Settings saved successfully!';
           }, 3000);
         } catch (e) {
           console.error('[FERAL Admin] Save failed:', e);
           if (e.name === 'QuotaExceededError' || e.message.indexOf('quota') !== -1) {
-            alert('Storage limit exceeded. The cover image may be too large. Try using a smaller image (under 500KB).');
+            alert('Storage limit exceeded. The cover image is too large. Please use a smaller image.');
           } else {
             alert('Failed to save settings: ' + e.message);
           }

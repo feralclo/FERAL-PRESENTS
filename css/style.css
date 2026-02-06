@@ -4900,8 +4900,8 @@ body.cookie-banner-active .bottom-bar {
 
 .theme-minimal.has-cover-image .event-hero__bg-img {
   filter: blur(var(--cover-blur, 0px));
-  transform: scale(1.05);
-  opacity: 0.6;
+  transform: scale(1.02);
+  opacity: 0.85;
   object-fit: cover;
   width: 100%;
   height: 100%;
@@ -4914,8 +4914,14 @@ body.cookie-banner-active .bottom-bar {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.25);
   z-index: 1;
+}
+
+/* Center the scanline animation for minimal theme */
+.theme-minimal .event-hero__scanline {
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Hero-localized noise/static overlay for cover image only */
@@ -5033,9 +5039,9 @@ body.cookie-banner-active .bottom-bar {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* LINER label above lineup */
+/* LINE UP label above lineup */
 .theme-minimal .lineup-widget::before {
-  content: 'LINER';
+  content: 'LINE UP';
   display: block;
   text-align: center;
   font-size: 10px;

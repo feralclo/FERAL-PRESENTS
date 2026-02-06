@@ -511,7 +511,7 @@
 
   <!-- Order Summary Strip -->
   <div class="checkout-summary" id="checkoutSummary">
-    <span class="checkout-summary__text">
+    <span class="checkout-summary__text" id="summaryText">
       <span class="checkout-summary__qty" id="summaryQty">1</span> &times; General Release
     </span>
   </div>
@@ -524,15 +524,63 @@
   <script>
     (async function() {
       var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
-      var TICKET_ID = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
       var TIMER_SECONDS = (8 * 60) + 2; // 8 minutes 2 seconds (offset for embed timer)
 
+      // Ticket definitions
+      var TICKET_INFO = {
+        '6b45169f-cf51-4600-8682-d6f79dcb59ae': { name: 'General Release', price: 26.46 },
+        '53c5262b-93ba-412e-bb5c-84ebc445a734': { name: 'VIP + Tee', price: 65.00 },
+        'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf': { name: 'VIP Ticket', price: 35.00 }
+      };
+
+      // Parse cart from URL
+      // Format: cart=ticketId:qty,ticketId:qty OR legacy: qty=N (single general release)
       var params = new URLSearchParams(window.location.search);
-      var qty = parseInt(params.get('qty')) || 1;
+      var cartItems = []; // Array of { id, qty, name, price }
+
+      var cartParam = params.get('cart');
+      if (cartParam) {
+        // New format: cart=id1:qty1,id2:qty2
+        var items = cartParam.split(',');
+        items.forEach(function(item) {
+          var parts = item.split(':');
+          if (parts.length === 2) {
+            var ticketId = parts[0];
+            var ticketQty = parseInt(parts[1], 10) || 0;
+            if (ticketQty > 0 && TICKET_INFO[ticketId]) {
+              cartItems.push({
+                id: ticketId,
+                qty: ticketQty,
+                name: TICKET_INFO[ticketId].name,
+                price: TICKET_INFO[ticketId].price
+              });
+            }
+          }
+        });
+      } else {
+        // Legacy format: qty=N (general release only)
+        var legacyQty = parseInt(params.get('qty'), 10) || 1;
+        var generalId = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
+        cartItems.push({
+          id: generalId,
+          qty: legacyQty,
+          name: TICKET_INFO[generalId].name,
+          price: TICKET_INFO[generalId].price
+        });
+      }
+
+      // Calculate totals
+      var totalQty = cartItems.reduce(function(sum, item) { return sum + item.qty; }, 0);
+      var totalPrice = cartItems.reduce(function(sum, item) { return sum + (item.qty * item.price); }, 0);
 
       // --- Update order summary ---
-      var summaryQty = document.getElementById('summaryQty');
-      if (summaryQty) summaryQty.textContent = qty;
+      var summaryText = document.getElementById('summaryText');
+      if (summaryText && cartItems.length > 0) {
+        var summaryParts = cartItems.map(function(item) {
+          return '<span class="checkout-summary__qty">' + item.qty + '</span> &times; ' + item.name;
+        });
+        summaryText.innerHTML = summaryParts.join(' <span style="color:#444;margin:0 8px;">+</span> ');
+      }
 
       // --- Loading screen ---
       var loadingScreen = document.getElementById('loadingScreen');
@@ -649,7 +697,7 @@
       window.ShopInjector = new window.OpenTicket.ShopInjector();
       await window.ShopInjector.init(config);
 
-      setLoadingProgress(60, 'Adding ' + qty + (qty === 1 ? ' ticket' : ' tickets') + ' to cart\u2026');
+      setLoadingProgress(60, 'Adding ' + totalQty + (totalQty === 1 ? ' ticket' : ' tickets') + ' to cart\u2026');
       if (loadingStatus) loadingStatus.textContent = 'Securing your tickets';
 
       // Resize iframe — use content height from embed if available, otherwise stay large
@@ -672,36 +720,58 @@
       });
       observer.observe(container, { childList: true, subtree: true });
 
-      // Add tickets sequentially with cart confirmation
-      var ticketsAdded = 0;
-      var expectedCount = 0;
+      // Build a queue of tickets to add: [{ id, remaining }, ...]
+      var ticketQueue = cartItems.map(function(item) {
+        return { id: item.id, remaining: item.qty, added: 0 };
+      });
+      var currentTicketIndex = 0;
+      var totalTicketsAdded = 0;
+
+      function getCurrentTicket() {
+        while (currentTicketIndex < ticketQueue.length && ticketQueue[currentTicketIndex].remaining <= 0) {
+          currentTicketIndex++;
+        }
+        return ticketQueue[currentTicketIndex] || null;
+      }
 
       function addNextTicket() {
-        if (ticketsAdded >= qty) return;
+        var ticket = getCurrentTicket();
+        if (!ticket) return;
+
         window.ShopInjector.shop.sendMessage({
           action: 'add',
-          guid: TICKET_ID,
+          guid: ticket.id,
           type: 'ticket'
         });
       }
 
       window.ShopInjector.shop.onCartData(function(data) {
-        if (ticketsAdded >= qty) return;
+        if (totalTicketsAdded >= totalQty) return;
 
-        var currentCount = 0;
-        if (data && data.tickets && data.tickets[TICKET_ID]) {
-          currentCount = data.tickets[TICKET_ID].count || 0;
-        }
+        // Count total tickets in cart across all our ticket types
+        var cartTotal = 0;
+        ticketQueue.forEach(function(ticket) {
+          if (data && data.tickets && data.tickets[ticket.id]) {
+            var count = data.tickets[ticket.id].count || 0;
+            ticket.added = count;
+            cartTotal += count;
+          }
+        });
 
-        if (currentCount > expectedCount) {
-          expectedCount = currentCount;
-          ticketsAdded = currentCount;
+        if (cartTotal > totalTicketsAdded) {
+          totalTicketsAdded = cartTotal;
+
+          // Update remaining counts
+          ticketQueue.forEach(function(ticket) {
+            var targetQty = cartItems.find(function(c) { return c.id === ticket.id; }).qty;
+            ticket.remaining = targetQty - ticket.added;
+          });
 
           // Update loading progress
-          var pct = 60 + Math.round((ticketsAdded / qty) * 35);
-          setLoadingProgress(pct, 'Added ' + ticketsAdded + ' of ' + qty + (qty === 1 ? ' ticket' : ' tickets'));
+          var pct = 60 + Math.round((totalTicketsAdded / totalQty) * 35);
+          setLoadingProgress(pct, 'Added ' + totalTicketsAdded + ' of ' + totalQty + (totalQty === 1 ? ' ticket' : ' tickets'));
 
-          if (ticketsAdded >= qty) {
+          if (totalTicketsAdded >= totalQty) {
             // All tickets added — show checkout
             setLoadingProgress(100, 'Ready');
             if (loadingStatus) loadingStatus.textContent = 'All set';
@@ -717,7 +787,7 @@
       window.ShopInjector.shop.onCartData(function() {
         if (!embedReady) {
           embedReady = true;
-          // If qty is 0 or loading is taking too long, hide after a timeout
+          // If totalQty is 0 or loading is taking too long, hide after a timeout
         }
       });
 

@@ -884,6 +884,25 @@
       <p class="tickets-box__subtext">Secure your entry. Limited availability.</p>
 
       <div class="feral-tickets" id="feral-tickets">
+                <!-- Tier Progression Display -->
+                <div class="tier-progression">
+                  <div class="tier-progression__tier tier-progression__tier--sold">
+                    <span class="tier-progression__name">First Release</span>
+                    <span class="tier-progression__price">&pound;21.50</span>
+                    <span class="tier-progression__status">SOLD OUT</span>
+                  </div>
+                  <div class="tier-progression__tier tier-progression__tier--active">
+                    <span class="tier-progression__name">General Release</span>
+                    <span class="tier-progression__price">&pound;26.46</span>
+                    <span class="tier-progression__status">NOW LIVE</span>
+                  </div>
+                  <div class="tier-progression__tier tier-progression__tier--next">
+                    <span class="tier-progression__name">Final Release</span>
+                    <span class="tier-progression__price">&pound;32.35</span>
+                    <span class="tier-progression__status">UPCOMING</span>
+                  </div>
+                </div>
+
                 <!-- Standard Ticket -->
                 <div class="ticket-option" data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae">
                   <div class="ticket-option__row">
@@ -905,7 +924,7 @@
                 </div>
 
                 <!-- VIP Section Header -->
-                <div class="vip-section-header">VIP Experiences<span style="color:#d4af37">_</span></div>
+                <div class="vip-section-header">VIP Experiences<span style="color:#e5e4e2">_</span></div>
 
                 <!-- VIP Ticket -->
                 <div class="ticket-option ticket-option--vip" data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">
@@ -930,7 +949,7 @@
                 <div class="ticket-option ticket-option--vip ticket-option--featured" data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734">
                   <div class="ticket-option__row">
                     <div class="ticket-option__info">
-                      <span class="ticket-option__name">VIP + FERAL Tee</span>
+                      <span class="ticket-option__name">VIP + Limited Edition Tee</span>
                       <span class="ticket-option__perks">Queue Jump &amp; Balcony + Exclusive event tee</span>
                     </div>
                     <span class="ticket-option__price">&pound;65</span>
@@ -977,12 +996,12 @@
       <!-- Image viewer with tabs -->
       <div class="tee-modal__viewer">
         <div class="tee-modal__image-tabs">
-          <button class="tee-modal__tab tee-modal__tab--active" data-view="front">Front</button>
-          <button class="tee-modal__tab" data-view="back">Back</button>
+          <button class="tee-modal__tab tee-modal__tab--active" data-view="back">Back</button>
+          <button class="tee-modal__tab" data-view="front">Front</button>
         </div>
         <div class="tee-modal__image-container">
-          <img src="../../../images/LIVERPOOL%20MARCH%20FRONT.png" alt="FERAL Liverpool Tee Front" class="tee-modal__img tee-modal__img--active" data-view="front">
-          <img src="../../../images/LIVERPOOL%20MARCH%20BACK.png" alt="FERAL Liverpool Tee Back" class="tee-modal__img" data-view="back">
+          <img src="../../../images/LIVERPOOL%20MARCH%20FRONT.png" alt="FERAL Liverpool Tee Front" class="tee-modal__img" data-view="front">
+          <img src="../../../images/LIVERPOOL%20MARCH%20BACK.png" alt="FERAL Liverpool Tee Back" class="tee-modal__img tee-modal__img--active" data-view="back">
           <span class="tee-modal__zoom-hint">Click to zoom</span>
         </div>
       </div>
@@ -1026,8 +1045,33 @@
 
   <!-- Fullscreen Zoom Overlay -->
   <div class="tee-modal__fullscreen" id="teeFullscreen">
-    <button class="tee-modal__fullscreen-close">ESC to close</button>
+    <!-- X Close Button -->
+    <button class="tee-modal__fullscreen-close" id="fullscreenClose" aria-label="Close">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- Left/Right Navigation -->
+    <button class="tee-modal__fullscreen-nav tee-modal__fullscreen-nav--prev" id="fullscreenPrev" aria-label="Previous">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15,18 9,12 15,6"></polyline>
+      </svg>
+    </button>
+    <button class="tee-modal__fullscreen-nav tee-modal__fullscreen-nav--next" id="fullscreenNext" aria-label="Next">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9,6 15,12 9,18"></polyline>
+      </svg>
+    </button>
+
     <img src="" alt="FERAL Liverpool Tee" id="teeFullscreenImg">
+
+    <!-- Dots indicator -->
+    <div class="tee-modal__fullscreen-dots">
+      <span class="tee-modal__fullscreen-dot tee-modal__fullscreen-dot--active" data-index="0"></span>
+      <span class="tee-modal__fullscreen-dot" data-index="1"></span>
+    </div>
   </div>
 
   <!-- Footer -->
@@ -1266,15 +1310,54 @@
         });
       });
 
-      // Fullscreen zoom functionality
+      // Fullscreen zoom functionality with navigation
       var fullscreenOverlay = document.getElementById('teeFullscreen');
       var fullscreenImg = document.getElementById('teeFullscreenImg');
-      var fullscreenClose = fullscreenOverlay ? fullscreenOverlay.querySelector('.tee-modal__fullscreen-close') : null;
+      var fullscreenClose = document.getElementById('fullscreenClose');
+      var fullscreenPrev = document.getElementById('fullscreenPrev');
+      var fullscreenNext = document.getElementById('fullscreenNext');
+      var fullscreenDots = fullscreenOverlay ? fullscreenOverlay.querySelectorAll('.tee-modal__fullscreen-dot') : [];
+
+      // Image sources: index 0 = back, index 1 = front
+      var fullscreenImages = [
+        '../../../images/LIVERPOOL%20MARCH%20BACK.png',
+        '../../../images/LIVERPOOL%20MARCH%20FRONT.png'
+      ];
+      var currentFullscreenIndex = 0;
+
+      function updateFullscreenNav() {
+        // Update arrows visibility
+        if (fullscreenPrev) {
+          fullscreenPrev.classList.toggle('tee-modal__fullscreen-nav--hidden', currentFullscreenIndex === 0);
+        }
+        if (fullscreenNext) {
+          fullscreenNext.classList.toggle('tee-modal__fullscreen-nav--hidden', currentFullscreenIndex === fullscreenImages.length - 1);
+        }
+        // Update dots
+        fullscreenDots.forEach(function(dot, idx) {
+          dot.classList.toggle('tee-modal__fullscreen-dot--active', idx === currentFullscreenIndex);
+        });
+      }
+
+      function navigateFullscreen(direction) {
+        var newIndex = currentFullscreenIndex + direction;
+        if (newIndex < 0 || newIndex >= fullscreenImages.length) return;
+        currentFullscreenIndex = newIndex;
+        if (fullscreenImg) fullscreenImg.src = fullscreenImages[currentFullscreenIndex];
+        updateFullscreenNav();
+      }
 
       function openFullscreen(imgSrc) {
         if (fullscreenOverlay && fullscreenImg) {
+          // Determine which image is being opened
+          if (imgSrc.indexOf('BACK') !== -1) {
+            currentFullscreenIndex = 0;
+          } else {
+            currentFullscreenIndex = 1;
+          }
           fullscreenImg.src = imgSrc;
           fullscreenOverlay.classList.add('tee-modal__fullscreen--visible');
+          updateFullscreenNav();
         }
       }
 
@@ -1291,9 +1374,13 @@
         });
       });
 
-      // Close fullscreen on click
+      // Close fullscreen on background click (not on controls)
       if (fullscreenOverlay) {
-        fullscreenOverlay.addEventListener('click', closeFullscreen);
+        fullscreenOverlay.addEventListener('click', function(e) {
+          if (e.target === fullscreenOverlay || e.target === fullscreenImg) {
+            closeFullscreen();
+          }
+        });
       }
       if (fullscreenClose) {
         fullscreenClose.addEventListener('click', function(e) {
@@ -1302,12 +1389,56 @@
         });
       }
 
-      // ESC to close fullscreen
+      // Arrow navigation
+      if (fullscreenPrev) {
+        fullscreenPrev.addEventListener('click', function(e) {
+          e.stopPropagation();
+          navigateFullscreen(-1);
+        });
+      }
+      if (fullscreenNext) {
+        fullscreenNext.addEventListener('click', function(e) {
+          e.stopPropagation();
+          navigateFullscreen(1);
+        });
+      }
+
+      // Keyboard navigation
       document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && fullscreenOverlay && fullscreenOverlay.classList.contains('tee-modal__fullscreen--visible')) {
-          closeFullscreen();
+        if (fullscreenOverlay && fullscreenOverlay.classList.contains('tee-modal__fullscreen--visible')) {
+          if (e.key === 'Escape') {
+            closeFullscreen();
+          } else if (e.key === 'ArrowLeft') {
+            navigateFullscreen(-1);
+          } else if (e.key === 'ArrowRight') {
+            navigateFullscreen(1);
+          }
         }
       });
+
+      // Touch swipe support
+      var touchStartX = 0;
+      var touchEndX = 0;
+
+      if (fullscreenOverlay) {
+        fullscreenOverlay.addEventListener('touchstart', function(e) {
+          touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        fullscreenOverlay.addEventListener('touchend', function(e) {
+          touchEndX = e.changedTouches[0].screenX;
+          var diff = touchStartX - touchEndX;
+          if (Math.abs(diff) > 50) {
+            if (diff > 0) {
+              // Swipe left -> next
+              navigateFullscreen(1);
+            } else {
+              // Swipe right -> prev
+              navigateFullscreen(-1);
+            }
+          }
+        }, { passive: true });
+      }
 
       // Size selection
       document.querySelectorAll('.tee-modal__size').forEach(function(btn) {

@@ -489,6 +489,45 @@
         }
       };
 
+      // Load ticket names from admin settings
+      (function() {
+        try {
+          var stored = localStorage.getItem('feral_event_liverpool');
+          if (stored) {
+            var settings = JSON.parse(stored);
+
+            // Update TICKETS object
+            if (settings.ticketName1) TICKETS['general'].name = settings.ticketName1;
+            if (settings.ticketName2) TICKETS['vip'].name = settings.ticketName2;
+            if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
+
+            // Update HTML elements
+            var generalEl = document.querySelector('[data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae"]');
+            var vipEl = document.querySelector('[data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf"]');
+            var vipBlackEl = document.querySelector('[data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734"]');
+
+            if (generalEl && settings.ticketName1) {
+              generalEl.querySelector('.ticket-option__name').textContent = settings.ticketName1;
+            }
+            if (generalEl && settings.ticketSubtitle1) {
+              generalEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle1;
+            }
+            if (vipEl && settings.ticketName2) {
+              vipEl.querySelector('.ticket-option__name').textContent = settings.ticketName2;
+            }
+            if (vipEl && settings.ticketSubtitle2) {
+              vipEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle2;
+            }
+            if (vipBlackEl && settings.ticketName3) {
+              vipBlackEl.querySelector('.ticket-option__name').textContent = settings.ticketName3;
+            }
+            if (vipBlackEl && settings.ticketSubtitle3) {
+              vipBlackEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle3;
+            }
+          }
+        } catch (e) {}
+      })();
+
       // Map IDs to keys
       var ID_TO_KEY = {};
       Object.keys(TICKETS).forEach(function(key) {

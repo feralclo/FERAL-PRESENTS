@@ -1141,6 +1141,42 @@
               </select>
               <span style="font-size: 12px; color: var(--text-muted);">Changes apply on save</span>
             </div>
+
+            <!-- Minimal Theme Options (shown when minimal selected) -->
+            <div id="minimalThemeOptions" style="display: none; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border);">
+              <h3 style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Minimal Theme Options</h3>
+
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 16px;">
+                <input type="checkbox" id="minimalEnableBg" style="accent-color: var(--red);">
+                <span style="font-size: 13px;">Enable blurred background image</span>
+              </label>
+
+              <div id="minimalBgOptions" style="display: none;">
+                <div style="margin-bottom: 16px;">
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">BLUR STRENGTH</label>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="minimalBlurStrength" min="5" max="50" value="20" style="flex: 1; accent-color: var(--red);">
+                    <span id="blurValue" style="font-family: var(--font-mono); font-size: 12px; min-width: 40px; color: var(--text);">20px</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">BACKGROUND IMAGE</label>
+                  <div id="bgDropZone" style="border: 2px dashed var(--border); padding: 24px; text-align: center; cursor: pointer; transition: all 0.15s;">
+                    <span style="font-size: 12px; color: var(--text-muted);">Drag & drop image here, or click to select</span>
+                    <input type="file" id="bgFileInput" accept="image/*" style="display: none;">
+                  </div>
+                  <div id="bgPreview" style="margin-top: 12px; display: none;">
+                    <div style="position: relative; display: inline-block;">
+                      <img id="bgPreviewImg" style="max-width: 200px; max-height: 120px; border: 1px solid var(--border); filter: blur(20px);">
+                      <span style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); padding: 2px 6px; font-size: 9px; color: var(--text-muted);">Preview with blur</span>
+                    </div>
+                    <button id="removeBgBtn" class="actions__btn actions__btn--danger" style="margin-top: 8px; font-size: 10px; padding: 6px 12px;">Remove Image</button>
+                  </div>
+                  <span style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 8px;">Or use existing hero image URL below</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Event Details -->
@@ -1629,6 +1665,9 @@ STEVIE</textarea>
 
       var DEFAULT_EVENT_SETTINGS = {
         theme: 'default',
+        minimalBgEnabled: false,
+        minimalBlurStrength: 20,
+        minimalBgImage: '',
         name: 'FERAL Liverpool',
         date: '2026-03-27',
         doors: '9:30PM — 4:00AM',
@@ -1665,6 +1704,12 @@ STEVIE</textarea>
         document.getElementById('teeFront').value = settings.teeFront || '';
         document.getElementById('teeBack').value = settings.teeBack || '';
 
+        // Load minimal theme options
+        document.getElementById('minimalEnableBg').checked = settings.minimalBgEnabled || false;
+        document.getElementById('minimalBlurStrength').value = settings.minimalBlurStrength || 20;
+        document.getElementById('blurValue').textContent = (settings.minimalBlurStrength || 20) + 'px';
+        updateMinimalThemeUI(settings.theme, settings.minimalBgEnabled, settings.minimalBgImage, settings.minimalBlurStrength);
+
         // Attach button handlers only once
         if (!eventSettingsInitialized) {
           eventSettingsInitialized = true;
@@ -1681,12 +1726,99 @@ STEVIE</textarea>
               loadEventSettings();
             }
           });
+
+          // Theme selector change
+          document.getElementById('eventTheme').addEventListener('change', function() {
+            var isMinimal = this.value === 'minimal';
+            document.getElementById('minimalThemeOptions').style.display = isMinimal ? 'block' : 'none';
+          });
+
+          // Enable blur checkbox
+          document.getElementById('minimalEnableBg').addEventListener('change', function() {
+            document.getElementById('minimalBgOptions').style.display = this.checked ? 'block' : 'none';
+          });
+
+          // Blur strength slider
+          document.getElementById('minimalBlurStrength').addEventListener('input', function() {
+            var val = this.value;
+            document.getElementById('blurValue').textContent = val + 'px';
+            var preview = document.getElementById('bgPreviewImg');
+            if (preview.src) {
+              preview.style.filter = 'blur(' + val + 'px)';
+            }
+          });
+
+          // Drag and drop
+          var dropZone = document.getElementById('bgDropZone');
+          var fileInput = document.getElementById('bgFileInput');
+
+          dropZone.addEventListener('click', function() { fileInput.click(); });
+
+          dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--red)';
+            dropZone.style.background = 'rgba(255,0,51,0.05)';
+          });
+
+          dropZone.addEventListener('dragleave', function() {
+            dropZone.style.borderColor = 'var(--border)';
+            dropZone.style.background = 'transparent';
+          });
+
+          dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--border)';
+            dropZone.style.background = 'transparent';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleBgImageUpload(file);
+            }
+          });
+
+          fileInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleBgImageUpload(this.files[0]);
+            }
+          });
+
+          // Remove image button
+          document.getElementById('removeBgBtn').addEventListener('click', function() {
+            window.minimalBgImageData = '';
+            document.getElementById('bgPreview').style.display = 'none';
+            document.getElementById('bgPreviewImg').src = '';
+          });
         }
+      }
+
+      function updateMinimalThemeUI(theme, bgEnabled, bgImage, blurStrength) {
+        document.getElementById('minimalThemeOptions').style.display = theme === 'minimal' ? 'block' : 'none';
+        document.getElementById('minimalBgOptions').style.display = bgEnabled ? 'block' : 'none';
+        if (bgImage) {
+          window.minimalBgImageData = bgImage;
+          document.getElementById('bgPreviewImg').src = bgImage;
+          document.getElementById('bgPreviewImg').style.filter = 'blur(' + (blurStrength || 20) + 'px)';
+          document.getElementById('bgPreview').style.display = 'block';
+        }
+      }
+
+      function handleBgImageUpload(file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          window.minimalBgImageData = e.target.result;
+          var blur = document.getElementById('minimalBlurStrength').value;
+          document.getElementById('bgPreviewImg').src = e.target.result;
+          document.getElementById('bgPreviewImg').style.filter = 'blur(' + blur + 'px)';
+          document.getElementById('bgPreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
       }
 
       function saveEventSettings() {
         var settings = {
           theme: document.getElementById('eventTheme').value,
+          minimalBgEnabled: document.getElementById('minimalEnableBg').checked,
+          minimalBlurStrength: parseInt(document.getElementById('minimalBlurStrength').value) || 20,
+          minimalBgImage: window.minimalBgImageData || '',
           name: document.getElementById('eventName').value,
           date: document.getElementById('eventDate').value,
           doors: document.getElementById('eventDoors').value,

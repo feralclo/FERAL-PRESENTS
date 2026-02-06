@@ -3119,35 +3119,57 @@ img {
   background: linear-gradient(180deg, var(--platinum-light) 0%, var(--platinum) 40%, var(--platinum-dark) 100%);
 }
 
-/* ===== VIP BLACK (Obsidian Metallic) ===== */
+/* ===== VIP BLACK (ULTRA Premium - More Exclusive Than Platinum) ===== */
 .ticket-option--vip-black {
-  background: linear-gradient(145deg, var(--obsidian-light) 0%, var(--obsidian) 50%, var(--obsidian-dark) 100%);
-  border: 2px solid var(--obsidian-border);
+  background: linear-gradient(145deg, #2a2a2a 0%, #151515 50%, #0a0a0a 100%);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   overflow: hidden;
   box-shadow:
-    0 0 20px var(--obsidian-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 0 30px rgba(255, 255, 255, 0.12),
+    0 0 60px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  animation: vipBlackPulse 3s ease-in-out infinite;
 }
 
 .ticket-option--vip-black:hover {
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.6);
   box-shadow:
-    0 0 30px rgba(255, 255, 255, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 0 40px rgba(255, 255, 255, 0.2),
+    0 0 80px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Obsidian left edge accent */
+/* Pulsing glow animation for VIP Black */
+@keyframes vipBlackPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 30px rgba(255, 255, 255, 0.12),
+      0 0 60px rgba(255, 255, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 40px rgba(255, 255, 255, 0.18),
+      0 0 80px rgba(255, 255, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Bright left edge accent - thicker and brighter than platinum */
 .ticket-option--vip-black::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 100%);
+  width: 4px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.3) 100%);
 }
 
-/* Obsidian shine animation - darker, subtler than platinum */
+/* Fast bright shine animation - MORE visible than platinum */
 .ticket-option--vip-black::after {
   content: '';
   position: absolute;
@@ -3155,13 +3177,13 @@ img {
   background: linear-gradient(
     110deg,
     transparent 20%,
-    rgba(255, 255, 255, 0.03) 40%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 60%,
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.08) 60%,
     transparent 80%
   );
   background-size: 200% 100%;
-  animation: obsidianShine 4s ease-in-out infinite;
+  animation: obsidianShine 2.5s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -3170,9 +3192,34 @@ img {
   100% { background-position: -200% center; }
 }
 
-/* VIP Black text color - subtle white instead of platinum */
+/* VIP Black text - bright white */
 .ticket-option--vip-black .ticket-option__name {
-  color: rgba(255, 255, 255, 0.95);
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* VIP Black custom button styling */
+.ticket-option--vip-black .ticket-option__btn {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+
+.ticket-option--vip-black .ticket-option__btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
+}
+
+/* VIP Black view tee button */
+.ticket-option--vip-black .ticket-option__view-tee {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.ticket-option--vip-black .ticket-option__view-tee:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
 .ticket-option__row {
@@ -4790,9 +4837,9 @@ body.cookie-banner-active .bottom-bar {
 
 
 /* ============================================
-   MINIMAL THEME
+   MINIMAL THEME - Sleek & Centered
    Compact hero, no background image,
-   faster scroll to tickets
+   faster scroll to tickets, visual polish
    ============================================ */
 
 /* Hide background image in minimal theme */
@@ -4800,11 +4847,16 @@ body.cookie-banner-active .bottom-bar {
   display: none;
 }
 
-/* Compact hero section */
+/* Compact hero section - centered */
 .theme-minimal .event-hero {
-  padding: 20px 0 24px;
-  background: #0e0e0e;
+  padding: 24px 0 20px;
+  background: linear-gradient(180deg, #0e0e0e 0%, #0a0a0a 100%);
   min-height: auto;
+  text-align: center;
+}
+
+.theme-minimal .event-hero__content {
+  text-align: center;
 }
 
 /* Hide topbar and release tag */
@@ -4812,22 +4864,63 @@ body.cookie-banner-active .bottom-bar {
   display: none;
 }
 
-/* Smaller title */
+/* Title - centered with accent line */
 .theme-minimal .event-hero__title {
-  font-size: clamp(28px, 5vw, 42px);
-  margin-bottom: 16px;
+  font-size: clamp(28px, 5vw, 44px);
+  margin-bottom: 8px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  letter-spacing: 3px;
 }
 
-/* Horizontal details - venue | date */
+/* Red accent line under title */
+.theme-minimal .event-hero__title::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 2px;
+  background: var(--red);
+  margin: 12px auto 16px;
+}
+
+/* Horizontal details - venue | date with separators */
 .theme-minimal .event-hero__details {
   flex-direction: row;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: 0;
 }
 
 .theme-minimal .event-hero__detail {
   text-align: center;
+  padding: 0 20px;
+  position: relative;
+}
+
+/* Vertical separator between details */
+.theme-minimal .event-hero__detail:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 0, 51, 0.4);
+}
+
+/* Detail label styling - red accent */
+.theme-minimal .event-hero__detail-label {
+  color: var(--red);
+  opacity: 0.9;
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+.theme-minimal .event-hero__detail-value {
+  color: #fff;
+  font-size: 12px;
 }
 
 /* Hide 18+ age detail */
@@ -4835,25 +4928,75 @@ body.cookie-banner-active .bottom-bar {
   display: none;
 }
 
-/* Horizontal lineup with / separators */
+/* ===== MINIMAL LINEUP - Horizontal with // separators ===== */
+.theme-minimal .lineup-widget {
+  background: transparent;
+  padding: 16px 0;
+  margin-bottom: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.theme-minimal .lineup-widget__title {
+  display: none;
+}
+
+.theme-minimal .lineup-widget__artists {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0;
+}
+
+.theme-minimal .lineup-widget__artist {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  transition: color 0.2s ease;
+}
+
+.theme-minimal .lineup-widget__artist:hover {
+  color: var(--red);
+}
+
+.theme-minimal .lineup-widget__artist::after {
+  content: '//';
+  color: var(--red);
+  margin: 0 10px;
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.theme-minimal .lineup-widget__artist:last-child::after {
+  display: none;
+}
+
+/* Horizontal lineup with / separators (for event-info) */
 .theme-minimal .event-info__lineup {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 0;
 }
 
 .theme-minimal .event-info__artist {
   display: inline-flex;
   align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .theme-minimal .event-info__artist::after {
-  content: '/';
+  content: '//';
   color: var(--red);
   margin: 0 10px;
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font-weight: 700;
+  font-size: 10px;
 }
 
 .theme-minimal .event-info__artist:last-child::after {
@@ -4863,29 +5006,46 @@ body.cookie-banner-active .bottom-bar {
 /* Mobile minimal theme adjustments */
 @media (max-width: 768px) {
   .theme-minimal .event-hero {
-    padding: 16px 0 20px;
+    padding: 16px 0 14px;
   }
 
   .theme-minimal .event-hero__title {
-    font-size: clamp(24px, 6vw, 32px);
-    margin-bottom: 12px;
+    font-size: clamp(22px, 6vw, 30px);
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+  }
+
+  .theme-minimal .event-hero__title::after {
+    width: 40px;
+    margin: 10px auto 12px;
   }
 
   .theme-minimal .event-hero__details {
-    gap: 16px;
+    gap: 0;
   }
 
   .theme-minimal .event-hero__detail {
-    flex: 0 0 auto;
+    padding: 0 12px;
   }
 
-  /* Mobile lineup widget horizontal */
+  .theme-minimal .event-hero__detail:not(:last-child)::after {
+    height: 18px;
+  }
+
+  /* Compact lineup on mobile */
   .theme-minimal .lineup-widget {
-    margin-bottom: 16px;
+    padding: 10px 0;
+    margin-bottom: 4px;
   }
 
-  .theme-minimal .lineup-widget__artists {
-    justify-content: center;
+  .theme-minimal .lineup-widget__artist {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .theme-minimal .lineup-widget__artist::after {
+    margin: 0 6px;
+    font-size: 9px;
   }
 }
 

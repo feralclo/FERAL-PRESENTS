@@ -797,6 +797,8 @@
 
           <div class="dash-nav__section">Events</div>
           <a class="dash-nav__item" data-page="liverpool">Liverpool 27 Mar</a>
+          <a class="dash-nav__item" data-page="kompass">Kompass Klub 7 Mar</a>
+          <a class="dash-nav__item" data-page="create-event" style="color: var(--green);">+ Create Event</a>
 
           <div class="dash-nav__section">Settings</div>
           <a class="dash-nav__item dash-nav__item--disabled" data-page="settings">Configuration</a>
@@ -1151,7 +1153,7 @@
               </div>
               <div>
                 <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Date</label>
-                <input type="text" id="eventDate" value="27 MARCH 2026" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+                <input type="date" id="eventDate" value="2026-03-27" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px; cursor: pointer;">
               </div>
               <div>
                 <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Doors</label>
@@ -1240,6 +1242,139 @@ STEVIE</textarea>
           <!-- Save confirmation -->
           <div id="saveConfirm" style="display: none; margin-top: 16px; padding: 12px 16px; background: rgba(0, 255, 102, 0.1); border: 1px solid rgba(0, 255, 102, 0.3); color: var(--green); font-family: var(--font-mono); font-size: 12px;">
             Settings saved successfully!
+          </div>
+        </div>
+
+        <!-- ===== KOMPASS KLUB EVENT EDITOR PAGE ===== -->
+        <div class="page-view" id="pageKompass">
+          <h1 class="dash-title">Kompass Klub 7 Mar</h1>
+          <p class="dash-subtitle">Event Settings & Configuration</p>
+
+          <!-- Ticketing Type -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Ticketing Type</h2>
+            <div style="display: flex; gap: 24px; align-items: center;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="kompassTicketType" value="onsite" style="accent-color: var(--red);">
+                <span style="font-size: 13px;">On-site (Custom tickets)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="kompassTicketType" value="offsite" checked style="accent-color: var(--red);">
+                <span style="font-size: 13px;">Off-site (External link)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- External Ticket URL (shown for off-site) -->
+          <div class="sources" style="margin-bottom: 24px;" id="kompassOffsiteFields">
+            <h2 class="sources__title">External Ticketing</h2>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Ticket URL</label>
+              <input type="text" id="kompassTicketUrl" value="https://paylogic.com/..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              <span style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 6px;">Visitors will be redirected to this URL when clicking "Get Tickets"</span>
+            </div>
+          </div>
+
+          <!-- Event Details -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Event Details</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Name</label>
+                <input type="text" id="kompassName" value="FERAL Kompass Klub" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Date</label>
+                <input type="date" id="kompassDate" value="2026-03-07" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px; cursor: pointer;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Doors</label>
+                <input type="text" id="kompassDoors" value="10:00PM — 6:00AM" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Venue</label>
+                <input type="text" id="kompassVenue" value="Kompass Klub, Antwerp" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Lineup -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Lineup</h2>
+            <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Artists (one per line)</label>
+            <textarea id="kompassLineup" rows="6" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 13px; padding: 12px 14px; resize: vertical;">TBA</textarea>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="saveKompassSettings" style="background: var(--red); border-color: var(--red); color: #fff;">Save Changes</button>
+            <button class="actions__btn" id="previewKompass">Preview Event Page</button>
+            <button class="actions__btn actions__btn--danger" id="resetKompassSettings">Reset to Default</button>
+          </div>
+
+          <!-- Save confirmation -->
+          <div id="saveKompassConfirm" style="display: none; margin-top: 16px; padding: 12px 16px; background: rgba(0, 255, 102, 0.1); border: 1px solid rgba(0, 255, 102, 0.3); color: var(--green); font-family: var(--font-mono); font-size: 12px;">
+            Settings saved successfully!
+          </div>
+        </div>
+
+        <!-- ===== CREATE NEW EVENT PAGE ===== -->
+        <div class="page-view" id="pageCreateEvent">
+          <h1 class="dash-title">Create New Event</h1>
+          <p class="dash-subtitle">Add a new event to FERAL</p>
+
+          <!-- Event Basics -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Event Basics</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Name</label>
+                <input type="text" id="newEventName" placeholder="e.g., FERAL Antwerp" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Slug</label>
+                <input type="text" id="newEventSlug" placeholder="e.g., antwerp-20-june" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+                <span style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 4px;">URL: /event/<span id="slugPreview">your-event-slug</span>/</span>
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Date</label>
+                <input type="date" id="newEventDate" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px; cursor: pointer;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Venue</label>
+                <input type="text" id="newEventVenue" placeholder="e.g., Venue Name, City" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Ticketing Type -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Ticketing Type</h2>
+            <div style="display: flex; gap: 24px; align-items: center;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="newEventTicketType" value="onsite" checked style="accent-color: var(--red);">
+                <span style="font-size: 13px;">On-site (Custom tickets)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="newEventTicketType" value="offsite" style="accent-color: var(--red);">
+                <span style="font-size: 13px;">Off-site (External link)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Create Button -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="createEventBtn" style="background: var(--green); border-color: var(--green); color: #000; font-weight: 700;">Create Event</button>
+          </div>
+
+          <!-- Events List Preview -->
+          <div class="sources" style="margin-top: 32px;">
+            <h2 class="sources__title">Existing Events (sorted by date)</h2>
+            <div id="eventsListPreview" style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted);">
+              Loading...
+            </div>
           </div>
         </div>
       </main>
@@ -1344,6 +1479,12 @@ STEVIE</textarea>
         } else if (page === 'liverpool') {
           document.getElementById('pageLiverpool').classList.add('page-view--active');
           loadEventSettings();
+        } else if (page === 'kompass') {
+          document.getElementById('pageKompass').classList.add('page-view--active');
+          loadKompassSettings();
+        } else if (page === 'create-event') {
+          document.getElementById('pageCreateEvent').classList.add('page-view--active');
+          loadCreateEventPage();
         }
       }
 
@@ -1353,7 +1494,7 @@ STEVIE</textarea>
       var DEFAULT_EVENT_SETTINGS = {
         theme: 'default',
         name: 'FERAL Liverpool',
-        date: '27 MARCH 2026',
+        date: '2026-03-27',
         doors: '9:30PM — 4:00AM',
         venue: 'Invisible Wind Factory, Liverpool',
         heroImage: '/images/liverpool-event-banner.jpg',
@@ -1366,6 +1507,8 @@ STEVIE</textarea>
         teeFront: '/images/LIVERPOOL MARCH FRONT.png',
         teeBack: '/images/LIVERPOOL MARCH BACK.png'
       };
+
+      var eventSettingsInitialized = false;
 
       function loadEventSettings() {
         var stored = localStorage.getItem(EVENT_SETTINGS_KEY);
@@ -1385,6 +1528,24 @@ STEVIE</textarea>
         document.getElementById('teeName').value = settings.teeName || '';
         document.getElementById('teeFront').value = settings.teeFront || '';
         document.getElementById('teeBack').value = settings.teeBack || '';
+
+        // Attach button handlers only once
+        if (!eventSettingsInitialized) {
+          eventSettingsInitialized = true;
+
+          document.getElementById('saveEventSettings').addEventListener('click', saveEventSettings);
+
+          document.getElementById('previewEvent').addEventListener('click', function() {
+            window.open('/event/liverpool-27-march/', '_blank');
+          });
+
+          document.getElementById('resetEventSettings').addEventListener('click', function() {
+            if (confirm('Reset all event settings to default values?')) {
+              localStorage.removeItem(EVENT_SETTINGS_KEY);
+              loadEventSettings();
+            }
+          });
+        }
       }
 
       function saveEventSettings() {
@@ -1413,19 +1574,195 @@ STEVIE</textarea>
         }, 3000);
       }
 
-      // Event settings button handlers
-      document.getElementById('saveEventSettings').addEventListener('click', saveEventSettings);
+      // ===== KOMPASS KLUB EVENT SETTINGS =====
+      var KOMPASS_SETTINGS_KEY = 'feral_event_kompass';
 
-      document.getElementById('previewEvent').addEventListener('click', function() {
-        window.open('/event/liverpool-27-march/', '_blank');
-      });
+      var DEFAULT_KOMPASS_SETTINGS = {
+        ticketType: 'offsite',
+        ticketUrl: 'https://paylogic.com/...',
+        name: 'FERAL Kompass Klub',
+        date: '2026-03-07',
+        doors: '10:00PM — 6:00AM',
+        venue: 'Kompass Klub, Antwerp',
+        lineup: 'TBA'
+      };
 
-      document.getElementById('resetEventSettings').addEventListener('click', function() {
-        if (confirm('Reset all event settings to default values?')) {
-          localStorage.removeItem(EVENT_SETTINGS_KEY);
-          loadEventSettings();
+      var kompassSettingsInitialized = false;
+
+      function loadKompassSettings() {
+        var stored = localStorage.getItem(KOMPASS_SETTINGS_KEY);
+        var settings = stored ? JSON.parse(stored) : DEFAULT_KOMPASS_SETTINGS;
+
+        // Set ticketing type radio
+        var ticketTypeRadios = document.querySelectorAll('input[name="kompassTicketType"]');
+        ticketTypeRadios.forEach(function(radio) {
+          radio.checked = radio.value === (settings.ticketType || 'offsite');
+        });
+
+        // Show/hide offsite fields
+        toggleKompassOffsiteFields(settings.ticketType || 'offsite');
+
+        document.getElementById('kompassTicketUrl').value = settings.ticketUrl || '';
+        document.getElementById('kompassName').value = settings.name || '';
+        document.getElementById('kompassDate').value = settings.date || '';
+        document.getElementById('kompassDoors').value = settings.doors || '';
+        document.getElementById('kompassVenue').value = settings.venue || '';
+        document.getElementById('kompassLineup').value = settings.lineup || '';
+
+        if (!kompassSettingsInitialized) {
+          kompassSettingsInitialized = true;
+
+          // Ticketing type toggle handler
+          document.querySelectorAll('input[name="kompassTicketType"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+              toggleKompassOffsiteFields(this.value);
+            });
+          });
+
+          document.getElementById('saveKompassSettings').addEventListener('click', saveKompassSettings);
+
+          document.getElementById('previewKompass').addEventListener('click', function() {
+            window.open('/event/kompass-klub-7-march/', '_blank');
+          });
+
+          document.getElementById('resetKompassSettings').addEventListener('click', function() {
+            if (confirm('Reset all Kompass settings to default values?')) {
+              localStorage.removeItem(KOMPASS_SETTINGS_KEY);
+              loadKompassSettings();
+            }
+          });
         }
-      });
+      }
+
+      function toggleKompassOffsiteFields(type) {
+        var offsiteFields = document.getElementById('kompassOffsiteFields');
+        if (type === 'offsite') {
+          offsiteFields.style.display = 'block';
+        } else {
+          offsiteFields.style.display = 'none';
+        }
+      }
+
+      function saveKompassSettings() {
+        var ticketType = document.querySelector('input[name="kompassTicketType"]:checked').value;
+        var settings = {
+          ticketType: ticketType,
+          ticketUrl: document.getElementById('kompassTicketUrl').value,
+          name: document.getElementById('kompassName').value,
+          date: document.getElementById('kompassDate').value,
+          doors: document.getElementById('kompassDoors').value,
+          venue: document.getElementById('kompassVenue').value,
+          lineup: document.getElementById('kompassLineup').value
+        };
+        localStorage.setItem(KOMPASS_SETTINGS_KEY, JSON.stringify(settings));
+
+        var confirmEl = document.getElementById('saveKompassConfirm');
+        confirmEl.style.display = 'block';
+        setTimeout(function() {
+          confirmEl.style.display = 'none';
+        }, 3000);
+      }
+
+      // ===== CREATE NEW EVENT =====
+      var EVENTS_LIST_KEY = 'feral_events_list';
+
+      var DEFAULT_EVENTS = [
+        { id: 'kompass-klub-7-march', name: 'Kompass Klub 7 Mar', date: '2026-03-07', ticketType: 'offsite' },
+        { id: 'liverpool-27-march', name: 'Liverpool 27 Mar', date: '2026-03-27', ticketType: 'onsite' }
+      ];
+
+      var createEventInitialized = false;
+
+      function loadCreateEventPage() {
+        updateEventsListPreview();
+
+        if (!createEventInitialized) {
+          createEventInitialized = true;
+
+          // Slug preview
+          document.getElementById('newEventSlug').addEventListener('input', function() {
+            var slug = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+            document.getElementById('slugPreview').textContent = slug || 'your-event-slug';
+          });
+
+          document.getElementById('createEventBtn').addEventListener('click', createNewEvent);
+        }
+      }
+
+      function getEventsList() {
+        var stored = localStorage.getItem(EVENTS_LIST_KEY);
+        return stored ? JSON.parse(stored) : DEFAULT_EVENTS;
+      }
+
+      function saveEventsList(events) {
+        localStorage.setItem(EVENTS_LIST_KEY, JSON.stringify(events));
+      }
+
+      function updateEventsListPreview() {
+        var events = getEventsList();
+        // Sort by date
+        events.sort(function(a, b) {
+          return new Date(a.date) - new Date(b.date);
+        });
+
+        var html = events.map(function(e, i) {
+          var typeLabel = e.ticketType === 'offsite' ? '<span style="color: var(--yellow);">[Off-site]</span>' : '<span style="color: var(--green);">[On-site]</span>';
+          return '<div style="padding: 8px 0; border-bottom: 1px solid var(--border);">' +
+            '<strong>' + (i + 1) + '.</strong> ' + e.name + ' ' + typeLabel +
+            '<br><span style="color: var(--text-muted);">/' + e.id + '/ — ' + formatDate(e.date) + '</span></div>';
+        }).join('');
+
+        document.getElementById('eventsListPreview').innerHTML = html || '<span>No events yet</span>';
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+      }
+
+      function createNewEvent() {
+        var name = document.getElementById('newEventName').value.trim();
+        var slug = document.getElementById('newEventSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+        var date = document.getElementById('newEventDate').value;
+        var venue = document.getElementById('newEventVenue').value.trim();
+        var ticketType = document.querySelector('input[name="newEventTicketType"]:checked').value;
+
+        if (!name || !slug || !date) {
+          alert('Please fill in Event Name, Slug, and Date.');
+          return;
+        }
+
+        var events = getEventsList();
+
+        // Check for duplicate slug
+        if (events.some(function(e) { return e.id === slug; })) {
+          alert('An event with this slug already exists. Please choose a different slug.');
+          return;
+        }
+
+        // Add new event
+        events.push({
+          id: slug,
+          name: name,
+          date: date,
+          venue: venue,
+          ticketType: ticketType
+        });
+
+        saveEventsList(events);
+        updateEventsListPreview();
+
+        // Clear form
+        document.getElementById('newEventName').value = '';
+        document.getElementById('newEventSlug').value = '';
+        document.getElementById('newEventDate').value = '';
+        document.getElementById('newEventVenue').value = '';
+        document.getElementById('slugPreview').textContent = 'your-event-slug';
+
+        alert('Event "' + name + '" created successfully!\n\nNote: You\'ll need to create the event folder at:\n/event/' + slug + '/');
+      }
 
       // Time filter handling
       document.querySelectorAll('.time-filter__btn').forEach(function(btn) {

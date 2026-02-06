@@ -1193,23 +1193,101 @@ SO JUICE
 STEVIE</textarea>
           </div>
 
-          <!-- Ticket Prices -->
+          <!-- Ticket Types (Full Editor) -->
           <div class="sources" style="margin-bottom: 24px;">
-            <h2 class="sources__title">Ticket Prices</h2>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-              <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">General (£)</label>
-                <input type="number" id="priceGeneral" value="26.46" step="0.01" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+            <h2 class="sources__title">Ticket Types</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+              Edit ticket names, subtitles, prices, and IDs. Keep existing IDs to maintain EventX links.
+            </p>
+
+            <div id="liverpoolTicketList">
+              <!-- General Release -->
+              <div class="ticket-editor" style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="ticketName1" value="General Release" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="ticketSubtitle1" value="Standard entry" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (£)</label>
+                    <input type="number" id="priceGeneral" value="26.46" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix) — do not change unless updating link</label>
+                  <input type="text" id="ticketId1" value="6b45169f-cf51-4600-8682-d6f79dcb59ae" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
               </div>
-              <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">VIP (£)</label>
-                <input type="number" id="priceVip" value="35.00" step="0.01" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+
+              <!-- VIP Ticket -->
+              <div class="ticket-editor" style="padding: 16px; background: rgba(229,228,226,0.03); border: 1px solid rgba(229,228,226,0.3); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="ticketName2" value="VIP Ticket" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="ticketSubtitle2" value="Queue Jump & Balcony access" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (£)</label>
+                    <input type="number" id="priceVip" value="35.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="ticketId2" value="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
               </div>
-              <div>
-                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">VIP Black (£)</label>
-                <input type="number" id="priceVipBlack" value="65.00" step="0.01" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+
+              <!-- VIP Black (with merch) -->
+              <div class="ticket-editor" style="padding: 16px; background: rgba(255,0,51,0.03); border: 1px solid rgba(255,0,51,0.3); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="ticketName3" value="VIP Black" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="ticketSubtitle3" value="+ Limited Edition Tee" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (£)</label>
+                    <input type="number" id="priceVipBlack" value="65.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">MAIN TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="ticketId3" value="53c5262b-93ba-412e-bb5c-84ebc445a734" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+                <div style="padding: 12px; background: rgba(255,0,51,0.05); border: 1px solid rgba(255,0,51,0.2);">
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 12px;">
+                    <input type="checkbox" id="ticketMerch3" checked style="accent-color: var(--red);">
+                    <span style="font-size: 12px; font-weight: 600;">Includes Merch (Tee)</span>
+                  </label>
+                  <div id="merchSizeIds3">
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">PER-SIZE TICKET IDs (optional - leave empty to use main ID for all sizes)</label>
+                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;">
+                      <div><label style="font-size:9px; color: var(--text-muted);">XS</label><input type="text" id="sizeIdXS" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">S</label><input type="text" id="sizeIdS" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">M</label><input type="text" id="sizeIdM" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">L</label><input type="text" id="sizeIdL" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">XL</label><input type="text" id="sizeIdXL" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">XXL</label><input type="text" id="sizeIdXXL" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+
+            <button class="actions__btn" id="addLiverpoolTicket" style="margin-top: 8px; background: rgba(0, 255, 102, 0.1); border-color: var(--green); color: var(--green); font-size: 12px;">
+              + Add Ticket Type
+            </button>
           </div>
 
           <!-- Tee Info -->
@@ -1273,6 +1351,64 @@ STEVIE</textarea>
               <input type="text" id="kompassTicketUrl" value="https://paylogic.com/..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
               <span style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 6px;">Visitors will be redirected to this URL when clicking "Get Tickets"</span>
             </div>
+          </div>
+
+          <!-- On-site Ticket Configuration (shown for on-site) -->
+          <div class="sources" style="margin-bottom: 24px; display: none;" id="kompassOnsiteFields">
+            <h2 class="sources__title">Ticket Types</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+              Configure ticket types for on-site sales. Match IDs with EventX/Weetix.
+            </p>
+
+            <div id="kompassTicketList">
+              <!-- General Release -->
+              <div class="ticket-editor" data-ticket-key="general" style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="kompassTicketName1" value="General Release" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="kompassTicketSubtitle1" value="Standard entry" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (EUR)</label>
+                    <input type="number" id="kompassTicketPrice1" value="25.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="kompassTicketId1" placeholder="Enter ticket GUID" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+              </div>
+
+              <!-- VIP -->
+              <div class="ticket-editor" data-ticket-key="vip" style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="kompassTicketName2" value="VIP Ticket" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="kompassTicketSubtitle2" value="Queue Jump & VIP Area" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (EUR)</label>
+                    <input type="number" id="kompassTicketPrice2" value="45.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="kompassTicketId2" placeholder="Enter ticket GUID" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+              </div>
+            </div>
+
+            <button class="actions__btn" id="addKompassTicket" style="margin-top: 8px; background: rgba(0, 255, 102, 0.1); border-color: var(--green); color: var(--green); font-size: 12px;">
+              + Add Ticket Type
+            </button>
           </div>
 
           <!-- Event Details -->
@@ -1636,10 +1772,13 @@ STEVIE</textarea>
 
       function toggleKompassOffsiteFields(type) {
         var offsiteFields = document.getElementById('kompassOffsiteFields');
+        var onsiteFields = document.getElementById('kompassOnsiteFields');
         if (type === 'offsite') {
           offsiteFields.style.display = 'block';
+          onsiteFields.style.display = 'none';
         } else {
           offsiteFields.style.display = 'none';
+          onsiteFields.style.display = 'block';
         }
       }
 
@@ -1654,6 +1793,27 @@ STEVIE</textarea>
           venue: document.getElementById('kompassVenue').value,
           lineup: document.getElementById('kompassLineup').value
         };
+
+        // Save ticket configuration if on-site
+        if (ticketType === 'onsite') {
+          settings.tickets = [
+            {
+              key: 'general',
+              name: document.getElementById('kompassTicketName1').value,
+              subtitle: document.getElementById('kompassTicketSubtitle1').value,
+              price: parseFloat(document.getElementById('kompassTicketPrice1').value) || 0,
+              id: document.getElementById('kompassTicketId1').value
+            },
+            {
+              key: 'vip',
+              name: document.getElementById('kompassTicketName2').value,
+              subtitle: document.getElementById('kompassTicketSubtitle2').value,
+              price: parseFloat(document.getElementById('kompassTicketPrice2').value) || 0,
+              id: document.getElementById('kompassTicketId2').value
+            }
+          ];
+        }
+
         localStorage.setItem(KOMPASS_SETTINGS_KEY, JSON.stringify(settings));
 
         var confirmEl = document.getElementById('saveKompassConfirm');

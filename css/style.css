@@ -3119,43 +3119,40 @@ img {
   background: linear-gradient(180deg, var(--platinum-light) 0%, var(--platinum) 40%, var(--platinum-dark) 100%);
 }
 
-/* ===== VIP BLACK (ULTRA Premium - More Exclusive Than Platinum) ===== */
+/* ===== VIP BLACK (Centurion Card - Premium Obsidian) ===== */
+/* Deep black with holographic shimmer, red FERAL accent, scanning line */
 .ticket-option--vip-black {
-  background: linear-gradient(145deg, #2a2a2a 0%, #151515 50%, #0a0a0a 100%);
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  background:
+    /* Subtle brushed metal texture */
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.01) 2px,
+      rgba(255, 255, 255, 0.01) 4px
+    ),
+    /* Deep obsidian gradient */
+    linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 30%, #050505 70%, #000000 100%);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   overflow: hidden;
   box-shadow:
-    0 0 30px rgba(255, 255, 255, 0.12),
-    0 0 60px rgba(255, 255, 255, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  animation: vipBlackPulse 3s ease-in-out infinite;
+    0 0 40px rgba(0, 0, 0, 0.8),
+    0 0 2px rgba(255, 255, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
 }
 
 .ticket-option--vip-black:hover {
-  border-color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.45);
   box-shadow:
-    0 0 40px rgba(255, 255, 255, 0.2),
-    0 0 80px rgba(255, 255, 255, 0.08),
+    0 0 50px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(255, 255, 255, 0.5),
+    0 0 20px rgba(255, 0, 51, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Pulsing glow animation for VIP Black */
-@keyframes vipBlackPulse {
-  0%, 100% {
-    box-shadow:
-      0 0 30px rgba(255, 255, 255, 0.12),
-      0 0 60px rgba(255, 255, 255, 0.05),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  }
-  50% {
-    box-shadow:
-      0 0 40px rgba(255, 255, 255, 0.18),
-      0 0 80px rgba(255, 255, 255, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  }
-}
-
-/* Bright left edge accent - thicker and brighter than platinum */
+/* Red FERAL accent bar - left edge */
 .ticket-option--vip-black::before {
   content: '';
   position: absolute;
@@ -3164,62 +3161,131 @@ img {
   bottom: 0;
   width: 4px;
   background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.8) 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0.3) 100%);
+    rgba(255, 0, 51, 1) 0%,
+    rgba(255, 0, 51, 0.8) 50%,
+    rgba(255, 0, 51, 0.5) 100%);
+  box-shadow: 0 0 15px rgba(255, 0, 51, 0.6);
+  z-index: 3;
 }
 
-/* Fast bright shine animation - MORE visible than platinum */
+/* Holographic iridescent shimmer - premium card effect */
 .ticket-option--vip-black::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    110deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.08) 40%,
-    rgba(255, 255, 255, 0.18) 50%,
-    rgba(255, 255, 255, 0.08) 60%,
-    transparent 80%
+    105deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 0, 51, 0.08) 42%,
+    rgba(255, 255, 255, 0.15) 45%,
+    rgba(0, 200, 255, 0.08) 48%,
+    rgba(255, 0, 255, 0.05) 52%,
+    rgba(255, 255, 255, 0.12) 55%,
+    rgba(255, 0, 51, 0.06) 58%,
+    transparent 65%,
+    transparent 100%
   );
-  background-size: 200% 100%;
-  animation: obsidianShine 2.5s ease-in-out infinite;
+  background-size: 250% 100%;
+  animation: holographicShine 3s ease-in-out infinite;
   pointer-events: none;
+  z-index: 1;
 }
 
-@keyframes obsidianShine {
+@keyframes holographicShine {
   0% { background-position: 200% center; }
-  100% { background-position: -200% center; }
+  100% { background-position: -100% center; }
 }
 
-/* VIP Black text - bright white */
+/* Animated scanning line - security card feel */
+.ticket-option--vip-black .ticket-option__row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 100%
+  );
+  animation: scanLine 2s ease-in-out infinite;
+  z-index: 4;
+}
+
+@keyframes scanLine {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* VIP Black text - crisp white with subtle glow */
 .ticket-option--vip-black .ticket-option__name {
   color: #fff;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  text-shadow:
+    0 0 20px rgba(255, 255, 255, 0.4),
+    0 0 40px rgba(255, 0, 51, 0.2);
+  position: relative;
+  z-index: 2;
 }
 
-/* VIP Black custom button styling */
-.ticket-option--vip-black .ticket-option__btn {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.45);
+/* Price in white */
+.ticket-option--vip-black .ticket-option__price {
   color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  position: relative;
+  z-index: 2;
+}
+
+/* Perks text */
+.ticket-option--vip-black .ticket-option__perks {
+  color: rgba(255, 255, 255, 0.7);
+  position: relative;
+  z-index: 2;
+}
+
+/* VIP Black custom button styling - red accent */
+.ticket-option--vip-black .ticket-option__btn {
+  background: rgba(255, 0, 51, 0.15);
+  border: 1px solid rgba(255, 0, 51, 0.5);
+  color: #fff;
+  position: relative;
+  z-index: 2;
+  transition: all 0.2s ease;
 }
 
 .ticket-option--vip-black .ticket-option__btn:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
+  background: rgba(255, 0, 51, 0.3);
+  border-color: rgba(255, 0, 51, 0.8);
+  box-shadow: 0 0 20px rgba(255, 0, 51, 0.4);
+  color: #fff;
 }
 
 /* VIP Black view tee button */
 .ticket-option--vip-black .ticket-option__view-tee {
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: rgba(255, 0, 51, 0.5);
+  position: relative;
+  z-index: 2;
 }
 
 .ticket-option--vip-black .ticket-option__view-tee:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 0, 51, 0.2);
+  border-color: rgba(255, 0, 51, 0.8);
+  box-shadow: 0 0 15px rgba(255, 0, 51, 0.3);
+}
+
+/* Bottom row positioning */
+.ticket-option--vip-black .ticket-option__bottom {
+  position: relative;
+  z-index: 2;
+}
+
+.ticket-option--vip-black .ticket-option__controls {
+  position: relative;
+  z-index: 2;
 }
 
 .ticket-option__row {
@@ -5032,20 +5098,57 @@ body.cookie-banner-active .bottom-bar {
     height: 18px;
   }
 
-  /* Compact lineup on mobile */
+  /* FIXED: Lineup on mobile - BIGGER, bolder, proper gaps */
   .theme-minimal .lineup-widget {
-    padding: 10px 0;
-    margin-bottom: 4px;
+    padding: 12px 0;
+    margin-bottom: 6px;
+  }
+
+  .theme-minimal .lineup-widget__artists {
+    gap: 6px 0;
+    row-gap: 10px;
   }
 
   .theme-minimal .lineup-widget__artist {
-    font-size: 10px;
-    letter-spacing: 1px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    padding: 2px 0;
   }
 
   .theme-minimal .lineup-widget__artist::after {
-    margin: 0 6px;
-    font-size: 9px;
+    margin: 0 8px;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+}
+
+/* Very small screens - stack lineup vertically */
+@media (max-width: 400px) {
+  .theme-minimal .lineup-widget__artists {
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+  }
+
+  .theme-minimal .lineup-widget__artist {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-align: center;
+    width: 100%;
+    padding: 6px 0;
+    color: #fff;
+  }
+
+  .theme-minimal .lineup-widget__artist::after {
+    display: none;
+  }
+
+  .theme-minimal .lineup-widget__artist:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 0, 51, 0.3);
   }
 }
 

@@ -1733,6 +1733,7 @@ STEVIE</textarea>
         theme: 'default',
         minimalBgEnabled: false,
         minimalBlurStrength: 20,
+        minimalStaticStrength: 50,
         minimalBgImage: '',
         heroImage: '/images/liverpool-event-banner.jpg',
         name: 'FERAL Liverpool',
@@ -1784,7 +1785,7 @@ STEVIE</textarea>
         document.getElementById('minimalEnableBg').checked = settings.minimalBgEnabled || false;
         document.getElementById('minimalBlurStrength').value = settings.minimalBlurStrength || 20;
         document.getElementById('blurValue').textContent = (settings.minimalBlurStrength || 20) + 'px';
-        updateMinimalThemeUI(settings.theme, settings.minimalBgEnabled, settings.minimalBgImage, settings.minimalBlurStrength);
+        updateMinimalThemeUI(settings.theme, settings.minimalBgEnabled, settings.minimalBgImage, settings.minimalBlurStrength, settings.minimalStaticStrength);
 
         // Attach button handlers only once
         if (!eventSettingsInitialized) {
@@ -1807,6 +1808,8 @@ STEVIE</textarea>
           document.getElementById('eventTheme').addEventListener('change', function() {
             var isMinimal = this.value === 'minimal';
             document.getElementById('minimalThemeOptions').style.display = isMinimal ? 'block' : 'none';
+            // Hide hero section when minimal is selected (not needed for minimal theme)
+            document.getElementById('heroSection').style.display = isMinimal ? 'none' : 'block';
           });
 
           // Enable blur checkbox
@@ -1822,6 +1825,12 @@ STEVIE</textarea>
             if (preview.src) {
               preview.style.filter = 'blur(' + val + 'px)';
             }
+          });
+
+          // Static intensity slider
+          document.getElementById('minimalStaticStrength').addEventListener('input', function() {
+            var val = this.value;
+            document.getElementById('staticValue').textContent = val + '%';
           });
 
           // Drag and drop
@@ -1977,18 +1986,43 @@ STEVIE</textarea>
           teeBackUrl.addEventListener('change', function() {
             teeBackImg.src = this.value;
           });
+
+          // ===== REMOVE IMAGE BUTTONS =====
+          document.getElementById('removeHeroBtn').addEventListener('click', function() {
+            document.getElementById('heroPreviewImg').src = '';
+            document.getElementById('eventHeroImage').value = '';
+          });
+
+          document.getElementById('removeTeeFrontBtn').addEventListener('click', function() {
+            document.getElementById('teeFrontImg').src = '';
+            document.getElementById('teeFront').value = '';
+          });
+
+          document.getElementById('removeTeeBackBtn').addEventListener('click', function() {
+            document.getElementById('teeBackImg').src = '';
+            document.getElementById('teeBack').value = '';
+          });
         }
       }
 
-      function updateMinimalThemeUI(theme, bgEnabled, bgImage, blurStrength) {
-        document.getElementById('minimalThemeOptions').style.display = theme === 'minimal' ? 'block' : 'none';
+      function updateMinimalThemeUI(theme, bgEnabled, bgImage, blurStrength, staticStrength) {
+        var isMinimal = theme === 'minimal';
+        document.getElementById('minimalThemeOptions').style.display = isMinimal ? 'block' : 'none';
         document.getElementById('minimalBgOptions').style.display = bgEnabled ? 'block' : 'none';
+        // Hide hero section when minimal theme is selected
+        document.getElementById('heroSection').style.display = isMinimal ? 'none' : 'block';
+
         if (bgImage) {
           window.minimalBgImageData = bgImage;
           document.getElementById('bgPreviewImg').src = bgImage;
           document.getElementById('bgPreviewImg').style.filter = 'blur(' + (blurStrength || 20) + 'px)';
           document.getElementById('bgPreview').style.display = 'block';
         }
+
+        // Update static slider
+        var staticVal = staticStrength !== undefined ? staticStrength : 50;
+        document.getElementById('minimalStaticStrength').value = staticVal;
+        document.getElementById('staticValue').textContent = staticVal + '%';
       }
 
       function handleBgImageUpload(file) {
@@ -2042,6 +2076,7 @@ STEVIE</textarea>
           theme: document.getElementById('eventTheme').value,
           minimalBgEnabled: document.getElementById('minimalEnableBg').checked,
           minimalBlurStrength: parseInt(document.getElementById('minimalBlurStrength').value) || 20,
+          minimalStaticStrength: parseInt(document.getElementById('minimalStaticStrength').value) || 50,
           minimalBgImage: window.minimalBgImageData || '',
           heroImage: document.getElementById('eventHeroImage').value,
           name: document.getElementById('eventName').value,

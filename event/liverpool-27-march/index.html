@@ -14,7 +14,9 @@
             if (settings.minimalBgEnabled) {
               document.documentElement.classList.add('has-cover-image');
               var blur = settings.minimalBlurStrength || 0;
+              var staticOpacity = (settings.minimalStaticStrength || 50) / 100;
               document.documentElement.style.setProperty('--cover-blur', blur + 'px');
+              document.documentElement.style.setProperty('--static-opacity', staticOpacity);
               // Store image data for DOMContentLoaded
               window._feralCoverImage = settings.minimalBgImage || null;
             }

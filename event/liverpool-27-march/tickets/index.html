@@ -960,23 +960,65 @@
     <p class="social-proof__text">Last ticket booked: <span class="social-proof__time" id="proofTime">less than 60 seconds ago</span></p>
   </div>
 
-  <!-- Tee Modal -->
+  <!-- Enhanced Tee Modal -->
   <div class="tee-modal-overlay" id="teeModal">
     <div class="tee-modal">
       <button class="tee-modal__close" id="teeModalClose">&times;</button>
+
+      <!-- Header with legendary badge -->
       <div class="tee-modal__header">
-        <span class="tee-modal__title">Liverpool March Tee</span>
+        <div class="tee-modal__legendary">
+          <span class="tee-modal__legendary-icon">&#128293;</span>
+          <span class="tee-modal__legendary-tag">EVENT EXCLUSIVE</span>
+        </div>
+        <span class="tee-modal__title">Liverpool March 2026 Tee</span>
       </div>
-      <div class="tee-modal__images">
-        <img src="../../../images/LIVERPOOL%20MARCH%20FRONT.png" alt="FERAL Liverpool Tee Front" class="tee-modal__img">
-        <img src="../../../images/LIVERPOOL%20MARCH%20BACK.png" alt="FERAL Liverpool Tee Back" class="tee-modal__img">
+
+      <!-- Image viewer with tabs -->
+      <div class="tee-modal__viewer">
+        <div class="tee-modal__image-tabs">
+          <button class="tee-modal__tab tee-modal__tab--active" data-view="front">Front</button>
+          <button class="tee-modal__tab" data-view="back">Back</button>
+        </div>
+        <div class="tee-modal__image-container">
+          <img src="../../../images/LIVERPOOL%20MARCH%20FRONT.png" alt="FERAL Liverpool Tee Front" class="tee-modal__img tee-modal__img--active" data-view="front">
+          <img src="../../../images/LIVERPOOL%20MARCH%20BACK.png" alt="FERAL Liverpool Tee Back" class="tee-modal__img" data-view="back">
+        </div>
       </div>
-      <div class="tee-modal__labels">
-        <span class="tee-modal__label">Front</span>
-        <span class="tee-modal__label">Back</span>
+
+      <!-- Exclusivity messaging -->
+      <div class="tee-modal__exclusive">
+        <div class="tee-modal__exclusive-headline">One-Time Drop. Never Again.</div>
+        <p class="tee-modal__exclusive-text">
+          This design exists only for Liverpool March 2026. Once they're gone, they're gone forever.
+        </p>
+        <div class="tee-modal__badges">
+          <span class="tee-modal__badge">&#9733; Limited Edition</span>
+          <span class="tee-modal__badge">&#128274; Event Exclusive</span>
+        </div>
       </div>
-      <div class="tee-modal__footer">
-        <span class="tee-modal__price">Included with VIP + Tee &mdash; <strong>&pound;65</strong></span>
+
+      <!-- Size selector -->
+      <div class="tee-modal__sizes">
+        <span class="tee-modal__sizes-label">Select Size</span>
+        <div class="tee-modal__size-options">
+          <button class="tee-modal__size" data-size="XS">XS</button>
+          <button class="tee-modal__size" data-size="S">S</button>
+          <button class="tee-modal__size tee-modal__size--selected" data-size="M">M</button>
+          <button class="tee-modal__size" data-size="L">L</button>
+          <button class="tee-modal__size" data-size="XL">XL</button>
+          <button class="tee-modal__size" data-size="XXL">XXL</button>
+        </div>
+      </div>
+
+      <!-- Cart controls -->
+      <div class="tee-modal__cart">
+        <div class="tee-modal__qty-controls">
+          <button class="tee-modal__qty-btn" data-action="decrease">&minus;</button>
+          <span class="tee-modal__qty-value" id="teeModalQty">1</span>
+          <button class="tee-modal__qty-btn" data-action="increase">+</button>
+        </div>
+        <button class="tee-modal__add-btn" id="teeModalAddBtn">Add to Cart &mdash; &pound;65</button>
       </div>
     </div>
   </div>
@@ -1147,10 +1189,12 @@
 
       updateDisplay();
 
-      // --- Tee Modal ---
+      // --- Enhanced Tee Modal ---
       var teeModal = document.getElementById('teeModal');
       var viewTeeBtn = document.getElementById('viewTeeBtn');
       var teeModalClose = document.getElementById('teeModalClose');
+      var teeModalQty = 1;
+      var selectedSize = 'M';
 
       function openTeeModal() {
         if (teeModal) {
@@ -1163,6 +1207,15 @@
         if (teeModal) {
           teeModal.classList.remove('tee-modal-overlay--visible');
           document.body.style.overflow = '';
+          // Reset modal state
+          teeModalQty = 1;
+          var qtyEl = document.getElementById('teeModalQty');
+          var addBtn = document.getElementById('teeModalAddBtn');
+          if (qtyEl) qtyEl.textContent = '1';
+          if (addBtn) {
+            addBtn.textContent = 'Add to Cart \u2014 \u00A365';
+            addBtn.classList.remove('tee-modal__add-btn--success');
+          }
         }
       }
 
@@ -1185,6 +1238,79 @@
           closeTeeModal();
         }
       });
+
+      // Tab switching (Front/Back)
+      document.querySelectorAll('.tee-modal__tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          var view = this.getAttribute('data-view');
+          // Update active tab
+          document.querySelectorAll('.tee-modal__tab').forEach(function(t) {
+            t.classList.remove('tee-modal__tab--active');
+          });
+          this.classList.add('tee-modal__tab--active');
+          // Show corresponding image
+          document.querySelectorAll('.tee-modal__img').forEach(function(img) {
+            if (img.getAttribute('data-view') === view) {
+              img.classList.add('tee-modal__img--active');
+            } else {
+              img.classList.remove('tee-modal__img--active');
+            }
+          });
+        });
+      });
+
+      // Size selection
+      document.querySelectorAll('.tee-modal__size').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.tee-modal__size').forEach(function(b) {
+            b.classList.remove('tee-modal__size--selected');
+          });
+          this.classList.add('tee-modal__size--selected');
+          selectedSize = this.getAttribute('data-size');
+        });
+      });
+
+      // Quantity controls
+      document.querySelectorAll('.tee-modal__qty-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var action = this.getAttribute('data-action');
+          if (action === 'increase') teeModalQty++;
+          if (action === 'decrease' && teeModalQty > 1) teeModalQty--;
+          var qtyEl = document.getElementById('teeModalQty');
+          var addBtn = document.getElementById('teeModalAddBtn');
+          if (qtyEl) qtyEl.textContent = teeModalQty;
+          if (addBtn) addBtn.textContent = 'Add to Cart \u2014 \u00A3' + (teeModalQty * 65).toFixed(2);
+        });
+      });
+
+      // Add to cart
+      var teeModalAddBtn = document.getElementById('teeModalAddBtn');
+      if (teeModalAddBtn) {
+        teeModalAddBtn.addEventListener('click', function() {
+          // Add to existing TICKETS quantity
+          TICKETS['vip-tee'].qty += teeModalQty;
+
+          // GTM tracking
+          window.dataLayer.push({
+            event: 'add_to_cart',
+            content_name: 'VIP + FERAL Tee (' + selectedSize + ') \u2014 FERAL Liverpool',
+            content_ids: [TICKETS['vip-tee'].id],
+            content_type: 'product',
+            value: 65 * teeModalQty,
+            currency: 'GBP',
+            num_items: teeModalQty,
+            size: selectedSize
+          });
+
+          // Update main ticket display
+          updateDisplay();
+
+          // Success feedback
+          this.textContent = 'Added to Cart \u2714';
+          this.classList.add('tee-modal__add-btn--success');
+          setTimeout(closeTeeModal, 1000);
+        });
+      }
     })();
   </script>
   <script>

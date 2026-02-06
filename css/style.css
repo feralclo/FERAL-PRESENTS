@@ -3119,14 +3119,14 @@ img {
   color: var(--red);
 }
 
-/* --- Tee Modal --- */
+/* --- Enhanced Tee Modal --- */
 .tee-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 10001;
-  background: rgba(0, 0, 0, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3142,13 +3142,16 @@ img {
 }
 
 .tee-modal {
-  background: #0e0e0e;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  max-width: 420px;
+  background: #0a0a0a;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  max-width: 480px;
   width: 100%;
   position: relative;
   transform: scale(0.95) translateY(10px);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 60px rgba(212, 175, 55, 0.15);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .tee-modal-overlay--visible .tee-modal {
@@ -3157,12 +3160,12 @@ img {
 
 .tee-modal__close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 12px;
+  right: 12px;
   background: none;
   border: none;
   color: #555;
-  font-size: 26px;
+  font-size: 28px;
   cursor: pointer;
   z-index: 10;
   line-height: 1;
@@ -3174,74 +3177,321 @@ img {
   color: #fff;
 }
 
+/* Header with legendary badge */
 .tee-modal__header {
-  padding: 14px 20px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  padding: 20px 20px 16px;
   text-align: center;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.tee-modal__legendary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.05) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  padding: 6px 14px;
+  margin-bottom: 10px;
+}
+
+.tee-modal__legendary-icon {
+  font-size: 14px;
+}
+
+.tee-modal__legendary-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #d4af37;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
 }
 
 .tee-modal__title {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 2.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: #d4af37;
+  color: #fff;
+  display: block;
 }
 
-.tee-modal__images {
-  padding: 24px 16px;
+/* Image viewer with tabs */
+.tee-modal__viewer {
+  background: radial-gradient(ellipse at center, rgba(246, 4, 52, 0.15) 0%, transparent 70%);
+}
+
+.tee-modal__image-tabs {
   display: flex;
-  gap: 16px;
   justify-content: center;
-  background: radial-gradient(ellipse at center, rgba(246, 4, 52, 0.12) 0%, transparent 65%);
+  gap: 4px;
+  padding: 16px 20px 0;
+}
+
+.tee-modal__tab {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tee-modal__tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #999;
+}
+
+.tee-modal__tab--active {
+  background: rgba(246, 4, 52, 0.15);
+  border-color: rgba(246, 4, 52, 0.4);
+  color: #fff;
+}
+
+.tee-modal__image-container {
+  padding: 24px 20px;
+  display: flex;
+  justify-content: center;
+  min-height: 300px;
+  align-items: center;
 }
 
 .tee-modal__img {
-  width: 44%;
-  max-width: 150px;
+  max-width: 280px;
+  max-height: 320px;
+  width: auto;
   height: auto;
-  filter: drop-shadow(0 0 25px rgba(246, 4, 52, 0.5));
-  transition: transform 0.3s ease, filter 0.3s ease;
+  object-fit: contain;
+  filter: drop-shadow(0 0 30px rgba(246, 4, 52, 0.6));
+  transition: transform 0.3s ease, filter 0.3s ease, opacity 0.25s ease;
+  display: none;
+}
+
+.tee-modal__img--active {
+  display: block;
 }
 
 .tee-modal__img:hover {
-  transform: scale(1.08);
-  filter: drop-shadow(0 0 35px rgba(246, 4, 52, 0.7));
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 45px rgba(246, 4, 52, 0.8));
 }
 
-.tee-modal__labels {
-  display: flex;
-  justify-content: center;
-  gap: 90px;
-  padding-bottom: 12px;
-}
-
-.tee-modal__label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #555;
-}
-
-.tee-modal__footer {
-  padding: 14px 20px;
+/* Exclusivity messaging */
+.tee-modal__exclusive {
+  padding: 18px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   text-align: center;
-  background: rgba(0, 0, 0, 0.3);
 }
 
-.tee-modal__price {
+.tee-modal__exclusive-headline {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.tee-modal__exclusive-text {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: #777;
+  line-height: 1.6;
+  color: #888;
+  margin-bottom: 14px;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.tee-modal__price strong {
+.tee-modal__badges {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tee-modal__badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
   color: #d4af37;
-  font-size: 15px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  padding: 5px 10px;
+}
+
+/* Size selector */
+.tee-modal__sizes {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tee-modal__sizes-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #666;
+  display: block;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.tee-modal__size-options {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tee-modal__size {
+  min-width: 44px;
+  height: 40px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tee-modal__size:hover {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #d4af37;
+}
+
+.tee-modal__size--selected {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #d4af37;
+  color: #d4af37;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+}
+
+/* Cart controls */
+.tee-modal__cart {
+  padding: 20px;
+  background: rgba(212, 175, 55, 0.06);
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.tee-modal__qty-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.tee-modal__qty-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #d4af37;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tee-modal__qty-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #d4af37;
+}
+
+.tee-modal__qty-btn:active {
+  transform: scale(0.95);
+}
+
+.tee-modal__qty-value {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  min-width: 32px;
+  text-align: center;
+}
+
+.tee-modal__add-btn {
+  width: 100%;
+  padding: 16px 24px;
+  background: #d4af37;
+  color: #000;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tee-modal__add-btn:hover {
+  background: #e5c349;
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+}
+
+.tee-modal__add-btn:active {
+  transform: scale(0.98);
+}
+
+.tee-modal__add-btn--success {
+  background: #22c55e;
+  color: #fff;
+}
+
+/* Mobile adjustments */
+@media (max-width: 520px) {
+  .tee-modal {
+    max-width: 100%;
+    margin: 0 12px;
+  }
+
+  .tee-modal__img {
+    max-width: 220px;
+    max-height: 260px;
+  }
+
+  .tee-modal__image-container {
+    min-height: 240px;
+    padding: 20px 16px;
+  }
+
+  .tee-modal__size-options {
+    gap: 4px;
+  }
+
+  .tee-modal__size {
+    min-width: 40px;
+    height: 38px;
+    font-size: 10px;
+  }
+
+  .tee-modal__add-btn {
+    padding: 14px 20px;
+    font-size: 11px;
+  }
+
+  .tee-modal__exclusive-headline {
+    font-size: 11px;
+  }
 }
 
 /* VIP Section Header (compact) */

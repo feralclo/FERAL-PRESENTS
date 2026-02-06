@@ -1747,7 +1747,13 @@ STEVIE</textarea>
         priceVipBlack: 65.00,
         teeName: 'Liverpool March 2026 Tee',
         teeFront: '/images/LIVERPOOL MARCH FRONT.png',
-        teeBack: '/images/LIVERPOOL MARCH BACK.png'
+        teeBack: '/images/LIVERPOOL MARCH BACK.png',
+        ticketName1: 'General Release',
+        ticketSubtitle1: 'Standard entry',
+        ticketName2: 'VIP Ticket',
+        ticketSubtitle2: 'Queue Jump & Balcony access',
+        ticketName3: 'VIP Black',
+        ticketSubtitle3: '+ Limited Edition Tee'
       };
 
       var eventSettingsInitialized = false;
@@ -1769,6 +1775,14 @@ STEVIE</textarea>
         document.getElementById('teeName').value = settings.teeName || '';
         document.getElementById('teeFront').value = settings.teeFront || '';
         document.getElementById('teeBack').value = settings.teeBack || '';
+
+        // Load ticket names and subtitles
+        if (settings.ticketName1) document.getElementById('ticketName1').value = settings.ticketName1;
+        if (settings.ticketSubtitle1) document.getElementById('ticketSubtitle1').value = settings.ticketSubtitle1;
+        if (settings.ticketName2) document.getElementById('ticketName2').value = settings.ticketName2;
+        if (settings.ticketSubtitle2) document.getElementById('ticketSubtitle2').value = settings.ticketSubtitle2;
+        if (settings.ticketName3) document.getElementById('ticketName3').value = settings.ticketName3;
+        if (settings.ticketSubtitle3) document.getElementById('ticketSubtitle3').value = settings.ticketSubtitle3;
 
         // Load hero image
         var heroImage = settings.heroImage || '/images/liverpool-event-banner.jpg';
@@ -2187,7 +2201,13 @@ STEVIE</textarea>
           priceVipBlack: parseFloat(document.getElementById('priceVipBlack').value) || 0,
           teeName: document.getElementById('teeName').value,
           teeFront: document.getElementById('teeFront').value,
-          teeBack: document.getElementById('teeBack').value
+          teeBack: document.getElementById('teeBack').value,
+          ticketName1: document.getElementById('ticketName1').value,
+          ticketSubtitle1: document.getElementById('ticketSubtitle1').value,
+          ticketName2: document.getElementById('ticketName2').value,
+          ticketSubtitle2: document.getElementById('ticketSubtitle2').value,
+          ticketName3: document.getElementById('ticketName3').value,
+          ticketSubtitle3: document.getElementById('ticketSubtitle3').value
         };
 
         try {

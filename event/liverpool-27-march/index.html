@@ -317,6 +317,14 @@
 
                   <!-- Checkout button -->
                   <button class="feral-tickets__checkout" id="checkoutBtn" disabled>Select tickets to continue</button>
+
+                  <!-- Cart summary -->
+                  <div class="cart-summary" id="cartSummary" style="display: none;">
+                    <div class="cart-summary__label">Your Cart</div>
+                    <div class="cart-summary__items" id="cartSummaryItems">
+                      <!-- Populated by JS -->
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -374,6 +382,11 @@
           <span class="tee-modal__badge">Limited Edition</span>
           <span class="tee-modal__badge">Collector's Piece</span>
         </div>
+        <!-- VIP Entry badge - gold color to stand out -->
+        <div class="tee-modal__vip-badge">
+          <span class="tee-modal__vip-icon">&#9733;</span>
+          Includes VIP Entry — Liverpool March 2026
+        </div>
       </div>
 
       <!-- Size selector -->
@@ -387,11 +400,6 @@
           <button class="tee-modal__size" data-size="XL">XL</button>
           <button class="tee-modal__size" data-size="XXL">XXL</button>
         </div>
-      </div>
-
-      <!-- Ticket inclusion note -->
-      <div class="tee-modal__includes">
-        Includes VIP entry to Liverpool March 2026
       </div>
 
       <!-- Cart controls -->
@@ -494,19 +502,68 @@
         }
       };
 
-      // Load ticket names from admin settings
+      // Size-specific ticket IDs for VIP+Tee (loaded from admin settings)
+      var SIZE_IDS = {
+        'XS': null,
+        'S': null,
+        'M': null,
+        'L': null,
+        'XL': null,
+        'XXL': null
+      };
+
+      // Track tee quantities by size
+      var TEE_SIZES = {
+        'XS': 0,
+        'S': 0,
+        'M': 0,
+        'L': 0,
+        'XL': 0,
+        'XXL': 0
+      };
+
+      // Get the ticket ID for a specific size (falls back to main ID)
+      function getSizeTicketId(size) {
+        return SIZE_IDS[size] || TICKETS['vip-tee'].id;
+      }
+
+      // Get total tee quantity across all sizes
+      function getTotalTeeQty() {
+        return Object.keys(TEE_SIZES).reduce(function(sum, size) {
+          return sum + TEE_SIZES[size];
+        }, 0);
+      }
+
+      // Load ticket names and IDs from admin settings
       (function() {
         try {
           var stored = localStorage.getItem('feral_event_liverpool');
           if (stored) {
             var settings = JSON.parse(stored);
 
-            // Update TICKETS object
+            // Update ticket IDs from settings
+            if (settings.ticketId1) TICKETS['general'].id = settings.ticketId1;
+            if (settings.ticketId2) TICKETS['vip'].id = settings.ticketId2;
+            if (settings.ticketId3) TICKETS['vip-tee'].id = settings.ticketId3;
+
+            // Load size-specific IDs
+            if (settings.sizeIdXS) SIZE_IDS['XS'] = settings.sizeIdXS;
+            if (settings.sizeIdS) SIZE_IDS['S'] = settings.sizeIdS;
+            if (settings.sizeIdM) SIZE_IDS['M'] = settings.sizeIdM;
+            if (settings.sizeIdL) SIZE_IDS['L'] = settings.sizeIdL;
+            if (settings.sizeIdXL) SIZE_IDS['XL'] = settings.sizeIdXL;
+            if (settings.sizeIdXXL) SIZE_IDS['XXL'] = settings.sizeIdXXL;
+
+            // Update TICKETS object names
             if (settings.ticketName1) TICKETS['general'].name = settings.ticketName1;
             if (settings.ticketName2) TICKETS['vip'].name = settings.ticketName2;
             if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
 
-            // Update HTML elements
+            // Update HTML elements - use dynamic IDs from settings
+            var generalId = settings.ticketId1 || '6b45169f-cf51-4600-8682-d6f79dcb59ae';
+            var vipId = settings.ticketId2 || 'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf';
+            var vipBlackId = settings.ticketId3 || '53c5262b-93ba-412e-bb5c-84ebc445a734';
+
             var generalEl = document.querySelector('[data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae"]');
             var vipEl = document.querySelector('[data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf"]');
             var vipBlackEl = document.querySelector('[data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734"]');
@@ -569,7 +626,15 @@
       function getCartParam() {
         var items = [];
         Object.keys(TICKETS).forEach(function(k) {
-          if (TICKETS[k].qty > 0) {
+          if (k === 'vip-tee') {
+            // For VIP+Tee, use size-specific IDs
+            Object.keys(TEE_SIZES).forEach(function(size) {
+              if (TEE_SIZES[size] > 0) {
+                var ticketId = getSizeTicketId(size);
+                items.push(ticketId + ':' + TEE_SIZES[size]);
+              }
+            });
+          } else if (TICKETS[k].qty > 0) {
             items.push(TICKETS[k].id + ':' + TICKETS[k].qty);
           }
         });
@@ -629,6 +694,46 @@
         if (bottomBarCta) {
           bottomBarCta.textContent = totalQty > 0 ? 'Buy ' + totalQty + (totalQty === 1 ? ' Ticket' : ' Tickets') : 'Buy Now';
         }
+
+        // Update cart summary
+        var cartSummary = document.getElementById('cartSummary');
+        var cartSummaryItems = document.getElementById('cartSummaryItems');
+        if (cartSummary && cartSummaryItems) {
+          if (totalQty > 0) {
+            cartSummary.style.display = 'block';
+            var summaryHtml = [];
+
+            // Add non-tee tickets
+            ['general', 'vip'].forEach(function(k) {
+              if (TICKETS[k].qty > 0) {
+                summaryHtml.push(
+                  '<div class="cart-summary__item">' +
+                  '<span class="cart-summary__qty">' + TICKETS[k].qty + '</span>' +
+                  '<span class="cart-summary__name">' + TICKETS[k].name + '</span>' +
+                  '</div>'
+                );
+              }
+            });
+
+            // Add tee tickets by size
+            var sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            sizes.forEach(function(size) {
+              if (TEE_SIZES[size] > 0) {
+                summaryHtml.push(
+                  '<div class="cart-summary__item">' +
+                  '<span class="cart-summary__qty">' + TEE_SIZES[size] + '</span>' +
+                  '<span class="cart-summary__name">' + TICKETS['vip-tee'].name + '</span>' +
+                  '<span class="cart-summary__size">(' + size + ')</span>' +
+                  '</div>'
+                );
+              }
+            });
+
+            cartSummaryItems.innerHTML = summaryHtml.join('');
+          } else {
+            cartSummary.style.display = 'none';
+          }
+        }
       }
 
       // --- Size Popup for VIP + Tee ---
@@ -679,15 +784,20 @@
       if (sizePopupConfirm) {
         sizePopupConfirm.addEventListener('click', function() {
           var ticket = TICKETS['vip-tee'];
-          ticket.qty++;
+          // Track by size
+          TEE_SIZES[popupSelectedSize]++;
+          // Keep ticket.qty in sync for display purposes
+          ticket.qty = getTotalTeeQty();
+          // Use size-specific ID for tracking
+          var sizeTicketId = getSizeTicketId(popupSelectedSize);
           window.dataLayer.push({
             event: 'add_to_cart',
             content_name: ticket.name + ' (' + popupSelectedSize + ') \u2014 FERAL Liverpool',
-            content_ids: [ticket.id],
+            content_ids: [sizeTicketId],
             content_type: 'product',
             value: ticket.price,
             currency: 'GBP',
-            num_items: ticket.qty,
+            num_items: TEE_SIZES[popupSelectedSize],
             size: popupSelectedSize
           });
           updateDisplay();
@@ -724,16 +834,44 @@
             });
           }
           if (action === 'remove' && ticket.qty > 0) {
-            ticket.qty--;
-            window.dataLayer.push({
-              event: 'remove_from_cart',
-              content_name: ticket.name + ' — FERAL Liverpool',
-              content_ids: [ticket.id],
-              content_type: 'product',
-              value: ticket.price,
-              currency: 'GBP',
-              num_items: ticket.qty
-            });
+            // For VIP+Tee, remove from TEE_SIZES
+            if (key === 'vip-tee') {
+              // Find the first size with quantity > 0 to remove
+              var sizeToRemove = null;
+              var sizes = ['XXL', 'XL', 'L', 'M', 'S', 'XS']; // Remove largest first
+              for (var i = 0; i < sizes.length; i++) {
+                if (TEE_SIZES[sizes[i]] > 0) {
+                  sizeToRemove = sizes[i];
+                  break;
+                }
+              }
+              if (sizeToRemove) {
+                TEE_SIZES[sizeToRemove]--;
+                ticket.qty = getTotalTeeQty();
+                var sizeTicketId = getSizeTicketId(sizeToRemove);
+                window.dataLayer.push({
+                  event: 'remove_from_cart',
+                  content_name: ticket.name + ' (' + sizeToRemove + ') — FERAL Liverpool',
+                  content_ids: [sizeTicketId],
+                  content_type: 'product',
+                  value: ticket.price,
+                  currency: 'GBP',
+                  num_items: TEE_SIZES[sizeToRemove],
+                  size: sizeToRemove
+                });
+              }
+            } else {
+              ticket.qty--;
+              window.dataLayer.push({
+                event: 'remove_from_cart',
+                content_name: ticket.name + ' — FERAL Liverpool',
+                content_ids: [ticket.id],
+                content_type: 'product',
+                value: ticket.price,
+                currency: 'GBP',
+                num_items: ticket.qty
+              });
+            }
           }
           updateDisplay();
         });
@@ -990,14 +1128,19 @@
       var teeModalAddBtn = document.getElementById('teeModalAddBtn');
       if (teeModalAddBtn) {
         teeModalAddBtn.addEventListener('click', function() {
-          // Add to existing TICKETS quantity
-          TICKETS['vip-tee'].qty += teeModalQty;
+          // Add to TEE_SIZES for the selected size
+          TEE_SIZES[selectedSize] += teeModalQty;
+          // Keep TICKETS qty in sync
+          TICKETS['vip-tee'].qty = getTotalTeeQty();
+
+          // Use size-specific ID for tracking
+          var sizeTicketId = getSizeTicketId(selectedSize);
 
           // GTM tracking
           window.dataLayer.push({
             event: 'add_to_cart',
             content_name: 'VIP + FERAL Tee (' + selectedSize + ') \u2014 FERAL Liverpool',
-            content_ids: [TICKETS['vip-tee'].id],
+            content_ids: [sizeTicketId],
             content_type: 'product',
             value: 65 * teeModalQty,
             currency: 'GBP',

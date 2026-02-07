@@ -1784,6 +1784,20 @@ STEVIE</textarea>
         if (settings.ticketName3) document.getElementById('ticketName3').value = settings.ticketName3;
         if (settings.ticketSubtitle3) document.getElementById('ticketSubtitle3').value = settings.ticketSubtitle3;
 
+        // Load ticket IDs
+        if (settings.ticketId1) document.getElementById('ticketId1').value = settings.ticketId1;
+        if (settings.ticketId2) document.getElementById('ticketId2').value = settings.ticketId2;
+        if (settings.ticketId3) document.getElementById('ticketId3').value = settings.ticketId3;
+
+        // Load VIP Black tee size-specific IDs
+        if (settings.ticketMerch3 !== undefined) document.getElementById('ticketMerch3').checked = settings.ticketMerch3;
+        if (settings.sizeIdXS) document.getElementById('sizeIdXS').value = settings.sizeIdXS;
+        if (settings.sizeIdS) document.getElementById('sizeIdS').value = settings.sizeIdS;
+        if (settings.sizeIdM) document.getElementById('sizeIdM').value = settings.sizeIdM;
+        if (settings.sizeIdL) document.getElementById('sizeIdL').value = settings.sizeIdL;
+        if (settings.sizeIdXL) document.getElementById('sizeIdXL').value = settings.sizeIdXL;
+        if (settings.sizeIdXXL) document.getElementById('sizeIdXXL').value = settings.sizeIdXXL;
+
         // Load hero image
         var heroImage = settings.heroImage || '/images/liverpool-event-banner.jpg';
         document.getElementById('eventHeroImage').value = heroImage;
@@ -2207,7 +2221,19 @@ STEVIE</textarea>
           ticketName2: document.getElementById('ticketName2').value,
           ticketSubtitle2: document.getElementById('ticketSubtitle2').value,
           ticketName3: document.getElementById('ticketName3').value,
-          ticketSubtitle3: document.getElementById('ticketSubtitle3').value
+          ticketSubtitle3: document.getElementById('ticketSubtitle3').value,
+          // Ticket IDs
+          ticketId1: document.getElementById('ticketId1').value,
+          ticketId2: document.getElementById('ticketId2').value,
+          ticketId3: document.getElementById('ticketId3').value,
+          // VIP Black tee size-specific IDs
+          ticketMerch3: document.getElementById('ticketMerch3').checked,
+          sizeIdXS: document.getElementById('sizeIdXS').value,
+          sizeIdS: document.getElementById('sizeIdS').value,
+          sizeIdM: document.getElementById('sizeIdM').value,
+          sizeIdL: document.getElementById('sizeIdL').value,
+          sizeIdXL: document.getElementById('sizeIdXL').value,
+          sizeIdXXL: document.getElementById('sizeIdXXL').value
         };
 
         try {

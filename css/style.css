@@ -2207,6 +2207,61 @@ img {
   cursor: not-allowed;
 }
 
+/* Cart Summary (below checkout button) */
+.cart-summary {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+
+.cart-summary__label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.cart-summary__items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cart-summary__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #aaa;
+}
+
+.cart-summary__qty {
+  background: rgba(246, 4, 52, 0.15);
+  color: #fff;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.cart-summary__name {
+  color: #ddd;
+  flex: 1;
+}
+
+.cart-summary__size {
+  color: var(--red);
+  font-weight: 600;
+}
+
 /* --- Unified Ticket Widget: Tiers + Progress + Selector --- */
 .feral-tickets__tiers {
   display: flex;
@@ -3851,6 +3906,30 @@ img {
   background: var(--platinum);
   border-radius: 1px;
   transform: rotate(45deg);
+}
+
+/* VIP Entry badge - gold styling */
+.tee-modal__vip-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.12) 0%, rgba(255, 215, 0, 0.08) 100%);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #F5A623;
+  font-weight: 600;
+}
+
+.tee-modal__vip-icon {
+  font-size: 14px;
+  color: #FFD700;
 }
 
 /* Size selector */

@@ -253,13 +253,57 @@
        ORDER SUMMARY STRIP
        ======================================== */
     .checkout-summary {
-      background: rgba(246, 4, 52, 0.04);
-      border-bottom: 1px solid rgba(246, 4, 52, 0.15);
-      padding: 10px 24px;
+      background: linear-gradient(180deg, rgba(20,20,20,0.98) 0%, rgba(15,15,15,0.95) 100%);
+      border-bottom: 1px solid rgba(246, 4, 52, 0.2);
+      padding: 14px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .checkout-summary__label {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    .checkout-summary__items {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .checkout-summary__item {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      color: #aaa;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 12px;
+      gap: 8px;
+    }
+
+    .checkout-summary__qty {
+      background: rgba(246, 4, 52, 0.15);
+      color: #fff;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
+    .checkout-summary__name {
+      color: #ddd;
+    }
+
+    .checkout-summary__size {
+      color: #f60434;
+      font-weight: 600;
     }
 
     .checkout-summary__text {
@@ -268,11 +312,6 @@
       letter-spacing: 1.5px;
       text-transform: uppercase;
       color: #888;
-    }
-
-    .checkout-summary__qty {
-      color: #fff;
-      font-weight: 700;
     }
 
     .checkout-summary__price {
@@ -354,13 +393,22 @@
       }
 
       .checkout-summary {
-        padding: 8px 16px;
-        flex-wrap: wrap;
-        gap: 6px;
+        padding: 12px 16px;
+        gap: 4px;
       }
 
-      .checkout-summary__text {
+      .checkout-summary__label {
+        font-size: 8px;
+        margin-bottom: 2px;
+      }
+
+      .checkout-summary__item {
+        font-size: 10px;
+      }
+
+      .checkout-summary__qty {
         font-size: 9px;
+        padding: 1px 5px;
       }
 
       .loading-screen__logo {
@@ -511,9 +559,10 @@
 
   <!-- Order Summary Strip -->
   <div class="checkout-summary" id="checkoutSummary">
-    <span class="checkout-summary__text" id="summaryText">
-      <span class="checkout-summary__qty" id="summaryQty">1</span> &times; General Release
-    </span>
+    <div class="checkout-summary__label">Your Order</div>
+    <div class="checkout-summary__items" id="summaryItems">
+      <!-- Populated by JS -->
+    </div>
   </div>
 
   <!-- Embed -->
@@ -526,12 +575,69 @@
       var SHOP_ID = 'ad7b1eab-9c0b-4525-be60-be9c1c523dfe';
       var TIMER_SECONDS = (8 * 60) + 2; // 8 minutes 2 seconds (offset for embed timer)
 
-      // Ticket definitions
+      // Default ticket definitions
       var TICKET_INFO = {
         '6b45169f-cf51-4600-8682-d6f79dcb59ae': { name: 'General Release', price: 26.46 },
-        '53c5262b-93ba-412e-bb5c-84ebc445a734': { name: 'VIP + Tee', price: 65.00 },
+        '53c5262b-93ba-412e-bb5c-84ebc445a734': { name: 'VIP Black + Limited Edition Tee', price: 65.00 },
         'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf': { name: 'VIP Ticket', price: 35.00 }
       };
+
+      // Load settings from admin panel (includes size-specific IDs)
+      (function() {
+        try {
+          var stored = localStorage.getItem('feral_event_liverpool');
+          if (stored) {
+            var settings = JSON.parse(stored);
+
+            // Update ticket IDs if configured
+            if (settings.ticketId1) {
+              var oldId1 = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
+              if (settings.ticketId1 !== oldId1) {
+                TICKET_INFO[settings.ticketId1] = TICKET_INFO[oldId1];
+                delete TICKET_INFO[oldId1];
+              }
+              if (settings.ticketName1) TICKET_INFO[settings.ticketId1].name = settings.ticketName1;
+            }
+
+            if (settings.ticketId2) {
+              var oldId2 = 'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf';
+              if (settings.ticketId2 !== oldId2) {
+                TICKET_INFO[settings.ticketId2] = TICKET_INFO[oldId2];
+                delete TICKET_INFO[oldId2];
+              }
+              if (settings.ticketName2) TICKET_INFO[settings.ticketId2].name = settings.ticketName2;
+            }
+
+            if (settings.ticketId3) {
+              var oldId3 = '53c5262b-93ba-412e-bb5c-84ebc445a734';
+              var mainTeeId = settings.ticketId3;
+              if (mainTeeId !== oldId3) {
+                TICKET_INFO[mainTeeId] = TICKET_INFO[oldId3];
+                delete TICKET_INFO[oldId3];
+              }
+              if (settings.ticketName3) TICKET_INFO[mainTeeId].name = settings.ticketName3;
+            }
+
+            // Add size-specific IDs with size suffix in name
+            var mainTeeName = settings.ticketName3 || 'VIP Black + Limited Edition Tee';
+            var teePrice = 65.00;
+            var sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            var sizeKeys = ['sizeIdXS', 'sizeIdS', 'sizeIdM', 'sizeIdL', 'sizeIdXL', 'sizeIdXXL'];
+
+            sizes.forEach(function(size, i) {
+              var sizeId = settings[sizeKeys[i]];
+              if (sizeId && !TICKET_INFO[sizeId]) {
+                TICKET_INFO[sizeId] = {
+                  name: mainTeeName + ' (' + size + ')',
+                  price: teePrice
+                };
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load settings:', e);
+        }
+      })();
 
       // Parse cart from URL
       // Format: cart=ticketId:qty,ticketId:qty OR legacy: qty=N (single general release)
@@ -574,12 +680,15 @@
       var totalPrice = cartItems.reduce(function(sum, item) { return sum + (item.qty * item.price); }, 0);
 
       // --- Update order summary ---
-      var summaryText = document.getElementById('summaryText');
-      if (summaryText && cartItems.length > 0) {
-        var summaryParts = cartItems.map(function(item) {
-          return '<span class="checkout-summary__qty">' + item.qty + '</span> &times; ' + item.name;
+      var summaryItems = document.getElementById('summaryItems');
+      if (summaryItems && cartItems.length > 0) {
+        var itemsHtml = cartItems.map(function(item) {
+          return '<div class="checkout-summary__item">' +
+            '<span class="checkout-summary__qty">' + item.qty + '</span>' +
+            '<span class="checkout-summary__name">' + item.name + '</span>' +
+            '</div>';
         });
-        summaryText.innerHTML = summaryParts.join(' <span style="color:#444;margin:0 8px;">+</span> ');
+        summaryItems.innerHTML = itemsHtml.join('');
       }
 
       // --- Loading screen ---

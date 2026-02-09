@@ -20,7 +20,17 @@
 
   function getClient() {
     if (!client && window.supabase && window.supabase.createClient) {
-      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      // Custom fetch wrapper: always bypass browser HTTP cache for Supabase queries.
+      // Without this, browsers (especially mobile) can serve stale cached API responses.
+      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: {
+          fetch: function(url, options) {
+            options = options || {};
+            options.cache = 'no-store';
+            return fetch(url, options);
+          }
+        }
+      });
     }
     return client;
   }

@@ -1,16 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Theme detection & settings preload (runs before render to prevent flash) -->
+  <!-- Settings preload: fetch-first from Supabase, page hidden until resolved -->
   <script>
     (function() {
       var SETTINGS_KEY = 'feral_event_liverpool';
       var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
       var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+      var FETCH_TIMEOUT = 2000;
+
+      // Hide page instantly — prevents any flash of stale content.
+      // Background stays #0e0e0e (matches the site) so it looks seamless.
+      document.documentElement.style.visibility = 'hidden';
+      document.documentElement.style.background = '#0e0e0e';
+
+      var settled = false;
+      var domReady = false;
+      window._feralSettingsReady = false;
+      window._feralCoverImage = null;
 
       function applyTheme(settings) {
-        if (!settings) return;
-        if (settings.theme === 'minimal') {
+        // Clean slate: remove all theme classes so stale state never persists
+        document.documentElement.classList.remove('theme-minimal', 'has-cover-image');
+        document.documentElement.style.removeProperty('--cover-blur');
+        document.documentElement.style.removeProperty('--static-opacity');
+        window._feralCoverImage = null;
+
+        if (settings && settings.theme === 'minimal') {
           document.documentElement.classList.add('theme-minimal');
           if (settings.minimalBgEnabled) {
             document.documentElement.classList.add('has-cover-image');
@@ -21,42 +37,73 @@
             window._feralCoverImage = settings.minimalBgImage || null;
           }
         }
-        // Store for use by ticket/settings scripts later
         window._feralSettings = settings;
       }
 
-      // Try localStorage cache first (instant)
-      try {
-        var stored = localStorage.getItem(SETTINGS_KEY);
-        if (stored) {
-          applyTheme(JSON.parse(stored));
+      function reveal() {
+        if (!settled || !domReady) return;
+        // Apply cover image now that DOM is ready
+        if (window._feralCoverImage) {
+          var bgImg = document.querySelector('.event-hero__bg-img');
+          if (bgImg) bgImg.src = window._feralCoverImage;
         }
-      } catch (e) {}
+        // Show the page
+        document.documentElement.style.visibility = '';
+      }
 
-      // Always fetch latest from Supabase to keep cache fresh
-      // Uses fetch() directly so it works before Supabase SDK loads
+      function settle(settings) {
+        if (settled) return;
+        settled = true;
+        applyTheme(settings);
+        window._feralSettingsReady = true;
+        // Notify body scripts that settings are resolved
+        try {
+          document.dispatchEvent(new CustomEvent('feral:settings', { detail: settings }));
+        } catch (e) {
+          var evt = document.createEvent('CustomEvent');
+          evt.initCustomEvent('feral:settings', false, false, settings);
+          document.dispatchEvent(evt);
+        }
+        reveal();
+      }
+
+      function getCached() {
+        try {
+          var stored = localStorage.getItem(SETTINGS_KEY);
+          return stored ? JSON.parse(stored) : null;
+        } catch (e) { return null; }
+      }
+
+      // PRIMARY: always fetch from Supabase (source of truth).
+      // cache: 'no-store' prevents browser from serving stale HTTP-cached responses.
       fetch(SUPABASE_URL + '/rest/v1/site_settings?key=eq.' + SETTINGS_KEY + '&select=data', {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-        }
+        },
+        cache: 'no-store'
       }).then(function(r) { return r.json(); }).then(function(rows) {
         if (rows && rows.length > 0 && rows[0].data) {
           var settings = rows[0].data;
+          // Always update localStorage so next visit cache is fresh
           try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
-          applyTheme(settings);
-          window._feralSettings = settings;
+          settle(settings);
+        } else {
+          settle(getCached());
         }
-      }).catch(function() {});
+      }).catch(function() {
+        // Network error — fall back to localStorage cache
+        settle(getCached());
+      });
 
-      // Apply custom cover image after DOM loads
+      // Safety timeout: never leave the page hidden forever.
+      // On very slow connections, fall back to cached data after FETCH_TIMEOUT ms.
+      setTimeout(function() { settle(getCached()); }, FETCH_TIMEOUT);
+
+      // Wait for DOM before revealing (need DOM to set cover image src etc.)
       document.addEventListener('DOMContentLoaded', function() {
-        if (window._feralCoverImage) {
-          var bgImg = document.querySelector('.event-hero__bg-img');
-          if (bgImg) {
-            bgImg.src = window._feralCoverImage;
-          }
-        }
+        domReady = true;
+        reveal();
       });
     })();
   </script>
@@ -611,15 +658,16 @@
         }
       }
 
-      // Apply settings: use pre-fetched data from head script, or localStorage cache
+      // Apply settings: use the preload's settled data, or listen for it.
+      // The preload script in <head> fetches from Supabase first (source of truth)
+      // and dispatches 'feral:settings' when resolved.
       (function() {
-        if (window._feralSettings) {
+        if (window._feralSettingsReady) {
           applyLiverpoolSettings(window._feralSettings);
         } else {
-          try {
-            var stored = localStorage.getItem('feral_event_liverpool');
-            if (stored) applyLiverpoolSettings(JSON.parse(stored));
-          } catch (e) {}
+          document.addEventListener('feral:settings', function(e) {
+            applyLiverpoolSettings(e.detail);
+          });
         }
       })();
 

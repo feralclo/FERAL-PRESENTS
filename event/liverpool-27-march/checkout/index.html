@@ -1,24 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Preload settings from Supabase before render -->
+  <!-- Settings preload: fetch-first from Supabase, page hidden until resolved -->
   <script>
     (function() {
       var SETTINGS_KEY = 'feral_event_liverpool';
       var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
       var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
-      try {
-        var stored = localStorage.getItem(SETTINGS_KEY);
-        if (stored) window._feralSettings = JSON.parse(stored);
-      } catch (e) {}
+      var FETCH_TIMEOUT = 2000;
+
+      document.documentElement.style.visibility = 'hidden';
+      document.documentElement.style.background = '#0e0e0e';
+
+      var settled = false;
+      var domReady = false;
+      window._feralSettingsReady = false;
+
+      function reveal() {
+        if (!settled || !domReady) return;
+        document.documentElement.style.visibility = '';
+      }
+
+      function settle(settings) {
+        if (settled) return;
+        settled = true;
+        window._feralSettings = settings;
+        window._feralSettingsReady = true;
+        try {
+          document.dispatchEvent(new CustomEvent('feral:settings', { detail: settings }));
+        } catch (e) {
+          var evt = document.createEvent('CustomEvent');
+          evt.initCustomEvent('feral:settings', false, false, settings);
+          document.dispatchEvent(evt);
+        }
+        reveal();
+      }
+
+      function getCached() {
+        try {
+          var stored = localStorage.getItem(SETTINGS_KEY);
+          return stored ? JSON.parse(stored) : null;
+        } catch (e) { return null; }
+      }
+
       fetch(SUPABASE_URL + '/rest/v1/site_settings?key=eq.' + SETTINGS_KEY + '&select=data', {
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+        cache: 'no-store'
       }).then(function(r) { return r.json(); }).then(function(rows) {
         if (rows && rows.length > 0 && rows[0].data) {
-          window._feralSettings = rows[0].data;
           try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(rows[0].data)); } catch (e) {}
+          settle(rows[0].data);
+        } else {
+          settle(getCached());
         }
-      }).catch(function() {});
+      }).catch(function() {
+        settle(getCached());
+      });
+
+      setTimeout(function() { settle(getCached()); }, FETCH_TIMEOUT);
+
+      document.addEventListener('DOMContentLoaded', function() {
+        domReady = true;
+        reveal();
+      });
     })();
   </script>
   <meta charset="UTF-8">
@@ -652,17 +696,14 @@
         });
       }
 
-      // Apply settings: use pre-fetched data from head script, or localStorage cache
+      // Apply settings from the preload's Supabase fetch (source of truth).
       (function() {
-        if (window._feralSettings) {
+        if (window._feralSettingsReady) {
           applyCheckoutSettings(window._feralSettings);
         } else {
-          try {
-            var stored = localStorage.getItem('feral_event_liverpool');
-            if (stored) applyCheckoutSettings(JSON.parse(stored));
-          } catch (e) {
-            console.error('Failed to load settings:', e);
-          }
+          document.addEventListener('feral:settings', function(e) {
+            applyCheckoutSettings(e.detail);
+          });
         }
       })();
 

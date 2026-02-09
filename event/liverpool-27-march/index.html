@@ -381,11 +381,7 @@
         <div class="tee-modal__badges">
           <span class="tee-modal__badge">Limited Edition</span>
           <span class="tee-modal__badge">Collector's Piece</span>
-        </div>
-        <!-- VIP Entry badge - gold color to stand out -->
-        <div class="tee-modal__vip-badge">
-          <span class="tee-modal__vip-icon">&#9733;</span>
-          Includes VIP Entry — Liverpool March 2026
+          <span class="tee-modal__badge tee-modal__badge--vip">Includes VIP Tickets — Liverpool March 2026</span>
         </div>
       </div>
 
@@ -712,6 +708,7 @@
                   '<div class="cart-summary__item">' +
                   '<span class="cart-summary__qty">' + TICKETS[k].qty + '</span>' +
                   '<span class="cart-summary__name">' + TICKETS[k].name + '</span>' +
+                  '<button class="cart-summary__remove" data-remove-key="' + k + '" aria-label="Remove">&times;</button>' +
                   '</div>'
                 );
               }
@@ -725,12 +722,28 @@
                   '<div class="cart-summary__item">' +
                   '<span class="cart-summary__qty">' + TEE_SIZES[size] + '</span>' +
                   '<span class="cart-summary__name">' + TICKETS['vip-tee'].name + ' — <span class="cart-summary__size">Size: ' + size + '</span></span>' +
+                  '<button class="cart-summary__remove" data-remove-key="vip-tee" data-remove-size="' + size + '" aria-label="Remove">&times;</button>' +
                   '</div>'
                 );
               }
             });
 
             cartSummaryItems.innerHTML = summaryHtml.join('');
+
+            // Attach remove button handlers
+            cartSummaryItems.querySelectorAll('.cart-summary__remove').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                var key = this.getAttribute('data-remove-key');
+                var size = this.getAttribute('data-remove-size');
+                if (key === 'vip-tee' && size) {
+                  TEE_SIZES[size] = 0;
+                  TICKETS['vip-tee'].qty = getTotalTeeQty();
+                } else if (TICKETS[key]) {
+                  TICKETS[key].qty = 0;
+                }
+                updateDisplay();
+              });
+            });
           } else {
             cartSummary.style.display = 'none';
           }
@@ -885,16 +898,17 @@
         });
       }
 
-      // Bottom bar CTA: if tickets selected go to checkout, otherwise go to tickets page
+      // Bottom bar CTA: if tickets selected go to checkout, otherwise scroll to ticket widget
       if (bottomBarCta) {
         bottomBarCta.addEventListener('click', function(e) {
           e.stopPropagation();
           if (getTotalQty() > 0) {
             goToCheckout();
           } else {
-            document.body.style.transition = 'none';
-            document.body.style.opacity = '1';
-            window.location.assign('/event/liverpool-27-march/tickets/');
+            var ticketWidget = document.getElementById('feral-tickets');
+            if (ticketWidget) {
+              ticketWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
           }
         });
       }

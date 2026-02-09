@@ -2262,6 +2262,24 @@ img {
   font-weight: 600;
 }
 
+.cart-summary__remove {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #666;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.cart-summary__remove:hover {
+  color: var(--red);
+  border-color: rgba(255, 0, 51, 0.3);
+}
+
 /* --- Unified Ticket Widget: Tiers + Progress + Selector --- */
 .feral-tickets__tiers {
   display: flex;
@@ -3908,28 +3926,15 @@ img {
   transform: rotate(45deg);
 }
 
-/* VIP Entry badge - gold styling */
-.tee-modal__vip-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 14px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, rgba(245, 166, 35, 0.12) 0%, rgba(255, 215, 0, 0.08) 100%);
-  border: 1px solid rgba(245, 166, 35, 0.4);
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+/* VIP badge modifier - gold accent */
+.tee-modal__badge--vip {
   color: #F5A623;
-  font-weight: 600;
+  background: rgba(245, 166, 35, 0.08);
+  border-color: rgba(245, 166, 35, 0.3);
 }
 
-.tee-modal__vip-icon {
-  font-size: 14px;
-  color: #FFD700;
+.tee-modal__badge--vip::before {
+  background: #F5A623;
 }
 
 /* Size selector */

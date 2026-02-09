@@ -649,7 +649,8 @@
           window.feralSettings.load('feral_event_liverpool', function(serverSettings) {
             if (serverSettings) applyCheckoutSettings(serverSettings);
           });
-      })();
+        }
+      });
 
       // Parse cart from URL
       // Format: cart=ticketId:qty,ticketId:qty:SIZE OR legacy: qty=N (single general release)

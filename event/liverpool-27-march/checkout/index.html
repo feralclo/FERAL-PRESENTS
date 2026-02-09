@@ -583,59 +583,71 @@
       };
 
       // Load settings from admin panel (includes size-specific IDs)
+      function applyCheckoutSettings(settings) {
+        if (!settings) return;
+
+        // Update ticket IDs if configured
+        if (settings.ticketId1) {
+          var oldId1 = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
+          if (settings.ticketId1 !== oldId1 && TICKET_INFO[oldId1]) {
+            TICKET_INFO[settings.ticketId1] = TICKET_INFO[oldId1];
+            delete TICKET_INFO[oldId1];
+          }
+          if (settings.ticketName1 && TICKET_INFO[settings.ticketId1]) TICKET_INFO[settings.ticketId1].name = settings.ticketName1;
+        }
+
+        if (settings.ticketId2) {
+          var oldId2 = 'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf';
+          if (settings.ticketId2 !== oldId2 && TICKET_INFO[oldId2]) {
+            TICKET_INFO[settings.ticketId2] = TICKET_INFO[oldId2];
+            delete TICKET_INFO[oldId2];
+          }
+          if (settings.ticketName2 && TICKET_INFO[settings.ticketId2]) TICKET_INFO[settings.ticketId2].name = settings.ticketName2;
+        }
+
+        if (settings.ticketId3) {
+          var oldId3 = '53c5262b-93ba-412e-bb5c-84ebc445a734';
+          var mainTeeId = settings.ticketId3;
+          if (mainTeeId !== oldId3 && TICKET_INFO[oldId3]) {
+            TICKET_INFO[mainTeeId] = TICKET_INFO[oldId3];
+            delete TICKET_INFO[oldId3];
+          }
+          if (settings.ticketName3 && TICKET_INFO[mainTeeId]) TICKET_INFO[mainTeeId].name = settings.ticketName3;
+        }
+
+        // Add size-specific IDs with size suffix in name
+        var mainTeeName = settings.ticketName3 || 'VIP Ticket + Tee';
+        var teePrice = 65.00;
+        var sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+        var sizeKeys = ['sizeIdXS', 'sizeIdS', 'sizeIdM', 'sizeIdL', 'sizeIdXL', 'sizeIdXXL'];
+
+        sizes.forEach(function(size, i) {
+          var sizeId = settings[sizeKeys[i]];
+          if (sizeId && !TICKET_INFO[sizeId]) {
+            TICKET_INFO[sizeId] = {
+              name: mainTeeName + ' (' + size + ')',
+              price: teePrice
+            };
+          }
+        });
+      }
+
+      // Apply cached settings immediately
       (function() {
         try {
           var stored = localStorage.getItem('feral_event_liverpool');
-          if (stored) {
-            var settings = JSON.parse(stored);
-
-            // Update ticket IDs if configured
-            if (settings.ticketId1) {
-              var oldId1 = '6b45169f-cf51-4600-8682-d6f79dcb59ae';
-              if (settings.ticketId1 !== oldId1) {
-                TICKET_INFO[settings.ticketId1] = TICKET_INFO[oldId1];
-                delete TICKET_INFO[oldId1];
-              }
-              if (settings.ticketName1) TICKET_INFO[settings.ticketId1].name = settings.ticketName1;
-            }
-
-            if (settings.ticketId2) {
-              var oldId2 = 'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf';
-              if (settings.ticketId2 !== oldId2) {
-                TICKET_INFO[settings.ticketId2] = TICKET_INFO[oldId2];
-                delete TICKET_INFO[oldId2];
-              }
-              if (settings.ticketName2) TICKET_INFO[settings.ticketId2].name = settings.ticketName2;
-            }
-
-            if (settings.ticketId3) {
-              var oldId3 = '53c5262b-93ba-412e-bb5c-84ebc445a734';
-              var mainTeeId = settings.ticketId3;
-              if (mainTeeId !== oldId3) {
-                TICKET_INFO[mainTeeId] = TICKET_INFO[oldId3];
-                delete TICKET_INFO[oldId3];
-              }
-              if (settings.ticketName3) TICKET_INFO[mainTeeId].name = settings.ticketName3;
-            }
-
-            // Add size-specific IDs with size suffix in name
-            var mainTeeName = settings.ticketName3 || 'VIP Ticket + Tee';
-            var teePrice = 65.00;
-            var sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-            var sizeKeys = ['sizeIdXS', 'sizeIdS', 'sizeIdM', 'sizeIdL', 'sizeIdXL', 'sizeIdXXL'];
-
-            sizes.forEach(function(size, i) {
-              var sizeId = settings[sizeKeys[i]];
-              if (sizeId && !TICKET_INFO[sizeId]) {
-                TICKET_INFO[sizeId] = {
-                  name: mainTeeName + ' (' + size + ')',
-                  price: teePrice
-                };
-              }
-            });
-          }
+          if (stored) applyCheckoutSettings(JSON.parse(stored));
         } catch (e) {
           console.error('Failed to load settings:', e);
+        }
+      })();
+
+      // Async fetch from Supabase to get latest server settings
+      (function() {
+        if (window.feralSettings) {
+          window.feralSettings.load('feral_event_liverpool', function(serverSettings) {
+            if (serverSettings) applyCheckoutSettings(serverSettings);
+          });
         }
       })();
 
@@ -1224,6 +1236,8 @@
 
   <!-- Supabase for persistent analytics -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Settings persistence (Supabase + localStorage cache) -->
+  <script src="../../../js/feral-settings.js"></script>
 
   <script>
     (function() {

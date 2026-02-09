@@ -1174,31 +1174,39 @@
       });
 
       // Load ticket names and IDs from admin settings
+      function applyTicketSettings(settings) {
+        if (!settings) return;
+        if (settings.ticketId1) TICKETS['general'].id = settings.ticketId1;
+        if (settings.ticketId2) TICKETS['vip'].id = settings.ticketId2;
+        if (settings.ticketId3) TICKETS['vip-tee'].id = settings.ticketId3;
+
+        if (settings.sizeIdXS) SIZE_IDS['XS'] = settings.sizeIdXS;
+        if (settings.sizeIdS) SIZE_IDS['S'] = settings.sizeIdS;
+        if (settings.sizeIdM) SIZE_IDS['M'] = settings.sizeIdM;
+        if (settings.sizeIdL) SIZE_IDS['L'] = settings.sizeIdL;
+        if (settings.sizeIdXL) SIZE_IDS['XL'] = settings.sizeIdXL;
+        if (settings.sizeIdXXL) SIZE_IDS['XXL'] = settings.sizeIdXXL;
+
+        if (settings.ticketName1) TICKETS['general'].name = settings.ticketName1;
+        if (settings.ticketName2) TICKETS['vip'].name = settings.ticketName2;
+        if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
+      }
+
+      // Apply cached settings immediately
       (function() {
         try {
           var stored = localStorage.getItem('feral_event_liverpool');
-          if (stored) {
-            var settings = JSON.parse(stored);
-
-            // Update ticket IDs from settings
-            if (settings.ticketId1) TICKETS['general'].id = settings.ticketId1;
-            if (settings.ticketId2) TICKETS['vip'].id = settings.ticketId2;
-            if (settings.ticketId3) TICKETS['vip-tee'].id = settings.ticketId3;
-
-            // Load size-specific IDs
-            if (settings.sizeIdXS) SIZE_IDS['XS'] = settings.sizeIdXS;
-            if (settings.sizeIdS) SIZE_IDS['S'] = settings.sizeIdS;
-            if (settings.sizeIdM) SIZE_IDS['M'] = settings.sizeIdM;
-            if (settings.sizeIdL) SIZE_IDS['L'] = settings.sizeIdL;
-            if (settings.sizeIdXL) SIZE_IDS['XL'] = settings.sizeIdXL;
-            if (settings.sizeIdXXL) SIZE_IDS['XXL'] = settings.sizeIdXXL;
-
-            // Update TICKETS object names
-            if (settings.ticketName1) TICKETS['general'].name = settings.ticketName1;
-            if (settings.ticketName2) TICKETS['vip'].name = settings.ticketName2;
-            if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
-          }
+          if (stored) applyTicketSettings(JSON.parse(stored));
         } catch (e) {}
+      })();
+
+      // Async fetch from Supabase to get latest server settings
+      (function() {
+        if (window.feralSettings) {
+          window.feralSettings.load('feral_event_liverpool', function(serverSettings) {
+            if (serverSettings) applyTicketSettings(serverSettings);
+          });
+        }
       })();
 
       var checkoutBtn = document.getElementById('checkoutBtn');
@@ -1826,6 +1834,8 @@
   </script>
   <!-- Supabase for traffic analytics -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Settings persistence (Supabase + localStorage cache) -->
+  <script src="../../../js/feral-settings.js"></script>
   <!-- FERAL Traffic Analytics -->
   <script src="../../../js/feral-traffic.js"></script>
 

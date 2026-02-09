@@ -754,6 +754,8 @@
   </style>
   <!-- Supabase for persistent analytics -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Settings persistence (Supabase + localStorage cache) -->
+  <script src="/js/feral-settings.js"></script>
 </head>
 <body>
 
@@ -1759,9 +1761,13 @@ STEVIE</textarea>
       var eventSettingsInitialized = false;
 
       function loadEventSettings() {
-        var stored = localStorage.getItem(EVENT_SETTINGS_KEY);
-        var settings = stored ? JSON.parse(stored) : DEFAULT_EVENT_SETTINGS;
+        // Load from Supabase (server) with localStorage fallback
+        feralSettings.load(EVENT_SETTINGS_KEY, function(serverSettings) {
+          applyEventSettings(serverSettings || DEFAULT_EVENT_SETTINGS);
+        });
+      }
 
+      function applyEventSettings(settings) {
         document.getElementById('eventTheme').value = settings.theme || 'default';
         document.getElementById('eventName').value = settings.name || '';
         document.getElementById('eventDate').value = settings.date || '';
@@ -1827,8 +1833,9 @@ STEVIE</textarea>
 
           document.getElementById('resetEventSettings').addEventListener('click', function() {
             if (confirm('Reset all event settings to default values?')) {
-              localStorage.removeItem(EVENT_SETTINGS_KEY);
-              loadEventSettings();
+              feralSettings.remove(EVENT_SETTINGS_KEY, function() {
+                loadEventSettings();
+              });
             }
           });
 
@@ -2236,34 +2243,34 @@ STEVIE</textarea>
           sizeIdXXL: document.getElementById('sizeIdXXL').value
         };
 
-        try {
-          var settingsJson = JSON.stringify(settings);
-          var totalSizeKB = Math.round(settingsJson.length / 1024);
-          console.log('[FERAL Admin] Saving settings, total size: ' + totalSizeKB + 'KB');
+        var settingsJson = JSON.stringify(settings);
+        var totalSizeKB = Math.round(settingsJson.length / 1024);
+        console.log('[FERAL Admin] Saving settings, total size: ' + totalSizeKB + 'KB');
 
-          if (totalSizeKB > 4500) {
-            alert('Data too large to save (' + totalSizeKB + 'KB). Please use a smaller cover image.');
-            return;
+        if (totalSizeKB > 4500) {
+          alert('Data too large to save (' + totalSizeKB + 'KB). Please use a smaller cover image.');
+          return;
+        }
+
+        var confirmEl = document.getElementById('saveConfirm');
+        confirmEl.textContent = 'Saving to server...';
+        confirmEl.style.display = 'block';
+
+        feralSettings.save(EVENT_SETTINGS_KEY, settings, function(err) {
+          if (err) {
+            confirmEl.textContent = 'Saved to browser only (server error). Try again.';
+            confirmEl.style.color = 'var(--yellow)';
+            console.error('[FERAL Admin] Server save failed:', err);
+          } else {
+            confirmEl.textContent = 'Settings saved to server! (' + totalSizeKB + 'KB)';
+            confirmEl.style.color = '';
           }
-
-          localStorage.setItem(EVENT_SETTINGS_KEY, settingsJson);
-          console.log('[FERAL Admin] Settings saved successfully (' + totalSizeKB + 'KB)');
-
-          var confirmEl = document.getElementById('saveConfirm');
-          confirmEl.textContent = 'Settings saved! (' + totalSizeKB + 'KB)';
-          confirmEl.style.display = 'block';
           setTimeout(function() {
             confirmEl.style.display = 'none';
             confirmEl.textContent = 'Settings saved successfully!';
+            confirmEl.style.color = '';
           }, 3000);
-        } catch (e) {
-          console.error('[FERAL Admin] Save failed:', e);
-          if (e.name === 'QuotaExceededError' || e.message.indexOf('quota') !== -1) {
-            alert('Storage limit exceeded. The cover image is too large. Please use a smaller image.');
-          } else {
-            alert('Failed to save settings: ' + e.message);
-          }
-        }
+        });
       }
 
       // ===== KOMPASS KLUB EVENT SETTINGS =====
@@ -2282,9 +2289,12 @@ STEVIE</textarea>
       var kompassSettingsInitialized = false;
 
       function loadKompassSettings() {
-        var stored = localStorage.getItem(KOMPASS_SETTINGS_KEY);
-        var settings = stored ? JSON.parse(stored) : DEFAULT_KOMPASS_SETTINGS;
+        feralSettings.load(KOMPASS_SETTINGS_KEY, function(serverSettings) {
+          applyKompassSettings(serverSettings || DEFAULT_KOMPASS_SETTINGS);
+        });
+      }
 
+      function applyKompassSettings(settings) {
         // Set ticketing type radio
         var ticketTypeRadios = document.querySelectorAll('input[name="kompassTicketType"]');
         ticketTypeRadios.forEach(function(radio) {
@@ -2319,8 +2329,9 @@ STEVIE</textarea>
 
           document.getElementById('resetKompassSettings').addEventListener('click', function() {
             if (confirm('Reset all Kompass settings to default values?')) {
-              localStorage.removeItem(KOMPASS_SETTINGS_KEY);
-              loadKompassSettings();
+              feralSettings.remove(KOMPASS_SETTINGS_KEY, function() {
+                loadKompassSettings();
+              });
             }
           });
         }
@@ -2370,13 +2381,20 @@ STEVIE</textarea>
           ];
         }
 
-        localStorage.setItem(KOMPASS_SETTINGS_KEY, JSON.stringify(settings));
-
         var confirmEl = document.getElementById('saveKompassConfirm');
+        confirmEl.textContent = 'Saving to server...';
         confirmEl.style.display = 'block';
-        setTimeout(function() {
-          confirmEl.style.display = 'none';
-        }, 3000);
+
+        feralSettings.save(KOMPASS_SETTINGS_KEY, settings, function(err) {
+          if (err) {
+            confirmEl.textContent = 'Saved to browser only (server error). Try again.';
+          } else {
+            confirmEl.textContent = 'Kompass settings saved to server!';
+          }
+          setTimeout(function() {
+            confirmEl.style.display = 'none';
+          }, 3000);
+        });
       }
 
       // ===== EVENT MANAGEMENT SYSTEM =====
@@ -2490,7 +2508,10 @@ STEVIE</textarea>
       var createEventInitialized = false;
 
       function loadCreateEventPage() {
-        updateEventsListPreview();
+        // Fetch latest from server, then refresh the UI
+        loadEventsListFromServer(function() {
+          updateEventsListPreview();
+        });
 
         if (!createEventInitialized) {
           createEventInitialized = true;
@@ -2506,12 +2527,23 @@ STEVIE</textarea>
       }
 
       function getEventsList() {
+        // Synchronous read from cache for immediate use
         var stored = localStorage.getItem(EVENTS_LIST_KEY);
         return stored ? JSON.parse(stored) : DEFAULT_EVENTS;
       }
 
       function saveEventsList(events) {
-        localStorage.setItem(EVENTS_LIST_KEY, JSON.stringify(events));
+        feralSettings.save(EVENTS_LIST_KEY, events);
+      }
+
+      // Async load events list from server on page init
+      function loadEventsListFromServer(callback) {
+        feralSettings.load(EVENTS_LIST_KEY, function(serverData) {
+          if (serverData && Array.isArray(serverData)) {
+            try { localStorage.setItem(EVENTS_LIST_KEY, JSON.stringify(serverData)); } catch (e) {}
+          }
+          if (callback) callback();
+        });
       }
 
       function updateEventsListPreview() {

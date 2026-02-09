@@ -539,59 +539,67 @@
       });
 
       // Load ticket names and IDs from admin settings
+      // Step 1: Apply from localStorage cache immediately (fast, no flash)
+      function applyLiverpoolSettings(settings) {
+        if (!settings) return;
+        // Update ticket IDs from settings
+        if (settings.ticketId1) TICKETS['general'].id = settings.ticketId1;
+        if (settings.ticketId2) TICKETS['vip'].id = settings.ticketId2;
+        if (settings.ticketId3) TICKETS['vip-tee'].id = settings.ticketId3;
+
+        // Load size-specific IDs
+        if (settings.sizeIdXS) SIZE_IDS['XS'] = settings.sizeIdXS;
+        if (settings.sizeIdS) SIZE_IDS['S'] = settings.sizeIdS;
+        if (settings.sizeIdM) SIZE_IDS['M'] = settings.sizeIdM;
+        if (settings.sizeIdL) SIZE_IDS['L'] = settings.sizeIdL;
+        if (settings.sizeIdXL) SIZE_IDS['XL'] = settings.sizeIdXL;
+        if (settings.sizeIdXXL) SIZE_IDS['XXL'] = settings.sizeIdXXL;
+
+        // Update TICKETS object names
+        if (settings.ticketName1) TICKETS['general'].name = settings.ticketName1;
+        if (settings.ticketName2) TICKETS['vip'].name = settings.ticketName2;
+        if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
+
+        // Update HTML elements
+        var generalEl = document.querySelector('[data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae"]');
+        var vipEl = document.querySelector('[data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf"]');
+        var vipBlackEl = document.querySelector('[data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734"]');
+
+        if (generalEl && settings.ticketName1) {
+          generalEl.querySelector('.ticket-option__name').textContent = settings.ticketName1;
+        }
+        if (generalEl && settings.ticketSubtitle1) {
+          generalEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle1;
+        }
+        if (vipEl && settings.ticketName2) {
+          vipEl.querySelector('.ticket-option__name').textContent = settings.ticketName2;
+        }
+        if (vipEl && settings.ticketSubtitle2) {
+          vipEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle2;
+        }
+        if (vipBlackEl && settings.ticketName3) {
+          vipBlackEl.querySelector('.ticket-option__name').textContent = settings.ticketName3;
+        }
+        if (vipBlackEl && settings.ticketSubtitle3) {
+          vipBlackEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle3;
+        }
+      }
+
+      // Apply cached settings immediately
       (function() {
         try {
           var stored = localStorage.getItem('feral_event_liverpool');
-          if (stored) {
-            var settings = JSON.parse(stored);
-
-            // Update ticket IDs from settings
-            if (settings.ticketId1) TICKETS['general'].id = settings.ticketId1;
-            if (settings.ticketId2) TICKETS['vip'].id = settings.ticketId2;
-            if (settings.ticketId3) TICKETS['vip-tee'].id = settings.ticketId3;
-
-            // Load size-specific IDs
-            if (settings.sizeIdXS) SIZE_IDS['XS'] = settings.sizeIdXS;
-            if (settings.sizeIdS) SIZE_IDS['S'] = settings.sizeIdS;
-            if (settings.sizeIdM) SIZE_IDS['M'] = settings.sizeIdM;
-            if (settings.sizeIdL) SIZE_IDS['L'] = settings.sizeIdL;
-            if (settings.sizeIdXL) SIZE_IDS['XL'] = settings.sizeIdXL;
-            if (settings.sizeIdXXL) SIZE_IDS['XXL'] = settings.sizeIdXXL;
-
-            // Update TICKETS object names
-            if (settings.ticketName1) TICKETS['general'].name = settings.ticketName1;
-            if (settings.ticketName2) TICKETS['vip'].name = settings.ticketName2;
-            if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
-
-            // Update HTML elements - use dynamic IDs from settings
-            var generalId = settings.ticketId1 || '6b45169f-cf51-4600-8682-d6f79dcb59ae';
-            var vipId = settings.ticketId2 || 'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf';
-            var vipBlackId = settings.ticketId3 || '53c5262b-93ba-412e-bb5c-84ebc445a734';
-
-            var generalEl = document.querySelector('[data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae"]');
-            var vipEl = document.querySelector('[data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf"]');
-            var vipBlackEl = document.querySelector('[data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734"]');
-
-            if (generalEl && settings.ticketName1) {
-              generalEl.querySelector('.ticket-option__name').textContent = settings.ticketName1;
-            }
-            if (generalEl && settings.ticketSubtitle1) {
-              generalEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle1;
-            }
-            if (vipEl && settings.ticketName2) {
-              vipEl.querySelector('.ticket-option__name').textContent = settings.ticketName2;
-            }
-            if (vipEl && settings.ticketSubtitle2) {
-              vipEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle2;
-            }
-            if (vipBlackEl && settings.ticketName3) {
-              vipBlackEl.querySelector('.ticket-option__name').textContent = settings.ticketName3;
-            }
-            if (vipBlackEl && settings.ticketSubtitle3) {
-              vipBlackEl.querySelector('.ticket-option__perks').textContent = settings.ticketSubtitle3;
-            }
-          }
+          if (stored) applyLiverpoolSettings(JSON.parse(stored));
         } catch (e) {}
+      })();
+
+      // Step 2: Async fetch from Supabase to get latest server settings and update cache
+      (function() {
+        if (window.feralSettings) {
+          window.feralSettings.load('feral_event_liverpool', function(serverSettings) {
+            if (serverSettings) applyLiverpoolSettings(serverSettings);
+          });
+        }
       })();
 
       var checkoutBtn = document.getElementById('checkoutBtn');
@@ -1487,6 +1495,8 @@
 
   <!-- Supabase for persistent analytics -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Settings persistence (Supabase + localStorage cache) -->
+  <script src="../../js/feral-settings.js"></script>
   <!-- FERAL Traffic Analytics -->
   <script src="../../js/feral-traffic.js"></script>
 

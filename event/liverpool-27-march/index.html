@@ -534,6 +534,14 @@
         }, 0);
       }
 
+      // Map hardcoded IDs to keys BEFORE settings load (HTML buttons use these IDs)
+      var ID_TO_KEY = {};
+      var ORIGINAL_IDS = {}; // Store original IDs for DOM element lookups
+      Object.keys(TICKETS).forEach(function(key) {
+        ID_TO_KEY[TICKETS[key].id] = key;
+        ORIGINAL_IDS[key] = TICKETS[key].id;
+      });
+
       // Load ticket names and IDs from admin settings
       (function() {
         try {
@@ -589,12 +597,6 @@
           }
         } catch (e) {}
       })();
-
-      // Map IDs to keys
-      var ID_TO_KEY = {};
-      Object.keys(TICKETS).forEach(function(key) {
-        ID_TO_KEY[TICKETS[key].id] = key;
-      });
 
       var checkoutBtn = document.getElementById('checkoutBtn');
       var bottomBar = document.getElementById('bottomBar');
@@ -665,9 +667,9 @@
       }
 
       function updateDisplay() {
-        // Update all quantity displays
+        // Update all quantity displays (use ORIGINAL_IDS for DOM lookups since HTML has hardcoded IDs)
         Object.keys(TICKETS).forEach(function(k) {
-          var qtyEl = document.getElementById('qty-' + TICKETS[k].id);
+          var qtyEl = document.getElementById('qty-' + ORIGINAL_IDS[k]);
           if (qtyEl) qtyEl.textContent = TICKETS[k].qty;
         });
 

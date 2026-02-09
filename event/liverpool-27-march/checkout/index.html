@@ -660,6 +660,8 @@
                 name: TICKET_INFO[ticketId].name,
                 price: TICKET_INFO[ticketId].price
               });
+            } else if (ticketQty > 0) {
+              console.warn('[FERAL Checkout] Unknown ticket ID in cart:', ticketId, '— check admin size-specific IDs are saved');
             }
           }
         });

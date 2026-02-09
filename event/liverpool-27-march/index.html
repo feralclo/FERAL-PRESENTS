@@ -1,28 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Theme detection (runs before render to prevent flash) -->
+  <!-- Theme detection & settings preload (runs before render to prevent flash) -->
   <script>
     (function() {
-      try {
-        var stored = localStorage.getItem('feral_event_liverpool');
-        if (stored) {
-          var settings = JSON.parse(stored);
-          if (settings.theme === 'minimal') {
-            document.documentElement.classList.add('theme-minimal');
-            // Cover image support
-            if (settings.minimalBgEnabled) {
-              document.documentElement.classList.add('has-cover-image');
-              var blur = settings.minimalBlurStrength || 0;
-              var staticOpacity = (settings.minimalStaticStrength || 50) / 100;
-              document.documentElement.style.setProperty('--cover-blur', blur + 'px');
-              document.documentElement.style.setProperty('--static-opacity', staticOpacity);
-              // Store image data for DOMContentLoaded
-              window._feralCoverImage = settings.minimalBgImage || null;
-            }
+      var SETTINGS_KEY = 'feral_event_liverpool';
+      var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+
+      function applyTheme(settings) {
+        if (!settings) return;
+        if (settings.theme === 'minimal') {
+          document.documentElement.classList.add('theme-minimal');
+          if (settings.minimalBgEnabled) {
+            document.documentElement.classList.add('has-cover-image');
+            var blur = settings.minimalBlurStrength || 0;
+            var staticOpacity = (settings.minimalStaticStrength || 50) / 100;
+            document.documentElement.style.setProperty('--cover-blur', blur + 'px');
+            document.documentElement.style.setProperty('--static-opacity', staticOpacity);
+            window._feralCoverImage = settings.minimalBgImage || null;
           }
         }
+        // Store for use by ticket/settings scripts later
+        window._feralSettings = settings;
+      }
+
+      // Try localStorage cache first (instant)
+      try {
+        var stored = localStorage.getItem(SETTINGS_KEY);
+        if (stored) {
+          applyTheme(JSON.parse(stored));
+        }
       } catch (e) {}
+
+      // Always fetch latest from Supabase to keep cache fresh
+      // Uses fetch() directly so it works before Supabase SDK loads
+      fetch(SUPABASE_URL + '/rest/v1/site_settings?key=eq.' + SETTINGS_KEY + '&select=data', {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        }
+      }).then(function(r) { return r.json(); }).then(function(rows) {
+        if (rows && rows.length > 0 && rows[0].data) {
+          var settings = rows[0].data;
+          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+          applyTheme(settings);
+          window._feralSettings = settings;
+        }
+      }).catch(function() {});
+
       // Apply custom cover image after DOM loads
       document.addEventListener('DOMContentLoaded', function() {
         if (window._feralCoverImage) {
@@ -585,23 +611,17 @@
         }
       }
 
-      // Apply cached settings immediately
+      // Apply settings: use pre-fetched data from head script, or localStorage cache
       (function() {
-        try {
-          var stored = localStorage.getItem('feral_event_liverpool');
-          if (stored) applyLiverpoolSettings(JSON.parse(stored));
-        } catch (e) {}
-      })();
-
-      // Step 2: Async fetch from Supabase to get latest server settings and update cache
-      // Deferred to DOMContentLoaded so feral-settings.js is loaded
-      document.addEventListener('DOMContentLoaded', function() {
-        if (window.feralSettings) {
-          window.feralSettings.load('feral_event_liverpool', function(serverSettings) {
-            if (serverSettings) applyLiverpoolSettings(serverSettings);
-          });
+        if (window._feralSettings) {
+          applyLiverpoolSettings(window._feralSettings);
+        } else {
+          try {
+            var stored = localStorage.getItem('feral_event_liverpool');
+            if (stored) applyLiverpoolSettings(JSON.parse(stored));
+          } catch (e) {}
         }
-      });
+      })();
 
       var checkoutBtn = document.getElementById('checkoutBtn');
       var bottomBar = document.getElementById('bottomBar');

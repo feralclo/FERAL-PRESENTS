@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Preload settings from Supabase before render -->
+  <script>
+    (function() {
+      var SETTINGS_KEY = 'feral_event_liverpool';
+      var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+      try {
+        var stored = localStorage.getItem(SETTINGS_KEY);
+        if (stored) window._feralSettings = JSON.parse(stored);
+      } catch (e) {}
+      fetch(SUPABASE_URL + '/rest/v1/site_settings?key=eq.' + SETTINGS_KEY + '&select=data', {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+      }).then(function(r) { return r.json(); }).then(function(rows) {
+        if (rows && rows.length > 0 && rows[0].data) {
+          window._feralSettings = rows[0].data;
+          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(rows[0].data)); } catch (e) {}
+        }
+      }).catch(function() {});
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Get Tickets — FERAL Liverpool | 27 March 2026</title>
@@ -1192,23 +1212,17 @@
         if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
       }
 
-      // Apply cached settings immediately
+      // Apply settings: use pre-fetched data from head script, or localStorage cache
       (function() {
-        try {
-          var stored = localStorage.getItem('feral_event_liverpool');
-          if (stored) applyTicketSettings(JSON.parse(stored));
-        } catch (e) {}
-      })();
-
-      // Async fetch from Supabase to get latest server settings
-      // Deferred to DOMContentLoaded so feral-settings.js is loaded
-      document.addEventListener('DOMContentLoaded', function() {
-        if (window.feralSettings) {
-          window.feralSettings.load('feral_event_liverpool', function(serverSettings) {
-            if (serverSettings) applyTicketSettings(serverSettings);
-          });
+        if (window._feralSettings) {
+          applyTicketSettings(window._feralSettings);
+        } else {
+          try {
+            var stored = localStorage.getItem('feral_event_liverpool');
+            if (stored) applyTicketSettings(JSON.parse(stored));
+          } catch (e) {}
         }
-      });
+      })();
 
       var checkoutBtn = document.getElementById('checkoutBtn');
 

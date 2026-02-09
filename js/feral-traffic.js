@@ -1,6 +1,6 @@
 /**
  * FERAL PRESENTS — Traffic Analytics Tracking
- * Tracks page views through the funnel: Landing -> Tickets -> Checkout -> Purchase
+ * Tracks page views through the funnel: Landing -> Tickets -> Add to Cart -> Checkout -> Purchase
  * Data stored in Supabase traffic_events table
  */
 (function() {
@@ -28,13 +28,14 @@
     // Still expose empty functions so other scripts don't error
     window.feralTrackEngagement = function() {};
     window.feralTrackPurchase = function() {};
+    window.feralTrackAddToCart = function() {};
     return; // Exit early, don't set up any tracking
   }
 
   // Supabase configuration
   var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
-  
+
   var SESSION_KEY = 'feral_session_id';
   var supabaseClient = null;
 
@@ -69,7 +70,7 @@
   // Determine event type based on current path
   function getEventType() {
     var path = window.location.pathname;
-    
+
     // Purchase confirmation (you'd need to add this page or detect via URL param)
     if (path.indexOf('/confirmation') !== -1 || window.location.search.indexOf('purchase=success') !== -1) {
       return 'purchase';
@@ -97,10 +98,30 @@
     return match ? match[1] : null;
   }
 
+  // Detect current product theme from settings
+  function getCurrentTheme() {
+    try {
+      var eventName = getEventName();
+      if (!eventName) return 'default';
+      // Map event slugs to settings keys
+      var settingsKey = null;
+      if (eventName.indexOf('liverpool') !== -1) settingsKey = 'feral_event_liverpool';
+      else if (eventName.indexOf('kompass') !== -1) settingsKey = 'feral_event_kompass';
+      if (settingsKey) {
+        var stored = localStorage.getItem(settingsKey);
+        if (stored) {
+          var settings = JSON.parse(stored);
+          return settings.theme || 'default';
+        }
+      }
+    } catch (e) {}
+    return 'default';
+  }
+
   // Track page view
   function trackPageView() {
     initSupabase();
-    
+
     if (!supabaseClient) {
       console.log('[FERAL Traffic] Supabase not available, skipping tracking');
       return;
@@ -110,7 +131,7 @@
     var eventName = getEventName();
     var params = getUrlParams();
     var sessionId = getSessionId();
-    
+
     // Don't track if not an event-related page
     if (eventType === 'page_view' && !eventName) {
       return;
@@ -126,7 +147,8 @@
       utm_campaign: params.utm_campaign,
       session_id: sessionId,
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500)
+      user_agent: navigator.userAgent.substring(0, 500),
+      theme: getCurrentTheme()
     };
 
     console.log('[FERAL Traffic] Tracking:', eventType, data);
@@ -155,7 +177,8 @@
       event_name: eventName,
       session_id: sessionId,
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500)
+      user_agent: navigator.userAgent.substring(0, 500),
+      theme: getCurrentTheme()
     };
 
     console.log('[FERAL Traffic] Engagement:', engagementType);
@@ -167,15 +190,46 @@
     });
   };
 
-  // Manual tracking for purchases (call this from checkout success)
-  window.feralTrackPurchase = function(orderDetails) {
+  // Track add-to-cart events with product details
+  window.feralTrackAddToCart = function(productName, productPrice, quantity) {
     initSupabase();
-    
+
     if (!supabaseClient) return;
 
     var eventName = getEventName();
     var sessionId = getSessionId();
-    
+
+    var data = {
+      event_type: 'add_to_cart',
+      page_path: window.location.pathname,
+      event_name: eventName,
+      session_id: sessionId,
+      timestamp: new Date().toISOString(),
+      user_agent: navigator.userAgent.substring(0, 500),
+      theme: getCurrentTheme(),
+      product_name: productName || null,
+      product_price: productPrice || null,
+      product_qty: quantity || 1
+    };
+
+    console.log('[FERAL Traffic] Add to cart:', productName, data);
+
+    supabaseClient.from('traffic_events').insert(data).then(function(res) {
+      if (res.error) {
+        console.log('[FERAL Traffic] Add to cart error:', res.error.message);
+      }
+    });
+  };
+
+  // Manual tracking for purchases (call this from checkout success)
+  window.feralTrackPurchase = function(orderDetails) {
+    initSupabase();
+
+    if (!supabaseClient) return;
+
+    var eventName = getEventName();
+    var sessionId = getSessionId();
+
     var data = {
       event_type: 'purchase',
       page_path: window.location.pathname,
@@ -183,7 +237,8 @@
       referrer: document.referrer || null,
       session_id: sessionId,
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500)
+      user_agent: navigator.userAgent.substring(0, 500),
+      theme: getCurrentTheme()
     };
 
     console.log('[FERAL Traffic] Tracking purchase:', data);

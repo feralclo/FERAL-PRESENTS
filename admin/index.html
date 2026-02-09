@@ -390,6 +390,10 @@
       background: var(--blue);
     }
 
+    .funnel__bar--orange {
+      background: #ff8800;
+    }
+
     .funnel__label {
       font-size: 11px;
       color: var(--text-muted);
@@ -478,6 +482,143 @@
     .sources__bar {
       height: 6px;
       background: var(--red);
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+
+    /* Source row clickable */
+    .sources__table tr[data-source] {
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .sources__table tr[data-source]:hover {
+      background: rgba(255, 0, 51, 0.06);
+    }
+
+    .sources__table tr[data-source].sources__row--active {
+      background: rgba(255, 0, 51, 0.12);
+    }
+
+    /* Source drill-down banner */
+    .source-filter-banner {
+      display: none;
+      background: rgba(255, 0, 51, 0.1);
+      border: 1px solid var(--red);
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .source-filter-banner--visible {
+      display: flex;
+    }
+
+    .source-filter-banner__text {
+      color: var(--text);
+    }
+
+    .source-filter-banner__clear {
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .source-filter-banner__clear:hover {
+      background: var(--red);
+      color: #000;
+    }
+
+    /* Theme filter */
+    .theme-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .theme-filter__btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .theme-filter__btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    .theme-filter__btn--active {
+      border-color: var(--blue);
+      color: var(--blue);
+      background: rgba(0, 153, 255, 0.1);
+    }
+
+    /* Products added to cart */
+    .cart-products {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .cart-products__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .cart-products__table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .cart-products__table th,
+    .cart-products__table td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .cart-products__table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .cart-products__table td {
+      color: var(--text);
+    }
+
+    .cart-products__table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .cart-products__bar {
+      height: 6px;
+      background: #ff8800;
       opacity: 0.7;
       margin-top: 4px;
     }
@@ -905,12 +1046,25 @@
           <h1 class="dash-title">Traffic Analytics</h1>
           <p class="dash-subtitle">Liverpool Event — Visitor Journey & Funnel Analysis</p>
 
+          <!-- Source filter banner (shown when drilling down into a source) -->
+          <div class="source-filter-banner" id="sourceFilterBanner">
+            <span class="source-filter-banner__text">Filtering by: <strong id="sourceFilterName">—</strong></span>
+            <button class="source-filter-banner__clear" id="sourceFilterClear">Clear Filter</button>
+          </div>
+
           <!-- Time filter -->
           <div class="time-filter">
             <button class="time-filter__btn time-filter__btn--active" data-range="24h">Last 24h</button>
             <button class="time-filter__btn" data-range="7d">Last 7 Days</button>
             <button class="time-filter__btn" data-range="30d">Last 30 Days</button>
             <button class="time-filter__btn" data-range="all">All Time</button>
+          </div>
+
+          <!-- Theme filter -->
+          <div class="theme-filter">
+            <button class="theme-filter__btn theme-filter__btn--active" data-theme="all">All Themes</button>
+            <button class="theme-filter__btn" data-theme="default">Default</button>
+            <button class="theme-filter__btn" data-theme="minimal">Minimal</button>
           </div>
 
           <!-- Key metrics -->
@@ -957,6 +1111,14 @@
               </div>
               <span class="funnel__arrow">→</span>
               <div class="funnel__step">
+                <div class="funnel__bar funnel__bar--orange" id="trafficBar2b" style="height: 60px;"></div>
+                <span class="funnel__label">Add to Cart</span>
+                <span class="funnel__count" id="trafficCount2b">0</span>
+                <span class="funnel__pct" id="trafficPct2b">0%</span>
+                <span class="funnel__dropoff" id="trafficDrop1b">-0%</span>
+              </div>
+              <span class="funnel__arrow">→</span>
+              <div class="funnel__step">
                 <div class="funnel__bar funnel__bar--blue" id="trafficBar3" style="height: 50px;"></div>
                 <span class="funnel__label">Checkout</span>
                 <span class="funnel__count" id="trafficCount3">0</span>
@@ -993,6 +1155,26 @@
             </table>
           </div>
 
+          <!-- Products Added to Cart -->
+          <div class="cart-products">
+            <h2 class="cart-products__title">Products Added to Cart</h2>
+            <table class="cart-products__table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Times Added</th>
+                  <th>Total Qty</th>
+                  <th>% of Cart Adds</th>
+                </tr>
+              </thead>
+              <tbody id="cartProductsTableBody">
+                <tr>
+                  <td colspan="4" style="color: var(--text-muted); text-align: center;">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <!-- Page breakdown -->
           <div class="stats-grid">
             <div class="stat-card">
@@ -1004,6 +1186,11 @@
               <div class="stat-card__label">Tickets Page</div>
               <div class="stat-card__value" id="trafficTickets">0</div>
               <div class="stat-card__change">/event/liverpool-27-march/tickets/</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Add to Cart</div>
+              <div class="stat-card__value" style="color: #ff8800;" id="trafficAddToCart">0</div>
+              <div class="stat-card__change">Sessions that added items</div>
             </div>
             <div class="stat-card">
               <div class="stat-card__label">Checkout Page</div>
@@ -1638,6 +1825,8 @@ STEVIE</textarea>
       // Current page and time range
       var currentPage = 'popup';
       var currentTimeRange = '24h';
+      var currentThemeFilter = 'all';
+      var currentSourceFilter = null; // null = all sources, 'instagram / social' = specific source
 
       // Initialize Supabase
       if (window.supabase && window.supabase.createClient) {
@@ -2673,6 +2862,25 @@ STEVIE</textarea>
         });
       });
 
+      // Theme filter handling
+      document.querySelectorAll('.theme-filter__btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.theme-filter__btn').forEach(function(b) {
+            b.classList.remove('theme-filter__btn--active');
+          });
+          this.classList.add('theme-filter__btn--active');
+          currentThemeFilter = this.getAttribute('data-theme');
+          loadTrafficStats();
+        });
+      });
+
+      // Source filter clear button
+      document.getElementById('sourceFilterClear').addEventListener('click', function() {
+        currentSourceFilter = null;
+        updateSourceFilterBanner();
+        loadTrafficStats();
+      });
+
       // ===== POPUP STATS =====
       async function loadPopupStats() {
         var impressions = 0, engaged = 0, conversions = 0, dismissed = 0, closed = 0;
@@ -2752,9 +2960,11 @@ STEVIE</textarea>
 
       // ===== TRAFFIC STATS =====
       async function loadTrafficStats() {
-        var landing = 0, tickets = 0, checkout = 0, purchase = 0;
+        var landing = 0, tickets = 0, addToCart = 0, checkout = 0, purchase = 0;
+        var addToCartSessions = new Set();
         var sessions = new Set();
         var sources = {};
+        var cartProducts = {}; // product_name -> { count, totalQty, totalValue }
         var debugInfo = '';
 
         // Engagement tracking
@@ -2790,8 +3000,30 @@ STEVIE</textarea>
               debugInfo = 'Supabase error: ' + res.error.message + '\n\nNote: Make sure to run the traffic_events SQL migration first.\nSee: supabase-traffic-table.sql';
               console.log('[FERAL Admin]', debugInfo);
             } else if (res.data) {
+              // First pass: build sources list (always unfiltered by source for the sources table)
+              var allSources = {};
+              res.data.forEach(function(row) {
+                var source = row.utm_source || 'direct';
+                var medium = row.utm_medium || '(none)';
+                var key = source + ' / ' + medium;
+                allSources[key] = (allSources[key] || 0) + 1;
+              });
+
+              // Second pass: filter data and compute metrics
               res.data.forEach(function(row) {
                 var sid = row.session_id;
+
+                // Apply theme filter
+                if (currentThemeFilter !== 'all') {
+                  var rowTheme = row.theme || 'default';
+                  if (rowTheme !== currentThemeFilter) return;
+                }
+
+                // Apply source filter
+                if (currentSourceFilter) {
+                  var rowSource = (row.utm_source || 'direct') + ' / ' + (row.utm_medium || '(none)');
+                  if (rowSource !== currentSourceFilter) return;
+                }
 
                 // Count by event type
                 if (row.event_type === 'landing') {
@@ -2804,6 +3036,20 @@ STEVIE</textarea>
                 else if (row.event_type === 'tickets') {
                   tickets++;
                   if (sid && sessionEngagement[sid]) sessionEngagement[sid].proceeded = true;
+                }
+                else if (row.event_type === 'add_to_cart') {
+                  addToCart++;
+                  if (sid) addToCartSessions.add(sid);
+                  // Track products added to cart
+                  var pName = row.product_name || 'Unknown Product';
+                  var pPrice = parseFloat(row.product_price) || 0;
+                  var pQty = parseInt(row.product_qty) || 1;
+                  if (!cartProducts[pName]) {
+                    cartProducts[pName] = { count: 0, totalQty: 0, totalValue: 0 };
+                  }
+                  cartProducts[pName].count++;
+                  cartProducts[pName].totalQty += pQty;
+                  cartProducts[pName].totalValue += pPrice * pQty;
                 }
                 else if (row.event_type === 'checkout') checkout++;
                 else if (row.event_type === 'purchase') purchase++;
@@ -2836,7 +3082,7 @@ STEVIE</textarea>
                   sessions.add(sid);
                 }
 
-                // Track sources
+                // Track sources (for filtered view)
                 var source = row.utm_source || 'direct';
                 var medium = row.utm_medium || '(none)';
                 var key = source + ' / ' + medium;
@@ -2845,10 +3091,13 @@ STEVIE</textarea>
 
               debugInfo = 'Data source: Supabase (cloud)\n';
               debugInfo += 'Time range: ' + currentTimeRange + '\n';
+              if (currentThemeFilter !== 'all') debugInfo += 'Theme filter: ' + currentThemeFilter + '\n';
+              if (currentSourceFilter) debugInfo += 'Source filter: ' + currentSourceFilter + '\n';
               debugInfo += 'Total events: ' + res.data.length + '\n\n';
               debugInfo += 'Page views:\n';
               debugInfo += '- landing: ' + landing + '\n';
               debugInfo += '- tickets: ' + tickets + '\n';
+              debugInfo += '- add_to_cart: ' + addToCart + ' (' + addToCartSessions.size + ' sessions)\n';
               debugInfo += '- checkout: ' + checkout + '\n';
               debugInfo += '- purchase: ' + purchase + '\n\n';
               debugInfo += 'Engagement:\n';
@@ -2858,6 +3107,11 @@ STEVIE</textarea>
               debugInfo += '- time_30s: ' + engagement.time_30s + '\n';
               debugInfo += '- interactions: ' + (engagement.click_lineup + engagement.interact_tickets) + '\n\n';
               debugInfo += 'Unique sessions: ' + sessions.size;
+
+              // Use allSources for the table if no source filter is active
+              if (!currentSourceFilter) {
+                sources = allSources;
+              }
             }
           } catch (err) {
             debugInfo = 'Error: ' + err.message + '\n\nMake sure the traffic_events table exists in Supabase.';
@@ -2886,21 +3140,18 @@ STEVIE</textarea>
           var el = document.getElementById(elId);
           if (!el) return;
           el.className = 'engagement-row__status';
-          if (landing === 0) return; // No data yet
+          if (landing === 0) return;
           if (inverted) {
-            // Lower is better (e.g., bouncers)
             if (value < goodThreshold) el.classList.add('engagement-row__status--good');
             else if (value <= okThreshold) el.classList.add('engagement-row__status--ok');
             else el.classList.add('engagement-row__status--bad');
           } else {
-            // Higher is better
             if (value >= goodThreshold) el.classList.add('engagement-row__status--good');
             else if (value >= okThreshold) el.classList.add('engagement-row__status--ok');
             else el.classList.add('engagement-row__status--bad');
           }
         }
 
-        // Scroll depth benchmarks: 25% (>80/60), 50% (>60/40), 75% (>40/25), 100% (>25/15)
         setStatus('engScroll25Status', scrollPct25, 80, 60, false);
         setStatus('engScroll50Status', scrollPct50, 60, 40, false);
         setStatus('engScroll75Status', scrollPct75, 40, 25, false);
@@ -2920,7 +3171,6 @@ STEVIE</textarea>
         document.getElementById('engTime60Pct').textContent = timePct60 + '%';
         document.getElementById('engTime120Pct').textContent = timePct120 + '%';
 
-        // Time benchmarks: 10s (>80/60), 30s (>50/30), 60s (>30/15), 120s (>15/8)
         setStatus('engTime10Status', timePct10, 80, 60, false);
         setStatus('engTime30Status', timePct30, 50, 30, false);
         setStatus('engTime60Status', timePct60, 30, 15, false);
@@ -2947,7 +3197,6 @@ STEVIE</textarea>
         document.getElementById('engReaders').textContent = readersPct + '%';
         document.getElementById('engEngaged').textContent = engagedPct + '%';
 
-        // Apply quality benchmark status: Bouncers (<30 good, 30-50 ok, >50 bad), Engaged (>20 good, 10-20 ok, <10 bad)
         setStatus('engBouncersStatus', bouncersPct, 30, 50, true);
         setStatus('engEngagedStatus', engagedPct, 20, 10, false);
 
@@ -2955,77 +3204,61 @@ STEVIE</textarea>
         var insightEl = document.getElementById('engInsight');
         var insightIcon = document.querySelector('#engInsight .engagement-insight__icon');
         var insightText = document.querySelector('#engInsight .engagement-insight__text');
-
-        // Calculate ticket conversion rate for insights
         var ticketConvRate = landing > 0 ? Math.round((tickets / landing) * 100) : 0;
 
-        // Reset insight styling
         insightEl.style.background = 'rgba(255, 0, 51, 0.08)';
         insightEl.style.borderLeftColor = 'var(--red)';
         insightIcon.style.color = 'var(--red)';
         insightIcon.textContent = '!';
 
         if (landing === 0) {
-          // No data
           insightEl.style.background = 'rgba(102, 102, 102, 0.1)';
           insightEl.style.borderLeftColor = 'var(--text-muted)';
           insightIcon.style.color = 'var(--text-muted)';
           insightIcon.textContent = '?';
           insightText.textContent = 'No landing page data yet. Run your ads and check back.';
         } else if (landing < 20) {
-          // Not enough data
           insightEl.style.background = 'rgba(102, 102, 102, 0.1)';
           insightEl.style.borderLeftColor = 'var(--text-muted)';
           insightIcon.style.color = 'var(--text-muted)';
           insightIcon.textContent = '?';
           insightText.textContent = 'Only ' + landing + ' visitors so far. Need 20+ for reliable insights.';
         } else if (bouncersPct > 50) {
-          // Critical: massive bounce
           insightText.textContent = 'PROBLEM: ' + bouncersPct + '% bounce immediately. Your headline or hero image isn\'t grabbing attention - test a new hook.';
         } else if (bouncersPct > 40) {
-          // High bounce
           insightText.textContent = bouncersPct + '% bounce immediately - your headline/hero needs to hook visitors faster.';
         } else if (scrollPct25 < 60) {
-          // People not even scrolling a little
           insightText.textContent = 'Only ' + scrollPct25 + '% scroll at all. The top of your page isn\'t giving them a reason to explore.';
         } else if (scrollPct50 < 40) {
-          // Low mid-page scroll
           insightText.textContent = 'Only ' + scrollPct50 + '% scroll past halfway. Content above the fold isn\'t compelling enough.';
         } else if (timePct10 < 60) {
-          // Very short visits
           insightText.textContent = 'Only ' + timePct10 + '% stay longer than 10 seconds. Page may be loading slowly or first impression is off.';
         } else if (timePct30 < 30) {
-          // Short visits
           insightText.textContent = 'Only ' + timePct30 + '% stay 30+ seconds. Visitors aren\'t finding what they need quickly.';
         } else if (ticketConvRate < 5 && engagedPct > 15) {
-          // Good engagement but not converting
           insightEl.style.background = 'rgba(255, 204, 0, 0.1)';
           insightEl.style.borderLeftColor = 'var(--yellow)';
           insightIcon.style.color = 'var(--yellow)';
           insightText.textContent = 'People are engaging (' + engagedPct + '%) but only ' + ticketConvRate + '% click tickets. Make the ticket section more prominent.';
         } else if (bouncersPct < 25 && scrollPct50 > 60 && timePct30 > 50 && engagedPct > 20) {
-          // Everything looks great
           insightEl.style.background = 'rgba(0, 255, 102, 0.1)';
           insightEl.style.borderLeftColor = 'var(--green)';
           insightIcon.style.color = 'var(--green)';
           insightIcon.textContent = '✓';
           insightText.textContent = 'GREAT! Low bounce (' + bouncersPct + '%), good scroll (' + scrollPct50 + '%), strong engagement (' + engagedPct + '%). Landing page is working well!';
         } else if (bouncersPct < 30 && scrollPct50 > 50) {
-          // Good performance
           insightEl.style.background = 'rgba(0, 255, 102, 0.1)';
           insightEl.style.borderLeftColor = 'var(--green)';
           insightIcon.style.color = 'var(--green)';
           insightIcon.textContent = '✓';
           insightText.textContent = 'Looking good! ' + (100 - bouncersPct) + '% of visitors engage with your page. Focus on ticket conversion now.';
         } else if (engagedPct > 15) {
-          // Decent engagement
           insightEl.style.background = 'rgba(0, 153, 255, 0.1)';
           insightEl.style.borderLeftColor = 'var(--blue)';
           insightIcon.style.color = 'var(--blue)';
           insightIcon.textContent = 'i';
           insightText.textContent = engagedPct + '% of visitors interact with the page. Solid engagement - keep testing to improve.';
         } else {
-          // Default - needs more optimization
           insightEl.style.background = 'rgba(255, 204, 0, 0.1)';
           insightEl.style.borderLeftColor = 'var(--yellow)';
           insightIcon.style.color = 'var(--yellow)';
@@ -3041,55 +3274,105 @@ STEVIE</textarea>
         document.getElementById('trafficSessions').textContent = sessions.size;
         document.getElementById('trafficLanding').textContent = landing;
         document.getElementById('trafficTickets').textContent = tickets;
+        document.getElementById('trafficAddToCart').textContent = addToCartSessions.size;
         document.getElementById('trafficCheckout').textContent = checkout;
         document.getElementById('trafficPurchases').textContent = purchase;
 
-        // Calculate funnel rates
+        // Calculate funnel rates (add_to_cart uses unique sessions)
         var ticketRate = landing > 0 ? ((tickets / landing) * 100).toFixed(1) : 0;
+        var addToCartRate = landing > 0 ? ((addToCartSessions.size / landing) * 100).toFixed(1) : 0;
         var checkoutRate = landing > 0 ? ((checkout / landing) * 100).toFixed(1) : 0;
         var purchaseRate = landing > 0 ? ((purchase / landing) * 100).toFixed(1) : 0;
-        
+
         document.getElementById('trafficFunnelRate').textContent = purchaseRate + '%';
-        
-        // Calculate drop-off rates
+
+        // Calculate drop-off rates (5-step funnel now)
         var drop1 = landing > 0 ? (100 - (tickets / landing * 100)).toFixed(0) : 0;
-        var drop2 = tickets > 0 ? (100 - (checkout / tickets * 100)).toFixed(0) : 0;
+        var drop1b = tickets > 0 ? (100 - (addToCartSessions.size / tickets * 100)).toFixed(0) : 0;
+        var drop2 = addToCartSessions.size > 0 ? (100 - (checkout / addToCartSessions.size * 100)).toFixed(0) : 0;
         var drop3 = checkout > 0 ? (100 - (purchase / checkout * 100)).toFixed(0) : 0;
-        var avgDropoff = ((parseFloat(drop1) + parseFloat(drop2) + parseFloat(drop3)) / 3).toFixed(0);
-        
+        var avgDropoff = ((parseFloat(drop1) + parseFloat(drop1b) + parseFloat(drop2) + parseFloat(drop3)) / 4).toFixed(0);
+
         document.getElementById('trafficDropoff').textContent = avgDropoff + '%';
         document.getElementById('trafficDrop1').textContent = '-' + drop1 + '%';
+        document.getElementById('trafficDrop1b').textContent = '-' + drop1b + '%';
         document.getElementById('trafficDrop2').textContent = '-' + drop2 + '%';
         document.getElementById('trafficDrop3').textContent = '-' + drop3 + '%';
 
-        // Update funnel visualization
+        // Update funnel visualization (5 steps)
         document.getElementById('trafficCount1').textContent = landing;
         document.getElementById('trafficCount2').textContent = tickets;
+        document.getElementById('trafficCount2b').textContent = addToCartSessions.size;
         document.getElementById('trafficCount3').textContent = checkout;
         document.getElementById('trafficCount4').textContent = purchase;
         document.getElementById('trafficPct2').textContent = ticketRate + '%';
+        document.getElementById('trafficPct2b').textContent = addToCartRate + '%';
         document.getElementById('trafficPct3').textContent = checkoutRate + '%';
         document.getElementById('trafficPct4').textContent = purchaseRate + '%';
 
         var maxBarHeight = 120;
         document.getElementById('trafficBar1').style.height = maxBarHeight + 'px';
         document.getElementById('trafficBar2').style.height = (landing > 0 ? Math.max(4, (tickets / landing) * maxBarHeight) : 4) + 'px';
+        document.getElementById('trafficBar2b').style.height = (landing > 0 ? Math.max(4, (addToCartSessions.size / landing) * maxBarHeight) : 4) + 'px';
         document.getElementById('trafficBar3').style.height = (landing > 0 ? Math.max(4, (checkout / landing) * maxBarHeight) : 4) + 'px';
         document.getElementById('trafficBar4').style.height = (landing > 0 ? Math.max(4, (purchase / landing) * maxBarHeight) : 4) + 'px';
 
-        // Update sources table
+        // Update sources table (clickable for drill-down)
         var tbody = document.getElementById('sourcesTableBody');
         var sourceEntries = Object.entries(sources).sort(function(a, b) { return b[1] - a[1]; });
-        
+
         if (sourceEntries.length === 0) {
           tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">No traffic data yet</td></tr>';
         } else {
           var maxSessions = sourceEntries[0][1];
           tbody.innerHTML = sourceEntries.slice(0, 10).map(function(entry) {
-            var pct = totalViews > 0 ? ((entry[1] / sessions.size) * 100).toFixed(1) : 0;
+            var pct = sessions.size > 0 ? ((entry[1] / sessions.size) * 100).toFixed(1) : 0;
             var barWidth = (entry[1] / maxSessions * 100).toFixed(0);
-            return '<tr><td>' + entry[0] + '<div class="sources__bar" style="width: ' + barWidth + '%;"></div></td><td>' + entry[1] + '</td><td>' + pct + '%</td></tr>';
+            var activeClass = (currentSourceFilter === entry[0]) ? ' sources__row--active' : '';
+            return '<tr data-source="' + entry[0].replace(/"/g, '&quot;') + '" class="' + activeClass + '"><td>' + entry[0] + '<div class="sources__bar" style="width: ' + barWidth + '%;"></div></td><td>' + entry[1] + '</td><td>' + pct + '%</td></tr>';
           }).join('');
+
+          // Attach click handlers for source drill-down
+          tbody.querySelectorAll('tr[data-source]').forEach(function(row) {
+            row.addEventListener('click', function() {
+              var sourceName = this.getAttribute('data-source');
+              if (currentSourceFilter === sourceName) {
+                currentSourceFilter = null;
+              } else {
+                currentSourceFilter = sourceName;
+              }
+              updateSourceFilterBanner();
+              loadTrafficStats();
+            });
+          });
+        }
+
+        // Update products added to cart table
+        var cartTbody = document.getElementById('cartProductsTableBody');
+        var productEntries = Object.entries(cartProducts).sort(function(a, b) { return b[1].count - a[1].count; });
+
+        if (productEntries.length === 0) {
+          cartTbody.innerHTML = '<tr><td colspan="4" style="color: var(--text-muted); text-align: center;">No add-to-cart data yet</td></tr>';
+        } else {
+          var maxProductCount = productEntries[0][1].count;
+          cartTbody.innerHTML = productEntries.map(function(entry) {
+            var pct = addToCart > 0 ? ((entry[1].count / addToCart) * 100).toFixed(1) : 0;
+            var barWidth = (entry[1].count / maxProductCount * 100).toFixed(0);
+            return '<tr><td>' + entry[0] + '<div class="cart-products__bar" style="width: ' + barWidth + '%;"></div></td><td>' + entry[1].count + '</td><td>' + entry[1].totalQty + '</td><td>' + pct + '%</td></tr>';
+          }).join('');
+        }
+      }
+
+      // Source filter banner management
+      function updateSourceFilterBanner() {
+        var banner = document.getElementById('sourceFilterBanner');
+        var nameEl = document.getElementById('sourceFilterName');
+        if (currentSourceFilter) {
+          banner.classList.add('source-filter-banner--visible');
+          nameEl.textContent = currentSourceFilter;
+        } else {
+          banner.classList.remove('source-filter-banner--visible');
+          nameEl.textContent = '—';
         }
       }
 

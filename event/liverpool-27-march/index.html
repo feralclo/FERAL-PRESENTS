@@ -823,6 +823,9 @@
             num_items: TEE_SIZES[popupSelectedSize],
             size: popupSelectedSize
           });
+          if (window.feralTrackAddToCart) {
+            window.feralTrackAddToCart(ticket.name + ' (' + popupSelectedSize + ')', ticket.price, 1);
+          }
           updateDisplay();
           closeSizePopup();
         });
@@ -855,6 +858,9 @@
               currency: 'GBP',
               num_items: ticket.qty
             });
+            if (window.feralTrackAddToCart) {
+              window.feralTrackAddToCart(ticket.name, ticket.price, 1);
+            }
           }
           if (action === 'remove' && ticket.qty > 0) {
             // For VIP+Tee, remove from TEE_SIZES
@@ -1170,6 +1176,9 @@
             num_items: teeModalQty,
             size: selectedSize
           });
+          if (window.feralTrackAddToCart) {
+            window.feralTrackAddToCart('VIP Black + Limited Edition Tee (' + selectedSize + ')', 65, teeModalQty);
+          }
 
           // Update main ticket display
           updateDisplay();

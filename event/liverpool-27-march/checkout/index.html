@@ -578,7 +578,7 @@
       // Default ticket definitions
       var TICKET_INFO = {
         '6b45169f-cf51-4600-8682-d6f79dcb59ae': { name: 'General Release', price: 26.46 },
-        '53c5262b-93ba-412e-bb5c-84ebc445a734': { name: 'VIP Black + Limited Edition Tee', price: 65.00 },
+        '53c5262b-93ba-412e-bb5c-84ebc445a734': { name: 'VIP Ticket + Tee', price: 65.00 },
         'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf': { name: 'VIP Ticket', price: 35.00 }
       };
 
@@ -619,7 +619,7 @@
             }
 
             // Add size-specific IDs with size suffix in name
-            var mainTeeName = settings.ticketName3 || 'VIP Black + Limited Edition Tee';
+            var mainTeeName = settings.ticketName3 || 'VIP Ticket + Tee';
             var teePrice = 65.00;
             var sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
             var sizeKeys = ['sizeIdXS', 'sizeIdS', 'sizeIdM', 'sizeIdL', 'sizeIdXL', 'sizeIdXXL'];
@@ -660,7 +660,7 @@
               if (size) {
                 // Strip any existing size suffix and replace with the URL size
                 var baseName = itemName.replace(/\s*\([A-Z]+\)\s*$/, '');
-                itemName = baseName + ' — <span class="checkout-summary__size">Size: ' + size + '</span>';
+                itemName = baseName + ' — <span class="checkout-summary__size">size:</span> ' + size;
               }
               cartItems.push({
                 id: ticketId,

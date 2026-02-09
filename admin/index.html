@@ -2960,7 +2960,7 @@ STEVIE</textarea>
 
         if (dbReady) {
           try {
-            var res = await supabaseClient.from('popup_events').select('event_type');
+            var res = await supabaseClient.from('popup_events').select('event_type').limit(50000);
             if (res.error) {
               debugInfo = 'Supabase error: ' + res.error.message + '\nFalling back to localStorage';
               console.log('[FERAL Admin]', debugInfo);
@@ -3062,7 +3062,9 @@ STEVIE</textarea>
               dateFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
             }
 
-            var query = supabaseClient.from('traffic_events').select('*');
+            var query = supabaseClient.from('traffic_events')
+              .select('event_type,session_id,utm_source,utm_medium,theme,product_name,product_price,product_qty')
+              .limit(50000);
             if (dateFilter) {
               query = query.gte('timestamp', dateFilter);
             }

@@ -1,0 +1,3101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FERAL Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111;
+      --surface-2: #1a1a1a;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #fff;
+      --text-muted: #666;
+      --red: #ff0033;
+      --green: #00ff66;
+      --yellow: #ffcc00;
+      --blue: #0099ff;
+      --font-mono: 'Space Mono', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ===== LOGIN SCREEN ===== */
+    .login {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login__box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 40px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .login__logo {
+      display: block;
+      width: 120px;
+      margin: 0 auto 32px;
+      opacity: 0.9;
+    }
+
+    .login__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .login__field {
+      margin-bottom: 16px;
+    }
+
+    .login__label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .login__input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .login__input:focus {
+      border-color: var(--red);
+    }
+
+    .login__btn {
+      width: 100%;
+      background: var(--red);
+      border: none;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 14px 20px;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .login__btn:hover {
+      background: #e6002e;
+    }
+
+    .login__error {
+      background: rgba(255, 0, 51, 0.1);
+      border: 1px solid rgba(255, 0, 51, 0.3);
+      color: var(--red);
+      font-size: 12px;
+      padding: 10px 12px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .login__error--visible {
+      display: block;
+    }
+
+    /* ===== DASHBOARD ===== */
+    .dashboard {
+      display: none;
+      min-height: 100vh;
+    }
+
+    .dashboard--visible {
+      display: block;
+    }
+
+    /* Header */
+    .dash-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .dash-header__logo {
+      height: 28px;
+      opacity: 0.9;
+    }
+
+    .dash-header__right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dash-header__user {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .dash-header__user span {
+      color: var(--green);
+    }
+
+    .dash-header__logout {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dash-header__logout:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Layout */
+    .dash-layout {
+      display: flex;
+      min-height: calc(100vh - 61px);
+    }
+
+    /* Sidebar */
+    .dash-sidebar {
+      width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      flex-shrink: 0;
+    }
+
+    .dash-nav__item {
+      display: block;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 12px 24px;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .dash-nav__item:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .dash-nav__item--active {
+      color: var(--text);
+      border-left-color: var(--red);
+      background: rgba(255, 0, 51, 0.05);
+    }
+
+    .dash-nav__item--disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .dash-nav__section {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      padding: 24px 24px 8px;
+      opacity: 0.5;
+    }
+
+    /* Main content */
+    .dash-main {
+      flex: 1;
+      padding: 32px;
+      max-width: 1200px;
+    }
+
+    .dash-title {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .dash-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    /* Page views - hidden by default */
+    .page-view {
+      display: none;
+    }
+
+    .page-view--active {
+      display: block;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+    }
+
+    .stat-card__label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-card__value {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stat-card__value--red {
+      color: var(--red);
+    }
+
+    .stat-card__value--green {
+      color: var(--green);
+    }
+
+    .stat-card__value--yellow {
+      color: var(--yellow);
+    }
+
+    .stat-card__value--blue {
+      color: var(--blue);
+    }
+
+    .stat-card__change {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Funnel */
+    .funnel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .funnel__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    .funnel__steps {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      height: 140px;
+      padding: 0 20px;
+    }
+
+    .funnel__step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .funnel__bar {
+      width: 100%;
+      max-width: 80px;
+      background: var(--red);
+      opacity: 0.8;
+      transition: opacity 0.15s ease, height 0.3s ease;
+      min-height: 4px;
+    }
+
+    .funnel__bar:hover {
+      opacity: 1;
+    }
+
+    .funnel__bar--green {
+      background: var(--green);
+    }
+
+    .funnel__bar--yellow {
+      background: var(--yellow);
+    }
+
+    .funnel__bar--blue {
+      background: var(--blue);
+    }
+
+    .funnel__label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .funnel__count {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .funnel__pct {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 2px;
+    }
+
+    .funnel__arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+      opacity: 0.3;
+      margin: 0 -4px;
+      align-self: center;
+    }
+
+    /* Drop-off indicator */
+    .funnel__dropoff {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--red);
+      margin-top: 2px;
+      opacity: 0.8;
+    }
+
+    /* Sources table */
+    .sources {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .sources__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .sources__table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .sources__table th,
+    .sources__table td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .sources__table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .sources__table td {
+      color: var(--text);
+    }
+
+    .sources__table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .sources__bar {
+      height: 6px;
+      background: var(--red);
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+
+    /* Engagement section */
+    .engagement-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .engagement-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .engagement-section {
+      min-width: 0;
+    }
+
+    .engagement-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .engagement-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .engagement-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .engagement-row__label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 45px;
+      flex-shrink: 0;
+    }
+
+    .engagement-row__track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .engagement-row__bar {
+      height: 100%;
+      background: var(--red);
+      transition: width 0.3s ease;
+    }
+
+    .engagement-row__bar--blue {
+      background: var(--blue);
+    }
+
+    .engagement-row__pct {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text);
+      width: 40px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .engagement-row__status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--text-muted);
+    }
+
+    .engagement-row__status--good {
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(0, 255, 102, 0.5);
+    }
+
+    .engagement-row__status--ok {
+      background: var(--yellow);
+      box-shadow: 0 0 6px rgba(255, 204, 0, 0.5);
+    }
+
+    .engagement-row__status--bad {
+      background: var(--red);
+      box-shadow: 0 0 6px rgba(255, 0, 51, 0.5);
+    }
+
+    .engagement-benchmark {
+      font-size: 9px;
+      color: var(--text-muted);
+      margin-left: 4px;
+      opacity: 0.6;
+    }
+
+    .engagement-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .engagement-summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .engagement-quality {
+      text-align: center;
+      padding: 12px 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+    }
+
+    .engagement-quality__label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .engagement-quality__desc {
+      display: block;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .engagement-quality__pct {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .engagement-insight {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      background: rgba(255, 0, 51, 0.08);
+      border-left: 3px solid var(--red);
+    }
+
+    .engagement-insight__icon {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--red);
+      flex-shrink: 0;
+    }
+
+    .engagement-insight__text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    /* Time filter */
+    .time-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .time-filter__btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .time-filter__btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    .time-filter__btn--active {
+      border-color: var(--red);
+      color: var(--red);
+      background: rgba(255, 0, 51, 0.1);
+    }
+
+    /* Actions */
+    .actions {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+    }
+
+    .actions__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .actions__btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 10px 16px;
+      margin-right: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .actions__btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    .actions__btn--danger:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Hide login when dashboard visible */
+    .login--hidden {
+      display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .dash-sidebar {
+        display: none;
+      }
+      .dash-main {
+        padding: 20px;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .funnel__steps {
+        flex-wrap: wrap;
+        height: auto;
+      }
+      .funnel__arrow {
+        display: none;
+      }
+    }
+  </style>
+  <!-- Supabase for persistent analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Login Screen -->
+  <div class="login" id="loginScreen">
+    <div class="login__box">
+      <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="login__logo">
+      <h1 class="login__title">Admin Access</h1>
+      <form id="loginForm">
+        <div class="login__field">
+          <label class="login__label">Username</label>
+          <input type="text" class="login__input" id="loginUser" autocomplete="username" required>
+        </div>
+        <div class="login__field">
+          <label class="login__label">Password</label>
+          <input type="password" class="login__input" id="loginPass" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="login__btn">Access Dashboard</button>
+        <div class="login__error" id="loginError">Invalid credentials. Try again.</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard">
+    <header class="dash-header">
+      <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="dash-header__logo">
+      <div class="dash-header__right">
+        <span class="dash-header__user">Logged in as <span id="dashUser">HARRY</span></span>
+        <button class="dash-header__logout" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <div class="dash-layout">
+      <aside class="dash-sidebar">
+        <nav>
+          <div class="dash-nav__section">Analytics</div>
+          <a class="dash-nav__item dash-nav__item--active" data-page="popup">Popup Performance</a>
+          <a class="dash-nav__item" data-page="traffic">Traffic Analytics</a>
+          <a class="dash-nav__item dash-nav__item--disabled" data-page="sales">Sales (Coming Soon)</a>
+
+          <div class="dash-nav__section">Events</div>
+          <a class="dash-nav__item" data-page="liverpool">Liverpool 27 Mar</a>
+          <a class="dash-nav__item" data-page="kompass">Kompass Klub 7 Mar</a>
+          <a class="dash-nav__item" data-page="create-event" style="color: var(--green);">+ Create Event</a>
+
+          <div class="dash-nav__section">Settings</div>
+          <a class="dash-nav__item dash-nav__item--disabled" data-page="settings">Configuration</a>
+        </nav>
+      </aside>
+
+      <main class="dash-main">
+        <!-- ===== POPUP PERFORMANCE PAGE ===== -->
+        <div class="page-view page-view--active" id="pagePopup">
+          <h1 class="dash-title">Popup Performance</h1>
+          <p class="dash-subtitle">Liverpool Event Page — Discount Popup Analytics</p>
+
+          <!-- Key metrics -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card__label">Impressions</div>
+              <div class="stat-card__value" id="statImpressions">0</div>
+              <div class="stat-card__change">Popup views</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Engaged</div>
+              <div class="stat-card__value" id="statEngaged">0</div>
+              <div class="stat-card__change">Clicked "Save My Discount"</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Conversions</div>
+              <div class="stat-card__value stat-card__value--green" id="statConversions">0</div>
+              <div class="stat-card__change">Email captured</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Conversion Rate</div>
+              <div class="stat-card__value stat-card__value--red" id="statRate">0%</div>
+              <div class="stat-card__change">Impressions → Conversions</div>
+            </div>
+          </div>
+
+          <!-- Funnel visualization -->
+          <div class="funnel">
+            <h2 class="funnel__title">Conversion Funnel</h2>
+            <div class="funnel__steps">
+              <div class="funnel__step">
+                <div class="funnel__bar" id="funnelBar1" style="height: 100px;"></div>
+                <span class="funnel__label">Saw Popup</span>
+                <span class="funnel__count" id="funnelCount1">0</span>
+                <span class="funnel__pct" id="funnelPct1">100%</span>
+              </div>
+              <div class="funnel__step">
+                <div class="funnel__bar" id="funnelBar2" style="height: 60px;"></div>
+                <span class="funnel__label">Clicked Yes</span>
+                <span class="funnel__count" id="funnelCount2">0</span>
+                <span class="funnel__pct" id="funnelPct2">0%</span>
+              </div>
+              <div class="funnel__step">
+                <div class="funnel__bar" id="funnelBar3" style="height: 30px;"></div>
+                <span class="funnel__label">Got Code</span>
+                <span class="funnel__count" id="funnelCount3">0</span>
+                <span class="funnel__pct" id="funnelPct3">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dismissal stats -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card__label">Dismissed (Screen 1)</div>
+              <div class="stat-card__value" id="statDismissed1">0</div>
+              <div class="stat-card__change">Clicked "Nah, I'll Pay Full Price"</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Closed (X Button)</div>
+              <div class="stat-card__value" id="statClosed">0</div>
+              <div class="stat-card__change">Closed without engaging</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Engagement Rate</div>
+              <div class="stat-card__value" id="statEngagementRate">0%</div>
+              <div class="stat-card__change">Impressions → Engaged</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Email Capture Rate</div>
+              <div class="stat-card__value" id="statEmailRate">0%</div>
+              <div class="stat-card__change">Engaged → Converted</div>
+            </div>
+          </div>
+
+          <!-- Debug Info -->
+          <div class="actions" style="margin-bottom: 16px;">
+            <h2 class="actions__title">Debug — Raw Data</h2>
+            <pre id="debugRaw" style="background: #0a0a0a; border: 1px solid #222; padding: 12px; font-family: 'Space Mono', monospace; font-size: 11px; color: #888; overflow-x: auto; margin-top: 12px;">Loading...</pre>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="refreshStats">Refresh Stats</button>
+            <button class="actions__btn actions__btn--danger" id="resetStats">Reset All Data</button>
+          </div>
+        </div>
+
+        <!-- ===== TRAFFIC ANALYTICS PAGE ===== -->
+        <div class="page-view" id="pageTraffic">
+          <h1 class="dash-title">Traffic Analytics</h1>
+          <p class="dash-subtitle">Liverpool Event — Visitor Journey & Funnel Analysis</p>
+
+          <!-- Time filter -->
+          <div class="time-filter">
+            <button class="time-filter__btn time-filter__btn--active" data-range="24h">Last 24h</button>
+            <button class="time-filter__btn" data-range="7d">Last 7 Days</button>
+            <button class="time-filter__btn" data-range="30d">Last 30 Days</button>
+            <button class="time-filter__btn" data-range="all">All Time</button>
+          </div>
+
+          <!-- Key metrics -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card__label">Total Page Views</div>
+              <div class="stat-card__value" id="trafficTotal">0</div>
+              <div class="stat-card__change">All event pages</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Unique Sessions</div>
+              <div class="stat-card__value stat-card__value--blue" id="trafficSessions">0</div>
+              <div class="stat-card__change">Distinct visitors</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Landing → Checkout</div>
+              <div class="stat-card__value stat-card__value--yellow" id="trafficFunnelRate">0%</div>
+              <div class="stat-card__change">Funnel completion rate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Avg. Drop-off</div>
+              <div class="stat-card__value stat-card__value--red" id="trafficDropoff">0%</div>
+              <div class="stat-card__change">Per funnel step</div>
+            </div>
+          </div>
+
+          <!-- Traffic Funnel -->
+          <div class="funnel">
+            <h2 class="funnel__title">Visitor Journey Funnel</h2>
+            <div class="funnel__steps">
+              <div class="funnel__step">
+                <div class="funnel__bar" id="trafficBar1" style="height: 120px;"></div>
+                <span class="funnel__label">Event Page</span>
+                <span class="funnel__count" id="trafficCount1">0</span>
+                <span class="funnel__pct">100%</span>
+              </div>
+              <span class="funnel__arrow">→</span>
+              <div class="funnel__step">
+                <div class="funnel__bar funnel__bar--yellow" id="trafficBar2" style="height: 80px;"></div>
+                <span class="funnel__label">Tickets Page</span>
+                <span class="funnel__count" id="trafficCount2">0</span>
+                <span class="funnel__pct" id="trafficPct2">0%</span>
+                <span class="funnel__dropoff" id="trafficDrop1">-0%</span>
+              </div>
+              <span class="funnel__arrow">→</span>
+              <div class="funnel__step">
+                <div class="funnel__bar funnel__bar--blue" id="trafficBar3" style="height: 50px;"></div>
+                <span class="funnel__label">Checkout</span>
+                <span class="funnel__count" id="trafficCount3">0</span>
+                <span class="funnel__pct" id="trafficPct3">0%</span>
+                <span class="funnel__dropoff" id="trafficDrop2">-0%</span>
+              </div>
+              <span class="funnel__arrow">→</span>
+              <div class="funnel__step">
+                <div class="funnel__bar funnel__bar--green" id="trafficBar4" style="height: 25px;"></div>
+                <span class="funnel__label">Purchase</span>
+                <span class="funnel__count" id="trafficCount4">0</span>
+                <span class="funnel__pct" id="trafficPct4">0%</span>
+                <span class="funnel__dropoff" id="trafficDrop3">-0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Traffic Sources -->
+          <div class="sources">
+            <h2 class="sources__title">Traffic Sources</h2>
+            <table class="sources__table">
+              <thead>
+                <tr>
+                  <th>Source / Medium</th>
+                  <th>Sessions</th>
+                  <th>% of Total</th>
+                </tr>
+              </thead>
+              <tbody id="sourcesTableBody">
+                <tr>
+                  <td colspan="3" style="color: var(--text-muted); text-align: center;">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Page breakdown -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card__label">Event Landing</div>
+              <div class="stat-card__value" id="trafficLanding">0</div>
+              <div class="stat-card__change">/event/liverpool-27-march/</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Tickets Page</div>
+              <div class="stat-card__value" id="trafficTickets">0</div>
+              <div class="stat-card__change">/event/liverpool-27-march/tickets/</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Checkout Page</div>
+              <div class="stat-card__value" id="trafficCheckout">0</div>
+              <div class="stat-card__change">/event/liverpool-27-march/checkout/</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Purchases</div>
+              <div class="stat-card__value stat-card__value--green" id="trafficPurchases">0</div>
+              <div class="stat-card__change">Completed transactions</div>
+            </div>
+          </div>
+
+          <!-- Landing Page Engagement -->
+          <div class="sources" style="margin-bottom: 32px;">
+            <h2 class="sources__title">Landing Page Engagement</h2>
+            <div class="engagement-grid">
+              <!-- Scroll Depth -->
+              <div class="engagement-section">
+                <h3 class="engagement-label">Scroll Depth <span class="engagement-benchmark">(target: 50%+ reach halfway)</span></h3>
+                <div class="engagement-bars">
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">100%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll100" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll100Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll100Status"></span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">75%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll75" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll75Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll75Status"></span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">50%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll50" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll50Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll50Status"></span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">25%</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar" id="engScroll25" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engScroll25Pct">0%</span>
+                    <span class="engagement-row__status" id="engScroll25Status"></span>
+                  </div>
+                </div>
+              </div>
+              <!-- Time on Page -->
+              <div class="engagement-section">
+                <h3 class="engagement-label">Time on Page <span class="engagement-benchmark">(target: 50%+ stay 30s)</span></h3>
+                <div class="engagement-bars">
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;2min</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime120" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime120Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime120Status"></span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;60s</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime60" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime60Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime60Status"></span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;30s</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime30" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime30Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime30Status"></span>
+                  </div>
+                  <div class="engagement-row">
+                    <span class="engagement-row__label">&gt;10s</span>
+                    <div class="engagement-row__track"><div class="engagement-row__bar engagement-row__bar--blue" id="engTime10" style="width: 0%;"></div></div>
+                    <span class="engagement-row__pct" id="engTime10Pct">0%</span>
+                    <span class="engagement-row__status" id="engTime10Status"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Engagement Quality Summary -->
+            <div class="engagement-summary">
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Bouncers <span class="engagement-row__status" id="engBouncersStatus" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span></span>
+                <span class="engagement-quality__desc">&lt;10s, no scroll</span>
+                <span class="engagement-quality__pct" id="engBouncers">0%</span>
+                <span class="engagement-benchmark" style="display:block;margin-top:2px;">Target: &lt;30%</span>
+              </div>
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Skimmers</span>
+                <span class="engagement-quality__desc">Scroll, &lt;30s</span>
+                <span class="engagement-quality__pct stat-card__value--yellow" id="engSkimmers">0%</span>
+              </div>
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Readers</span>
+                <span class="engagement-quality__desc">Scroll, &gt;30s</span>
+                <span class="engagement-quality__pct stat-card__value--blue" id="engReaders">0%</span>
+              </div>
+              <div class="engagement-quality">
+                <span class="engagement-quality__label">Engaged <span class="engagement-row__status" id="engEngagedStatus" style="display:inline-block;vertical-align:middle;margin-left:4px;"></span></span>
+                <span class="engagement-quality__desc">Interacted</span>
+                <span class="engagement-quality__pct" id="engEngaged">0%</span>
+                <span class="engagement-benchmark" style="display:block;margin-top:2px;">Target: &gt;15%</span>
+              </div>
+            </div>
+            <!-- Insight -->
+            <div class="engagement-insight" id="engInsight">
+              <span class="engagement-insight__icon">!</span>
+              <span class="engagement-insight__text">Collecting data...</span>
+            </div>
+          </div>
+
+          <!-- Debug Info -->
+          <div class="actions" style="margin-bottom: 16px;">
+            <h2 class="actions__title">Debug — Raw Data</h2>
+            <pre id="trafficDebug" style="background: #0a0a0a; border: 1px solid #222; padding: 12px; font-family: 'Space Mono', monospace; font-size: 11px; color: #888; overflow-x: auto; margin-top: 12px;">Loading...</pre>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="refreshTraffic">Refresh Stats</button>
+            <button class="actions__btn actions__btn--danger" id="resetTraffic">Reset Traffic Data</button>
+          </div>
+        </div>
+
+        <!-- ===== LIVERPOOL EVENT EDITOR PAGE ===== -->
+        <div class="page-view" id="pageLiverpool">
+          <h1 class="dash-title">Liverpool 27 Mar</h1>
+          <p class="dash-subtitle">Event Settings & Configuration</p>
+
+          <!-- Theme Selector -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Theme</h2>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <select id="eventTheme" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 13px; padding: 10px 14px; min-width: 200px; cursor: pointer;">
+                <option value="default">Default (Full Hero)</option>
+                <option value="minimal">Minimal (Compact)</option>
+              </select>
+              <span style="font-size: 12px; color: var(--text-muted);">Changes apply on save</span>
+            </div>
+
+            <!-- Minimal Theme Options (shown when minimal selected) -->
+            <div id="minimalThemeOptions" style="display: none; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border);">
+              <h3 style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Minimal Theme Options</h3>
+
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 16px;">
+                <input type="checkbox" id="minimalEnableBg" style="accent-color: var(--red);">
+                <span style="font-size: 13px;">Enable cover image</span>
+              </label>
+
+              <div id="minimalBgOptions" style="display: none;">
+                <div style="margin-bottom: 16px;">
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">BLUR STRENGTH <span style="opacity: 0.6;">(0 = no blur)</span></label>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="minimalBlurStrength" min="0" max="50" value="20" style="flex: 1; accent-color: var(--red);">
+                    <span id="blurValue" style="font-family: var(--font-mono); font-size: 12px; min-width: 40px; color: var(--text);">20px</span>
+                  </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">STATIC INTENSITY <span style="opacity: 0.6;">(0 = no static)</span></label>
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="minimalStaticStrength" min="0" max="100" value="50" style="flex: 1; accent-color: var(--red);">
+                    <span id="staticValue" style="font-family: var(--font-mono); font-size: 12px; min-width: 40px; color: var(--text);">50%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">COVER IMAGE</label>
+                  <div id="bgDropZone" style="border: 2px dashed var(--border); padding: 24px; text-align: center; cursor: pointer; transition: all 0.15s;">
+                    <span style="font-size: 12px; color: var(--text-muted);">Drag & drop image here, or click to select</span>
+                    <input type="file" id="bgFileInput" accept="image/*" style="display: none;">
+                  </div>
+                  <div id="bgPreview" style="margin-top: 12px; display: none;">
+                    <div style="position: relative; display: inline-block;">
+                      <img id="bgPreviewImg" style="max-width: 200px; max-height: 120px; border: 1px solid var(--border); filter: blur(20px);">
+                      <span style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); padding: 2px 6px; font-size: 9px; color: var(--text-muted);">Preview with blur</span>
+                    </div>
+                    <button id="removeBgBtn" class="actions__btn actions__btn--danger" style="margin-top: 8px; font-size: 10px; padding: 6px 12px;">Remove Image</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Event Details -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Event Details</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Name</label>
+                <input type="text" id="eventName" value="FERAL Liverpool" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Date</label>
+                <input type="date" id="eventDate" value="2026-03-27" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px; cursor: pointer;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Doors</label>
+                <input type="text" id="eventDoors" value="9:30PM — 4:00AM" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Venue</label>
+                <input type="text" id="eventVenue" value="Invisible Wind Factory, Liverpool" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Settings (hidden when minimal theme selected) -->
+          <div id="heroSection">
+            <div class="sources" style="margin-bottom: 24px;">
+              <h2 class="sources__title">Hero</h2>
+
+              <!-- Hero/Banner Image -->
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Banner Image</label>
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Main banner image for the event page header.</p>
+
+                <!-- Current Image Preview -->
+                <div id="heroImagePreview" style="margin-bottom: 12px;">
+                  <div style="position: relative; display: inline-block;">
+                    <img id="heroPreviewImg" src="/images/liverpool-event-banner.jpg" style="max-width: 100%; max-height: 120px; border: 1px solid var(--border);">
+                  </div>
+                  <button id="removeHeroBtn" class="actions__btn actions__btn--danger" style="display: block; margin-top: 8px; font-size: 10px; padding: 6px 12px;">Remove Image</button>
+                </div>
+
+                <!-- Upload Zone -->
+                <div id="heroDropZone" style="border: 2px dashed var(--border); padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
+                  <span style="font-size: 12px; color: var(--text-muted);">Drag & drop new image, or click to select</span>
+                  <input type="file" id="heroFileInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- URL fallback -->
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="text" id="eventHeroImage" value="/images/liverpool-event-banner.jpg" placeholder="Or enter image URL" style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 12px; padding: 8px;">
+                  <button id="loadHeroUrlBtn" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 12px; font-size: 11px; cursor: pointer;">Load URL</button>
+                </div>
+              </div>
+
+              <!-- Release Tag -->
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Release Tag</label>
+                <input type="text" id="eventReleaseTag" value="SECOND RELEASE NOW ACTIVE" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Lineup -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Lineup</h2>
+            <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Artists (one per line)</label>
+            <textarea id="eventLineup" rows="6" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 13px; padding: 12px 14px; resize: vertical;">DARK MATTER
+MIKA HEGGEMAN
+NICOLAS JULIAN
+SANDY KLETZ
+SO JUICE
+STEVIE</textarea>
+          </div>
+
+          <!-- Ticket Types (Full Editor) -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Ticket Types</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+              Edit ticket names, subtitles, prices, and IDs. Keep existing IDs to maintain EventX links.
+            </p>
+
+            <div id="liverpoolTicketList">
+              <!-- General Release -->
+              <div class="ticket-editor" style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="ticketName1" value="General Release" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="ticketSubtitle1" value="Standard entry" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (£)</label>
+                    <input type="number" id="priceGeneral" value="26.46" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix) — do not change unless updating link</label>
+                  <input type="text" id="ticketId1" value="6b45169f-cf51-4600-8682-d6f79dcb59ae" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+              </div>
+
+              <!-- VIP Ticket -->
+              <div class="ticket-editor" style="padding: 16px; background: rgba(229,228,226,0.03); border: 1px solid rgba(229,228,226,0.3); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="ticketName2" value="VIP Ticket" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="ticketSubtitle2" value="Queue Jump & Balcony access" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (£)</label>
+                    <input type="number" id="priceVip" value="35.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="ticketId2" value="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+              </div>
+
+              <!-- VIP Black (with merch) -->
+              <div class="ticket-editor" style="padding: 16px; background: rgba(255,0,51,0.03); border: 1px solid rgba(255,0,51,0.3); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="ticketName3" value="VIP Black" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="ticketSubtitle3" value="+ Limited Edition Tee" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (£)</label>
+                    <input type="number" id="priceVipBlack" value="65.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">MAIN TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="ticketId3" value="53c5262b-93ba-412e-bb5c-84ebc445a734" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+                <div style="padding: 12px; background: rgba(255,0,51,0.05); border: 1px solid rgba(255,0,51,0.2);">
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 12px;">
+                    <input type="checkbox" id="ticketMerch3" checked style="accent-color: var(--red);">
+                    <span style="font-size: 12px; font-weight: 600;">Includes Merch (Tee)</span>
+                  </label>
+                  <div id="merchSizeIds3">
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">PER-SIZE TICKET IDs (optional - leave empty to use main ID for all sizes)</label>
+                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;">
+                      <div><label style="font-size:9px; color: var(--text-muted);">XS</label><input type="text" id="sizeIdXS" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">S</label><input type="text" id="sizeIdS" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">M</label><input type="text" id="sizeIdM" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">L</label><input type="text" id="sizeIdL" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">XL</label><input type="text" id="sizeIdXL" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                      <div><label style="font-size:9px; color: var(--text-muted);">XXL</label><input type="text" id="sizeIdXXL" placeholder="Same" style="width:100%; font-size:10px; padding:6px; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono);"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button class="actions__btn" id="addLiverpoolTicket" style="margin-top: 8px; background: rgba(0, 255, 102, 0.1); border-color: var(--green); color: var(--green); font-size: 12px;">
+              + Add Ticket Type
+            </button>
+          </div>
+
+          <!-- Tee Info -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Exclusive Tee</h2>
+
+            <!-- Tee Name -->
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Tee Name</label>
+              <input type="text" id="teeName" value="Liverpool March 2026 Tee" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+            </div>
+
+            <!-- Tee Images Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+              <!-- Tee Front -->
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Front Image</label>
+
+                <!-- Preview -->
+                <div id="teeFrontPreview" style="margin-bottom: 12px;">
+                  <img id="teeFrontImg" src="/images/LIVERPOOL MARCH FRONT.png" style="max-width: 100%; max-height: 150px; border: 1px solid var(--border); background: #111;">
+                  <button id="removeTeeFrontBtn" class="actions__btn actions__btn--danger" style="display: block; margin-top: 6px; font-size: 10px; padding: 4px 10px;">Remove</button>
+                </div>
+
+                <!-- Drop Zone -->
+                <div id="teeFrontDropZone" style="border: 2px dashed var(--border); padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
+                  <span style="font-size: 11px; color: var(--text-muted);">Drag & drop or click</span>
+                  <input type="file" id="teeFrontInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- URL Input -->
+                <input type="text" id="teeFront" value="/images/LIVERPOOL MARCH FRONT.png" placeholder="Or enter URL" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 11px; padding: 8px;">
+              </div>
+
+              <!-- Tee Back -->
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Back Image</label>
+
+                <!-- Preview -->
+                <div id="teeBackPreview" style="margin-bottom: 12px;">
+                  <img id="teeBackImg" src="/images/LIVERPOOL MARCH BACK.png" style="max-width: 100%; max-height: 150px; border: 1px solid var(--border); background: #111;">
+                  <button id="removeTeeBackBtn" class="actions__btn actions__btn--danger" style="display: block; margin-top: 6px; font-size: 10px; padding: 4px 10px;">Remove</button>
+                </div>
+
+                <!-- Drop Zone -->
+                <div id="teeBackDropZone" style="border: 2px dashed var(--border); padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px;">
+                  <span style="font-size: 11px; color: var(--text-muted);">Drag & drop or click</span>
+                  <input type="file" id="teeBackInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- URL Input -->
+                <input type="text" id="teeBack" value="/images/LIVERPOOL MARCH BACK.png" placeholder="Or enter URL" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 11px; padding: 8px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="saveEventSettings" style="background: var(--red); border-color: var(--red); color: #fff;">Save Changes</button>
+            <button class="actions__btn" id="previewEvent">Preview Event Page</button>
+            <button class="actions__btn actions__btn--danger" id="resetEventSettings">Reset to Default</button>
+          </div>
+
+          <!-- Save confirmation -->
+          <div id="saveConfirm" style="display: none; margin-top: 16px; padding: 12px 16px; background: rgba(0, 255, 102, 0.1); border: 1px solid rgba(0, 255, 102, 0.3); color: var(--green); font-family: var(--font-mono); font-size: 12px;">
+            Settings saved successfully!
+          </div>
+        </div>
+
+        <!-- ===== KOMPASS KLUB EVENT EDITOR PAGE ===== -->
+        <div class="page-view" id="pageKompass">
+          <h1 class="dash-title">Kompass Klub 7 Mar</h1>
+          <p class="dash-subtitle">Event Settings & Configuration</p>
+
+          <!-- Ticketing Type -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Ticketing Type</h2>
+            <div style="display: flex; gap: 24px; align-items: center;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="kompassTicketType" value="onsite" style="accent-color: var(--red);">
+                <span style="font-size: 13px;">On-site (Custom tickets)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="kompassTicketType" value="offsite" checked style="accent-color: var(--red);">
+                <span style="font-size: 13px;">Off-site (External link)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- External Ticket URL (shown for off-site) -->
+          <div class="sources" style="margin-bottom: 24px;" id="kompassOffsiteFields">
+            <h2 class="sources__title">External Ticketing</h2>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Ticket URL</label>
+              <input type="text" id="kompassTicketUrl" value="https://paylogic.com/..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              <span style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 6px;">Visitors will be redirected to this URL when clicking "Get Tickets"</span>
+            </div>
+          </div>
+
+          <!-- On-site Ticket Configuration (shown for on-site) -->
+          <div class="sources" style="margin-bottom: 24px; display: none;" id="kompassOnsiteFields">
+            <h2 class="sources__title">Ticket Types</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+              Configure ticket types for on-site sales. Match IDs with EventX/Weetix.
+            </p>
+
+            <div id="kompassTicketList">
+              <!-- General Release -->
+              <div class="ticket-editor" data-ticket-key="general" style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="kompassTicketName1" value="General Release" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="kompassTicketSubtitle1" value="Standard entry" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (EUR)</label>
+                    <input type="number" id="kompassTicketPrice1" value="25.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="kompassTicketId1" placeholder="Enter ticket GUID" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+              </div>
+
+              <!-- VIP -->
+              <div class="ticket-editor" data-ticket-key="vip" style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET NAME</label>
+                    <input type="text" id="kompassTicketName2" value="VIP Ticket" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">SUBTITLE/PERKS</label>
+                    <input type="text" id="kompassTicketSubtitle2" value="Queue Jump & VIP Area" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                  <div>
+                    <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">PRICE (EUR)</label>
+                    <input type="number" id="kompassTicketPrice2" value="45.00" step="0.01" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-size: 13px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">TICKET ID (EventX/Weetix)</label>
+                  <input type="text" id="kompassTicketId2" placeholder="Enter ticket GUID" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:8px;">
+                </div>
+              </div>
+            </div>
+
+            <button class="actions__btn" id="addKompassTicket" style="margin-top: 8px; background: rgba(0, 255, 102, 0.1); border-color: var(--green); color: var(--green); font-size: 12px;">
+              + Add Ticket Type
+            </button>
+          </div>
+
+          <!-- Event Details -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Event Details</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Name</label>
+                <input type="text" id="kompassName" value="FERAL Kompass Klub" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Date</label>
+                <input type="date" id="kompassDate" value="2026-03-07" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px; cursor: pointer;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Doors</label>
+                <input type="text" id="kompassDoors" value="10:00PM — 6:00AM" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Venue</label>
+                <input type="text" id="kompassVenue" value="Kompass Klub, Antwerp" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Lineup -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Lineup</h2>
+            <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Artists (one per line)</label>
+            <textarea id="kompassLineup" rows="6" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 13px; padding: 12px 14px; resize: vertical;">TBA</textarea>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="saveKompassSettings" style="background: var(--red); border-color: var(--red); color: #fff;">Save Changes</button>
+            <button class="actions__btn" id="previewKompass">Preview Event Page</button>
+            <button class="actions__btn actions__btn--danger" id="resetKompassSettings">Reset to Default</button>
+          </div>
+
+          <!-- Save confirmation -->
+          <div id="saveKompassConfirm" style="display: none; margin-top: 16px; padding: 12px 16px; background: rgba(0, 255, 102, 0.1); border: 1px solid rgba(0, 255, 102, 0.3); color: var(--green); font-family: var(--font-mono); font-size: 12px;">
+            Settings saved successfully!
+          </div>
+        </div>
+
+        <!-- ===== CREATE NEW EVENT PAGE ===== -->
+        <div class="page-view" id="pageCreateEvent">
+          <h1 class="dash-title">Create New Event</h1>
+          <p class="dash-subtitle">Add a new event to FERAL</p>
+
+          <!-- Event Basics -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Event Basics</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Name</label>
+                <input type="text" id="newEventName" placeholder="e.g., FERAL Antwerp" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Event Slug</label>
+                <input type="text" id="newEventSlug" placeholder="e.g., antwerp-20-june" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px;">
+                <span style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 4px;">URL: /event/<span id="slugPreview">your-event-slug</span>/</span>
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Date</label>
+                <input type="date" id="newEventDate" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 10px 14px; cursor: pointer;">
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Venue</label>
+                <input type="text" id="newEventVenue" placeholder="e.g., Venue Name, City" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-sans); font-size: 14px; padding: 10px 14px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Ticketing Type -->
+          <div class="sources" style="margin-bottom: 24px;">
+            <h2 class="sources__title">Ticketing Type</h2>
+            <div style="display: flex; gap: 24px; align-items: center;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="newEventTicketType" value="onsite" checked style="accent-color: var(--red);">
+                <span style="font-size: 13px;">On-site (Custom tickets)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="newEventTicketType" value="offsite" style="accent-color: var(--red);">
+                <span style="font-size: 13px;">Off-site (External link)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Create Button -->
+          <div class="actions">
+            <h2 class="actions__title">Actions</h2>
+            <button class="actions__btn" id="createEventBtn" style="background: var(--green); border-color: var(--green); color: #000; font-weight: 700;">Create Event</button>
+          </div>
+
+          <!-- Events List Preview -->
+          <div class="sources" style="margin-top: 32px;">
+            <h2 class="sources__title">Existing Events (sorted by date)</h2>
+            <div id="eventsListPreview" style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted);">
+              Loading...
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Credentials (client-side only — not secure for sensitive data)
+      var VALID_USER = 'HARRY';
+      var VALID_PASS = 'Parker5656!';
+      var SESSION_KEY = 'feral_admin_session';
+      var STATS_KEY = 'feral_popup_stats';
+
+      // Supabase configuration
+      var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+      var supabaseClient = null;
+      var dbReady = false;
+
+      // Current page and time range
+      var currentPage = 'popup';
+      var currentTimeRange = '24h';
+
+      // Initialize Supabase
+      if (window.supabase && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        dbReady = true;
+        console.log('[FERAL Admin] Supabase connected');
+      }
+
+      // Elements
+      var loginScreen = document.getElementById('loginScreen');
+      var dashboard = document.getElementById('dashboard');
+      var loginForm = document.getElementById('loginForm');
+      var loginError = document.getElementById('loginError');
+      var logoutBtn = document.getElementById('logoutBtn');
+      var dashUser = document.getElementById('dashUser');
+
+      // Check session on load
+      if (sessionStorage.getItem(SESSION_KEY) === 'true') {
+        showDashboard();
+      }
+
+      // Login form
+      loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var user = document.getElementById('loginUser').value.trim();
+        var pass = document.getElementById('loginPass').value;
+
+        if (user === VALID_USER && pass === VALID_PASS) {
+          sessionStorage.setItem(SESSION_KEY, 'true');
+          showDashboard();
+        } else {
+          loginError.classList.add('login__error--visible');
+        }
+      });
+
+      // Logout
+      logoutBtn.addEventListener('click', function() {
+        sessionStorage.removeItem(SESSION_KEY);
+        location.reload();
+      });
+
+      function showDashboard() {
+        loginScreen.classList.add('login--hidden');
+        dashboard.classList.add('dashboard--visible');
+        dashUser.textContent = VALID_USER;
+        loadPopupStats();
+      }
+
+      // Navigation handling
+      document.querySelectorAll('.dash-nav__item:not(.dash-nav__item--disabled)').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var page = this.getAttribute('data-page');
+          switchPage(page);
+        });
+      });
+
+      function switchPage(page) {
+        currentPage = page;
+        
+        // Update nav active state
+        document.querySelectorAll('.dash-nav__item').forEach(function(item) {
+          item.classList.remove('dash-nav__item--active');
+          if (item.getAttribute('data-page') === page) {
+            item.classList.add('dash-nav__item--active');
+          }
+        });
+
+        // Update page views
+        document.querySelectorAll('.page-view').forEach(function(view) {
+          view.classList.remove('page-view--active');
+        });
+
+        if (page === 'popup') {
+          document.getElementById('pagePopup').classList.add('page-view--active');
+          loadPopupStats();
+        } else if (page === 'traffic') {
+          document.getElementById('pageTraffic').classList.add('page-view--active');
+          loadTrafficStats();
+        } else if (page === 'liverpool') {
+          document.getElementById('pageLiverpool').classList.add('page-view--active');
+          loadEventSettings();
+        } else if (page === 'kompass') {
+          document.getElementById('pageKompass').classList.add('page-view--active');
+          loadKompassSettings();
+        } else if (page === 'create-event') {
+          document.getElementById('pageCreateEvent').classList.add('page-view--active');
+          loadCreateEventPage();
+        }
+      }
+
+      // ===== LIVERPOOL EVENT SETTINGS =====
+      var EVENT_SETTINGS_KEY = 'feral_event_liverpool';
+
+      var DEFAULT_EVENT_SETTINGS = {
+        theme: 'default',
+        minimalBgEnabled: false,
+        minimalBlurStrength: 20,
+        minimalStaticStrength: 50,
+        minimalBgImage: '',
+        heroImage: '/images/liverpool-event-banner.jpg',
+        name: 'FERAL Liverpool',
+        date: '2026-03-27',
+        doors: '9:30PM — 4:00AM',
+        venue: 'Invisible Wind Factory, Liverpool',
+        releaseTag: 'SECOND RELEASE NOW ACTIVE',
+        lineup: 'DARK MATTER\nMIKA HEGGEMAN\nNICOLAS JULIAN\nSANDY KLETZ\nSO JUICE\nSTEVIE',
+        priceGeneral: 26.46,
+        priceVip: 35.00,
+        priceVipBlack: 65.00,
+        teeName: 'Liverpool March 2026 Tee',
+        teeFront: '/images/LIVERPOOL MARCH FRONT.png',
+        teeBack: '/images/LIVERPOOL MARCH BACK.png',
+        ticketName1: 'General Release',
+        ticketSubtitle1: 'Standard entry',
+        ticketName2: 'VIP Ticket',
+        ticketSubtitle2: 'Queue Jump & Balcony access',
+        ticketName3: 'VIP Black',
+        ticketSubtitle3: '+ Limited Edition Tee'
+      };
+
+      var eventSettingsInitialized = false;
+
+      function loadEventSettings() {
+        var stored = localStorage.getItem(EVENT_SETTINGS_KEY);
+        var settings = stored ? JSON.parse(stored) : DEFAULT_EVENT_SETTINGS;
+
+        document.getElementById('eventTheme').value = settings.theme || 'default';
+        document.getElementById('eventName').value = settings.name || '';
+        document.getElementById('eventDate').value = settings.date || '';
+        document.getElementById('eventDoors').value = settings.doors || '';
+        document.getElementById('eventVenue').value = settings.venue || '';
+        document.getElementById('eventReleaseTag').value = settings.releaseTag || '';
+        document.getElementById('eventLineup').value = settings.lineup || '';
+        document.getElementById('priceGeneral').value = settings.priceGeneral || 0;
+        document.getElementById('priceVip').value = settings.priceVip || 0;
+        document.getElementById('priceVipBlack').value = settings.priceVipBlack || 0;
+        document.getElementById('teeName').value = settings.teeName || '';
+        document.getElementById('teeFront').value = settings.teeFront || '';
+        document.getElementById('teeBack').value = settings.teeBack || '';
+
+        // Load ticket names and subtitles
+        if (settings.ticketName1) document.getElementById('ticketName1').value = settings.ticketName1;
+        if (settings.ticketSubtitle1) document.getElementById('ticketSubtitle1').value = settings.ticketSubtitle1;
+        if (settings.ticketName2) document.getElementById('ticketName2').value = settings.ticketName2;
+        if (settings.ticketSubtitle2) document.getElementById('ticketSubtitle2').value = settings.ticketSubtitle2;
+        if (settings.ticketName3) document.getElementById('ticketName3').value = settings.ticketName3;
+        if (settings.ticketSubtitle3) document.getElementById('ticketSubtitle3').value = settings.ticketSubtitle3;
+
+        // Load ticket IDs
+        if (settings.ticketId1) document.getElementById('ticketId1').value = settings.ticketId1;
+        if (settings.ticketId2) document.getElementById('ticketId2').value = settings.ticketId2;
+        if (settings.ticketId3) document.getElementById('ticketId3').value = settings.ticketId3;
+
+        // Load VIP Black tee size-specific IDs
+        if (settings.ticketMerch3 !== undefined) document.getElementById('ticketMerch3').checked = settings.ticketMerch3;
+        if (settings.sizeIdXS) document.getElementById('sizeIdXS').value = settings.sizeIdXS;
+        if (settings.sizeIdS) document.getElementById('sizeIdS').value = settings.sizeIdS;
+        if (settings.sizeIdM) document.getElementById('sizeIdM').value = settings.sizeIdM;
+        if (settings.sizeIdL) document.getElementById('sizeIdL').value = settings.sizeIdL;
+        if (settings.sizeIdXL) document.getElementById('sizeIdXL').value = settings.sizeIdXL;
+        if (settings.sizeIdXXL) document.getElementById('sizeIdXXL').value = settings.sizeIdXXL;
+
+        // Load hero image
+        var heroImage = settings.heroImage || '/images/liverpool-event-banner.jpg';
+        document.getElementById('eventHeroImage').value = heroImage;
+        document.getElementById('heroPreviewImg').src = heroImage;
+
+        // Load tee image previews
+        var teeFrontUrl = settings.teeFront || '/images/LIVERPOOL MARCH FRONT.png';
+        var teeBackUrl = settings.teeBack || '/images/LIVERPOOL MARCH BACK.png';
+        document.getElementById('teeFrontImg').src = teeFrontUrl;
+        document.getElementById('teeBackImg').src = teeBackUrl;
+
+        // Load minimal theme options
+        document.getElementById('minimalEnableBg').checked = settings.minimalBgEnabled || false;
+        document.getElementById('minimalBlurStrength').value = settings.minimalBlurStrength || 20;
+        document.getElementById('blurValue').textContent = (settings.minimalBlurStrength || 20) + 'px';
+        updateMinimalThemeUI(settings.theme, settings.minimalBgEnabled, settings.minimalBgImage, settings.minimalBlurStrength, settings.minimalStaticStrength);
+
+        // Attach button handlers only once
+        if (!eventSettingsInitialized) {
+          eventSettingsInitialized = true;
+
+          document.getElementById('saveEventSettings').addEventListener('click', saveEventSettings);
+
+          document.getElementById('previewEvent').addEventListener('click', function() {
+            window.open('/event/liverpool-27-march/', '_blank');
+          });
+
+          document.getElementById('resetEventSettings').addEventListener('click', function() {
+            if (confirm('Reset all event settings to default values?')) {
+              localStorage.removeItem(EVENT_SETTINGS_KEY);
+              loadEventSettings();
+            }
+          });
+
+          // Theme selector change
+          document.getElementById('eventTheme').addEventListener('change', function() {
+            var isMinimal = this.value === 'minimal';
+            document.getElementById('minimalThemeOptions').style.display = isMinimal ? 'block' : 'none';
+            // Hide hero section when minimal is selected (not needed for minimal theme)
+            document.getElementById('heroSection').style.display = isMinimal ? 'none' : 'block';
+          });
+
+          // Enable blur checkbox
+          document.getElementById('minimalEnableBg').addEventListener('change', function() {
+            document.getElementById('minimalBgOptions').style.display = this.checked ? 'block' : 'none';
+          });
+
+          // Blur strength slider
+          document.getElementById('minimalBlurStrength').addEventListener('input', function() {
+            var val = this.value;
+            document.getElementById('blurValue').textContent = val + 'px';
+            var preview = document.getElementById('bgPreviewImg');
+            if (preview.src) {
+              preview.style.filter = 'blur(' + val + 'px)';
+            }
+          });
+
+          // Static intensity slider
+          document.getElementById('minimalStaticStrength').addEventListener('input', function() {
+            var val = this.value;
+            document.getElementById('staticValue').textContent = val + '%';
+          });
+
+          // Drag and drop
+          var dropZone = document.getElementById('bgDropZone');
+          var fileInput = document.getElementById('bgFileInput');
+
+          dropZone.addEventListener('click', function() { fileInput.click(); });
+
+          dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--red)';
+            dropZone.style.background = 'rgba(255,0,51,0.05)';
+          });
+
+          dropZone.addEventListener('dragleave', function() {
+            dropZone.style.borderColor = 'var(--border)';
+            dropZone.style.background = 'transparent';
+          });
+
+          dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--border)';
+            dropZone.style.background = 'transparent';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleBgImageUpload(file);
+            }
+          });
+
+          fileInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleBgImageUpload(this.files[0]);
+            }
+          });
+
+          // Remove image button
+          document.getElementById('removeBgBtn').addEventListener('click', function() {
+            window.minimalBgImageData = '';
+            document.getElementById('bgPreview').style.display = 'none';
+            document.getElementById('bgPreviewImg').src = '';
+          });
+
+          // ===== HERO IMAGE HANDLERS =====
+          var heroDropZone = document.getElementById('heroDropZone');
+          var heroFileInput = document.getElementById('heroFileInput');
+          var heroUrlInput = document.getElementById('eventHeroImage');
+          var heroPreviewImg = document.getElementById('heroPreviewImg');
+
+          heroDropZone.addEventListener('click', function() { heroFileInput.click(); });
+
+          heroDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            heroDropZone.style.borderColor = 'var(--red)';
+            heroDropZone.style.background = 'rgba(255,0,51,0.05)';
+          });
+
+          heroDropZone.addEventListener('dragleave', function() {
+            heroDropZone.style.borderColor = 'var(--border)';
+            heroDropZone.style.background = 'transparent';
+          });
+
+          heroDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            heroDropZone.style.borderColor = 'var(--border)';
+            heroDropZone.style.background = 'transparent';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleHeroImageUpload(file);
+            }
+          });
+
+          heroFileInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleHeroImageUpload(this.files[0]);
+            }
+          });
+
+          document.getElementById('loadHeroUrlBtn').addEventListener('click', function() {
+            var url = heroUrlInput.value.trim();
+            if (url) {
+              heroPreviewImg.src = url;
+            }
+          });
+
+          // ===== TEE FRONT IMAGE HANDLERS =====
+          var teeFrontDropZone = document.getElementById('teeFrontDropZone');
+          var teeFrontInput = document.getElementById('teeFrontInput');
+          var teeFrontUrl = document.getElementById('teeFront');
+          var teeFrontImg = document.getElementById('teeFrontImg');
+
+          teeFrontDropZone.addEventListener('click', function() { teeFrontInput.click(); });
+
+          teeFrontDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            teeFrontDropZone.style.borderColor = 'var(--red)';
+          });
+
+          teeFrontDropZone.addEventListener('dragleave', function() {
+            teeFrontDropZone.style.borderColor = 'var(--border)';
+          });
+
+          teeFrontDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            teeFrontDropZone.style.borderColor = 'var(--border)';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleTeeImageUpload(file, 'front');
+            }
+          });
+
+          teeFrontInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleTeeImageUpload(this.files[0], 'front');
+            }
+          });
+
+          teeFrontUrl.addEventListener('change', function() {
+            teeFrontImg.src = this.value;
+          });
+
+          // ===== TEE BACK IMAGE HANDLERS =====
+          var teeBackDropZone = document.getElementById('teeBackDropZone');
+          var teeBackInput = document.getElementById('teeBackInput');
+          var teeBackUrl = document.getElementById('teeBack');
+          var teeBackImg = document.getElementById('teeBackImg');
+
+          teeBackDropZone.addEventListener('click', function() { teeBackInput.click(); });
+
+          teeBackDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            teeBackDropZone.style.borderColor = 'var(--red)';
+          });
+
+          teeBackDropZone.addEventListener('dragleave', function() {
+            teeBackDropZone.style.borderColor = 'var(--border)';
+          });
+
+          teeBackDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            teeBackDropZone.style.borderColor = 'var(--border)';
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              handleTeeImageUpload(file, 'back');
+            }
+          });
+
+          teeBackInput.addEventListener('change', function() {
+            if (this.files[0]) {
+              handleTeeImageUpload(this.files[0], 'back');
+            }
+          });
+
+          teeBackUrl.addEventListener('change', function() {
+            teeBackImg.src = this.value;
+          });
+
+          // ===== REMOVE IMAGE BUTTONS =====
+          document.getElementById('removeHeroBtn').addEventListener('click', function() {
+            document.getElementById('heroPreviewImg').src = '';
+            document.getElementById('eventHeroImage').value = '';
+          });
+
+          document.getElementById('removeTeeFrontBtn').addEventListener('click', function() {
+            document.getElementById('teeFrontImg').src = '';
+            document.getElementById('teeFront').value = '';
+          });
+
+          document.getElementById('removeTeeBackBtn').addEventListener('click', function() {
+            document.getElementById('teeBackImg').src = '';
+            document.getElementById('teeBack').value = '';
+          });
+        }
+      }
+
+      function updateMinimalThemeUI(theme, bgEnabled, bgImage, blurStrength, staticStrength) {
+        var isMinimal = theme === 'minimal';
+        document.getElementById('minimalThemeOptions').style.display = isMinimal ? 'block' : 'none';
+        document.getElementById('minimalBgOptions').style.display = bgEnabled ? 'block' : 'none';
+        // Hide hero section when minimal theme is selected
+        document.getElementById('heroSection').style.display = isMinimal ? 'none' : 'block';
+
+        if (bgImage) {
+          window.minimalBgImageData = bgImage;
+          document.getElementById('bgPreviewImg').src = bgImage;
+          document.getElementById('bgPreviewImg').style.filter = 'blur(' + (blurStrength || 20) + 'px)';
+          document.getElementById('bgPreview').style.display = 'block';
+        }
+
+        // Update static slider
+        var staticVal = staticStrength !== undefined ? staticStrength : 50;
+        document.getElementById('minimalStaticStrength').value = staticVal;
+        document.getElementById('staticValue').textContent = staticVal + '%';
+      }
+
+      // ===== IMAGE COMPRESSION UTILITY =====
+      function compressImage(file, maxWidth, quality, callback) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var img = new Image();
+          img.onload = function() {
+            try {
+              var canvas = document.createElement('canvas');
+              var ctx = canvas.getContext('2d');
+
+              // Calculate dimensions maintaining aspect ratio
+              var width = img.width;
+              var height = img.height;
+
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              ctx.drawImage(img, 0, 0, width, height);
+
+              // Convert to JPEG with quality setting
+              var compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+              callback(compressedDataUrl, e.target.result.length, compressedDataUrl.length);
+            } catch (err) {
+              console.error('[FERAL Admin] Compression error:', err);
+              callback(null, 0, 0);
+            }
+          };
+          img.onerror = function() {
+            console.error('[FERAL Admin] Failed to load image for compression');
+            callback(null, 0, 0);
+          };
+          img.src = e.target.result;
+        };
+        reader.onerror = function() {
+          console.error('[FERAL Admin] Failed to read file');
+          callback(null, 0, 0);
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function handleBgImageUpload(file) {
+        var MAX_ORIGINAL = 5 * 1024 * 1024;  // 5MB original allowed
+        var MAX_COMPRESSED = 500 * 1024;      // 500KB target after compression
+        var MAX_WIDTH = 1600;
+        var QUALITY = 0.75;  // 75% quality
+
+        if (file.size > MAX_ORIGINAL) {
+          alert('Image too large (' + Math.round(file.size / 1024 / 1024 * 10) / 10 + 'MB). Maximum is 5MB.');
+          return;
+        }
+
+        // Show compressing state with progress
+        var dropZone = document.getElementById('bgDropZone');
+        var originalHTML = dropZone.innerHTML;
+        var fileSizeMB = Math.round(file.size / 1024 / 1024 * 10) / 10;
+        dropZone.innerHTML = '<div style="text-align: center;"><span style="color: var(--red); font-weight: bold;">Processing ' + fileSizeMB + 'MB image...</span><br><span style="font-size: 10px; color: var(--text-muted);">Compressing for optimal quality</span></div>';
+
+        compressImage(file, MAX_WIDTH, QUALITY, function(dataUrl, origSize, compSize) {
+          if (!dataUrl) {
+            dropZone.innerHTML = originalHTML;
+            alert('Failed to process image. Please try a different file format (JPG or PNG recommended).');
+            return;
+          }
+
+          // If still too large, try lower quality
+          if (compSize > MAX_COMPRESSED) {
+            dropZone.innerHTML = '<div style="text-align: center;"><span style="color: var(--red);">Optimizing further...</span></div>';
+            compressImage(file, MAX_WIDTH, 0.6, function(dataUrl2, o, compSize2) {
+              dropZone.innerHTML = originalHTML;
+              if (!dataUrl2 || compSize2 > MAX_COMPRESSED) {
+                // Try even more aggressive compression
+                compressImage(file, 1200, 0.5, function(dataUrl3, o2, compSize3) {
+                  if (!dataUrl3 || compSize3 > MAX_COMPRESSED) {
+                    alert('Image still too large after compression. Please use a smaller or simpler image.');
+                    return;
+                  }
+                  applyCompressedImage(dataUrl3, origSize, compSize3);
+                });
+                return;
+              }
+              applyCompressedImage(dataUrl2, origSize, compSize2);
+            });
+            return;
+          }
+
+          dropZone.innerHTML = originalHTML;
+          applyCompressedImage(dataUrl, origSize, compSize);
+        });
+
+        function applyCompressedImage(dataUrl, origSize, compSize) {
+          window.minimalBgImageData = dataUrl;
+          var blur = document.getElementById('minimalBlurStrength').value;
+          document.getElementById('bgPreviewImg').src = dataUrl;
+          document.getElementById('bgPreviewImg').style.filter = 'blur(' + blur + 'px)';
+          document.getElementById('bgPreview').style.display = 'block';
+
+          var reduction = Math.round((1 - compSize / origSize) * 100);
+          var finalSizeKB = Math.round(compSize / 1024);
+          console.log('[FERAL Admin] Cover image compressed: ' + Math.round(origSize / 1024) + 'KB -> ' + finalSizeKB + 'KB (' + reduction + '% reduction)');
+
+          // Auto-save after successful image upload
+          saveEventSettings();
+
+          // Show size info to user
+          var sizeInfo = document.createElement('div');
+          sizeInfo.style.cssText = 'margin-top: 8px; font-size: 11px; color: var(--green);';
+          sizeInfo.textContent = 'Image saved! (' + finalSizeKB + 'KB)';
+          document.getElementById('bgPreview').appendChild(sizeInfo);
+          setTimeout(function() { sizeInfo.remove(); }, 3000);
+        }
+      }
+
+      function handleHeroImageUpload(file) {
+        // For hero images, we just update the preview and URL field
+        // The actual image should be uploaded to server or use a URL
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('heroPreviewImg').src = e.target.result;
+          // Note: In production, this should upload to server and set the returned URL
+          // For now, we show a preview but the URL field should be set manually
+          console.log('[FERAL Admin] Hero image preview loaded');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function handleTeeImageUpload(file, side) {
+        // For tee images, we update preview and could update URL
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          if (side === 'front') {
+            document.getElementById('teeFrontImg').src = e.target.result;
+          } else {
+            document.getElementById('teeBackImg').src = e.target.result;
+          }
+          console.log('[FERAL Admin] Tee ' + side + ' image preview loaded');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function saveEventSettings() {
+        var settings = {
+          theme: document.getElementById('eventTheme').value,
+          minimalBgEnabled: document.getElementById('minimalEnableBg').checked,
+          minimalBlurStrength: parseInt(document.getElementById('minimalBlurStrength').value) || 20,
+          minimalStaticStrength: parseInt(document.getElementById('minimalStaticStrength').value) || 50,
+          minimalBgImage: window.minimalBgImageData || '',
+          heroImage: document.getElementById('eventHeroImage').value,
+          name: document.getElementById('eventName').value,
+          date: document.getElementById('eventDate').value,
+          doors: document.getElementById('eventDoors').value,
+          venue: document.getElementById('eventVenue').value,
+          releaseTag: document.getElementById('eventReleaseTag').value,
+          lineup: document.getElementById('eventLineup').value,
+          priceGeneral: parseFloat(document.getElementById('priceGeneral').value) || 0,
+          priceVip: parseFloat(document.getElementById('priceVip').value) || 0,
+          priceVipBlack: parseFloat(document.getElementById('priceVipBlack').value) || 0,
+          teeName: document.getElementById('teeName').value,
+          teeFront: document.getElementById('teeFront').value,
+          teeBack: document.getElementById('teeBack').value,
+          ticketName1: document.getElementById('ticketName1').value,
+          ticketSubtitle1: document.getElementById('ticketSubtitle1').value,
+          ticketName2: document.getElementById('ticketName2').value,
+          ticketSubtitle2: document.getElementById('ticketSubtitle2').value,
+          ticketName3: document.getElementById('ticketName3').value,
+          ticketSubtitle3: document.getElementById('ticketSubtitle3').value,
+          // Ticket IDs
+          ticketId1: document.getElementById('ticketId1').value,
+          ticketId2: document.getElementById('ticketId2').value,
+          ticketId3: document.getElementById('ticketId3').value,
+          // VIP Black tee size-specific IDs
+          ticketMerch3: document.getElementById('ticketMerch3').checked,
+          sizeIdXS: document.getElementById('sizeIdXS').value,
+          sizeIdS: document.getElementById('sizeIdS').value,
+          sizeIdM: document.getElementById('sizeIdM').value,
+          sizeIdL: document.getElementById('sizeIdL').value,
+          sizeIdXL: document.getElementById('sizeIdXL').value,
+          sizeIdXXL: document.getElementById('sizeIdXXL').value
+        };
+
+        try {
+          var settingsJson = JSON.stringify(settings);
+          var totalSizeKB = Math.round(settingsJson.length / 1024);
+          console.log('[FERAL Admin] Saving settings, total size: ' + totalSizeKB + 'KB');
+
+          if (totalSizeKB > 4500) {
+            alert('Data too large to save (' + totalSizeKB + 'KB). Please use a smaller cover image.');
+            return;
+          }
+
+          localStorage.setItem(EVENT_SETTINGS_KEY, settingsJson);
+          console.log('[FERAL Admin] Settings saved successfully (' + totalSizeKB + 'KB)');
+
+          var confirmEl = document.getElementById('saveConfirm');
+          confirmEl.textContent = 'Settings saved! (' + totalSizeKB + 'KB)';
+          confirmEl.style.display = 'block';
+          setTimeout(function() {
+            confirmEl.style.display = 'none';
+            confirmEl.textContent = 'Settings saved successfully!';
+          }, 3000);
+        } catch (e) {
+          console.error('[FERAL Admin] Save failed:', e);
+          if (e.name === 'QuotaExceededError' || e.message.indexOf('quota') !== -1) {
+            alert('Storage limit exceeded. The cover image is too large. Please use a smaller image.');
+          } else {
+            alert('Failed to save settings: ' + e.message);
+          }
+        }
+      }
+
+      // ===== KOMPASS KLUB EVENT SETTINGS =====
+      var KOMPASS_SETTINGS_KEY = 'feral_event_kompass';
+
+      var DEFAULT_KOMPASS_SETTINGS = {
+        ticketType: 'offsite',
+        ticketUrl: 'https://paylogic.com/...',
+        name: 'FERAL Kompass Klub',
+        date: '2026-03-07',
+        doors: '10:00PM — 6:00AM',
+        venue: 'Kompass Klub, Antwerp',
+        lineup: 'TBA'
+      };
+
+      var kompassSettingsInitialized = false;
+
+      function loadKompassSettings() {
+        var stored = localStorage.getItem(KOMPASS_SETTINGS_KEY);
+        var settings = stored ? JSON.parse(stored) : DEFAULT_KOMPASS_SETTINGS;
+
+        // Set ticketing type radio
+        var ticketTypeRadios = document.querySelectorAll('input[name="kompassTicketType"]');
+        ticketTypeRadios.forEach(function(radio) {
+          radio.checked = radio.value === (settings.ticketType || 'offsite');
+        });
+
+        // Show/hide offsite fields
+        toggleKompassOffsiteFields(settings.ticketType || 'offsite');
+
+        document.getElementById('kompassTicketUrl').value = settings.ticketUrl || '';
+        document.getElementById('kompassName').value = settings.name || '';
+        document.getElementById('kompassDate').value = settings.date || '';
+        document.getElementById('kompassDoors').value = settings.doors || '';
+        document.getElementById('kompassVenue').value = settings.venue || '';
+        document.getElementById('kompassLineup').value = settings.lineup || '';
+
+        if (!kompassSettingsInitialized) {
+          kompassSettingsInitialized = true;
+
+          // Ticketing type toggle handler
+          document.querySelectorAll('input[name="kompassTicketType"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+              toggleKompassOffsiteFields(this.value);
+            });
+          });
+
+          document.getElementById('saveKompassSettings').addEventListener('click', saveKompassSettings);
+
+          document.getElementById('previewKompass').addEventListener('click', function() {
+            window.open('/event/kompass-klub-7-march/', '_blank');
+          });
+
+          document.getElementById('resetKompassSettings').addEventListener('click', function() {
+            if (confirm('Reset all Kompass settings to default values?')) {
+              localStorage.removeItem(KOMPASS_SETTINGS_KEY);
+              loadKompassSettings();
+            }
+          });
+        }
+      }
+
+      function toggleKompassOffsiteFields(type) {
+        var offsiteFields = document.getElementById('kompassOffsiteFields');
+        var onsiteFields = document.getElementById('kompassOnsiteFields');
+        if (type === 'offsite') {
+          offsiteFields.style.display = 'block';
+          onsiteFields.style.display = 'none';
+        } else {
+          offsiteFields.style.display = 'none';
+          onsiteFields.style.display = 'block';
+        }
+      }
+
+      function saveKompassSettings() {
+        var ticketType = document.querySelector('input[name="kompassTicketType"]:checked').value;
+        var settings = {
+          ticketType: ticketType,
+          ticketUrl: document.getElementById('kompassTicketUrl').value,
+          name: document.getElementById('kompassName').value,
+          date: document.getElementById('kompassDate').value,
+          doors: document.getElementById('kompassDoors').value,
+          venue: document.getElementById('kompassVenue').value,
+          lineup: document.getElementById('kompassLineup').value
+        };
+
+        // Save ticket configuration if on-site
+        if (ticketType === 'onsite') {
+          settings.tickets = [
+            {
+              key: 'general',
+              name: document.getElementById('kompassTicketName1').value,
+              subtitle: document.getElementById('kompassTicketSubtitle1').value,
+              price: parseFloat(document.getElementById('kompassTicketPrice1').value) || 0,
+              id: document.getElementById('kompassTicketId1').value
+            },
+            {
+              key: 'vip',
+              name: document.getElementById('kompassTicketName2').value,
+              subtitle: document.getElementById('kompassTicketSubtitle2').value,
+              price: parseFloat(document.getElementById('kompassTicketPrice2').value) || 0,
+              id: document.getElementById('kompassTicketId2').value
+            }
+          ];
+        }
+
+        localStorage.setItem(KOMPASS_SETTINGS_KEY, JSON.stringify(settings));
+
+        var confirmEl = document.getElementById('saveKompassConfirm');
+        confirmEl.style.display = 'block';
+        setTimeout(function() {
+          confirmEl.style.display = 'none';
+        }, 3000);
+      }
+
+      // ===== EVENT MANAGEMENT SYSTEM =====
+      var EVENTS_LIST_KEY = 'feral_events_list';
+
+      var DEFAULT_EVENTS = [
+        { id: 'kompass-klub-7-march', name: 'Kompass Klub 7 Mar', date: '2026-03-07', ticketType: 'offsite', status: 'live', archived: false },
+        { id: 'liverpool-27-march', name: 'Liverpool 27 Mar', date: '2026-03-27', ticketType: 'onsite', status: 'live', archived: false }
+      ];
+
+      // Check and auto-archive past events on load
+      function checkAutoArchive() {
+        var events = getEventsList();
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var changed = false;
+
+        events.forEach(function(e) {
+          if (!e.archived && e.date) {
+            var eventDate = new Date(e.date);
+            // Archive if event date is more than 1 day in the past
+            if (eventDate < today) {
+              e.archived = true;
+              changed = true;
+            }
+          }
+        });
+
+        if (changed) {
+          saveEventsList(events);
+        }
+        return events;
+      }
+
+      // Delete event with confirmation
+      function deleteEvent(eventId) {
+        if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) {
+          return;
+        }
+        var events = getEventsList();
+        events = events.filter(function(e) { return e.id !== eventId; });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
+
+      // Manually archive an event
+      function archiveEvent(eventId) {
+        var events = getEventsList();
+        events.forEach(function(e) {
+          if (e.id === eventId) {
+            e.archived = true;
+          }
+        });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
+
+      // Unarchive (restore) an event
+      function unarchiveEvent(eventId) {
+        var events = getEventsList();
+        events.forEach(function(e) {
+          if (e.id === eventId) {
+            e.archived = false;
+          }
+        });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
+
+      // Duplicate an event (creates draft copy)
+      function duplicateEvent(eventId) {
+        var events = getEventsList();
+        var original = events.find(function(e) { return e.id === eventId; });
+        if (!original) return;
+
+        var newSlug = original.id + '-copy';
+        var counter = 1;
+        while (events.some(function(e) { return e.id === newSlug; })) {
+          counter++;
+          newSlug = original.id + '-copy-' + counter;
+        }
+
+        var duplicate = {
+          id: newSlug,
+          name: original.name + ' (Copy)',
+          date: '',
+          venue: original.venue || '',
+          ticketType: original.ticketType,
+          status: 'draft',
+          archived: false
+        };
+
+        events.push(duplicate);
+        saveEventsList(events);
+        updateEventsListPreview();
+        alert('Event duplicated as "' + duplicate.name + '". Set a new date and publish when ready.');
+      }
+
+      // Toggle event status between draft and live
+      function toggleEventStatus(eventId) {
+        var events = getEventsList();
+        events.forEach(function(e) {
+          if (e.id === eventId) {
+            e.status = (e.status === 'live') ? 'draft' : 'live';
+          }
+        });
+        saveEventsList(events);
+        updateEventsListPreview();
+      }
+
+      var createEventInitialized = false;
+
+      function loadCreateEventPage() {
+        updateEventsListPreview();
+
+        if (!createEventInitialized) {
+          createEventInitialized = true;
+
+          // Slug preview
+          document.getElementById('newEventSlug').addEventListener('input', function() {
+            var slug = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+            document.getElementById('slugPreview').textContent = slug || 'your-event-slug';
+          });
+
+          document.getElementById('createEventBtn').addEventListener('click', createNewEvent);
+        }
+      }
+
+      function getEventsList() {
+        var stored = localStorage.getItem(EVENTS_LIST_KEY);
+        return stored ? JSON.parse(stored) : DEFAULT_EVENTS;
+      }
+
+      function saveEventsList(events) {
+        localStorage.setItem(EVENTS_LIST_KEY, JSON.stringify(events));
+      }
+
+      function updateEventsListPreview() {
+        // Run auto-archive check first
+        checkAutoArchive();
+
+        var events = getEventsList();
+        // Separate active and archived events
+        var activeEvents = events.filter(function(e) { return !e.archived; });
+        var archivedEvents = events.filter(function(e) { return e.archived; });
+
+        // Sort active events by date (upcoming first)
+        activeEvents.sort(function(a, b) {
+          return new Date(a.date || '9999-12-31') - new Date(b.date || '9999-12-31');
+        });
+
+        // Sort archived by date descending (most recent first)
+        archivedEvents.sort(function(a, b) {
+          return new Date(b.date || '0000-01-01') - new Date(a.date || '0000-01-01');
+        });
+
+        // Build active events HTML
+        var activeHtml = activeEvents.map(function(e, i) {
+          var typeLabel = e.ticketType === 'offsite' ? '<span style="color: var(--yellow);">[Off-site]</span>' : '<span style="color: var(--green);">[On-site]</span>';
+          var statusBadge = (e.status === 'draft')
+            ? '<span style="background: var(--yellow); color: #000; padding: 2px 6px; font-size: 9px; font-weight: 700; margin-left: 8px;">DRAFT</span>'
+            : '<span style="background: var(--green); color: #000; padding: 2px 6px; font-size: 9px; font-weight: 700; margin-left: 8px;">LIVE</span>';
+          var dateStr = e.date ? formatDate(e.date) : '<span style="color: var(--red);">No date set</span>';
+
+          return '<div style="padding: 12px 0; border-bottom: 1px solid var(--border);">' +
+            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">' +
+              '<div><strong>' + e.name + '</strong> ' + typeLabel + statusBadge + '</div>' +
+            '</div>' +
+            '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">/' + e.id + '/ — ' + dateStr + '</div>' +
+            '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
+              '<button onclick="toggleEventStatus(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">' + (e.status === 'live' ? 'Set Draft' : 'Publish') + '</button>' +
+              '<button onclick="archiveEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Archive</button>' +
+              '<button onclick="duplicateEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Duplicate</button>' +
+              '<button onclick="deleteEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid rgba(255,0,51,0.5); color: var(--red); cursor: pointer;">Delete</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+        // Build archived events HTML
+        var archivedHtml = '';
+        if (archivedEvents.length > 0) {
+          archivedHtml = '<div style="margin-top: 24px;">' +
+            '<h4 style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;" onclick="document.getElementById(\'archivedEventsContent\').style.display = document.getElementById(\'archivedEventsContent\').style.display === \'none\' ? \'block\' : \'none\';">Archived Events (' + archivedEvents.length + ') ▼</h4>' +
+            '<div id="archivedEventsContent" style="display: none;">' +
+            archivedEvents.map(function(e) {
+              return '<div style="padding: 10px 0; border-bottom: 1px solid var(--border); opacity: 0.7;">' +
+                '<div style="margin-bottom: 6px;"><strong>' + e.name + '</strong></div>' +
+                '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">/' + e.id + '/ — ' + formatDate(e.date) + '</div>' +
+                '<div style="display: flex; gap: 8px;">' +
+                  '<button onclick="unarchiveEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Restore</button>' +
+                  '<button onclick="duplicateEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer;">Duplicate</button>' +
+                  '<button onclick="deleteEvent(\'' + e.id + '\')" style="font-size: 9px; padding: 4px 8px; background: transparent; border: 1px solid rgba(255,0,51,0.5); color: var(--red); cursor: pointer;">Delete</button>' +
+                '</div>' +
+              '</div>';
+            }).join('') +
+            '</div></div>';
+        }
+
+        document.getElementById('eventsListPreview').innerHTML = (activeHtml || '<span style="color: var(--text-muted);">No active events</span>') + archivedHtml;
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+      }
+
+      function createNewEvent() {
+        var name = document.getElementById('newEventName').value.trim();
+        var slug = document.getElementById('newEventSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+        var date = document.getElementById('newEventDate').value;
+        var venue = document.getElementById('newEventVenue').value.trim();
+        var ticketType = document.querySelector('input[name="newEventTicketType"]:checked').value;
+
+        if (!name || !slug || !date) {
+          alert('Please fill in Event Name, Slug, and Date.');
+          return;
+        }
+
+        var events = getEventsList();
+
+        // Check for duplicate slug
+        if (events.some(function(e) { return e.id === slug; })) {
+          alert('An event with this slug already exists. Please choose a different slug.');
+          return;
+        }
+
+        // Add new event (starts as draft)
+        events.push({
+          id: slug,
+          name: name,
+          date: date,
+          venue: venue,
+          ticketType: ticketType,
+          status: 'draft',
+          archived: false
+        });
+
+        saveEventsList(events);
+        updateEventsListPreview();
+
+        // Clear form
+        document.getElementById('newEventName').value = '';
+        document.getElementById('newEventSlug').value = '';
+        document.getElementById('newEventDate').value = '';
+        document.getElementById('newEventVenue').value = '';
+        document.getElementById('slugPreview').textContent = 'your-event-slug';
+
+        alert('Event "' + name + '" created successfully!\n\nNote: You\'ll need to create the event folder at:\n/event/' + slug + '/');
+      }
+
+      // Time filter handling
+      document.querySelectorAll('.time-filter__btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.time-filter__btn').forEach(function(b) {
+            b.classList.remove('time-filter__btn--active');
+          });
+          this.classList.add('time-filter__btn--active');
+          currentTimeRange = this.getAttribute('data-range');
+          loadTrafficStats();
+        });
+      });
+
+      // ===== POPUP STATS =====
+      async function loadPopupStats() {
+        var impressions = 0, engaged = 0, conversions = 0, dismissed = 0, closed = 0;
+        var debugInfo = '';
+
+        if (dbReady) {
+          try {
+            var res = await supabaseClient.from('popup_events').select('event_type');
+            if (res.error) {
+              debugInfo = 'Supabase error: ' + res.error.message + '\nFalling back to localStorage';
+              console.log('[FERAL Admin]', debugInfo);
+              var rawData = localStorage.getItem(STATS_KEY);
+              var stats = JSON.parse(rawData || '{}');
+              impressions = stats.impressions || 0;
+              engaged = stats.engaged || 0;
+              conversions = stats.conversions || 0;
+              dismissed = stats.dismissed || 0;
+              closed = stats.closed || 0;
+            } else if (res.data) {
+              res.data.forEach(function(row) {
+                if (row.event_type === 'impressions') impressions++;
+                else if (row.event_type === 'engaged') engaged++;
+                else if (row.event_type === 'conversions') conversions++;
+                else if (row.event_type === 'dismissed') dismissed++;
+                else if (row.event_type === 'closed') closed++;
+              });
+              debugInfo = 'Data source: Supabase (cloud)\nTotal events: ' + res.data.length + '\n\nBreakdown:\n- impressions: ' + impressions + '\n- engaged: ' + engaged + '\n- conversions: ' + conversions + '\n- dismissed: ' + dismissed + '\n- closed: ' + closed;
+            }
+          } catch (err) {
+            debugInfo = 'Error: ' + err.message + '\nFalling back to localStorage';
+            var rawData = localStorage.getItem(STATS_KEY);
+            var stats = JSON.parse(rawData || '{}');
+            impressions = stats.impressions || 0;
+            engaged = stats.engaged || 0;
+            conversions = stats.conversions || 0;
+            dismissed = stats.dismissed || 0;
+            closed = stats.closed || 0;
+          }
+        } else {
+          debugInfo = 'Data source: localStorage (browser only)\nSupabase not available';
+          var rawData = localStorage.getItem(STATS_KEY);
+          var stats = JSON.parse(rawData || '{}');
+          impressions = stats.impressions || 0;
+          engaged = stats.engaged || 0;
+          conversions = stats.conversions || 0;
+          dismissed = stats.dismissed || 0;
+          closed = stats.closed || 0;
+        }
+
+        document.getElementById('debugRaw').textContent = debugInfo;
+        document.getElementById('statImpressions').textContent = impressions;
+        document.getElementById('statEngaged').textContent = engaged;
+        document.getElementById('statConversions').textContent = conversions;
+        document.getElementById('statDismissed1').textContent = dismissed;
+        document.getElementById('statClosed').textContent = closed;
+
+        var convRate = impressions > 0 ? ((conversions / impressions) * 100).toFixed(1) : 0;
+        var engageRate = impressions > 0 ? ((engaged / impressions) * 100).toFixed(1) : 0;
+        var emailRate = engaged > 0 ? ((conversions / engaged) * 100).toFixed(1) : 0;
+
+        document.getElementById('statRate').textContent = convRate + '%';
+        document.getElementById('statEngagementRate').textContent = engageRate + '%';
+        document.getElementById('statEmailRate').textContent = emailRate + '%';
+
+        document.getElementById('funnelCount1').textContent = impressions;
+        document.getElementById('funnelCount2').textContent = engaged;
+        document.getElementById('funnelCount3').textContent = conversions;
+        document.getElementById('funnelPct1').textContent = '100%';
+        document.getElementById('funnelPct2').textContent = engageRate + '%';
+        document.getElementById('funnelPct3').textContent = convRate + '%';
+
+        var maxHeight = 100;
+        document.getElementById('funnelBar1').style.height = maxHeight + 'px';
+        document.getElementById('funnelBar2').style.height = (impressions > 0 ? Math.max(4, (engaged / impressions) * maxHeight) : 4) + 'px';
+        document.getElementById('funnelBar3').style.height = (impressions > 0 ? Math.max(4, (conversions / impressions) * maxHeight) : 4) + 'px';
+      }
+
+      // ===== TRAFFIC STATS =====
+      async function loadTrafficStats() {
+        var landing = 0, tickets = 0, checkout = 0, purchase = 0;
+        var sessions = new Set();
+        var sources = {};
+        var debugInfo = '';
+
+        // Engagement tracking
+        var engagement = {
+          scroll_25: 0, scroll_50: 0, scroll_75: 0, scroll_100: 0,
+          time_10s: 0, time_30s: 0, time_60s: 0, time_120s: 0,
+          click_lineup: 0, interact_tickets: 0
+        };
+        // Track per-session engagement for quality calculation
+        var sessionEngagement = {}; // session_id -> { scrolled, time10, time30, interacted }
+
+        if (dbReady) {
+          try {
+            // Calculate date filter
+            var dateFilter = null;
+            var now = new Date();
+            if (currentTimeRange === '24h') {
+              dateFilter = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+            } else if (currentTimeRange === '7d') {
+              dateFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            } else if (currentTimeRange === '30d') {
+              dateFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+            }
+
+            var query = supabaseClient.from('traffic_events').select('*');
+            if (dateFilter) {
+              query = query.gte('timestamp', dateFilter);
+            }
+
+            var res = await query;
+
+            if (res.error) {
+              debugInfo = 'Supabase error: ' + res.error.message + '\n\nNote: Make sure to run the traffic_events SQL migration first.\nSee: supabase-traffic-table.sql';
+              console.log('[FERAL Admin]', debugInfo);
+            } else if (res.data) {
+              res.data.forEach(function(row) {
+                var sid = row.session_id;
+
+                // Count by event type
+                if (row.event_type === 'landing') {
+                  landing++;
+                  // Initialize session engagement tracking
+                  if (sid && !sessionEngagement[sid]) {
+                    sessionEngagement[sid] = { scrolled: false, time10: false, time30: false, interacted: false, proceeded: false };
+                  }
+                }
+                else if (row.event_type === 'tickets') {
+                  tickets++;
+                  if (sid && sessionEngagement[sid]) sessionEngagement[sid].proceeded = true;
+                }
+                else if (row.event_type === 'checkout') checkout++;
+                else if (row.event_type === 'purchase') purchase++;
+
+                // Engagement events
+                else if (row.event_type.startsWith('scroll_')) {
+                  var scrollLevel = row.event_type.replace('scroll_', '');
+                  if (engagement.hasOwnProperty('scroll_' + scrollLevel)) {
+                    engagement['scroll_' + scrollLevel]++;
+                  }
+                  if (sid && sessionEngagement[sid]) sessionEngagement[sid].scrolled = true;
+                }
+                else if (row.event_type.startsWith('time_')) {
+                  var timeLevel = row.event_type;
+                  if (engagement.hasOwnProperty(timeLevel)) {
+                    engagement[timeLevel]++;
+                  }
+                  if (sid && sessionEngagement[sid]) {
+                    if (timeLevel === 'time_10s') sessionEngagement[sid].time10 = true;
+                    if (timeLevel === 'time_30s') sessionEngagement[sid].time30 = true;
+                  }
+                }
+                else if (row.event_type === 'click_lineup' || row.event_type === 'interact_tickets') {
+                  engagement[row.event_type]++;
+                  if (sid && sessionEngagement[sid]) sessionEngagement[sid].interacted = true;
+                }
+
+                // Track unique sessions
+                if (sid) {
+                  sessions.add(sid);
+                }
+
+                // Track sources
+                var source = row.utm_source || 'direct';
+                var medium = row.utm_medium || '(none)';
+                var key = source + ' / ' + medium;
+                sources[key] = (sources[key] || 0) + 1;
+              });
+
+              debugInfo = 'Data source: Supabase (cloud)\n';
+              debugInfo += 'Time range: ' + currentTimeRange + '\n';
+              debugInfo += 'Total events: ' + res.data.length + '\n\n';
+              debugInfo += 'Page views:\n';
+              debugInfo += '- landing: ' + landing + '\n';
+              debugInfo += '- tickets: ' + tickets + '\n';
+              debugInfo += '- checkout: ' + checkout + '\n';
+              debugInfo += '- purchase: ' + purchase + '\n\n';
+              debugInfo += 'Engagement:\n';
+              debugInfo += '- scroll_25: ' + engagement.scroll_25 + '\n';
+              debugInfo += '- scroll_50: ' + engagement.scroll_50 + '\n';
+              debugInfo += '- time_10s: ' + engagement.time_10s + '\n';
+              debugInfo += '- time_30s: ' + engagement.time_30s + '\n';
+              debugInfo += '- interactions: ' + (engagement.click_lineup + engagement.interact_tickets) + '\n\n';
+              debugInfo += 'Unique sessions: ' + sessions.size;
+            }
+          } catch (err) {
+            debugInfo = 'Error: ' + err.message + '\n\nMake sure the traffic_events table exists in Supabase.';
+          }
+        } else {
+          debugInfo = 'Supabase not available.\nTraffic analytics requires database connection.';
+        }
+
+        // Update engagement section
+        var scrollPct25 = landing > 0 ? Math.round((engagement.scroll_25 / landing) * 100) : 0;
+        var scrollPct50 = landing > 0 ? Math.round((engagement.scroll_50 / landing) * 100) : 0;
+        var scrollPct75 = landing > 0 ? Math.round((engagement.scroll_75 / landing) * 100) : 0;
+        var scrollPct100 = landing > 0 ? Math.round((engagement.scroll_100 / landing) * 100) : 0;
+
+        document.getElementById('engScroll25').style.width = scrollPct25 + '%';
+        document.getElementById('engScroll50').style.width = scrollPct50 + '%';
+        document.getElementById('engScroll75').style.width = scrollPct75 + '%';
+        document.getElementById('engScroll100').style.width = scrollPct100 + '%';
+        document.getElementById('engScroll25Pct').textContent = scrollPct25 + '%';
+        document.getElementById('engScroll50Pct').textContent = scrollPct50 + '%';
+        document.getElementById('engScroll75Pct').textContent = scrollPct75 + '%';
+        document.getElementById('engScroll100Pct').textContent = scrollPct100 + '%';
+
+        // Apply benchmark status indicators
+        function setStatus(elId, value, goodThreshold, okThreshold, inverted) {
+          var el = document.getElementById(elId);
+          if (!el) return;
+          el.className = 'engagement-row__status';
+          if (landing === 0) return; // No data yet
+          if (inverted) {
+            // Lower is better (e.g., bouncers)
+            if (value < goodThreshold) el.classList.add('engagement-row__status--good');
+            else if (value <= okThreshold) el.classList.add('engagement-row__status--ok');
+            else el.classList.add('engagement-row__status--bad');
+          } else {
+            // Higher is better
+            if (value >= goodThreshold) el.classList.add('engagement-row__status--good');
+            else if (value >= okThreshold) el.classList.add('engagement-row__status--ok');
+            else el.classList.add('engagement-row__status--bad');
+          }
+        }
+
+        // Scroll depth benchmarks: 25% (>80/60), 50% (>60/40), 75% (>40/25), 100% (>25/15)
+        setStatus('engScroll25Status', scrollPct25, 80, 60, false);
+        setStatus('engScroll50Status', scrollPct50, 60, 40, false);
+        setStatus('engScroll75Status', scrollPct75, 40, 25, false);
+        setStatus('engScroll100Status', scrollPct100, 25, 15, false);
+
+        var timePct10 = landing > 0 ? Math.round((engagement.time_10s / landing) * 100) : 0;
+        var timePct30 = landing > 0 ? Math.round((engagement.time_30s / landing) * 100) : 0;
+        var timePct60 = landing > 0 ? Math.round((engagement.time_60s / landing) * 100) : 0;
+        var timePct120 = landing > 0 ? Math.round((engagement.time_120s / landing) * 100) : 0;
+
+        document.getElementById('engTime10').style.width = timePct10 + '%';
+        document.getElementById('engTime30').style.width = timePct30 + '%';
+        document.getElementById('engTime60').style.width = timePct60 + '%';
+        document.getElementById('engTime120').style.width = timePct120 + '%';
+        document.getElementById('engTime10Pct').textContent = timePct10 + '%';
+        document.getElementById('engTime30Pct').textContent = timePct30 + '%';
+        document.getElementById('engTime60Pct').textContent = timePct60 + '%';
+        document.getElementById('engTime120Pct').textContent = timePct120 + '%';
+
+        // Time benchmarks: 10s (>80/60), 30s (>50/30), 60s (>30/15), 120s (>15/8)
+        setStatus('engTime10Status', timePct10, 80, 60, false);
+        setStatus('engTime30Status', timePct30, 50, 30, false);
+        setStatus('engTime60Status', timePct60, 30, 15, false);
+        setStatus('engTime120Status', timePct120, 15, 8, false);
+
+        // Calculate engagement quality
+        var totalSessions = Object.keys(sessionEngagement).length;
+        var bouncers = 0, skimmers = 0, readers = 0, engaged = 0;
+
+        Object.values(sessionEngagement).forEach(function(s) {
+          if (s.interacted) engaged++;
+          else if (s.scrolled && s.time30) readers++;
+          else if (s.scrolled && !s.time30) skimmers++;
+          else if (!s.scrolled && !s.time10) bouncers++;
+        });
+
+        var bouncersPct = totalSessions > 0 ? Math.round((bouncers / totalSessions) * 100) : 0;
+        var skimmersPct = totalSessions > 0 ? Math.round((skimmers / totalSessions) * 100) : 0;
+        var readersPct = totalSessions > 0 ? Math.round((readers / totalSessions) * 100) : 0;
+        var engagedPct = totalSessions > 0 ? Math.round((engaged / totalSessions) * 100) : 0;
+
+        document.getElementById('engBouncers').textContent = bouncersPct + '%';
+        document.getElementById('engSkimmers').textContent = skimmersPct + '%';
+        document.getElementById('engReaders').textContent = readersPct + '%';
+        document.getElementById('engEngaged').textContent = engagedPct + '%';
+
+        // Apply quality benchmark status: Bouncers (<30 good, 30-50 ok, >50 bad), Engaged (>20 good, 10-20 ok, <10 bad)
+        setStatus('engBouncersStatus', bouncersPct, 30, 50, true);
+        setStatus('engEngagedStatus', engagedPct, 20, 10, false);
+
+        // Generate insight with priority-based messaging
+        var insightEl = document.getElementById('engInsight');
+        var insightIcon = document.querySelector('#engInsight .engagement-insight__icon');
+        var insightText = document.querySelector('#engInsight .engagement-insight__text');
+
+        // Calculate ticket conversion rate for insights
+        var ticketConvRate = landing > 0 ? Math.round((tickets / landing) * 100) : 0;
+
+        // Reset insight styling
+        insightEl.style.background = 'rgba(255, 0, 51, 0.08)';
+        insightEl.style.borderLeftColor = 'var(--red)';
+        insightIcon.style.color = 'var(--red)';
+        insightIcon.textContent = '!';
+
+        if (landing === 0) {
+          // No data
+          insightEl.style.background = 'rgba(102, 102, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--text-muted)';
+          insightIcon.style.color = 'var(--text-muted)';
+          insightIcon.textContent = '?';
+          insightText.textContent = 'No landing page data yet. Run your ads and check back.';
+        } else if (landing < 20) {
+          // Not enough data
+          insightEl.style.background = 'rgba(102, 102, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--text-muted)';
+          insightIcon.style.color = 'var(--text-muted)';
+          insightIcon.textContent = '?';
+          insightText.textContent = 'Only ' + landing + ' visitors so far. Need 20+ for reliable insights.';
+        } else if (bouncersPct > 50) {
+          // Critical: massive bounce
+          insightText.textContent = 'PROBLEM: ' + bouncersPct + '% bounce immediately. Your headline or hero image isn\'t grabbing attention - test a new hook.';
+        } else if (bouncersPct > 40) {
+          // High bounce
+          insightText.textContent = bouncersPct + '% bounce immediately - your headline/hero needs to hook visitors faster.';
+        } else if (scrollPct25 < 60) {
+          // People not even scrolling a little
+          insightText.textContent = 'Only ' + scrollPct25 + '% scroll at all. The top of your page isn\'t giving them a reason to explore.';
+        } else if (scrollPct50 < 40) {
+          // Low mid-page scroll
+          insightText.textContent = 'Only ' + scrollPct50 + '% scroll past halfway. Content above the fold isn\'t compelling enough.';
+        } else if (timePct10 < 60) {
+          // Very short visits
+          insightText.textContent = 'Only ' + timePct10 + '% stay longer than 10 seconds. Page may be loading slowly or first impression is off.';
+        } else if (timePct30 < 30) {
+          // Short visits
+          insightText.textContent = 'Only ' + timePct30 + '% stay 30+ seconds. Visitors aren\'t finding what they need quickly.';
+        } else if (ticketConvRate < 5 && engagedPct > 15) {
+          // Good engagement but not converting
+          insightEl.style.background = 'rgba(255, 204, 0, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--yellow)';
+          insightIcon.style.color = 'var(--yellow)';
+          insightText.textContent = 'People are engaging (' + engagedPct + '%) but only ' + ticketConvRate + '% click tickets. Make the ticket section more prominent.';
+        } else if (bouncersPct < 25 && scrollPct50 > 60 && timePct30 > 50 && engagedPct > 20) {
+          // Everything looks great
+          insightEl.style.background = 'rgba(0, 255, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--green)';
+          insightIcon.style.color = 'var(--green)';
+          insightIcon.textContent = '✓';
+          insightText.textContent = 'GREAT! Low bounce (' + bouncersPct + '%), good scroll (' + scrollPct50 + '%), strong engagement (' + engagedPct + '%). Landing page is working well!';
+        } else if (bouncersPct < 30 && scrollPct50 > 50) {
+          // Good performance
+          insightEl.style.background = 'rgba(0, 255, 102, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--green)';
+          insightIcon.style.color = 'var(--green)';
+          insightIcon.textContent = '✓';
+          insightText.textContent = 'Looking good! ' + (100 - bouncersPct) + '% of visitors engage with your page. Focus on ticket conversion now.';
+        } else if (engagedPct > 15) {
+          // Decent engagement
+          insightEl.style.background = 'rgba(0, 153, 255, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--blue)';
+          insightIcon.style.color = 'var(--blue)';
+          insightIcon.textContent = 'i';
+          insightText.textContent = engagedPct + '% of visitors interact with the page. Solid engagement - keep testing to improve.';
+        } else {
+          // Default - needs more optimization
+          insightEl.style.background = 'rgba(255, 204, 0, 0.1)';
+          insightEl.style.borderLeftColor = 'var(--yellow)';
+          insightIcon.style.color = 'var(--yellow)';
+          insightText.textContent = 'Metrics are okay but could be better. Test different headlines or hero images to improve engagement.';
+        }
+
+        // Update debug
+        document.getElementById('trafficDebug').textContent = debugInfo;
+
+        // Update stats
+        var totalViews = landing + tickets + checkout + purchase;
+        document.getElementById('trafficTotal').textContent = totalViews;
+        document.getElementById('trafficSessions').textContent = sessions.size;
+        document.getElementById('trafficLanding').textContent = landing;
+        document.getElementById('trafficTickets').textContent = tickets;
+        document.getElementById('trafficCheckout').textContent = checkout;
+        document.getElementById('trafficPurchases').textContent = purchase;
+
+        // Calculate funnel rates
+        var ticketRate = landing > 0 ? ((tickets / landing) * 100).toFixed(1) : 0;
+        var checkoutRate = landing > 0 ? ((checkout / landing) * 100).toFixed(1) : 0;
+        var purchaseRate = landing > 0 ? ((purchase / landing) * 100).toFixed(1) : 0;
+        
+        document.getElementById('trafficFunnelRate').textContent = purchaseRate + '%';
+        
+        // Calculate drop-off rates
+        var drop1 = landing > 0 ? (100 - (tickets / landing * 100)).toFixed(0) : 0;
+        var drop2 = tickets > 0 ? (100 - (checkout / tickets * 100)).toFixed(0) : 0;
+        var drop3 = checkout > 0 ? (100 - (purchase / checkout * 100)).toFixed(0) : 0;
+        var avgDropoff = ((parseFloat(drop1) + parseFloat(drop2) + parseFloat(drop3)) / 3).toFixed(0);
+        
+        document.getElementById('trafficDropoff').textContent = avgDropoff + '%';
+        document.getElementById('trafficDrop1').textContent = '-' + drop1 + '%';
+        document.getElementById('trafficDrop2').textContent = '-' + drop2 + '%';
+        document.getElementById('trafficDrop3').textContent = '-' + drop3 + '%';
+
+        // Update funnel visualization
+        document.getElementById('trafficCount1').textContent = landing;
+        document.getElementById('trafficCount2').textContent = tickets;
+        document.getElementById('trafficCount3').textContent = checkout;
+        document.getElementById('trafficCount4').textContent = purchase;
+        document.getElementById('trafficPct2').textContent = ticketRate + '%';
+        document.getElementById('trafficPct3').textContent = checkoutRate + '%';
+        document.getElementById('trafficPct4').textContent = purchaseRate + '%';
+
+        var maxBarHeight = 120;
+        document.getElementById('trafficBar1').style.height = maxBarHeight + 'px';
+        document.getElementById('trafficBar2').style.height = (landing > 0 ? Math.max(4, (tickets / landing) * maxBarHeight) : 4) + 'px';
+        document.getElementById('trafficBar3').style.height = (landing > 0 ? Math.max(4, (checkout / landing) * maxBarHeight) : 4) + 'px';
+        document.getElementById('trafficBar4').style.height = (landing > 0 ? Math.max(4, (purchase / landing) * maxBarHeight) : 4) + 'px';
+
+        // Update sources table
+        var tbody = document.getElementById('sourcesTableBody');
+        var sourceEntries = Object.entries(sources).sort(function(a, b) { return b[1] - a[1]; });
+        
+        if (sourceEntries.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">No traffic data yet</td></tr>';
+        } else {
+          var maxSessions = sourceEntries[0][1];
+          tbody.innerHTML = sourceEntries.slice(0, 10).map(function(entry) {
+            var pct = totalViews > 0 ? ((entry[1] / sessions.size) * 100).toFixed(1) : 0;
+            var barWidth = (entry[1] / maxSessions * 100).toFixed(0);
+            return '<tr><td>' + entry[0] + '<div class="sources__bar" style="width: ' + barWidth + '%;"></div></td><td>' + entry[1] + '</td><td>' + pct + '%</td></tr>';
+          }).join('');
+        }
+      }
+
+      // Refresh buttons
+      document.getElementById('refreshStats').addEventListener('click', loadPopupStats);
+      document.getElementById('refreshTraffic').addEventListener('click', loadTrafficStats);
+
+      // Reset buttons
+      document.getElementById('resetStats').addEventListener('click', async function() {
+        if (confirm('Are you sure you want to reset all popup analytics data? This cannot be undone.')) {
+          localStorage.removeItem(STATS_KEY);
+          if (dbReady) {
+            try {
+              await supabaseClient.from('popup_events').delete().neq('id', 0);
+              console.log('[FERAL Admin] Popup data cleared');
+            } catch (err) {
+              console.log('[FERAL Admin] Error clearing popup data:', err.message);
+            }
+          }
+          loadPopupStats();
+        }
+      });
+
+      document.getElementById('resetTraffic').addEventListener('click', async function() {
+        if (confirm('Are you sure you want to reset all traffic analytics data? This cannot be undone.')) {
+          if (dbReady) {
+            try {
+              await supabaseClient.from('traffic_events').delete().neq('id', 0);
+              console.log('[FERAL Admin] Traffic data cleared');
+            } catch (err) {
+              console.log('[FERAL Admin] Error clearing traffic data:', err.message);
+            }
+          }
+          loadTrafficStats();
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>

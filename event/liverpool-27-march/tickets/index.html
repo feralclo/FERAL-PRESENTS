@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get Tickets — FERAL Liverpool | 27 March 2026</title>
+  <meta name="robots" content="noindex, nofollow">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Cookie banner styles (loaded before inline styles so page styles take precedence) -->
+  <link rel="stylesheet" href="../../../css/style.css">
+
+  <style>
+    :root {
+      --black: #000;
+      --white: #fff;
+      --red: #ff0033;
+      --red-dark: #cc0029;
+      --red-glow: rgba(255, 0, 51, 0.4);
+      --gray: #1a1a1a;
+      --gray-light: #2a2a2a;
+      --gray-text: #888;
+      --font-mono: 'Space Mono', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --transition-fast: 0.15s ease;
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      background: #0e0e0e;
+      color: var(--white);
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.008) 2px,
+        rgba(255, 255, 255, 0.008) 4px
+      );
+    }
+
+    /* ========================================
+       HEADER
+       ======================================== */
+    .tickets-header {
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 0 24px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .tickets-header__back {
+      position: absolute;
+      left: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #555;
+      text-decoration: none;
+      transition: color 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tickets-header__back:hover {
+      color: var(--white);
+    }
+
+    .tickets-header__back-arrow {
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .tickets-header__logo {
+      height: 44px;
+      width: auto;
+      display: block;
+    }
+
+    .tickets-header__event {
+      position: absolute;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #444;
+    }
+
+    /* ========================================
+       EVENT INFO BAR
+       ======================================== */
+    .event-bar {
+      background: var(--gray);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .event-bar__detail {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gray-text);
+    }
+
+    .event-bar__sep {
+      width: 3px;
+      height: 3px;
+      background: var(--red);
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+
+    /* ========================================
+       TICKET WIDGET CONTAINER
+       ======================================== */
+    .tickets-content {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      min-height: calc(100vh - 180px);
+      padding: 48px 24px 80px;
+    }
+
+    .tickets-box {
+      width: 100%;
+      max-width: 460px;
+      background: var(--gray);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 32px;
+      position: relative;
+    }
+
+    /* Red accent line on left */
+    .tickets-box::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--red);
+    }
+
+    .tickets-box__heading {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+
+    .tickets-box__subtext {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+      margin-bottom: 24px;
+    }
+
+    .text-red {
+      color: var(--red);
+    }
+
+    /* ========================================
+       TICKET TIERS
+       ======================================== */
+    .feral-tickets__tiers {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .feral-tickets__tier {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .feral-tickets__tier--sold {
+      opacity: 0.4;
+    }
+
+    .feral-tickets__tier--sold .feral-tickets__tier-name {
+      text-decoration: line-through;
+      color: var(--gray-text);
+    }
+
+    .feral-tickets__tier-status {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--gray-text);
+      text-transform: uppercase;
+    }
+
+    .feral-tickets__tier--active {
+      background: rgba(255, 0, 51, 0.08);
+      border-color: rgba(255, 0, 51, 0.3);
+      position: relative;
+    }
+
+    .feral-tickets__tier--active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--red);
+    }
+
+    .feral-tickets__tier--active .feral-tickets__tier-name {
+      color: var(--white);
+    }
+
+    .feral-tickets__tier--active .feral-tickets__tier-price-tag {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .feral-tickets__tier--next {
+      opacity: 0.5;
+      border-style: dashed;
+    }
+
+    .feral-tickets__tier--next .feral-tickets__tier-name {
+      color: var(--gray-text);
+    }
+
+    .feral-tickets__tier--next .feral-tickets__tier-price-tag {
+      color: var(--gray-text);
+    }
+
+    .feral-tickets__tier-name {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .feral-tickets__tier-pricing {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .feral-tickets__tier-price-tag {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+
+    .feral-tickets__tier-breakdown {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      letter-spacing: 0.5px;
+      color: var(--gray-text);
+      opacity: 0.7;
+    }
+
+    /* ========================================
+       PROGRESS BAR
+       ======================================== */
+    .feral-tickets__progress {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .feral-tickets__bar {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .feral-tickets__fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--red) 0%, #ff3355 100%);
+    }
+
+    .feral-tickets__fill::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 12px;
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red), 0 0 20px var(--red);
+    }
+
+    .feral-tickets__remaining {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+    }
+
+    .feral-tickets__count {
+      color: var(--red);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    /* ========================================
+       QUANTITY SELECTOR
+       ======================================== */
+    .feral-tickets__row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 0 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .feral-tickets__controls {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .feral-tickets__btn {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gray-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--white);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      touch-action: manipulation;
+    }
+
+    .feral-tickets__btn:hover {
+      background: rgba(255, 0, 51, 0.15);
+      border-color: var(--red);
+    }
+
+    .feral-tickets__btn:active {
+      transform: scale(0.95);
+    }
+
+    .feral-tickets__qty {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--white);
+      min-width: 32px;
+      text-align: center;
+    }
+
+    /* ========================================
+       CHECKOUT BUTTON
+       ======================================== */
+    .feral-tickets__checkout {
+      width: 100%;
+      padding: 16px 24px;
+      background: var(--red);
+      color: var(--white);
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      margin-top: 8px;
+    }
+
+    .feral-tickets__checkout:hover:not(:disabled) {
+      background: var(--red-dark);
+      box-shadow: 0 0 20px var(--red-glow);
+    }
+
+    .feral-tickets__checkout:disabled {
+      background: var(--gray-light);
+      color: var(--gray-text);
+      cursor: not-allowed;
+    }
+
+    /* ========================================
+       VIP SECTION
+       ======================================== */
+    .vip-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .vip-section__heading {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #d4af37;
+      margin-bottom: 4px;
+    }
+
+    .vip-section__subtext {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+      margin-bottom: 16px;
+    }
+
+    .vip-ticket {
+      background: rgba(212, 175, 55, 0.06);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .vip-ticket::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: #d4af37;
+    }
+
+    .vip-ticket__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .vip-ticket__name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #d4af37;
+    }
+
+    .vip-ticket__price {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--white);
+    }
+
+    .vip-ticket__desc {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      color: var(--gray-text);
+      margin-bottom: 12px;
+    }
+
+    .vip-ticket__controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .vip-ticket__btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(212, 175, 55, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      color: #d4af37;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      touch-action: manipulation;
+    }
+
+    .vip-ticket__btn:hover {
+      background: rgba(212, 175, 55, 0.2);
+      border-color: #d4af37;
+    }
+
+    .vip-ticket__btn:active {
+      transform: scale(0.95);
+    }
+
+    .vip-ticket__qty {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--white);
+      min-width: 28px;
+      text-align: center;
+    }
+
+    /* ========================================
+       FOOTER
+       ======================================== */
+    .tickets-footer {
+      background: #0e0e0e;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 16px 24px;
+      text-align: center;
+    }
+
+    .tickets-footer__text {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: #777;
+      text-transform: uppercase;
+    }
+
+    /* ========================================
+       EMAIL POPUP OVERLAY
+       ======================================== */
+    .feral-popup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .feral-popup-overlay.feral-popup--visible {
+      display: flex;
+    }
+    .feral-popup-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .feral-popup-box {
+      position: relative;
+      z-index: 1;
+      background: #111;
+      border: 1px solid rgba(255, 0, 51, 0.4);
+      max-width: 400px;
+      width: 100%;
+      padding: 32px 28px;
+      text-align: center;
+    }
+    .feral-popup-box::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(135deg, rgba(255, 0, 51, 0.15), transparent 60%);
+      z-index: -1;
+      pointer-events: none;
+    }
+    .feral-popup-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      transition: color 0.15s ease;
+    }
+    .feral-popup-close:hover {
+      color: var(--white);
+    }
+    .feral-popup-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+    .feral-popup-title {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .feral-popup-subtitle {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .feral-popup-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .feral-popup-input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--white);
+      text-align: center;
+      transition: border-color 0.15s ease;
+    }
+    .feral-popup-input:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+    .feral-popup-input::placeholder {
+      color: #555;
+    }
+    .feral-popup-btn {
+      background: var(--red);
+      border: none;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--white);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .feral-popup-btn:hover {
+      background: var(--red-dark);
+      box-shadow: 0 0 20px var(--red-glow);
+    }
+    .feral-popup-skip {
+      background: none;
+      border: none;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #555;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: color 0.15s ease;
+    }
+    .feral-popup-skip:hover {
+      color: var(--gray-text);
+    }
+    @media (max-width: 600px) {
+      .feral-popup-box {
+        padding: 28px 20px;
+      }
+    }
+
+    /* ========================================
+       SOCIAL PROOF TOAST
+       ======================================== */
+    .social-proof {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      background: var(--gray);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-left: 3px solid var(--red);
+      padding: 12px 18px;
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      pointer-events: none;
+    }
+
+    .social-proof--visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .social-proof__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .social-proof__dot {
+      width: 6px;
+      height: 6px;
+      background: var(--red);
+      border-radius: 50%;
+      animation: dotPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .social-proof__text {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 1px;
+      color: var(--gray-text);
+      white-space: nowrap;
+    }
+
+    .social-proof__time {
+      color: var(--white);
+    }
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+    @media (max-width: 600px) {
+      .tickets-header {
+        height: 64px;
+        padding: 0 16px;
+      }
+
+      .tickets-header__back {
+        left: 16px;
+      }
+
+      .tickets-header__logo {
+        height: 34px;
+      }
+
+      .tickets-header__event {
+        display: none;
+      }
+
+      .event-bar {
+        padding: 10px 16px;
+        gap: 12px;
+      }
+
+      .event-bar__detail {
+        font-size: 9px;
+        letter-spacing: 1px;
+      }
+
+      .tickets-content {
+        padding: 32px 16px 60px;
+      }
+
+      .tickets-box {
+        padding: 24px 20px;
+      }
+
+      .social-proof {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        background: var(--black);
+        border: 1px solid rgba(255, 0, 51, 0.5);
+        padding: 14px 16px;
+        box-shadow: 0 0 20px rgba(255, 0, 51, 0.15);
+      }
+
+      .social-proof__text {
+        white-space: normal;
+      }
+    }
+  </style>
+
+  <!-- Cookie Consent (must load before GTM) -->
+  <script src="../../../js/cookie-consent.js"></script>
+
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-MPZMXXBD');</script>
+  <!-- End Google Tag Manager -->
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MPZMXXBD"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- Email Capture Popup -->
+  <div class="feral-popup-overlay" id="feralPopup">
+    <div class="feral-popup-backdrop" id="feralPopupBackdrop"></div>
+    <div class="feral-popup-box">
+      <button class="feral-popup-close" id="feralPopupClose" aria-label="Close">&times;</button>
+      <div class="feral-popup-icon">&#127881;</div>
+      <h3 class="feral-popup-title">Don't Miss Out<span style="color:var(--red)">_</span></h3>
+      <p class="feral-popup-subtitle">Get exclusive early access to future FERAL events + special offers. No spam, just drops.</p>
+      <form class="feral-popup-form" id="feralPopupForm">
+        <input type="email" class="feral-popup-input" id="feralPopupEmail" placeholder="your@email.com" required>
+        <button type="submit" class="feral-popup-btn">Get Early Access</button>
+      </form>
+      <button class="feral-popup-skip" id="feralPopupSkip">Maybe later</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="tickets-header">
+    <a href="/event/liverpool-27-march/" class="tickets-header__back">
+      <span class="tickets-header__back-arrow">&larr;</span>
+      <span>Back</span>
+    </a>
+    <a href="/event/liverpool-27-march/">
+      <img src="../../../images/FERAL%20LOGO.svg" alt="FERAL PRESENTS" class="tickets-header__logo">
+    </a>
+    <span class="tickets-header__event">Liverpool &mdash; 27 Mar</span>
+  </div>
+
+  <!-- Event info bar -->
+  <div class="event-bar">
+    <span class="event-bar__detail">27 March 2026</span>
+    <span class="event-bar__sep"></span>
+    <span class="event-bar__detail">Invisible Wind Factory</span>
+    <span class="event-bar__sep"></span>
+    <span class="event-bar__detail">9:30PM &mdash; 4:00AM</span>
+  </div>
+
+  <!-- Ticket widget -->
+  <div class="tickets-content">
+    <div class="tickets-box">
+      <h2 class="tickets-box__heading">Get Tickets<span class="text-red">_</span></h2>
+      <p class="tickets-box__subtext">Secure your entry. Limited availability.</p>
+
+      <div class="feral-tickets" id="feral-tickets">
+                <!-- Tier Progression Display -->
+                <div class="tier-progression">
+                  <div class="tier-progression__tier tier-progression__tier--sold">
+                    <span class="tier-progression__name">First Release</span>
+                    <span class="tier-progression__price">&pound;21.50</span>
+                    <span class="tier-progression__status">SOLD OUT</span>
+                  </div>
+                  <div class="tier-progression__tier tier-progression__tier--active">
+                    <span class="tier-progression__name">General Release</span>
+                    <span class="tier-progression__price">&pound;26.46</span>
+                    <span class="tier-progression__status">NOW LIVE</span>
+                  </div>
+                  <div class="tier-progression__tier tier-progression__tier--next">
+                    <span class="tier-progression__name">Final Release</span>
+                    <span class="tier-progression__price">&pound;32.35</span>
+                    <span class="tier-progression__status">UPCOMING</span>
+                  </div>
+                </div>
+
+                <!-- Standard Ticket -->
+                <div class="ticket-option" data-ticket-id="6b45169f-cf51-4600-8682-d6f79dcb59ae">
+                  <div class="ticket-option__row">
+                    <div class="ticket-option__info">
+                      <span class="ticket-option__name">General Release</span>
+                      <span class="ticket-option__perks">Standard entry</span>
+                      <span class="ticket-option__tier"><span class="tier-highlight">Last few tickets left!</span></span>
+                    </div>
+                    <span class="ticket-option__price">&pound;26.46</span>
+                  </div>
+                  <div class="ticket-option__bottom">
+                    <span></span>
+                    <div class="ticket-option__controls">
+                      <button class="ticket-option__btn" data-action="remove" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Remove">&minus;</button>
+                      <span class="ticket-option__qty" id="qty-6b45169f-cf51-4600-8682-d6f79dcb59ae">0</span>
+                      <button class="ticket-option__btn" data-action="add" data-ticket="6b45169f-cf51-4600-8682-d6f79dcb59ae" aria-label="Add">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- VIP Section Header -->
+                <div class="vip-section-header">VIP Experiences<span style="color:#e5e4e2">_</span></div>
+
+                <!-- VIP Ticket -->
+                <div class="ticket-option ticket-option--vip" data-ticket-id="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">
+                  <div class="ticket-option__row">
+                    <div class="ticket-option__info">
+                      <span class="ticket-option__name">VIP Ticket</span>
+                      <span class="ticket-option__perks">Queue Jump &amp; Balcony access</span>
+                    </div>
+                    <span class="ticket-option__price">&pound;35</span>
+                  </div>
+                  <div class="ticket-option__bottom">
+                    <span></span>
+                    <div class="ticket-option__controls">
+                      <button class="ticket-option__btn" data-action="remove" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Remove">&minus;</button>
+                      <span class="ticket-option__qty" id="qty-bb73bb64-ba1a-4a23-9a05-f2b57bca51cf">0</span>
+                      <button class="ticket-option__btn" data-action="add" data-ticket="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf" aria-label="Add">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- VIP Black -->
+                <div class="ticket-option ticket-option--vip-black" data-ticket-id="53c5262b-93ba-412e-bb5c-84ebc445a734">
+                  <div class="ticket-option__row">
+                    <div class="ticket-option__info">
+                      <span class="ticket-option__name">VIP Black</span>
+                      <span class="ticket-option__perks">+ Limited Edition Tee</span>
+                    </div>
+                    <span class="ticket-option__price">&pound;65</span>
+                  </div>
+                  <div class="ticket-option__bottom">
+                    <button class="ticket-option__view-tee" id="viewTeeBtn">View Tee</button>
+                    <div class="ticket-option__controls">
+                      <button class="ticket-option__btn" data-action="remove" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Remove">&minus;</button>
+                      <span class="ticket-option__qty" id="qty-53c5262b-93ba-412e-bb5c-84ebc445a734">0</span>
+                      <button class="ticket-option__btn" data-action="add" data-ticket="53c5262b-93ba-412e-bb5c-84ebc445a734" aria-label="Add">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Checkout button -->
+                <button class="feral-tickets__checkout" id="checkoutBtn" disabled>Select tickets to continue</button>
+              </div>
+    </div>
+  </div>
+
+  <!-- Social Proof Toast -->
+  <div class="social-proof" id="socialProof">
+    <div class="social-proof__title">
+      <span class="social-proof__dot"></span>
+      Selling fast!
+    </div>
+    <p class="social-proof__text">Last ticket booked: <span class="social-proof__time" id="proofTime">less than 60 seconds ago</span></p>
+  </div>
+
+  <!-- Enhanced Tee Modal -->
+  <div class="tee-modal-overlay" id="teeModal">
+    <div class="tee-modal">
+      <button class="tee-modal__close" id="teeModalClose">&times;</button>
+
+      <!-- Header with legendary badge -->
+      <div class="tee-modal__header">
+        <div class="tee-modal__legendary">
+          <span class="tee-modal__legendary-icon"></span>
+          <span class="tee-modal__legendary-tag">Event Exclusive</span>
+        </div>
+        <span class="tee-modal__title">Liverpool March 2026 Tee</span>
+      </div>
+
+      <!-- Image viewer with tabs -->
+      <div class="tee-modal__viewer">
+        <div class="tee-modal__image-tabs">
+          <button class="tee-modal__tab tee-modal__tab--active" data-view="back">Back</button>
+          <button class="tee-modal__tab" data-view="front">Front</button>
+        </div>
+        <div class="tee-modal__image-container">
+          <img src="../../../images/LIVERPOOL%20MARCH%20FRONT.png" alt="FERAL Liverpool Tee Front" class="tee-modal__img" data-view="front">
+          <img src="../../../images/LIVERPOOL%20MARCH%20BACK.png" alt="FERAL Liverpool Tee Back" class="tee-modal__img tee-modal__img--active" data-view="back">
+          <span class="tee-modal__zoom-hint">Click to zoom</span>
+        </div>
+      </div>
+
+      <!-- Exclusivity messaging -->
+      <div class="tee-modal__exclusive">
+        <div class="tee-modal__exclusive-headline">One-Time Drop. Never Again.</div>
+        <p class="tee-modal__exclusive-text">
+          This design exists only for Liverpool March 2026. Once they're gone, they're gone forever.
+        </p>
+        <div class="tee-modal__badges">
+          <span class="tee-modal__badge">Limited Edition</span>
+          <span class="tee-modal__badge">Collector's Piece</span>
+        </div>
+      </div>
+
+      <!-- Size selector -->
+      <div class="tee-modal__sizes">
+        <span class="tee-modal__sizes-label">Select Size</span>
+        <div class="tee-modal__size-options">
+          <button class="tee-modal__size" data-size="XS">XS</button>
+          <button class="tee-modal__size" data-size="S">S</button>
+          <button class="tee-modal__size tee-modal__size--selected" data-size="M">M</button>
+          <button class="tee-modal__size" data-size="L">L</button>
+          <button class="tee-modal__size" data-size="XL">XL</button>
+          <button class="tee-modal__size" data-size="XXL">XXL</button>
+        </div>
+      </div>
+
+      <!-- Cart controls -->
+      <div class="tee-modal__cart">
+        <div class="tee-modal__qty-controls">
+          <button class="tee-modal__qty-btn" data-action="decrease">&minus;</button>
+          <span class="tee-modal__qty-value" id="teeModalQty">1</span>
+          <button class="tee-modal__qty-btn" data-action="increase">+</button>
+        </div>
+        <button class="tee-modal__add-btn" id="teeModalAddBtn">Add to Cart &mdash; &pound;65</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Zoom Overlay -->
+  <div class="tee-modal__fullscreen" id="teeFullscreen">
+    <!-- X Close Button -->
+    <button class="tee-modal__fullscreen-close" id="fullscreenClose" aria-label="Close">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- Left/Right Navigation -->
+    <button class="tee-modal__fullscreen-nav tee-modal__fullscreen-nav--prev" id="fullscreenPrev" aria-label="Previous">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15,18 9,12 15,6"></polyline>
+      </svg>
+    </button>
+    <button class="tee-modal__fullscreen-nav tee-modal__fullscreen-nav--next" id="fullscreenNext" aria-label="Next">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9,6 15,12 9,18"></polyline>
+      </svg>
+    </button>
+
+    <img src="" alt="FERAL Liverpool Tee" id="teeFullscreenImg">
+
+    <!-- Dots indicator -->
+    <div class="tee-modal__fullscreen-dots">
+      <span class="tee-modal__fullscreen-dot tee-modal__fullscreen-dot--active" data-index="0"></span>
+      <span class="tee-modal__fullscreen-dot" data-index="1"></span>
+    </div>
+  </div>
+
+  <!-- Quick Size Selector Popup -->
+  <div class="size-popup-overlay" id="sizePopup">
+    <div class="size-popup">
+      <button class="size-popup__close" id="sizePopupClose">&times;</button>
+      <div class="size-popup__title">Select Your Size</div>
+      <div class="size-popup__subtitle">VIP Black + Limited Edition Tee</div>
+      <div class="size-popup__options" id="sizePopupOptions">
+        <button class="size-popup__btn" data-size="XS">XS</button>
+        <button class="size-popup__btn" data-size="S">S</button>
+        <button class="size-popup__btn size-popup__btn--selected" data-size="M">M</button>
+        <button class="size-popup__btn" data-size="L">L</button>
+        <button class="size-popup__btn" data-size="XL">XL</button>
+        <button class="size-popup__btn" data-size="XXL">XXL</button>
+      </div>
+      <button class="size-popup__confirm" id="sizePopupConfirm">Add to Cart</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="tickets-footer">
+    <span class="tickets-footer__text">&copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.</span>
+  </div>
+
+  <script>
+    // dataLayer initialisation
+    window.dataLayer = window.dataLayer || [];
+
+    (function() {
+      // All ticket types with their details
+      var TICKETS = {
+        'general': {
+          id: '6b45169f-cf51-4600-8682-d6f79dcb59ae',
+          name: 'General Release',
+          price: 26.46,
+          qty: 0
+        },
+        'vip-tee': {
+          id: '53c5262b-93ba-412e-bb5c-84ebc445a734',
+          name: 'VIP Black + Limited Edition Tee',
+          price: 65.00,
+          qty: 0
+        },
+        'vip': {
+          id: 'bb73bb64-ba1a-4a23-9a05-f2b57bca51cf',
+          name: 'VIP Ticket',
+          price: 35.00,
+          qty: 0
+        }
+      };
+
+      // Size-specific ticket IDs for VIP+Tee (loaded from admin settings)
+      var SIZE_IDS = {
+        'XS': null,
+        'S': null,
+        'M': null,
+        'L': null,
+        'XL': null,
+        'XXL': null
+      };
+
+      // Track tee quantities by size
+      var TEE_SIZES = {
+        'XS': 0,
+        'S': 0,
+        'M': 0,
+        'L': 0,
+        'XL': 0,
+        'XXL': 0
+      };
+
+      // Get the ticket ID for a specific size (falls back to main ID)
+      function getSizeTicketId(size) {
+        return SIZE_IDS[size] || TICKETS['vip-tee'].id;
+      }
+
+      // Get total tee quantity across all sizes
+      function getTotalTeeQty() {
+        return Object.keys(TEE_SIZES).reduce(function(sum, size) {
+          return sum + TEE_SIZES[size];
+        }, 0);
+      }
+
+      // Map hardcoded IDs to keys BEFORE settings load (HTML buttons use these IDs)
+      var ID_TO_KEY = {};
+      var ORIGINAL_IDS = {}; // Store original IDs for DOM element lookups
+      Object.keys(TICKETS).forEach(function(key) {
+        ID_TO_KEY[TICKETS[key].id] = key;
+        ORIGINAL_IDS[key] = TICKETS[key].id;
+      });
+
+      // Load ticket names and IDs from admin settings
+      (function() {
+        try {
+          var stored = localStorage.getItem('feral_event_liverpool');
+          if (stored) {
+            var settings = JSON.parse(stored);
+
+            // Update ticket IDs from settings
+            if (settings.ticketId1) TICKETS['general'].id = settings.ticketId1;
+            if (settings.ticketId2) TICKETS['vip'].id = settings.ticketId2;
+            if (settings.ticketId3) TICKETS['vip-tee'].id = settings.ticketId3;
+
+            // Load size-specific IDs
+            if (settings.sizeIdXS) SIZE_IDS['XS'] = settings.sizeIdXS;
+            if (settings.sizeIdS) SIZE_IDS['S'] = settings.sizeIdS;
+            if (settings.sizeIdM) SIZE_IDS['M'] = settings.sizeIdM;
+            if (settings.sizeIdL) SIZE_IDS['L'] = settings.sizeIdL;
+            if (settings.sizeIdXL) SIZE_IDS['XL'] = settings.sizeIdXL;
+            if (settings.sizeIdXXL) SIZE_IDS['XXL'] = settings.sizeIdXXL;
+
+            // Update TICKETS object names
+            if (settings.ticketName1) TICKETS['general'].name = settings.ticketName1;
+            if (settings.ticketName2) TICKETS['vip'].name = settings.ticketName2;
+            if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
+          }
+        } catch (e) {}
+      })();
+
+      var checkoutBtn = document.getElementById('checkoutBtn');
+
+      // --- dataLayer: ViewContent on tickets page load ---
+      var allIds = Object.keys(TICKETS).map(function(k) { return TICKETS[k].id; });
+      window.dataLayer.push({
+        event: 'view_content',
+        content_name: 'FERAL Liverpool — 27 March 2026 — Tickets',
+        content_ids: allIds,
+        content_type: 'product',
+        currency: 'GBP'
+      });
+
+      function getTotalQty() {
+        return Object.keys(TICKETS).reduce(function(sum, k) {
+          return sum + TICKETS[k].qty;
+        }, 0);
+      }
+
+      function getTotalPrice() {
+        return Object.keys(TICKETS).reduce(function(sum, k) {
+          return sum + (TICKETS[k].qty * TICKETS[k].price);
+        }, 0);
+      }
+
+      function getCartParam() {
+        // Build cart string: ticketId:qty,ticketId:qty,...
+        var items = [];
+        Object.keys(TICKETS).forEach(function(k) {
+          if (k === 'vip-tee') {
+            // For VIP+Tee, use size-specific IDs
+            Object.keys(TEE_SIZES).forEach(function(size) {
+              if (TEE_SIZES[size] > 0) {
+                var ticketId = getSizeTicketId(size);
+                items.push(ticketId + ':' + TEE_SIZES[size]);
+              }
+            });
+          } else if (TICKETS[k].qty > 0) {
+            items.push(TICKETS[k].id + ':' + TICKETS[k].qty);
+          }
+        });
+        return items.join(',');
+      }
+
+      function goToCheckout() {
+        var totalQty = getTotalQty();
+        if (totalQty < 1) return;
+
+        // Build content_ids array for GTM
+        var contentIds = [];
+        Object.keys(TICKETS).forEach(function(k) {
+          if (TICKETS[k].qty > 0) {
+            contentIds.push(TICKETS[k].id);
+          }
+        });
+
+        // --- dataLayer: InitiateCheckout ---
+        window.dataLayer.push({
+          event: 'initiate_checkout',
+          content_name: 'FERAL Liverpool — 27 March 2026',
+          content_ids: contentIds,
+          content_type: 'product',
+          value: getTotalPrice(),
+          currency: 'GBP',
+          num_items: totalQty
+        });
+        window.location.assign('/event/liverpool-27-march/checkout/?cart=' + encodeURIComponent(getCartParam()));
+      }
+
+      function updateDisplay() {
+        // Update all quantity displays (use ORIGINAL_IDS for DOM lookups since HTML has hardcoded IDs)
+        Object.keys(TICKETS).forEach(function(k) {
+          var qtyEl = document.getElementById('qty-' + ORIGINAL_IDS[k]);
+          if (qtyEl) qtyEl.textContent = TICKETS[k].qty;
+        });
+
+        // Update checkout button
+        var totalQty = getTotalQty();
+        if (checkoutBtn) {
+          if (totalQty > 0) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.textContent = 'Checkout \u2014 \u00A3' + getTotalPrice().toFixed(2);
+          } else {
+            checkoutBtn.disabled = true;
+            checkoutBtn.textContent = 'Select tickets to continue';
+          }
+        }
+      }
+
+      // --- Size Popup for VIP + Tee ---
+      var sizePopup = document.getElementById('sizePopup');
+      var sizePopupClose = document.getElementById('sizePopupClose');
+      var sizePopupConfirm = document.getElementById('sizePopupConfirm');
+      var sizePopupOptions = document.getElementById('sizePopupOptions');
+      var popupSelectedSize = 'M';
+
+      function openSizePopup() {
+        if (sizePopup) {
+          sizePopup.classList.add('size-popup-overlay--visible');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      function closeSizePopup() {
+        if (sizePopup) {
+          sizePopup.classList.remove('size-popup-overlay--visible');
+          document.body.style.overflow = '';
+        }
+      }
+
+      if (sizePopupClose) {
+        sizePopupClose.addEventListener('click', closeSizePopup);
+      }
+
+      if (sizePopup) {
+        sizePopup.addEventListener('click', function(e) {
+          if (e.target === sizePopup) closeSizePopup();
+        });
+      }
+
+      // Size selection in popup
+      if (sizePopupOptions) {
+        sizePopupOptions.querySelectorAll('.size-popup__btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            sizePopupOptions.querySelectorAll('.size-popup__btn').forEach(function(b) {
+              b.classList.remove('size-popup__btn--selected');
+            });
+            this.classList.add('size-popup__btn--selected');
+            popupSelectedSize = this.getAttribute('data-size');
+          });
+        });
+      }
+
+      // Confirm size and add to cart
+      if (sizePopupConfirm) {
+        sizePopupConfirm.addEventListener('click', function() {
+          var ticket = TICKETS['vip-tee'];
+          // Track by size
+          TEE_SIZES[popupSelectedSize]++;
+          // Keep ticket.qty in sync for display purposes
+          ticket.qty = getTotalTeeQty();
+          // Use size-specific ID for tracking
+          var sizeTicketId = getSizeTicketId(popupSelectedSize);
+          window.dataLayer.push({
+            event: 'add_to_cart',
+            content_name: ticket.name + ' (' + popupSelectedSize + ') \u2014 FERAL Liverpool',
+            content_ids: [sizeTicketId],
+            content_type: 'product',
+            value: ticket.price,
+            currency: 'GBP',
+            num_items: TEE_SIZES[popupSelectedSize],
+            size: popupSelectedSize
+          });
+          updateDisplay();
+          closeSizePopup();
+        });
+      }
+
+      // Handle all ticket buttons
+      document.querySelectorAll('.ticket-option__btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var ticketId = btn.getAttribute('data-ticket');
+          var action = btn.getAttribute('data-action');
+          var key = ID_TO_KEY[ticketId];
+          if (!key) return;
+
+          var ticket = TICKETS[key];
+
+          // For VIP + Tee add, show size popup instead of direct add
+          if (key === 'vip-tee' && action === 'add') {
+            openSizePopup();
+            return;
+          }
+
+          if (action === 'add') {
+            ticket.qty++;
+            // --- dataLayer: AddToCart ---
+            window.dataLayer.push({
+              event: 'add_to_cart',
+              content_name: ticket.name + ' — FERAL Liverpool',
+              content_ids: [ticket.id],
+              content_type: 'product',
+              value: ticket.price,
+              currency: 'GBP',
+              num_items: ticket.qty
+            });
+          }
+          if (action === 'remove' && ticket.qty > 0) {
+            // For VIP+Tee, remove from TEE_SIZES
+            if (key === 'vip-tee') {
+              var sizeToRemove = null;
+              var sizes = ['XXL', 'XL', 'L', 'M', 'S', 'XS']; // Remove largest first
+              for (var i = 0; i < sizes.length; i++) {
+                if (TEE_SIZES[sizes[i]] > 0) {
+                  sizeToRemove = sizes[i];
+                  break;
+                }
+              }
+              if (sizeToRemove) {
+                TEE_SIZES[sizeToRemove]--;
+                ticket.qty = getTotalTeeQty();
+                var sizeTicketId = getSizeTicketId(sizeToRemove);
+                window.dataLayer.push({
+                  event: 'remove_from_cart',
+                  content_name: ticket.name + ' (' + sizeToRemove + ') — FERAL Liverpool',
+                  content_ids: [sizeTicketId],
+                  content_type: 'product',
+                  value: ticket.price,
+                  currency: 'GBP',
+                  num_items: TEE_SIZES[sizeToRemove],
+                  size: sizeToRemove
+                });
+              }
+            } else {
+              ticket.qty--;
+              // --- dataLayer: RemoveFromCart ---
+              window.dataLayer.push({
+                event: 'remove_from_cart',
+                content_name: ticket.name + ' — FERAL Liverpool',
+                content_ids: [ticket.id],
+                content_type: 'product',
+                value: ticket.price,
+                currency: 'GBP',
+                num_items: ticket.qty
+              });
+            }
+          }
+          updateDisplay();
+        });
+      });
+
+      if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function() {
+          goToCheckout();
+        });
+      }
+
+      updateDisplay();
+
+      // --- Enhanced Tee Modal ---
+      var teeModal = document.getElementById('teeModal');
+      var viewTeeBtn = document.getElementById('viewTeeBtn');
+      var teeModalClose = document.getElementById('teeModalClose');
+      var teeModalQty = 1;
+      var selectedSize = 'M';
+
+      function openTeeModal() {
+        if (teeModal) {
+          teeModal.classList.add('tee-modal-overlay--visible');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      function closeTeeModal() {
+        if (teeModal) {
+          teeModal.classList.remove('tee-modal-overlay--visible');
+          document.body.style.overflow = '';
+          // Reset modal state
+          teeModalQty = 1;
+          var qtyEl = document.getElementById('teeModalQty');
+          var addBtn = document.getElementById('teeModalAddBtn');
+          if (qtyEl) qtyEl.textContent = '1';
+          if (addBtn) {
+            addBtn.textContent = 'Add to Cart \u2014 \u00A365';
+            addBtn.classList.remove('tee-modal__add-btn--success');
+          }
+        }
+      }
+
+      if (viewTeeBtn) {
+        viewTeeBtn.addEventListener('click', openTeeModal);
+      }
+
+      if (teeModalClose) {
+        teeModalClose.addEventListener('click', closeTeeModal);
+      }
+
+      if (teeModal) {
+        teeModal.addEventListener('click', function(e) {
+          if (e.target === teeModal) closeTeeModal();
+        });
+      }
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && teeModal && teeModal.classList.contains('tee-modal-overlay--visible')) {
+          closeTeeModal();
+        }
+      });
+
+      // Tab switching (Front/Back)
+      document.querySelectorAll('.tee-modal__tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          var view = this.getAttribute('data-view');
+          // Update active tab
+          document.querySelectorAll('.tee-modal__tab').forEach(function(t) {
+            t.classList.remove('tee-modal__tab--active');
+          });
+          this.classList.add('tee-modal__tab--active');
+          // Show corresponding image
+          document.querySelectorAll('.tee-modal__img').forEach(function(img) {
+            if (img.getAttribute('data-view') === view) {
+              img.classList.add('tee-modal__img--active');
+            } else {
+              img.classList.remove('tee-modal__img--active');
+            }
+          });
+        });
+      });
+
+      // Fullscreen zoom functionality with navigation
+      var fullscreenOverlay = document.getElementById('teeFullscreen');
+      var fullscreenImg = document.getElementById('teeFullscreenImg');
+      var fullscreenClose = document.getElementById('fullscreenClose');
+      var fullscreenPrev = document.getElementById('fullscreenPrev');
+      var fullscreenNext = document.getElementById('fullscreenNext');
+      var fullscreenDots = fullscreenOverlay ? fullscreenOverlay.querySelectorAll('.tee-modal__fullscreen-dot') : [];
+
+      // Image sources: index 0 = back, index 1 = front
+      var fullscreenImages = [
+        '../../../images/LIVERPOOL%20MARCH%20BACK.png',
+        '../../../images/LIVERPOOL%20MARCH%20FRONT.png'
+      ];
+      var currentFullscreenIndex = 0;
+
+      function updateFullscreenNav() {
+        // Update arrows visibility
+        if (fullscreenPrev) {
+          fullscreenPrev.classList.toggle('tee-modal__fullscreen-nav--hidden', currentFullscreenIndex === 0);
+        }
+        if (fullscreenNext) {
+          fullscreenNext.classList.toggle('tee-modal__fullscreen-nav--hidden', currentFullscreenIndex === fullscreenImages.length - 1);
+        }
+        // Update dots
+        fullscreenDots.forEach(function(dot, idx) {
+          dot.classList.toggle('tee-modal__fullscreen-dot--active', idx === currentFullscreenIndex);
+        });
+      }
+
+      function navigateFullscreen(direction) {
+        var newIndex = currentFullscreenIndex + direction;
+        if (newIndex < 0 || newIndex >= fullscreenImages.length) return;
+        currentFullscreenIndex = newIndex;
+        if (fullscreenImg) fullscreenImg.src = fullscreenImages[currentFullscreenIndex];
+        updateFullscreenNav();
+      }
+
+      function openFullscreen(imgSrc) {
+        if (fullscreenOverlay && fullscreenImg) {
+          // Determine which image is being opened
+          if (imgSrc.indexOf('BACK') !== -1) {
+            currentFullscreenIndex = 0;
+          } else {
+            currentFullscreenIndex = 1;
+          }
+          fullscreenImg.src = imgSrc;
+          fullscreenOverlay.classList.add('tee-modal__fullscreen--visible');
+          updateFullscreenNav();
+        }
+      }
+
+      function closeFullscreen() {
+        if (fullscreenOverlay) {
+          fullscreenOverlay.classList.remove('tee-modal__fullscreen--visible');
+        }
+      }
+
+      // Click on tee image to zoom
+      document.querySelectorAll('.tee-modal__img').forEach(function(img) {
+        img.addEventListener('click', function() {
+          openFullscreen(this.src);
+        });
+      });
+
+      // Close fullscreen on background click (not on controls)
+      if (fullscreenOverlay) {
+        fullscreenOverlay.addEventListener('click', function(e) {
+          if (e.target === fullscreenOverlay || e.target === fullscreenImg) {
+            closeFullscreen();
+          }
+        });
+      }
+      if (fullscreenClose) {
+        fullscreenClose.addEventListener('click', function(e) {
+          e.stopPropagation();
+          closeFullscreen();
+        });
+      }
+
+      // Arrow navigation
+      if (fullscreenPrev) {
+        fullscreenPrev.addEventListener('click', function(e) {
+          e.stopPropagation();
+          navigateFullscreen(-1);
+        });
+      }
+      if (fullscreenNext) {
+        fullscreenNext.addEventListener('click', function(e) {
+          e.stopPropagation();
+          navigateFullscreen(1);
+        });
+      }
+
+      // Keyboard navigation
+      document.addEventListener('keydown', function(e) {
+        if (fullscreenOverlay && fullscreenOverlay.classList.contains('tee-modal__fullscreen--visible')) {
+          if (e.key === 'Escape') {
+            closeFullscreen();
+          } else if (e.key === 'ArrowLeft') {
+            navigateFullscreen(-1);
+          } else if (e.key === 'ArrowRight') {
+            navigateFullscreen(1);
+          }
+        }
+      });
+
+      // Touch swipe support
+      var touchStartX = 0;
+      var touchEndX = 0;
+
+      if (fullscreenOverlay) {
+        fullscreenOverlay.addEventListener('touchstart', function(e) {
+          touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        fullscreenOverlay.addEventListener('touchend', function(e) {
+          touchEndX = e.changedTouches[0].screenX;
+          var diff = touchStartX - touchEndX;
+          if (Math.abs(diff) > 50) {
+            if (diff > 0) {
+              // Swipe left -> next
+              navigateFullscreen(1);
+            } else {
+              // Swipe right -> prev
+              navigateFullscreen(-1);
+            }
+          }
+        }, { passive: true });
+      }
+
+      // Size selection
+      document.querySelectorAll('.tee-modal__size').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.tee-modal__size').forEach(function(b) {
+            b.classList.remove('tee-modal__size--selected');
+          });
+          this.classList.add('tee-modal__size--selected');
+          selectedSize = this.getAttribute('data-size');
+        });
+      });
+
+      // Quantity controls
+      document.querySelectorAll('.tee-modal__qty-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var action = this.getAttribute('data-action');
+          if (action === 'increase') teeModalQty++;
+          if (action === 'decrease' && teeModalQty > 1) teeModalQty--;
+          var qtyEl = document.getElementById('teeModalQty');
+          var addBtn = document.getElementById('teeModalAddBtn');
+          if (qtyEl) qtyEl.textContent = teeModalQty;
+          if (addBtn) addBtn.textContent = 'Add to Cart \u2014 \u00A3' + (teeModalQty * 65).toFixed(2);
+        });
+      });
+
+      // Add to cart
+      var teeModalAddBtn = document.getElementById('teeModalAddBtn');
+      if (teeModalAddBtn) {
+        teeModalAddBtn.addEventListener('click', function() {
+          // Add to TEE_SIZES for the selected size
+          TEE_SIZES[selectedSize] += teeModalQty;
+          // Keep TICKETS qty in sync
+          TICKETS['vip-tee'].qty = getTotalTeeQty();
+          // Use size-specific ticket ID
+          var sizeTicketId = getSizeTicketId(selectedSize);
+
+          // GTM tracking
+          window.dataLayer.push({
+            event: 'add_to_cart',
+            content_name: 'VIP + FERAL Tee (' + selectedSize + ') \u2014 FERAL Liverpool',
+            content_ids: [sizeTicketId],
+            content_type: 'product',
+            value: 65 * teeModalQty,
+            currency: 'GBP',
+            num_items: teeModalQty,
+            size: selectedSize
+          });
+
+          // Update main ticket display
+          updateDisplay();
+
+          // Success feedback
+          this.textContent = 'Added to Cart \u2714';
+          this.classList.add('tee-modal__add-btn--success');
+          setTimeout(closeTeeModal, 1000);
+        });
+      }
+    })();
+  </script>
+  <script>
+    // Social Proof Toast — triggers on the tickets page where
+    // the user is actively deciding. Shows after 5s to let them
+    // absorb the ticket tiers and pricing first.
+    (function() {
+      var toast = document.getElementById('socialProof');
+      var timeEl = document.getElementById('proofTime');
+      var storageKey = 'feral_lastBooking_liverpool';
+
+      function getTimeText(elapsedSeconds) {
+        if (elapsedSeconds < 60) return 'less than 60 seconds ago';
+        if (elapsedSeconds < 120) return 'less than 2 minutes ago';
+        if (elapsedSeconds < 180) return 'less than 3 minutes ago';
+        if (elapsedSeconds < 300) return 'less than 5 minutes ago';
+        if (elapsedSeconds < 480) return 'less than 8 minutes ago';
+        if (elapsedSeconds < 720) return 'less than 10 minutes ago';
+        if (elapsedSeconds < 900) return 'less than 15 minutes ago';
+        return null;
+      }
+
+      function getRandomInitialTime() {
+        var weights = [
+          { seconds: 25, weight: 1 },
+          { seconds: 45, weight: 1 },
+          { seconds: 80, weight: 3 },
+          { seconds: 130, weight: 4 },
+          { seconds: 200, weight: 4 },
+          { seconds: 270, weight: 3 },
+          { seconds: 400, weight: 2 },
+          { seconds: 550, weight: 1 },
+          { seconds: 700, weight: 1 }
+        ];
+        var totalWeight = weights.reduce(function(sum, w) { return sum + w.weight; }, 0);
+        var rand = Math.random() * totalWeight;
+        var cumulative = 0;
+        for (var i = 0; i < weights.length; i++) {
+          cumulative += weights[i].weight;
+          if (rand < cumulative) return weights[i].seconds;
+        }
+        return 130;
+      }
+
+      var now = Date.now();
+      var stored = localStorage.getItem(storageKey);
+      var bookingTime;
+
+      if (stored) {
+        bookingTime = parseInt(stored, 10);
+        var elapsed = Math.floor((now - bookingTime) / 1000);
+        if (!getTimeText(elapsed)) {
+          var initialOffset = getRandomInitialTime();
+          bookingTime = now - (initialOffset * 1000);
+          localStorage.setItem(storageKey, bookingTime.toString());
+        }
+      } else {
+        var initialOffset = getRandomInitialTime();
+        bookingTime = now - (initialOffset * 1000);
+        localStorage.setItem(storageKey, bookingTime.toString());
+      }
+
+      var elapsedSeconds = Math.floor((now - bookingTime) / 1000);
+      var displayText = getTimeText(elapsedSeconds) || 'less than 5 minutes ago';
+      if (timeEl) timeEl.textContent = displayText;
+
+      // Show once after 5 seconds — enough time to read tiers & pricing
+      setTimeout(function() {
+        if (toast) toast.classList.add('social-proof--visible');
+        setTimeout(function() {
+          if (toast) toast.classList.remove('social-proof--visible');
+        }, 7000);
+      }, 5000);
+    })();
+  </script>
+  <!-- Supabase for traffic analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- FERAL Traffic Analytics -->
+  <script src="../../../js/feral-traffic.js"></script>
+
+  <!-- Email Capture Popup Script -->
+  <script>
+  (function() {
+    'use strict';
+
+    // Use same localStorage key as landing page to ensure popup only shows once across all pages
+    var POPUP_KEY = 'feral_dp_shown';
+    var POPUP_EXPIRY_DAYS = 30;
+
+    var overlay = document.getElementById('feralPopup');
+    var backdrop = document.getElementById('feralPopupBackdrop');
+    var closeBtn = document.getElementById('feralPopupClose');
+    var skipBtn = document.getElementById('feralPopupSkip');
+    var form = document.getElementById('feralPopupForm');
+    var emailInput = document.getElementById('feralPopupEmail');
+
+    var shown = false;
+
+    function hasSeenPopup() {
+      var stored = localStorage.getItem(POPUP_KEY);
+      if (!stored) return false;
+      try {
+        var data = JSON.parse(stored);
+        // Check if expired (30 days)
+        if (data.timestamp && Date.now() - data.timestamp > POPUP_EXPIRY_DAYS * 24 * 60 * 60 * 1000) {
+          localStorage.removeItem(POPUP_KEY);
+          return false;
+        }
+        return true;
+      } catch (e) {
+        // If it's not JSON, it's probably old format - treat as seen
+        return true;
+      }
+    }
+
+    function markPopupSeen(action) {
+      localStorage.setItem(POPUP_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        action: action || 'dismissed'
+      }));
+    }
+
+    function showPopup() {
+      if (shown || hasSeenPopup()) return;
+      shown = true;
+      overlay.classList.add('feral-popup--visible');
+      document.body.style.overflow = 'hidden';
+      // Track popup display
+      if (typeof feralTrackEngagement === 'function') {
+        feralTrackEngagement('popup_shown_tickets');
+      }
+    }
+
+    function hidePopup(action) {
+      overlay.classList.remove('feral-popup--visible');
+      document.body.style.overflow = '';
+      markPopupSeen(action);
+    }
+
+    // Close handlers
+    if (closeBtn) closeBtn.addEventListener('click', function() { hidePopup('closed'); });
+    if (skipBtn) skipBtn.addEventListener('click', function() { hidePopup('skipped'); });
+    if (backdrop) backdrop.addEventListener('click', function() { hidePopup('backdrop'); });
+
+    // Form submission
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var email = emailInput.value.trim();
+        if (!email) return;
+
+        // Track email capture
+        if (typeof feralTrackEngagement === 'function') {
+          feralTrackEngagement('email_captured_tickets');
+        }
+
+        // Store email in Supabase popup_events table
+        if (window.supabase) {
+          var client = window.supabase.createClient(
+            'https://rqtfghzhkkdytkegcifm.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc'
+          );
+          client.from('popup_events').insert({
+            event_type: 'email_submit',
+            email: email,
+            page: 'tickets',
+            event_name: 'liverpool-27-march',
+            timestamp: new Date().toISOString()
+          }).then(function(res) {
+            if (res.error) console.log('[Popup] Error:', res.error.message);
+            else console.log('[Popup] Email captured successfully');
+          });
+        }
+
+        hidePopup('subscribed');
+        // Show quick thank you
+        overlay.innerHTML = '<div class="feral-popup-backdrop"></div><div class="feral-popup-box" style="padding:40px 28px;"><div style="font-size:32px;margin-bottom:12px;">&#10003;</div><h3 class="feral-popup-title">You\'re in<span style="color:var(--red)">_</span></h3><p class="feral-popup-subtitle">We\'ll hit you up with early access + exclusive drops.</p></div>';
+        overlay.classList.add('feral-popup--visible');
+        setTimeout(function() {
+          overlay.classList.remove('feral-popup--visible');
+          document.body.style.overflow = '';
+        }, 2500);
+      });
+    }
+
+    // Only show popup if not already seen
+    // Tickets page: shorter delay (4s) since they're already showing purchase intent
+    if (!hasSeenPopup()) {
+      setTimeout(showPopup, 4000);
+    }
+  })();
+  </script>
+</body>
+</html>

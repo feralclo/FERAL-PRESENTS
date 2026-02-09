@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artist Invite | FERAL MGMT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface-2: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #ffffff;
+      --text-muted: #888888;
+      --accent: #ff0033;
+      --accent-glow: rgba(255, 0, 51, 0.3);
+      --success: #00cc66;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .invite-container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .invite-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+    }
+
+    .invite-logo {
+      width: 120px;
+      margin-bottom: 32px;
+      filter: brightness(0) invert(1);
+    }
+
+    .invite-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .invite-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-family: var(--font-mono);
+      letter-spacing: 1px;
+    }
+
+    .invite-welcome {
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+
+    .invite-welcome__label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+    }
+
+    .invite-welcome__name {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: var(--font-sans);
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .form-input::placeholder {
+      color: #555;
+    }
+
+    .password-strength {
+      margin-top: 8px;
+      height: 4px;
+      background: var(--surface-2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .password-strength__bar {
+      height: 100%;
+      width: 0%;
+      transition: all 0.3s ease;
+      border-radius: 2px;
+    }
+
+    .password-strength__bar.weak { width: 33%; background: #ff4444; }
+    .password-strength__bar.medium { width: 66%; background: #ffaa00; }
+    .password-strength__bar.strong { width: 100%; background: var(--success); }
+
+    .password-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px 24px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 12px;
+    }
+
+    .btn:hover {
+      background: #e6002e;
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      background: var(--border);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error-state {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .error-state.active {
+      display: block;
+    }
+
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(255, 68, 68, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .error-icon svg {
+      width: 32px;
+      height: 32px;
+      stroke: #ff4444;
+    }
+
+    .error-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .error-text {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .success-state {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .success-state.active {
+      display: block;
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(0, 204, 102, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    .success-icon svg {
+      width: 40px;
+      height: 40px;
+      stroke: var(--success);
+    }
+
+    .success-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .success-text {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .btn--success {
+      background: var(--success);
+    }
+
+    .btn--success:hover {
+      background: #00b359;
+    }
+
+    .form-state {
+      display: block;
+    }
+
+    .form-state.hidden {
+      display: none;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.error {
+      border-color: #ff4444;
+      color: #ff4444;
+    }
+  </style>
+</head>
+<body>
+  <div class="invite-container">
+    <div class="invite-card">
+      <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="invite-logo">
+
+      <!-- Error State (Invalid/Used Token) -->
+      <div class="error-state" id="errorState">
+        <div class="error-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <div class="error-title">Invalid Invite Link</div>
+        <div class="error-text">This invite link is invalid or has already been used. Please contact your manager for a new invite.</div>
+      </div>
+
+      <!-- Success State -->
+      <div class="success-state" id="successState">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div class="success-title">You're All Set!</div>
+        <div class="success-text">Your account has been created. You can now log in to your artist dashboard.</div>
+        <button class="btn btn--success" onclick="window.location.href='../artist-login/'">Go to Login</button>
+      </div>
+
+      <!-- Form State -->
+      <div class="form-state" id="formState">
+        <div class="invite-title">Welcome to FERAL</div>
+        <div class="invite-subtitle">Set up your artist account</div>
+
+        <div class="invite-welcome">
+          <div class="invite-welcome__label">You're invited as</div>
+          <div class="invite-welcome__name" id="artistName">Loading...</div>
+        </div>
+
+        <form id="setupForm" onsubmit="return handleSetup(event)">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" id="username" readonly>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Create Password</label>
+            <input type="password" class="form-input" id="password" placeholder="Enter a secure password" oninput="checkPasswordStrength()">
+            <div class="password-strength">
+              <div class="password-strength__bar" id="strengthBar"></div>
+            </div>
+            <div class="password-hint">Minimum 6 characters</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" class="form-input" id="confirmPassword" placeholder="Confirm your password">
+          </div>
+
+          <button type="submit" class="btn" id="submitBtn">Create Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Supabase config
+    var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+    var dbClient = null;
+
+    // Artist roster (same as agency dashboard)
+    var ROSTER = [
+      { id: 'stevie', name: 'STEVIE', avatar: 'S' }
+    ];
+
+    // Current invite data
+    var currentInvite = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Supabase
+      if (window.supabase && window.supabase.createClient) {
+        dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        validateInvite();
+      } else {
+        showError();
+      }
+    });
+
+    // Validate the invite token from URL
+    async function validateInvite() {
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('token');
+
+      if (!token) {
+        showError();
+        return;
+      }
+
+      try {
+        // Check if invite exists and is valid
+        var res = await dbClient.from('artist_invites').select('*').eq('token', token).single();
+
+        if (res.error || !res.data) {
+          showError();
+          return;
+        }
+
+        if (res.data.used) {
+          showError();
+          return;
+        }
+
+        // Valid invite - show form
+        currentInvite = res.data;
+        var artist = ROSTER.find(function(a) { return a.id === res.data.artist_id; });
+
+        document.getElementById('artistName').textContent = artist ? artist.name : res.data.artist_id.toUpperCase();
+        document.getElementById('username').value = res.data.username;
+        document.getElementById('formState').classList.remove('hidden');
+
+      } catch (e) {
+        console.error('Invite validation error:', e);
+        showError();
+      }
+    }
+
+    function showError() {
+      document.getElementById('formState').classList.add('hidden');
+      document.getElementById('errorState').classList.add('active');
+    }
+
+    function showSuccess() {
+      document.getElementById('formState').classList.add('hidden');
+      document.getElementById('successState').classList.add('active');
+    }
+
+    function checkPasswordStrength() {
+      var password = document.getElementById('password').value;
+      var bar = document.getElementById('strengthBar');
+
+      bar.className = 'password-strength__bar';
+
+      if (password.length === 0) {
+        bar.className = 'password-strength__bar';
+      } else if (password.length < 6) {
+        bar.className = 'password-strength__bar weak';
+      } else if (password.length < 10) {
+        bar.className = 'password-strength__bar medium';
+      } else {
+        bar.className = 'password-strength__bar strong';
+      }
+    }
+
+    function showToast(msg, isError) {
+      var toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = 'toast' + (isError ? ' error' : '');
+      toast.classList.add('show');
+      setTimeout(function() {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Simple hash function for password (basic security for this use case)
+    function simpleHash(str) {
+      var hash = 0;
+      for (var i = 0; i < str.length; i++) {
+        var char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      // Convert to positive hex string with salt
+      return 'feral_' + Math.abs(hash).toString(16) + '_' + str.length;
+    }
+
+    async function handleSetup(e) {
+      e.preventDefault();
+
+      var password = document.getElementById('password').value;
+      var confirmPassword = document.getElementById('confirmPassword').value;
+      var submitBtn = document.getElementById('submitBtn');
+
+      // Validation
+      if (password.length < 6) {
+        showToast('Password must be at least 6 characters', true);
+        return false;
+      }
+
+      if (password !== confirmPassword) {
+        showToast('Passwords do not match', true);
+        return false;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating...';
+
+      try {
+        // Create artist user account
+        var hashedPassword = simpleHash(password);
+
+        var userRes = await dbClient.from('artist_users').insert({
+          username: currentInvite.username,
+          password_hash: hashedPassword,
+          artist_id: currentInvite.artist_id,
+          created_at: new Date().toISOString()
+        });
+
+        if (userRes.error) {
+          throw userRes.error;
+        }
+
+        // Mark invite as used
+        await dbClient.from('artist_invites').update({
+          used: true,
+          used_at: new Date().toISOString()
+        }).eq('token', currentInvite.token);
+
+        showSuccess();
+
+      } catch (e) {
+        console.error('Setup error:', e);
+        showToast('Failed to create account. Please try again.', true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+
+      return false;
+    }
+  </script>
+</body>
+</html>

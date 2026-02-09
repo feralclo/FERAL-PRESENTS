@@ -983,6 +983,205 @@
         margin: 0.5cm;
       }
     }
+
+    /* ===== BIO/RIDER POPUP ===== */
+    .artist-docs {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .artist-docs__btn {
+      padding: 12px 20px;
+      background: transparent;
+      color: var(--white);
+      border: 1px solid var(--gray-border);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .artist-docs__btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .artist-docs__btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .doc-popup {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .doc-popup.active {
+      display: flex;
+    }
+
+    .doc-popup__box {
+      background: #0a0a0a;
+      border: 1px solid var(--gray-border);
+      max-width: 700px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .doc-popup__header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--gray-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .doc-popup__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .doc-popup__close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--gray-text);
+      font-family: var(--font-mono);
+      padding: 0;
+      line-height: 1;
+    }
+
+    .doc-popup__close:hover {
+      color: var(--white);
+    }
+
+    .doc-popup__content {
+      padding: 32px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .doc-popup__section {
+      margin-bottom: 28px;
+    }
+
+    .doc-popup__section:last-child {
+      margin-bottom: 0;
+    }
+
+    .doc-popup__section-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .doc-popup__text {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #ccc;
+    }
+
+    .doc-popup__list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .doc-popup__list li {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #ccc;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .doc-popup__list li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--gray-text);
+    }
+
+    .doc-popup__footer {
+      padding: 20px 32px;
+      border-top: 1px solid var(--gray-border);
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .doc-popup__download {
+      padding: 14px 24px;
+      background: var(--red);
+      color: var(--white);
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .doc-popup__download:hover {
+      background: #cc0029;
+    }
+
+    .doc-popup__download svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .doc-popup__close-btn {
+      padding: 14px 24px;
+      background: transparent;
+      color: var(--white);
+      border: 1px solid var(--gray-border);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+    }
+
+    .doc-popup__close-btn:hover {
+      border-color: var(--white);
+    }
+
+    @media print {
+      .artist-docs, .doc-popup { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -998,6 +1197,27 @@
     <div class="contract-status">
       <span class="contract-status__dot"></span>
       <span id="statusText">Draft — Editable</span>
+    </div>
+
+    <!-- Artist Documents -->
+    <div class="artist-docs" id="artistDocs">
+      <button class="artist-docs__btn" onclick="openDocPopup('bio')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        View Artist Bio
+      </button>
+      <button class="artist-docs__btn" onclick="openDocPopup('rider')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        View Rider
+      </button>
     </div>
   </div>
 
@@ -1269,6 +1489,109 @@
 <!-- Toast -->
 <div class="toast" id="toast">Link copied to clipboard</div>
 
+<!-- Bio Popup -->
+<div class="doc-popup" id="bioPopup">
+  <div class="doc-popup__box">
+    <div class="doc-popup__header">
+      <span class="doc-popup__title">Stevie — Artist Bio</span>
+      <button class="doc-popup__close" onclick="closeDocPopup('bio')">&times;</button>
+    </div>
+    <div class="doc-popup__content" id="bioContent">
+      <div class="doc-popup__section">
+        <p class="doc-popup__text">STEVIE is a Liverpool-based techno DJ and producer emerging from the UK's industrial underground. Her sound operates at the harder edge of techno, built on punishing low-end, distorted mechanical textures, and relentless rhythms designed for dark rooms, warehouse floors, and high-pressure sound systems.</p>
+      </div>
+      <div class="doc-popup__section">
+        <p class="doc-popup__text">Born and raised in Liverpool, STEVIE was drawn into the city's rave culture after attending her first hard techno event. She began DJing at 21, initially performing as part of a duo before stepping away to develop a distinct and uncompromising solo identity. Entirely self-taught, her progression from bedroom setups to club and rave environments was rapid.</p>
+      </div>
+      <div class="doc-popup__section">
+        <p class="doc-popup__text">Her DJ sets are functional, confrontational, and tightly controlled—prioritising sustained intensity over predictable structures or quick release. Drawing from industrial and hard techno influences, her performances lock dancers into continuous pressure through aggressive percussion, distorted synth work, and heavy bass weight.</p>
+      </div>
+      <div class="doc-popup__section">
+        <p class="doc-popup__text">Alongside her DJ career, STEVIE has built a strong profile as a producer, releasing nine tracks to date with a combined total of over 900,000 streams across all platforms. Her standout release, the Jamaican edit, marked a key breakthrough and remains her most recognised work to date.</p>
+      </div>
+      <div class="doc-popup__section">
+        <p class="doc-popup__text">She has performed across the UK and expanded internationally with European appearances in Malta (May 2025) and Poland (November 2025). With Liverpool as her home base, STEVIE continues to build momentum as a rising artist within the industrial and hard techno circuit, defined by raw power, precision, and uncompromising energy.</p>
+      </div>
+    </div>
+    <div class="doc-popup__footer">
+      <button class="doc-popup__download" onclick="downloadDoc('bio')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download Bio
+      </button>
+      <button class="doc-popup__close-btn" onclick="closeDocPopup('bio')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rider Popup -->
+<div class="doc-popup" id="riderPopup">
+  <div class="doc-popup__box">
+    <div class="doc-popup__header">
+      <span class="doc-popup__title">Stevie — Technical & Hospitality Rider</span>
+      <button class="doc-popup__close" onclick="closeDocPopup('rider')">&times;</button>
+    </div>
+    <div class="doc-popup__content" id="riderContent">
+      <div class="doc-popup__section">
+        <div class="doc-popup__section-title">Equipment Rider</div>
+        <p class="doc-popup__text">At a minimum the promoter must provide:</p>
+        <ul class="doc-popup__list">
+          <li>2x Pioneer 2000 CDJ NXS2</li>
+          <li>1x Pioneer DJM900NXS or latest update</li>
+          <li>Set up must be flat and not raised</li>
+          <li>High quality sound system</li>
+        </ul>
+      </div>
+      <div class="doc-popup__section">
+        <div class="doc-popup__section-title">UK Rider</div>
+        <ul class="doc-popup__list">
+          <li>4x glass bottles of full fat Coke (no diet or Coke Zero)</li>
+          <li>1x bottle of Malibu</li>
+          <li>1x bottle of tequila rose</li>
+          <li>1x mango juice</li>
+          <li>2x bottles of water</li>
+          <li>1x bottle of lemonade</li>
+        </ul>
+      </div>
+      <div class="doc-popup__section">
+        <div class="doc-popup__section-title">EU Rider</div>
+        <ul class="doc-popup__list">
+          <li>4x glass bottles of full fat Coke (no diet or Coke Zero)</li>
+          <li>1x bottle of Malibu</li>
+          <li>1x bottle of vodka</li>
+          <li>1x bottle of tequila rose</li>
+          <li>6x redbulls</li>
+          <li>2x bottles of water</li>
+          <li>1x bottle of lemonade</li>
+        </ul>
+      </div>
+      <div class="doc-popup__section">
+        <div class="doc-popup__section-title">Hospitality</div>
+        <ul class="doc-popup__list">
+          <li>All hotels across UK & EU should be no less than a minimum of 4 star with late checkout, unless agreed otherwise with STEVIE's manager</li>
+          <li>Hotel distance from venue < 10km if possible</li>
+          <li>Meal buyout of £/€50 per person each day</li>
+          <li>STEVIE must have 5 guest list with a minimum of 3 being AAA</li>
+        </ul>
+      </div>
+    </div>
+    <div class="doc-popup__footer">
+      <button class="doc-popup__download" onclick="downloadDoc('rider')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download Rider
+      </button>
+      <button class="doc-popup__close-btn" onclick="closeDocPopup('rider')">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // ============================================
   // SUPABASE — cloud sync for signed contracts
@@ -1280,6 +1603,128 @@
   if (SUPABASE_URL && SUPABASE_ANON_KEY && _sbLib && _sbLib.createClient) {
     dbClient = _sbLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
+
+  // ============================================
+  // LOAD BIO/RIDER FROM SUPABASE (real-time sync)
+  // ============================================
+  async function loadArtistDocs() {
+    if (!dbClient) return;
+    try {
+      var res = await dbClient.from('artists').select('data').eq('id', 'all').single();
+      if (res.data && res.data.data && res.data.data.stevie) {
+        var artist = res.data.data.stevie;
+
+        // Update bio if available
+        if (artist.bio) {
+          var bioContent = document.getElementById('bioContent');
+          if (bioContent) {
+            var paragraphs = artist.bio.split('\n\n').filter(function(p) { return p.trim(); });
+            bioContent.innerHTML = paragraphs.map(function(p) {
+              return '<div class="doc-popup__section"><p class="doc-popup__text">' + p.replace(/\n/g, '<br>') + '</p></div>';
+            }).join('');
+          }
+        }
+
+        // Update rider if available
+        if (artist.rider) {
+          var riderContent = document.getElementById('riderContent');
+          if (riderContent) {
+            var sections = artist.rider.split('\n\n').filter(function(s) { return s.trim(); });
+            riderContent.innerHTML = sections.map(function(section) {
+              var lines = section.split('\n');
+              var title = lines[0];
+              var items = lines.slice(1);
+              var html = '<div class="doc-popup__section">';
+              html += '<div class="doc-popup__section-title">' + title + '</div>';
+              if (items.length > 0 && items[0].startsWith('-')) {
+                html += '<ul class="doc-popup__list">';
+                items.forEach(function(item) {
+                  if (item.trim()) {
+                    html += '<li>' + item.replace(/^-\s*/, '') + '</li>';
+                  }
+                });
+                html += '</ul>';
+              } else if (items.length > 0) {
+                html += '<p class="doc-popup__text">' + items.join('<br>') + '</p>';
+              }
+              html += '</div>';
+              return html;
+            }).join('');
+          }
+        }
+        console.log('[Contract] Loaded artist bio/rider from Supabase');
+      }
+    } catch (err) {
+      console.log('[Contract] Could not load artist docs:', err.message);
+    }
+  }
+
+  // Load artist docs on page load
+  loadArtistDocs();
+
+  // ============================================
+  // BIO / RIDER POPUP FUNCTIONS
+  // ============================================
+  function openDocPopup(type) {
+    var popup = document.getElementById(type + 'Popup');
+    if (popup) {
+      popup.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeDocPopup(type) {
+    var popup = document.getElementById(type + 'Popup');
+    if (popup) {
+      popup.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  }
+
+  function downloadDoc(type) {
+    var title = type === 'bio' ? 'STEVIE — Artist Bio' : 'STEVIE — Technical & Hospitality Rider';
+    var content = document.getElementById(type + 'Content').innerHTML;
+
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<!DOCTYPE html><html><head><title>' + title + '</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('* { margin: 0; padding: 0; box-sizing: border-box; }');
+    printWindow.document.write('body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; color: #fff; padding: 60px 50px; line-height: 1.8; }');
+    printWindow.document.write('.doc-popup__section { margin-bottom: 28px; }');
+    printWindow.document.write('.doc-popup__section-title { font-family: "Courier New", monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #ff0033; margin-bottom: 12px; font-weight: 700; }');
+    printWindow.document.write('.doc-popup__text { font-size: 14px; line-height: 1.9; color: #ccc; }');
+    printWindow.document.write('.doc-popup__list { list-style: none; padding: 0; }');
+    printWindow.document.write('.doc-popup__list li { font-size: 14px; line-height: 1.9; color: #ccc; padding-left: 20px; position: relative; margin-bottom: 4px; }');
+    printWindow.document.write('.doc-popup__list li::before { content: "—"; position: absolute; left: 0; color: #666; }');
+    printWindow.document.write('h1 { font-family: "Courier New", monospace; font-size: 14px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 8px; font-weight: 700; }');
+    printWindow.document.write('.subtitle { font-family: "Courier New", monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-bottom: 40px; }');
+    printWindow.document.write('.logo { height: 40px; margin-bottom: 32px; }');
+    printWindow.document.write('@media print { body { background: #fff; color: #000; padding: 40px; } .doc-popup__text, .doc-popup__list li { color: #333; } .doc-popup__section-title { color: #ff0033; } }');
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write('<img src="../../images/FERAL%20LOGO.svg" class="logo" alt="FERAL">');
+    printWindow.document.write('<h1>' + title + '</h1>');
+    printWindow.document.write('<div class="subtitle">Agency FERAL</div>');
+    printWindow.document.write(content);
+    printWindow.document.write('<script>setTimeout(function() { window.print(); }, 300);<\/script>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+  }
+
+  // Close popup on background click
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('doc-popup')) {
+      var type = e.target.id.replace('Popup', '');
+      closeDocPopup(type);
+    }
+  });
+
+  // Close popup on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeDocPopup('bio');
+      closeDocPopup('rider');
+    }
+  });
 
   async function syncSignedToCloud(contractId, updateData) {
     if (!dbClient) return;
@@ -2000,6 +2445,10 @@
       + '<button id="sdPrint" style="padding:14px 24px;background:#00cc66;color:#000;border:none;font-family:\'Space Mono\',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;width:100%;">Print Your Copy</button>'
       + (hasInvoices ? '<button id="sdBookingInv" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">Download Booking Fee Invoice</button>' : '')
       + (hasInvoices ? '<button id="sdArtistInv" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">Download Artist Fee Invoice</button>' : '')
+      + '<div style="border-top:1px solid #222;margin-top:16px;padding-top:16px;width:100%;"></div>'
+      + '<div style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:8px;text-align:center;">Artist Documents</div>'
+      + '<button id="sdViewBio" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">View Artist Bio</button>'
+      + '<button id="sdViewRider" style="padding:14px 24px;background:transparent;color:#fff;border:1px solid #333;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;width:100%;">View Rider</button>'
       + '</div>';
 
     document.body.appendChild(signedPage);
@@ -2020,6 +2469,14 @@
       window.print();
       wrapper.style.display = 'none';
       signedPage.style.display = 'flex';
+    });
+
+    // Bio/Rider buttons on signed page
+    document.getElementById('sdViewBio').addEventListener('click', function() {
+      openDocPopup('bio');
+    });
+    document.getElementById('sdViewRider').addEventListener('click', function() {
+      openDocPopup('rider');
     });
 
     if (hasInvoices) {

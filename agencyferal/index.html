@@ -1141,6 +1141,712 @@
       margin-top: 4px;
     }
 
+    /* ====== BIO/RIDER EDITOR ====== */
+    .artist-docs-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .artist-docs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .artist-docs-grid { grid-template-columns: 1fr; }
+    }
+
+    .artist-doc-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+    }
+
+    .artist-doc-card:hover {
+      border-color: var(--red);
+    }
+
+    .artist-doc-card__title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .artist-doc-card__title svg {
+      width: 16px;
+      height: 16px;
+      color: var(--red);
+    }
+
+    .artist-doc-card__desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Bio/Rider Editor Modal */
+    .doc-editor-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .doc-editor-overlay.active {
+      display: flex;
+    }
+
+    .doc-editor {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .doc-editor__header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .doc-editor__title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .doc-editor__close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0;
+      line-height: 1;
+    }
+
+    .doc-editor__close:hover {
+      color: var(--white);
+    }
+
+    .doc-editor__content {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .doc-editor__textarea {
+      width: 100%;
+      min-height: 400px;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--white);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.8;
+      resize: vertical;
+    }
+
+    .doc-editor__textarea:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+
+    .doc-editor__footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .doc-editor__split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      height: 100%;
+    }
+
+    @media (max-width: 900px) {
+      .doc-editor__split {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+    }
+
+    .doc-editor__panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .doc-editor__panel-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .doc-editor__textarea {
+      width: 100%;
+      flex: 1;
+      min-height: 300px;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--white);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.8;
+      resize: none;
+    }
+
+    .doc-editor__preview {
+      flex: 1;
+      padding: 20px;
+      background: #000;
+      border: 1px solid var(--border);
+      overflow-y: auto;
+      min-height: 300px;
+    }
+
+    .doc-editor__preview-section {
+      margin-bottom: 20px;
+    }
+
+    .doc-editor__preview-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .doc-editor__preview-heading {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .doc-editor__preview-text {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #bbb;
+    }
+
+    .doc-editor__preview-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .doc-editor__preview-list li {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #bbb;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .doc-editor__preview-list li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: #666;
+    }
+
+    .doc-editor__hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+    }
+
+    /* ====== EARNINGS DASHBOARD ====== */
+    .earnings-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .earnings-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .earnings-summary { grid-template-columns: 1fr; }
+    }
+
+    .earnings-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .earnings-card--highlight {
+      border-color: var(--red);
+      background: rgba(255, 0, 51, 0.05);
+    }
+
+    .earnings-card__label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .earnings-card__amount {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .earnings-card__amount--pending {
+      color: #ffaa00;
+    }
+
+    .earnings-card__amount--paid {
+      color: #00cc66;
+    }
+
+    .earnings-breakdown {
+      margin-top: 20px;
+    }
+
+    .earnings-breakdown__title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .earnings-month {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+
+    .earnings-month__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      cursor: pointer;
+    }
+
+    .earnings-month__header:hover {
+      background: var(--surface);
+    }
+
+    .earnings-month__name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .earnings-month__total {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .earnings-month__items {
+      display: none;
+      border-top: 1px solid var(--border);
+    }
+
+    .earnings-month.expanded .earnings-month__items {
+      display: block;
+    }
+
+    .earnings-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .earnings-item:last-child {
+      border-bottom: none;
+    }
+
+    .earnings-item__info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .earnings-item__event {
+      color: var(--white);
+    }
+
+    .earnings-item__date {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .earnings-item__amount {
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    .earnings-item__status {
+      display: inline-block;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-radius: 2px;
+      margin-left: 8px;
+    }
+
+    .earnings-item__status--pending {
+      background: rgba(255, 170, 0, 0.2);
+      color: #ffaa00;
+    }
+
+    .earnings-item__status--paid {
+      background: rgba(0, 204, 102, 0.2);
+      color: #00cc66;
+    }
+
+    .earnings-empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .earnings-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 16px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+      padding: 12px;
+      background: var(--surface-2);
+      border-left: 2px solid var(--red);
+    }
+
+    /* ========== AGENCY CALENDAR STYLES ========== */
+    .agency-calendar-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .agency-calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .agency-calendar-header__title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .agency-calendar-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .agency-calendar-nav__btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .agency-calendar-nav__btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .agency-calendar-nav__month {
+      font-size: 15px;
+      font-weight: 600;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .agency-calendar-grid {
+      padding: 16px;
+    }
+
+    .agency-calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .agency-calendar-weekday {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      padding: 8px;
+    }
+
+    .agency-calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .agency-calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text-muted);
+      position: relative;
+      cursor: default;
+      transition: all 0.2s ease;
+    }
+
+    .agency-calendar-day.other-month {
+      background: transparent;
+      color: #333;
+    }
+
+    .agency-calendar-day.today {
+      border: 1px solid var(--red);
+    }
+
+    .agency-calendar-day.has-booking {
+      cursor: pointer;
+    }
+
+    .agency-calendar-day.has-booking:hover {
+      transform: scale(1.05);
+    }
+
+    .agency-calendar-day.booking-confirmed {
+      background: rgba(0, 204, 102, 0.15);
+      color: #00cc66;
+      font-weight: 600;
+    }
+
+    .agency-calendar-day.booking-pending {
+      background: rgba(255, 170, 0, 0.15);
+      color: #ffaa00;
+      font-weight: 600;
+    }
+
+    .agency-calendar-day__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      position: absolute;
+      bottom: 6px;
+    }
+
+    .agency-calendar-day__dot.confirmed { background: #00cc66; }
+    .agency-calendar-day__dot.pending { background: #ffaa00; }
+
+    .agency-bookings-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-top: 24px;
+    }
+
+    .agency-bookings-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .agency-bookings-header__title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .agency-bookings-list {
+      padding: 16px;
+    }
+
+    .agency-booking-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .agency-booking-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .agency-booking-card:hover {
+      border-color: #444;
+      transform: translateX(4px);
+    }
+
+    .agency-booking-card__date {
+      min-width: 60px;
+      text-align: center;
+      padding: 12px;
+      background: var(--surface);
+      border-radius: 8px;
+    }
+
+    .agency-booking-card__day {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .agency-booking-card__month {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+      margin-top: 4px;
+    }
+
+    .agency-booking-card__info {
+      flex: 1;
+    }
+
+    .agency-booking-card__event {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .agency-booking-card__venue {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .agency-booking-card__artist {
+      font-size: 11px;
+      color: var(--red);
+      font-family: var(--font-mono);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .agency-booking-card__status {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .agency-booking-card__status--confirmed {
+      background: rgba(0, 204, 102, 0.15);
+      color: #00cc66;
+    }
+
+    .agency-booking-card__status--pending {
+      background: rgba(255, 170, 0, 0.15);
+      color: #ffaa00;
+    }
+
+    .agency-bookings-empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .calendar-legend {
+      display: flex;
+      gap: 24px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .calendar-legend__item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .calendar-legend__dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .calendar-legend__dot--confirmed { background: #00cc66; }
+    .calendar-legend__dot--pending { background: #ffaa00; }
+
     /* Print styles */
     @media print {
       body::before, body::after { display: none; }
@@ -1176,6 +1882,12 @@
       </div>
       <div class="topbar__right">
         <span class="topbar__user" id="topbarUser"></span>
+        <button class="topbar__settings" onclick="showCalendar()" title="Booking Calendar" style="color:#3b82f6;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
+        <button class="topbar__settings" onclick="showEarnings()" title="My Earnings" style="color:#00cc66;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </button>
         <button class="topbar__settings" onclick="showSettings()" title="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
@@ -1199,9 +1911,9 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Create Contract
         </button>
-        <button class="btn btn--outline create-cta__btn-sm" onclick="editArtistFromSelector()" title="Edit artist bank details">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit Artist
+        <button class="btn btn--outline create-cta__btn-sm" onclick="editArtistFromSelector()" title="View artist profile">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          View Artist
         </button>
       </div>
 
@@ -1265,8 +1977,120 @@
         </div>
       </div>
 
+      <!-- Artist Documents Section -->
+      <div class="artist-docs-section">
+        <div class="settings-section__title">Artist Documents</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono);letter-spacing:1px;">Manage bio and rider shown to promoters on contracts.</p>
+
+        <div class="artist-docs-grid">
+          <div class="artist-doc-card" onclick="openDocEditor('bio')">
+            <div class="artist-doc-card__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Artist Bio
+            </div>
+            <div class="artist-doc-card__desc">Edit the artist biography shown to promoters</div>
+          </div>
+          <div class="artist-doc-card" onclick="openDocEditor('rider')">
+            <div class="artist-doc-card__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Technical Rider
+            </div>
+            <div class="artist-doc-card__desc">Edit equipment and hospitality requirements</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Artist Portal Access -->
+      <div class="settings-section" style="margin-top:32px;">
+        <div class="settings-section__title">Artist Portal Access</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono);">Set up portal login credentials for the artist</p>
+
+        <div class="invite-status" id="inviteStatus" style="margin-bottom:16px;"></div>
+
+        <!-- Direct Account Creation -->
+        <div id="createAccountForm">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" id="artistUsername" placeholder="e.g. stevie">
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="artistPassword" placeholder="Set a password">
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn btn--red" onclick="createArtistAccount()" id="createAccountBtn">Create Account</button>
+            <button class="btn btn--outline" onclick="viewArtistPortal()" style="color:var(--success);border-color:var(--success);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              View Artist Portal
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:24px;">
         <button class="btn btn--red" id="profileCreateBtn">Create Contract</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bio Editor Modal -->
+  <div class="doc-editor-overlay" id="bioEditorOverlay">
+    <div class="doc-editor" style="max-width:1000px;">
+      <div class="doc-editor__header">
+        <span class="doc-editor__title">Edit Artist Bio</span>
+        <button class="doc-editor__close" onclick="closeDocEditor('bio')">&times;</button>
+      </div>
+      <div class="doc-editor__content">
+        <div class="doc-editor__split">
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Edit Content</div>
+            <textarea class="doc-editor__textarea" id="bioEditorText" placeholder="Enter artist biography..." oninput="updateBioPreview()"></textarea>
+            <div class="doc-editor__hint">Separate paragraphs with blank lines</div>
+          </div>
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Live Preview — How Promoters Will See It</div>
+            <div class="doc-editor__preview" id="bioPreview"></div>
+          </div>
+        </div>
+      </div>
+      <div class="doc-editor__footer">
+        <button class="btn btn--red" onclick="saveDocContent('bio')">Save Bio</button>
+        <button class="btn btn--outline" onclick="closeDocEditor('bio')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rider Editor Modal -->
+  <div class="doc-editor-overlay" id="riderEditorOverlay">
+    <div class="doc-editor" style="max-width:1000px;">
+      <div class="doc-editor__header">
+        <span class="doc-editor__title">Edit Technical Rider</span>
+        <button class="doc-editor__close" onclick="closeDocEditor('rider')">&times;</button>
+      </div>
+      <div class="doc-editor__content">
+        <div class="doc-editor__split">
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Edit Content</div>
+            <textarea class="doc-editor__textarea" id="riderEditorText" placeholder="Enter technical and hospitality rider..." oninput="updateRiderPreview()"></textarea>
+            <div class="doc-editor__hint">First line of each section = red heading. Lines starting with "-" = bullet list</div>
+          </div>
+          <div class="doc-editor__panel">
+            <div class="doc-editor__panel-title">Live Preview — How Promoters Will See It</div>
+            <div class="doc-editor__preview" id="riderPreview"></div>
+          </div>
+        </div>
+      </div>
+      <div class="doc-editor__footer">
+        <button class="btn btn--red" onclick="saveDocContent('rider')">Save Rider</button>
+        <button class="btn btn--outline" onclick="closeDocEditor('rider')">Cancel</button>
       </div>
     </div>
   </div>
@@ -1368,6 +2192,118 @@
           <div style="margin-top:16px;">
             <button class="btn btn--red" onclick="saveBankDetails()">Save Bank Details</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== EARNINGS VIEW ====== -->
+  <div class="view" id="earningsView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">My Earnings</span>
+      </div>
+      <div class="topbar__right">
+        <button class="topbar__logout" onclick="showDash()">Back</button>
+      </div>
+    </div>
+
+    <div class="settings-content">
+      <button class="create-form__back" onclick="showDash()">&larr; Back to Dashboard</button>
+      <div class="create-form__title" style="margin-bottom:8px;">Earnings Dashboard</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:32px;font-family:var(--font-mono);letter-spacing:1px;">50% commission on all booking fees</p>
+
+      <div class="earnings-summary">
+        <div class="earnings-card earnings-card--highlight">
+          <div class="earnings-card__label">Total Earned</div>
+          <div class="earnings-card__amount" id="earningsTotal">£0</div>
+        </div>
+        <div class="earnings-card">
+          <div class="earnings-card__label">Pending</div>
+          <div class="earnings-card__amount earnings-card__amount--pending" id="earningsPending">£0</div>
+        </div>
+        <div class="earnings-card">
+          <div class="earnings-card__label">Paid Out</div>
+          <div class="earnings-card__amount earnings-card__amount--paid" id="earningsPaid">£0</div>
+        </div>
+      </div>
+
+      <div class="earnings-breakdown">
+        <div class="earnings-breakdown__title">Monthly Breakdown</div>
+        <div id="earningsMonthly"></div>
+      </div>
+
+      <div class="earnings-note">
+        Commission is calculated as 50% of booking fees. When a booking fee is marked as "received" in the main contracts table, it moves from Pending to Paid.
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== CALENDAR VIEW ====== -->
+  <div class="view" id="calendarView">
+    <div class="topbar">
+      <div class="topbar__left">
+        <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+        <div class="topbar__sep"></div>
+        <span class="topbar__label">Booking Calendar</span>
+      </div>
+      <div class="topbar__right">
+        <button class="topbar__logout" onclick="showDash()">Back</button>
+      </div>
+    </div>
+
+    <div class="settings-content">
+      <button class="create-form__back" onclick="showDash()">&larr; Back to Dashboard</button>
+      <div class="create-form__title" style="margin-bottom:8px;">All Bookings Calendar</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:32px;font-family:var(--font-mono);letter-spacing:1px;">View all artist bookings at a glance</p>
+
+      <div class="agency-calendar-section">
+        <div class="agency-calendar-header">
+          <div class="agency-calendar-header__title">Calendar</div>
+          <div class="agency-calendar-nav">
+            <button class="agency-calendar-nav__btn" onclick="changeAgencyMonth(-1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="agency-calendar-nav__month" id="agencyCalendarMonth">February 2025</span>
+            <button class="agency-calendar-nav__btn" onclick="changeAgencyMonth(1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="agency-calendar-grid">
+          <div class="agency-calendar-weekdays">
+            <div class="agency-calendar-weekday">Mon</div>
+            <div class="agency-calendar-weekday">Tue</div>
+            <div class="agency-calendar-weekday">Wed</div>
+            <div class="agency-calendar-weekday">Thu</div>
+            <div class="agency-calendar-weekday">Fri</div>
+            <div class="agency-calendar-weekday">Sat</div>
+            <div class="agency-calendar-weekday">Sun</div>
+          </div>
+          <div class="agency-calendar-days" id="agencyCalendarDays">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <div class="calendar-legend">
+          <div class="calendar-legend__item">
+            <div class="calendar-legend__dot calendar-legend__dot--confirmed"></div>
+            <span>Confirmed (Booking Fee Paid)</span>
+          </div>
+          <div class="calendar-legend__item">
+            <div class="calendar-legend__dot calendar-legend__dot--pending"></div>
+            <span>Pending</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="agency-bookings-section">
+        <div class="agency-bookings-header">
+          <div class="agency-bookings-header__title" id="agencyMonthBookingsTitle">Bookings This Month</div>
+        </div>
+        <div class="agency-bookings-list" id="agencyMonthBookings">
+          <!-- Populated by JS -->
         </div>
       </div>
     </div>
@@ -2081,6 +3017,206 @@
     showView('settingsView');
   }
 
+  // ============================================
+  // EARNINGS VIEW
+  // ============================================
+  function showEarnings() {
+    calculateEarnings();
+    showView('earningsView');
+  }
+
+  // ============================================
+  // CALENDAR VIEW
+  // ============================================
+  var agencyCalendarDate = new Date();
+
+  function showCalendar() {
+    renderAgencyCalendar();
+    showView('calendarView');
+  }
+
+  function changeAgencyMonth(delta) {
+    agencyCalendarDate.setMonth(agencyCalendarDate.getMonth() + delta);
+    renderAgencyCalendar();
+  }
+
+  function parseAgencyEventDate(dateStr) {
+    if (!dateStr) return null;
+    // Handle formats like "15 Feb 2025", "2025-02-15", "15/02/2025"
+    var parts;
+    if (dateStr.includes('-')) {
+      parts = dateStr.split('-');
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } else if (dateStr.includes('/')) {
+      parts = dateStr.split('/');
+      return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    } else {
+      // Try parsing "15 Feb 2025" format
+      var d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+
+  function renderAgencyCalendar() {
+    var year = agencyCalendarDate.getFullYear();
+    var month = agencyCalendarDate.getMonth();
+
+    var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    document.getElementById('agencyCalendarMonth').textContent = monthNames[month] + ' ' + year;
+    document.getElementById('agencyMonthBookingsTitle').textContent = 'Bookings in ' + monthNames[month];
+
+    // Get first day of month and total days
+    var firstDay = new Date(year, month, 1);
+    var lastDay = new Date(year, month + 1, 0);
+    var startDay = (firstDay.getDay() + 6) % 7; // Monday = 0
+    var totalDays = lastDay.getDate();
+
+    // Get all contracts
+    var allContracts = getContracts();
+
+    // Get bookings for this month (all artists)
+    var monthBookings = {};
+    allContracts.forEach(function(c) {
+      var eventDate = parseAgencyEventDate(c.data && c.data.event_date);
+      if (eventDate && eventDate.getMonth() === month && eventDate.getFullYear() === year) {
+        var day = eventDate.getDate();
+        if (!monthBookings[day]) {
+          monthBookings[day] = [];
+        }
+        monthBookings[day].push(c);
+      }
+    });
+
+    // Build calendar grid
+    var html = '';
+    var today = new Date();
+
+    // Previous month days
+    var prevMonthDays = new Date(year, month, 0).getDate();
+    for (var i = startDay - 1; i >= 0; i--) {
+      html += '<div class="agency-calendar-day other-month">' + (prevMonthDays - i) + '</div>';
+    }
+
+    // Current month days
+    for (var d = 1; d <= totalDays; d++) {
+      var classes = ['agency-calendar-day'];
+      var isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
+      if (isToday) classes.push('today');
+
+      var dayBookings = monthBookings[d];
+      var onclick = '';
+      var dot = '';
+
+      if (dayBookings && dayBookings.length > 0) {
+        classes.push('has-booking');
+        // Check if any booking is confirmed (booking_fee_received)
+        var anyConfirmed = dayBookings.some(function(b) { return b.booking_fee_received; });
+        var anyPending = dayBookings.some(function(b) { return !b.booking_fee_received; });
+
+        if (anyConfirmed && !anyPending) {
+          classes.push('booking-confirmed');
+        } else if (!anyConfirmed && anyPending) {
+          classes.push('booking-pending');
+        } else {
+          // Mixed - show pending color
+          classes.push('booking-pending');
+        }
+
+        var dotClass = anyConfirmed ? 'confirmed' : 'pending';
+        dot = '<div class="agency-calendar-day__dot ' + dotClass + '"></div>';
+
+        onclick = ' onclick="scrollToAgencyBookings(' + d + ')"';
+      }
+
+      html += '<div class="' + classes.join(' ') + '"' + onclick + '>' + d + dot + '</div>';
+    }
+
+    // Next month days
+    var remaining = (7 - ((startDay + totalDays) % 7)) % 7;
+    for (var n = 1; n <= remaining; n++) {
+      html += '<div class="agency-calendar-day other-month">' + n + '</div>';
+    }
+
+    document.getElementById('agencyCalendarDays').innerHTML = html;
+
+    // Render month bookings list
+    var monthList = allContracts.filter(function(c) {
+      var eventDate = parseAgencyEventDate(c.data && c.data.event_date);
+      return eventDate && eventDate.getMonth() === month && eventDate.getFullYear() === year;
+    }).sort(function(a, b) {
+      var dateA = parseAgencyEventDate(a.data && a.data.event_date);
+      var dateB = parseAgencyEventDate(b.data && b.data.event_date);
+      return dateA - dateB;
+    });
+
+    var monthContainer = document.getElementById('agencyMonthBookings');
+    if (monthList.length === 0) {
+      monthContainer.innerHTML = '<div class="agency-bookings-empty">No bookings this month</div>';
+    } else {
+      monthContainer.innerHTML = monthList.map(function(c) {
+        return renderAgencyBookingCard(c);
+      }).join('');
+    }
+  }
+
+  function renderAgencyBookingCard(contract) {
+    var data = contract.data || {};
+    var eventDate = parseAgencyEventDate(data.event_date);
+    var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    var day = eventDate ? eventDate.getDate() : '--';
+    var monthStr = eventDate ? monthNames[eventDate.getMonth()] : '--';
+
+    var isConfirmed = contract.booking_fee_received;
+    var statusText = isConfirmed ? 'Confirmed' : 'Pending';
+    var statusClass = isConfirmed ? 'agency-booking-card__status--confirmed' : 'agency-booking-card__status--pending';
+
+    // Find artist name
+    var artist = ROSTER.find(function(a) { return a.id === data.artist_id; });
+    var artistName = artist ? artist.name : (data.artist_id || 'Unknown');
+
+    return '<div class="agency-booking-card" data-day="' + day + '" onclick="viewContractFromCalendar(\'' + contract.id + '\')">' +
+      '<div class="agency-booking-card__date">' +
+        '<div class="agency-booking-card__day">' + day + '</div>' +
+        '<div class="agency-booking-card__month">' + monthStr + '</div>' +
+      '</div>' +
+      '<div class="agency-booking-card__info">' +
+        '<div class="agency-booking-card__event">' + (data.event_name || 'Event') + '</div>' +
+        '<div class="agency-booking-card__venue">' + (data.venue || '-') + '</div>' +
+        '<div class="agency-booking-card__artist">' + artistName + '</div>' +
+      '</div>' +
+      '<div class="agency-booking-card__status ' + statusClass + '">' + statusText + '</div>' +
+    '</div>';
+  }
+
+  function scrollToAgencyBookings(day) {
+    // Scroll to bookings list and highlight the day's bookings
+    var container = document.getElementById('agencyMonthBookings');
+    var cards = container.querySelectorAll('.agency-booking-card[data-day="' + day + '"]');
+    if (cards.length > 0) {
+      cards[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Brief highlight
+      cards.forEach(function(card) {
+        card.style.borderColor = 'var(--red)';
+        setTimeout(function() {
+          card.style.borderColor = '';
+        }, 1500);
+      });
+    }
+  }
+
+  function viewContractFromCalendar(contractId) {
+    // Find the contract and open it
+    var allContracts = getContracts();
+    var contract = allContracts.find(function(c) { return c.id === contractId; });
+    if (contract) {
+      currentArtist = ROSTER.find(function(a) { return a.id === contract.data.artist_id; });
+      if (currentArtist) {
+        viewContract(contractId);
+      }
+    }
+  }
+
   function saveRepInfo() {
     var s = getSettings();
     s.rep_name = document.getElementById('setRepName').value.trim();
@@ -2161,20 +3297,365 @@
       showCreate(artistId);
     };
 
+    // Reset and check artist portal status
+    document.getElementById('inviteStatus').innerHTML = '';
+    document.getElementById('createAccountForm').style.display = 'block';
+    document.getElementById('artistUsername').value = '';
+    document.getElementById('artistPassword').value = '';
+    checkInviteStatus();
+
     showView('profileView');
+  }
+
+  // ============================================
+  // EARNINGS CALCULATION
+  // ============================================
+  function calculateEarnings() {
+    var contracts = getContracts();
+    var COMMISSION_RATE = 0.5; // 50% of booking fees
+
+    // Filter all contracts with booking fees (all artists managed by Kaia)
+    var allContracts = contracts.filter(function(c) {
+      return c.data && c.data.booking_fee;
+    });
+
+    var totalEarnings = 0;
+    var pendingEarnings = 0;
+    var paidEarnings = 0;
+    var monthlyData = {};
+
+    allContracts.forEach(function(c) {
+      // Parse booking fee (remove currency symbols and commas)
+      var feeStr = c.data.booking_fee.replace(/[^0-9.]/g, '');
+      var fee = parseFloat(feeStr) || 0;
+      var commission = fee * COMMISSION_RATE;
+      var currency = c.data.currency || 'GBP';
+      var symbol = getCurrencySymbol(currency);
+      var isPaid = c.booking_fee_received;
+
+      // Get artist name for display
+      var artistName = 'Unknown Artist';
+      var artistId = c.data.artist_id;
+      if (artistId) {
+        var artist = ROSTER.find(function(a) { return a.id === artistId; });
+        if (artist) artistName = artist.name;
+      }
+
+      totalEarnings += commission;
+      if (isPaid) {
+        paidEarnings += commission;
+      } else {
+        pendingEarnings += commission;
+      }
+
+      // Group by month (using event date or agreement date)
+      var dateStr = c.data.event_date || c.data.agreement_date || '';
+      var monthKey = 'Unknown';
+      if (dateStr) {
+        var parts = dateStr.split(' ');
+        if (parts.length >= 2) {
+          monthKey = parts[1] + ' ' + (parts[2] || new Date().getFullYear());
+        }
+      }
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { total: 0, items: [], symbol: symbol };
+      }
+      monthlyData[monthKey].total += commission;
+      monthlyData[monthKey].items.push({
+        event: c.data.event_name || 'Unnamed Event',
+        artist: artistName,
+        promoter: c.data.promoter_name || '',
+        date: dateStr,
+        amount: commission,
+        symbol: symbol,
+        isPaid: isPaid,
+        ref: c.ref
+      });
+    });
+
+    // Update summary cards
+    document.getElementById('earningsTotal').textContent = '£' + totalEarnings.toFixed(2);
+    document.getElementById('earningsPending').textContent = '£' + pendingEarnings.toFixed(2);
+    document.getElementById('earningsPaid').textContent = '£' + paidEarnings.toFixed(2);
+
+    // Render monthly breakdown
+    var monthlyContainer = document.getElementById('earningsMonthly');
+    if (Object.keys(monthlyData).length === 0) {
+      monthlyContainer.innerHTML = '<div class="earnings-empty">No earnings yet. Earnings will appear here once contracts are created.</div>';
+      return;
+    }
+
+    // Sort months (most recent first)
+    var sortedMonths = Object.keys(monthlyData).sort(function(a, b) {
+      if (a === 'Unknown') return 1;
+      if (b === 'Unknown') return -1;
+      return b.localeCompare(a);
+    });
+
+    var html = '';
+    sortedMonths.forEach(function(month, idx) {
+      var data = monthlyData[month];
+      var isExpanded = idx === 0 ? ' expanded' : '';
+      html += '<div class="earnings-month' + isExpanded + '" onclick="this.classList.toggle(\'expanded\')">';
+      html += '<div class="earnings-month__header">';
+      html += '<span class="earnings-month__name">' + month + '</span>';
+      html += '<span class="earnings-month__total">' + data.symbol + data.total.toFixed(2) + '</span>';
+      html += '</div>';
+      html += '<div class="earnings-month__items">';
+      data.items.forEach(function(item) {
+        html += '<div class="earnings-item" onclick="event.stopPropagation()">';
+        html += '<div class="earnings-item__info">';
+        html += '<span class="earnings-item__event">' + item.event + ' <span style="color:var(--text-muted);font-weight:400;">(' + item.artist + ')</span></span>';
+        html += '<span class="earnings-item__date">' + (item.ref || '') + (item.promoter ? ' • ' + item.promoter : '') + '</span>';
+        html += '</div>';
+        html += '<div>';
+        html += '<span class="earnings-item__amount">' + item.symbol + item.amount.toFixed(2) + '</span>';
+        html += '<span class="earnings-item__status earnings-item__status--' + (item.isPaid ? 'paid' : 'pending') + '">' + (item.isPaid ? 'Paid' : 'Pending') + '</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '</div>';
+    });
+
+    monthlyContainer.innerHTML = html;
   }
 
   function saveArtistProfile() {
     if (!currentArtist) return;
     var artists = getArtists();
+    var existing = artists[currentArtist.id] || {};
     artists[currentArtist.id] = {
       bank_name: document.getElementById('artistBankName').value.trim(),
       sort_code: document.getElementById('artistSortCode').value.trim(),
       acc_number: document.getElementById('artistAccNumber').value.trim(),
-      acc_holder: document.getElementById('artistAccHolder').value.trim()
+      acc_holder: document.getElementById('artistAccHolder').value.trim(),
+      bio: existing.bio || '',
+      rider: existing.rider || ''
     };
     saveArtistsData(artists);
     showToast('Artist details saved');
+  }
+
+  // ============================================
+  // BIO / RIDER EDITOR
+  // ============================================
+  var DEFAULT_BIO = 'STEVIE is a Liverpool-based techno DJ and producer emerging from the UK\'s industrial underground. Her sound operates at the harder edge of techno, built on punishing low-end, distorted mechanical textures, and relentless rhythms designed for dark rooms, warehouse floors, and high-pressure sound systems.\n\nBorn and raised in Liverpool, STEVIE was drawn into the city\'s rave culture after attending her first hard techno event. She began DJing at 21, initially performing as part of a duo before stepping away to develop a distinct and uncompromising solo identity. Entirely self-taught, her progression from bedroom setups to club and rave environments was rapid.\n\nHer DJ sets are functional, confrontational, and tightly controlled—prioritising sustained intensity over predictable structures or quick release. Drawing from industrial and hard techno influences, her performances lock dancers into continuous pressure through aggressive percussion, distorted synth work, and heavy bass weight.\n\nAlongside her DJ career, STEVIE has built a strong profile as a producer, releasing nine tracks to date with a combined total of over 900,000 streams across all platforms. Her standout release, the Jamaican edit, marked a key breakthrough and remains her most recognised work to date.\n\nShe has performed across the UK and expanded internationally with European appearances in Malta (May 2025) and Poland (November 2025). With Liverpool as her home base, STEVIE continues to build momentum as a rising artist within the industrial and hard techno circuit, defined by raw power, precision, and uncompromising energy.';
+
+  var DEFAULT_RIDER = 'EQUIPMENT RIDER\nAt a minimum the promoter must provide:\n- 2x Pioneer 2000 CDJ NXS2\n- 1x Pioneer DJM900NXS or latest update\n- Set up must be flat and not raised\n- High quality sound system\n\nUK RIDER\n- 4x glass bottles of full fat Coke (no diet or Coke Zero)\n- 1x bottle of Malibu\n- 1x bottle of tequila rose\n- 1x mango juice\n- 2x bottles of water\n- 1x bottle of lemonade\n\nEU RIDER\n- 4x glass bottles of full fat Coke (no diet or Coke Zero)\n- 1x bottle of Malibu\n- 1x bottle of vodka\n- 1x bottle of tequila rose\n- 6x redbulls\n- 2x bottles of water\n- 1x bottle of lemonade\n\nHOSPITALITY\n- All hotels across UK & EU should be no less than a minimum of 4 star with late checkout, unless agreed otherwise with STEVIE\'s manager\n- Hotel distance from venue < 10km if possible\n- Meal buyout of £/€50 per person each day\n- STEVIE must have 5 guest list with a minimum of 3 being AAA';
+
+  function openDocEditor(type) {
+    if (!currentArtist) return;
+    var artists = getArtists();
+    var a = artists[currentArtist.id] || {};
+
+    var textarea = document.getElementById(type + 'EditorText');
+    var defaultContent = type === 'bio' ? DEFAULT_BIO : DEFAULT_RIDER;
+    textarea.value = a[type] || defaultContent;
+
+    document.getElementById(type + 'EditorOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    // Update preview immediately
+    if (type === 'bio') updateBioPreview();
+    else updateRiderPreview();
+  }
+
+  function closeDocEditor(type) {
+    document.getElementById(type + 'EditorOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  // Live preview for Bio
+  function updateBioPreview() {
+    var text = document.getElementById('bioEditorText').value;
+    var preview = document.getElementById('bioPreview');
+    if (!text.trim()) {
+      preview.innerHTML = '<p style="color:#666;font-style:italic;">Start typing to see preview...</p>';
+      return;
+    }
+
+    var paragraphs = text.split('\n\n').filter(function(p) { return p.trim(); });
+    preview.innerHTML = paragraphs.map(function(p) {
+      return '<div class="doc-editor__preview-section"><p class="doc-editor__preview-text">' + p.replace(/\n/g, '<br>') + '</p></div>';
+    }).join('');
+  }
+
+  // Live preview for Rider
+  function updateRiderPreview() {
+    var text = document.getElementById('riderEditorText').value;
+    var preview = document.getElementById('riderPreview');
+    if (!text.trim()) {
+      preview.innerHTML = '<p style="color:#666;font-style:italic;">Start typing to see preview...</p>';
+      return;
+    }
+
+    var sections = text.split('\n\n').filter(function(s) { return s.trim(); });
+    preview.innerHTML = sections.map(function(section) {
+      var lines = section.split('\n');
+      var title = lines[0];
+      var items = lines.slice(1);
+      var html = '<div class="doc-editor__preview-section">';
+      html += '<div class="doc-editor__preview-heading">' + title + '</div>';
+      if (items.length > 0 && items[0].trim().startsWith('-')) {
+        html += '<ul class="doc-editor__preview-list">';
+        items.forEach(function(item) {
+          if (item.trim()) {
+            html += '<li>' + item.replace(/^-\s*/, '') + '</li>';
+          }
+        });
+        html += '</ul>';
+      } else if (items.length > 0) {
+        html += '<p class="doc-editor__preview-text">' + items.join('<br>') + '</p>';
+      }
+      html += '</div>';
+      return html;
+    }).join('');
+  }
+
+  function saveDocContent(type) {
+    if (!currentArtist) return;
+    var artists = getArtists();
+    var existing = artists[currentArtist.id] || {};
+
+    existing[type] = document.getElementById(type + 'EditorText').value;
+
+    // Preserve bank details
+    artists[currentArtist.id] = {
+      bank_name: existing.bank_name || '',
+      sort_code: existing.sort_code || '',
+      acc_number: existing.acc_number || '',
+      acc_holder: existing.acc_holder || '',
+      bio: existing.bio || '',
+      rider: existing.rider || ''
+    };
+
+    saveArtistsData(artists);
+    closeDocEditor(type);
+    showToast((type === 'bio' ? 'Bio' : 'Rider') + ' saved — changes will appear on contracts');
+  }
+
+  // Close editor on background click
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('doc-editor-overlay')) {
+      var type = e.target.id.replace('EditorOverlay', '');
+      closeDocEditor(type);
+    }
+  });
+
+  // ============================================
+  // ARTIST PORTAL ACCOUNTS
+  // ============================================
+
+  // Simple hash function for password (must match artist-login page)
+  function simpleHash(str) {
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+      var char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return 'feral_' + Math.abs(hash).toString(16) + '_' + str.length;
+  }
+
+  async function createArtistAccount() {
+    if (!currentArtist || !dbReady) {
+      showToast('Unable to create account');
+      return;
+    }
+
+    var username = document.getElementById('artistUsername').value.trim().toLowerCase();
+    var password = document.getElementById('artistPassword').value;
+
+    if (!username) {
+      showToast('Please enter a username');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      showToast('Password must be at least 6 characters');
+      return;
+    }
+
+    var btn = document.getElementById('createAccountBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
+
+    try {
+      // Check if username already taken
+      var existingUser = await dbClient.from('artist_users').select('*').eq('username', username);
+      if (existingUser.data && existingUser.data.length > 0) {
+        showToast('Username already exists');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
+      }
+
+      // Create the account
+      var hashedPassword = simpleHash(password);
+      console.log('Creating account with hash:', hashedPassword);
+
+      var insertRes = await dbClient.from('artist_users').insert({
+        username: username,
+        password_hash: hashedPassword,
+        artist_id: currentArtist.id,
+        created_at: new Date().toISOString()
+      });
+
+      console.log('Insert result:', insertRes);
+
+      if (insertRes.error) {
+        console.error('Insert error:', insertRes.error);
+        if (insertRes.error.message && insertRes.error.message.includes('does not exist')) {
+          showToast('Database table not set up - run SQL in Supabase first');
+        } else {
+          showToast('Error: ' + insertRes.error.message);
+        }
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
+      }
+
+      showToast('Account created! Username: ' + username);
+      document.getElementById('artistUsername').value = '';
+      document.getElementById('artistPassword').value = '';
+      checkInviteStatus();
+
+    } catch (e) {
+      console.error('Error creating account:', e);
+      showToast('Failed to create account');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+
+  function viewArtistPortal() {
+    window.open('../artist-login/', '_blank');
+  }
+
+  async function checkInviteStatus() {
+    if (!currentArtist || !dbReady) return;
+
+    var statusEl = document.getElementById('inviteStatus');
+    var formEl = document.getElementById('createAccountForm');
+
+    try {
+      // Check if artist has an account
+      var userCheck = await dbClient.from('artist_users').select('*').eq('artist_id', currentArtist.id);
+      if (userCheck.data && userCheck.data.length > 0) {
+        statusEl.innerHTML = '<span style="color:var(--success);font-family:var(--font-mono);font-size:12px;">✓ Artist has portal access (username: ' + userCheck.data[0].username + ')</span>';
+        formEl.style.display = 'none';
+        return;
+      }
+
+      statusEl.innerHTML = '<span style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">No portal access yet — create an account below</span>';
+      formEl.style.display = 'block';
+
+    } catch (e) {
+      console.error('Error checking invite status:', e);
+    }
   }
 
   // ============================================

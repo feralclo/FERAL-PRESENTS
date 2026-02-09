@@ -629,11 +629,11 @@
         var items = [];
         Object.keys(TICKETS).forEach(function(k) {
           if (k === 'vip-tee') {
-            // For VIP+Tee, use size-specific IDs
+            // For VIP+Tee, include size in cart param: ticketId:qty:SIZE
             Object.keys(TEE_SIZES).forEach(function(size) {
               if (TEE_SIZES[size] > 0) {
                 var ticketId = getSizeTicketId(size);
-                items.push(ticketId + ':' + TEE_SIZES[size]);
+                items.push(ticketId + ':' + TEE_SIZES[size] + ':' + size);
               }
             });
           } else if (TICKETS[k].qty > 0) {
@@ -724,8 +724,7 @@
                 summaryHtml.push(
                   '<div class="cart-summary__item">' +
                   '<span class="cart-summary__qty">' + TEE_SIZES[size] + '</span>' +
-                  '<span class="cart-summary__name">' + TICKETS['vip-tee'].name + '</span>' +
-                  '<span class="cart-summary__size">(' + size + ')</span>' +
+                  '<span class="cart-summary__name">' + TICKETS['vip-tee'].name + ' — <span class="cart-summary__size">Size: ' + size + '</span></span>' +
                   '</div>'
                 );
               }

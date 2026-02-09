@@ -1217,15 +1217,15 @@
       }
 
       function getCartParam() {
-        // Build cart string: ticketId:qty,ticketId:qty,...
+        // Build cart string: ticketId:qty,ticketId:qty:SIZE,...
         var items = [];
         Object.keys(TICKETS).forEach(function(k) {
           if (k === 'vip-tee') {
-            // For VIP+Tee, use size-specific IDs
+            // For VIP+Tee, include size in cart param: ticketId:qty:SIZE
             Object.keys(TEE_SIZES).forEach(function(size) {
               if (TEE_SIZES[size] > 0) {
                 var ticketId = getSizeTicketId(size);
-                items.push(ticketId + ':' + TEE_SIZES[size]);
+                items.push(ticketId + ':' + TEE_SIZES[size] + ':' + size);
               }
             });
           } else if (TICKETS[k].qty > 0) {

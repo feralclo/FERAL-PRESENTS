@@ -640,24 +640,32 @@
       })();
 
       // Parse cart from URL
-      // Format: cart=ticketId:qty,ticketId:qty OR legacy: qty=N (single general release)
+      // Format: cart=ticketId:qty,ticketId:qty:SIZE OR legacy: qty=N (single general release)
       var params = new URLSearchParams(window.location.search);
       var cartItems = []; // Array of { id, qty, name, price }
 
       var cartParam = params.get('cart');
       if (cartParam) {
-        // New format: cart=id1:qty1,id2:qty2
+        // New format: cart=id1:qty1,id2:qty2:SIZE
         var items = cartParam.split(',');
         items.forEach(function(item) {
           var parts = item.split(':');
-          if (parts.length === 2) {
+          if (parts.length >= 2) {
             var ticketId = parts[0];
             var ticketQty = parseInt(parts[1], 10) || 0;
+            var size = parts[2] || null; // Optional size (e.g., 'XS', 'S', 'M')
             if (ticketQty > 0 && TICKET_INFO[ticketId]) {
+              var itemName = TICKET_INFO[ticketId].name;
+              // If size is provided in the URL, always use it for the display name
+              if (size) {
+                // Strip any existing size suffix and replace with the URL size
+                var baseName = itemName.replace(/\s*\([A-Z]+\)\s*$/, '');
+                itemName = baseName + ' — <span class="checkout-summary__size">Size: ' + size + '</span>';
+              }
               cartItems.push({
                 id: ticketId,
                 qty: ticketQty,
-                name: TICKET_INFO[ticketId].name,
+                name: itemName,
                 price: TICKET_INFO[ticketId].price
               });
             } else if (ticketQty > 0) {

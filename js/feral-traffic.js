@@ -166,7 +166,10 @@
       event_name: getEventName(),
       session_id: getSessionId(),
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500)
+      user_agent: navigator.userAgent.substring(0, 500),
+      product_name: productName || null,
+      product_price: productPrice || null,
+      product_qty: quantity || 1
     }).then(function(result) {
       if (result && result.ok) {
         sessionStorage.setItem(ADD_TO_CART_KEY, 'true');

@@ -583,6 +583,60 @@
       color: #000;
     }
 
+    /* Cart products - compact badge style */
+    .cart-products {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .cart-products__title {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .cart-products__list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .cart-products__item {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 136, 0, 0.06);
+      border: 1px solid rgba(255, 136, 0, 0.25);
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .cart-products__badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #ff8800;
+      color: #000;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      border-radius: 2px;
+    }
+
+    .cart-products__empty {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
     /* Engagement section */
     .engagement-grid {
       display: grid;
@@ -1102,6 +1156,14 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Products Added to Cart -->
+          <div class="cart-products">
+            <h2 class="cart-products__title">Products Added to Cart</h2>
+            <div class="cart-products__list" id="cartProductsList">
+              <span class="cart-products__empty">No add-to-cart data yet</span>
+            </div>
           </div>
 
           <!-- Page breakdown -->
@@ -2912,6 +2974,7 @@ STEVIE</textarea>
         var eventPageSessions = new Set(); // Unique sessions that viewed event page OR tickets page
         var sessions = new Set();
         var sources = {};
+        var cartProducts = {}; // product_name -> { count, totalQty }
         var debugInfo = '';
 
         // Engagement tracking
@@ -2937,7 +3000,7 @@ STEVIE</textarea>
             }
 
             var query = supabaseClient.from('traffic_events')
-              .select('event_type,session_id,utm_source,utm_medium')
+              .select('event_type,session_id,utm_source,utm_medium,product_name,product_price,product_qty')
               .limit(50000);
             if (dateFilter) {
               query = query.gte('timestamp', dateFilter);
@@ -2985,6 +3048,15 @@ STEVIE</textarea>
                 else if (row.event_type === 'add_to_cart') {
                   addToCart++;
                   if (sid) addToCartSessions.add(sid);
+                  if (row.product_name) {
+                    var pName = row.product_name;
+                    var pQty = parseInt(row.product_qty) || 1;
+                    if (!cartProducts[pName]) {
+                      cartProducts[pName] = { count: 0, totalQty: 0 };
+                    }
+                    cartProducts[pName].count++;
+                    cartProducts[pName].totalQty += pQty;
+                  }
                 }
                 else if (row.event_type === 'checkout') checkout++;
                 else if (row.event_type === 'purchase') purchase++;
@@ -3278,6 +3350,20 @@ STEVIE</textarea>
           });
         }
 
+        // Update cart products (compact badge view)
+        var cartList = document.getElementById('cartProductsList');
+        var productEntries = Object.entries(cartProducts).sort(function(a, b) { return b[1].count - a[1].count; });
+
+        if (productEntries.length === 0) {
+          cartList.innerHTML = '<span class="cart-products__empty">No add-to-cart data yet</span>';
+        } else {
+          cartList.innerHTML = productEntries.map(function(entry) {
+            return '<div class="cart-products__item">' +
+              '<span>' + entry[0] + '</span>' +
+              '<span class="cart-products__badge">' + entry[1].count + '</span>' +
+              '</div>';
+          }).join('');
+        }
       }
 
       // Source filter banner management

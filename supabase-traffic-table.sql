@@ -44,10 +44,13 @@ CREATE INDEX IF NOT EXISTS idx_traffic_events_timestamp ON traffic_events(timest
 CREATE INDEX IF NOT EXISTS idx_traffic_events_session ON traffic_events(session_id);
 
 -- Migration: Add new columns to existing table (run if table already exists)
--- ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS theme TEXT;
--- ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_name TEXT;
--- ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_price NUMERIC;
--- ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_qty INTEGER;
+ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS theme TEXT;
+ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_name TEXT;
+ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_price NUMERIC;
+ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_qty INTEGER;
+
+-- Partial index for cart product aggregation (only indexes add_to_cart rows)
+CREATE INDEX IF NOT EXISTS idx_traffic_events_product ON traffic_events(product_name) WHERE event_type = 'add_to_cart';
 
 -- Enable Realtime for live admin dashboard updates
 -- Run this to enable real-time subscriptions on the traffic_events table:

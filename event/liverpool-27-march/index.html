@@ -594,13 +594,14 @@
       })();
 
       // Step 2: Async fetch from Supabase to get latest server settings and update cache
-      (function() {
+      // Deferred to DOMContentLoaded so feral-settings.js is loaded
+      document.addEventListener('DOMContentLoaded', function() {
         if (window.feralSettings) {
           window.feralSettings.load('feral_event_liverpool', function(serverSettings) {
             if (serverSettings) applyLiverpoolSettings(serverSettings);
           });
         }
-      })();
+      });
 
       var checkoutBtn = document.getElementById('checkoutBtn');
       var bottomBar = document.getElementById('bottomBar');

@@ -3000,7 +3000,7 @@ STEVIE</textarea>
             }
 
             var query = supabaseClient.from('traffic_events')
-              .select('event_type,session_id,utm_source,utm_medium,product_name,product_price,product_qty')
+              .select('*')
               .limit(50000);
             if (dateFilter) {
               query = query.gte('timestamp', dateFilter);

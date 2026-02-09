@@ -29,3 +29,6 @@ CREATE POLICY "Allow public delete" ON popup_events
 
 -- Create index for faster queries by event_type
 CREATE INDEX IF NOT EXISTS idx_popup_events_type ON popup_events(event_type);
+
+-- Enable Realtime for live admin dashboard updates
+ALTER PUBLICATION supabase_realtime ADD TABLE popup_events;

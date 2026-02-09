@@ -195,6 +195,51 @@
       color: var(--red);
     }
 
+    /* Real-time indicator */
+    .realtime-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.4;
+      transition: opacity 0.3s ease;
+    }
+
+    .realtime-indicator--live {
+      opacity: 1;
+    }
+
+    .realtime-indicator__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s ease;
+    }
+
+    .realtime-indicator--live .realtime-indicator__dot {
+      background: var(--red);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 0, 51, 0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(255, 0, 51, 0); }
+    }
+
+    .realtime-indicator__label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      transition: color 0.3s ease;
+    }
+
+    .realtime-indicator--live .realtime-indicator__label {
+      color: var(--red);
+    }
+
     /* Layout */
     .dash-layout {
       display: flex;
@@ -925,6 +970,10 @@
     <header class="dash-header">
       <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="dash-header__logo">
       <div class="dash-header__right">
+        <span class="realtime-indicator" id="realtimeIndicator" title="Connecting...">
+          <span class="realtime-indicator__dot"></span>
+          <span class="realtime-indicator__label">LIVE</span>
+        </span>
         <span class="dash-header__user">Logged in as <span id="dashUser">HARRY</span></span>
         <button class="dash-header__logout" id="logoutBtn">Logout</button>
       </div>
@@ -1103,14 +1152,6 @@
               </div>
               <span class="funnel__arrow">→</span>
               <div class="funnel__step">
-                <div class="funnel__bar funnel__bar--yellow" id="trafficBar2" style="height: 80px;"></div>
-                <span class="funnel__label">Tickets Page</span>
-                <span class="funnel__count" id="trafficCount2">0</span>
-                <span class="funnel__pct" id="trafficPct2">0%</span>
-                <span class="funnel__dropoff" id="trafficDrop1">-0%</span>
-              </div>
-              <span class="funnel__arrow">→</span>
-              <div class="funnel__step">
                 <div class="funnel__bar funnel__bar--orange" id="trafficBar2b" style="height: 60px;"></div>
                 <span class="funnel__label">Add to Cart</span>
                 <span class="funnel__count" id="trafficCount2b">0</span>
@@ -1178,14 +1219,9 @@
           <!-- Page breakdown -->
           <div class="stats-grid">
             <div class="stat-card">
-              <div class="stat-card__label">Event Landing</div>
+              <div class="stat-card__label">Event Page</div>
               <div class="stat-card__value" id="trafficLanding">0</div>
-              <div class="stat-card__change">/event/liverpool-27-march/</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card__label">Tickets Page</div>
-              <div class="stat-card__value" id="trafficTickets">0</div>
-              <div class="stat-card__change">/event/liverpool-27-march/tickets/</div>
+              <div class="stat-card__change">Unique sessions (landing + tickets)</div>
             </div>
             <div class="stat-card">
               <div class="stat-card__label">Add to Cart</div>
@@ -1835,6 +1871,41 @@ STEVIE</textarea>
         console.log('[FERAL Admin] Supabase connected');
       }
 
+      // Real-time subscription for live analytics updates
+      var realtimeChannel = null;
+
+      function setupRealtimeSubscription() {
+        if (!dbReady || !supabaseClient || realtimeChannel) return;
+
+        realtimeChannel = supabaseClient
+          .channel('admin-analytics')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'traffic_events' }, function(payload) {
+            console.log('[FERAL Admin] Real-time traffic event:', payload.new.event_type);
+            if (currentPage === 'traffic') {
+              loadTrafficStats();
+            }
+          })
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'popup_events' }, function(payload) {
+            console.log('[FERAL Admin] Real-time popup event:', payload.new.event_type);
+            if (currentPage === 'popup') {
+              loadPopupStats();
+            }
+          })
+          .subscribe(function(status) {
+            console.log('[FERAL Admin] Realtime status:', status);
+            var indicator = document.getElementById('realtimeIndicator');
+            if (indicator) {
+              if (status === 'SUBSCRIBED') {
+                indicator.classList.add('realtime-indicator--live');
+                indicator.title = 'Real-time updates active';
+              } else {
+                indicator.classList.remove('realtime-indicator--live');
+                indicator.title = 'Connecting...';
+              }
+            }
+          });
+      }
+
       // Elements
       var loginScreen = document.getElementById('loginScreen');
       var dashboard = document.getElementById('dashboard');
@@ -1873,6 +1944,7 @@ STEVIE</textarea>
         dashboard.classList.add('dashboard--visible');
         dashUser.textContent = VALID_USER;
         loadPopupStats();
+        setupRealtimeSubscription();
       }
 
       // Navigation handling
@@ -2962,6 +3034,7 @@ STEVIE</textarea>
       async function loadTrafficStats() {
         var landing = 0, tickets = 0, addToCart = 0, checkout = 0, purchase = 0;
         var addToCartSessions = new Set();
+        var eventPageSessions = new Set(); // Unique sessions that viewed event page OR tickets page
         var sessions = new Set();
         var sources = {};
         var cartProducts = {}; // product_name -> { count, totalQty, totalValue }
@@ -3028,6 +3101,7 @@ STEVIE</textarea>
                 // Count by event type
                 if (row.event_type === 'landing') {
                   landing++;
+                  if (sid) eventPageSessions.add(sid);
                   // Initialize session engagement tracking
                   if (sid && !sessionEngagement[sid]) {
                     sessionEngagement[sid] = { scrolled: false, time10: false, time30: false, interacted: false, proceeded: false };
@@ -3035,6 +3109,7 @@ STEVIE</textarea>
                 }
                 else if (row.event_type === 'tickets') {
                   tickets++;
+                  if (sid) eventPageSessions.add(sid); // Tickets page counts as Event Page in the funnel
                   if (sid && sessionEngagement[sid]) sessionEngagement[sid].proceeded = true;
                 }
                 else if (row.event_type === 'add_to_cart') {
@@ -3095,8 +3170,9 @@ STEVIE</textarea>
               if (currentSourceFilter) debugInfo += 'Source filter: ' + currentSourceFilter + '\n';
               debugInfo += 'Total events: ' + res.data.length + '\n\n';
               debugInfo += 'Page views:\n';
-              debugInfo += '- landing: ' + landing + '\n';
-              debugInfo += '- tickets: ' + tickets + '\n';
+              debugInfo += '- event page (landing+tickets): ' + eventPageSessions.size + ' sessions\n';
+              debugInfo += '  - landing: ' + landing + '\n';
+              debugInfo += '  - tickets: ' + tickets + '\n';
               debugInfo += '- add_to_cart: ' + addToCart + ' (' + addToCartSessions.size + ' sessions)\n';
               debugInfo += '- checkout: ' + checkout + '\n';
               debugInfo += '- purchase: ' + purchase + '\n\n';
@@ -3192,6 +3268,9 @@ STEVIE</textarea>
         var readersPct = totalSessions > 0 ? Math.round((readers / totalSessions) * 100) : 0;
         var engagedPct = totalSessions > 0 ? Math.round((engaged / totalSessions) * 100) : 0;
 
+        // Event Page = unique sessions from landing + tickets pages
+        var eventPageCount = eventPageSessions.size;
+
         document.getElementById('engBouncers').textContent = bouncersPct + '%';
         document.getElementById('engSkimmers').textContent = skimmersPct + '%';
         document.getElementById('engReaders').textContent = readersPct + '%';
@@ -3204,7 +3283,7 @@ STEVIE</textarea>
         var insightEl = document.getElementById('engInsight');
         var insightIcon = document.querySelector('#engInsight .engagement-insight__icon');
         var insightText = document.querySelector('#engInsight .engagement-insight__text');
-        var ticketConvRate = landing > 0 ? Math.round((tickets / landing) * 100) : 0;
+        var cartConvRate = eventPageCount > 0 ? Math.round((addToCartSessions.size / eventPageCount) * 100) : 0;
 
         insightEl.style.background = 'rgba(255, 0, 51, 0.08)';
         insightEl.style.borderLeftColor = 'var(--red)';
@@ -3235,11 +3314,11 @@ STEVIE</textarea>
           insightText.textContent = 'Only ' + timePct10 + '% stay longer than 10 seconds. Page may be loading slowly or first impression is off.';
         } else if (timePct30 < 30) {
           insightText.textContent = 'Only ' + timePct30 + '% stay 30+ seconds. Visitors aren\'t finding what they need quickly.';
-        } else if (ticketConvRate < 5 && engagedPct > 15) {
+        } else if (cartConvRate < 5 && engagedPct > 15) {
           insightEl.style.background = 'rgba(255, 204, 0, 0.1)';
           insightEl.style.borderLeftColor = 'var(--yellow)';
           insightIcon.style.color = 'var(--yellow)';
-          insightText.textContent = 'People are engaging (' + engagedPct + '%) but only ' + ticketConvRate + '% click tickets. Make the ticket section more prominent.';
+          insightText.textContent = 'People are engaging (' + engagedPct + '%) but only ' + cartConvRate + '% add to cart. Make the ticket section more prominent.';
         } else if (bouncersPct < 25 && scrollPct50 > 60 && timePct30 > 50 && engagedPct > 20) {
           insightEl.style.background = 'rgba(0, 255, 102, 0.1)';
           insightEl.style.borderLeftColor = 'var(--green)';
@@ -3272,50 +3351,43 @@ STEVIE</textarea>
         var totalViews = landing + tickets + checkout + purchase;
         document.getElementById('trafficTotal').textContent = totalViews;
         document.getElementById('trafficSessions').textContent = sessions.size;
-        document.getElementById('trafficLanding').textContent = landing;
-        document.getElementById('trafficTickets').textContent = tickets;
+        document.getElementById('trafficLanding').textContent = eventPageCount;
         document.getElementById('trafficAddToCart').textContent = addToCartSessions.size;
         document.getElementById('trafficCheckout').textContent = checkout;
         document.getElementById('trafficPurchases').textContent = purchase;
 
-        // Calculate funnel rates (add_to_cart uses unique sessions)
-        var ticketRate = landing > 0 ? ((tickets / landing) * 100).toFixed(1) : 0;
-        var addToCartRate = landing > 0 ? ((addToCartSessions.size / landing) * 100).toFixed(1) : 0;
-        var checkoutRate = landing > 0 ? ((checkout / landing) * 100).toFixed(1) : 0;
-        var purchaseRate = landing > 0 ? ((purchase / landing) * 100).toFixed(1) : 0;
+        // Calculate funnel rates (4-step funnel: Event Page → Add to Cart → Checkout → Purchase)
+        var addToCartRate = eventPageCount > 0 ? ((addToCartSessions.size / eventPageCount) * 100).toFixed(1) : 0;
+        var checkoutRate = eventPageCount > 0 ? ((checkout / eventPageCount) * 100).toFixed(1) : 0;
+        var purchaseRate = eventPageCount > 0 ? ((purchase / eventPageCount) * 100).toFixed(1) : 0;
 
         document.getElementById('trafficFunnelRate').textContent = purchaseRate + '%';
 
-        // Calculate drop-off rates (5-step funnel now)
-        var drop1 = landing > 0 ? (100 - (tickets / landing * 100)).toFixed(0) : 0;
-        var drop1b = tickets > 0 ? (100 - (addToCartSessions.size / tickets * 100)).toFixed(0) : 0;
+        // Calculate drop-off rates (4-step funnel)
+        var drop1b = eventPageCount > 0 ? (100 - (addToCartSessions.size / eventPageCount * 100)).toFixed(0) : 0;
         var drop2 = addToCartSessions.size > 0 ? (100 - (checkout / addToCartSessions.size * 100)).toFixed(0) : 0;
         var drop3 = checkout > 0 ? (100 - (purchase / checkout * 100)).toFixed(0) : 0;
-        var avgDropoff = ((parseFloat(drop1) + parseFloat(drop1b) + parseFloat(drop2) + parseFloat(drop3)) / 4).toFixed(0);
+        var avgDropoff = ((parseFloat(drop1b) + parseFloat(drop2) + parseFloat(drop3)) / 3).toFixed(0);
 
         document.getElementById('trafficDropoff').textContent = avgDropoff + '%';
-        document.getElementById('trafficDrop1').textContent = '-' + drop1 + '%';
         document.getElementById('trafficDrop1b').textContent = '-' + drop1b + '%';
         document.getElementById('trafficDrop2').textContent = '-' + drop2 + '%';
         document.getElementById('trafficDrop3').textContent = '-' + drop3 + '%';
 
-        // Update funnel visualization (5 steps)
-        document.getElementById('trafficCount1').textContent = landing;
-        document.getElementById('trafficCount2').textContent = tickets;
+        // Update funnel visualization (4 steps)
+        document.getElementById('trafficCount1').textContent = eventPageCount;
         document.getElementById('trafficCount2b').textContent = addToCartSessions.size;
         document.getElementById('trafficCount3').textContent = checkout;
         document.getElementById('trafficCount4').textContent = purchase;
-        document.getElementById('trafficPct2').textContent = ticketRate + '%';
         document.getElementById('trafficPct2b').textContent = addToCartRate + '%';
         document.getElementById('trafficPct3').textContent = checkoutRate + '%';
         document.getElementById('trafficPct4').textContent = purchaseRate + '%';
 
         var maxBarHeight = 120;
         document.getElementById('trafficBar1').style.height = maxBarHeight + 'px';
-        document.getElementById('trafficBar2').style.height = (landing > 0 ? Math.max(4, (tickets / landing) * maxBarHeight) : 4) + 'px';
-        document.getElementById('trafficBar2b').style.height = (landing > 0 ? Math.max(4, (addToCartSessions.size / landing) * maxBarHeight) : 4) + 'px';
-        document.getElementById('trafficBar3').style.height = (landing > 0 ? Math.max(4, (checkout / landing) * maxBarHeight) : 4) + 'px';
-        document.getElementById('trafficBar4').style.height = (landing > 0 ? Math.max(4, (purchase / landing) * maxBarHeight) : 4) + 'px';
+        document.getElementById('trafficBar2b').style.height = (eventPageCount > 0 ? Math.max(4, (addToCartSessions.size / eventPageCount) * maxBarHeight) : 4) + 'px';
+        document.getElementById('trafficBar3').style.height = (eventPageCount > 0 ? Math.max(4, (checkout / eventPageCount) * maxBarHeight) : 4) + 'px';
+        document.getElementById('trafficBar4').style.height = (eventPageCount > 0 ? Math.max(4, (purchase / eventPageCount) * maxBarHeight) : 4) + 'px';
 
         // Update sources table (clickable for drill-down)
         var tbody = document.getElementById('sourcesTableBody');

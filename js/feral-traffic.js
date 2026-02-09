@@ -191,10 +191,19 @@
   };
 
   // Track add-to-cart events with product details
+  // Only one add_to_cart event per session (deduped) — multiple items still count as one funnel step
+  var ADD_TO_CART_KEY = 'feral_cart_tracked';
+
   window.feralTrackAddToCart = function(productName, productPrice, quantity) {
     initSupabase();
 
     if (!supabaseClient) return;
+
+    // Deduplicate: only track one add_to_cart per session
+    if (sessionStorage.getItem(ADD_TO_CART_KEY)) {
+      console.log('[FERAL Traffic] Add to cart already tracked this session, skipping');
+      return;
+    }
 
     var eventName = getEventName();
     var sessionId = getSessionId();
@@ -217,6 +226,9 @@
     supabaseClient.from('traffic_events').insert(data).then(function(res) {
       if (res.error) {
         console.log('[FERAL Traffic] Add to cart error:', res.error.message);
+      } else {
+        // Mark as tracked so subsequent adds in this session are skipped
+        sessionStorage.setItem(ADD_TO_CART_KEY, 'true');
       }
     });
   };

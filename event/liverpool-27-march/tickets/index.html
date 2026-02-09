@@ -966,6 +966,14 @@
 
                 <!-- Checkout button -->
                 <button class="feral-tickets__checkout" id="checkoutBtn" disabled>Select tickets to continue</button>
+
+                <!-- Cart summary -->
+                <div class="cart-summary" id="cartSummary" style="display: none;">
+                  <div class="cart-summary__label">Your Cart</div>
+                  <div class="cart-summary__items" id="cartSummaryItems">
+                    <!-- Populated by JS -->
+                  </div>
+                </div>
               </div>
     </div>
   </div>
@@ -1277,6 +1285,60 @@
           } else {
             checkoutBtn.disabled = true;
             checkoutBtn.textContent = 'Select tickets to continue';
+          }
+        }
+
+        // Update cart summary
+        var cartSummary = document.getElementById('cartSummary');
+        var cartSummaryItems = document.getElementById('cartSummaryItems');
+        if (cartSummary && cartSummaryItems) {
+          if (totalQty > 0) {
+            cartSummary.style.display = 'block';
+            var summaryHtml = [];
+
+            ['general', 'vip'].forEach(function(k) {
+              if (TICKETS[k].qty > 0) {
+                summaryHtml.push(
+                  '<div class="cart-summary__item">' +
+                  '<span class="cart-summary__qty">' + TICKETS[k].qty + '&times;</span>' +
+                  '<span class="cart-summary__name">' + (k === 'general' ? 'General Release' : 'VIP Ticket') + '</span>' +
+                  '<button class="cart-summary__remove" data-remove-key="' + k + '" aria-label="Remove">&times;</button>' +
+                  '</div>'
+                );
+              }
+            });
+
+            var sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            sizes.forEach(function(size) {
+              if (TEE_SIZES[size] > 0) {
+                summaryHtml.push(
+                  '<div class="cart-summary__item">' +
+                  '<span class="cart-summary__qty">' + TEE_SIZES[size] + '&times;</span>' +
+                  '<span class="cart-summary__name">VIP + Tee (' + size + ')</span>' +
+                  '<button class="cart-summary__remove" data-remove-key="vip-tee" data-remove-size="' + size + '" aria-label="Remove">&times;</button>' +
+                  '</div>'
+                );
+              }
+            });
+
+            cartSummaryItems.innerHTML = summaryHtml.join('');
+
+            // Attach remove button handlers
+            cartSummaryItems.querySelectorAll('.cart-summary__remove').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                var key = this.getAttribute('data-remove-key');
+                var size = this.getAttribute('data-remove-size');
+                if (key === 'vip-tee' && size) {
+                  TEE_SIZES[size] = 0;
+                  TICKETS['vip-tee'].qty = getTotalTeeQty();
+                } else if (TICKETS[key]) {
+                  TICKETS[key].qty = 0;
+                }
+                updateDisplay();
+              });
+            });
+          } else {
+            cartSummary.style.display = 'none';
           }
         }
       }

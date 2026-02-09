@@ -338,7 +338,7 @@
   <div class="bottom-bar" id="bottomBar">
     <div class="bottom-bar__inner">
       <div class="bottom-bar__price">
-        <span class="bottom-bar__amount">&pound;26.46</span>
+        <span class="bottom-bar__amount">From &pound;26.46</span>
         <span class="bottom-bar__subtitle">Incl. booking fee. No surprises.</span>
       </div>
       <button class="bottom-bar__cta" id="bottomBarCta">Buy Now</button>
@@ -687,7 +687,7 @@
         if (bottomBarAmount) {
           bottomBarAmount.textContent = totalQty > 0
             ? '\u00A3' + totalPrice.toFixed(2)
-            : '\u00A326.46';
+            : 'From \u00A326.46';
         }
         if (bottomBarCta) {
           bottomBarCta.textContent = totalQty > 0 ? 'Buy ' + totalQty + (totalQty === 1 ? ' Ticket' : ' Tickets') : 'Buy Now';
@@ -706,8 +706,8 @@
               if (TICKETS[k].qty > 0) {
                 summaryHtml.push(
                   '<div class="cart-summary__item">' +
-                  '<span class="cart-summary__qty">' + TICKETS[k].qty + '</span>' +
-                  '<span class="cart-summary__name">' + TICKETS[k].name + '</span>' +
+                  '<span class="cart-summary__qty">' + TICKETS[k].qty + '&times;</span>' +
+                  '<span class="cart-summary__name">' + (k === 'general' ? 'General Release' : 'VIP Ticket') + '</span>' +
                   '<button class="cart-summary__remove" data-remove-key="' + k + '" aria-label="Remove">&times;</button>' +
                   '</div>'
                 );
@@ -720,8 +720,8 @@
               if (TEE_SIZES[size] > 0) {
                 summaryHtml.push(
                   '<div class="cart-summary__item">' +
-                  '<span class="cart-summary__qty">' + TEE_SIZES[size] + '</span>' +
-                  '<span class="cart-summary__name">' + TICKETS['vip-tee'].name + ' — <span class="cart-summary__size">Size: ' + size + '</span></span>' +
+                  '<span class="cart-summary__qty">' + TEE_SIZES[size] + '&times;</span>' +
+                  '<span class="cart-summary__name">VIP + Tee (' + size + ')</span>' +
                   '<button class="cart-summary__remove" data-remove-key="vip-tee" data-remove-size="' + size + '" aria-label="Remove">&times;</button>' +
                   '</div>'
                 );
@@ -898,17 +898,16 @@
         });
       }
 
-      // Bottom bar CTA: if tickets selected go to checkout, otherwise scroll to ticket widget
+      // Bottom bar CTA: if tickets selected go to checkout, otherwise go to tickets page
       if (bottomBarCta) {
         bottomBarCta.addEventListener('click', function(e) {
           e.stopPropagation();
           if (getTotalQty() > 0) {
             goToCheckout();
           } else {
-            var ticketWidget = document.getElementById('feral-tickets');
-            if (ticketWidget) {
-              ticketWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            document.body.style.transition = 'none';
+            document.body.style.opacity = '1';
+            window.location.assign('/event/liverpool-27-march/tickets/');
           }
         });
       }

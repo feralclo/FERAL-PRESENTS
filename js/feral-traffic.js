@@ -111,25 +111,6 @@
     return match ? match[1] : null;
   }
 
-  // Detect current product theme from settings
-  function getCurrentTheme() {
-    try {
-      var eventName = getEventName();
-      if (!eventName) return 'default';
-      var settingsKey = null;
-      if (eventName.indexOf('liverpool') !== -1) settingsKey = 'feral_event_liverpool';
-      else if (eventName.indexOf('kompass') !== -1) settingsKey = 'feral_event_kompass';
-      if (settingsKey) {
-        var stored = localStorage.getItem(settingsKey);
-        if (stored) {
-          var settings = JSON.parse(stored);
-          return settings.theme || 'default';
-        }
-      }
-    } catch (e) {}
-    return 'default';
-  }
-
   // Track page view
   function trackPageView() {
     var eventType = getEventType();
@@ -142,7 +123,7 @@
       return;
     }
 
-    var data = {
+    insertEvent({
       event_type: eventType,
       page_path: window.location.pathname,
       event_name: eventName,
@@ -152,30 +133,23 @@
       utm_campaign: params.utm_campaign,
       session_id: sessionId,
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500),
-      theme: getCurrentTheme()
-    };
-
-    insertEvent(data);
+      user_agent: navigator.userAgent.substring(0, 500)
+    });
   }
 
   // Track engagement events (scroll, time, interactions)
   window.feralTrackEngagement = function(engagementType) {
-    var eventName = getEventName();
-    var sessionId = getSessionId();
-
     insertEvent({
       event_type: engagementType,
       page_path: window.location.pathname,
-      event_name: eventName,
-      session_id: sessionId,
+      event_name: getEventName(),
+      session_id: getSessionId(),
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500),
-      theme: getCurrentTheme()
+      user_agent: navigator.userAgent.substring(0, 500)
     });
   };
 
-  // Track add-to-cart events with product details
+  // Track add-to-cart events
   // Only one add_to_cart event per session (deduped) — multiple items still count as one funnel step
   var ADD_TO_CART_KEY = 'feral_cart_tracked';
 
@@ -186,23 +160,15 @@
       return;
     }
 
-    var eventName = getEventName();
-    var sessionId = getSessionId();
-
     insertEvent({
       event_type: 'add_to_cart',
       page_path: window.location.pathname,
-      event_name: eventName,
-      session_id: sessionId,
+      event_name: getEventName(),
+      session_id: getSessionId(),
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500),
-      theme: getCurrentTheme(),
-      product_name: productName || null,
-      product_price: productPrice || null,
-      product_qty: quantity || 1
+      user_agent: navigator.userAgent.substring(0, 500)
     }).then(function(result) {
       if (result && result.ok) {
-        // Mark as tracked so subsequent adds in this session are skipped
         sessionStorage.setItem(ADD_TO_CART_KEY, 'true');
       }
     });
@@ -210,18 +176,14 @@
 
   // Manual tracking for purchases (call this from checkout success)
   window.feralTrackPurchase = function(orderDetails) {
-    var eventName = getEventName();
-    var sessionId = getSessionId();
-
     insertEvent({
       event_type: 'purchase',
       page_path: window.location.pathname,
-      event_name: eventName,
+      event_name: getEventName(),
       referrer: document.referrer || null,
-      session_id: sessionId,
+      session_id: getSessionId(),
       timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent.substring(0, 500),
-      theme: getCurrentTheme()
+      user_agent: navigator.userAgent.substring(0, 500)
     });
   };
 

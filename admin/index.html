@@ -583,91 +583,6 @@
       color: #000;
     }
 
-    /* Theme filter */
-    .theme-filter {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 24px;
-    }
-
-    .theme-filter__btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      padding: 8px 14px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .theme-filter__btn:hover {
-      border-color: var(--text);
-      color: var(--text);
-    }
-
-    .theme-filter__btn--active {
-      border-color: var(--blue);
-      color: var(--blue);
-      background: rgba(0, 153, 255, 0.1);
-    }
-
-    /* Products added to cart */
-    .cart-products {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 24px;
-      margin-bottom: 32px;
-    }
-
-    .cart-products__title {
-      font-family: var(--font-mono);
-      font-size: 14px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 16px;
-    }
-
-    .cart-products__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .cart-products__table th,
-    .cart-products__table td {
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
-
-    .cart-products__table th {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-    }
-
-    .cart-products__table td {
-      color: var(--text);
-    }
-
-    .cart-products__table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .cart-products__bar {
-      height: 6px;
-      background: #ff8800;
-      opacity: 0.7;
-      margin-top: 4px;
-    }
-
     /* Engagement section */
     .engagement-grid {
       display: grid;
@@ -1109,13 +1024,6 @@
             <button class="time-filter__btn" data-range="all">All Time</button>
           </div>
 
-          <!-- Theme filter -->
-          <div class="theme-filter">
-            <button class="theme-filter__btn theme-filter__btn--active" data-theme="all">All Themes</button>
-            <button class="theme-filter__btn" data-theme="default">Default</button>
-            <button class="theme-filter__btn" data-theme="minimal">Minimal</button>
-          </div>
-
           <!-- Key metrics -->
           <div class="stats-grid">
             <div class="stat-card">
@@ -1191,26 +1099,6 @@
               <tbody id="sourcesTableBody">
                 <tr>
                   <td colspan="3" style="color: var(--text-muted); text-align: center;">Loading...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Products Added to Cart -->
-          <div class="cart-products">
-            <h2 class="cart-products__title">Products Added to Cart</h2>
-            <table class="cart-products__table">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Times Added</th>
-                  <th>Total Qty</th>
-                  <th>% of Cart Adds</th>
-                </tr>
-              </thead>
-              <tbody id="cartProductsTableBody">
-                <tr>
-                  <td colspan="4" style="color: var(--text-muted); text-align: center;">Loading...</td>
                 </tr>
               </tbody>
             </table>
@@ -1861,7 +1749,6 @@ STEVIE</textarea>
       // Current page and time range
       var currentPage = 'popup';
       var currentTimeRange = '24h';
-      var currentThemeFilter = 'all';
       var currentSourceFilter = null; // null = all sources, 'instagram / social' = specific source
 
       // Initialize Supabase
@@ -2934,18 +2821,6 @@ STEVIE</textarea>
         });
       });
 
-      // Theme filter handling
-      document.querySelectorAll('.theme-filter__btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('.theme-filter__btn').forEach(function(b) {
-            b.classList.remove('theme-filter__btn--active');
-          });
-          this.classList.add('theme-filter__btn--active');
-          currentThemeFilter = this.getAttribute('data-theme');
-          loadTrafficStats();
-        });
-      });
-
       // Source filter clear button
       document.getElementById('sourceFilterClear').addEventListener('click', function() {
         currentSourceFilter = null;
@@ -3037,7 +2912,6 @@ STEVIE</textarea>
         var eventPageSessions = new Set(); // Unique sessions that viewed event page OR tickets page
         var sessions = new Set();
         var sources = {};
-        var cartProducts = {}; // product_name -> { count, totalQty, totalValue }
         var debugInfo = '';
 
         // Engagement tracking
@@ -3063,7 +2937,7 @@ STEVIE</textarea>
             }
 
             var query = supabaseClient.from('traffic_events')
-              .select('event_type,session_id,utm_source,utm_medium,theme,product_name,product_price,product_qty')
+              .select('event_type,session_id,utm_source,utm_medium')
               .limit(50000);
             if (dateFilter) {
               query = query.gte('timestamp', dateFilter);
@@ -3088,12 +2962,6 @@ STEVIE</textarea>
               res.data.forEach(function(row) {
                 var sid = row.session_id;
 
-                // Apply theme filter
-                if (currentThemeFilter !== 'all') {
-                  var rowTheme = row.theme || 'default';
-                  if (rowTheme !== currentThemeFilter) return;
-                }
-
                 // Apply source filter
                 if (currentSourceFilter) {
                   var rowSource = (row.utm_source || 'direct') + ' / ' + (row.utm_medium || '(none)');
@@ -3117,16 +2985,6 @@ STEVIE</textarea>
                 else if (row.event_type === 'add_to_cart') {
                   addToCart++;
                   if (sid) addToCartSessions.add(sid);
-                  // Track products added to cart
-                  var pName = row.product_name || 'Unknown Product';
-                  var pPrice = parseFloat(row.product_price) || 0;
-                  var pQty = parseInt(row.product_qty) || 1;
-                  if (!cartProducts[pName]) {
-                    cartProducts[pName] = { count: 0, totalQty: 0, totalValue: 0 };
-                  }
-                  cartProducts[pName].count++;
-                  cartProducts[pName].totalQty += pQty;
-                  cartProducts[pName].totalValue += pPrice * pQty;
                 }
                 else if (row.event_type === 'checkout') checkout++;
                 else if (row.event_type === 'purchase') purchase++;
@@ -3168,7 +3026,6 @@ STEVIE</textarea>
 
               debugInfo = 'Data source: Supabase (cloud)\n';
               debugInfo += 'Time range: ' + currentTimeRange + '\n';
-              if (currentThemeFilter !== 'all') debugInfo += 'Theme filter: ' + currentThemeFilter + '\n';
               if (currentSourceFilter) debugInfo += 'Source filter: ' + currentSourceFilter + '\n';
               debugInfo += 'Total events: ' + res.data.length + '\n\n';
               debugInfo += 'Page views:\n';
@@ -3421,20 +3278,6 @@ STEVIE</textarea>
           });
         }
 
-        // Update products added to cart table
-        var cartTbody = document.getElementById('cartProductsTableBody');
-        var productEntries = Object.entries(cartProducts).sort(function(a, b) { return b[1].count - a[1].count; });
-
-        if (productEntries.length === 0) {
-          cartTbody.innerHTML = '<tr><td colspan="4" style="color: var(--text-muted); text-align: center;">No add-to-cart data yet</td></tr>';
-        } else {
-          var maxProductCount = productEntries[0][1].count;
-          cartTbody.innerHTML = productEntries.map(function(entry) {
-            var pct = addToCart > 0 ? ((entry[1].count / addToCart) * 100).toFixed(1) : 0;
-            var barWidth = (entry[1].count / maxProductCount * 100).toFixed(0);
-            return '<tr><td>' + entry[0] + '<div class="cart-products__bar" style="width: ' + barWidth + '%;"></div></td><td>' + entry[1].count + '</td><td>' + entry[1].totalQty + '</td><td>' + pct + '%</td></tr>';
-          }).join('');
-        }
       }
 
       // Source filter banner management

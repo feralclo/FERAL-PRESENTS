@@ -16,6 +16,12 @@
       var domReady = false;
       window._feralSettingsReady = false;
 
+      // Sync read: body scripts need settings data immediately for ticket IDs
+      try {
+        var cached = localStorage.getItem(SETTINGS_KEY);
+        if (cached) window._feralSettings = JSON.parse(cached);
+      } catch (e) {}
+
       function reveal() {
         if (!settled || !domReady) return;
         document.documentElement.style.visibility = '';
@@ -1256,15 +1262,14 @@
         if (settings.ticketName3) TICKETS['vip-tee'].name = settings.ticketName3;
       }
 
-      // Apply settings from the preload's Supabase fetch (source of truth).
+      // Apply settings immediately from cache, then update from Supabase
       (function() {
-        if (window._feralSettingsReady) {
+        if (window._feralSettings) {
           applyTicketSettings(window._feralSettings);
-        } else {
-          document.addEventListener('feral:settings', function(e) {
-            applyTicketSettings(e.detail);
-          });
         }
+        document.addEventListener('feral:settings', function(e) {
+          applyTicketSettings(e.detail);
+        });
       })();
 
       var checkoutBtn = document.getElementById('checkoutBtn');

@@ -19,6 +19,14 @@
       window._feralSettingsReady = false;
       window._feralCoverImage = null;
 
+      // Sync read: populate window._feralSettings immediately from cache so body
+      // scripts (ticket IDs, cart parsing, etc.) have data to work with right away.
+      // The visual theme is NOT applied from this — only from the Supabase fetch.
+      try {
+        var cached = localStorage.getItem(SETTINGS_KEY);
+        if (cached) window._feralSettings = JSON.parse(cached);
+      } catch (e) {}
+
       function applyTheme(settings) {
         // Clean slate: remove all theme classes so stale state never persists
         document.documentElement.classList.remove('theme-minimal', 'has-cover-image');
@@ -658,17 +666,17 @@
         }
       }
 
-      // Apply settings: use the preload's settled data, or listen for it.
-      // The preload script in <head> fetches from Supabase first (source of truth)
-      // and dispatches 'feral:settings' when resolved.
+      // Apply settings immediately from cache (so ticket IDs, SIZE_IDS etc. are
+      // populated before any subsequent code runs), THEN also listen for fresh
+      // Supabase data to update if needed.
       (function() {
-        if (window._feralSettingsReady) {
+        if (window._feralSettings) {
           applyLiverpoolSettings(window._feralSettings);
-        } else {
-          document.addEventListener('feral:settings', function(e) {
-            applyLiverpoolSettings(e.detail);
-          });
         }
+        // When fresh Supabase data arrives, re-apply to pick up any changes
+        document.addEventListener('feral:settings', function(e) {
+          applyLiverpoolSettings(e.detail);
+        });
       })();
 
       var checkoutBtn = document.getElementById('checkoutBtn');

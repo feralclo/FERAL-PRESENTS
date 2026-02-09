@@ -16,6 +16,12 @@
       var domReady = false;
       window._feralSettingsReady = false;
 
+      // Sync read: checkout cart parsing needs TICKET_INFO populated immediately
+      try {
+        var cached = localStorage.getItem(SETTINGS_KEY);
+        if (cached) window._feralSettings = JSON.parse(cached);
+      } catch (e) {}
+
       function reveal() {
         if (!settled || !domReady) return;
         document.documentElement.style.visibility = '';
@@ -696,15 +702,15 @@
         });
       }
 
-      // Apply settings from the preload's Supabase fetch (source of truth).
+      // Apply settings immediately from cache (TICKET_INFO needs size-specific IDs
+      // before cart parsing runs), then update from Supabase if data changes.
       (function() {
-        if (window._feralSettingsReady) {
+        if (window._feralSettings) {
           applyCheckoutSettings(window._feralSettings);
-        } else {
-          document.addEventListener('feral:settings', function(e) {
-            applyCheckoutSettings(e.detail);
-          });
         }
+        document.addEventListener('feral:settings', function(e) {
+          applyCheckoutSettings(e.detail);
+        });
       })();
 
       // Parse cart from URL

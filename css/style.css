@@ -5132,9 +5132,9 @@ body.cookie-banner-active .bottom-bar {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* LINE UP label above lineup */
+/* LINE UP [A-Z] label above lineup */
 .theme-minimal .lineup-widget::before {
-  content: 'LINE UP';
+  content: 'LINE UP  [A-Z]';
   display: block;
   text-align: center;
   font-size: 10px;
@@ -5259,53 +5259,26 @@ body.cookie-banner-active .bottom-bar {
     height: 18px;
   }
 
-  /* Mobile lineup - clean and impactful */
+  /* Mobile lineup - condensed to 2 lines */
   .theme-minimal .lineup-widget {
     padding: 16px 0;
     margin-bottom: 6px;
   }
 
   .theme-minimal .lineup-widget__artists {
-    row-gap: 10px;
+    row-gap: 6px;
   }
 
   .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot) {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 1.5px;
-    padding: 2px 0;
+    letter-spacing: 1px;
+    padding: 1px 0;
   }
 
   .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot)::after {
-    margin: 0 10px;
-    font-size: 11px;
-  }
-}
-
-/* Very small screens - stack lineup vertically for clarity */
-@media (max-width: 400px) {
-  .theme-minimal .lineup-widget__artists {
-    flex-direction: column;
-    gap: 0;
-    align-items: center;
-  }
-
-  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot) {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 2.5px;
-    text-align: center;
-    width: 100%;
-    padding: 10px 0;
-    color: #fff;
-  }
-
-  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot)::after {
-    display: none;
-  }
-
-  .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot):not(:last-of-type) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 0 6px;
+    font-size: 9px;
   }
 }
 

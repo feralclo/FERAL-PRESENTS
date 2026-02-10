@@ -61,7 +61,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return (
       <div className="admin-login">
         <div className="admin-login__box">
-          <h1 className="admin-login__title">FERAL ADMIN</h1>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/FERAL LOGO.svg" alt="FERAL" style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }} />
+          <h1 className="admin-login__title">Admin Access</h1>
           <form onSubmit={handleLogin}>
             <input
               type="text"
@@ -95,7 +97,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <aside className={`admin-sidebar ${sidebarOpen ? "admin-sidebar--open" : ""}`}>
         <div className="admin-sidebar__header">
           <Link href="/admin/" className="admin-sidebar__logo">
-            FERAL<span style={{ color: "#ff0033" }}>_</span>ADMIN
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/FERAL LOGO.svg" alt="FERAL" style={{ height: 24, opacity: 0.9 }} />
+            <span style={{ marginLeft: 8, color: "#666", fontSize: "0.7rem", letterSpacing: "2px" }}>ADMIN</span>
           </Link>
           <button
             className="admin-sidebar__close"
@@ -135,7 +139,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           >
             ☰
           </button>
-          <h2 className="admin-header__title">FERAL Admin</h2>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/FERAL LOGO.svg" alt="FERAL" style={{ height: 28, opacity: 0.9 }} />
           <div className="admin-header__status">
             <span className="admin-header__dot" />
             <span>Live</span>

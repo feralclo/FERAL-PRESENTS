@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import { TicketsPage } from "@/components/event/TicketsPage";
 
+/** Pre-render known event pages at build time for instant navigation */
+export function generateStaticParams() {
+  return [
+    { slug: "liverpool-27-march" },
+    { slug: "kompass-klub-7-march" },
+  ];
+}
+
 export const metadata: Metadata = {
   title: "Get Tickets — FERAL Liverpool | 27 March 2026",
   description:

@@ -2,6 +2,14 @@ import type { Metadata } from "next";
 import { LiverpoolEventPage } from "@/components/event/LiverpoolEventPage";
 import { KompassEventPage } from "@/components/event/KompassEventPage";
 
+/** Pre-render known event pages at build time for instant navigation */
+export function generateStaticParams() {
+  return [
+    { slug: "liverpool-27-march" },
+    { slug: "kompass-klub-7-march" },
+  ];
+}
+
 // Event metadata by slug
 const EVENT_META: Record<
   string,

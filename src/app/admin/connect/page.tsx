@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { DEFAULT_PLATFORM_FEE_PERCENT, MIN_PLATFORM_FEE } from "@/lib/stripe/config";
 
 interface ConnectedAccount {
   account_id: string;
@@ -31,7 +32,18 @@ interface AccountDetails {
   };
 }
 
-export default function ConnectPage() {
+/**
+ * Stripe Connect — Platform Admin Page
+ *
+ * This is the master admin tool for managing Stripe Connect:
+ * - Platform fee configuration (defaults + per-event overrides)
+ * - All connected accounts with status, onboarding, details
+ * - Technical controls (create accounts, generate onboarding links, view requirements)
+ * - Revenue split breakdown
+ *
+ * The promoter-facing equivalent is /admin/payments/ — clean and branded.
+ */
+export default function StripeConnectPage() {
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -39,9 +51,11 @@ export default function ConnectPage() {
   const [success, setSuccess] = useState("");
 
   // Create account form
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [email, setEmail] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [country, setCountry] = useState("GB");
+  const [accountType, setAccountType] = useState<"custom" | "express">("custom");
 
   // Onboarding
   const [onboardingUrl, setOnboardingUrl] = useState<string | null>(null);
@@ -86,7 +100,7 @@ export default function ConnectPage() {
           email: email.trim(),
           business_name: businessName.trim() || undefined,
           country,
-          account_type: "custom",
+          account_type: accountType,
         }),
       });
 
@@ -101,6 +115,7 @@ export default function ConnectPage() {
       setSuccess(`Account created: ${json.account_id}`);
       setEmail("");
       setBusinessName("");
+      setShowCreateForm(false);
       await fetchAccounts();
     } catch {
       setError("Network error creating account");
@@ -143,11 +158,14 @@ export default function ConnectPage() {
     }
   };
 
+  const activeAccounts = accounts.filter((a) => a.details_submitted);
+  const pendingAccounts = accounts.filter((a) => !a.details_submitted);
+
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 1000 }}>
       <h1 className="admin-page-title">Stripe Connect</h1>
       <p className="admin-page-subtitle">
-        Manage connected accounts for promoters and event organizers.
+        Platform-level controls for Stripe Connect — fees, splits, and account management.
       </p>
 
       {error && (
@@ -157,67 +175,100 @@ export default function ConnectPage() {
         <div className="admin-alert admin-alert--success">{success}</div>
       )}
 
-      {/* Create Account Form */}
-      <div className="admin-card" style={{ marginBottom: 32 }}>
-        <h2 className="admin-card__title">Create Connected Account</h2>
-        <form onSubmit={handleCreateAccount} className="admin-form">
-          <div className="admin-form__row">
-            <div className="admin-form__field">
-              <label className="admin-form__label">Email *</label>
-              <input
-                type="email"
-                className="admin-form__input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="promoter@example.com"
-                required
-              />
-            </div>
-            <div className="admin-form__field">
-              <label className="admin-form__label">Business Name</label>
-              <input
-                type="text"
-                className="admin-form__input"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="e.g. FERAL Events Ltd"
-              />
-            </div>
-            <div className="admin-form__field">
-              <label className="admin-form__label">Country</label>
-              <select
-                className="admin-form__input"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-              >
-                <option value="GB">United Kingdom</option>
-                <option value="IE">Ireland</option>
-                <option value="NL">Netherlands</option>
-                <option value="BE">Belgium</option>
-                <option value="DE">Germany</option>
-                <option value="FR">France</option>
-                <option value="ES">Spain</option>
-                <option value="US">United States</option>
-              </select>
-            </div>
+      {/* ─── Platform Fee Configuration ─── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 32 }}>
+        <div className="admin-card">
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 8 }}>
+            Default Platform Fee
           </div>
-          <button
-            type="submit"
-            className="admin-btn admin-btn--primary"
-            disabled={creating}
-            style={{ marginTop: 16 }}
-          >
-            {creating ? "Creating..." : "Create Account"}
-          </button>
-        </form>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#ff0033", marginBottom: 4 }}>
+            {DEFAULT_PLATFORM_FEE_PERCENT}%
+          </div>
+          <div style={{ color: "#555", fontSize: 11 }}>
+            Per transaction (configurable per event)
+          </div>
+        </div>
+
+        <div className="admin-card">
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 8 }}>
+            Minimum Fee
+          </div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#ff0033", marginBottom: 4 }}>
+            £{(MIN_PLATFORM_FEE / 100).toFixed(2)}
+          </div>
+          <div style={{ color: "#555", fontSize: 11 }}>
+            Floor per transaction
+          </div>
+        </div>
+
+        <div className="admin-card">
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 8 }}>
+            Connected Accounts
+          </div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#ff0033", marginBottom: 4 }}>
+            {loading ? "—" : accounts.length}
+          </div>
+          <div style={{ color: "#555", fontSize: 11 }}>
+            {activeAccounts.length} active, {pendingAccounts.length} pending
+          </div>
+        </div>
       </div>
 
-      {/* Onboarding Link Modal */}
+      {/* ─── Revenue Split Breakdown ─── */}
+      <div className="admin-card" style={{ marginBottom: 32 }}>
+        <h2 className="admin-card__title">Revenue Split Example</h2>
+        <p style={{ color: "#666", fontSize: 12, marginBottom: 16 }}>
+          How a £30 ticket sale is split with the default {DEFAULT_PLATFORM_FEE_PERCENT}% platform fee:
+        </p>
+        <div style={{ display: "flex", gap: 0, height: 40, borderRadius: 4, overflow: "hidden", marginBottom: 16 }}>
+          <div style={{
+            flex: 100 - DEFAULT_PLATFORM_FEE_PERCENT,
+            background: "rgba(78, 203, 113, 0.15)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 11,
+            color: "#4ecb71",
+            borderRight: "2px solid #1a1a1a",
+          }}>
+            Promoter: £{(30 * (1 - DEFAULT_PLATFORM_FEE_PERCENT / 100)).toFixed(2)}
+          </div>
+          <div style={{
+            flex: DEFAULT_PLATFORM_FEE_PERCENT,
+            background: "rgba(255, 0, 51, 0.12)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 11,
+            color: "#ff0033",
+          }}>
+            Platform: £{(30 * DEFAULT_PLATFORM_FEE_PERCENT / 100).toFixed(2)}
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          <div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Charge Model</div>
+            <div style={{ color: "#ccc", fontSize: 12 }}>Direct Charges</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Merchant of Record</div>
+            <div style={{ color: "#ccc", fontSize: 12 }}>Connected Account (Promoter)</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Stripe Fees Paid By</div>
+            <div style={{ color: "#ccc", fontSize: 12 }}>Connected Account</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Onboarding Link Modal ─── */}
       {onboardingUrl && (
         <div className="admin-card" style={{ marginBottom: 32, borderColor: "rgba(246, 4, 52, 0.3)" }}>
           <h2 className="admin-card__title">Onboarding Link</h2>
           <p style={{ color: "#888", fontSize: 13, marginBottom: 12 }}>
-            Send this link to the promoter or open it yourself to complete onboarding:
+            Send this link to the promoter or open it yourself to complete KYC/onboarding:
           </p>
           <div style={{
             background: "rgba(255,255,255,0.04)",
@@ -259,14 +310,14 @@ export default function ConnectPage() {
         </div>
       )}
 
-      {/* Account Details Modal */}
+      {/* ─── Account Details Modal ─── */}
       {selectedAccount && (
         <div className="admin-card" style={{ marginBottom: 32, borderColor: "rgba(246, 4, 52, 0.3)" }}>
-          <h2 className="admin-card__title">Account Details</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 24px", marginBottom: 16 }}>
+          <h2 className="admin-card__title">Account Details — {selectedAccount.account_id}</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 24px", marginBottom: 16 }}>
             <div>
               <span className="admin-form__label">Account ID</span>
-              <div style={{ color: "#ff0033", fontFamily: "'Space Mono', monospace", fontSize: 12 }}>
+              <div style={{ color: "#ff0033", fontFamily: "'Space Mono', monospace", fontSize: 11 }}>
                 {selectedAccount.account_id}
               </div>
             </div>
@@ -283,7 +334,7 @@ export default function ConnectPage() {
               </div>
             </div>
             <div>
-              <span className="admin-form__label">Onboarding</span>
+              <span className="admin-form__label">KYC Status</span>
               <div style={{ color: selectedAccount.details_submitted ? "#4ecb71" : "#ffc107" }}>
                 {selectedAccount.details_submitted ? "Complete" : "Incomplete"}
               </div>
@@ -304,7 +355,7 @@ export default function ConnectPage() {
 
           {selectedAccount.requirements.currently_due.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <span className="admin-form__label" style={{ color: "#ffc107" }}>Currently Due</span>
+              <span className="admin-form__label" style={{ color: "#ffc107" }}>Currently Due Requirements</span>
               <ul style={{ listStyle: "none", padding: 0, margin: "4px 0" }}>
                 {selectedAccount.requirements.currently_due.map((req) => (
                   <li key={req} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#888", padding: "2px 0" }}>
@@ -315,26 +366,127 @@ export default function ConnectPage() {
             </div>
           )}
 
-          {selectedAccount.requirements.disabled_reason && (
-            <div style={{ color: "#ff0033", fontFamily: "'Space Mono', monospace", fontSize: 11, marginBottom: 12 }}>
-              Disabled: {selectedAccount.requirements.disabled_reason}
+          {selectedAccount.requirements.past_due.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <span className="admin-form__label" style={{ color: "#ff0033" }}>Past Due (Urgent)</span>
+              <ul style={{ listStyle: "none", padding: 0, margin: "4px 0" }}>
+                {selectedAccount.requirements.past_due.map((req) => (
+                  <li key={req} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#ff0033", padding: "2px 0" }}>
+                    {req}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
-          <button
-            className="admin-btn admin-btn--secondary"
-            onClick={() => setSelectedAccount(null)}
-          >
-            Close
-          </button>
+          {selectedAccount.requirements.disabled_reason && (
+            <div style={{ color: "#ff0033", fontFamily: "'Space Mono', monospace", fontSize: 11, marginBottom: 12, padding: "8px 12px", background: "rgba(255,0,51,0.06)", border: "1px solid rgba(255,0,51,0.15)" }}>
+              Disabled Reason: {selectedAccount.requirements.disabled_reason}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            {!selectedAccount.details_submitted && (
+              <button
+                className="admin-btn admin-btn--primary"
+                onClick={() => handleOnboard(selectedAccount.account_id)}
+              >
+                Generate Onboarding Link
+              </button>
+            )}
+            <button
+              className="admin-btn admin-btn--secondary"
+              onClick={() => setSelectedAccount(null)}
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Connected Accounts List */}
-      <div className="admin-card">
-        <h2 className="admin-card__title">
-          Connected Accounts {!loading && `(${accounts.length})`}
-        </h2>
+      {/* ─── Connected Accounts Table ─── */}
+      <div className="admin-card" style={{ marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <h2 className="admin-card__title" style={{ marginBottom: 0 }}>
+            Connected Accounts {!loading && `(${accounts.length})`}
+          </h2>
+          <button
+            className="admin-btn admin-btn--primary admin-btn--small"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? "Cancel" : "+ New Account"}
+          </button>
+        </div>
+
+        {/* Inline Create Form */}
+        {showCreateForm && (
+          <form onSubmit={handleCreateAccount} style={{
+            padding: 16,
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            marginBottom: 16,
+          }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+              <div>
+                <label className="admin-form__label">Email *</label>
+                <input
+                  type="email"
+                  className="admin-form__input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="promoter@example.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="admin-form__label">Business Name</label>
+                <input
+                  type="text"
+                  className="admin-form__input"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="e.g. FERAL Events Ltd"
+                />
+              </div>
+              <div>
+                <label className="admin-form__label">Country</label>
+                <select
+                  className="admin-form__input"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                >
+                  <option value="GB">United Kingdom</option>
+                  <option value="IE">Ireland</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="BE">Belgium</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="ES">Spain</option>
+                  <option value="US">United States</option>
+                </select>
+              </div>
+              <div>
+                <label className="admin-form__label">Type</label>
+                <select
+                  className="admin-form__input"
+                  value={accountType}
+                  onChange={(e) => setAccountType(e.target.value as "custom" | "express")}
+                >
+                  <option value="custom">Custom (white-label)</option>
+                  <option value="express">Express (Stripe-hosted)</option>
+                </select>
+              </div>
+            </div>
+            <button
+              type="submit"
+              className="admin-btn admin-btn--primary"
+              disabled={creating}
+              style={{ marginTop: 12 }}
+            >
+              {creating ? "Creating..." : "Create Account"}
+            </button>
+          </form>
+        )}
 
         {loading ? (
           <div style={{ color: "#555", padding: "24px 0", textAlign: "center" }}>
@@ -342,7 +494,11 @@ export default function ConnectPage() {
           </div>
         ) : accounts.length === 0 ? (
           <div style={{ color: "#555", padding: "24px 0", textAlign: "center" }}>
-            No connected accounts yet. Create one above to get started.
+            No connected accounts yet. Create one above or use{" "}
+            <a href="/admin/payments/" style={{ color: "#ff0033" }}>
+              Payment Settings
+            </a>{" "}
+            for the promoter-friendly setup.
           </div>
         ) : (
           <div className="admin-table-wrap">
@@ -350,11 +506,12 @@ export default function ConnectPage() {
               <thead>
                 <tr>
                   <th>Account</th>
+                  <th>Type</th>
                   <th>Email</th>
                   <th>Country</th>
                   <th>Charges</th>
                   <th>Payouts</th>
-                  <th>Status</th>
+                  <th>KYC</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -362,8 +519,8 @@ export default function ConnectPage() {
                 {accounts.map((acc) => (
                   <tr key={acc.account_id}>
                     <td>
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#ff0033" }}>
-                        {acc.account_id.slice(0, 20)}...
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#ff0033" }}>
+                        {acc.account_id}
                       </div>
                       {acc.business_name && (
                         <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
@@ -371,29 +528,27 @@ export default function ConnectPage() {
                         </div>
                       )}
                     </td>
-                    <td>{acc.email || "—"}</td>
+                    <td>
+                      <span style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: 9,
+                        letterSpacing: 1,
+                        textTransform: "uppercase",
+                        padding: "2px 6px",
+                        background: acc.type === "custom" ? "rgba(255, 0, 51, 0.06)" : "rgba(78, 203, 113, 0.06)",
+                        color: acc.type === "custom" ? "#ff0033" : "#4ecb71",
+                        border: `1px solid ${acc.type === "custom" ? "rgba(255, 0, 51, 0.15)" : "rgba(78, 203, 113, 0.15)"}`,
+                      }}>
+                        {acc.type}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: 12, color: "#888" }}>{acc.email || "—"}</td>
                     <td>{acc.country || "—"}</td>
                     <td>
-                      <span style={{
-                        display: "inline-block",
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: acc.charges_enabled ? "#4ecb71" : "#ff0033",
-                        marginRight: 6,
-                      }} />
-                      {acc.charges_enabled ? "Yes" : "No"}
+                      <StatusDot enabled={acc.charges_enabled} />
                     </td>
                     <td>
-                      <span style={{
-                        display: "inline-block",
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: acc.payouts_enabled ? "#4ecb71" : "#ff0033",
-                        marginRight: 6,
-                      }} />
-                      {acc.payouts_enabled ? "Yes" : "No"}
+                      <StatusDot enabled={acc.payouts_enabled} />
                     </td>
                     <td>
                       <span style={{
@@ -408,7 +563,7 @@ export default function ConnectPage() {
                         color: acc.details_submitted ? "#4ecb71" : "#ffc107",
                         border: `1px solid ${acc.details_submitted ? "rgba(78, 203, 113, 0.2)" : "rgba(255, 193, 7, 0.2)"}`,
                       }}>
-                        {acc.details_submitted ? "Active" : "Pending"}
+                        {acc.details_submitted ? "Complete" : "Pending"}
                       </span>
                     </td>
                     <td>
@@ -437,16 +592,48 @@ export default function ConnectPage() {
         )}
       </div>
 
-      {/* Instructions */}
-      <div className="admin-card" style={{ marginTop: 32 }}>
-        <h2 className="admin-card__title">How It Works</h2>
-        <div style={{ color: "#888", fontSize: 13, lineHeight: 1.8 }}>
-          <p><strong style={{ color: "#ccc" }}>1. Create Account</strong> — Create a connected account for a promoter using their email.</p>
-          <p><strong style={{ color: "#ccc" }}>2. Onboard</strong> — Send them the onboarding link or complete it yourself. They&apos;ll provide ID, bank details, and business info.</p>
-          <p><strong style={{ color: "#ccc" }}>3. Link to Event</strong> — In the event editor, set the payment method to &quot;Stripe&quot; and select the connected account.</p>
-          <p><strong style={{ color: "#ccc" }}>4. Accept Payments</strong> — Buyers pay via Card, Apple Pay, Google Pay, or Klarna. Funds go to the promoter minus your platform fee.</p>
+      {/* ─── Platform Architecture Reference ─── */}
+      <div className="admin-card">
+        <h2 className="admin-card__title">Architecture Reference</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 32px", color: "#888", fontSize: 12, lineHeight: 1.8 }}>
+          <div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Connect Model</div>
+            <div style={{ color: "#ccc" }}>Sellers collect payments directly (Direct Charges)</div>
+            <div>Connected account is the merchant of record. Platform takes application_fee_amount.</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Account Types</div>
+            <div style={{ color: "#ccc" }}>Custom (default) — fully white-labeled</div>
+            <div>Express also supported for simpler onboarding. Standard accounts for future.</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Fee Collection</div>
+            <div style={{ color: "#ccc" }}>Platform collects processing fees</div>
+            <div>Stripe processing fees deducted from connected account. Platform fee via application_fee_amount.</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Onboarding</div>
+            <div style={{ color: "#ccc" }}>Embedded components + hosted fallback</div>
+            <div>Stripe handles KYC/liability. Account Links for hosted flow. Account Sessions for embedded.</div>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/** Colored dot + Yes/No indicator */
+function StatusDot({ enabled }: { enabled: boolean }) {
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+      <span style={{
+        display: "inline-block",
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        background: enabled ? "#4ecb71" : "#ff0033",
+      }} />
+      {enabled ? "Yes" : "No"}
+    </span>
   );
 }

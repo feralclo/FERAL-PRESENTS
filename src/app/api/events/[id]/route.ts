@@ -1,0 +1,108 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { TABLES, ORG_ID } from "@/lib/constants";
+
+/**
+ * GET /api/events/[id] — Get event detail with ticket types
+ */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 503 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from(TABLES.EVENTS)
+      .select("*, ticket_types(*)")
+      .eq("id", id)
+      .eq("org_id", ORG_ID)
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ data });
+  } catch {
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+/**
+ * PUT /api/events/[id] — Update event
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 503 }
+      );
+    }
+
+    // Separate ticket_types from event fields
+    const { ticket_types, ...eventFields } = body;
+
+    // Update event
+    const { error: eventError } = await supabase
+      .from(TABLES.EVENTS)
+      .update({ ...eventFields, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("org_id", ORG_ID);
+
+    if (eventError) {
+      return NextResponse.json(
+        { error: eventError.message },
+        { status: 500 }
+      );
+    }
+
+    // Update ticket types if provided
+    if (ticket_types && Array.isArray(ticket_types)) {
+      for (const tt of ticket_types) {
+        if (tt.id) {
+          // Update existing
+          const { id: ttId, ...ttFields } = tt;
+          await supabase
+            .from(TABLES.TICKET_TYPES)
+            .update({ ...ttFields, updated_at: new Date().toISOString() })
+            .eq("id", ttId)
+            .eq("org_id", ORG_ID);
+        } else {
+          // Insert new
+          await supabase.from(TABLES.TICKET_TYPES).insert({
+            org_id: ORG_ID,
+            event_id: id,
+            ...tt,
+          });
+        }
+      }
+    }
+
+    // Return updated event
+    const { data } = await supabase
+      .from(TABLES.EVENTS)
+      .select("*, ticket_types(*)")
+      .eq("id", id)
+      .single();
+
+    return NextResponse.json({ data });
+  } catch {
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}

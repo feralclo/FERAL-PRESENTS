@@ -14,6 +14,13 @@ export const TABLES = {
   SITE_SETTINGS: "site_settings",
   TRAFFIC_EVENTS: "traffic_events",
   POPUP_EVENTS: "popup_events",
+  EVENTS: "events",
+  TICKET_TYPES: "ticket_types",
+  ORDERS: "orders",
+  ORDER_ITEMS: "order_items",
+  TICKETS: "tickets",
+  CUSTOMERS: "customers",
+  GUEST_LIST: "guest_list",
 } as const;
 
 // Settings keys stored in site_settings table

@@ -1,9 +1,10 @@
 import { fetchSettings } from "@/lib/settings";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { SETTINGS_KEYS, TABLES, ORG_ID } from "@/lib/constants";
+import { getSupabaseServer } from "@/lib/supabase/server";
 import { SettingsProvider } from "@/hooks/useSettings";
 import type { ReactNode } from "react";
 
-/** Map URL slugs to settings keys */
+/** Map URL slugs to settings keys (fallback for events not in DB) */
 const SLUG_TO_SETTINGS_KEY: Record<string, string> = {
   "liverpool-27-march": SETTINGS_KEYS.LIVERPOOL,
   "kompass-klub-7-march": SETTINGS_KEYS.KOMPASS,
@@ -11,8 +12,8 @@ const SLUG_TO_SETTINGS_KEY: Record<string, string> = {
 
 /**
  * Event layout — Server Component that fetches settings before render.
+ * First checks the events table for the slug, then falls back to hardcoded map.
  * This eliminates FOUC by providing settings data in the initial HTML.
- * The SettingsProvider wraps children with the fetched data.
  */
 export default async function EventLayout({
   children,
@@ -22,7 +23,27 @@ export default async function EventLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const settingsKey = SLUG_TO_SETTINGS_KEY[slug] || `feral_event_${slug}`;
+
+  // Try to look up event in DB to get settings_key
+  let settingsKey = SLUG_TO_SETTINGS_KEY[slug] || `feral_event_${slug}`;
+
+  try {
+    const supabase = await getSupabaseServer();
+    if (supabase) {
+      const { data: event } = await supabase
+        .from(TABLES.EVENTS)
+        .select("settings_key")
+        .eq("slug", slug)
+        .eq("org_id", ORG_ID)
+        .single();
+
+      if (event?.settings_key) {
+        settingsKey = event.settings_key;
+      }
+    }
+  } catch {
+    // Fall through to hardcoded map
+  }
 
   // Fetch settings server-side — no loading state, no FOUC
   let settings = null;

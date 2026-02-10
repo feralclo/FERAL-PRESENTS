@@ -10,18 +10,12 @@ const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASS || "Parker5656!";
 
 const NAV_ITEMS = [
   { href: "/admin/", label: "Dashboard", icon: "📊" },
+  { href: "/admin/events/", label: "Events", icon: "📅" },
+  { href: "/admin/orders/", label: "Orders", icon: "🧾" },
+  { href: "/admin/customers/", label: "Customers", icon: "👥" },
+  { href: "/admin/guest-list/", label: "Guest List", icon: "📋" },
   { href: "/admin/popup/", label: "Popup Performance", icon: "💬" },
   { href: "/admin/traffic/", label: "Traffic Analytics", icon: "📈" },
-  {
-    href: "/admin/events/liverpool-27-march/",
-    label: "Liverpool Event",
-    icon: "🎫",
-  },
-  {
-    href: "/admin/events/kompass-klub-7-march/",
-    label: "Kompass Event",
-    icon: "🎧",
-  },
   { href: "/admin/settings/", label: "Settings", icon: "⚙️" },
 ];
 
@@ -114,7 +108,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               key={item.href}
               href={item.href}
               className={`admin-sidebar__link ${
-                pathname === item.href || pathname === item.href.slice(0, -1)
+                pathname === item.href ||
+                pathname === item.href.slice(0, -1) ||
+                (item.href !== "/admin/" && pathname.startsWith(item.href))
                   ? "admin-sidebar__link--active"
                   : ""
               }`}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import {
@@ -233,30 +234,52 @@ export async function POST(request: NextRequest) {
     const fees = 0; // No fees in test mode
     const total = subtotal + fees;
 
-    // Generate order number
-    const orderNumber = await generateOrderNumber(supabase, ORG_ID);
-
     // Simulate payment — always succeeds in test mode
     const paymentRef = `TEST-${Date.now()}`;
 
-    // Create order
-    const { data: order, error: orderErr } = await supabase
-      .from(TABLES.ORDERS)
-      .insert({
-        org_id: ORG_ID,
-        order_number: orderNumber,
-        event_id,
-        customer_id: customerId,
-        status: "completed",
-        subtotal,
-        fees,
-        total,
-        currency: event.currency || "GBP",
-        payment_method: event.payment_method || "test",
-        payment_ref: paymentRef,
-      })
-      .select()
-      .single();
+    // Generate order number and create order with retry on collision
+    let order = null;
+    let orderErr = null;
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const orderNumber = await generateOrderNumber(supabase, ORG_ID);
+
+      const result = await supabase
+        .from(TABLES.ORDERS)
+        .insert({
+          org_id: ORG_ID,
+          order_number: orderNumber,
+          event_id,
+          customer_id: customerId,
+          status: "completed",
+          subtotal,
+          fees,
+          total,
+          currency: event.currency || "GBP",
+          payment_method: event.payment_method || "test",
+          payment_ref: paymentRef,
+        })
+        .select()
+        .single();
+
+      if (result.data) {
+        order = result.data;
+        orderErr = null;
+        break;
+      }
+
+      // If it's a unique constraint violation on order_number, retry
+      const errMsg = result.error?.message || "";
+      if (errMsg.includes("duplicate") || errMsg.includes("unique")) {
+        orderErr = result.error;
+        continue;
+      }
+
+      // For other errors, break immediately
+      orderErr = result.error;
+      break;
+    }
 
     if (orderErr || !order) {
       return NextResponse.json(
@@ -378,6 +401,13 @@ export async function POST(request: NextRequest) {
       )
       .eq("id", order.id)
       .single();
+
+    // Revalidate the event page so sold counts update
+    if (event.slug) {
+      revalidatePath(`/event/${event.slug}`);
+    }
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/events");
 
     return NextResponse.json({ data: fullOrder }, { status: 201 });
   } catch (err) {

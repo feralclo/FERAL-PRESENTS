@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
@@ -64,6 +65,21 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Bust Next.js page cache — settings changes should reflect immediately
+    // The key format is like "feral_event_liverpool" or "feral_event_<slug>"
+    const slugMatch = key.match(/^feral_event_(.+)$/);
+    if (slugMatch) {
+      revalidatePath(`/event/${slugMatch[1]}`);
+      revalidatePath(`/event/${slugMatch[1]}/checkout`);
+    }
+    // Also revalidate well-known event slugs mapped to this key
+    if (key === "feral_event_liverpool") {
+      revalidatePath("/event/liverpool-27-march");
+    }
+    if (key === "feral_event_kompass") {
+      revalidatePath("/event/kompass-klub-7-march");
     }
 
     return NextResponse.json({ success: true });

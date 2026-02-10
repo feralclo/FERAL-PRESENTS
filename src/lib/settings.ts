@@ -18,7 +18,7 @@ export async function fetchSettings(
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        next: { revalidate: 30 },
+        cache: "no-store",
       }
     );
 

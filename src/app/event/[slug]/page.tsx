@@ -5,6 +5,9 @@ import { DynamicEventPage } from "@/components/event/DynamicEventPage";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
+/** Allow on-demand revalidation — pages are regenerated when admin saves changes */
+export const dynamicParams = true;
+
 /** Pre-render known event pages at build time for instant navigation */
 export function generateStaticParams() {
   return [

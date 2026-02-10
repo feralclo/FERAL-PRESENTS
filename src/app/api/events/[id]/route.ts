@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
@@ -111,6 +112,13 @@ export async function PUT(
       .select("*, ticket_types(*)")
       .eq("id", id)
       .single();
+
+    // Bust Next.js page cache so public event pages reflect changes immediately
+    if (data?.slug) {
+      revalidatePath(`/event/${data.slug}`);
+      revalidatePath(`/event/${data.slug}/checkout`);
+    }
+    revalidatePath("/admin/events");
 
     return NextResponse.json({ data });
   } catch {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type { TicketTypeRow } from "@/types/events";
 
 const TEE_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
@@ -9,6 +9,7 @@ interface DynamicTicketWidgetProps {
   eventSlug: string;
   ticketTypes: TicketTypeRow[];
   currency: string;
+  onCartChange?: (totalPrice: number, totalQty: number) => void;
 }
 
 /** Tier → CSS class mapping for visual styling */
@@ -22,6 +23,7 @@ export function DynamicTicketWidget({
   eventSlug,
   ticketTypes,
   currency,
+  onCartChange,
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
 
@@ -115,6 +117,11 @@ export function DynamicTicketWidget({
       ),
     [quantities, activeTypes]
   );
+
+  // Notify parent of cart changes (for bottom bar updates)
+  useEffect(() => {
+    onCartChange?.(totalPrice, totalQty);
+  }, [totalPrice, totalQty, onCartChange]);
 
   const getCheckoutUrl = useCallback(() => {
     const items: string[] = [];

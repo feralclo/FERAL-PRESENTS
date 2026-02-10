@@ -15,6 +15,15 @@ interface DynamicEventPageProps {
 export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const headerHidden = useHeaderScroll();
 
+  // Track cart state from ticket widget for bottom bar
+  const [cartTotal, setCartTotal] = useState(0);
+  const [cartQty, setCartQty] = useState(0);
+
+  const handleCartChange = useCallback((total: number, qty: number) => {
+    setCartTotal(total);
+    setCartQty(qty);
+  }, []);
+
   const scrollToTickets = useCallback(() => {
     const el = document.getElementById("tickets");
     if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -156,6 +165,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 eventSlug={event.slug}
                 ticketTypes={event.ticket_types || []}
                 currency={event.currency}
+                onCartChange={handleCartChange}
               />
             </div>
           </div>
@@ -164,6 +174,8 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
 
       <BottomBar
         fromPrice={`${currSymbol}${minPrice % 1 === 0 ? minPrice : minPrice.toFixed(2)}`}
+        cartTotal={cartQty > 0 ? `${currSymbol}${cartTotal.toFixed(2)}` : undefined}
+        cartQty={cartQty}
         onBuyNow={scrollToTickets}
       />
 

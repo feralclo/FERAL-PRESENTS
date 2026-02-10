@@ -224,6 +224,163 @@ function ImageField({
   );
 }
 
+/* ── Lineup Tag Input ── */
+
+function LineupInput({
+  lineup,
+  onChange,
+}: {
+  lineup: string[];
+  onChange: (lineup: string[]) => void;
+}) {
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const addArtist = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      if (lineup.includes(trimmed)) return;
+      onChange([...lineup, trimmed]);
+    },
+    [lineup, onChange]
+  );
+
+  const removeArtist = useCallback(
+    (index: number) => {
+      onChange(lineup.filter((_, i) => i !== index));
+    },
+    [lineup, onChange]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        addArtist(inputValue);
+        setInputValue("");
+      } else if (
+        e.key === "Backspace" &&
+        inputValue === "" &&
+        lineup.length > 0
+      ) {
+        removeArtist(lineup.length - 1);
+      }
+    },
+    [inputValue, lineup, addArtist, removeArtist]
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      const pasted = e.clipboardData.getData("text");
+      if (pasted.includes(",")) {
+        e.preventDefault();
+        const names = pasted
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const unique = names.filter((n) => !lineup.includes(n));
+        if (unique.length > 0) {
+          onChange([...lineup, ...unique]);
+        }
+        setInputValue("");
+      }
+    },
+    [lineup, onChange]
+  );
+
+  return (
+    <div className="admin-form__field">
+      <label className="admin-form__label">Lineup</label>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6,
+          padding: "8px 10px",
+          background: "#111",
+          border: "1px solid #333",
+          borderRadius: 2,
+          cursor: "text",
+          minHeight: 42,
+          alignItems: "center",
+        }}
+        onClick={() => inputRef.current?.focus()}
+      >
+        {lineup.map((artist, i) => (
+          <span
+            key={i}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#1a1a1a",
+              border: "1px solid #444",
+              padding: "4px 8px",
+              fontSize: "0.75rem",
+              fontFamily: "'Space Mono', monospace",
+              color: "#fff",
+            }}
+          >
+            {artist}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeArtist(i);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#ff0033",
+                cursor: "pointer",
+                padding: 0,
+                fontSize: "0.85rem",
+                lineHeight: 1,
+                fontWeight: "bold",
+              }}
+              aria-label={`Remove ${artist}`}
+            >
+              &times;
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          onBlur={() => {
+            if (inputValue.trim()) {
+              addArtist(inputValue);
+              setInputValue("");
+            }
+          }}
+          placeholder={
+            lineup.length === 0 ? "Type artist name, press Enter to add" : ""
+          }
+          style={{
+            background: "none",
+            border: "none",
+            outline: "none",
+            color: "#fff",
+            fontSize: "0.8rem",
+            fontFamily: "'Space Mono', monospace",
+            flex: 1,
+            minWidth: 160,
+            padding: "2px 0",
+          }}
+        />
+      </div>
+      <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 4, display: "block" }}>
+        Press Enter or comma to add. Backspace to remove last. Paste comma-separated lists.
+      </span>
+    </div>
+  );
+}
+
 /* ── Main Event Editor ── */
 
 export default function EventEditorPage() {
@@ -605,46 +762,10 @@ export default function EventEditorPage() {
               />
             </div>
 
-            <div className="admin-form__field">
-              <label className="admin-form__label">Lineup</label>
-              <input
-                type="text"
-                className="admin-form__input"
-                value={(event.lineup || []).join(", ")}
-                onChange={(e) =>
-                  updateEvent(
-                    "lineup",
-                    e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean)
-                  )
-                }
-                placeholder="Artist 1, Artist 2, Artist 3"
-              />
-              <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}>
-                Comma-separated list of artist names
-              </span>
-              {(event.lineup || []).length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                  {(event.lineup || []).map((artist, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        background: "#1a1a1a",
-                        border: "1px solid #333",
-                        padding: "4px 10px",
-                        fontSize: "0.75rem",
-                        fontFamily: "'Space Mono', monospace",
-                        color: "#fff",
-                      }}
-                    >
-                      {artist}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            <LineupInput
+              lineup={event.lineup || []}
+              onChange={(lineup) => updateEvent("lineup", lineup)}
+            />
 
             <div className="admin-form__field">
               <label className="admin-form__label">Details</label>

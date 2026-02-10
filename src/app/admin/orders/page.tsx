@@ -29,6 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
   const [filterEvent, setFilterEvent] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -89,6 +90,35 @@ export default function OrdersPage() {
     }
   }, []);
 
+  const handleExportCSV = useCallback(async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterEvent) params.set("event_id", filterEvent);
+      if (filterStatus) params.set("status", filterStatus);
+
+      const res = await fetch(`/api/orders/export?${params}`);
+      if (!res.ok) {
+        alert("Export failed. No orders found for the current filters.");
+        setExporting(false);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `orders-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Export failed. Please try again.");
+    }
+    setExporting(false);
+  }, [filterEvent, filterStatus]);
+
   useEffect(() => {
     loadEvents();
     loadStats();
@@ -146,6 +176,16 @@ export default function OrdersPage() {
           <option value="refunded">Refunded</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        {orders.length > 0 && (
+          <button
+            className="admin-btn admin-btn--secondary"
+            onClick={handleExportCSV}
+            disabled={exporting}
+            style={{ marginLeft: "auto" }}
+          >
+            {exporting ? "Exporting..." : "Export CSV"}
+          </button>
+        )}
       </div>
 
       {/* Orders Table */}

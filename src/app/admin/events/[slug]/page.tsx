@@ -111,25 +111,59 @@ function ImageField({
   value,
   onChange,
   blurPx,
+  uploadKey,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   blurPx?: number;
+  uploadKey?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const handleFile = useCallback(
     async (file: File) => {
       if (!file.type.startsWith("image/")) return;
       setProcessing(true);
-      const result = await processImageFile(file);
-      if (result) onChange(result);
+      setUploadError("");
+
+      const compressed = await processImageFile(file);
+      if (!compressed) {
+        setProcessing(false);
+        return;
+      }
+
+      // If we have an upload key, store via the upload API and get a URL back
+      if (uploadKey) {
+        try {
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageData: compressed, key: uploadKey }),
+          });
+          const json = await res.json();
+          if (res.ok && json.url) {
+            onChange(json.url);
+          } else {
+            setUploadError(json.error || "Upload failed");
+            // Fallback: store base64 directly
+            onChange(compressed);
+          }
+        } catch {
+          setUploadError("Network error during upload");
+          // Fallback: store base64 directly
+          onChange(compressed);
+        }
+      } else {
+        // No upload key — store base64 directly (for settings images)
+        onChange(compressed);
+      }
       setProcessing(false);
     },
-    [onChange]
+    [onChange, uploadKey]
   );
 
   return (
@@ -183,6 +217,12 @@ function ImageField({
         </div>
       )}
 
+      {uploadError && (
+        <div style={{ color: "#ff0033", fontSize: "0.7rem", marginBottom: 8 }}>
+          {uploadError}
+        </div>
+      )}
+
       <div
         style={{
           border: `2px dashed ${dragging ? "#ff0033" : "#333"}`,
@@ -207,7 +247,7 @@ function ImageField({
       >
         <span style={{ fontSize: 12, color: "#888" }}>
           {processing
-            ? "Processing image..."
+            ? "Uploading image..."
             : "Drag & drop image here, or click to select"}
         </span>
         <input
@@ -1002,6 +1042,7 @@ export default function EventEditorPage() {
           label="Event Image"
           value={event.cover_image || ""}
           onChange={(v) => updateEvent("cover_image", v)}
+          uploadKey={event.id ? `event_${event.id}_cover` : undefined}
         />
         <span style={{ fontSize: "0.7rem", color: "#555", display: "block", marginTop: -8, marginBottom: 16 }}>
           Used as hero background (default theme) or blurred backdrop (minimal theme). Any aspect ratio works.

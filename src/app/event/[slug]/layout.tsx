@@ -30,13 +30,14 @@ export default async function EventLayout({
   let settingsKey = SLUG_TO_SETTINGS_KEY[slug] || `feral_event_${slug}`;
   let eventTheme: string | null = null;
   let eventHasImage = false;
+  let eventId: string | null = null;
 
   try {
     const supabase = await getSupabaseServer();
     if (supabase) {
       const { data: event } = await supabase
         .from(TABLES.EVENTS)
-        .select("settings_key, theme, cover_image")
+        .select("id, settings_key, theme, cover_image")
         .eq("slug", slug)
         .eq("org_id", ORG_ID)
         .single();
@@ -45,12 +46,35 @@ export default async function EventLayout({
         settingsKey = event.settings_key;
       }
       if (event) {
+        eventId = event.id;
         eventTheme = event.theme || null;
+        // Check if cover_image has a value (URL or base64)
         eventHasImage = !!(event.cover_image);
       }
     }
   } catch {
     // Fall through to hardcoded map
+  }
+
+  // Also check for uploaded media in site_settings (fallback if cover_image column
+  // doesn't exist in the database — images are stored separately via upload API)
+  if (!eventHasImage && eventId) {
+    try {
+      const supabase = await getSupabaseServer();
+      if (supabase) {
+        const mediaKey = `media_event_${eventId}_cover`;
+        const { data: mediaRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("key")
+          .eq("key", mediaKey)
+          .single();
+        if (mediaRow) {
+          eventHasImage = true;
+        }
+      }
+    } catch {
+      // No media found, that's fine
+    }
   }
 
   // Fetch settings server-side — no loading state, no FOUC

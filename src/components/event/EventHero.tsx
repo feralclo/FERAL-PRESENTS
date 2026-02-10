@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
 interface EventHeroProps {
@@ -22,16 +25,20 @@ export function EventHero({
   tag = "SECOND RELEASE NOW ACTIVE",
 }: EventHeroProps) {
   const imgSrc = coverImage || bannerImage;
+  const [imgFailed, setImgFailed] = useState(false);
 
   return (
     <section className="event-hero">
       <div className="event-hero__bg">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imgSrc}
-          alt={title}
-          className="event-hero__bg-img"
-        />
+        {imgSrc && !imgFailed && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={imgSrc}
+            alt={title}
+            className="event-hero__bg-img"
+            onError={() => setImgFailed(true)}
+          />
+        )}
         <div
           className="event-hero__darken"
           style={{

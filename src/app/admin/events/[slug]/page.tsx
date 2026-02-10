@@ -83,16 +83,20 @@ async function processImageFile(file: File): Promise<string | null> {
     alert("Image too large. Maximum is 5MB.");
     return null;
   }
-  // Progressive compression to keep base64 under 300KB for reliable DB storage
+  // Progressive compression — keep base64 string under 400KB for reliable DB storage
+  const MAX_LEN = 400 * 1024; // ~300KB binary as base64
   let result = await compressImage(file, 1200, 0.7);
-  if (result && result.length > 300 * 1024) {
+  if (result && result.length > MAX_LEN) {
     result = await compressImage(file, 1000, 0.55);
   }
-  if (result && result.length > 300 * 1024) {
+  if (result && result.length > MAX_LEN) {
     result = await compressImage(file, 800, 0.4);
   }
-  if (result && result.length > 300 * 1024) {
-    result = await compressImage(file, 600, 0.35);
+  if (result && result.length > MAX_LEN) {
+    result = await compressImage(file, 600, 0.3);
+  }
+  if (result && result.length > MAX_LEN) {
+    result = await compressImage(file, 400, 0.25);
   }
   if (!result) {
     alert("Failed to process image. Try a smaller file.");
@@ -435,7 +439,14 @@ export default function EventEditorPage() {
           .select("data")
           .eq("key", key)
           .single();
-        if (sd?.data) setSettings(sd.data as EventSettings);
+        if (sd?.data) {
+          const s = sd.data as EventSettings;
+          setSettings(s);
+          // Sync theme from site_settings into event state so editor shows correct value
+          if (s.theme) {
+            setEvent((prev) => prev ? { ...prev, theme: s.theme as string } : prev);
+          }
+        }
       }
 
       setLoading(false);
@@ -518,7 +529,7 @@ export default function EventEditorPage() {
           payment_method: event.payment_method,
           capacity: event.capacity || null,
           cover_image: event.cover_image || null,
-          hero_image: event.hero_image || null,
+          hero_image: null,
           theme: event.theme || "default",
           currency: event.currency,
           about_text: event.about_text || null,
@@ -554,17 +565,10 @@ export default function EventEditorPage() {
         setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
         setDeletedTypeIds([]);
 
-        // Warn if images didn't persist
-        const imgWarnings: string[] = [];
+        // Warn if image didn't persist
         if (event.cover_image && !json.data.cover_image) {
-          imgWarnings.push("cover image");
-        }
-        if (event.hero_image && !json.data.hero_image) {
-          imgWarnings.push("hero image");
-        }
-        if (imgWarnings.length > 0) {
           setSaveMsg(
-            `Saved, but ${imgWarnings.join(" and ")} may not have persisted. Try re-uploading a smaller image.`
+            "Saved, but image may not have persisted. Try re-uploading a smaller image."
           );
         } else {
           setSaveMsg("Saved successfully");
@@ -994,31 +998,30 @@ export default function EventEditorPage() {
       {/* ─── Section: Design ─── */}
       <div className="admin-section">
         <h2 className="admin-section__title">Design</h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-          }}
-        >
-          <ImageField
-            label="Cover Image"
-            value={event.cover_image || ""}
-            onChange={(v) => updateEvent("cover_image", v)}
-          />
-          <ImageField
-            label="Hero / Banner Image"
-            value={event.hero_image || ""}
-            onChange={(v) => updateEvent("hero_image", v)}
-          />
-        </div>
+        <ImageField
+          label="Event Image"
+          value={event.cover_image || ""}
+          onChange={(v) => updateEvent("cover_image", v)}
+        />
+        <span style={{ fontSize: "0.7rem", color: "#555", display: "block", marginTop: -8, marginBottom: 16 }}>
+          Used as hero background (default theme) or blurred backdrop (minimal theme). Any aspect ratio works.
+        </span>
         <div className="admin-form" style={{ marginTop: 8 }}>
           <div className="admin-form__field">
             <label className="admin-form__label">Theme</label>
             <select
               className="admin-form__input"
-              value={event.theme || "default"}
-              onChange={(e) => updateEvent("theme", e.target.value)}
+              value={
+                event.payment_method === "weeztix"
+                  ? (settings.theme as string) || "default"
+                  : event.theme || "default"
+              }
+              onChange={(e) => {
+                if (event.payment_method === "weeztix") {
+                  updateSetting("theme", e.target.value);
+                }
+                updateEvent("theme", e.target.value);
+              }}
             >
               <option value="default">Default</option>
               <option value="minimal">Minimal</option>

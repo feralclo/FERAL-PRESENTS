@@ -49,8 +49,8 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   // Doors display
   const doorsDisplay = event.doors_time || "";
 
-  // Hero image
-  const heroImage = event.hero_image || event.cover_image || "";
+  // Hero image — single source: cover_image is the primary image field
+  const heroImage = event.cover_image || event.hero_image || "";
 
   // Lowest price for bottom bar
   const activeTypes = (event.ticket_types || []).filter(
@@ -105,7 +105,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
           location={locationDisplay}
           age={event.age_restriction || "18+"}
           bannerImage={heroImage}
-          coverImage={event.cover_image || null}
+          coverImage={heroImage || null}
           tag={event.tag_line || ""}
         />
 

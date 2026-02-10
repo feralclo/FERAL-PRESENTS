@@ -59,6 +59,11 @@ export async function PUT(
     // Separate ticket_types and deleted IDs from event fields
     const { ticket_types, deleted_ticket_type_ids, ...eventFields } = body;
 
+    // Log image size for debugging
+    if (eventFields.cover_image) {
+      console.log(`[events/${id}] cover_image size: ${Math.round(eventFields.cover_image.length / 1024)}KB (base64 string)`);
+    }
+
     // Update event
     const { error: eventError } = await supabase
       .from(TABLES.EVENTS)
@@ -67,6 +72,7 @@ export async function PUT(
       .eq("org_id", ORG_ID);
 
     if (eventError) {
+      console.error(`[events/${id}] Update error:`, eventError.message);
       return NextResponse.json(
         { error: eventError.message },
         { status: 500 }
@@ -112,6 +118,11 @@ export async function PUT(
       .select("*, ticket_types(*)")
       .eq("id", id)
       .single();
+
+    // Verify image persistence
+    if (eventFields.cover_image && !data?.cover_image) {
+      console.warn(`[events/${id}] cover_image was sent but not returned — column may not exist in DB`);
+    }
 
     // Bust Next.js page cache so public event pages reflect changes immediately
     if (data?.slug) {

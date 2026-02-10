@@ -12,7 +12,9 @@ const SLUG_TO_SETTINGS_KEY: Record<string, string> = {
 
 /**
  * Event layout — Server Component that fetches settings before render.
- * First checks the events table for the slug, then falls back to hardcoded map.
+ * Reads theme/image data from BOTH the events table and site_settings.
+ * - WeeZTix events: theme + image config from site_settings (JSONB)
+ * - Native events: theme + image data from events table columns
  * This eliminates FOUC by providing settings data in the initial HTML.
  */
 export default async function EventLayout({
@@ -24,21 +26,27 @@ export default async function EventLayout({
 }) {
   const { slug } = await params;
 
-  // Try to look up event in DB to get settings_key
+  // Try to look up event in DB to get settings_key, theme, and image info
   let settingsKey = SLUG_TO_SETTINGS_KEY[slug] || `feral_event_${slug}`;
+  let eventTheme: string | null = null;
+  let eventHasImage = false;
 
   try {
     const supabase = await getSupabaseServer();
     if (supabase) {
       const { data: event } = await supabase
         .from(TABLES.EVENTS)
-        .select("settings_key")
+        .select("settings_key, theme, cover_image")
         .eq("slug", slug)
         .eq("org_id", ORG_ID)
         .single();
 
       if (event?.settings_key) {
         settingsKey = event.settings_key;
+      }
+      if (event) {
+        eventTheme = event.theme || null;
+        eventHasImage = !!(event.cover_image);
       }
     }
   } catch {
@@ -53,9 +61,16 @@ export default async function EventLayout({
     // Settings fetch failed — render page with defaults
   }
 
-  // Determine theme classes for the wrapper
-  const isMinimal = settings?.theme === "minimal";
-  const hasCoverImage = isMinimal && settings?.minimalBgEnabled;
+  // Determine theme: site_settings takes priority (WeeZTix), then events table
+  const theme = settings?.theme || eventTheme || "default";
+  const isMinimal = theme === "minimal";
+
+  // Determine if cover image exists:
+  // - WeeZTix events (have site_settings): use minimalBgEnabled flag
+  // - Native events (no site_settings): check events table cover_image
+  const hasCoverImage = isMinimal && (
+    settings ? !!(settings.minimalBgEnabled) : eventHasImage
+  );
 
   const themeClasses = [
     isMinimal ? "theme-minimal" : "",
@@ -66,8 +81,9 @@ export default async function EventLayout({
 
   const cssVars: Record<string, string> = {};
   if (hasCoverImage) {
-    cssVars["--cover-blur"] = `${settings?.minimalBlurStrength || 0}px`;
-    cssVars["--static-opacity"] = `${(settings?.minimalStaticStrength || 50) / 100}`;
+    // Use site_settings values if available, otherwise sensible defaults
+    cssVars["--cover-blur"] = `${settings?.minimalBlurStrength ?? 8}px`;
+    cssVars["--static-opacity"] = `${(settings?.minimalStaticStrength ?? 40) / 100}`;
   }
 
   return (

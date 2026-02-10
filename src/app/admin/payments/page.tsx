@@ -49,6 +49,20 @@ export default function PaymentSettingsPage() {
         const detailRes = await fetch(`/api/stripe/connect/${acc.account_id}`);
         const detail = await detailRes.json();
 
+        // Ensure the account ID is saved to site_settings so payment routes
+        // can auto-detect it (handles accounts created before this was added)
+        const supabase = getSupabaseClient();
+        if (supabase && acc.account_id) {
+          await supabase.from(TABLES.SITE_SETTINGS).upsert(
+            {
+              key: "feral_stripe_account",
+              data: { account_id: acc.account_id },
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "key" }
+          );
+        }
+
         setStatus({
           connected: true,
           account_id: acc.account_id,

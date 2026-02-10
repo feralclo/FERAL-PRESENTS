@@ -48,9 +48,7 @@ function markDismissed() {
 }
 
 interface DiscountPopupProps {
-  /** Delay in ms before showing (mobile) */
   mobileDelay?: number;
-  /** Delay in ms before showing (desktop fallback) */
   desktopDelay?: number;
 }
 
@@ -167,80 +165,110 @@ export function DiscountPopup({
 
   const handleUseCode = useCallback(() => {
     close();
-    // Scroll to tickets
     const ticketsSection = document.getElementById("tickets");
     if (ticketsSection) {
       ticketsSection.scrollIntoView({ behavior: "smooth" });
     }
   }, [close]);
 
-  if (!isOpen) return null;
-
   const minutes = Math.floor(countdown / 60);
   const seconds = countdown % 60;
+  const timerDisplay = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   return (
-    <div className="dp-overlay" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+    <div
+      className={`dp-overlay${isOpen ? " dp-overlay--visible" : ""}`}
+      onClick={(e) => { if (e.target === e.currentTarget) close(); }}
+    >
       <div className="dp-modal">
-        <button className="dp-close" onClick={close}>
+        <button className="dp-close" onClick={close} aria-label="Close">
           &times;
         </button>
 
-        {screen === "commitment" && (
-          <div className="dp-screen dp-screen--commitment">
-            <div className="dp-icon">🔥</div>
-            <h3 className="dp-title">Unlock Feral Raver Discount</h3>
-            <p className="dp-subtitle">
-              Exclusive 10% off. Only for the next{" "}
-              <span className="dp-timer">
-                {minutes}:{seconds.toString().padStart(2, "0")}
-              </span>
-            </p>
-            <button className="dp-btn dp-btn--primary" onClick={handleCommit}>
-              Save My Discount
-            </button>
-            <button className="dp-btn dp-btn--ghost" onClick={handleDismiss}>
-              Nah, I&apos;ll Pay Full Price
-            </button>
+        {/* Screen 1: Micro-commitment */}
+        <div className={`dp-screen${screen === "commitment" ? " dp-screen--active" : ""}`}>
+          <div className="dp-body">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/FERAL LOGO.svg" alt="FERAL" className="dp-logo" />
+            <h2 className="dp-headline">Unlock Feral Raver Discount</h2>
+            <p className="dp-sub">Save it before it&apos;s gone</p>
+            <div className="dp-buttons">
+              <button className="dp-btn dp-btn--primary" onClick={handleCommit}>
+                Save My Discount
+              </button>
+              <button className="dp-btn dp-btn--secondary" onClick={handleDismiss}>
+                Nah, I&apos;ll Pay Full Price
+              </button>
+            </div>
+            <div className="dp-timer">
+              <div className="dp-timer__label">Expires in</div>
+              <div className="dp-timer__time">{timerDisplay}</div>
+            </div>
           </div>
-        )}
+        </div>
 
-        {screen === "email" && (
-          <div className="dp-screen dp-screen--email">
-            <h3 className="dp-title">Almost there...</h3>
-            <p className="dp-subtitle">
-              Enter your email to unlock your exclusive discount code.
-            </p>
+        {/* Screen 2: Email capture */}
+        <div className={`dp-screen${screen === "email" ? " dp-screen--active" : ""}`}>
+          <div className="dp-body">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/FERAL LOGO.svg" alt="FERAL" className="dp-logo" />
+            <h2 className="dp-headline">Unlock Feral Raver Discount</h2>
+            <p className="dp-sub">Enter your email to get the code</p>
+            <div className={`dp-error${emailError ? " dp-error--visible" : ""}`}>
+              {emailError || "Please enter a valid email"}
+            </div>
             <form onSubmit={handleEmailSubmit}>
               <input
                 type="email"
                 className="dp-input"
-                placeholder="your@email.com"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 autoFocus
               />
-              {emailError && <p className="dp-error">{emailError}</p>}
-              <button type="submit" className="dp-btn dp-btn--primary">
-                Unlock My Code
+              <button
+                type="submit"
+                className="dp-btn dp-btn--primary"
+                style={{ width: "100%" }}
+              >
+                Get My Discount
               </button>
             </form>
+            <div className="dp-timer">
+              <div className="dp-timer__label">Expires in</div>
+              <div className="dp-timer__time">{timerDisplay}</div>
+            </div>
           </div>
-        )}
+        </div>
 
-        {screen === "code" && (
-          <div className="dp-screen dp-screen--code">
-            <div className="dp-icon">✅</div>
-            <h3 className="dp-title">Your Code is Ready</h3>
-            <div className="dp-code">{DISCOUNT_CODE}</div>
-            <p className="dp-subtitle">
-              Use at checkout. Expires in 24 hours.
+        {/* Screen 3: Discount code reveal */}
+        <div className={`dp-screen${screen === "code" ? " dp-screen--active" : ""}`}>
+          <div className="dp-body">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/FERAL LOGO.svg" alt="FERAL" className="dp-logo" />
+            <h2 className="dp-headline">You&apos;re In</h2>
+            <p className="dp-sub">
+              Here&apos;s your exclusive discount code. Use it at checkout.
             </p>
-            <button className="dp-btn dp-btn--primary" onClick={handleUseCode}>
+            <div className="dp-code">
+              <span className="dp-code__value">{DISCOUNT_CODE}</span>
+            </div>
+            <div className="dp-urgency">
+              <div className="dp-urgency__label">Code expires in</div>
+              <div className="dp-urgency__countdown">24:00:00</div>
+            </div>
+            <p className="dp-note">
+              This code won&apos;t be shown again. Use it now before it expires.
+            </p>
+            <button
+              className="dp-btn dp-btn--primary dp-done-btn"
+              onClick={handleUseCode}
+            >
               Use Code Now
             </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

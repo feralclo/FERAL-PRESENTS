@@ -43,39 +43,62 @@ export function Header() {
   }, []);
 
   return (
-    <header className={`site-header ${hidden ? "header--hidden" : ""}`}>
-      <div className="header__inner">
-        <Link href="/" className="header__logo" onClick={closeMenu}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/FERAL LOGO.svg"
-            alt="FERAL PRESENTS"
-            className="header__logo-img"
-          />
-        </Link>
+    <nav className={`nav${hidden ? " header--hidden" : ""}`}>
+      <Link href="/" className="nav__logo" onClick={closeMenu}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/FERAL LOGO.svg"
+          alt="FERAL PRESENTS"
+          className="nav__logo-img"
+        />
+      </Link>
 
-        <button
-          className={`header__hamburger ${menuOpen ? "is-active" : ""}`}
-          onClick={toggleMenu}
-          aria-label="Toggle navigation"
+      <button
+        className={`nav__toggle${menuOpen ? " active" : ""}`}
+        onClick={toggleMenu}
+        aria-label="Toggle menu"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <div className={`nav__menu${menuOpen ? " active" : ""}`}>
+        <ul className="nav__list">
+          <li className="nav__item">
+            <Link href="/#events" className="nav__link" onClick={closeMenu}>
+              Events
+            </Link>
+          </li>
+          <li className="nav__item">
+            <Link href="/#about" className="nav__link" onClick={closeMenu}>
+              About
+            </Link>
+          </li>
+          <li className="nav__item">
+            <Link href="/#contact" className="nav__link" onClick={closeMenu}>
+              Contact
+            </Link>
+          </li>
+          <li className="nav__item">
+            <a
+              href="https://www.feralclo.com/"
+              className="nav__link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Apparel
+            </a>
+          </li>
+        </ul>
+        <Link
+          href="/#events"
+          className="btn btn--primary nav__cta"
+          onClick={closeMenu}
         >
-          <span className="header__hamburger-line" />
-          <span className="header__hamburger-line" />
-          <span className="header__hamburger-line" />
-        </button>
-
-        <nav className={`header__nav ${menuOpen ? "header__nav--open" : ""}`}>
-          <Link href="/#events" className="header__link" onClick={closeMenu}>
-            EVENTS
-          </Link>
-          <Link href="/#about" className="header__link" onClick={closeMenu}>
-            ABOUT
-          </Link>
-          <Link href="/#contact" className="header__link" onClick={closeMenu}>
-            CONTACT
-          </Link>
-        </nav>
+          Book Tickets
+        </Link>
       </div>
-    </header>
+    </nav>
   );
 }

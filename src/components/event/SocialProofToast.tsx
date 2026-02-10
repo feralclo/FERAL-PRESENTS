@@ -43,8 +43,6 @@ export function SocialProofToast() {
     };
   }, []);
 
-  if (!visible) return null;
-
   const timeText =
     minutesAgo < 1
       ? "less than 60 seconds ago"
@@ -53,13 +51,14 @@ export function SocialProofToast() {
         : `${minutesAgo} minutes ago`;
 
   return (
-    <div className="social-proof-toast social-proof-toast--visible">
-      <div className="social-proof-toast__dot" />
-      <div className="social-proof-toast__content">
-        <span className="social-proof-toast__text">
-          Last ticket booked <strong>{timeText}</strong>
-        </span>
+    <div className={`social-proof${visible ? " social-proof--visible" : ""}`}>
+      <div className="social-proof__title">
+        <span className="social-proof__dot" />
+        LIVE
       </div>
+      <span className="social-proof__text">
+        Last ticket booked <span className="social-proof__time">{timeText}</span>
+      </span>
     </div>
   );
 }

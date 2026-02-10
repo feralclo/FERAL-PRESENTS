@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
 
@@ -29,6 +29,41 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
   const [qty, setQty] = useState(1);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
+
+  const touchStartX = useRef(0);
+
+  // Keyboard navigation (ArrowLeft, ArrowRight, Escape)
+  useEffect(() => {
+    if (!fullscreenOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") {
+        setFullscreenIndex((i) => (i - 1 + IMAGES.length) % IMAGES.length);
+      } else if (e.key === "ArrowRight") {
+        setFullscreenIndex((i) => (i + 1) % IMAGES.length);
+      } else if (e.key === "Escape") {
+        setFullscreenOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreenOpen]);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) > 50) {
+      if (delta < 0) {
+        // Swipe left → next
+        setFullscreenIndex((i) => (i + 1) % IMAGES.length);
+      } else {
+        // Swipe right → prev
+        setFullscreenIndex((i) => (i - 1 + IMAGES.length) % IMAGES.length);
+      }
+    }
+  }, []);
 
   const handleAdd = useCallback(() => {
     onAddToCart(selectedSize, qty);
@@ -169,6 +204,8 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
         <div
           className="tee-modal__fullscreen tee-modal__fullscreen--visible"
           onClick={() => setFullscreenOpen(false)}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
         >
           <button
             className="tee-modal__fullscreen-close"

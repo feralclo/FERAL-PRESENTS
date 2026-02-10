@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
@@ -11,6 +11,220 @@ const SLUG_TO_KEY: Record<string, string> = {
   "kompass-klub-7-march": SETTINGS_KEYS.KOMPASS,
 };
 
+/* ── Image compression (matches original admin/index.html:2274-2315) ── */
+function compressImage(
+  file: File,
+  maxWidth: number,
+  quality: number
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d")!;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxWidth) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          }
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function processImageFile(file: File): Promise<string | null> {
+  if (file.size > 5 * 1024 * 1024) {
+    alert("Image too large. Maximum is 5MB.");
+    return null;
+  }
+  let result = await compressImage(file, 1600, 0.75);
+  if (result && result.length > 500 * 1024) {
+    result = await compressImage(file, 1600, 0.6);
+  }
+  if (result && result.length > 500 * 1024) {
+    result = await compressImage(file, 1200, 0.5);
+  }
+  return result;
+}
+
+/* ── ImageField component ── */
+const LABEL_STYLE: React.CSSProperties = {
+  display: "block",
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: 1,
+  color: "#888",
+  marginBottom: 6,
+  fontFamily: "'Space Mono', monospace",
+};
+
+const DROP_ZONE_BASE: React.CSSProperties = {
+  border: "2px dashed #333",
+  padding: 20,
+  textAlign: "center",
+  cursor: "pointer",
+  transition: "border-color 0.15s",
+  marginBottom: 8,
+};
+
+function ImageField({
+  label,
+  value,
+  onChange,
+  blurPx,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  blurPx?: number;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  const handleFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) return;
+      setProcessing(true);
+      const result = await processImageFile(file);
+      if (result) onChange(result);
+      setProcessing(false);
+    },
+    [onChange]
+  );
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={LABEL_STYLE}>{label}</label>
+
+      {/* Preview */}
+      {value && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ position: "relative", display: "inline-block" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt={label}
+              style={{
+                maxWidth: "100%",
+                maxHeight: 150,
+                border: "1px solid #333",
+                background: "#111",
+                display: "block",
+                filter: blurPx != null ? `blur(${blurPx}px)` : undefined,
+              }}
+            />
+            {blurPx != null && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  background: "rgba(0,0,0,0.7)",
+                  padding: "2px 6px",
+                  fontSize: 9,
+                  color: "#888",
+                }}
+              >
+                Preview with blur
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => onChange("")}
+            style={{
+              display: "block",
+              marginTop: 8,
+              background: "transparent",
+              border: "1px solid #ff0033",
+              color: "#ff0033",
+              fontSize: 10,
+              padding: "6px 12px",
+              cursor: "pointer",
+              fontFamily: "'Space Mono', monospace",
+              letterSpacing: 1,
+            }}
+          >
+            Remove Image
+          </button>
+        </div>
+      )}
+
+      {/* Drop zone */}
+      <div
+        style={{
+          ...DROP_ZONE_BASE,
+          borderColor: dragging ? "#ff0033" : "#333",
+        }}
+        onClick={() => fileRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          const file = e.dataTransfer.files[0];
+          if (file) handleFile(file);
+        }}
+      >
+        <span style={{ fontSize: 12, color: "#888" }}>
+          {processing
+            ? "Processing image..."
+            : "Drag & drop image here, or click to select"}
+        </span>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      {/* URL input */}
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Or enter image URL"
+        style={{
+          width: "100%",
+          background: "#0e0e0e",
+          border: "1px solid #333",
+          color: "#ccc",
+          fontFamily: "'Space Mono', monospace",
+          fontSize: 11,
+          padding: 8,
+          boxSizing: "border-box",
+        }}
+      />
+    </div>
+  );
+}
+
+/* ── Main Event Editor ── */
 export default function EventEditor() {
   const params = useParams();
   const slug = params.slug as string;
@@ -38,7 +252,6 @@ export default function EventEditor() {
 
       if (error) {
         if (error.code === "PGRST116") {
-          // No rows found — first time, will create on save
           setLoadStatus("No saved settings yet — using defaults");
         } else {
           setLoadStatus(`Load error: ${error.message}`);
@@ -204,6 +417,37 @@ export default function EventEditor() {
         </div>
       )}
 
+      {/* Banner Image */}
+      {isLiverpool && (
+        <div className="admin-section">
+          <h2 className="admin-section__title">BANNER IMAGE</h2>
+          <ImageField
+            label="Hero / Banner Image"
+            value={settings.heroImage || ""}
+            onChange={(v) => updateField("heroImage", v)}
+          />
+        </div>
+      )}
+
+      {/* Tee Images */}
+      {isLiverpool && (
+        <div className="admin-section">
+          <h2 className="admin-section__title">EXCLUSIVE TEE IMAGES</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <ImageField
+              label="Front Image"
+              value={settings.teeFront || ""}
+              onChange={(v) => updateField("teeFront", v)}
+            />
+            <ImageField
+              label="Back Image"
+              value={settings.teeBack || ""}
+              onChange={(v) => updateField("teeBack", v)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Theme Settings */}
       <div className="admin-section">
         <h2 className="admin-section__title">THEME</h2>
@@ -235,19 +479,12 @@ export default function EventEditor() {
             </div>
             {settings.minimalBgEnabled && (
               <>
-                <div className="admin-form__group">
-                  <label className="admin-form__label">
-                    Background Image URL
-                  </label>
-                  <input
-                    className="admin-form__input"
-                    value={settings.minimalBgImage || ""}
-                    onChange={(e) =>
-                      updateField("minimalBgImage", e.target.value)
-                    }
-                    placeholder="https://..."
-                  />
-                </div>
+                <ImageField
+                  label="Background Image"
+                  value={settings.minimalBgImage || ""}
+                  onChange={(v) => updateField("minimalBgImage", v)}
+                  blurPx={settings.minimalBlurStrength || 0}
+                />
                 <div className="admin-form__group">
                   <label className="admin-form__label">
                     Blur Strength ({settings.minimalBlurStrength || 0}px)

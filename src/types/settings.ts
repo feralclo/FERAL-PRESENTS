@@ -33,7 +33,10 @@ export interface EventSettings {
   // Lineup
   lineup?: string[];
 
-  // Cover image (non-minimal theme)
+  // Images
+  heroImage?: string;   // Banner image (URL or base64)
+  teeFront?: string;    // Tee front view (URL or base64)
+  teeBack?: string;     // Tee back view (URL or base64)
   coverImage?: string;
 
   // Any additional dynamic fields

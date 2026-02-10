@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Header } from "@/components/layout/Header";
 import { WeeZTixEmbed } from "./WeeZTixEmbed";
 import { CheckoutTimer } from "./CheckoutTimer";
 import { LoadingScreen } from "./LoadingScreen";
@@ -58,7 +57,12 @@ export function CheckoutPage({ slug }: CheckoutPageProps) {
   const { push } = useDataLayer();
   useTraffic();
 
-  const [loading, setLoading] = useState(true);
+  // Loading state — controlled by WeeZTix progress callbacks
+  const [loadingHidden, setLoadingHidden] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("Preparing your tickets");
+  const [loadingDetail, setLoadingDetail] = useState("Connecting to checkout\u2026");
+  const [loadingProgress, setLoadingProgress] = useState(10);
+  const [timerActive, setTimerActive] = useState(false);
 
   // Parse cart items from URL
   const cartItems = useMemo(() => {
@@ -89,63 +93,87 @@ export function CheckoutPage({ slug }: CheckoutPageProps) {
     });
   }, [cartItems, push]);
 
+  // WeeZTix progress callback
+  const handleProgress = useCallback((pct: number, detail: string) => {
+    setLoadingProgress(pct);
+    setLoadingDetail(detail);
+    if (pct >= 60) {
+      setLoadingStatus("Securing your tickets");
+    }
+    if (pct >= 100) {
+      setLoadingStatus("All set");
+    }
+  }, []);
+
+  // WeeZTix ready callback — hide loading, start timer
+  const handleReady = useCallback(() => {
+    setLoadingHidden(true);
+    setTimerActive(true);
+  }, []);
+
   return (
     <>
-      <header className="header" id="header">
-        <div className="announcement-banner">
-          <span className="announcement-banner__shield">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
-                fill="#fff"
-              />
-              <path
-                d="M10 15.5l-3.5-3.5 1.41-1.41L10 12.67l5.59-5.59L17 8.5l-7 7z"
-                fill="#ff0033"
-              />
-            </svg>
-          </span>
-          <span className="announcement-banner__verified">
-            Official FERAL ticket store
-          </span>
+      {/* Loading Screen — full-screen overlay, hides when WeeZTix is ready */}
+      <LoadingScreen
+        hidden={loadingHidden}
+        status={loadingStatus}
+        detail={loadingDetail}
+        progress={loadingProgress}
+      />
+
+      {/* Checkout Header — matches original checkout/index.html exactly */}
+      <div className="checkout-header">
+        <a href={`/event/${slug}/`} className="checkout-header__back">
+          <span className="checkout-header__back-arrow">&larr;</span>
+          <span>Back</span>
+        </a>
+        <a href={`/event/${slug}/`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/FERAL%20LOGO.svg"
+            alt="FERAL PRESENTS"
+            className="checkout-header__logo"
+          />
+        </a>
+        <div className="checkout-header__secure">
+          <svg
+            className="checkout-header__lock"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="5"
+              y="11"
+              width="14"
+              height="10"
+              rx="2"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+            <path
+              d="M8 11V7a4 4 0 018 0v4"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+          <span>Secure Checkout</span>
         </div>
-        <Header />
-      </header>
+      </div>
 
-      <main className="checkout-page" style={{ paddingTop: "100px" }}>
-        <div className="container">
-          <div className="checkout-layout">
-            <div className="checkout-layout__main">
-              <h1
-                className="checkout-heading"
-                style={{
-                  fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
-                  fontSize: "1.5rem",
-                  letterSpacing: "2px",
-                  color: "#fff",
-                  marginBottom: "1rem",
-                }}
-              >
-                CHECKOUT
-              </h1>
+      {/* Timer — starts when loading screen hides */}
+      <CheckoutTimer active={timerActive} />
 
-              <CheckoutTimer />
-              <OrderSummary items={cartItems} />
+      {/* Order Summary */}
+      <OrderSummary items={cartItems} />
 
-              {loading && <LoadingScreen />}
-
-              <WeeZTixEmbed
-                cartItems={cartItems}
-                onReady={() => setLoading(false)}
-              />
-            </div>
-          </div>
-        </div>
-      </main>
+      {/* WeeZTix Embed Container */}
+      <WeeZTixEmbed
+        cartItems={cartItems}
+        onProgress={handleProgress}
+        onReady={handleReady}
+      />
 
       <DiscountPopup mobileDelay={6000} desktopDelay={12000} />
 

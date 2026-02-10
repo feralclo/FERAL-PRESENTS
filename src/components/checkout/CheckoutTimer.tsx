@@ -1,17 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const TOTAL_SECONDS = 482; // 8:02
 
+interface CheckoutTimerProps {
+  /** Timer only starts counting down when this is true */
+  active: boolean;
+}
+
 /**
  * 8-minute checkout countdown timer.
- * Shows urgency and matches existing checkout timer behavior.
+ * Matches checkout/index.html lines 622-628 + JS lines 797-833 exactly.
+ * Uses CSS classes from checkout-page.css — NO inline styles.
  */
-export function CheckoutTimer() {
+export function CheckoutTimer({ active }: CheckoutTimerProps) {
   const [remaining, setRemaining] = useState(TOTAL_SECONDS);
+  const [started, setStarted] = useState(false);
+
+  // Start timer when active prop becomes true
+  useEffect(() => {
+    if (!active || started) return;
+    setStarted(true);
+  }, [active, started]);
 
   useEffect(() => {
+    if (!started) return;
+
     const interval = setInterval(() => {
       setRemaining((prev) => {
         if (prev <= 0) {
@@ -22,70 +37,34 @@ export function CheckoutTimer() {
       });
     }, 1000);
     return () => clearInterval(interval);
+  }, [started]);
+
+  const formatTime = useCallback((s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec;
   }, []);
 
-  const minutes = Math.floor(remaining / 60);
-  const seconds = remaining % 60;
-  const progress = remaining / TOTAL_SECONDS;
-  const isUrgent = remaining <= 120;
+  const isUrgent = remaining <= 120 && remaining > 0;
+  const isExpired = remaining <= 0 && started;
+  const fillWidth = started ? (remaining / TOTAL_SECONDS) * 100 : 100;
+
+  const timerClasses = [
+    "checkout-timer",
+    isUrgent ? "checkout-timer--urgent" : "",
+    isExpired ? "checkout-timer--expired" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div
-      className={`checkout-timer ${isUrgent ? "checkout-timer--urgent" : ""}`}
-      style={{
-        background: "#1a1a1a",
-        borderRadius: "8px",
-        padding: "16px",
-        marginBottom: "1rem",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "8px",
-        }}
-      >
-        <span
-          style={{
-            color: isUrgent ? "#ff0033" : "#888",
-            fontSize: "0.75rem",
-            letterSpacing: "1px",
-            fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
-          }}
-        >
-          TICKETS RESERVED FOR
-        </span>
-        <span
-          style={{
-            color: isUrgent ? "#ff0033" : "#fff",
-            fontSize: "1.2rem",
-            fontWeight: 700,
-            fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
-          }}
-        >
-          {minutes}:{seconds.toString().padStart(2, "0")}
-        </span>
-      </div>
-      <div
-        style={{
-          width: "100%",
-          height: "3px",
-          background: "#2a2a2a",
-          borderRadius: "2px",
-          overflow: "hidden",
-        }}
-      >
+    <div className={timerClasses} id="checkoutTimer">
+      <span className="checkout-timer__label">Reservation expires</span>
+      <span className="checkout-timer__time">{formatTime(remaining)}</span>
+      <div className="checkout-timer__bar">
         <div
-          style={{
-            width: `${progress * 100}%`,
-            height: "100%",
-            background: isUrgent ? "#ff0033" : "#ff0033",
-            borderRadius: "2px",
-            transition: "width 1s linear",
-            boxShadow: isUrgent ? "0 0 8px rgba(255,0,51,0.5)" : "none",
-          }}
+          className="checkout-timer__fill"
+          style={{ width: `${fillWidth}%` }}
         />
       </div>
     </div>

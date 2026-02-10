@@ -52,8 +52,7 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
       {/* Tee Modal */}
       {isOpen && (
         <div
-          className="tee-modal-overlay"
-          style={{ display: "flex" }}
+          className="tee-modal-overlay tee-modal-overlay--visible"
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}

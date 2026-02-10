@@ -222,8 +222,7 @@ export function TicketWidget({ eventSlug, onViewTee }: TicketWidgetProps) {
       {/* Size Popup */}
       {sizePopupOpen && (
         <div
-          className="size-popup-overlay"
-          style={{ display: "flex" }}
+          className="size-popup-overlay size-popup-overlay--visible"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSizePopupOpen(false);
           }}

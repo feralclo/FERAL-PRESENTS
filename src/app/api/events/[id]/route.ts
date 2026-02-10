@@ -132,6 +132,7 @@ export async function PUT(
     // Bust Next.js page cache so public event pages reflect changes immediately
     if (data?.slug) {
       revalidatePath(`/event/${data.slug}`);
+      revalidatePath(`/event/${data.slug}/tickets`);
       revalidatePath(`/event/${data.slug}/checkout`);
     }
     revalidatePath("/admin/events");

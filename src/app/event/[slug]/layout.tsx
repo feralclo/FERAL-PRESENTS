@@ -4,6 +4,9 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { SettingsProvider } from "@/hooks/useSettings";
 import type { ReactNode } from "react";
 
+/** Always fetch fresh data — admin changes must appear immediately */
+export const dynamic = "force-dynamic";
+
 /** Map URL slugs to settings keys (fallback for events not in DB) */
 const SLUG_TO_SETTINGS_KEY: Record<string, string> = {
   "liverpool-27-march": SETTINGS_KEYS.LIVERPOOL,

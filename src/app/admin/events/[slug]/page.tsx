@@ -541,7 +541,37 @@ export default function EventEditorPage() {
     setSaveMsg("");
 
     try {
-      // Save event + ticket types via API
+      // STEP 1: Save site_settings FIRST — so when revalidatePath fires
+      // in step 2, the public page regenerates with up-to-date settings.
+      {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          const key =
+            SLUG_TO_KEY[slug] ||
+            event.settings_key ||
+            `feral_event_${event.slug}`;
+
+          const dataToSave = event.payment_method === "weeztix"
+            ? settings
+            : {
+                theme: event.theme || "default",
+                minimalBlurStrength: settings.minimalBlurStrength ?? 4,
+                minimalStaticStrength: settings.minimalStaticStrength ?? 5,
+                minimalBgEnabled: !!(event.hero_image || event.cover_image),
+              };
+
+          await supabase.from(TABLES.SITE_SETTINGS).upsert(
+            {
+              key,
+              data: dataToSave,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "key" }
+          );
+        }
+      }
+
+      // STEP 2: Save event + ticket types via API (calls revalidatePath on server)
       const res = await fetch(`/api/events/${event.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -608,38 +638,6 @@ export default function EventEditorPage() {
         }
       } else {
         setSaveMsg(`Error: ${json.error}`);
-      }
-
-      // Save site_settings: WeeZTix events save all settings,
-      // native events always save theme + effects (so layout.tsx reads correct values)
-      {
-        const supabase = getSupabaseClient();
-        if (supabase) {
-          const key =
-            SLUG_TO_KEY[slug] ||
-            event.settings_key ||
-            `feral_event_${event.slug}`;
-
-          // For native events, save theme + blur/static settings
-          // For WeeZTix, save full settings object
-          const dataToSave = event.payment_method === "weeztix"
-            ? settings
-            : {
-                theme: event.theme || "default",
-                minimalBlurStrength: settings.minimalBlurStrength ?? 4,
-                minimalStaticStrength: settings.minimalStaticStrength ?? 5,
-                minimalBgEnabled: !!(event.hero_image || event.cover_image),
-              };
-
-          await supabase.from(TABLES.SITE_SETTINGS).upsert(
-            {
-              key,
-              data: dataToSave,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "key" }
-          );
-        }
       }
     } catch {
       setSaveMsg("Network error");
@@ -712,10 +710,15 @@ export default function EventEditorPage() {
         </div>
         <div className="admin-editor-header__actions">
           <a
-            href={`/event/${event.slug}/`}
+            href={`/event/${event.slug}/?preview=${Date.now()}`}
             target="_blank"
             rel="noopener noreferrer"
             className="admin-btn admin-btn--secondary"
+            onClick={(e) => {
+              // Use current timestamp to bust any browser cache
+              e.preventDefault();
+              window.open(`/event/${event.slug}/?t=${Date.now()}`, "_blank");
+            }}
           >
             Preview
           </a>

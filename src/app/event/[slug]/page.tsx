@@ -5,16 +5,10 @@ import { DynamicEventPage } from "@/components/event/DynamicEventPage";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
-/** Allow on-demand revalidation — pages are regenerated when admin saves changes */
-export const dynamicParams = true;
-
-/** Pre-render known event pages at build time for instant navigation */
-export function generateStaticParams() {
-  return [
-    { slug: "liverpool-27-march" },
-    { slug: "kompass-klub-7-march" },
-  ];
-}
+/** Force dynamic rendering — every request fetches fresh data from Supabase.
+ *  This ensures admin changes (lineup, images, theme, etc.) appear immediately
+ *  without needing to refresh multiple times or wait for ISR revalidation. */
+export const dynamic = "force-dynamic";
 
 // Hardcoded metadata for WeeZTix events
 const EVENT_META: Record<

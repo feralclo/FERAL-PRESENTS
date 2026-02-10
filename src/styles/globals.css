@@ -5048,8 +5048,6 @@ body.cookie-banner-active .bottom-bar {
 
 .theme-minimal.has-cover-image .event-hero {
   position: relative;
-  padding: 60px 0 60px;
-  min-height: 320px;
 }
 
 .theme-minimal.has-cover-image .event-hero__content {
@@ -5245,11 +5243,6 @@ body.cookie-banner-active .bottom-bar {
 @media (max-width: 768px) {
   .theme-minimal .event-hero {
     padding: 16px 0 14px;
-  }
-
-  .theme-minimal.has-cover-image .event-hero {
-    padding: 40px 0 40px;
-    min-height: 240px;
   }
 
   .theme-minimal .event-hero__title {

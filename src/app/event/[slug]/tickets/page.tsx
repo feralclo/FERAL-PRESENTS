@@ -4,13 +4,8 @@ import { TicketsPage } from "@/components/event/TicketsPage";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
-/** Pre-render known event pages at build time for instant navigation */
-export function generateStaticParams() {
-  return [
-    { slug: "liverpool-27-march" },
-    { slug: "kompass-klub-7-march" },
-  ];
-}
+/** Always fetch fresh data — admin changes must appear immediately */
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Get Tickets — FERAL",

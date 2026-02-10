@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { LiverpoolEventPage } from "@/components/event/LiverpoolEventPage";
 import { KompassEventPage } from "@/components/event/KompassEventPage";
+import { DynamicEventPage } from "@/components/event/DynamicEventPage";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { TABLES, ORG_ID } from "@/lib/constants";
 
 /** Pre-render known event pages at build time for instant navigation */
 export function generateStaticParams() {
@@ -10,7 +13,7 @@ export function generateStaticParams() {
   ];
 }
 
-// Event metadata by slug
+// Hardcoded metadata for WeeZTix events
 const EVENT_META: Record<
   string,
   { title: string; description: string; image: string; url: string }
@@ -32,14 +35,66 @@ const EVENT_META: Record<
   },
 };
 
+/** Fetch event from DB if it exists and is non-WeeZTix */
+async function getDynamicEvent(slug: string) {
+  try {
+    const supabase = await getSupabaseServer();
+    if (!supabase) return null;
+
+    const { data } = await supabase
+      .from(TABLES.EVENTS)
+      .select("*, ticket_types(*)")
+      .eq("slug", slug)
+      .eq("org_id", ORG_ID)
+      .single();
+
+    if (data && data.payment_method !== "weeztix") {
+      return data;
+    }
+  } catch {
+    // Fall through
+  }
+  return null;
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const meta = EVENT_META[slug];
 
+  // Check for dynamic event first
+  const dynamicEvent = await getDynamicEvent(slug);
+  if (dynamicEvent) {
+    const title = `FERAL — ${dynamicEvent.name}`;
+    const description =
+      dynamicEvent.description || dynamicEvent.about_text || `Get tickets for ${dynamicEvent.name}`;
+    return {
+      title,
+      description,
+      openGraph: {
+        type: "website",
+        title,
+        description,
+        ...(dynamicEvent.cover_image
+          ? { images: [{ url: dynamicEvent.cover_image }] }
+          : {}),
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        ...(dynamicEvent.cover_image
+          ? { images: [dynamicEvent.cover_image] }
+          : {}),
+      },
+      keywords: ["techno events", "rave", "FERAL", "tickets"],
+    };
+  }
+
+  // Fallback to hardcoded metadata
+  const meta = EVENT_META[slug];
   if (!meta) {
     return { title: "FERAL PRESENTS — Event" };
   }
@@ -79,10 +134,17 @@ export default async function EventPage({
 }) {
   const { slug } = await params;
 
+  // Check for dynamic event (test/stripe) — render from DB
+  const dynamicEvent = await getDynamicEvent(slug);
+  if (dynamicEvent) {
+    return <DynamicEventPage event={dynamicEvent} />;
+  }
+
+  // WeeZTix events: use hardcoded components
   if (slug === "kompass-klub-7-march") {
     return <KompassEventPage />;
   }
 
-  // Default: Liverpool-style event page with ticket widget
+  // Default: Liverpool-style event page
   return <LiverpoolEventPage slug={slug} />;
 }

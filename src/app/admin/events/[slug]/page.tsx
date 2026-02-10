@@ -357,6 +357,11 @@ export default function EventEditorPage() {
           hero_image: event.hero_image || null,
           theme: event.theme || "default",
           currency: event.currency,
+          about_text: event.about_text || null,
+          lineup: event.lineup && event.lineup.length > 0 ? event.lineup : null,
+          details_text: event.details_text || null,
+          tag_line: event.tag_line || null,
+          doors_time: event.doors_time || null,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),
             name: tt.name,
@@ -372,6 +377,7 @@ export default function EventEditorPage() {
             max_per_order: tt.max_per_order,
             sale_start: tt.sale_start || null,
             sale_end: tt.sale_end || null,
+            tier: tt.tier || "standard",
           })),
           deleted_ticket_type_ids: deletedTypeIds,
         }),
@@ -550,6 +556,109 @@ export default function EventEditorPage() {
           </div>
         </div>
       </div>
+
+      {/* ─── Section: Page Content (native checkout only) ─── */}
+      {isNativeCheckout && (
+        <div className="admin-section">
+          <h2 className="admin-section__title">Page Content</h2>
+          <p style={{ color: "#888", fontSize: "0.8rem", marginBottom: 16 }}>
+            This content appears on the public event page.
+          </p>
+          <div className="admin-form">
+            <div className="admin-form__row">
+              <div className="admin-form__field">
+                <label className="admin-form__label">Tag Line</label>
+                <input
+                  type="text"
+                  className="admin-form__input"
+                  value={event.tag_line || ""}
+                  onChange={(e) => updateEvent("tag_line", e.target.value)}
+                  placeholder="e.g. SECOND RELEASE NOW ACTIVE"
+                />
+                <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}>
+                  Shown on the hero banner
+                </span>
+              </div>
+              <div className="admin-form__field">
+                <label className="admin-form__label">Doors Time</label>
+                <input
+                  type="text"
+                  className="admin-form__input"
+                  value={event.doors_time || ""}
+                  onChange={(e) => updateEvent("doors_time", e.target.value)}
+                  placeholder="e.g. 9:30PM — 4:00AM"
+                />
+                <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}>
+                  Display format for event page hero
+                </span>
+              </div>
+            </div>
+
+            <div className="admin-form__field">
+              <label className="admin-form__label">About</label>
+              <textarea
+                className="admin-form__input admin-form__textarea"
+                value={event.about_text || ""}
+                onChange={(e) => updateEvent("about_text", e.target.value)}
+                placeholder="Describe the event..."
+                rows={4}
+              />
+            </div>
+
+            <div className="admin-form__field">
+              <label className="admin-form__label">Lineup</label>
+              <input
+                type="text"
+                className="admin-form__input"
+                value={(event.lineup || []).join(", ")}
+                onChange={(e) =>
+                  updateEvent(
+                    "lineup",
+                    e.target.value
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                  )
+                }
+                placeholder="Artist 1, Artist 2, Artist 3"
+              />
+              <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}>
+                Comma-separated list of artist names
+              </span>
+              {(event.lineup || []).length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                  {(event.lineup || []).map((artist, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        background: "#1a1a1a",
+                        border: "1px solid #333",
+                        padding: "4px 10px",
+                        fontSize: "0.75rem",
+                        fontFamily: "'Space Mono', monospace",
+                        color: "#fff",
+                      }}
+                    >
+                      {artist}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="admin-form__field">
+              <label className="admin-form__label">Details</label>
+              <textarea
+                className="admin-form__input admin-form__textarea"
+                value={event.details_text || ""}
+                onChange={(e) => updateEvent("details_text", e.target.value)}
+                placeholder="Entry requirements, age policy, venue info..."
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Section: Status & Settings ─── */}
       <div className="admin-section">
@@ -881,6 +990,54 @@ export default function EventEditorPage() {
                         }
                         placeholder="Brief description of this ticket tier"
                       />
+                    </div>
+
+                    <div className="admin-form__field">
+                      <label className="admin-form__label">Ticket Design Tier</label>
+                      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                        {(["standard", "platinum", "black"] as const).map((tier) => (
+                          <button
+                            key={tier}
+                            type="button"
+                            onClick={() => updateTicketType(i, "tier", tier)}
+                            style={{
+                              flex: 1,
+                              padding: "10px 8px",
+                              border: (tt.tier || "standard") === tier
+                                ? tier === "black"
+                                  ? "2px solid rgba(255,255,255,0.5)"
+                                  : tier === "platinum"
+                                    ? "2px solid #e5e4e2"
+                                    : "2px solid #ff0033"
+                                : "1px solid #333",
+                              background: tier === "black"
+                                ? "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)"
+                                : tier === "platinum"
+                                  ? "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)"
+                                  : "#111",
+                              color: tier === "platinum" ? "#e5e4e2" : "#fff",
+                              fontSize: "0.7rem",
+                              fontFamily: "'Space Mono', monospace",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              cursor: "pointer",
+                              textAlign: "center",
+                            }}
+                          >
+                            {tier}
+                            {tier === "platinum" && (
+                              <span style={{ display: "block", fontSize: "0.55rem", color: "#c0c0c0", marginTop: 2 }}>
+                                Silver/VIP style
+                              </span>
+                            )}
+                            {tier === "black" && (
+                              <span style={{ display: "block", fontSize: "0.55rem", color: "#666", marginTop: 2 }}>
+                                Dark/Gold VIP style
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="admin-form__row">

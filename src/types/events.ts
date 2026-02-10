@@ -25,6 +25,11 @@ export interface Event {
   theme?: string;
   settings_key?: string;
   currency: string;
+  about_text?: string;
+  lineup?: string[];
+  details_text?: string;
+  tag_line?: string;
+  doors_time?: string;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +52,7 @@ export interface TicketTypeRow {
   sale_end?: string;
   min_per_order: number;
   max_per_order: number;
+  tier?: "standard" | "platinum" | "black";
   created_at: string;
   updated_at: string;
 }

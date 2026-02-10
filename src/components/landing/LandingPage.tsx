@@ -9,12 +9,14 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 
 export function LandingPage() {
   const { push } = useDataLayer();
 
   // Activate scroll reveal for [data-reveal] elements (Events, Contact sections)
   useScrollReveal();
+  const headerHidden = useHeaderScroll();
 
   // Track view_content on mount (matches existing inline script)
   useEffect(() => {
@@ -44,7 +46,7 @@ export function LandingPage() {
   return (
     <>
       {/* Navigation */}
-      <header className="header" id="header">
+      <header className={`header${headerHidden ? " header--hidden" : ""}`} id="header">
         <div className="announcement-banner">
           <span className="announcement-banner__shield">
             <svg

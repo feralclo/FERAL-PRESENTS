@@ -11,6 +11,7 @@ import { EngagementTracker } from "./EngagementTracker";
 import { useSettings } from "@/hooks/useSettings";
 import { useTicketCart } from "@/hooks/useTicketCart";
 import { useDataLayer } from "@/hooks/useDataLayer";
+import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import type { TeeSize } from "@/types/tickets";
 
 interface LiverpoolEventPageProps {
@@ -22,6 +23,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
   const cart = useTicketCart(settings);
   const { push } = useDataLayer();
   const [teeModalOpen, setTeeModalOpen] = useState(false);
+  const headerHidden = useHeaderScroll();
 
   // Track view_content on mount
   useEffect(() => {
@@ -60,7 +62,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
   return (
     <>
       {/* Navigation */}
-      <header className="header" id="header">
+      <header className={`header${headerHidden ? " header--hidden" : ""}`} id="header">
         <div className="announcement-banner">
           <span className="announcement-banner__shield">
             <svg

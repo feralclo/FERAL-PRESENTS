@@ -55,8 +55,8 @@ export async function PUT(
       );
     }
 
-    // Separate ticket_types from event fields
-    const { ticket_types, ...eventFields } = body;
+    // Separate ticket_types and deleted IDs from event fields
+    const { ticket_types, deleted_ticket_type_ids, ...eventFields } = body;
 
     // Update event
     const { error: eventError } = await supabase
@@ -70,6 +70,17 @@ export async function PUT(
         { error: eventError.message },
         { status: 500 }
       );
+    }
+
+    // Delete removed ticket types
+    if (deleted_ticket_type_ids && Array.isArray(deleted_ticket_type_ids)) {
+      for (const ttId of deleted_ticket_type_ids) {
+        await supabase
+          .from(TABLES.TICKET_TYPES)
+          .delete()
+          .eq("id", ttId)
+          .eq("org_id", ORG_ID);
+      }
     }
 
     // Update ticket types if provided

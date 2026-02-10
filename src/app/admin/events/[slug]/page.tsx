@@ -2,16 +2,47 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, ORG_ID, SETTINGS_KEYS } from "@/lib/constants";
+import type { Event, TicketTypeRow } from "@/types/events";
 import type { EventSettings } from "@/types/settings";
+
+/* ── Helpers ── */
+
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function fromDatetimeLocal(val: string): string | null {
+  if (!val) return null;
+  return new Date(val).toISOString();
+}
 
 const SLUG_TO_KEY: Record<string, string> = {
   "liverpool-27-march": SETTINGS_KEYS.LIVERPOOL,
   "kompass-klub-7-march": SETTINGS_KEYS.KOMPASS,
 };
 
-/* ── Image compression (matches original admin/index.html:2274-2315) ── */
+const STATUS_COLORS: Record<string, string> = {
+  draft: "#ffc107",
+  live: "#4ecb71",
+  past: "#888",
+  cancelled: "#ff0033",
+};
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  GBP: "\u00a3",
+  EUR: "\u20ac",
+  USD: "$",
+};
+
+/* ── Image compression (reused from original admin) ── */
+
 function compressImage(
   file: File,
   maxWidth: number,
@@ -63,25 +94,6 @@ async function processImageFile(file: File): Promise<string | null> {
 }
 
 /* ── ImageField component ── */
-const LABEL_STYLE: React.CSSProperties = {
-  display: "block",
-  fontSize: 11,
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: 1,
-  color: "#888",
-  marginBottom: 6,
-  fontFamily: "'Space Mono', monospace",
-};
-
-const DROP_ZONE_BASE: React.CSSProperties = {
-  border: "2px dashed #333",
-  padding: 20,
-  textAlign: "center",
-  cursor: "pointer",
-  transition: "border-color 0.15s",
-  marginBottom: 8,
-};
 
 function ImageField({
   label,
@@ -111,9 +123,8 @@ function ImageField({
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={LABEL_STYLE}>{label}</label>
+      <label className="admin-form__label">{label}</label>
 
-      {/* Preview */}
       {value && (
         <div style={{ marginBottom: 12 }}>
           <div style={{ position: "relative", display: "inline-block" }}>
@@ -148,17 +159,12 @@ function ImageField({
           </div>
           <button
             onClick={() => onChange("")}
+            className="admin-btn admin-btn--danger"
             style={{
               display: "block",
               marginTop: 8,
-              background: "transparent",
-              border: "1px solid #ff0033",
-              color: "#ff0033",
-              fontSize: 10,
+              fontSize: "0.65rem",
               padding: "6px 12px",
-              cursor: "pointer",
-              fontFamily: "'Space Mono', monospace",
-              letterSpacing: 1,
             }}
           >
             Remove Image
@@ -166,11 +172,14 @@ function ImageField({
         </div>
       )}
 
-      {/* Drop zone */}
       <div
         style={{
-          ...DROP_ZONE_BASE,
-          borderColor: dragging ? "#ff0033" : "#333",
+          border: `2px dashed ${dragging ? "#ff0033" : "#333"}`,
+          padding: 20,
+          textAlign: "center",
+          cursor: "pointer",
+          transition: "border-color 0.15s",
+          marginBottom: 8,
         }}
         onClick={() => fileRef.current?.click()}
         onDragOver={(e) => {
@@ -203,348 +212,1140 @@ function ImageField({
         />
       </div>
 
-      {/* URL input */}
       <input
         type="text"
+        className="admin-form__input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Or enter image URL"
-        style={{
-          width: "100%",
-          background: "#0e0e0e",
-          border: "1px solid #333",
-          color: "#ccc",
-          fontFamily: "'Space Mono', monospace",
-          fontSize: 11,
-          padding: 8,
-          boxSizing: "border-box",
-        }}
+        style={{ fontSize: "0.75rem" }}
       />
     </div>
   );
 }
 
 /* ── Main Event Editor ── */
-export default function EventEditor() {
+
+export default function EventEditorPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const settingsKey = SLUG_TO_KEY[slug] || `feral_event_${slug}`;
 
+  const [event, setEvent] = useState<Event | null>(null);
+  const [ticketTypes, setTicketTypes] = useState<TicketTypeRow[]>([]);
+  const [deletedTypeIds, setDeletedTypeIds] = useState<string[]>([]);
   const [settings, setSettings] = useState<EventSettings>({});
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("");
-  const [loadStatus, setLoadStatus] = useState("Loading settings\u2026");
+  const [saveMsg, setSaveMsg] = useState("");
+  const [notFound, setNotFound] = useState(false);
 
-  // Load current settings
+  // Load event by slug
   useEffect(() => {
     async function load() {
       const supabase = getSupabaseClient();
-      if (!supabase) {
-        setLoadStatus("Database not configured — using defaults");
-        return;
-      }
+      if (!supabase) return;
 
-      const { data, error } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", settingsKey)
+      const { data } = await supabase
+        .from(TABLES.EVENTS)
+        .select("*, ticket_types(*)")
+        .eq("org_id", ORG_ID)
+        .eq("slug", slug)
         .single();
 
-      if (error) {
-        if (error.code === "PGRST116") {
-          setLoadStatus("No saved settings yet — using defaults");
-        } else {
-          setLoadStatus(`Load error: ${error.message}`);
-        }
+      if (!data) {
+        setNotFound(true);
+        setLoading(false);
         return;
       }
 
-      if (data?.data) {
-        setSettings(data.data as EventSettings);
-        setLoadStatus("Settings loaded from database");
-      } else {
-        setLoadStatus("No saved settings yet — using defaults");
+      setEvent(data as Event);
+      const types = (data.ticket_types || []) as TicketTypeRow[];
+      setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
+
+      // Load site_settings for weeztix events
+      if (data.payment_method === "weeztix") {
+        const key =
+          SLUG_TO_KEY[slug] || data.settings_key || `feral_event_${slug}`;
+        const { data: sd } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", key)
+          .single();
+        if (sd?.data) setSettings(sd.data as EventSettings);
       }
+
+      setLoading(false);
     }
     load();
-  }, [settingsKey]);
+  }, [slug]);
 
-  const updateField = useCallback(
-    (field: string, value: string | number | boolean) => {
-      setSettings((prev) => ({ ...prev, [field]: value }));
+  const updateEvent = useCallback((field: string, value: unknown) => {
+    setEvent((prev) => (prev ? { ...prev, [field]: value } : prev));
+  }, []);
+
+  const updateSetting = useCallback((field: string, value: unknown) => {
+    setSettings((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const updateTicketType = useCallback(
+    (index: number, field: string, value: unknown) => {
+      setTicketTypes((prev) =>
+        prev.map((tt, i) => (i === index ? { ...tt, [field]: value } : tt))
+      );
     },
     []
   );
 
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    setSaveStatus("");
-
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      setSaveStatus("Error: Database not connected");
-      setSaving(false);
-      return;
-    }
-
-    const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(
+  const addTicketType = useCallback(() => {
+    setTicketTypes((prev) => [
+      ...prev,
       {
-        key: settingsKey,
-        data: settings,
+        id: "",
+        org_id: ORG_ID,
+        event_id: event?.id || "",
+        name: "",
+        description: "",
+        price: 0,
+        capacity: undefined,
+        sold: 0,
+        sort_order: prev.length,
+        includes_merch: false,
+        status: "active" as const,
+        min_per_order: 1,
+        max_per_order: 10,
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      },
-      { onConflict: "key" }
-    );
+      } as TicketTypeRow,
+    ]);
+  }, [event?.id]);
 
-    if (error) {
-      setSaveStatus(`Error: ${error.message}`);
-    } else {
-      setSaveStatus("Settings saved successfully");
-      try {
-        localStorage.setItem(settingsKey, JSON.stringify(settings));
-      } catch {
-        // localStorage may be unavailable
+  const removeTicketType = useCallback((index: number) => {
+    setTicketTypes((prev) => {
+      const tt = prev[index];
+      if (tt.id) setDeletedTypeIds((d) => [...d, tt.id]);
+      return prev.filter((_, i) => i !== index);
+    });
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!event) return;
+    setSaving(true);
+    setSaveMsg("");
+
+    try {
+      // Save event + ticket types via API
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: event.name,
+          slug: event.slug,
+          description: event.description || null,
+          venue_name: event.venue_name || null,
+          venue_address: event.venue_address || null,
+          city: event.city || null,
+          country: event.country || null,
+          date_start: event.date_start,
+          date_end: event.date_end || null,
+          doors_open: event.doors_open || null,
+          age_restriction: event.age_restriction || null,
+          status: event.status,
+          visibility: event.visibility,
+          payment_method: event.payment_method,
+          capacity: event.capacity || null,
+          cover_image: event.cover_image || null,
+          hero_image: event.hero_image || null,
+          theme: event.theme || "default",
+          currency: event.currency,
+          ticket_types: ticketTypes.map((tt) => ({
+            ...(tt.id ? { id: tt.id } : {}),
+            name: tt.name,
+            description: tt.description || null,
+            price: Number(tt.price),
+            capacity: tt.capacity ? Number(tt.capacity) : null,
+            status: tt.status,
+            sort_order: tt.sort_order,
+            includes_merch: tt.includes_merch,
+            merch_type: tt.merch_type || null,
+            merch_sizes: tt.merch_sizes || null,
+            min_per_order: tt.min_per_order,
+            max_per_order: tt.max_per_order,
+            sale_start: tt.sale_start || null,
+            sale_end: tt.sale_end || null,
+          })),
+          deleted_ticket_type_ids: deletedTypeIds,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        setEvent(json.data);
+        const types = (json.data.ticket_types || []) as TicketTypeRow[];
+        setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
+        setDeletedTypeIds([]);
+        setSaveMsg("Saved successfully");
+      } else {
+        setSaveMsg(`Error: ${json.error}`);
       }
+
+      // Also save site_settings for weeztix events
+      if (event.payment_method === "weeztix") {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          const key =
+            SLUG_TO_KEY[slug] ||
+            event.settings_key ||
+            `feral_event_${event.slug}`;
+          await supabase.from(TABLES.SITE_SETTINGS).upsert(
+            {
+              key,
+              data: settings,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "key" }
+          );
+        }
+      }
+    } catch {
+      setSaveMsg("Network error");
     }
 
     setSaving(false);
-    setTimeout(() => setSaveStatus(""), 3000);
-  }, [settingsKey, settings]);
+    setTimeout(() => setSaveMsg(""), 4000);
+  }, [event, ticketTypes, deletedTypeIds, settings, slug]);
 
-  const isLiverpool = slug === "liverpool-27-march";
+  /* ── Render ── */
+
+  if (loading) return <div className="admin-loading">Loading event...</div>;
+
+  if (notFound || !event) {
+    return (
+      <div className="admin-empty">
+        <p>Event not found for slug: {slug}</p>
+        <Link
+          href="/admin/events/"
+          className="admin-link"
+          style={{
+            color: "#ff0033",
+            marginTop: 12,
+            display: "inline-block",
+          }}
+        >
+          Back to Events
+        </Link>
+      </div>
+    );
+  }
+
+  const isNativeCheckout = event.payment_method !== "weeztix";
+  const currSym = CURRENCY_SYMBOLS[event.currency] || event.currency;
 
   return (
     <div>
-      <h1 className="admin-section__title" style={{ marginBottom: "8px" }}>
-        EVENT EDITOR: {slug.toUpperCase().replace(/-/g, " ")}
-      </h1>
-      <div style={{ marginBottom: "24px", fontSize: "0.8rem", color: "#888", letterSpacing: "1px" }}>
-        {loadStatus}
+      {/* Back Link */}
+      <Link href="/admin/events/" className="admin-back-link">
+        &larr; Back to Events
+      </Link>
+
+      {/* Header */}
+      <div className="admin-editor-header">
+        <div className="admin-editor-header__left">
+          <h1 className="admin-title" style={{ marginBottom: 0 }}>
+            {event.name || "Untitled Event"}
+          </h1>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              marginTop: 8,
+            }}
+          >
+            <span
+              className="admin-badge"
+              style={{
+                background: `${STATUS_COLORS[event.status] || "#888"}22`,
+                color: STATUS_COLORS[event.status] || "#888",
+              }}
+            >
+              {event.status}
+            </span>
+            <span style={{ color: "#666", fontSize: "0.75rem" }}>
+              /event/{event.slug}/
+            </span>
+          </div>
+        </div>
+        <div className="admin-editor-header__actions">
+          <a
+            href={`/event/${event.slug}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="admin-btn admin-btn--secondary"
+          >
+            Preview
+          </a>
+          <button
+            className="admin-btn admin-btn--primary"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
       </div>
 
-      {/* Ticket IDs */}
-      {isLiverpool && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">TICKET IDS (WEEZTIX)</h2>
-          <div className="admin-form__group">
-            <label className="admin-form__label">General Release ID</label>
-            <input
-              className="admin-form__input"
-              value={settings.ticketId1 || ""}
-              onChange={(e) => updateField("ticketId1", e.target.value)}
-              placeholder="6b45169f-cf51-4600-8682-d6f79dcb59ae"
-            />
-          </div>
-          <div className="admin-form__group">
-            <label className="admin-form__label">VIP Ticket ID</label>
-            <input
-              className="admin-form__input"
-              value={settings.ticketId2 || ""}
-              onChange={(e) => updateField("ticketId2", e.target.value)}
-              placeholder="bb73bb64-ba1a-4a23-9a05-f2b57bca51cf"
-            />
-          </div>
-          <div className="admin-form__group">
-            <label className="admin-form__label">VIP Black + Tee ID</label>
-            <input
-              className="admin-form__input"
-              value={settings.ticketId3 || ""}
-              onChange={(e) => updateField("ticketId3", e.target.value)}
-              placeholder="53c5262b-93ba-412e-bb5c-84ebc445a734"
-            />
-          </div>
+      {/* Save Message */}
+      {saveMsg && (
+        <div
+          className={`admin-save-toast ${
+            saveMsg.includes("Error") || saveMsg.includes("error")
+              ? "admin-save-toast--error"
+              : "admin-save-toast--success"
+          }`}
+        >
+          {saveMsg}
         </div>
       )}
 
-      {/* Ticket Names */}
-      {isLiverpool && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">TICKET NAMES</h2>
-          <div className="admin-form__group">
-            <label className="admin-form__label">Ticket 1 Name</label>
-            <input
-              className="admin-form__input"
-              value={settings.ticketName1 || ""}
-              onChange={(e) => updateField("ticketName1", e.target.value)}
-              placeholder="General Release"
-            />
-          </div>
-          <div className="admin-form__group">
-            <label className="admin-form__label">Ticket 1 Subtitle</label>
-            <input
-              className="admin-form__input"
-              value={settings.ticketSubtitle1 || ""}
-              onChange={(e) => updateField("ticketSubtitle1", e.target.value)}
-              placeholder="Standard entry"
-            />
-          </div>
-          <div className="admin-form__group">
-            <label className="admin-form__label">Ticket 2 Name</label>
-            <input
-              className="admin-form__input"
-              value={settings.ticketName2 || ""}
-              onChange={(e) => updateField("ticketName2", e.target.value)}
-              placeholder="VIP Ticket"
-            />
-          </div>
-          <div className="admin-form__group">
-            <label className="admin-form__label">Ticket 3 Name</label>
-            <input
-              className="admin-form__input"
-              value={settings.ticketName3 || ""}
-              onChange={(e) => updateField("ticketName3", e.target.value)}
-              placeholder="VIP Black + Tee"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Size-Specific IDs */}
-      {isLiverpool && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">SIZE-SPECIFIC TEE IDS</h2>
-          {(["XS", "S", "M", "L", "XL", "XXL"] as const).map((size) => (
-            <div className="admin-form__group" key={size}>
-              <label className="admin-form__label">Size {size} ID</label>
+      {/* ─── Section: Event Details ─── */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">Event Details</h2>
+        <div className="admin-form">
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">Event Name *</label>
               <input
+                type="text"
                 className="admin-form__input"
-                value={(settings as Record<string, string>)[`sizeId${size}`] || ""}
-                onChange={(e) => updateField(`sizeId${size}`, e.target.value)}
-                placeholder={`WeeZTix ticket ID for size ${size}`}
+                value={event.name}
+                onChange={(e) => updateEvent("name", e.target.value)}
+                placeholder="e.g. FERAL Liverpool June"
               />
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Banner Image */}
-      {isLiverpool && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">BANNER IMAGE</h2>
-          <ImageField
-            label="Hero / Banner Image"
-            value={settings.heroImage || ""}
-            onChange={(v) => updateField("heroImage", v)}
-          />
-        </div>
-      )}
-
-      {/* Tee Images */}
-      {isLiverpool && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">EXCLUSIVE TEE IMAGES</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-            <ImageField
-              label="Front Image"
-              value={settings.teeFront || ""}
-              onChange={(v) => updateField("teeFront", v)}
-            />
-            <ImageField
-              label="Back Image"
-              value={settings.teeBack || ""}
-              onChange={(v) => updateField("teeBack", v)}
+            <div className="admin-form__field">
+              <label className="admin-form__label">URL Slug</label>
+              <input
+                type="text"
+                className="admin-form__input"
+                value={event.slug}
+                onChange={(e) => updateEvent("slug", e.target.value)}
+                placeholder="liverpool-june-2026"
+              />
+              <span
+                style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}
+              >
+                feralpresents.com/event/{event.slug}/
+              </span>
+            </div>
+          </div>
+          <div className="admin-form__field">
+            <label className="admin-form__label">Description</label>
+            <textarea
+              className="admin-form__input admin-form__textarea"
+              value={event.description || ""}
+              onChange={(e) => updateEvent("description", e.target.value)}
+              placeholder="Event description..."
+              rows={4}
             />
           </div>
         </div>
-      )}
-
-      {/* Theme Settings */}
-      <div className="admin-section">
-        <h2 className="admin-section__title">THEME</h2>
-        <div className="admin-form__group">
-          <label className="admin-form__label">Theme</label>
-          <select
-            className="admin-form__input"
-            value={settings.theme || "default"}
-            onChange={(e) => updateField("theme", e.target.value)}
-          >
-            <option value="default">Default</option>
-            <option value="minimal">Minimal</option>
-          </select>
-        </div>
-        {settings.theme === "minimal" && (
-          <>
-            <div className="admin-form__group">
-              <label className="admin-form__label">
-                <input
-                  type="checkbox"
-                  checked={settings.minimalBgEnabled || false}
-                  onChange={(e) =>
-                    updateField("minimalBgEnabled", e.target.checked)
-                  }
-                  style={{ marginRight: "8px" }}
-                />
-                Enable Background Image
-              </label>
-            </div>
-            {settings.minimalBgEnabled && (
-              <>
-                <ImageField
-                  label="Background Image"
-                  value={settings.minimalBgImage || ""}
-                  onChange={(v) => updateField("minimalBgImage", v)}
-                  blurPx={settings.minimalBlurStrength || 0}
-                />
-                <div className="admin-form__group">
-                  <label className="admin-form__label">
-                    Blur Strength ({settings.minimalBlurStrength || 0}px)
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="50"
-                    value={settings.minimalBlurStrength || 0}
-                    onChange={(e) =>
-                      updateField(
-                        "minimalBlurStrength",
-                        parseInt(e.target.value)
-                      )
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-                <div className="admin-form__group">
-                  <label className="admin-form__label">
-                    Static Strength (
-                    {settings.minimalStaticStrength || 50}%)
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={settings.minimalStaticStrength || 50}
-                    onChange={(e) =>
-                      updateField(
-                        "minimalStaticStrength",
-                        parseInt(e.target.value)
-                      )
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-              </>
-            )}
-          </>
-        )}
       </div>
 
-      {/* Save Button */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+      {/* ─── Section: Status & Settings ─── */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">Status & Settings</h2>
+        <div className="admin-form">
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">Status</label>
+              <select
+                className="admin-form__input"
+                value={event.status}
+                onChange={(e) => updateEvent("status", e.target.value)}
+              >
+                <option value="draft">Draft</option>
+                <option value="live">Live</option>
+                <option value="past">Past</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="admin-form__field">
+              <label className="admin-form__label">Visibility</label>
+              <select
+                className="admin-form__input"
+                value={event.visibility}
+                onChange={(e) => updateEvent("visibility", e.target.value)}
+              >
+                <option value="public">Public</option>
+                <option value="private">Private (Secret Link)</option>
+                <option value="unlisted">Unlisted</option>
+              </select>
+            </div>
+          </div>
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">Payment Method</label>
+              <select
+                className="admin-form__input"
+                value={event.payment_method}
+                onChange={(e) => updateEvent("payment_method", e.target.value)}
+              >
+                <option value="test">Test (Simulated)</option>
+                <option value="stripe">Stripe</option>
+                <option value="weeztix">WeeZTix (External)</option>
+              </select>
+            </div>
+            <div className="admin-form__field">
+              <label className="admin-form__label">Currency</label>
+              <select
+                className="admin-form__input"
+                value={event.currency}
+                onChange={(e) => updateEvent("currency", e.target.value)}
+              >
+                <option value="GBP">GBP ({"\u00a3"})</option>
+                <option value="EUR">EUR ({"\u20ac"})</option>
+                <option value="USD">USD ($)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Section: Date & Time ─── */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">Date & Time</h2>
+        <div className="admin-form">
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">Event Start *</label>
+              <input
+                type="datetime-local"
+                className="admin-form__input"
+                value={toDatetimeLocal(event.date_start)}
+                onChange={(e) =>
+                  updateEvent(
+                    "date_start",
+                    fromDatetimeLocal(e.target.value) || event.date_start
+                  )
+                }
+              />
+            </div>
+            <div className="admin-form__field">
+              <label className="admin-form__label">Event End</label>
+              <input
+                type="datetime-local"
+                className="admin-form__input"
+                value={toDatetimeLocal(event.date_end)}
+                onChange={(e) =>
+                  updateEvent("date_end", fromDatetimeLocal(e.target.value))
+                }
+              />
+            </div>
+          </div>
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">Doors Open</label>
+              <input
+                type="datetime-local"
+                className="admin-form__input"
+                value={toDatetimeLocal(event.doors_open)}
+                onChange={(e) =>
+                  updateEvent("doors_open", fromDatetimeLocal(e.target.value))
+                }
+              />
+            </div>
+            <div className="admin-form__field" />
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Section: Venue ─── */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">Venue</h2>
+        <div className="admin-form">
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">Venue Name</label>
+              <input
+                type="text"
+                className="admin-form__input"
+                value={event.venue_name || ""}
+                onChange={(e) => updateEvent("venue_name", e.target.value)}
+                placeholder="e.g. Invisible Wind Factory"
+              />
+            </div>
+            <div className="admin-form__field">
+              <label className="admin-form__label">Venue Address</label>
+              <input
+                type="text"
+                className="admin-form__input"
+                value={event.venue_address || ""}
+                onChange={(e) => updateEvent("venue_address", e.target.value)}
+                placeholder="e.g. 3 Regent Rd, Liverpool"
+              />
+            </div>
+          </div>
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">City</label>
+              <input
+                type="text"
+                className="admin-form__input"
+                value={event.city || ""}
+                onChange={(e) => updateEvent("city", e.target.value)}
+                placeholder="e.g. Liverpool"
+              />
+            </div>
+            <div className="admin-form__field">
+              <label className="admin-form__label">Country</label>
+              <input
+                type="text"
+                className="admin-form__input"
+                value={event.country || ""}
+                onChange={(e) => updateEvent("country", e.target.value)}
+                placeholder="e.g. UK"
+              />
+            </div>
+          </div>
+          <div className="admin-form__row">
+            <div className="admin-form__field">
+              <label className="admin-form__label">Capacity</label>
+              <input
+                type="number"
+                className="admin-form__input"
+                value={event.capacity ?? ""}
+                onChange={(e) =>
+                  updateEvent(
+                    "capacity",
+                    e.target.value ? Number(e.target.value) : null
+                  )
+                }
+                placeholder="e.g. 500"
+              />
+            </div>
+            <div className="admin-form__field">
+              <label className="admin-form__label">Age Restriction</label>
+              <input
+                type="text"
+                className="admin-form__input"
+                value={event.age_restriction || ""}
+                onChange={(e) =>
+                  updateEvent("age_restriction", e.target.value)
+                }
+                placeholder="e.g. 18+"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Section: Design ─── */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">Design</h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+          }}
+        >
+          <ImageField
+            label="Cover Image"
+            value={event.cover_image || ""}
+            onChange={(v) => updateEvent("cover_image", v)}
+          />
+          <ImageField
+            label="Hero / Banner Image"
+            value={event.hero_image || ""}
+            onChange={(v) => updateEvent("hero_image", v)}
+          />
+        </div>
+        <div className="admin-form" style={{ marginTop: 8 }}>
+          <div className="admin-form__field">
+            <label className="admin-form__label">Theme</label>
+            <select
+              className="admin-form__input"
+              value={event.theme || "default"}
+              onChange={(e) => updateEvent("theme", e.target.value)}
+            >
+              <option value="default">Default</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Section: Ticket Types (native checkout only) ─── */}
+      {isNativeCheckout && (
+        <div className="admin-section">
+          <div className="admin-section-header">
+            <h2 className="admin-section__title" style={{ marginBottom: 0 }}>
+              Ticket Types
+            </h2>
+            <button
+              className="admin-btn admin-btn--primary"
+              onClick={addTicketType}
+              style={{ fontSize: "0.7rem", padding: "8px 16px" }}
+            >
+              + Add Ticket Type
+            </button>
+          </div>
+
+          {ticketTypes.length === 0 ? (
+            <p
+              style={{
+                color: "#888",
+                fontSize: "0.85rem",
+                marginTop: 16,
+              }}
+            >
+              No ticket types yet. Add your first ticket type to start selling.
+            </p>
+          ) : (
+            <div className="admin-ticket-types">
+              {ticketTypes.map((tt, i) => (
+                <div key={tt.id || `new-${i}`} className="admin-ticket-card">
+                  <div className="admin-ticket-card__header">
+                    <span className="admin-ticket-card__number">
+                      Tier #{i + 1}
+                    </span>
+                    {tt.sold > 0 && (
+                      <span
+                        style={{
+                          color: "#4ecb71",
+                          fontSize: "0.7rem",
+                          fontFamily: "'Space Mono', monospace",
+                        }}
+                      >
+                        {tt.sold} sold
+                      </span>
+                    )}
+                    <button
+                      className="admin-btn-icon admin-btn-icon--danger"
+                      onClick={() => {
+                        if (tt.sold > 0) {
+                          if (
+                            !confirm(
+                              `This ticket type has ${tt.sold} sales. Are you sure you want to delete it?`
+                            )
+                          )
+                            return;
+                        }
+                        removeTicketType(i);
+                      }}
+                      title="Delete ticket type"
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+                  <div className="admin-form">
+                    <div className="admin-form__row">
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">Name *</label>
+                        <input
+                          type="text"
+                          className="admin-form__input"
+                          value={tt.name}
+                          onChange={(e) =>
+                            updateTicketType(i, "name", e.target.value)
+                          }
+                          placeholder="e.g. General Admission"
+                        />
+                      </div>
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">Status</label>
+                        <select
+                          className="admin-form__input"
+                          value={tt.status}
+                          onChange={(e) =>
+                            updateTicketType(i, "status", e.target.value)
+                          }
+                        >
+                          <option value="active">Active</option>
+                          <option value="hidden">Hidden</option>
+                          <option value="sold_out">Sold Out</option>
+                          <option value="archived">Archived</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="admin-form__field">
+                      <label className="admin-form__label">Description</label>
+                      <input
+                        type="text"
+                        className="admin-form__input"
+                        value={tt.description || ""}
+                        onChange={(e) =>
+                          updateTicketType(i, "description", e.target.value)
+                        }
+                        placeholder="Brief description of this ticket tier"
+                      />
+                    </div>
+
+                    <div className="admin-form__row">
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">
+                          Price ({currSym})
+                        </label>
+                        <input
+                          type="number"
+                          className="admin-form__input"
+                          value={tt.price}
+                          onChange={(e) =>
+                            updateTicketType(
+                              i,
+                              "price",
+                              Number(e.target.value)
+                            )
+                          }
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">Capacity</label>
+                        <input
+                          type="number"
+                          className="admin-form__input"
+                          value={tt.capacity ?? ""}
+                          onChange={(e) =>
+                            updateTicketType(
+                              i,
+                              "capacity",
+                              e.target.value ? Number(e.target.value) : null
+                            )
+                          }
+                          placeholder="Unlimited"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-form__row">
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">
+                          Min per Order
+                        </label>
+                        <input
+                          type="number"
+                          className="admin-form__input"
+                          value={tt.min_per_order}
+                          onChange={(e) =>
+                            updateTicketType(
+                              i,
+                              "min_per_order",
+                              Number(e.target.value)
+                            )
+                          }
+                          min="1"
+                        />
+                      </div>
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">
+                          Max per Order
+                        </label>
+                        <input
+                          type="number"
+                          className="admin-form__input"
+                          value={tt.max_per_order}
+                          onChange={(e) =>
+                            updateTicketType(
+                              i,
+                              "max_per_order",
+                              Number(e.target.value)
+                            )
+                          }
+                          min="1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-form__row">
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">Sale Start</label>
+                        <input
+                          type="datetime-local"
+                          className="admin-form__input"
+                          value={toDatetimeLocal(tt.sale_start)}
+                          onChange={(e) =>
+                            updateTicketType(
+                              i,
+                              "sale_start",
+                              fromDatetimeLocal(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">Sale End</label>
+                        <input
+                          type="datetime-local"
+                          className="admin-form__input"
+                          value={toDatetimeLocal(tt.sale_end)}
+                          onChange={(e) =>
+                            updateTicketType(
+                              i,
+                              "sale_end",
+                              fromDatetimeLocal(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    {/* Merch options */}
+                    <div className="admin-form__field">
+                      <label
+                        className="admin-form__label"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={tt.includes_merch}
+                          onChange={(e) =>
+                            updateTicketType(
+                              i,
+                              "includes_merch",
+                              e.target.checked
+                            )
+                          }
+                        />
+                        Includes Merchandise
+                      </label>
+                    </div>
+                    {tt.includes_merch && (
+                      <div className="admin-form__row">
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">
+                            Merch Type
+                          </label>
+                          <input
+                            type="text"
+                            className="admin-form__input"
+                            value={tt.merch_type || ""}
+                            onChange={(e) =>
+                              updateTicketType(
+                                i,
+                                "merch_type",
+                                e.target.value
+                              )
+                            }
+                            placeholder="e.g. T-Shirt"
+                          />
+                        </div>
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">
+                            Available Sizes
+                          </label>
+                          <input
+                            type="text"
+                            className="admin-form__input"
+                            value={(tt.merch_sizes || []).join(", ")}
+                            onChange={(e) =>
+                              updateTicketType(
+                                i,
+                                "merch_sizes",
+                                e.target.value
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter(Boolean)
+                              )
+                            }
+                            placeholder="XS, S, M, L, XL, XXL"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Section: WeeZTix Configuration (legacy) ─── */}
+      {event.payment_method === "weeztix" && (
+        <>
+          <div className="admin-section">
+            <h2 className="admin-section__title">WeeZTix Configuration</h2>
+            <p
+              style={{
+                color: "#888",
+                fontSize: "0.8rem",
+                marginBottom: 16,
+              }}
+            >
+              This event uses WeeZTix for checkout. Configure the external
+              ticket IDs below.
+            </p>
+            <div className="admin-form">
+              <div className="admin-form__field">
+                <label className="admin-form__label">
+                  General Release ID
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={settings.ticketId1 || ""}
+                  onChange={(e) => updateSetting("ticketId1", e.target.value)}
+                  placeholder="WeeZTix ticket UUID"
+                />
+              </div>
+              <div className="admin-form__field">
+                <label className="admin-form__label">VIP Ticket ID</label>
+                <input
+                  className="admin-form__input"
+                  value={settings.ticketId2 || ""}
+                  onChange={(e) => updateSetting("ticketId2", e.target.value)}
+                  placeholder="WeeZTix ticket UUID"
+                />
+              </div>
+              <div className="admin-form__field">
+                <label className="admin-form__label">
+                  VIP Black + Tee ID
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={settings.ticketId3 || ""}
+                  onChange={(e) => updateSetting("ticketId3", e.target.value)}
+                  placeholder="WeeZTix ticket UUID"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-section">
+            <h2 className="admin-section__title">WeeZTix Ticket Names</h2>
+            <div className="admin-form">
+              <div className="admin-form__row">
+                <div className="admin-form__field">
+                  <label className="admin-form__label">Ticket 1 Name</label>
+                  <input
+                    className="admin-form__input"
+                    value={settings.ticketName1 || ""}
+                    onChange={(e) =>
+                      updateSetting("ticketName1", e.target.value)
+                    }
+                    placeholder="General Release"
+                  />
+                </div>
+                <div className="admin-form__field">
+                  <label className="admin-form__label">
+                    Ticket 1 Subtitle
+                  </label>
+                  <input
+                    className="admin-form__input"
+                    value={settings.ticketSubtitle1 || ""}
+                    onChange={(e) =>
+                      updateSetting("ticketSubtitle1", e.target.value)
+                    }
+                    placeholder="Standard entry"
+                  />
+                </div>
+              </div>
+              <div className="admin-form__row">
+                <div className="admin-form__field">
+                  <label className="admin-form__label">Ticket 2 Name</label>
+                  <input
+                    className="admin-form__input"
+                    value={settings.ticketName2 || ""}
+                    onChange={(e) =>
+                      updateSetting("ticketName2", e.target.value)
+                    }
+                    placeholder="VIP Ticket"
+                  />
+                </div>
+                <div className="admin-form__field">
+                  <label className="admin-form__label">Ticket 3 Name</label>
+                  <input
+                    className="admin-form__input"
+                    value={settings.ticketName3 || ""}
+                    onChange={(e) =>
+                      updateSetting("ticketName3", e.target.value)
+                    }
+                    placeholder="VIP Black + Tee"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-section">
+            <h2 className="admin-section__title">Size-Specific Tee IDs</h2>
+            <div className="admin-form">
+              {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
+                <div className="admin-form__field" key={size}>
+                  <label className="admin-form__label">Size {size} ID</label>
+                  <input
+                    className="admin-form__input"
+                    value={
+                      (settings as Record<string, string>)[
+                        `sizeId${size}`
+                      ] || ""
+                    }
+                    onChange={(e) =>
+                      updateSetting(`sizeId${size}`, e.target.value)
+                    }
+                    placeholder={`WeeZTix ticket ID for size ${size}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="admin-section">
+            <h2 className="admin-section__title">Exclusive Tee Images</h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 24,
+              }}
+            >
+              <ImageField
+                label="Front Image"
+                value={settings.teeFront || ""}
+                onChange={(v) => updateSetting("teeFront", v)}
+              />
+              <ImageField
+                label="Back Image"
+                value={settings.teeBack || ""}
+                onChange={(v) => updateSetting("teeBack", v)}
+              />
+            </div>
+          </div>
+
+          {event.theme === "minimal" && (
+            <div className="admin-section">
+              <h2 className="admin-section__title">
+                Minimal Theme Settings
+              </h2>
+              <div className="admin-form">
+                <div className="admin-form__field">
+                  <label
+                    className="admin-form__label"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={settings.minimalBgEnabled || false}
+                      onChange={(e) =>
+                        updateSetting("minimalBgEnabled", e.target.checked)
+                      }
+                    />
+                    Enable Background Image
+                  </label>
+                </div>
+                {settings.minimalBgEnabled && (
+                  <>
+                    <ImageField
+                      label="Background Image"
+                      value={settings.minimalBgImage || ""}
+                      onChange={(v) => updateSetting("minimalBgImage", v)}
+                      blurPx={settings.minimalBlurStrength || 0}
+                    />
+                    <div className="admin-form__field">
+                      <label className="admin-form__label">
+                        Blur ({settings.minimalBlurStrength || 0}px)
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={settings.minimalBlurStrength || 0}
+                        onChange={(e) =>
+                          updateSetting(
+                            "minimalBlurStrength",
+                            parseInt(e.target.value)
+                          )
+                        }
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+                    <div className="admin-form__field">
+                      <label className="admin-form__label">
+                        Static Strength (
+                        {settings.minimalStaticStrength || 50}%)
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={settings.minimalStaticStrength || 50}
+                        onChange={(e) =>
+                          updateSetting(
+                            "minimalStaticStrength",
+                            parseInt(e.target.value)
+                          )
+                        }
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="admin-section">
+            <h2 className="admin-section__title">Banner Image</h2>
+            <ImageField
+              label="Hero / Banner Image (Site Settings)"
+              value={settings.heroImage || ""}
+              onChange={(v) => updateSetting("heroImage", v)}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ─── Bottom Save ─── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginTop: 8,
+          marginBottom: 40,
+        }}
+      >
         <button
-          className="admin-form__save"
+          className="admin-btn admin-btn--primary"
           onClick={handleSave}
           disabled={saving}
         >
-          {saving ? "SAVING..." : "SAVE SETTINGS"}
+          {saving ? "Saving..." : "Save Changes"}
         </button>
-        {saveStatus && (
+        <a
+          href={`/event/${event.slug}/`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="admin-btn admin-btn--secondary"
+        >
+          Preview Event
+        </a>
+        {saveMsg && (
           <span
             style={{
-              color: saveStatus.includes("Error") ? "#ff0033" : "#4ecb71",
-              fontSize: "0.85rem",
+              fontFamily: "'Space Mono', monospace",
+              fontSize: "0.8rem",
+              color:
+                saveMsg.includes("Error") || saveMsg.includes("error")
+                  ? "#ff0033"
+                  : "#4ecb71",
             }}
           >
-            {saveStatus}
+            {saveMsg}
           </span>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import type { Event } from "@/types/events";
@@ -21,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function EventsPage() {
+  const router = useRouter();
   const [events, setEvents] = useState<(Event & { ticket_types?: { sold: number; capacity: number | null; price: number }[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -87,15 +89,9 @@ export default function EventsPage() {
         return;
       }
 
-      // Reset form and reload
-      setNewName("");
-      setNewSlug("");
-      setNewVenue("");
-      setNewCity("");
-      setNewDate("");
-      setShowCreate(false);
+      // Redirect to the event editor
       setCreating(false);
-      loadEvents();
+      router.push(`/admin/events/${json.data.slug}/`);
     } catch {
       setCreateError("Network error");
       setCreating(false);

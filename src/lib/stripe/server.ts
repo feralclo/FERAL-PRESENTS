@@ -7,7 +7,7 @@ import Stripe from "stripe";
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
 if (!stripeSecretKey && process.env.NODE_ENV === "production") {
-  throw new Error("STRIPE_SECRET_KEY is required in production");
+  console.warn("STRIPE_SECRET_KEY is not set — Stripe features will be disabled.");
 }
 
 export const stripe = stripeSecretKey

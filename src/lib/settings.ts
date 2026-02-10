@@ -1,5 +1,4 @@
-import { TABLES, ORG_ID } from "./constants";
-import type { EventSettings, SiteSettingsRow } from "@/types/settings";
+import type { EventSettings } from "@/types/settings";
 
 /**
  * Fetch settings from Supabase (server-side).
@@ -15,7 +14,7 @@ export async function fetchSettings(
 
   try {
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/${TABLES.SITE_SETTINGS}?key=eq.${encodeURIComponent(key)}&select=data`,
+      `${supabaseUrl}/rest/v1/site_settings?key=eq.${encodeURIComponent(key)}&select=data`,
       {
         headers: {
           apikey: supabaseKey,
@@ -38,7 +37,8 @@ export async function fetchSettings(
 
 /**
  * Save settings to Supabase (client-side, used by admin).
- * Upserts the row and updates localStorage cache.
+ * Routes through /api/settings which uses server-side Supabase .upsert().
+ * Matches the original js/feral-settings.js pattern.
  */
 export async function saveSettings(
   key: string,
@@ -51,35 +51,17 @@ export async function saveSettings(
     // localStorage may be unavailable
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-  if (!supabaseUrl || !supabaseKey) {
-    return { error: new Error("Supabase env vars not configured") };
-  }
-
   try {
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/${TABLES.SITE_SETTINGS}`,
-      {
-        method: "POST",
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates",
-        },
-        body: JSON.stringify({
-          key,
-          data,
-          updated_at: new Date().toISOString(),
-        }),
-        cache: "no-store",
-      }
-    );
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, data }),
+    });
 
     if (!res.ok) {
-      return { error: new Error(`Save failed: ${res.status}`) };
+      const body = await res.json().catch(() => ({}));
+      const msg = body.error || `Save failed: ${res.status}`;
+      return { error: new Error(msg) };
     }
 
     return { error: null };

@@ -20,20 +20,38 @@ export default function EventEditor() {
   const [settings, setSettings] = useState<EventSettings>({});
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
+  const [loadStatus, setLoadStatus] = useState("Loading settings\u2026");
 
   // Load current settings
   useEffect(() => {
     async function load() {
       const supabase = getSupabaseClient();
-      if (!supabase) return;
-      const { data } = await supabase
+      if (!supabase) {
+        setLoadStatus("Database not configured — using defaults");
+        return;
+      }
+
+      const { data, error } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
         .eq("key", settingsKey)
         .single();
 
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No rows found — first time, will create on save
+          setLoadStatus("No saved settings yet — using defaults");
+        } else {
+          setLoadStatus(`Load error: ${error.message}`);
+        }
+        return;
+      }
+
       if (data?.data) {
         setSettings(data.data as EventSettings);
+        setLoadStatus("Settings loaded from database");
+      } else {
+        setLoadStatus("No saved settings yet — using defaults");
       }
     }
     load();
@@ -53,7 +71,7 @@ export default function EventEditor() {
     const result = await saveSettings(settingsKey, settings);
 
     if (result.error) {
-      setSaveStatus("Error saving settings");
+      setSaveStatus(`Error: ${result.error.message}`);
     } else {
       setSaveStatus("Settings saved successfully");
     }
@@ -66,9 +84,12 @@ export default function EventEditor() {
 
   return (
     <div>
-      <h1 className="admin-section__title" style={{ marginBottom: "24px" }}>
+      <h1 className="admin-section__title" style={{ marginBottom: "8px" }}>
         EVENT EDITOR: {slug.toUpperCase().replace(/-/g, " ")}
       </h1>
+      <div style={{ marginBottom: "24px", fontSize: "0.8rem", color: "#888", letterSpacing: "1px" }}>
+        {loadStatus}
+      </div>
 
       {/* Ticket IDs */}
       {isLiverpool && (

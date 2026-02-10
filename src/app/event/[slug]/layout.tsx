@@ -31,13 +31,15 @@ export default async function EventLayout({
   let eventTheme: string | null = null;
   let eventHasImage = false;
   let eventId: string | null = null;
+  // WeeZTix events have hardcoded slugs in SLUG_TO_SETTINGS_KEY
+  let isWeeZTix = slug in SLUG_TO_SETTINGS_KEY;
 
   try {
     const supabase = await getSupabaseServer();
     if (supabase) {
       const { data: event } = await supabase
         .from(TABLES.EVENTS)
-        .select("id, settings_key, theme, cover_image, hero_image")
+        .select("id, settings_key, theme, cover_image, hero_image, payment_method")
         .eq("slug", slug)
         .eq("org_id", ORG_ID)
         .single();
@@ -48,6 +50,7 @@ export default async function EventLayout({
       if (event) {
         eventId = event.id;
         eventTheme = event.theme || null;
+        if (event.payment_method === "weeztix") isWeeZTix = true;
         // Check if any image exists (banner or tile)
         eventHasImage = !!(event.hero_image || event.cover_image);
       }
@@ -87,15 +90,19 @@ export default async function EventLayout({
     // Settings fetch failed — render page with defaults
   }
 
-  // Determine theme: site_settings takes priority (WeeZTix), then events table
-  const theme = settings?.theme || eventTheme || "default";
+  // Determine theme:
+  // - WeeZTix events: site_settings is the authority (legacy system)
+  // - Native events: events table is the authority (admin saves theme there)
+  const theme = isWeeZTix
+    ? (settings?.theme as string) || eventTheme || "default"
+    : eventTheme || "default";
   const isMinimal = theme === "minimal";
 
   // Determine if cover image exists:
-  // - WeeZTix events (have site_settings): use minimalBgEnabled flag
-  // - Native events (no site_settings): check events table cover_image
+  // - WeeZTix events: use minimalBgEnabled flag from site_settings
+  // - Native events: check if hero/cover image exists in DB or media store
   const hasCoverImage = isMinimal && (
-    settings ? !!(settings.minimalBgEnabled) : eventHasImage
+    isWeeZTix ? !!(settings?.minimalBgEnabled) : eventHasImage
   );
 
   const themeClasses = [
@@ -107,9 +114,9 @@ export default async function EventLayout({
 
   const cssVars: Record<string, string> = {};
   if (hasCoverImage) {
-    // Use site_settings values if available, otherwise sensible defaults
-    cssVars["--cover-blur"] = `${settings?.minimalBlurStrength ?? 8}px`;
-    cssVars["--static-opacity"] = `${(settings?.minimalStaticStrength ?? 40) / 100}`;
+    // Use site_settings values if available, otherwise subtle defaults
+    cssVars["--cover-blur"] = `${settings?.minimalBlurStrength ?? 4}px`;
+    cssVars["--static-opacity"] = `${(settings?.minimalStaticStrength ?? 5) / 100}`;
   }
 
   return (

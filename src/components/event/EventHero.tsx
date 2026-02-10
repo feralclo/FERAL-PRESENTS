@@ -39,18 +39,7 @@ export function EventHero({
             onError={() => setImgFailed(true)}
           />
         )}
-        <div
-          className="event-hero__darken"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            background: "rgba(0, 0, 0, 0.4)",
-            zIndex: 1,
-          }}
-        />
+        <div className="event-hero__darken" />
         <div className="event-hero__noise" />
         <div className="event-hero__scanline" />
       </div>

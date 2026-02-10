@@ -79,24 +79,19 @@ function compressImage(
 }
 
 async function processImageFile(file: File): Promise<string | null> {
-  if (file.size > 5 * 1024 * 1024) {
-    alert("Image too large. Maximum is 5MB.");
+  if (file.size > 10 * 1024 * 1024) {
+    alert("Image too large. Maximum is 10MB.");
     return null;
   }
-  // Progressive compression — keep base64 string under 400KB for reliable DB storage
-  const MAX_LEN = 400 * 1024; // ~300KB binary as base64
-  let result = await compressImage(file, 1200, 0.7);
+  // Progressive compression — resize and compress to JPEG
+  // Site_settings JSONB handles large values fine (proven by Liverpool images)
+  const MAX_LEN = 800 * 1024; // ~600KB binary as base64
+  let result = await compressImage(file, 1600, 0.8);
   if (result && result.length > MAX_LEN) {
-    result = await compressImage(file, 1000, 0.55);
+    result = await compressImage(file, 1200, 0.65);
   }
   if (result && result.length > MAX_LEN) {
-    result = await compressImage(file, 800, 0.4);
-  }
-  if (result && result.length > MAX_LEN) {
-    result = await compressImage(file, 600, 0.3);
-  }
-  if (result && result.length > MAX_LEN) {
-    result = await compressImage(file, 400, 0.25);
+    result = await compressImage(file, 900, 0.5);
   }
   if (!result) {
     alert("Failed to process image. Try a smaller file.");
@@ -616,15 +611,8 @@ export default function EventEditorPage() {
       }
 
       // Save site_settings: WeeZTix events save all settings,
-      // native events save theme effects (blur/static) if using minimal theme
-      const hasThemeSettings =
-        event.payment_method === "weeztix" ||
-        (event.theme === "minimal" && (
-          settings.minimalBlurStrength !== undefined ||
-          settings.minimalStaticStrength !== undefined
-        ));
-
-      if (hasThemeSettings) {
+      // native events always save theme + effects (so layout.tsx reads correct values)
+      {
         const supabase = getSupabaseClient();
         if (supabase) {
           const key =
@@ -632,13 +620,15 @@ export default function EventEditorPage() {
             event.settings_key ||
             `feral_event_${event.slug}`;
 
-          // For native events, only save theme-related settings
+          // For native events, save theme + blur/static settings
+          // For WeeZTix, save full settings object
           const dataToSave = event.payment_method === "weeztix"
             ? settings
             : {
-                theme: event.theme,
-                minimalBlurStrength: settings.minimalBlurStrength,
-                minimalStaticStrength: settings.minimalStaticStrength,
+                theme: event.theme || "default",
+                minimalBlurStrength: settings.minimalBlurStrength ?? 4,
+                minimalStaticStrength: settings.minimalStaticStrength ?? 5,
+                minimalBgEnabled: !!(event.hero_image || event.cover_image),
               };
 
           await supabase.from(TABLES.SITE_SETTINGS).upsert(
@@ -1106,20 +1096,19 @@ export default function EventEditorPage() {
             </select>
           </div>
 
-          {/* Minimal theme effects — show when minimal is selected and an image exists */}
+          {/* Minimal theme effects — show when minimal is selected */}
           {((event.payment_method !== "weeztix" && event.theme === "minimal") ||
-            (event.payment_method === "weeztix" && (settings.theme as string) === "minimal")) &&
-            (event.hero_image || event.cover_image || settings.minimalBgImage) && (
+            (event.payment_method === "weeztix" && (settings.theme as string) === "minimal")) && (
             <>
               <div className="admin-form__field" style={{ marginTop: 16 }}>
                 <label className="admin-form__label">
-                  Blur ({settings.minimalBlurStrength ?? 8}px)
+                  Blur ({settings.minimalBlurStrength ?? 4}px)
                 </label>
                 <input
                   type="range"
                   min="0"
                   max="30"
-                  value={settings.minimalBlurStrength ?? 8}
+                  value={settings.minimalBlurStrength ?? 4}
                   onChange={(e) =>
                     updateSetting("minimalBlurStrength", parseInt(e.target.value))
                   }
@@ -1128,13 +1117,13 @@ export default function EventEditorPage() {
               </div>
               <div className="admin-form__field">
                 <label className="admin-form__label">
-                  Static / Noise ({settings.minimalStaticStrength ?? 40}%)
+                  Static / Noise ({settings.minimalStaticStrength ?? 5}%)
                 </label>
                 <input
                   type="range"
                   min="0"
                   max="100"
-                  value={settings.minimalStaticStrength ?? 40}
+                  value={settings.minimalStaticStrength ?? 5}
                   onChange={(e) =>
                     updateSetting("minimalStaticStrength", parseInt(e.target.value))
                   }

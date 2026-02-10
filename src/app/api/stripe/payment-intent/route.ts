@@ -13,11 +13,14 @@ import {
  *
  * Creates a Stripe PaymentIntent for a ticket purchase.
  *
- * When the event has a stripe_account_id (Connect):
+ * Connected account is auto-detected from site_settings (saved by Payment Settings page).
+ * Platform fee uses the config default (DEFAULT_PLATFORM_FEE_PERCENT).
+ *
+ * When a connected account exists:
  *   → Direct charge on the connected account with application_fee_amount
  *   → Connected account is the merchant of record
  *
- * When no stripe_account_id (platform-only):
+ * When no connected account:
  *   → Charge on the platform account directly
  *   → Platform is the merchant of record
  */
@@ -48,10 +51,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch event with ticket types
+    // Fetch event
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, payment_method, currency, stripe_account_id, platform_fee_percent")
+      .select("id, name, slug, payment_method, currency")
       .eq("id", event_id)
       .eq("org_id", ORG_ID)
       .single();
@@ -68,6 +71,21 @@ export async function POST(request: NextRequest) {
         { error: "This event does not use Stripe payments" },
         { status: 400 }
       );
+    }
+
+    // Auto-detect connected account from site_settings
+    let stripeAccountId: string | null = null;
+    const { data: settingsRow } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", "feral_stripe_account")
+      .single();
+
+    if (settingsRow?.data && typeof settingsRow.data === "object") {
+      const settingsData = settingsRow.data as { account_id?: string };
+      if (settingsData.account_id) {
+        stripeAccountId = settingsData.account_id;
+      }
     }
 
     // Verify ticket types and calculate total
@@ -114,8 +132,7 @@ export async function POST(request: NextRequest) {
     const currency = (event.currency || "GBP").toLowerCase();
 
     // Build PaymentIntent parameters
-    const feePercent = event.platform_fee_percent ?? DEFAULT_PLATFORM_FEE_PERCENT;
-    const applicationFee = calculateApplicationFee(amountInSmallestUnit, feePercent);
+    const applicationFee = calculateApplicationFee(amountInSmallestUnit, DEFAULT_PLATFORM_FEE_PERCENT);
 
     // Build line items description
     const description = items
@@ -137,7 +154,7 @@ export async function POST(request: NextRequest) {
       items_json: JSON.stringify(items),
     };
 
-    if (event.stripe_account_id) {
+    if (stripeAccountId) {
       // Direct charge on connected account
       const paymentIntent = await stripe.paymentIntents.create(
         {
@@ -152,21 +169,21 @@ export async function POST(request: NextRequest) {
           receipt_email: customer.email.toLowerCase(),
         },
         {
-          stripeAccount: event.stripe_account_id,
+          stripeAccount: stripeAccountId,
         }
       );
 
       return NextResponse.json({
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
-        stripe_account_id: event.stripe_account_id,
+        stripe_account_id: stripeAccountId,
         amount: amountInSmallestUnit,
         currency,
         application_fee: applicationFee,
       });
     }
 
-    // Platform-only charge (no Connect, for testing or platform-as-seller)
+    // Platform-only charge (no Connect — for testing or platform-as-seller)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInSmallestUnit,
       currency,

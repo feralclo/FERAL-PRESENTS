@@ -603,8 +603,6 @@ export default function EventEditorPage() {
           details_text: event.details_text || null,
           tag_line: event.tag_line || null,
           doors_time: event.doors_time || null,
-          stripe_account_id: event.stripe_account_id || null,
-          platform_fee_percent: event.platform_fee_percent ?? null,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),
             name: tt.name,
@@ -982,47 +980,14 @@ export default function EventEditorPage() {
             </div>
           </div>
           {event.payment_method === "stripe" && (
-            <div className="admin-form__row" style={{ marginTop: 12 }}>
-              <div className="admin-form__field">
-                <label className="admin-form__label">
-                  Stripe Connected Account ID
-                </label>
-                <input
-                  type="text"
-                  className="admin-form__input"
-                  value={event.stripe_account_id || ""}
-                  onChange={(e) =>
-                    updateEvent("stripe_account_id", e.target.value || undefined)
-                  }
-                  placeholder="acct_... (from Stripe Connect page)"
-                />
-                <span style={{ fontSize: 10, color: "#555", marginTop: 4, display: "block" }}>
-                  Leave blank to charge the platform account directly.{" "}
-                  <Link href="/admin/connect/" style={{ color: "#ff0033" }}>
-                    Manage accounts &rarr;
-                  </Link>
-                </span>
-              </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">
-                  Platform Fee %
-                </label>
-                <input
-                  type="number"
-                  className="admin-form__input"
-                  value={event.platform_fee_percent ?? 5}
-                  onChange={(e) =>
-                    updateEvent(
-                      "platform_fee_percent",
-                      parseFloat(e.target.value) || 5
-                    )
-                  }
-                  min={0}
-                  max={50}
-                  step={0.5}
-                  placeholder="5"
-                />
-              </div>
+            <div style={{ marginTop: 12, padding: "12px 16px", background: "rgba(78, 203, 113, 0.04)", border: "1px solid rgba(78, 203, 113, 0.1)" }}>
+              <span style={{ fontSize: 12, color: "#888" }}>
+                Payments are handled automatically via your{" "}
+                <Link href="/admin/payments/" style={{ color: "#ff0033" }}>
+                  Payment Settings
+                </Link>
+                . Make sure your payment setup is complete before going live.
+              </span>
             </div>
           )}
         </div>

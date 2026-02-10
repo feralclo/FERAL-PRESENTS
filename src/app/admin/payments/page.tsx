@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { TABLES } from "@/lib/constants";
 
 interface PaymentStatus {
   connected: boolean;
@@ -112,6 +114,20 @@ export default function PaymentSettingsPage() {
         setError(createJson.error || "Failed to set up payments");
         setSettingUp(false);
         return;
+      }
+
+      // Save the connected account ID to site_settings so the payment-intent
+      // route can auto-detect it — no manual linking needed
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        await supabase.from(TABLES.SITE_SETTINGS).upsert(
+          {
+            key: "feral_stripe_account",
+            data: { account_id: createJson.account_id },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "key" }
+        );
       }
 
       // Get the onboarding link
@@ -635,18 +651,8 @@ export default function PaymentSettingsPage() {
           <div className="admin-card" style={{ marginTop: 24 }}>
             <h2 className="admin-card__title">Next Steps</h2>
             <p style={{ color: "#888", fontSize: 13, lineHeight: 1.6 }}>
-              Your account ID is{" "}
-              <code
-                style={{
-                  color: "#ff0033",
-                  background: "rgba(255,0,51,0.08)",
-                  padding: "2px 6px",
-                  fontSize: 11,
-                }}
-              >
-                {status.account_id}
-              </code>
-              . To start accepting payments for an event:
+              Your payment account is linked automatically. To start accepting
+              payments for an event:
             </p>
             <ol
               style={{
@@ -664,8 +670,7 @@ export default function PaymentSettingsPage() {
                 </Link>
               </li>
               <li>Edit your event and set Payment Method to &quot;Stripe&quot;</li>
-              <li>Paste your Account ID into the Stripe Connected Account field</li>
-              <li>Save — you&apos;re live</li>
+              <li>Save — that&apos;s it, you&apos;re live</li>
             </ol>
           </div>
         </>

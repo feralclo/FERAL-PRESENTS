@@ -145,43 +145,46 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
     [firstName, lastName, email, phone, cartLines, event.id, isStripe]
   );
 
-  // Handle Stripe payment success
+  // Handle Stripe payment success — create order directly via confirm-order
   const handleStripeSuccess = useCallback(
     async (paymentIntentId: string) => {
-      // Fetch the created order (webhook should have created it)
-      // Poll for order with exponential backoff
-      let order: Order | null = null;
-      const maxAttempts = 10;
+      try {
+        const res = await fetch("/api/stripe/confirm-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payment_intent_id: paymentIntentId,
+          }),
+        });
 
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const delay = Math.min(1000 * Math.pow(1.5, attempt), 5000);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        const json = await res.json();
 
-        try {
-          const res = await fetch(
-            `/api/orders?payment_ref=${encodeURIComponent(paymentIntentId)}&event_id=${encodeURIComponent(event.id)}`
-          );
-          const json = await res.json();
-
-          if (json.data && json.data.length > 0) {
-            // Fetch full order with tickets
-            const orderRes = await fetch(`/api/orders/${json.data[0].id}`);
-            const orderJson = await orderRes.json();
-            if (orderJson.data) {
-              order = orderJson.data;
-              break;
-            }
-          }
-        } catch {
-          // Continue polling
+        if (res.ok && json.data) {
+          setCompletedOrder(json.data);
+          setStep("confirmation");
+        } else {
+          // Payment succeeded but order creation failed — show basic confirmation
+          setError("");
+          setCompletedOrder({
+            id: "",
+            org_id: "feral",
+            order_number: "Processing...",
+            event_id: event.id,
+            customer_id: "",
+            status: "completed",
+            subtotal,
+            fees: 0,
+            total: subtotal,
+            currency: event.currency,
+            payment_method: "stripe",
+            payment_ref: paymentIntentId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          setStep("confirmation");
         }
-      }
-
-      if (order) {
-        setCompletedOrder(order);
-        setStep("confirmation");
-      } else {
-        // Payment succeeded but order not found yet — show basic confirmation
+      } catch {
+        // Payment succeeded but network error — show basic confirmation
         setCompletedOrder({
           id: "",
           org_id: "feral",

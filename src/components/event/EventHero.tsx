@@ -54,8 +54,8 @@ export function EventHero({
               <span className="event-hero__tag">{tag}</span>
             </div>
             <Link href="/" className="event-hero__back">
-              <span>All Events</span>
-              <span className="event-hero__back-arrow">&rarr;</span>
+              <span className="event-hero__back-arrow">&larr;</span>
+              <span>Back to all events</span>
             </Link>
           </div>
 

@@ -8,8 +8,8 @@ import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 const TARGET = new Date("2026-01-29T17:00:00Z").getTime();
 
 /**
- * Kompass Klub event page — simpler event with countdown timer + external tickets.
- * Matches existing /event/kompass-klub-7-march/index.html.
+ * Kompass Klub event page — matches /event/kompass-klub-7-march/index.html exactly.
+ * Has countdown timer for ticket sale + external Paylogic tickets.
  */
 export function KompassEventPage() {
   const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft(TARGET));
@@ -38,6 +38,7 @@ export function KompassEventPage() {
 
   return (
     <>
+      {/* Navigation */}
       <header className={`header${headerHidden ? " header--hidden" : ""}`} id="header">
         <div className="announcement-banner">
           <span className="announcement-banner__shield">
@@ -64,6 +65,7 @@ export function KompassEventPage() {
       </header>
 
       <main className="event-page" id="eventPage">
+        {/* Event Hero */}
         <section className="event-hero">
           <div className="event-hero__bg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -84,23 +86,21 @@ export function KompassEventPage() {
                 zIndex: 1,
               }}
             />
-            <div className="event-hero__noise" />
             <div className="event-hero__scanline" />
           </div>
           <div className="container">
             <div className="event-hero__content">
-              <div className="event-hero__topbar">
-                <div className="event-hero__meta">
-                  <span className="event-hero__tag">
-                    {expired
-                      ? "TICKETS ON SALE NOW"
-                      : "SALE OPENS THU 29TH JAN 6PM CET"}
-                  </span>
-                </div>
-                <a href="/" className="event-hero__back">
-                  <span>All Events</span>
-                  <span className="event-hero__back-arrow">&rarr;</span>
-                </a>
+              <a href="/" className="event-hero__back">
+                <span className="event-hero__back-arrow">&larr;</span>
+                <span>Back to all events</span>
+              </a>
+
+              <div className="event-hero__meta">
+                <span className="event-hero__tag">
+                  {expired
+                    ? "TICKETS ON SALE NOW"
+                    : "SALE OPENS THU 29TH JAN 6PM"}
+                </span>
               </div>
 
               <h1
@@ -134,38 +134,125 @@ export function KompassEventPage() {
                   <span className="event-hero__detail-value">18+</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
 
-              {/* Countdown or Buy Button */}
-              <div style={{ marginTop: "2rem", textAlign: "center" }}>
-                {expired ? (
-                  <button
-                    className="btn btn--primary"
-                    onClick={handleBuyTickets}
-                    style={{
-                      fontSize: "1.1rem",
-                      padding: "16px 40px",
-                      letterSpacing: "2px",
-                    }}
-                  >
-                    BUY TICKETS NOW
-                  </button>
-                ) : (
-                  <div className="countdown" style={{ display: "flex", justifyContent: "center", gap: "16px" }}>
-                    <CountdownUnit value={timeLeft.days} label="DAYS" />
-                    <span className="countdown__colon" style={{ fontSize: "2rem", color: "#ff0033", lineHeight: "2.5rem" }}>:</span>
-                    <CountdownUnit value={timeLeft.hours} label="HRS" />
-                    <span className="countdown__colon" style={{ fontSize: "2rem", color: "#ff0033", lineHeight: "2.5rem" }}>:</span>
-                    <CountdownUnit value={timeLeft.minutes} label="MIN" />
-                    <span className="countdown__colon" style={{ fontSize: "2rem", color: "#ff0033", lineHeight: "2.5rem" }}>:</span>
-                    <CountdownUnit value={timeLeft.seconds} label="SEC" />
+        {/* Event Content */}
+        <section className="event-content">
+          <div className="container">
+            <div className="event-content__grid">
+              {/* Left: Event Info */}
+              <div className="event-info" id="eventInfo">
+                <div className="event-info__section">
+                  <h2 className="event-info__heading">About</h2>
+                  <p className="event-info__text">
+                    We&apos;re gearing up for a rousing debut by{" "}
+                    <a href="https://www.instagram.com/onlynumbers_uju/" target="_blank" rel="noopener noreferrer">@onlynumbers_uju</a>
+                    {" "}&amp;{" "}
+                    <a href="https://www.instagram.com/vladimircauchemar/" target="_blank" rel="noopener noreferrer">@vladimircauchemar</a>
+                    {" "}- backed up by stronghold{" "}
+                    <a href="https://www.instagram.com/basswell/" target="_blank" rel="noopener noreferrer">@basswell</a>
+                    {" "}and the grittiest of local selectors to keep the pressure high.
+                  </p>
+                </div>
+
+                <div className="event-info__section">
+                  <h2 className="event-info__heading">Lineup</h2>
+                  <div className="event-info__lineup">
+                    {[
+                      "BASSWELL",
+                      "ONLYNUMBERS",
+                      "VLADIMIR CAUCHEMAR",
+                      "JANE MUSS",
+                      "VECNA",
+                      "SANDY KLETZ",
+                    ].map((artist) => (
+                      <div className="event-info__artist" key={artist}>
+                        <span className="event-info__artist-name">
+                          {artist}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+
+                <div className="event-info__section">
+                  <h2 className="event-info__heading">Details</h2>
+                  <p className="event-info__text">
+                    This is an 18+ event. Valid photo ID required at the door. No
+                    re-entry. The venue operates a zero-tolerance policy.
+                    Accessibility info available on request.
+                  </p>
+                </div>
               </div>
+
+              {/* Right: Ticket Widget */}
+              <aside className="event-tickets" id="tickets">
+                <div className="event-tickets__box">
+                  <h3 className="event-tickets__heading">
+                    Get Tickets<span className="text-red">_</span>
+                  </h3>
+
+                  <div className={`countdown${expired ? " countdown--expired" : ""}`} id="countdown">
+                    <p className="countdown__label">
+                      {expired ? "TICKETS ARE LIVE!" : "SALE GOES LIVE IN"}
+                    </p>
+                    <div className="countdown__timer">
+                      <div className="countdown__unit">
+                        <span className="countdown__number">
+                          {String(timeLeft.days).padStart(2, "0")}
+                        </span>
+                        <span className="countdown__text">DAYS</span>
+                      </div>
+                      <div className="countdown__separator">:</div>
+                      <div className="countdown__unit">
+                        <span className="countdown__number">
+                          {String(timeLeft.hours).padStart(2, "0")}
+                        </span>
+                        <span className="countdown__text">HRS</span>
+                      </div>
+                      <div className="countdown__separator">:</div>
+                      <div className="countdown__unit">
+                        <span className="countdown__number">
+                          {String(timeLeft.minutes).padStart(2, "0")}
+                        </span>
+                        <span className="countdown__text">MIN</span>
+                      </div>
+                      <div className="countdown__separator">:</div>
+                      <div className="countdown__unit">
+                        <span className="countdown__number">
+                          {String(timeLeft.seconds).padStart(2, "0")}
+                        </span>
+                        <span className="countdown__text">SEC</span>
+                      </div>
+                    </div>
+                    <p className="countdown__date">THU 29 JAN &mdash; 6PM CET</p>
+                    <div className="countdown__pulse" />
+                  </div>
+
+                  {expired && (
+                    <a
+                      href="https://shop.paylogic.com/8e3489c94b1d4d4f8fe835a832129d35"
+                      className="btn btn--primary event-tickets__cta"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleBuyTickets();
+                      }}
+                    >
+                      BUY TICKETS NOW
+                    </a>
+                  )}
+                </div>
+              </aside>
             </div>
           </div>
         </section>
       </main>
 
+      {/* Footer */}
       <footer className="footer">
         <div className="container">
           <div className="footer__inner">
@@ -179,35 +266,6 @@ export function KompassEventPage() {
         </div>
       </footer>
     </>
-  );
-}
-
-function CountdownUnit({ value, label }: { value: number; label: string }) {
-  return (
-    <div style={{ textAlign: "center" }}>
-      <div
-        style={{
-          fontSize: "2.5rem",
-          fontWeight: 700,
-          fontFamily: "var(--font-space-mono), 'Space Mono', monospace",
-          color: "#fff",
-          textShadow: "0 0 10px rgba(255, 0, 51, 0.5)",
-          lineHeight: 1,
-        }}
-      >
-        {String(value).padStart(2, "0")}
-      </div>
-      <div
-        style={{
-          fontSize: "0.65rem",
-          color: "#888",
-          letterSpacing: "2px",
-          marginTop: 4,
-        }}
-      >
-        {label}
-      </div>
-    </div>
   );
 }
 

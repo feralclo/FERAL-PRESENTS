@@ -1,6 +1,14 @@
 // Default org_id for all Supabase queries — every table uses this for future multi-tenancy
 export const ORG_ID = "feral";
 
+// Supabase — fallbacks match original js/feral-settings.js (anon key, not secret)
+export const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "https://rqtfghzhkkdytkegcifm.supabase.co";
+export const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc";
+
 // Supabase table names
 export const TABLES = {
   SITE_SETTINGS: "site_settings",

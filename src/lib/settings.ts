@@ -1,4 +1,5 @@
 import type { EventSettings } from "@/types/settings";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 
 /**
  * Fetch settings from Supabase (server-side).
@@ -7,18 +8,15 @@ import type { EventSettings } from "@/types/settings";
 export async function fetchSettings(
   key: string
 ): Promise<EventSettings | null> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-  if (!supabaseUrl || !supabaseKey) return null;
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
 
   try {
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/site_settings?key=eq.${encodeURIComponent(key)}&select=data`,
+      `${SUPABASE_URL}/rest/v1/site_settings?key=eq.${encodeURIComponent(key)}&select=data`,
       {
         headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
         cache: "no-store",
       }

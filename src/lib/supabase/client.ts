@@ -1,11 +1,9 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 
 let client: ReturnType<typeof createBrowserClient> | null = null;
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 /**
  * Get singleton Supabase client for browser usage.
@@ -16,14 +14,14 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 export function getSupabaseClient() {
   if (client) return client;
 
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn(
       "[FERAL] Supabase env vars not set — NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY required"
     );
     return null;
   }
 
-  client = createBrowserClient(SUPABASE_URL, SUPABASE_KEY, {
+  client = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: {
       fetch: (url: RequestInfo | URL, options: RequestInit = {}) => {
         return fetch(url, { ...options, cache: "no-store" });

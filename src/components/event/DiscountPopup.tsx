@@ -2,21 +2,18 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { subscribeToKlaviyo, identifyInKlaviyo } from "@/lib/klaviyo";
-import { DISCOUNT_CODE, POPUP_DISMISS_DAYS, ORG_ID } from "@/lib/constants";
+import { DISCOUNT_CODE, POPUP_DISMISS_DAYS, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import "@/styles/popup.css";
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 type Screen = "commitment" | "email" | "code";
 
 function trackPopupEvent(eventType: string, page: string) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return; // Env vars not configured
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return; // Env vars not configured
   fetch(`${SUPABASE_URL}/rest/v1/popup_events`, {
     method: "POST",
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       "Content-Type": "application/json",
       Prefer: "return=minimal",
     },

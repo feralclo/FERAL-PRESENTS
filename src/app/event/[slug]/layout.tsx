@@ -29,17 +29,19 @@ export default async function EventLayout({
 }) {
   const { slug } = await params;
 
-  // Try to look up event in DB to get settings_key, theme, and image info
+  // Determine initial values
   let settingsKey = SLUG_TO_SETTINGS_KEY[slug] || `feral_event_${slug}`;
   let eventTheme: string | null = null;
   let eventHasImage = false;
   let eventId: string | null = null;
-  // WeeZTix events have hardcoded slugs in SLUG_TO_SETTINGS_KEY
   let isWeeZTix = slug in SLUG_TO_SETTINGS_KEY;
 
-  try {
-    const supabase = await getSupabaseServer();
-    if (supabase) {
+  // Single Supabase client, reused across all queries
+  const supabase = await getSupabaseServer();
+
+  // STEP 1: Fetch event from DB
+  if (supabase) {
+    try {
       const { data: event } = await supabase
         .from(TABLES.EVENTS)
         .select("id, settings_key, theme, cover_image, hero_image, payment_method")
@@ -47,51 +49,40 @@ export default async function EventLayout({
         .eq("org_id", ORG_ID)
         .single();
 
-      if (event?.settings_key) {
-        settingsKey = event.settings_key;
-      }
+      if (event?.settings_key) settingsKey = event.settings_key;
       if (event) {
         eventId = event.id;
         eventTheme = event.theme || null;
         if (event.payment_method === "weeztix") isWeeZTix = true;
-        // Check if any image exists (banner or tile)
         eventHasImage = !!(event.hero_image || event.cover_image);
       }
-    }
-  } catch {
-    // Fall through to hardcoded map
-  }
-
-  // Also check for uploaded media in site_settings (fallback if DB columns
-  // don't exist — images are stored separately via upload API)
-  if (!eventHasImage && eventId) {
-    try {
-      const supabase = await getSupabaseServer();
-      if (supabase) {
-        // Check for banner first, then cover
-        const { data: mediaRows } = await supabase
-          .from(TABLES.SITE_SETTINGS)
-          .select("key")
-          .in("key", [
-            `media_event_${eventId}_banner`,
-            `media_event_${eventId}_cover`,
-          ]);
-        if (mediaRows && mediaRows.length > 0) {
-          eventHasImage = true;
-        }
-      }
     } catch {
-      // No media found, that's fine
+      // Fall through to hardcoded map
     }
   }
 
-  // Fetch settings server-side — no loading state, no FOUC
-  let settings = null;
-  try {
-    settings = await fetchSettings(settingsKey);
-  } catch {
-    // Settings fetch failed — render page with defaults
-  }
+  // STEP 2: Run settings fetch + media check IN PARALLEL (not sequential)
+  const settingsPromise = fetchSettings(settingsKey);
+
+  const mediaPromise =
+    !eventHasImage && eventId && supabase
+      ? Promise.resolve(
+          supabase
+            .from(TABLES.SITE_SETTINGS)
+            .select("key")
+            .in("key", [
+              `media_event_${eventId}_banner`,
+              `media_event_${eventId}_cover`,
+            ])
+        )
+          .then(({ data }) => {
+            if (data && data.length > 0) eventHasImage = true;
+          })
+          .catch(() => {})
+      : Promise.resolve();
+
+  // Wait for both in parallel
+  const [settings] = await Promise.all([settingsPromise, mediaPromise]);
 
   // Determine theme:
   // - WeeZTix events: site_settings is the authority (legacy system)

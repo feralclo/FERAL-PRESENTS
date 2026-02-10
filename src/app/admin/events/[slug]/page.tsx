@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID, SETTINGS_KEYS } from "@/lib/constants";
@@ -431,6 +431,7 @@ function LineupInput({
 
 export default function EventEditorPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -441,6 +442,8 @@ export default function EventEditorPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Load event by slug
   useEffect(() => {
@@ -647,6 +650,25 @@ export default function EventEditorPage() {
     setTimeout(() => setSaveMsg(""), 4000);
   }, [event, ticketTypes, deletedTypeIds, settings, slug]);
 
+  const handleDelete = useCallback(async () => {
+    if (!event) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/events/${event.id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/admin/events/");
+      } else {
+        const json = await res.json();
+        setSaveMsg(`Delete failed: ${json.error}`);
+        setShowDeleteConfirm(false);
+      }
+    } catch {
+      setSaveMsg("Network error during delete");
+      setShowDeleteConfirm(false);
+    }
+    setDeleting(false);
+  }, [event, router]);
+
   /* ── Render ── */
 
   if (loading) return <div className="admin-loading">Loading event...</div>;
@@ -709,13 +731,19 @@ export default function EventEditorPage() {
           </div>
         </div>
         <div className="admin-editor-header__actions">
+          <button
+            className="admin-btn admin-btn--danger"
+            onClick={() => setShowDeleteConfirm(true)}
+            style={{ fontSize: "0.68rem", padding: "8px 12px" }}
+          >
+            Delete
+          </button>
           <a
             href={`/event/${event.slug}/?preview=${Date.now()}`}
             target="_blank"
             rel="noopener noreferrer"
             className="admin-btn admin-btn--secondary"
             onClick={(e) => {
-              // Use current timestamp to bust any browser cache
               e.preventDefault();
               window.open(`/event/${event.slug}/?t=${Date.now()}`, "_blank");
             }}
@@ -731,6 +759,43 @@ export default function EventEditorPage() {
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div
+          style={{
+            background: "#1a0000",
+            border: "1px solid #ff003344",
+            padding: "16px 20px",
+            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+          }}
+        >
+          <span style={{ color: "#ff0033", fontSize: "0.8rem" }}>
+            Permanently delete &ldquo;{event.name}&rdquo;? This cannot be undone.
+          </span>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button
+              className="admin-btn admin-btn--danger"
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{ fontSize: "0.7rem", padding: "6px 16px" }}
+            >
+              {deleting ? "Deleting..." : "Yes, Delete"}
+            </button>
+            <button
+              className="admin-btn admin-btn--secondary"
+              onClick={() => setShowDeleteConfirm(false)}
+              style={{ fontSize: "0.7rem", padding: "6px 16px" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Save Message */}
       {saveMsg && (
@@ -872,6 +937,7 @@ export default function EventEditorPage() {
                 <option value="live">Live</option>
                 <option value="past">Past</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="archived">Archived</option>
               </select>
             </div>
             <div className="admin-form__field">

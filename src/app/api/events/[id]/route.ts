@@ -142,3 +142,60 @@ export async function PUT(
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/events/[id] — Permanently delete an event and its ticket types
+ */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 503 }
+      );
+    }
+
+    // Get event slug for cache revalidation before deleting
+    const { data: event } = await supabase
+      .from(TABLES.EVENTS)
+      .select("slug")
+      .eq("id", id)
+      .eq("org_id", ORG_ID)
+      .single();
+
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // Delete ticket types first (foreign key)
+    await supabase
+      .from(TABLES.TICKET_TYPES)
+      .delete()
+      .eq("event_id", id)
+      .eq("org_id", ORG_ID);
+
+    // Delete event
+    const { error } = await supabase
+      .from(TABLES.EVENTS)
+      .delete()
+      .eq("id", id)
+      .eq("org_id", ORG_ID);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Bust caches
+    revalidatePath(`/event/${event.slug}`);
+    revalidatePath("/admin/events");
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}

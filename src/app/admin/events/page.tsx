@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -19,13 +19,37 @@ const STATUS_COLORS: Record<string, string> = {
   live: "#4ecb71",
   past: "#888",
   cancelled: "#ff0033",
+  archived: "#555",
+};
+
+const STATUS_TABS = [
+  { key: "all", label: "All" },
+  { key: "live", label: "Live" },
+  { key: "draft", label: "Draft" },
+  { key: "past", label: "Past" },
+  { key: "cancelled", label: "Cancelled" },
+  { key: "archived", label: "Archived" },
+];
+
+type EventWithTickets = Event & {
+  ticket_types?: { sold: number; capacity: number | null; price: number }[];
 };
 
 export default function EventsPage() {
   const router = useRouter();
-  const [events, setEvents] = useState<(Event & { ticket_types?: { sold: number; capacity: number | null; price: number }[] })[]>([]);
+  const [events, setEvents] = useState<EventWithTickets[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateOrder, setDateOrder] = useState<"desc" | "asc">("desc");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Action state
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // Create form state
   const [newName, setNewName] = useState("");
@@ -55,6 +79,90 @@ export default function EventsPage() {
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
+
+  // Filtered and sorted events
+  const filteredEvents = useMemo(() => {
+    let result = events;
+
+    // Status filter (default "all" hides archived)
+    if (statusFilter === "all") {
+      result = result.filter((e) => e.status !== "archived");
+    } else {
+      result = result.filter((e) => e.status === statusFilter);
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      const from = new Date(dateFrom).getTime();
+      result = result.filter((e) => new Date(e.date_start).getTime() >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo).getTime() + 86400000; // include end date
+      result = result.filter((e) => new Date(e.date_start).getTime() <= to);
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      const diff = new Date(a.date_start).getTime() - new Date(b.date_start).getTime();
+      return dateOrder === "asc" ? diff : -diff;
+    });
+
+    return result;
+  }, [events, statusFilter, dateOrder, dateFrom, dateTo]);
+
+  // Status counts for tabs
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: 0 };
+    for (const e of events) {
+      counts[e.status] = (counts[e.status] || 0) + 1;
+      if (e.status !== "archived") counts.all++;
+    }
+    return counts;
+  }, [events]);
+
+  const handleArchive = async (evt: EventWithTickets) => {
+    setActionLoading(evt.id);
+    try {
+      await fetch(`/api/events/${evt.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived" }),
+      });
+      await loadEvents();
+    } catch {
+      // Silently fail
+    }
+    setActionLoading(null);
+  };
+
+  const handleUnarchive = async (evt: EventWithTickets) => {
+    setActionLoading(evt.id);
+    try {
+      await fetch(`/api/events/${evt.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "draft" }),
+      });
+      await loadEvents();
+    } catch {
+      // Silently fail
+    }
+    setActionLoading(null);
+  };
+
+  const handleDelete = async (evt: EventWithTickets) => {
+    setActionLoading(evt.id);
+    try {
+      const res = await fetch(`/api/events/${evt.id}`, { method: "DELETE" });
+      if (res.ok) {
+        await loadEvents();
+        setConfirmDelete(null);
+      }
+    } catch {
+      // Silently fail
+    }
+    setActionLoading(null);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +197,6 @@ export default function EventsPage() {
         return;
       }
 
-      // Redirect to the event editor
       setCreating(false);
       router.push(`/admin/events/${json.data.slug}/`);
     } catch {
@@ -98,7 +205,7 @@ export default function EventsPage() {
     }
   };
 
-  const getTicketStats = (evt: typeof events[0]) => {
+  const getTicketStats = (evt: EventWithTickets) => {
     const types = evt.ticket_types || [];
     const sold = types.reduce((s, t) => s + (t.sold || 0), 0);
     const capacity = types.reduce((s, t) => s + (t.capacity || 0), 0);
@@ -229,12 +336,98 @@ export default function EventsPage() {
         </div>
       )}
 
+      {/* Filter Bar */}
+      {!loading && events.length > 0 && (
+        <div className="admin-section" style={{ padding: "12px 16px" }}>
+          {/* Status tabs */}
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 12 }}>
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                style={{
+                  padding: "5px 12px",
+                  fontSize: "0.72rem",
+                  background: statusFilter === tab.key ? "#ff003322" : "transparent",
+                  color: statusFilter === tab.key ? "#ff0033" : "#888",
+                  border: `1px solid ${statusFilter === tab.key ? "#ff003344" : "#333"}`,
+                  cursor: "pointer",
+                  fontFamily: "'Space Mono', monospace",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {tab.label}
+                {statusCounts[tab.key] ? ` (${statusCounts[tab.key]})` : ""}
+              </button>
+            ))}
+          </div>
+
+          {/* Date filters row */}
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <label style={{ fontSize: "0.7rem", color: "#888" }}>From</label>
+              <input
+                type="date"
+                className="admin-form__input"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                style={{ width: 140, padding: "4px 8px", fontSize: "0.72rem" }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <label style={{ fontSize: "0.7rem", color: "#888" }}>To</label>
+              <input
+                type="date"
+                className="admin-form__input"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                style={{ width: 140, padding: "4px 8px", fontSize: "0.72rem" }}
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(""); setDateTo(""); }}
+                style={{
+                  fontSize: "0.68rem",
+                  color: "#ff0033",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
+              >
+                Clear dates
+              </button>
+            )}
+            <button
+              onClick={() => setDateOrder(dateOrder === "desc" ? "asc" : "desc")}
+              style={{
+                marginLeft: "auto",
+                padding: "5px 10px",
+                fontSize: "0.7rem",
+                background: "transparent",
+                color: "#888",
+                border: "1px solid #333",
+                cursor: "pointer",
+                fontFamily: "'Space Mono', monospace",
+              }}
+            >
+              Date {dateOrder === "desc" ? "Newest first" : "Oldest first"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Events Table */}
       {loading ? (
         <div className="admin-loading">Loading events...</div>
       ) : events.length === 0 ? (
         <div className="admin-empty">
           <p>No events yet. Create your first event to get started.</p>
+        </div>
+      ) : filteredEvents.length === 0 ? (
+        <div className="admin-empty">
+          <p>No events match the current filters.</p>
         </div>
       ) : (
         <div className="admin-section">
@@ -248,13 +441,15 @@ export default function EventsPage() {
                 <th>Tickets</th>
                 <th>Revenue</th>
                 <th>Payment</th>
+                <th style={{ width: 90 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {events.map((evt) => {
+              {filteredEvents.map((evt) => {
                 const stats = getTicketStats(evt);
+                const isArchived = evt.status === "archived";
                 return (
-                  <tr key={evt.id}>
+                  <tr key={evt.id} style={isArchived ? { opacity: 0.6 } : undefined}>
                     <td>
                       <span
                         className="admin-badge"
@@ -309,6 +504,89 @@ export default function EventsPage() {
                       >
                         {evt.payment_method}
                       </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {isArchived ? (
+                          <button
+                            onClick={() => handleUnarchive(evt)}
+                            disabled={actionLoading === evt.id}
+                            title="Restore to Draft"
+                            style={{
+                              padding: "3px 8px",
+                              fontSize: "0.62rem",
+                              background: "#4ecb7122",
+                              color: "#4ecb71",
+                              border: "1px solid #4ecb7144",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {actionLoading === evt.id ? "..." : "Restore"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleArchive(evt)}
+                            disabled={actionLoading === evt.id}
+                            title="Archive event"
+                            style={{
+                              padding: "3px 8px",
+                              fontSize: "0.62rem",
+                              background: "transparent",
+                              color: "#888",
+                              border: "1px solid #333",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {actionLoading === evt.id ? "..." : "Archive"}
+                          </button>
+                        )}
+                        {confirmDelete === evt.id ? (
+                          <>
+                            <button
+                              onClick={() => handleDelete(evt)}
+                              disabled={actionLoading === evt.id}
+                              style={{
+                                padding: "3px 8px",
+                                fontSize: "0.62rem",
+                                background: "#ff003322",
+                                color: "#ff0033",
+                                border: "1px solid #ff003344",
+                                cursor: "pointer",
+                              }}
+                            >
+                              {actionLoading === evt.id ? "..." : "Confirm"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(null)}
+                              style={{
+                                padding: "3px 6px",
+                                fontSize: "0.62rem",
+                                background: "transparent",
+                                color: "#888",
+                                border: "1px solid #333",
+                                cursor: "pointer",
+                              }}
+                            >
+                              No
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDelete(evt.id)}
+                            title="Permanently delete"
+                            style={{
+                              padding: "3px 8px",
+                              fontSize: "0.62rem",
+                              background: "transparent",
+                              color: "#ff003388",
+                              border: "1px solid #ff003333",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

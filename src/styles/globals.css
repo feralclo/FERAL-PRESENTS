@@ -4990,7 +4990,10 @@ body.cookie-banner-active .bottom-bar {
   display: none;
 }
 
-/* ===== COVER IMAGE - Optional blurred background for minimal theme ===== */
+/* ===== COVER IMAGE - Optional background image for minimal theme =====
+   At blur=0 / static=0, this matches the default theme look (darken +
+   bottom fade + global noise) but without the red scanline.
+   Blur and static sliders add effects on top.                          */
 .theme-minimal.has-cover-image .event-hero__bg {
   display: block;
   position: absolute;
@@ -5004,6 +5007,7 @@ body.cookie-banner-active .bottom-bar {
 
 .theme-minimal.has-cover-image .event-hero__bg-img {
   filter: blur(var(--cover-blur, 0px));
+  /* slight scale prevents white edges when blur is applied */
   transform: scale(1.02);
   opacity: 1;
   object-fit: cover;
@@ -5012,23 +5016,16 @@ body.cookie-banner-active .bottom-bar {
   height: 100%;
 }
 
-.theme-minimal.has-cover-image .event-hero__darken {
-  display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.2);
-  z-index: 1;
-}
+/* Use the same darken as the default theme (0.4) — keeps image visible
+   while ensuring text readability. No separate lighter override. */
 
 /* Hide the red scanline on minimal theme */
 .theme-minimal .event-hero__scanline {
   display: none;
 }
 
-/* Hero-localized noise/static overlay for cover image only */
+/* Hero-localized noise/static overlay — controllable via --static-opacity.
+   At 0, this is completely invisible; page-wide scanlines/noise still apply. */
 .theme-minimal .event-hero__noise {
   display: none;
 }

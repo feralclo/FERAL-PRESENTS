@@ -3,8 +3,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { OrderConfirmation } from "./OrderConfirmation";
+import { StripePaymentForm } from "./StripePaymentForm";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
+import { getCurrencySymbol } from "@/lib/stripe/config";
 import "@/styles/checkout-page.css";
 
 interface NativeCheckoutProps {
@@ -20,9 +22,14 @@ interface CartLine {
   merch_size?: string;
 }
 
+type CheckoutStep = "details" | "payment" | "confirmation";
+
 export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
   const searchParams = useSearchParams();
   const cartParam = searchParams.get("cart");
+
+  // Checkout step
+  const [step, setStep] = useState<CheckoutStep>("details");
 
   // Form state
   const [firstName, setFirstName] = useState("");
@@ -66,8 +73,12 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
 
   const subtotal = cartLines.reduce((sum, l) => sum + l.price * l.qty, 0);
   const totalQty = cartLines.reduce((sum, l) => sum + l.qty, 0);
+  const symbol = getCurrencySymbol(event.currency);
 
-  const handleSubmit = useCallback(
+  const isStripe = event.payment_method === "stripe";
+
+  // Validate customer details and move to payment step (Stripe) or submit directly (test)
+  const handleDetailsSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setError("");
@@ -87,6 +98,13 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
         return;
       }
 
+      if (isStripe) {
+        // Move to payment step — StripePaymentForm handles the rest
+        setStep("payment");
+        return;
+      }
+
+      // Test mode: submit directly to /api/orders
       setSubmitting(true);
 
       try {
@@ -118,16 +136,76 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
         }
 
         setCompletedOrder(json.data);
+        setStep("confirmation");
       } catch {
         setError("Network error. Please check your connection and try again.");
         setSubmitting(false);
       }
     },
-    [firstName, lastName, email, phone, cartLines, event.id]
+    [firstName, lastName, email, phone, cartLines, event.id, isStripe]
+  );
+
+  // Handle Stripe payment success
+  const handleStripeSuccess = useCallback(
+    async (paymentIntentId: string) => {
+      // Fetch the created order (webhook should have created it)
+      // Poll for order with exponential backoff
+      let order: Order | null = null;
+      const maxAttempts = 10;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const delay = Math.min(1000 * Math.pow(1.5, attempt), 5000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        try {
+          const res = await fetch(
+            `/api/orders?payment_ref=${encodeURIComponent(paymentIntentId)}&event_id=${encodeURIComponent(event.id)}`
+          );
+          const json = await res.json();
+
+          if (json.data && json.data.length > 0) {
+            // Fetch full order with tickets
+            const orderRes = await fetch(`/api/orders/${json.data[0].id}`);
+            const orderJson = await orderRes.json();
+            if (orderJson.data) {
+              order = orderJson.data;
+              break;
+            }
+          }
+        } catch {
+          // Continue polling
+        }
+      }
+
+      if (order) {
+        setCompletedOrder(order);
+        setStep("confirmation");
+      } else {
+        // Payment succeeded but order not found yet — show basic confirmation
+        setCompletedOrder({
+          id: "",
+          org_id: "feral",
+          order_number: "Processing...",
+          event_id: event.id,
+          customer_id: "",
+          status: "completed",
+          subtotal,
+          fees: 0,
+          total: subtotal,
+          currency: event.currency,
+          payment_method: "stripe",
+          payment_ref: paymentIntentId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        setStep("confirmation");
+      }
+    },
+    [event.id, event.currency, subtotal]
   );
 
   // Show confirmation if order completed
-  if (completedOrder) {
+  if (step === "confirmation" && completedOrder) {
     return (
       <OrderConfirmation
         order={completedOrder}
@@ -137,77 +215,88 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
     );
   }
 
+  // Step 2: Stripe Payment Element
+  if (step === "payment" && isStripe) {
+    return (
+      <>
+        {/* Header */}
+        <CheckoutHeader slug={slug} />
+
+        {/* Order Summary */}
+        <OrderSummaryStrip cartLines={cartLines} symbol={symbol} />
+
+        {/* Customer summary + Payment */}
+        <div className="native-checkout">
+          <div className="native-checkout__inner">
+            <div className="native-checkout__customer-summary">
+              <div className="native-checkout__customer-summary-row">
+                <span className="native-checkout__customer-summary-label">Name</span>
+                <span className="native-checkout__customer-summary-value">
+                  {firstName} {lastName}
+                </span>
+              </div>
+              <div className="native-checkout__customer-summary-row">
+                <span className="native-checkout__customer-summary-label">Email</span>
+                <span className="native-checkout__customer-summary-value">
+                  {email}
+                </span>
+              </div>
+              {phone && (
+                <div className="native-checkout__customer-summary-row">
+                  <span className="native-checkout__customer-summary-label">Phone</span>
+                  <span className="native-checkout__customer-summary-value">
+                    {phone}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {error && <div className="native-checkout__error">{error}</div>}
+
+            <StripePaymentForm
+              eventId={event.id}
+              eventName={event.name}
+              currency={event.currency}
+              items={cartLines.map((l) => ({
+                ticket_type_id: l.ticket_type_id,
+                qty: l.qty,
+                merch_size: l.merch_size,
+              }))}
+              customer={{
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                email: email.trim().toLowerCase(),
+                phone: phone.trim() || undefined,
+              }}
+              onSuccess={handleStripeSuccess}
+              onError={(msg) => setError(msg)}
+              onBack={() => {
+                setStep("details");
+                setError("");
+              }}
+              subtotal={subtotal}
+              totalQty={totalQty}
+            />
+          </div>
+        </div>
+
+        <CheckoutFooter />
+      </>
+    );
+  }
+
+  // Step 1: Customer Details Form
   return (
     <>
-      {/* Checkout Header */}
-      <div className="checkout-header">
-        <a href={`/event/${slug}/`} className="checkout-header__back">
-          <span className="checkout-header__back-arrow">&larr;</span>
-          <span>Back</span>
-        </a>
-        <a href={`/event/${slug}/`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/FERAL%20LOGO.svg"
-            alt="FERAL PRESENTS"
-            className="checkout-header__logo"
-          />
-        </a>
-        <div className="checkout-header__secure">
-          <svg
-            className="checkout-header__lock"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="5"
-              y="11"
-              width="14"
-              height="10"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-            <path
-              d="M8 11V7a4 4 0 018 0v4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-          <span>Secure Checkout</span>
-        </div>
-      </div>
-
-      {/* Order Summary */}
-      <div className="checkout-summary">
-        <div className="checkout-summary__label">Order Summary</div>
-        <div className="checkout-summary__items">
-          {cartLines.map((line, i) => (
-            <div key={i} className="checkout-summary__item">
-              <span className="checkout-summary__qty">{line.qty}x</span>
-              <span className="checkout-summary__name">{line.name}</span>
-              {line.merch_size && (
-                <span className="checkout-summary__size">
-                  {line.merch_size}
-                </span>
-              )}
-              <span className="checkout-summary__price">
-                {event.currency === "GBP" ? "£" : "€"}
-                {(line.price * line.qty).toFixed(2)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <CheckoutHeader slug={slug} />
+      <OrderSummaryStrip cartLines={cartLines} symbol={symbol} />
 
       {/* Native Checkout Form */}
       <div className="native-checkout">
         <div className="native-checkout__inner">
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Your Details</h2>
-            <form onSubmit={handleSubmit} className="native-checkout__form">
+            <form onSubmit={handleDetailsSubmit} className="native-checkout__form">
               <div className="native-checkout__row">
                 <div className="native-checkout__field">
                   <label className="native-checkout__label">First Name *</label>
@@ -270,7 +359,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
                     {totalQty} ticket{totalQty !== 1 ? "s" : ""}
                   </span>
                   <span className="native-checkout__total-price">
-                    {event.currency === "GBP" ? "£" : "€"}
+                    {symbol}
                     {subtotal.toFixed(2)}
                   </span>
                 </div>
@@ -281,7 +370,11 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
                 className="native-checkout__submit"
                 disabled={submitting}
               >
-                {submitting ? "Processing..." : "PAY NOW"}
+                {submitting
+                  ? "Processing..."
+                  : isStripe
+                    ? "CONTINUE TO PAYMENT"
+                    : "PAY NOW"}
               </button>
 
               {event.payment_method === "test" && (
@@ -294,18 +387,102 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
         </div>
       </div>
 
-      <footer className="footer">
-        <div className="container">
-          <div className="footer__inner">
-            <span className="footer__copy">
-              &copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.
-            </span>
-            <span className="footer__status">
-              STATUS: <span className="text-red">ONLINE</span>
+      <CheckoutFooter />
+    </>
+  );
+}
+
+/** Shared checkout header */
+function CheckoutHeader({ slug }: { slug: string }) {
+  return (
+    <div className="checkout-header">
+      <a href={`/event/${slug}/`} className="checkout-header__back">
+        <span className="checkout-header__back-arrow">&larr;</span>
+        <span>Back</span>
+      </a>
+      <a href={`/event/${slug}/`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/FERAL%20LOGO.svg"
+          alt="FERAL PRESENTS"
+          className="checkout-header__logo"
+        />
+      </a>
+      <div className="checkout-header__secure">
+        <svg
+          className="checkout-header__lock"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            x="5"
+            y="11"
+            width="14"
+            height="10"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <path
+            d="M8 11V7a4 4 0 018 0v4"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span>Secure Checkout</span>
+      </div>
+    </div>
+  );
+}
+
+/** Shared order summary strip */
+function OrderSummaryStrip({
+  cartLines,
+  symbol,
+}: {
+  cartLines: CartLine[];
+  symbol: string;
+}) {
+  return (
+    <div className="checkout-summary">
+      <div className="checkout-summary__label">Order Summary</div>
+      <div className="checkout-summary__items">
+        {cartLines.map((line, i) => (
+          <div key={i} className="checkout-summary__item">
+            <span className="checkout-summary__qty">{line.qty}x</span>
+            <span className="checkout-summary__name">{line.name}</span>
+            {line.merch_size && (
+              <span className="checkout-summary__size">
+                {line.merch_size}
+              </span>
+            )}
+            <span className="checkout-summary__price">
+              {symbol}
+              {(line.price * line.qty).toFixed(2)}
             </span>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Shared footer */
+function CheckoutFooter() {
+  return (
+    <footer className="footer">
+      <div className="container">
+        <div className="footer__inner">
+          <span className="footer__copy">
+            &copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.
+          </span>
+          <span className="footer__status">
+            STATUS: <span className="text-red">ONLINE</span>
+          </span>
         </div>
-      </footer>
-    </>
+      </div>
+    </footer>
   );
 }

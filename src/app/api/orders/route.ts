@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const eventId = searchParams.get("event_id");
     const status = searchParams.get("status");
+    const paymentRef = searchParams.get("payment_ref");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const page = parseInt(searchParams.get("page") || "1", 10);
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
 
     if (eventId) query = query.eq("event_id", eventId);
     if (status) query = query.eq("status", status);
+    if (paymentRef) query = query.eq("payment_ref", paymentRef);
     if (from) query = query.gte("created_at", from);
     if (to) query = query.lte("created_at", to);
 

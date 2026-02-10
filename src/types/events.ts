@@ -30,6 +30,10 @@ export interface Event {
   details_text?: string;
   tag_line?: string;
   doors_time?: string;
+  /** Stripe Connect account ID for the promoter running this event */
+  stripe_account_id?: string;
+  /** Platform fee percentage override for this event (default: 5%) */
+  platform_fee_percent?: number;
   created_at: string;
   updated_at: string;
 }

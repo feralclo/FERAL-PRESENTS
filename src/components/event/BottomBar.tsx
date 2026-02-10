@@ -23,11 +23,22 @@ export function BottomBar({
             {hasCart ? cartTotal : `From ${fromPrice}`}
           </span>
           <span className="bottom-bar__subtitle">
-            {hasCart
-              ? `${cartQty} ticket${cartQty !== 1 ? "s" : ""} selected`
-              : "Incl. booking fee. No surprises."}
+            Incl. booking fee. No surprises.
           </span>
         </div>
+        {hasCart && (
+          <span
+            style={{
+              color: "#ff0033",
+              fontSize: "0.75rem",
+              fontFamily: "'Space Mono', monospace",
+              whiteSpace: "nowrap",
+              letterSpacing: "0.5px",
+            }}
+          >
+            {cartQty} ticket{cartQty !== 1 ? "s" : ""}
+          </span>
+        )}
         <button className="bottom-bar__cta" onClick={onBuyNow}>
           {hasCart ? "Checkout" : "Buy Now"}
         </button>

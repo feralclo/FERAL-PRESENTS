@@ -202,8 +202,8 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
                         <span>
                           {item.qty}x {item.name}
                           {item.size && (
-                            <span style={{ color: "#888", marginLeft: 6 }}>
-                              size: {item.size}
+                            <span style={{ color: "#ff0033", marginLeft: 6, fontWeight: 700 }}>
+                              {item.size}
                             </span>
                           )}
                         </span>

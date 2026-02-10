@@ -83,12 +83,19 @@ async function processImageFile(file: File): Promise<string | null> {
     alert("Image too large. Maximum is 5MB.");
     return null;
   }
-  let result = await compressImage(file, 1600, 0.75);
-  if (result && result.length > 500 * 1024) {
-    result = await compressImage(file, 1600, 0.6);
+  // Progressive compression to keep base64 under 300KB for reliable DB storage
+  let result = await compressImage(file, 1200, 0.7);
+  if (result && result.length > 300 * 1024) {
+    result = await compressImage(file, 1000, 0.55);
   }
-  if (result && result.length > 500 * 1024) {
-    result = await compressImage(file, 1200, 0.5);
+  if (result && result.length > 300 * 1024) {
+    result = await compressImage(file, 800, 0.4);
+  }
+  if (result && result.length > 300 * 1024) {
+    result = await compressImage(file, 600, 0.35);
+  }
+  if (!result) {
+    alert("Failed to process image. Try a smaller file.");
   }
   return result;
 }
@@ -546,7 +553,22 @@ export default function EventEditorPage() {
         const types = (json.data.ticket_types || []) as TicketTypeRow[];
         setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
         setDeletedTypeIds([]);
-        setSaveMsg("Saved successfully");
+
+        // Warn if images didn't persist
+        const imgWarnings: string[] = [];
+        if (event.cover_image && !json.data.cover_image) {
+          imgWarnings.push("cover image");
+        }
+        if (event.hero_image && !json.data.hero_image) {
+          imgWarnings.push("hero image");
+        }
+        if (imgWarnings.length > 0) {
+          setSaveMsg(
+            `Saved, but ${imgWarnings.join(" and ")} may not have persisted. Try re-uploading a smaller image.`
+          );
+        } else {
+          setSaveMsg("Saved successfully");
+        }
       } else {
         setSaveMsg(`Error: ${json.error}`);
       }

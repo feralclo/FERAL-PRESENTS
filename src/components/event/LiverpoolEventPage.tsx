@@ -159,7 +159,12 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
         </section>
       </main>
 
-      <BottomBar onBuyNow={scrollToTickets} />
+      <BottomBar
+        fromPrice={`£${cart.totalPrice > 0 ? cart.totalPrice.toFixed(2) : "26.46"}`}
+        cartTotal={cart.totalQty > 0 ? `£${cart.totalPrice.toFixed(2)}` : undefined}
+        cartQty={cart.totalQty}
+        onBuyNow={scrollToTickets}
+      />
 
       <TeeModal
         isOpen={teeModalOpen}

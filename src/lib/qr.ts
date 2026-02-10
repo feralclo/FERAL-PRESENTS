@@ -1,15 +1,18 @@
 import QRCode from "qrcode";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://feralpresents.com";
-
 /**
  * Generate a QR code as a data URL (for inline display in HTML/emails).
+ *
+ * Encodes the raw ticket code (e.g., "FERAL-A3B4C5D6") rather than a URL.
+ * This is optimal for scanning speed and cross-platform compatibility:
+ * - Smaller QR code = fewer modules = faster scan at any distance
+ * - Works with external platforms (Skiddle, RA, etc.) that scan for codes
+ * - High error correction (H = 30% recovery) for reliability in dark venues
+ * - Our scanner app resolves the code server-side via /api/tickets/[code]
  */
 export async function generateTicketQR(ticketCode: string): Promise<string> {
-  const validationUrl = `${BASE_URL}/api/tickets/${ticketCode}`;
-  return QRCode.toDataURL(validationUrl, {
-    errorCorrectionLevel: "M",
+  return QRCode.toDataURL(ticketCode, {
+    errorCorrectionLevel: "H",
     margin: 2,
     width: 300,
     color: { dark: "#000000", light: "#ffffff" },
@@ -22,9 +25,8 @@ export async function generateTicketQR(ticketCode: string): Promise<string> {
 export async function generateTicketQRBuffer(
   ticketCode: string
 ): Promise<Buffer> {
-  const validationUrl = `${BASE_URL}/api/tickets/${ticketCode}`;
-  return QRCode.toBuffer(validationUrl, {
-    errorCorrectionLevel: "M",
+  return QRCode.toBuffer(ticketCode, {
+    errorCorrectionLevel: "H",
     margin: 2,
     width: 300,
   });

@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
-import { saveSettings } from "@/lib/settings";
 import type { EventSettings } from "@/types/settings";
 
 const SLUG_TO_KEY: Record<string, string> = {
@@ -68,12 +67,31 @@ export default function EventEditor() {
     setSaving(true);
     setSaveStatus("");
 
-    const result = await saveSettings(settingsKey, settings);
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      setSaveStatus("Error: Database not connected");
+      setSaving(false);
+      return;
+    }
 
-    if (result.error) {
-      setSaveStatus(`Error: ${result.error.message}`);
+    const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(
+      {
+        key: settingsKey,
+        data: settings,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+
+    if (error) {
+      setSaveStatus(`Error: ${error.message}`);
     } else {
       setSaveStatus("Settings saved successfully");
+      try {
+        localStorage.setItem(settingsKey, JSON.stringify(settings));
+      } catch {
+        // localStorage may be unavailable
+      }
     }
 
     setSaving(false);

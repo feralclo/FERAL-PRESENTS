@@ -25,7 +25,12 @@ export default async function EventLayout({
   const settingsKey = SLUG_TO_SETTINGS_KEY[slug] || `feral_event_${slug}`;
 
   // Fetch settings server-side — no loading state, no FOUC
-  const settings = await fetchSettings(settingsKey);
+  let settings = null;
+  try {
+    settings = await fetchSettings(settingsKey);
+  } catch {
+    // Settings fetch failed — render page with defaults
+  }
 
   // Determine theme classes for the wrapper
   const isMinimal = settings?.theme === "minimal";
@@ -45,7 +50,7 @@ export default async function EventLayout({
   }
 
   return (
-    <div className={themeClasses} style={cssVars as React.CSSProperties}>
+    <div className={themeClasses || undefined} style={cssVars as React.CSSProperties}>
       <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
         {children}
       </SettingsProvider>

@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
 
+// Countdown target: Thursday 29 January 2026, 6PM CET (UTC+1)
+const TARGET = new Date("2026-01-29T17:00:00Z").getTime();
+
 /**
  * Kompass Klub event page — simpler event with countdown timer + external tickets.
  * Matches existing /event/kompass-klub-7-march/index.html.
  */
 export function KompassEventPage() {
-  // Countdown target: Thursday 29 January 2026, 6PM CET (UTC+1)
-  const TARGET = new Date("2026-01-29T17:00:00Z").getTime();
-
   const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft(TARGET));
   const [expired, setExpired] = useState(() => Date.now() >= TARGET);
 
@@ -25,7 +25,7 @@ export function KompassEventPage() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [TARGET]);
+  }, []);
 
   const handleBuyTickets = useCallback(() => {
     window.open(

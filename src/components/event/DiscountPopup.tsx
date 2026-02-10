@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { subscribeToKlaviyo, identifyInKlaviyo } from "@/lib/klaviyo";
 import { DISCOUNT_CODE, POPUP_DISMISS_DAYS, ORG_ID } from "@/lib/constants";
+import "@/styles/popup.css";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;

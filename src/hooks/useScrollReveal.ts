@@ -10,25 +10,33 @@ export function useScrollReveal() {
   const containerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const container = containerRef.current || document;
-    const elements = container.querySelectorAll("[data-reveal]");
-    if (elements.length === 0) return;
+    let observer: IntersectionObserver | null = null;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("revealed");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
-    );
+    // Use requestAnimationFrame to ensure child components have rendered
+    const raf = requestAnimationFrame(() => {
+      const container = containerRef.current || document;
+      const elements = container.querySelectorAll("[data-reveal]");
+      if (elements.length === 0) return;
 
-    elements.forEach((el) => observer.observe(el));
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("revealed");
+              observer?.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
+      );
 
-    return () => observer.disconnect();
+      elements.forEach((el) => observer!.observe(el));
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      observer?.disconnect();
+    };
   }, []);
 
   return containerRef;

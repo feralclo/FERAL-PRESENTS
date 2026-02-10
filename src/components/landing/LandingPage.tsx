@@ -8,9 +8,13 @@ import { ContactSection } from "./ContactSection";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useDataLayer } from "@/hooks/useDataLayer";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 export function LandingPage() {
   const { push } = useDataLayer();
+
+  // Activate scroll reveal for [data-reveal] elements (Events, Contact sections)
+  useScrollReveal();
 
   // Track view_content on mount (matches existing inline script)
   useEffect(() => {

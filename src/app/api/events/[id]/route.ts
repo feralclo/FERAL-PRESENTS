@@ -79,37 +79,39 @@ export async function PUT(
       );
     }
 
-    // Delete removed ticket types
+    // Delete removed ticket types (parallel)
     if (deleted_ticket_type_ids && Array.isArray(deleted_ticket_type_ids)) {
-      for (const ttId of deleted_ticket_type_ids) {
-        await supabase
-          .from(TABLES.TICKET_TYPES)
-          .delete()
-          .eq("id", ttId)
-          .eq("org_id", ORG_ID);
-      }
+      await Promise.all(
+        deleted_ticket_type_ids.map((ttId: string) =>
+          supabase
+            .from(TABLES.TICKET_TYPES)
+            .delete()
+            .eq("id", ttId)
+            .eq("org_id", ORG_ID)
+        )
+      );
     }
 
-    // Update ticket types if provided
+    // Update/insert ticket types (parallel)
     if (ticket_types && Array.isArray(ticket_types)) {
-      for (const tt of ticket_types) {
-        if (tt.id) {
-          // Update existing
-          const { id: ttId, ...ttFields } = tt;
-          await supabase
-            .from(TABLES.TICKET_TYPES)
-            .update({ ...ttFields, updated_at: new Date().toISOString() })
-            .eq("id", ttId)
-            .eq("org_id", ORG_ID);
-        } else {
-          // Insert new
-          await supabase.from(TABLES.TICKET_TYPES).insert({
-            org_id: ORG_ID,
-            event_id: id,
-            ...tt,
-          });
-        }
-      }
+      await Promise.all(
+        ticket_types.map((tt: Record<string, unknown>) => {
+          if (tt.id) {
+            const { id: ttId, ...ttFields } = tt;
+            return supabase
+              .from(TABLES.TICKET_TYPES)
+              .update({ ...ttFields, updated_at: new Date().toISOString() })
+              .eq("id", ttId as string)
+              .eq("org_id", ORG_ID);
+          } else {
+            return supabase.from(TABLES.TICKET_TYPES).insert({
+              org_id: ORG_ID,
+              event_id: id,
+              ...tt,
+            });
+          }
+        })
+      );
     }
 
     // Return updated event
@@ -121,7 +123,10 @@ export async function PUT(
 
     // Verify image persistence
     if (eventFields.cover_image && !data?.cover_image) {
-      console.warn(`[events/${id}] cover_image was sent but not returned — column may not exist in DB`);
+      console.warn(`[events/${id}] cover_image was sent but not returned — column may not exist in DB. Run supabase-add-image-columns.sql`);
+    }
+    if (eventFields.hero_image && !data?.hero_image) {
+      console.warn(`[events/${id}] hero_image was sent but not returned — column may not exist in DB. Run supabase-add-image-columns.sql`);
     }
 
     // Bust Next.js page cache so public event pages reflect changes immediately

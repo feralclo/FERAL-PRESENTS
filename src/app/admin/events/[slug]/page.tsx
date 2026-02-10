@@ -470,22 +470,20 @@ export default function EventEditorPage() {
       const types = (data.ticket_types || []) as TicketTypeRow[];
       setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
 
-      // Load site_settings for weeztix events
-      if (data.payment_method === "weeztix") {
-        const key =
-          SLUG_TO_KEY[slug] || data.settings_key || `feral_event_${slug}`;
-        const { data: sd } = await supabase
-          .from(TABLES.SITE_SETTINGS)
-          .select("data")
-          .eq("key", key)
-          .single();
-        if (sd?.data) {
-          const s = sd.data as EventSettings;
-          setSettings(s);
-          // Sync theme from site_settings into event state so editor shows correct value
-          if (s.theme) {
-            setEvent((prev) => prev ? { ...prev, theme: s.theme as string } : prev);
-          }
+      // Load site_settings (WeeZTix gets all settings, native events get theme effects)
+      const key =
+        SLUG_TO_KEY[slug] || data.settings_key || `feral_event_${slug}`;
+      const { data: sd } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", key)
+        .single();
+      if (sd?.data) {
+        const s = sd.data as EventSettings;
+        setSettings(s);
+        // For WeeZTix: sync theme from site_settings into event state
+        if (data.payment_method === "weeztix" && s.theme) {
+          setEvent((prev) => prev ? { ...prev, theme: s.theme as string } : prev);
         }
       }
 
@@ -569,7 +567,7 @@ export default function EventEditorPage() {
           payment_method: event.payment_method,
           capacity: event.capacity || null,
           cover_image: event.cover_image || null,
-          hero_image: null,
+          hero_image: event.hero_image || null,
           theme: event.theme || "default",
           currency: event.currency,
           about_text: event.about_text || null,
@@ -617,18 +615,36 @@ export default function EventEditorPage() {
         setSaveMsg(`Error: ${json.error}`);
       }
 
-      // Also save site_settings for weeztix events
-      if (event.payment_method === "weeztix") {
+      // Save site_settings: WeeZTix events save all settings,
+      // native events save theme effects (blur/static) if using minimal theme
+      const hasThemeSettings =
+        event.payment_method === "weeztix" ||
+        (event.theme === "minimal" && (
+          settings.minimalBlurStrength !== undefined ||
+          settings.minimalStaticStrength !== undefined
+        ));
+
+      if (hasThemeSettings) {
         const supabase = getSupabaseClient();
         if (supabase) {
           const key =
             SLUG_TO_KEY[slug] ||
             event.settings_key ||
             `feral_event_${event.slug}`;
+
+          // For native events, only save theme-related settings
+          const dataToSave = event.payment_method === "weeztix"
+            ? settings
+            : {
+                theme: event.theme,
+                minimalBlurStrength: settings.minimalBlurStrength,
+                minimalStaticStrength: settings.minimalStaticStrength,
+              };
+
           await supabase.from(TABLES.SITE_SETTINGS).upsert(
             {
               key,
-              data: settings,
+              data: dataToSave,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "key" }
@@ -1038,16 +1054,37 @@ export default function EventEditorPage() {
       {/* ─── Section: Design ─── */}
       <div className="admin-section">
         <h2 className="admin-section__title">Design</h2>
-        <ImageField
-          label="Event Image"
-          value={event.cover_image || ""}
-          onChange={(v) => updateEvent("cover_image", v)}
-          uploadKey={event.id ? `event_${event.id}_cover` : undefined}
-        />
-        <span style={{ fontSize: "0.7rem", color: "#555", display: "block", marginTop: -8, marginBottom: 16 }}>
-          Used as hero background (default theme) or blurred backdrop (minimal theme). Any aspect ratio works.
-        </span>
-        <div className="admin-form" style={{ marginTop: 8 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+          }}
+        >
+          <div>
+            <ImageField
+              label="Event Tile"
+              value={event.cover_image || ""}
+              onChange={(v) => updateEvent("cover_image", v)}
+              uploadKey={event.id ? `event_${event.id}_cover` : undefined}
+            />
+            <span style={{ fontSize: "0.65rem", color: "#555", display: "block", marginTop: -8 }}>
+              Tile image for event listings / homepage.
+            </span>
+          </div>
+          <div>
+            <ImageField
+              label="Event Banner"
+              value={event.hero_image || ""}
+              onChange={(v) => updateEvent("hero_image", v)}
+              uploadKey={event.id ? `event_${event.id}_banner` : undefined}
+            />
+            <span style={{ fontSize: "0.65rem", color: "#555", display: "block", marginTop: -8 }}>
+              Hero background on the event page. Any aspect ratio — auto-centered.
+            </span>
+          </div>
+        </div>
+        <div className="admin-form" style={{ marginTop: 16 }}>
           <div className="admin-form__field">
             <label className="admin-form__label">Theme</label>
             <select
@@ -1068,6 +1105,44 @@ export default function EventEditorPage() {
               <option value="minimal">Minimal</option>
             </select>
           </div>
+
+          {/* Minimal theme effects — show when minimal is selected and an image exists */}
+          {((event.payment_method !== "weeztix" && event.theme === "minimal") ||
+            (event.payment_method === "weeztix" && (settings.theme as string) === "minimal")) &&
+            (event.hero_image || event.cover_image || settings.minimalBgImage) && (
+            <>
+              <div className="admin-form__field" style={{ marginTop: 16 }}>
+                <label className="admin-form__label">
+                  Blur ({settings.minimalBlurStrength ?? 8}px)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="30"
+                  value={settings.minimalBlurStrength ?? 8}
+                  onChange={(e) =>
+                    updateSetting("minimalBlurStrength", parseInt(e.target.value))
+                  }
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div className="admin-form__field">
+                <label className="admin-form__label">
+                  Static / Noise ({settings.minimalStaticStrength ?? 40}%)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={settings.minimalStaticStrength ?? 40}
+                  onChange={(e) =>
+                    updateSetting("minimalStaticStrength", parseInt(e.target.value))
+                  }
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

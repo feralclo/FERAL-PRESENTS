@@ -49,10 +49,10 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   // Doors display
   const doorsDisplay = event.doors_time || "";
 
-  // Hero image — try cover_image (URL or base64), then hero_image,
-  // then fall back to the media serving URL (in case DB column doesn't exist
-  // but image was uploaded via the upload API to site_settings)
-  const heroImage = event.cover_image || event.hero_image || `/api/media/event_${event.id}_cover`;
+  // Banner image for the hero: hero_image (banner) is primary, cover_image (tile) is fallback,
+  // then try the media serving URL (in case DB columns don't exist but image was uploaded)
+  const heroImage = event.hero_image || event.cover_image
+    || `/api/media/event_${event.id}_banner`;
 
   // Lowest price for bottom bar
   const activeTypes = (event.ticket_types || []).filter(

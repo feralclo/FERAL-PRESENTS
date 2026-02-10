@@ -37,7 +37,7 @@ export default async function EventLayout({
     if (supabase) {
       const { data: event } = await supabase
         .from(TABLES.EVENTS)
-        .select("id, settings_key, theme, cover_image")
+        .select("id, settings_key, theme, cover_image, hero_image")
         .eq("slug", slug)
         .eq("org_id", ORG_ID)
         .single();
@@ -48,27 +48,29 @@ export default async function EventLayout({
       if (event) {
         eventId = event.id;
         eventTheme = event.theme || null;
-        // Check if cover_image has a value (URL or base64)
-        eventHasImage = !!(event.cover_image);
+        // Check if any image exists (banner or tile)
+        eventHasImage = !!(event.hero_image || event.cover_image);
       }
     }
   } catch {
     // Fall through to hardcoded map
   }
 
-  // Also check for uploaded media in site_settings (fallback if cover_image column
-  // doesn't exist in the database — images are stored separately via upload API)
+  // Also check for uploaded media in site_settings (fallback if DB columns
+  // don't exist — images are stored separately via upload API)
   if (!eventHasImage && eventId) {
     try {
       const supabase = await getSupabaseServer();
       if (supabase) {
-        const mediaKey = `media_event_${eventId}_cover`;
-        const { data: mediaRow } = await supabase
+        // Check for banner first, then cover
+        const { data: mediaRows } = await supabase
           .from(TABLES.SITE_SETTINGS)
           .select("key")
-          .eq("key", mediaKey)
-          .single();
-        if (mediaRow) {
+          .in("key", [
+            `media_event_${eventId}_banner`,
+            `media_event_${eventId}_cover`,
+          ]);
+        if (mediaRows && mediaRows.length > 0) {
           eventHasImage = true;
         }
       }

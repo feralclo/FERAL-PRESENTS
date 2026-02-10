@@ -23,8 +23,9 @@ export default function TrafficAnalytics() {
 
   useEffect(() => {
     const supabase = getSupabaseClient();
+    if (!supabase) return;
 
-    async function loadFunnel() {
+    const loadFunnel = async () => {
       const types = [
         "landing",
         "tickets",
@@ -49,7 +50,7 @@ export default function TrafficAnalytics() {
       }
 
       setFunnel(results);
-    }
+    };
 
     loadFunnel();
 

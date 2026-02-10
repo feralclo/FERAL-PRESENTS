@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
     const { data, error } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
@@ -47,6 +50,9 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
     const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(
       {
         key,

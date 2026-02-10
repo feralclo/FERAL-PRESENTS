@@ -21,8 +21,9 @@ export default function PopupPerformance() {
 
   useEffect(() => {
     const supabase = getSupabaseClient();
+    if (!supabase) return;
 
-    async function loadStats() {
+    const loadStats = async () => {
       const types = ["impressions", "engaged", "dismissed", "conversions"] as const;
       const results: PopupStats = {
         impressions: 0,
@@ -40,7 +41,7 @@ export default function PopupPerformance() {
       }
 
       setStats(results);
-    }
+    };
 
     loadStats();
 

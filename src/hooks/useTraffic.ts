@@ -4,8 +4,8 @@ import { useEffect, useRef, useCallback } from "react";
 import { ORG_ID } from "@/lib/constants";
 import type { TrafficEventType } from "@/types/analytics";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "";
@@ -46,6 +46,7 @@ function isDevMode(): boolean {
 }
 
 async function sendTrafficEvent(data: Record<string, unknown>) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return; // Env vars not configured
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/traffic_events`, {
       method: "POST",

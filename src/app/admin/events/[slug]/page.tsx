@@ -25,6 +25,7 @@ export default function EventEditor() {
   useEffect(() => {
     async function load() {
       const supabase = getSupabaseClient();
+      if (!supabase) return;
       const { data } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")

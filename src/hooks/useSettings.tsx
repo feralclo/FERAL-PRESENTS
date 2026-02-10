@@ -69,6 +69,8 @@ export function SettingsProvider({
     if (!settingsKey) return;
 
     const supabase = getSupabaseClient();
+    if (!supabase) return; // Env vars not configured — skip realtime
+
     const channel = supabase
       .channel(`settings:${settingsKey}`)
       .on(

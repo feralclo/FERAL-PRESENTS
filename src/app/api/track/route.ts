@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
       table === "popup" ? TABLES.POPUP_EVENTS : TABLES.TRAFFIC_EVENTS;
 
     const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
     const { error } = await supabase
       .from(tableName)
       .insert({ ...eventData, org_id: ORG_ID });

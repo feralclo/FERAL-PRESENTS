@@ -15,6 +15,10 @@ export default function AdminSettings() {
     }
 
     const supabase = getSupabaseClient();
+    if (!supabase) {
+      setStatus("Error: Supabase not configured");
+      return;
+    }
     const { error } = await supabase
       .from(TABLES.TRAFFIC_EVENTS)
       .delete()
@@ -35,6 +39,10 @@ export default function AdminSettings() {
     }
 
     const supabase = getSupabaseClient();
+    if (!supabase) {
+      setStatus("Error: Supabase not configured");
+      return;
+    }
     const { error } = await supabase
       .from(TABLES.POPUP_EVENTS)
       .delete()

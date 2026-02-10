@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function loadStats() {
       const supabase = getSupabaseClient();
+      if (!supabase) return;
 
       // Get total traffic events
       const { count: trafficCount } = await supabase

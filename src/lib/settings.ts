@@ -8,8 +8,10 @@ import type { EventSettings, SiteSettingsRow } from "@/types/settings";
 export async function fetchSettings(
   key: string
 ): Promise<EventSettings | null> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+  if (!supabaseUrl || !supabaseKey) return null;
 
   try {
     const res = await fetch(
@@ -49,8 +51,12 @@ export async function saveSettings(
     // localStorage may be unavailable
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+  if (!supabaseUrl || !supabaseKey) {
+    return { error: new Error("Supabase env vars not configured") };
+  }
 
   try {
     const res = await fetch(

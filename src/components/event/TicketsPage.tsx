@@ -91,6 +91,7 @@ export function TicketsPage({ slug }: TicketsPageProps) {
 
               <TicketWidget
                 eventSlug={slug}
+                cart={cart}
                 onViewTee={() => setTeeModalOpen(true)}
               />
             </div>

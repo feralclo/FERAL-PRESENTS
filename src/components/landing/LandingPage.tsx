@@ -28,20 +28,6 @@ export function LandingPage() {
     });
   }, [push]);
 
-  // Fade-in on load (matches existing main.js page transition)
-  useEffect(() => {
-    document.body.style.opacity = "0";
-    document.body.style.transition = "opacity 0.4s ease";
-    requestAnimationFrame(() => {
-      document.body.style.opacity = "1";
-    });
-
-    function onPageShow() {
-      document.body.style.opacity = "1";
-    }
-    window.addEventListener("pageshow", onPageShow);
-    return () => window.removeEventListener("pageshow", onPageShow);
-  }, []);
 
   return (
     <>

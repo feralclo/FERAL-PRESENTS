@@ -167,8 +167,7 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
       {/* Fullscreen Zoom */}
       {fullscreenOpen && (
         <div
-          className="tee-modal__fullscreen"
-          style={{ display: "flex" }}
+          className="tee-modal__fullscreen tee-modal__fullscreen--visible"
           onClick={() => setFullscreenOpen(false)}
         >
           <button

@@ -1,21 +1,19 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useTicketCart } from "@/hooks/useTicketCart";
-import { useSettings } from "@/hooks/useSettings";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useTraffic } from "@/hooks/useTraffic";
 import type { TicketKey, TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
+import type { useTicketCart } from "@/hooks/useTicketCart";
 
 interface TicketWidgetProps {
   eventSlug: string;
+  cart: ReturnType<typeof useTicketCart>;
   onViewTee?: () => void;
 }
 
-export function TicketWidget({ eventSlug, onViewTee }: TicketWidgetProps) {
-  const { settings } = useSettings();
-  const cart = useTicketCart(settings);
+export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) {
   const { trackAddToCart: trackCartEvent, trackInitiateCheckout } =
     useDataLayer();
   const { trackAddToCart: trackTraffic, trackEngagement } = useTraffic();

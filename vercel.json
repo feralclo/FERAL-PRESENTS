@@ -18,22 +18,34 @@
     {
       "source": "/contract/:path*",
       "has": [{ "type": "host", "value": "www.agencyferal.com" }],
-      "destination": "/contract/:path*"
+      "destination": "/static/contract/:path*"
     },
     {
       "source": "/contract/:path*",
       "has": [{ "type": "host", "value": "agencyferal.com" }],
-      "destination": "/contract/:path*"
+      "destination": "/static/contract/:path*"
     },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "www.agencyferal.com" }],
-      "destination": "/agencyferal/index.html"
+      "destination": "/static/agencyferal/index.html"
     },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "agencyferal.com" }],
-      "destination": "/agencyferal/index.html"
+      "destination": "/static/agencyferal/index.html"
+    },
+    {
+      "source": "/artist",
+      "destination": "/static/artist/index.html"
+    },
+    {
+      "source": "/artist-invite",
+      "destination": "/static/artist-invite/index.html"
+    },
+    {
+      "source": "/artist-login",
+      "destination": "/static/artist-login/index.html"
     }
   ]
 }

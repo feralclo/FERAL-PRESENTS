@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artist Dashboard | FERAL MGMT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface-2: #1a1a1a;
+      --surface-3: #222222;
+      --border: #2a2a2a;
+      --border-light: #333333;
+      --text: #ffffff;
+      --text-muted: #888888;
+      --text-dim: #555555;
+      --accent: #ff0033;
+      --accent-glow: rgba(255, 0, 51, 0.3);
+      --success: #00cc66;
+      --success-dim: rgba(0, 204, 102, 0.15);
+      --warning: #ffaa00;
+      --warning-dim: rgba(255, 170, 0, 0.15);
+      --pending: #ff6b35;
+      --pending-dim: rgba(255, 107, 53, 0.15);
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ========== TOPBAR ========== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar__left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .topbar__logo {
+      height: 28px;
+      filter: brightness(0) invert(1);
+    }
+
+    .topbar__sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+
+    .topbar__label {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .topbar__right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .topbar__user {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .topbar__logout {
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .topbar__logout:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ========== MAIN LAYOUT ========== */
+    .main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .welcome {
+      margin-bottom: 32px;
+    }
+
+    .welcome__greeting {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .welcome__name {
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    /* ========== NAV TABS ========== */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-tab:hover {
+      border-color: var(--text-muted);
+      color: var(--text);
+    }
+
+    .nav-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .nav-tab svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ========== STATS CARDS ========== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-light);
+    }
+
+    .stat-card__label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: var(--font-mono);
+      margin-bottom: 12px;
+    }
+
+    .stat-card__value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .stat-card__value--success { color: var(--success); }
+    .stat-card__value--pending { color: var(--pending); }
+    .stat-card__value--accent { color: var(--accent); }
+
+    .stat-card__sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-family: var(--font-mono);
+    }
+
+    /* ========== VIEW PANELS ========== */
+    .view-panel {
+      display: none;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    /* ========== CALENDAR ========== */
+    .calendar-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .calendar-header__title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .calendar-nav__btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .calendar-nav__btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .calendar-nav__month {
+      font-size: 15px;
+      font-weight: 600;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .calendar-grid {
+      padding: 16px;
+    }
+
+    .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .calendar-weekday {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      padding: 8px;
+    }
+
+    .calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text-muted);
+      position: relative;
+      cursor: default;
+      transition: all 0.2s ease;
+    }
+
+    .calendar-day.other-month {
+      background: transparent;
+      color: var(--text-dim);
+    }
+
+    .calendar-day.today {
+      border: 1px solid var(--accent);
+    }
+
+    .calendar-day.has-booking {
+      cursor: pointer;
+    }
+
+    .calendar-day.has-booking:hover {
+      transform: scale(1.05);
+    }
+
+    .calendar-day.booking-confirmed {
+      background: var(--success-dim);
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .calendar-day.booking-pending {
+      background: var(--pending-dim);
+      color: var(--pending);
+      font-weight: 600;
+    }
+
+    .calendar-day__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      position: absolute;
+      bottom: 6px;
+    }
+
+    .calendar-day__dot.confirmed { background: var(--success); }
+    .calendar-day__dot.pending { background: var(--pending); }
+
+    /* ========== BOOKINGS LIST ========== */
+    .bookings-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-top: 24px;
+    }
+
+    .bookings-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bookings-header__title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .bookings-list {
+      padding: 16px;
+    }
+
+    .booking-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .booking-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .booking-card:hover {
+      border-color: var(--border-light);
+      transform: translateX(4px);
+    }
+
+    .booking-card__date {
+      min-width: 60px;
+      text-align: center;
+      padding: 12px;
+      background: var(--surface-3);
+      border-radius: 8px;
+    }
+
+    .booking-card__day {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .booking-card__month {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+      margin-top: 4px;
+    }
+
+    .booking-card__info {
+      flex: 1;
+    }
+
+    .booking-card__event {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .booking-card__venue {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .booking-card__status {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .booking-card__fee {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .booking-card__badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .booking-card__badge.confirmed {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+
+    .booking-card__badge.pending {
+      background: var(--pending-dim);
+      color: var(--pending);
+    }
+
+    .bookings-empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+
+    .bookings-empty__icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      opacity: 0.3;
+    }
+
+    /* ========== EARNINGS VIEW ========== */
+    .earnings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .earnings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .earnings-chart {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .earnings-chart__title {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    .month-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .month-bar:last-child {
+      margin-bottom: 0;
+    }
+
+    .month-bar__label {
+      min-width: 80px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .month-bar__track {
+      flex: 1;
+      height: 24px;
+      background: var(--surface-2);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .month-bar__fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.5s ease;
+    }
+
+    .month-bar__fill.paid {
+      background: linear-gradient(90deg, var(--success), #00ff88);
+    }
+
+    .month-bar__fill.pending {
+      background: linear-gradient(90deg, var(--pending), #ff9966);
+    }
+
+    .month-bar__value {
+      min-width: 70px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    .earnings-breakdown {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .earnings-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .earnings-item:last-child {
+      border-bottom: none;
+    }
+
+    .earnings-item__info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .earnings-item__event {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .earnings-item__date {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .earnings-item__amount {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .earnings-item__value {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .earnings-item__status {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .earnings-item__status.paid {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+
+    .earnings-item__status.pending {
+      background: var(--pending-dim);
+      color: var(--pending);
+    }
+
+    /* ========== BOOKING DETAIL MODAL ========== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: scale(0.95);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header__title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-row__label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .detail-row__value {
+      font-size: 14px;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .detail-row__value.success { color: var(--success); }
+    .detail-row__value.pending { color: var(--pending); }
+
+    .modal-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .btn--primary {
+      background: var(--accent);
+      border: none;
+      color: white;
+    }
+
+    .btn--primary:hover {
+      background: #e6002e;
+    }
+
+    .btn--outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn--outline:hover {
+      border-color: var(--text-muted);
+    }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      .topbar {
+        padding: 12px 16px;
+      }
+
+      .main {
+        padding: 20px 16px;
+      }
+
+      .welcome__name {
+        font-size: 24px;
+      }
+
+      .nav-tabs {
+        overflow-x: auto;
+        padding-bottom: 12px;
+      }
+
+      .nav-tab {
+        padding: 10px 16px;
+        white-space: nowrap;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stat-card__value {
+        font-size: 22px;
+      }
+
+      .booking-card {
+        flex-wrap: wrap;
+      }
+
+      .booking-card__status {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        margin-top: 8px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar__left">
+      <img src="../images/FERAL%20LOGO.svg" alt="FERAL" class="topbar__logo">
+      <div class="topbar__sep"></div>
+      <span class="topbar__label">Artist Portal</span>
+    </div>
+    <div class="topbar__right">
+      <span class="topbar__user" id="topbarUser"></span>
+      <button class="topbar__logout" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <!-- Welcome -->
+    <div class="welcome">
+      <div class="welcome__greeting">Welcome back</div>
+      <div class="welcome__name" id="welcomeName">STEVIE</div>
+    </div>
+
+    <!-- Nav Tabs -->
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showView('dashboard')" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-tab" onclick="showView('calendar')" data-view="calendar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Calendar
+      </button>
+      <button class="nav-tab" onclick="showView('earnings')" data-view="earnings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Earnings
+      </button>
+    </div>
+
+    <!-- Stats Cards (shown on all views) -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card__label">Total Earnings</div>
+        <div class="stat-card__value" id="statTotal">£0</div>
+        <div class="stat-card__sub">Artist fee</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Paid Out</div>
+        <div class="stat-card__value stat-card__value--success" id="statPaid">£0</div>
+        <div class="stat-card__sub">Confirmed payments</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Pending</div>
+        <div class="stat-card__value stat-card__value--pending" id="statPending">£0</div>
+        <div class="stat-card__sub">Awaiting payment</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Upcoming Gigs</div>
+        <div class="stat-card__value stat-card__value--accent" id="statGigs">0</div>
+        <div class="stat-card__sub">Booked events</div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div class="view-panel active" id="dashboardView">
+      <div class="bookings-section">
+        <div class="bookings-header">
+          <div class="bookings-header__title">Upcoming Bookings</div>
+        </div>
+        <div class="bookings-list" id="upcomingBookings">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR VIEW -->
+    <div class="view-panel" id="calendarView">
+      <div class="calendar-section">
+        <div class="calendar-header">
+          <div class="calendar-header__title">Booking Calendar</div>
+          <div class="calendar-nav">
+            <button class="calendar-nav__btn" onclick="changeMonth(-1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="calendar-nav__month" id="calendarMonth">February 2025</span>
+            <button class="calendar-nav__btn" onclick="changeMonth(1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="calendar-grid">
+          <div class="calendar-weekdays">
+            <div class="calendar-weekday">Mon</div>
+            <div class="calendar-weekday">Tue</div>
+            <div class="calendar-weekday">Wed</div>
+            <div class="calendar-weekday">Thu</div>
+            <div class="calendar-weekday">Fri</div>
+            <div class="calendar-weekday">Sat</div>
+            <div class="calendar-weekday">Sun</div>
+          </div>
+          <div class="calendar-days" id="calendarDays">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="bookings-section">
+        <div class="bookings-header">
+          <div class="bookings-header__title" id="monthBookingsTitle">Bookings This Month</div>
+        </div>
+        <div class="bookings-list" id="monthBookings">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- EARNINGS VIEW -->
+    <div class="view-panel" id="earningsView">
+      <div class="earnings-grid">
+        <div class="earnings-chart">
+          <div class="earnings-chart__title">Monthly Earnings</div>
+          <div id="monthlyChart">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <div class="earnings-breakdown">
+          <div class="earnings-chart__title">Earnings Breakdown</div>
+          <div id="earningsBreakdown">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Detail Modal -->
+  <div class="modal-overlay" id="bookingModal" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header__title">Booking Details</div>
+        <button class="modal-close" onclick="closeBookingModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Populated by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--outline" onclick="closeBookingModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Supabase config
+    var SUPABASE_URL = 'https://rqtfghzhkkdytkegcifm.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdGZnaHpoa2tkeXRrZWdjaWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTUwMTUsImV4cCI6MjA4NTY5MTAxNX0.8IVDc92EYAq4FhTqVy0k5ur79zD9XofBBFjAuctKOUc';
+    var dbClient = null;
+
+    // Session data
+    var currentSession = null;
+    var artistContracts = [];
+    var currentCalendarDate = new Date();
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check session
+      var sessionData = sessionStorage.getItem('artist_session');
+      if (!sessionData) {
+        window.location.href = '../artist-login/';
+        return;
+      }
+
+      currentSession = JSON.parse(sessionData);
+      document.getElementById('topbarUser').textContent = currentSession.username;
+      document.getElementById('welcomeName').textContent = currentSession.username.toUpperCase();
+
+      // Initialize Supabase
+      if (window.supabase && window.supabase.createClient) {
+        dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        loadArtistData();
+      }
+    });
+
+    function logout() {
+      sessionStorage.removeItem('artist_session');
+      window.location.href = '../artist-login/';
+    }
+
+    // Load artist contracts and data
+    async function loadArtistData() {
+      try {
+        var res = await dbClient.from('contracts').select('*');
+        if (res.data) {
+          // Filter contracts for this artist
+          artistContracts = res.data.filter(function(c) {
+            return c.data && c.data.artist_id === currentSession.artist_id;
+          });
+
+          updateStats();
+          renderUpcomingBookings();
+          renderCalendar();
+          renderEarnings();
+        }
+      } catch (e) {
+        console.error('Error loading data:', e);
+      }
+    }
+
+    // Update stats cards
+    function updateStats() {
+      var total = 0;
+      var paid = 0;
+      var pending = 0;
+      var upcomingCount = 0;
+      var today = new Date();
+
+      artistContracts.forEach(function(c) {
+        if (!c.data || !c.data.artist_fee) return;
+
+        var feeStr = c.data.artist_fee.replace(/[^0-9.]/g, '');
+        var fee = parseFloat(feeStr) || 0;
+
+        total += fee;
+        if (c.artist_fee_received) {
+          paid += fee;
+        } else {
+          pending += fee;
+        }
+
+        // Count upcoming gigs
+        var eventDate = parseEventDate(c.data.event_date);
+        if (eventDate && eventDate >= today) {
+          upcomingCount++;
+        }
+      });
+
+      document.getElementById('statTotal').textContent = '£' + total.toFixed(2);
+      document.getElementById('statPaid').textContent = '£' + paid.toFixed(2);
+      document.getElementById('statPending').textContent = '£' + pending.toFixed(2);
+      document.getElementById('statGigs').textContent = upcomingCount;
+    }
+
+    // Parse event date string like "27 March 2025"
+    function parseEventDate(dateStr) {
+      if (!dateStr) return null;
+      var parts = dateStr.split(' ');
+      if (parts.length < 3) return null;
+
+      var day = parseInt(parts[0]);
+      var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      var month = monthNames.indexOf(parts[1]);
+      var year = parseInt(parts[2]);
+
+      if (isNaN(day) || month === -1 || isNaN(year)) return null;
+      return new Date(year, month, day);
+    }
+
+    // Get currency symbol
+    function getCurrencySymbol(currency) {
+      var symbols = { GBP: '£', EUR: '€', USD: '$' };
+      return symbols[currency] || '£';
+    }
+
+    // Render upcoming bookings
+    function renderUpcomingBookings() {
+      var container = document.getElementById('upcomingBookings');
+      var today = new Date();
+
+      var upcoming = artistContracts.filter(function(c) {
+        var eventDate = parseEventDate(c.data && c.data.event_date);
+        return eventDate && eventDate >= today;
+      }).sort(function(a, b) {
+        var dateA = parseEventDate(a.data.event_date);
+        var dateB = parseEventDate(b.data.event_date);
+        return dateA - dateB;
+      });
+
+      if (upcoming.length === 0) {
+        container.innerHTML = '<div class="bookings-empty"><svg class="bookings-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><div>No upcoming bookings</div></div>';
+        return;
+      }
+
+      container.innerHTML = upcoming.map(function(c, idx) {
+        return renderBookingCard(c, idx);
+      }).join('');
+    }
+
+    // Render a booking card
+    function renderBookingCard(contract, idx) {
+      var data = contract.data;
+      var eventDate = parseEventDate(data.event_date);
+      var day = eventDate ? eventDate.getDate() : '--';
+      var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      var month = eventDate ? monthNames[eventDate.getMonth()] : '---';
+
+      var feeStr = (data.artist_fee || '0').replace(/[^0-9.]/g, '');
+      var fee = parseFloat(feeStr) || 0;
+      var symbol = getCurrencySymbol(data.currency);
+
+      var isConfirmed = contract.booking_fee_received; // Show confirmed when booking fee paid
+      var statusClass = isConfirmed ? 'confirmed' : 'pending';
+      var statusText = isConfirmed ? 'Confirmed' : 'Pending';
+
+      return '<div class="booking-card" onclick="openBookingModal(' + idx + ')">' +
+        '<div class="booking-card__date">' +
+          '<div class="booking-card__day">' + day + '</div>' +
+          '<div class="booking-card__month">' + month + '</div>' +
+        '</div>' +
+        '<div class="booking-card__info">' +
+          '<div class="booking-card__event">' + (data.event_name || 'Event') + '</div>' +
+          '<div class="booking-card__venue">' + (data.venue || '') + '</div>' +
+        '</div>' +
+        '<div class="booking-card__status">' +
+          '<div class="booking-card__fee">' + symbol + fee.toFixed(2) + '</div>' +
+          '<div class="booking-card__badge ' + statusClass + '">' + statusText + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // View switching
+    function showView(viewName) {
+      // Update tabs
+      document.querySelectorAll('.nav-tab').forEach(function(tab) {
+        tab.classList.remove('active');
+        if (tab.dataset.view === viewName) {
+          tab.classList.add('active');
+        }
+      });
+
+      // Update panels
+      document.querySelectorAll('.view-panel').forEach(function(panel) {
+        panel.classList.remove('active');
+      });
+      document.getElementById(viewName + 'View').classList.add('active');
+
+      // Re-render if needed
+      if (viewName === 'calendar') {
+        renderCalendar();
+      } else if (viewName === 'earnings') {
+        renderEarnings();
+      }
+    }
+
+    // Calendar functions
+    function changeMonth(delta) {
+      currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      var year = currentCalendarDate.getFullYear();
+      var month = currentCalendarDate.getMonth();
+
+      var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      document.getElementById('calendarMonth').textContent = monthNames[month] + ' ' + year;
+      document.getElementById('monthBookingsTitle').textContent = 'Bookings in ' + monthNames[month];
+
+      // Get first day of month and total days
+      var firstDay = new Date(year, month, 1);
+      var lastDay = new Date(year, month + 1, 0);
+      var startDay = (firstDay.getDay() + 6) % 7; // Monday = 0
+      var totalDays = lastDay.getDate();
+
+      // Get bookings for this month
+      var monthBookings = {};
+      artistContracts.forEach(function(c) {
+        var eventDate = parseEventDate(c.data && c.data.event_date);
+        if (eventDate && eventDate.getMonth() === month && eventDate.getFullYear() === year) {
+          var day = eventDate.getDate();
+          monthBookings[day] = c;
+        }
+      });
+
+      // Build calendar grid
+      var html = '';
+      var today = new Date();
+
+      // Previous month days
+      var prevMonthDays = new Date(year, month, 0).getDate();
+      for (var i = startDay - 1; i >= 0; i--) {
+        html += '<div class="calendar-day other-month">' + (prevMonthDays - i) + '</div>';
+      }
+
+      // Current month days
+      for (var d = 1; d <= totalDays; d++) {
+        var classes = ['calendar-day'];
+        var isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
+        if (isToday) classes.push('today');
+
+        var booking = monthBookings[d];
+        var onclick = '';
+        var dot = '';
+
+        if (booking) {
+          classes.push('has-booking');
+          var isConfirmed = booking.booking_fee_received; // Show confirmed when booking fee paid
+          classes.push(isConfirmed ? 'booking-confirmed' : 'booking-pending');
+          dot = '<div class="calendar-day__dot ' + (isConfirmed ? 'confirmed' : 'pending') + '"></div>';
+
+          var idx = artistContracts.indexOf(booking);
+          onclick = ' onclick="openBookingModal(' + idx + ')"';
+        }
+
+        html += '<div class="' + classes.join(' ') + '"' + onclick + '>' + d + dot + '</div>';
+      }
+
+      // Next month days
+      var remaining = (7 - ((startDay + totalDays) % 7)) % 7;
+      for (var n = 1; n <= remaining; n++) {
+        html += '<div class="calendar-day other-month">' + n + '</div>';
+      }
+
+      document.getElementById('calendarDays').innerHTML = html;
+
+      // Render month bookings list
+      var monthList = artistContracts.filter(function(c) {
+        var eventDate = parseEventDate(c.data && c.data.event_date);
+        return eventDate && eventDate.getMonth() === month && eventDate.getFullYear() === year;
+      });
+
+      var monthContainer = document.getElementById('monthBookings');
+      if (monthList.length === 0) {
+        monthContainer.innerHTML = '<div class="bookings-empty"><div>No bookings this month</div></div>';
+      } else {
+        monthContainer.innerHTML = monthList.map(function(c, i) {
+          return renderBookingCard(c, artistContracts.indexOf(c));
+        }).join('');
+      }
+    }
+
+    // Earnings view
+    function renderEarnings() {
+      var monthlyData = {};
+      var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      artistContracts.forEach(function(c) {
+        if (!c.data || !c.data.artist_fee) return;
+
+        var feeStr = c.data.artist_fee.replace(/[^0-9.]/g, '');
+        var fee = parseFloat(feeStr) || 0;
+        var isPaid = c.artist_fee_received;
+
+        var eventDate = parseEventDate(c.data.event_date);
+        var monthKey = eventDate ? monthNames[eventDate.getMonth()] + ' ' + eventDate.getFullYear() : 'Unknown';
+
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { paid: 0, pending: 0, total: 0, items: [] };
+        }
+
+        monthlyData[monthKey].total += fee;
+        if (isPaid) {
+          monthlyData[monthKey].paid += fee;
+        } else {
+          monthlyData[monthKey].pending += fee;
+        }
+
+        monthlyData[monthKey].items.push({
+          event: c.data.event_name || 'Event',
+          date: c.data.event_date || '',
+          amount: fee,
+          isPaid: isPaid,
+          symbol: getCurrencySymbol(c.data.currency)
+        });
+      });
+
+      // Find max for chart scaling
+      var maxTotal = 0;
+      Object.keys(monthlyData).forEach(function(k) {
+        if (monthlyData[k].total > maxTotal) maxTotal = monthlyData[k].total;
+      });
+
+      // Render monthly chart
+      var chartHtml = '';
+      Object.keys(monthlyData).forEach(function(month) {
+        var data = monthlyData[month];
+        var paidWidth = maxTotal > 0 ? (data.paid / maxTotal * 100) : 0;
+        var pendingWidth = maxTotal > 0 ? (data.pending / maxTotal * 100) : 0;
+
+        chartHtml += '<div class="month-bar">' +
+          '<div class="month-bar__label">' + month + '</div>' +
+          '<div class="month-bar__track">' +
+            '<div class="month-bar__fill paid" style="width:' + paidWidth + '%"></div>' +
+          '</div>' +
+          '<div class="month-bar__value">£' + data.total.toFixed(2) + '</div>' +
+        '</div>';
+      });
+
+      if (!chartHtml) {
+        chartHtml = '<div class="bookings-empty"><div>No earnings data yet</div></div>';
+      }
+
+      document.getElementById('monthlyChart').innerHTML = chartHtml;
+
+      // Render earnings breakdown
+      var breakdownHtml = '';
+      Object.keys(monthlyData).forEach(function(month) {
+        monthlyData[month].items.forEach(function(item) {
+          breakdownHtml += '<div class="earnings-item">' +
+            '<div class="earnings-item__info">' +
+              '<div class="earnings-item__event">' + item.event + '</div>' +
+              '<div class="earnings-item__date">' + item.date + '</div>' +
+            '</div>' +
+            '<div class="earnings-item__amount">' +
+              '<div class="earnings-item__value">' + item.symbol + item.amount.toFixed(2) + '</div>' +
+              '<div class="earnings-item__status ' + (item.isPaid ? 'paid' : 'pending') + '">' + (item.isPaid ? 'Paid' : 'Pending') + '</div>' +
+            '</div>' +
+          '</div>';
+        });
+      });
+
+      if (!breakdownHtml) {
+        breakdownHtml = '<div class="bookings-empty"><div>No earnings yet</div></div>';
+      }
+
+      document.getElementById('earningsBreakdown').innerHTML = breakdownHtml;
+    }
+
+    // Booking modal
+    function openBookingModal(idx) {
+      var contract = artistContracts[idx];
+      if (!contract) return;
+
+      var data = contract.data;
+      var feeStr = (data.artist_fee || '0').replace(/[^0-9.]/g, '');
+      var fee = parseFloat(feeStr) || 0;
+      var symbol = getCurrencySymbol(data.currency);
+      var isPaid = contract.artist_fee_received;
+
+      var html = '' +
+        '<div class="detail-row"><div class="detail-row__label">Event</div><div class="detail-row__value">' + (data.event_name || '-') + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Date</div><div class="detail-row__value">' + (data.event_date || '-') + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Venue</div><div class="detail-row__value">' + (data.venue || '-') + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Performance Time</div><div class="detail-row__value">' + (data.performance_time || '-') + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Promoter</div><div class="detail-row__value">' + (data.promoter_name || '-') + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Your Fee</div><div class="detail-row__value">' + symbol + fee.toFixed(2) + '</div></div>' +
+        '<div class="detail-row"><div class="detail-row__label">Payment Status</div><div class="detail-row__value ' + (isPaid ? 'success' : 'pending') + '">' + (isPaid ? 'Paid' : 'Pending') + '</div></div>';
+
+      document.getElementById('modalBody').innerHTML = html;
+      document.getElementById('bookingModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeBookingModal() {
+      document.getElementById('bookingModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function closeModal(e) {
+      if (e.target === document.getElementById('bookingModal')) {
+        closeBookingModal();
+      }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeBookingModal();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -313,38 +313,6 @@
   margin-bottom: 24px;
 }
 
-/* Announcement Banner (inside header) */
-.announcement-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 7px 16px;
-  background: var(--red);
-  color: var(--white);
-  width: 100%;
-}
-
-.announcement-banner__shield {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.announcement-banner__shield svg {
-  width: 14px;
-  height: 14px;
-}
-
-.announcement-banner__verified {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--white);
-}
 
 .event-tickets__embed {
   width: calc(100% + 48px);

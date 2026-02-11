@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES } from "@/lib/constants";
+import { TABLES, SETTINGS_KEYS, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID } from "@/lib/constants";
 import { stripe } from "@/lib/stripe/server";
 
 interface HealthCheck {
@@ -95,7 +95,7 @@ async function checkStripe(): Promise<HealthCheck> {
   }
 }
 
-/** Check Meta Pixel configuration via settings */
+/** Check Meta Pixel configuration via marketing settings */
 async function checkMetaPixel(): Promise<HealthCheck> {
   try {
     const supabase = await getSupabaseServer();
@@ -103,63 +103,61 @@ async function checkMetaPixel(): Promise<HealthCheck> {
       return { name: "Meta Pixel", status: "degraded", detail: "Cannot check — DB down" };
     }
 
-    // Check both event settings for pixel config
+    // Marketing settings are stored under the feral_marketing key
     const { data } = await supabase
       .from(TABLES.SITE_SETTINGS)
-      .select("key, data")
-      .in("key", ["feral_event_liverpool", "feral_event_kompass"]);
+      .select("data")
+      .eq("key", SETTINGS_KEYS.MARKETING)
+      .single();
 
-    if (!data || data.length === 0) {
-      return { name: "Meta Pixel", status: "degraded", detail: "No event settings found" };
+    if (!data?.data) {
+      return { name: "Meta Pixel", status: "degraded", detail: "No marketing settings found" };
     }
 
-    const configured = data.some(
-      (row) =>
-        row.data?.meta_tracking_enabled &&
-        row.data?.meta_pixel_id
-    );
-
-    if (configured) {
-      const pixelIds = data
-        .filter((row) => row.data?.meta_pixel_id)
-        .map((row) => row.data.meta_pixel_id);
+    const settings = data.data;
+    if (settings.meta_tracking_enabled && settings.meta_pixel_id) {
       return {
         name: "Meta Pixel",
         status: "ok",
-        detail: `Pixel ID(s): ${pixelIds.join(", ")}`,
+        detail: `Pixel ID: ${settings.meta_pixel_id}`,
       };
     }
 
     return {
       name: "Meta Pixel",
       status: "degraded",
-      detail: "Tracking not enabled in settings",
+      detail: settings.meta_pixel_id
+        ? "Pixel configured but tracking disabled"
+        : "No Pixel ID configured",
     };
   } catch {
     return { name: "Meta Pixel", status: "down", detail: "Check failed" };
   }
 }
 
-/** Verify critical environment variables are set */
+/** Verify critical configuration is available (env vars or fallbacks) */
 async function checkEnvVars(): Promise<HealthCheck> {
-  const required = [
-    { key: "NEXT_PUBLIC_SUPABASE_URL", set: !!process.env.NEXT_PUBLIC_SUPABASE_URL },
-    { key: "NEXT_PUBLIC_SUPABASE_ANON_KEY", set: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
-    { key: "STRIPE_SECRET_KEY", set: !!process.env.STRIPE_SECRET_KEY },
-    { key: "STRIPE_WEBHOOK_SECRET", set: !!process.env.STRIPE_WEBHOOK_SECRET },
-    { key: "NEXT_PUBLIC_GTM_ID", set: !!process.env.NEXT_PUBLIC_GTM_ID },
+  // Check resolved values — constants.ts provides hardcoded fallbacks for
+  // Supabase and GTM, so the app works even without explicit env vars.
+  // Only flag as missing if the resolved value is truly empty.
+  const checks = [
+    { key: "Supabase URL", set: !!SUPABASE_URL },
+    { key: "Supabase Anon Key", set: !!SUPABASE_ANON_KEY },
+    { key: "Stripe Secret Key", set: !!process.env.STRIPE_SECRET_KEY },
+    { key: "Stripe Webhook Secret", set: !!process.env.STRIPE_WEBHOOK_SECRET },
+    { key: "GTM ID", set: !!GTM_ID },
   ];
 
-  const missing = required.filter((v) => !v.set);
+  const missing = checks.filter((v) => !v.set);
 
   if (missing.length === 0) {
-    return { name: "Environment", status: "ok", detail: `${required.length}/${required.length} vars set` };
+    return { name: "Environment", status: "ok", detail: `${checks.length}/${checks.length} configured` };
   }
 
-  // Stripe vars missing = degraded (not critical for site to load)
-  // Supabase vars missing = down (site can't function)
+  // Stripe vars missing = degraded (payments won't work but site loads)
+  // Supabase vars missing = down (site can't function at all)
   const criticalMissing = missing.some(
-    (v) => v.key.includes("SUPABASE")
+    (v) => v.key.includes("Supabase")
   );
 
   return {

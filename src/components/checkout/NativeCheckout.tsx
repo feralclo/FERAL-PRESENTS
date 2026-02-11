@@ -226,9 +226,6 @@ function StripeCheckoutPage({
     mode: "payment",
     amount: amountInSmallest,
     currency: event.currency.toLowerCase(),
-    // Restrict to card — Apple Pay & Google Pay process as card.
-    // Blocks Klarna, Link, iDEAL, etc. from appearing anywhere.
-    paymentMethodTypes: ["card"],
     appearance: {
       theme: "night",
       variables: {
@@ -614,9 +611,12 @@ function SinglePageCheckoutForm({
                   maxRows: 1,
                 },
                 paymentMethods: {
-                  link: "never",
                   applePay: "auto",
                   googlePay: "auto",
+                  link: "never",
+                  klarna: "never",
+                  amazonPay: "never",
+                  paypal: "never",
                 },
               }}
             />

@@ -167,9 +167,12 @@ function ExpressCheckoutInner({
             maxRows: 1,
           },
           paymentMethods: {
-            link: "never",
             applePay: "auto",
             googlePay: "auto",
+            link: "never",
+            klarna: "never",
+            amazonPay: "never",
+            paypal: "never",
           },
         }}
       />
@@ -226,9 +229,6 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
     mode: "payment",
     amount: amountInSmallest,
     currency: props.currency.toLowerCase(),
-    // Restrict to card only — Apple Pay & Google Pay process as card,
-    // this blocks Klarna, Link, iDEAL, etc. from appearing
-    paymentMethodTypes: ["card"],
     appearance: {
       theme: "night",
       variables: {

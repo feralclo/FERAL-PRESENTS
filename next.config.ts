@@ -8,6 +8,20 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
   },
+
+  // Rewrites for Apple Pay domain verification.
+  // Apple checks /.well-known/apple-developer-merchantid-domain-association
+  // on the domain before enabling Apple Pay. We proxy this from Stripe's CDN.
+  async rewrites() {
+    return [
+      {
+        source:
+          "/.well-known/apple-developer-merchantid-domain-association",
+        destination:
+          "/api/stripe/apple-pay-verify",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

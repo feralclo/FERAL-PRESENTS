@@ -15,6 +15,7 @@ interface PaymentStatus {
   payouts_enabled: boolean;
   details_submitted: boolean;
   requirements_due: string[];
+  apple_pay_domains: string[];
 }
 
 /**
@@ -36,6 +37,20 @@ export default function PaymentSettingsPage() {
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("GB");
+
+  // Auto-register the current domain for Apple Pay (idempotent, fires once)
+  const registerApplePayDomain = useCallback(async () => {
+    try {
+      const domain = window.location.hostname;
+      await fetch("/api/stripe/apple-pay-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+    } catch {
+      // Silent — Apple Pay domain registration is best-effort
+    }
+  }, []);
 
   // Check if we already have a connected account
   const checkStatus = useCallback(async () => {
@@ -63,6 +78,23 @@ export default function PaymentSettingsPage() {
           );
         }
 
+        // Auto-register domain for Apple Pay if charges are enabled
+        if (acc.charges_enabled && typeof window !== "undefined") {
+          registerApplePayDomain();
+        }
+
+        // Fetch Apple Pay domain registrations
+        let applePayDomains: string[] = [];
+        try {
+          const apRes = await fetch("/api/stripe/apple-pay-domain");
+          const apJson = await apRes.json();
+          applePayDomains = (apJson.domains || []).map(
+            (d: { domain_name: string }) => d.domain_name
+          );
+        } catch {
+          // Non-critical
+        }
+
         setStatus({
           connected: true,
           account_id: acc.account_id,
@@ -73,6 +105,7 @@ export default function PaymentSettingsPage() {
           payouts_enabled: acc.payouts_enabled,
           details_submitted: acc.details_submitted,
           requirements_due: detail.requirements?.currently_due || [],
+          apple_pay_domains: applePayDomains,
         });
       } else {
         setStatus({
@@ -85,6 +118,7 @@ export default function PaymentSettingsPage() {
           payouts_enabled: false,
           details_submitted: false,
           requirements_due: [],
+          apple_pay_domains: [],
         });
       }
     } catch {
@@ -143,6 +177,9 @@ export default function PaymentSettingsPage() {
           { onConflict: "key" }
         );
       }
+
+      // Register domain for Apple Pay on the new account
+      registerApplePayDomain();
 
       // Get the onboarding link
       const onboardRes = await fetch(
@@ -591,12 +628,37 @@ export default function PaymentSettingsPage() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "10px 0",
+                  borderBottom: "1px solid rgba(255,255,255,0.04)",
                 }}
               >
                 <span style={{ color: "#ccc", fontSize: 13 }}>
                   Identity Verified
                 </span>
                 <StatusBadge enabled={status.details_submitted} />
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 0",
+                }}
+              >
+                <span style={{ color: "#ccc", fontSize: 13 }}>
+                  Apple Pay
+                  {status.apple_pay_domains.length > 0 && (
+                    <span
+                      style={{
+                        color: "#555",
+                        fontSize: 11,
+                        marginLeft: 8,
+                      }}
+                    >
+                      ({status.apple_pay_domains.join(", ")})
+                    </span>
+                  )}
+                </span>
+                <StatusBadge enabled={status.apple_pay_domains.length > 0} />
               </div>
             </div>
           </div>

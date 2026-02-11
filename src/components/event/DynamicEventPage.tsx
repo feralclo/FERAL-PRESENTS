@@ -165,6 +165,8 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
               {/* Right: Ticket Widget */}
               <DynamicTicketWidget
                 eventSlug={event.slug}
+                eventId={event.id}
+                paymentMethod={event.payment_method}
                 ticketTypes={event.ticket_types || []}
                 currency={event.currency}
                 onCartChange={handleCartChange}

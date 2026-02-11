@@ -737,6 +737,100 @@ html, body {
 }
 
 /* ========================================
+   EXPRESS CHECKOUT SECTION
+   ======================================== */
+.express-checkout-section {
+  margin-bottom: 0;
+}
+
+.express-checkout {
+  min-height: 48px;
+}
+
+/* Divider: "or pay with card" */
+.checkout-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+}
+
+.checkout-divider__line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.checkout-divider__text {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* Trust signal under pay button */
+.checkout-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 0 0;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #444;
+}
+
+.checkout-trust__lock {
+  width: 12px;
+  height: 12px;
+  color: #4ecb71;
+  flex-shrink: 0;
+}
+
+/* ========================================
+   TICKET PAGE EXPRESS CHECKOUT
+   ======================================== */
+.feral-tickets__express {
+  margin-top: 8px;
+}
+
+.feral-tickets__express-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.feral-tickets__express-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.feral-tickets__express-divider-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.feral-tickets__express-error {
+  margin-top: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #ff0033;
+  text-align: center;
+  padding: 8px;
+  background: rgba(255, 0, 51, 0.06);
+  border: 1px solid rgba(255, 0, 51, 0.15);
+}
+
+/* ========================================
    NATIVE CHECKOUT FORM
    ======================================== */
 .native-checkout {
@@ -747,6 +841,10 @@ html, body {
 
 .native-checkout__inner {
   width: 100%;
+}
+
+.native-checkout__section {
+  margin-bottom: 8px;
 }
 
 .native-checkout__heading {

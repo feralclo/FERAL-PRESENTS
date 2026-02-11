@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
 import type { TicketTypeRow } from "@/types/events";
+import type { Order } from "@/types/orders";
 
 const TEE_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 
 interface DynamicTicketWidgetProps {
   eventSlug: string;
+  eventId: string;
+  paymentMethod: string;
   ticketTypes: TicketTypeRow[];
   currency: string;
   onCartChange?: (totalPrice: number, totalQty: number) => void;
@@ -21,11 +25,15 @@ const TIER_CLASS: Record<string, string> = {
 
 export function DynamicTicketWidget({
   eventSlug,
+  eventId,
+  paymentMethod,
   ticketTypes,
   currency,
   onCartChange,
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
+  const isStripe = paymentMethod === "stripe";
+  const [expressError, setExpressError] = useState("");
 
   // Only show active ticket types, sorted by sort_order
   const activeTypes = useMemo(
@@ -147,6 +155,37 @@ export function DynamicTicketWidget({
     if (url) window.location.assign(url);
   }, [getCheckoutUrl]);
 
+  // Express checkout (Apple Pay / Google Pay) success — redirect to confirmation
+  const handleExpressSuccess = useCallback(
+    (order: Order) => {
+      if (order.payment_ref) {
+        window.location.assign(
+          `/event/${eventSlug}/checkout/?pi=${order.payment_ref}`
+        );
+      } else {
+        window.location.assign(`/event/${eventSlug}/checkout/`);
+      }
+    },
+    [eventSlug]
+  );
+
+  // Build items array for express checkout
+  const expressItems = useMemo(() => {
+    const items: { ticket_type_id: string; qty: number; merch_size?: string }[] = [];
+    for (const tt of activeTypes) {
+      const qty = quantities[tt.id] || 0;
+      if (qty <= 0) continue;
+      if (tt.includes_merch && merchSizes[tt.id]) {
+        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
+          if (sQty > 0) items.push({ ticket_type_id: tt.id, qty: sQty, merch_size: size });
+        }
+      } else {
+        items.push({ ticket_type_id: tt.id, qty });
+      }
+    }
+    return items;
+  }, [activeTypes, quantities, merchSizes]);
+
   // Cart summary items
   const cartItems = useMemo(() => {
     const items: { name: string; qty: number; size?: string }[] = [];
@@ -265,6 +304,28 @@ export function DynamicTicketWidget({
                   ? "Select tickets to continue"
                   : `Checkout — ${currSymbol}${totalPrice.toFixed(2)}`}
               </button>
+
+              {/* Express Checkout (Apple Pay / Google Pay) */}
+              {isStripe && totalQty > 0 && (
+                <div className="feral-tickets__express">
+                  <div className="feral-tickets__express-divider">
+                    <span className="feral-tickets__express-divider-line" />
+                    <span className="feral-tickets__express-divider-text">or</span>
+                    <span className="feral-tickets__express-divider-line" />
+                  </div>
+                  <ExpressCheckout
+                    eventId={eventId}
+                    currency={currency}
+                    amount={totalPrice}
+                    items={expressItems}
+                    onSuccess={handleExpressSuccess}
+                    onError={setExpressError}
+                  />
+                  {expressError && (
+                    <div className="feral-tickets__express-error">{expressError}</div>
+                  )}
+                </div>
+              )}
 
               {/* Cart Summary */}
               {cartItems.length > 0 && (

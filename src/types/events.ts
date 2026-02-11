@@ -58,7 +58,7 @@ export interface TicketTypeRow {
   sale_end?: string;
   min_per_order: number;
   max_per_order: number;
-  tier?: "standard" | "platinum" | "black";
+  tier?: "standard" | "platinum" | "black" | "valentine";
   created_at: string;
   updated_at: string;
 }

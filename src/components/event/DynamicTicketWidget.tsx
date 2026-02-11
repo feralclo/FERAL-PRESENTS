@@ -35,6 +35,7 @@ const TIER_CLASS: Record<string, string> = {
   standard: "",
   platinum: "ticket-option--vip",
   black: "ticket-option--vip-black",
+  valentine: "ticket-option--valentine",
 };
 
 export function DynamicTicketWidget({
@@ -357,6 +358,13 @@ export function DynamicTicketWidget({
                       className={`ticket-option ${tierClass}`}
                       data-ticket-id={tt.id}
                     >
+                      {tt.tier === "valentine" && (
+                        <div className="ticket-option__hearts">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} className="ticket-option__heart">{"\u2665"}</span>
+                          ))}
+                        </div>
+                      )}
                       <div className="ticket-option__row">
                         <div className="ticket-option__info">
                           <span className="ticket-option__name">{tt.name}</span>

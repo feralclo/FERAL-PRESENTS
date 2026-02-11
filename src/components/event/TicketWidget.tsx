@@ -206,6 +206,17 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
                 onViewTee={onViewTee}
               />
 
+              {/* Valentine's Special — only show if configured */}
+              {cart.tickets.valentine.id && (
+                <TicketOption
+                  ticketKey="valentine"
+                  ticket={cart.tickets.valentine}
+                  className="ticket-option--valentine"
+                  onAdd={() => handleAdd("valentine")}
+                  onRemove={() => handleRemove("valentine")}
+                />
+              )}
+
               {/* Checkout Button */}
               <button
                 className="feral-tickets__checkout"
@@ -309,6 +320,13 @@ function TicketOption({
 }) {
   return (
     <div className={`ticket-option ${className}`} data-ticket-id={ticket.id}>
+      {ticketKey === "valentine" && (
+        <div className="ticket-option__hearts">
+          {[...Array(5)].map((_, i) => (
+            <span key={i} className="ticket-option__heart">{"\u2665"}</span>
+          ))}
+        </div>
+      )}
       <div className="ticket-option__row">
         <div className="ticket-option__info">
           <span className="ticket-option__name">{ticket.name}</span>

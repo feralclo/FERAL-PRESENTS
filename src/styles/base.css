@@ -30,6 +30,12 @@
   --obsidian-dark: #0a0a0a;
   --obsidian-border: rgba(255, 255, 255, 0.25);
   --obsidian-glow: rgba(255, 255, 255, 0.15);
+  /* Valentine palette */
+  --valentine: #e8365d;
+  --valentine-light: #ff5c8a;
+  --valentine-dark: #b91d47;
+  --valentine-pink: #ff7eb3;
+  --valentine-glow: rgba(232, 54, 93, 0.4);
   --font-mono: 'Space Mono', monospace;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --banner-height: 30px;

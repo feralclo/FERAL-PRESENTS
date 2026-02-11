@@ -187,6 +187,15 @@ function buildInitialState(
       price: 65.0,
       qty: 0,
     },
+    valentine: {
+      id: settings?.ticketId4 || DEFAULT_TICKETS.VALENTINE,
+      name: settings?.ticketName4 || "Valentine's Special",
+      subtitle:
+        settings?.ticketSubtitle4 ||
+        "Valentine's entry + perks",
+      price: 35.0,
+      qty: 0,
+    },
   };
 
   const teeSizes: Record<TeeSize, number> = {

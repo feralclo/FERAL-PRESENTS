@@ -131,6 +131,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
     if (settings.ticketId1) map[0] = settings.ticketId1 as string;
     if (settings.ticketId2) map[1] = settings.ticketId2 as string;
     if (settings.ticketId3) map[2] = settings.ticketId3 as string;
+    if (settings.ticketId4) map[3] = settings.ticketId4 as string;
     return Object.keys(map).length > 0 ? map : undefined;
   }, [isWeeZTix, settings]);
 

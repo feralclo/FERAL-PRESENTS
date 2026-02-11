@@ -4,6 +4,7 @@ export interface EventSettings {
   ticketId1?: string; // General Release
   ticketId2?: string; // VIP Ticket
   ticketId3?: string; // VIP Black + Tee
+  ticketId4?: string; // Valentine's Special
 
   // Size-specific ticket IDs for VIP+Tee
   sizeIdXS?: string;
@@ -17,11 +18,13 @@ export interface EventSettings {
   ticketName1?: string;
   ticketName2?: string;
   ticketName3?: string;
+  ticketName4?: string;
 
   // Ticket subtitles/descriptions
   ticketSubtitle1?: string;
   ticketSubtitle2?: string;
   ticketSubtitle3?: string;
+  ticketSubtitle4?: string;
 
   // Theme
   theme?: "minimal" | "default" | null;

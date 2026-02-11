@@ -36,6 +36,7 @@ export const DEFAULT_TICKETS = {
   GENERAL: "6b45169f-cf51-4600-8682-d6f79dcb59ae",
   VIP: "bb73bb64-ba1a-4a23-9a05-f2b57bca51cf",
   VIP_TEE: "53c5262b-93ba-412e-bb5c-84ebc445a734",
+  VALENTINE: "",
 } as const;
 
 // Klaviyo

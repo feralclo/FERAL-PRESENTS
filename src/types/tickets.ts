@@ -1,5 +1,5 @@
 /** Ticket type key identifiers */
-export type TicketKey = "general" | "vip" | "vip-tee";
+export type TicketKey = "general" | "vip" | "vip-tee" | "valentine";
 
 /** Individual ticket type configuration */
 export interface TicketType {

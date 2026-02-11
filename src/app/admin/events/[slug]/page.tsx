@@ -1331,28 +1331,24 @@ export default function EventEditorPage() {
 
                     <div className="admin-form__field">
                       <label className="admin-form__label">Ticket Design Tier</label>
-                      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                        {(["standard", "platinum", "black"] as const).map((tier) => (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+                        {([
+                          { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#ff0033", color: "#fff" },
+                          { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)", border: "#e5e4e2", color: "#e5e4e2" },
+                          { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
+                          { id: "valentine", label: "Valentine", desc: "Pink-red with hearts", bg: "linear-gradient(135deg, #2a0a14 0%, #1f0810 100%)", border: "#e8365d", color: "#ff7eb3" },
+                        ] as const).map((tier) => (
                           <button
-                            key={tier}
+                            key={tier.id}
                             type="button"
-                            onClick={() => updateTicketType(i, "tier", tier)}
+                            onClick={() => updateTicketType(i, "tier", tier.id)}
                             style={{
-                              flex: 1,
                               padding: "10px 8px",
-                              border: (tt.tier || "standard") === tier
-                                ? tier === "black"
-                                  ? "2px solid rgba(255,255,255,0.5)"
-                                  : tier === "platinum"
-                                    ? "2px solid #e5e4e2"
-                                    : "2px solid #ff0033"
+                              border: (tt.tier || "standard") === tier.id
+                                ? `2px solid ${tier.border}`
                                 : "1px solid #333",
-                              background: tier === "black"
-                                ? "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)"
-                                : tier === "platinum"
-                                  ? "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)"
-                                  : "#111",
-                              color: tier === "platinum" ? "#e5e4e2" : "#fff",
+                              background: tier.bg,
+                              color: tier.color,
                               fontSize: "0.7rem",
                               fontFamily: "'Space Mono', monospace",
                               textTransform: "uppercase",
@@ -1361,17 +1357,10 @@ export default function EventEditorPage() {
                               textAlign: "center",
                             }}
                           >
-                            {tier}
-                            {tier === "platinum" && (
-                              <span style={{ display: "block", fontSize: "0.55rem", color: "#c0c0c0", marginTop: 2 }}>
-                                Silver/VIP style
-                              </span>
-                            )}
-                            {tier === "black" && (
-                              <span style={{ display: "block", fontSize: "0.55rem", color: "#666", marginTop: 2 }}>
-                                Dark/Gold VIP style
-                              </span>
-                            )}
+                            {tier.id === "valentine" ? `\u2665 ${tier.label}` : tier.label}
+                            <span style={{ display: "block", fontSize: "0.55rem", color: tier.color, opacity: 0.6, marginTop: 2 }}>
+                              {tier.desc}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -1765,6 +1754,17 @@ export default function EventEditorPage() {
                   placeholder="WeeZTix ticket UUID"
                 />
               </div>
+              <div className="admin-form__field">
+                <label className="admin-form__label">
+                  Valentine&apos;s Special ID
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={settings.ticketId4 || ""}
+                  onChange={(e) => updateSetting("ticketId4", e.target.value)}
+                  placeholder="WeeZTix ticket UUID (leave empty to hide)"
+                />
+              </div>
             </div>
           </div>
 
@@ -1818,6 +1818,30 @@ export default function EventEditorPage() {
                       updateSetting("ticketName3", e.target.value)
                     }
                     placeholder="VIP Black + Tee"
+                  />
+                </div>
+              </div>
+              <div className="admin-form__row">
+                <div className="admin-form__field">
+                  <label className="admin-form__label">Ticket 4 Name</label>
+                  <input
+                    className="admin-form__input"
+                    value={settings.ticketName4 || ""}
+                    onChange={(e) =>
+                      updateSetting("ticketName4", e.target.value)
+                    }
+                    placeholder="Valentine's Special"
+                  />
+                </div>
+                <div className="admin-form__field">
+                  <label className="admin-form__label">Ticket 4 Subtitle</label>
+                  <input
+                    className="admin-form__input"
+                    value={settings.ticketSubtitle4 || ""}
+                    onChange={(e) =>
+                      updateSetting("ticketSubtitle4", e.target.value)
+                    }
+                    placeholder="Valentine's entry + perks"
                   />
                 </div>
               </div>

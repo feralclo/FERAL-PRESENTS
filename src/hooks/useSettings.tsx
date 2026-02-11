@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -108,8 +109,13 @@ export function SettingsProvider({
     [settingsKey]
   );
 
+  const value = useMemo(
+    () => ({ settings, settingsKey, save, isLoading }),
+    [settings, settingsKey, save, isLoading]
+  );
+
   return (
-    <SettingsContext.Provider value={{ settings, settingsKey, save, isLoading }}>
+    <SettingsContext.Provider value={value}>
       {children}
     </SettingsContext.Provider>
   );

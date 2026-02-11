@@ -23,7 +23,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
   const { settings } = useSettings();
   const cart = useTicketCart(settings);
   const { push } = useDataLayer();
-  const meta = useMetaTracking();
+  const { trackViewContent } = useMetaTracking();
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const headerHidden = useHeaderScroll();
 
@@ -41,7 +41,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
       value: 26.46,
       currency: "GBP",
     });
-    meta.trackViewContent({
+    trackViewContent({
       content_name: "FERAL Liverpool — Event Page",
       content_ids: [
         "6b45169f-cf51-4600-8682-d6f79dcb59ae",
@@ -52,7 +52,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
       value: 26.46,
       currency: "GBP",
     });
-  }, [push, meta]);
+  }, [push, trackViewContent]);
 
   const handleTeeAdd = useCallback(
     (size: TeeSize, qty: number) => {

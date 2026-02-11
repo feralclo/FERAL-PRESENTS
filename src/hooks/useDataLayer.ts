@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 declare global {
   interface Window {
@@ -78,11 +78,14 @@ export function useDataLayer() {
     [push]
   );
 
-  return {
-    push,
-    trackViewContent,
-    trackAddToCart,
-    trackRemoveFromCart,
-    trackInitiateCheckout,
-  };
+  return useMemo(
+    () => ({
+      push,
+      trackViewContent,
+      trackAddToCart,
+      trackRemoveFromCart,
+      trackInitiateCheckout,
+    }),
+    [push, trackViewContent, trackAddToCart, trackRemoveFromCart, trackInitiateCheckout]
+  );
 }

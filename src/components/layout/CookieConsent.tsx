@@ -52,6 +52,8 @@ function saveConsent(prefs: ConsentPrefs) {
         ...prefs,
       })
     );
+    // Notify same-tab listeners (StorageEvent only fires in other tabs)
+    window.dispatchEvent(new Event("feral_consent_update"));
   } catch {
     // ignore
   }

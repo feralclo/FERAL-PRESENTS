@@ -36,7 +36,7 @@ export function DynamicTicketWidget({
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
-  const meta = useMetaTracking();
+  const { trackAddToCart: metaTrackAddToCart } = useMetaTracking();
   const [expressError, setExpressError] = useState("");
 
   // Only show active ticket types, sorted by sort_order
@@ -75,7 +75,7 @@ export function DynamicTicketWidget({
         ...prev,
         [tt.id]: Math.min((prev[tt.id] || 0) + 1, tt.max_per_order),
       }));
-      meta.trackAddToCart({
+      metaTrackAddToCart({
         content_name: tt.name,
         content_ids: [tt.id],
         content_type: "product",
@@ -84,7 +84,7 @@ export function DynamicTicketWidget({
         num_items: 1,
       });
     },
-    [meta, currency]
+    [metaTrackAddToCart, currency]
   );
 
   const removeTicket = useCallback(
@@ -123,7 +123,7 @@ export function DynamicTicketWidget({
       return { ...prev, [ticketTypeId]: sizes };
     });
     if (tt) {
-      meta.trackAddToCart({
+      metaTrackAddToCart({
         content_name: tt.name,
         content_ids: [tt.id],
         content_type: "product",
@@ -133,7 +133,7 @@ export function DynamicTicketWidget({
       });
     }
     setSizePopup(null);
-  }, [sizePopup, activeTypes, meta, currency]);
+  }, [sizePopup, activeTypes, metaTrackAddToCart, currency]);
 
   const totalQty = useMemo(
     () => Object.values(quantities).reduce((a, b) => a + b, 0),

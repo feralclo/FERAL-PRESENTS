@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { SETTINGS_KEYS } from "@/lib/constants";
 import type { MarketingSettings, MetaCAPIRequest } from "@/types/marketing";
 
@@ -26,9 +26,15 @@ function getSettings(): Promise<MarketingSettings | null> {
     .then((res) => (res.ok ? res.json() : null))
     .then((json) => {
       _settings = (json?.data as MarketingSettings) || null;
+      if (!_settings) {
+        console.warn("[Meta] Marketing settings not found or not configured");
+      }
       return _settings;
     })
-    .catch(() => null);
+    .catch((err) => {
+      console.warn("[Meta] Failed to fetch marketing settings:", err);
+      return null;
+    });
 
   return _fetchPromise;
 }
@@ -77,6 +83,17 @@ function loadPixel(pixelId: string) {
   w.fbq("init", pixelId);
 }
 
+/**
+ * Try to load the pixel if settings are available and consent is granted.
+ * Safe to call multiple times — loadPixel itself is idempotent.
+ */
+function tryLoadPixel() {
+  if (_pixelLoaded) return;
+  if (!_settings?.meta_tracking_enabled || !_settings.meta_pixel_id) return;
+  if (!hasMarketingConsent()) return;
+  loadPixel(_settings.meta_pixel_id);
+}
+
 /** Fire a pixel event (client-side) */
 function firePixelEvent(
   eventName: string,
@@ -118,6 +135,10 @@ function sendCAPI(
  * Loads the pixel once, then provides functions that fire both
  * client-side pixel events and server-side CAPI events with
  * matching event_id for deduplication.
+ *
+ * IMPORTANT: Returns a referentially-stable object so it can safely
+ * be used in useEffect / useCallback dependency arrays without
+ * causing re-fires on every render.
  */
 export function useMetaTracking() {
   const initialised = useRef(false);
@@ -128,10 +149,31 @@ export function useMetaTracking() {
     initialised.current = true;
 
     getSettings().then((s) => {
-      if (s?.meta_tracking_enabled && s.meta_pixel_id && hasMarketingConsent()) {
-        loadPixel(s.meta_pixel_id);
+      if (s?.meta_tracking_enabled && s.meta_pixel_id) {
+        if (hasMarketingConsent()) {
+          loadPixel(s.meta_pixel_id);
+        }
+        // else: pixel loads when consent is granted (storage listener below)
       }
     });
+
+    // Listen for consent changes — load pixel when user accepts marketing cookies
+    // after the page has already loaded (e.g. cookie banner interaction).
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "feral_cookie_consent") return;
+      tryLoadPixel();
+    };
+    window.addEventListener("storage", onStorage);
+
+    // Also listen for same-tab localStorage writes (StorageEvent only fires
+    // in OTHER tabs). We patch this via a custom event dispatched by CookieConsent.
+    const onConsentUpdate = () => tryLoadPixel();
+    window.addEventListener("feral_consent_update", onConsentUpdate);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("feral_consent_update", onConsentUpdate);
+    };
   }, []);
 
   const trackPageView = useCallback(() => {
@@ -217,11 +259,16 @@ export function useMetaTracking() {
     []
   );
 
-  return {
-    trackPageView,
-    trackViewContent,
-    trackAddToCart,
-    trackInitiateCheckout,
-    trackPurchase,
-  };
+  // Return a stable object — all callbacks have [] deps so they never change,
+  // meaning this useMemo value is created once and reused forever.
+  return useMemo(
+    () => ({
+      trackPageView,
+      trackViewContent,
+      trackAddToCart,
+      trackInitiateCheckout,
+      trackPurchase,
+    }),
+    [trackPageView, trackViewContent, trackAddToCart, trackInitiateCheckout, trackPurchase]
+  );
 }

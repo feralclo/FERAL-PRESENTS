@@ -14,7 +14,7 @@ import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 
 export function LandingPage() {
   const { push } = useDataLayer();
-  const meta = useMetaTracking();
+  const { trackPageView } = useMetaTracking();
 
   // Activate scroll reveal for [data-reveal] elements (Events, Contact sections)
   useScrollReveal();
@@ -28,8 +28,8 @@ export function LandingPage() {
       content_type: "website",
       currency: "GBP",
     });
-    meta.trackPageView();
-  }, [push, meta]);
+    trackPageView();
+  }, [push, trackPageView]);
 
 
   return (

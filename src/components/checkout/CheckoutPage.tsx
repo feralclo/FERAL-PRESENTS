@@ -56,7 +56,7 @@ export function CheckoutPage({ slug }: CheckoutPageProps) {
   const cartParam = searchParams.get("cart");
   const qtyParam = searchParams.get("qty");
   const { push } = useDataLayer();
-  const meta = useMetaTracking();
+  const { trackInitiateCheckout } = useMetaTracking();
   useTraffic();
 
   // Loading state — controlled by WeeZTix progress callbacks
@@ -94,13 +94,13 @@ export function CheckoutPage({ slug }: CheckoutPageProps) {
       currency: "GBP",
       num_items: numItems,
     });
-    meta.trackInitiateCheckout({
+    trackInitiateCheckout({
       content_ids: ids,
       content_type: "product",
       currency: "GBP",
       num_items: numItems,
     });
-  }, [cartItems, push, meta]);
+  }, [cartItems, push, trackInitiateCheckout]);
 
   // WeeZTix progress callback
   const handleProgress = useCallback((pct: number, detail: string) => {

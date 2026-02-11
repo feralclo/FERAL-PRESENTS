@@ -14,18 +14,66 @@ import { useDataLayer } from "@/hooks/useDataLayer";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import type { TeeSize } from "@/types/tickets";
+import type { Event } from "@/types/events";
 
 interface LiverpoolEventPageProps {
   slug: string;
+  /** Optional DB event — admin-editable content. Falls back to hardcoded values. */
+  event?: Event | null;
 }
 
-export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
+// Hardcoded fallbacks (original values before DB migration)
+const FALLBACK = {
+  title: "LIVERPOOL",
+  date: "27 MARCH 2026",
+  doors: "9:30PM — 4:00AM",
+  venue: "Invisible Wind Factory",
+  city: "Liverpool",
+  age: "18+",
+  tag: "SECOND RELEASE NOW ACTIVE",
+  banner: "/images/liverpool-event-banner.jpg",
+  about:
+    "FERAL takes over Invisible Wind Factory on 27 March with a full 360° setup and the most immersive production build the venue has ever seen. A stacked lineup built as a journey - hard bounce into hard techno, descending into industrial, before finally erupting in hardstyle and rawstyle.",
+  lineup: [
+    "DARK MATTER",
+    "MIKA HEGGEMAN",
+    "NICOLAS JULIAN",
+    "SANDY KLETZ",
+    "SO JUICE",
+    "STEVIE",
+  ],
+  details:
+    "This is an 18+ event. Valid photo ID required at the door. No re-entry. The venue operates a zero-tolerance policy. Accessibility info available on request.",
+} as const;
+
+function formatEventDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d
+    .toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    .toUpperCase();
+}
+
+export function LiverpoolEventPage({ slug, event }: LiverpoolEventPageProps) {
   const { settings } = useSettings();
   const cart = useTicketCart(settings);
   const { push } = useDataLayer();
   const { trackViewContent } = useMetaTracking();
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const headerHidden = useHeaderScroll();
+
+  // Use DB values when available, fall back to hardcoded
+  const title = event?.name?.toUpperCase() || FALLBACK.title;
+  const date = event?.date_start ? formatEventDate(event.date_start) : FALLBACK.date;
+  const doors = event?.doors_time || FALLBACK.doors;
+  const location = event?.venue_name
+    ? `${event.venue_name}, ${event.city || FALLBACK.city}`
+    : `${FALLBACK.venue}, ${FALLBACK.city}`;
+  const age = event?.age_restriction || FALLBACK.age;
+  const tag = event?.tag_line || FALLBACK.tag;
+  const bannerImage = event?.hero_image || FALLBACK.banner;
+  const aboutText = event?.about_text || FALLBACK.about;
+  const lineup = event?.lineup?.length ? event.lineup : FALLBACK.lineup;
+  const detailsText = event?.details_text || FALLBACK.details;
 
   // Track view_content on mount
   useEffect(() => {
@@ -107,14 +155,14 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
 
       <main className="event-page" id="eventPage">
         <EventHero
-          title="LIVERPOOL"
-          date="27 MARCH 2026"
-          doors="9:30PM — 4:00AM"
-          location="Invisible Wind Factory, Liverpool"
-          age="18+"
-          bannerImage="/images/liverpool-event-banner.jpg"
+          title={title}
+          date={date}
+          doors={doors}
+          location={location}
+          age={age}
+          bannerImage={bannerImage}
           coverImage={coverImage}
-          tag="SECOND RELEASE NOW ACTIVE"
+          tag={tag}
         />
 
         <section className="event-content">
@@ -124,13 +172,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
               <div className="event-info" id="eventInfo">
                 <div className="event-info__section">
                   <h2 className="event-info__heading">About</h2>
-                  <p className="event-info__text">
-                    FERAL takes over Invisible Wind Factory on 27 March with a
-                    full 360° setup and the most immersive production build the
-                    venue has ever seen. A stacked lineup built as a journey -
-                    hard bounce into hard techno, descending into industrial,
-                    before finally erupting in hardstyle and rawstyle.
-                  </p>
+                  <p className="event-info__text">{aboutText}</p>
                 </div>
 
                 <div className="event-info__section">
@@ -139,14 +181,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
                     <span className="event-info__az">[A-Z]</span>
                   </h2>
                   <div className="event-info__lineup">
-                    {[
-                      "DARK MATTER",
-                      "MIKA HEGGEMAN",
-                      "NICOLAS JULIAN",
-                      "SANDY KLETZ",
-                      "SO JUICE",
-                      "STEVIE",
-                    ].map((artist) => (
+                    {lineup.map((artist) => (
                       <div className="event-info__artist" key={artist}>
                         <span className="event-info__artist-name">
                           {artist}
@@ -158,11 +193,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
 
                 <div className="event-info__section">
                   <h2 className="event-info__heading">Details</h2>
-                  <p className="event-info__text">
-                    This is an 18+ event. Valid photo ID required at the door. No
-                    re-entry. The venue operates a zero-tolerance policy.
-                    Accessibility info available on request.
-                  </p>
+                  <p className="event-info__text">{detailsText}</p>
                 </div>
               </div>
 

@@ -32,10 +32,10 @@ const EVENT_META: Record<
   },
 };
 
-/** Fetch event from DB if it exists (any payment method).
- *  WeeZTix events must have ticket_types populated (via migration)
- *  before they switch from the hardcoded page to DynamicEventPage. */
-async function getDynamicEvent(slug: string) {
+/** Fetch event from DB (for admin-editable content).
+ *  Returns the event record regardless of payment method.
+ *  Routing decides which component to render based on payment_method. */
+async function getEventFromDB(slug: string) {
   try {
     const supabase = await getSupabaseServer();
     if (!supabase) return null;
@@ -47,21 +47,10 @@ async function getDynamicEvent(slug: string) {
       .eq("org_id", ORG_ID)
       .single();
 
-    if (data) {
-      // WeeZTix events need ticket_types in DB before using DynamicEventPage
-      // (migration must be complete — otherwise fall through to hardcoded page)
-      if (
-        data.payment_method === "weeztix" &&
-        (!data.ticket_types || data.ticket_types.length === 0)
-      ) {
-        return null;
-      }
-      return data;
-    }
+    return data || null;
   } catch {
-    // Fall through
+    return null;
   }
-  return null;
 }
 
 export async function generateMetadata({
@@ -71,9 +60,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
 
-  // Check for dynamic event first
-  const dynamicEvent = await getDynamicEvent(slug);
-  if (dynamicEvent) {
+  // Fetch event from DB for metadata (if it exists)
+  const dynamicEvent = await getEventFromDB(slug);
+  if (dynamicEvent && dynamicEvent.payment_method !== "weeztix") {
     const title = `FERAL — ${dynamicEvent.name}`;
     const description =
       dynamicEvent.description || dynamicEvent.about_text || `Get tickets for ${dynamicEvent.name}`;
@@ -141,17 +130,19 @@ export default async function EventPage({
 }) {
   const { slug } = await params;
 
-  // Check for dynamic event (test/stripe) — render from DB
-  const dynamicEvent = await getDynamicEvent(slug);
-  if (dynamicEvent) {
-    return <DynamicEventPage event={dynamicEvent} />;
+  // Fetch event from DB (admin-editable content)
+  const event = await getEventFromDB(slug);
+
+  // Stripe/test events: use dynamic page (DB-driven)
+  if (event && event.payment_method !== "weeztix") {
+    return <DynamicEventPage event={event} />;
   }
 
-  // WeeZTix events: use hardcoded components
+  // WeeZTix events: use hardcoded components (all features preserved)
+  // Pass DB event for admin-editable content (lineup, about, images, etc.)
   if (slug === "kompass-klub-7-march") {
     return <KompassEventPage />;
   }
 
-  // Default: Liverpool-style event page
-  return <LiverpoolEventPage slug={slug} />;
+  return <LiverpoolEventPage slug={slug} event={event} />;
 }

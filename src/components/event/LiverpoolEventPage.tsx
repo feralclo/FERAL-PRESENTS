@@ -201,6 +201,7 @@ export function LiverpoolEventPage({ slug, event }: LiverpoolEventPageProps) {
               <TicketWidget
                 eventSlug={slug}
                 cart={cart}
+                settings={settings}
                 onViewTee={() => setTeeModalOpen(true)}
               />
             </div>

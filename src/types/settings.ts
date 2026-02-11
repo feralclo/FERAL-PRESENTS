@@ -46,7 +46,12 @@ export interface EventSettings {
   // Stored as array of group names; null/undefined group = default ungrouped section
   ticket_groups?: string[];
   // Map ticket_type ID → group name (null = default ungrouped section)
+  // For WeeZTix events, keys are TicketKey strings (e.g. "general", "vip", "valentine")
   ticket_group_map?: Record<string, string | null>;
+
+  // WeeZTix ticket display order — array of TicketKey strings
+  // Controls the render order on the event page (e.g. ["general", "valentine", "vip", "vip-tee"])
+  weeztixTicketOrder?: string[];
 
   // Any additional dynamic fields
   [key: string]: unknown;

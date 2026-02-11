@@ -534,7 +534,17 @@ export default function EventEditorPage() {
     setTicketTypes((prev) => {
       const tt = prev[index];
       if (tt.id) setDeletedTypeIds((d) => [...d, tt.id]);
-      return prev.filter((_, i) => i !== index);
+      return prev.filter((_, i) => i !== index).map((tt2, i2) => ({ ...tt2, sort_order: i2 }));
+    });
+  }, []);
+
+  const moveTicketType = useCallback((index: number, direction: "up" | "down") => {
+    setTicketTypes((prev) => {
+      const target = direction === "up" ? index - 1 : index + 1;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next.map((tt, i) => ({ ...tt, sort_order: i }));
     });
   }, []);
 
@@ -1252,37 +1262,72 @@ export default function EventEditorPage() {
               {ticketTypes.map((tt, i) => (
                 <div key={tt.id || `new-${i}`} className="admin-ticket-card">
                   <div className="admin-ticket-card__header">
-                    <span className="admin-ticket-card__number">
-                      Tier #{i + 1}
-                    </span>
-                    {tt.sold > 0 && (
-                      <span
-                        style={{
-                          color: "#4ecb71",
-                          fontSize: "0.7rem",
-                          fontFamily: "'Space Mono', monospace",
-                        }}
-                      >
-                        {tt.sold} sold
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <button
+                          type="button"
+                          onClick={() => moveTicketType(i, "up")}
+                          disabled={i === 0}
+                          style={{
+                            width: 22, height: 16, padding: 0, border: "1px solid #333",
+                            background: i === 0 ? "#111" : "#1a1a1a", color: i === 0 ? "#333" : "#aaa",
+                            cursor: i === 0 ? "default" : "pointer", fontSize: "0.6rem",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                          title="Move up"
+                        >
+                          &#9650;
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveTicketType(i, "down")}
+                          disabled={i === ticketTypes.length - 1}
+                          style={{
+                            width: 22, height: 16, padding: 0, border: "1px solid #333",
+                            background: i === ticketTypes.length - 1 ? "#111" : "#1a1a1a",
+                            color: i === ticketTypes.length - 1 ? "#333" : "#aaa",
+                            cursor: i === ticketTypes.length - 1 ? "default" : "pointer", fontSize: "0.6rem",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                          title="Move down"
+                        >
+                          &#9660;
+                        </button>
+                      </div>
+                      <span className="admin-ticket-card__number">
+                        #{i + 1}
                       </span>
-                    )}
-                    <button
-                      className="admin-btn-icon admin-btn-icon--danger"
-                      onClick={() => {
-                        if (tt.sold > 0) {
-                          if (
-                            !confirm(
-                              `This ticket type has ${tt.sold} sales. Are you sure you want to delete it?`
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {tt.sold > 0 && (
+                        <span
+                          style={{
+                            color: "#4ecb71",
+                            fontSize: "0.7rem",
+                            fontFamily: "'Space Mono', monospace",
+                          }}
+                        >
+                          {tt.sold} sold
+                        </span>
+                      )}
+                      <button
+                        className="admin-btn-icon admin-btn-icon--danger"
+                        onClick={() => {
+                          if (tt.sold > 0) {
+                            if (
+                              !confirm(
+                                `This ticket type has ${tt.sold} sales. Are you sure you want to delete it?`
+                              )
                             )
-                          )
-                            return;
-                        }
-                        removeTicketType(i);
-                      }}
-                      title="Delete ticket type"
-                    >
-                      &times;
-                    </button>
+                              return;
+                          }
+                          removeTicketType(i);
+                        }}
+                        title="Delete ticket type"
+                      >
+                        &times;
+                      </button>
+                    </div>
                   </div>
 
                   <div className="admin-form">
@@ -1710,6 +1755,97 @@ export default function EventEditorPage() {
       {/* ─── Section: WeeZTix Configuration (legacy) ─── */}
       {event.payment_method === "weeztix" && (
         <>
+          {/* Ticket Display Order */}
+          <div className="admin-section">
+            <h2 className="admin-section__title">Ticket Display Order</h2>
+            <p style={{ color: "#888", fontSize: "0.8rem", marginBottom: 16 }}>
+              Drag tickets up or down to change their order on the event page.
+              Ungrouped tickets appear first, then grouped sections.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(() => {
+                const SLOTS: { key: string; label: string; defaultGroup: string | null }[] = [
+                  { key: "general", label: "General Release", defaultGroup: null },
+                  { key: "vip", label: "VIP Ticket", defaultGroup: "VIP Experiences" },
+                  { key: "vip-tee", label: "VIP Black + Tee", defaultGroup: "VIP Experiences" },
+                  { key: "valentine", label: "Valentine's Special", defaultGroup: null },
+                ];
+                const order = (settings.weeztixTicketOrder as string[] | undefined) || SLOTS.map((s) => s.key);
+                const groupMap = (settings.ticket_group_map as Record<string, string | null>) || {};
+                const groups = (settings.ticket_groups as string[]) || ["VIP Experiences"];
+                const sortedSlots = [...SLOTS].sort((a, b) => {
+                  const aIdx = order.indexOf(a.key);
+                  const bIdx = order.indexOf(b.key);
+                  return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+                });
+
+                const moveSlot = (idx: number, dir: "up" | "down") => {
+                  const target = dir === "up" ? idx - 1 : idx + 1;
+                  if (target < 0 || target >= sortedSlots.length) return;
+                  const newOrder = sortedSlots.map((s) => s.key);
+                  [newOrder[idx], newOrder[target]] = [newOrder[target], newOrder[idx]];
+                  updateSetting("weeztixTicketOrder", newOrder);
+                };
+
+                return sortedSlots.map((slot, idx) => {
+                  const group = groupMap[slot.key] !== undefined ? groupMap[slot.key] : slot.defaultGroup;
+                  return (
+                    <div
+                      key={slot.key}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "10px 12px", background: "#111", border: "1px solid #333",
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <button
+                          type="button" onClick={() => moveSlot(idx, "up")} disabled={idx === 0}
+                          style={{
+                            width: 22, height: 16, padding: 0, border: "1px solid #333",
+                            background: idx === 0 ? "#0a0a0a" : "#1a1a1a",
+                            color: idx === 0 ? "#333" : "#aaa",
+                            cursor: idx === 0 ? "default" : "pointer", fontSize: "0.6rem",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >&#9650;</button>
+                        <button
+                          type="button" onClick={() => moveSlot(idx, "down")} disabled={idx === sortedSlots.length - 1}
+                          style={{
+                            width: 22, height: 16, padding: 0, border: "1px solid #333",
+                            background: idx === sortedSlots.length - 1 ? "#0a0a0a" : "#1a1a1a",
+                            color: idx === sortedSlots.length - 1 ? "#333" : "#aaa",
+                            cursor: idx === sortedSlots.length - 1 ? "default" : "pointer", fontSize: "0.6rem",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >&#9660;</button>
+                      </div>
+                      <span style={{
+                        flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.75rem",
+                        color: "#fff", letterSpacing: "0.03em",
+                      }}>
+                        {settings[`ticketName${SLOTS.findIndex((s) => s.key === slot.key) + 1}` as keyof typeof settings] as string || slot.label}
+                      </span>
+                      <select
+                        style={{
+                          background: "#1a1a1a", color: "#aaa", border: "1px solid #333",
+                          padding: "4px 8px", fontSize: "0.65rem", fontFamily: "'Space Mono', monospace",
+                        }}
+                        value={group || ""}
+                        onChange={(e) => {
+                          const newMap = { ...groupMap, [slot.key]: e.target.value || null };
+                          updateSetting("ticket_group_map", newMap);
+                        }}
+                      >
+                        <option value="">No group</option>
+                        {groups.map((g) => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
           <div className="admin-section">
             <h2 className="admin-section__title">WeeZTix Configuration</h2>
             <p

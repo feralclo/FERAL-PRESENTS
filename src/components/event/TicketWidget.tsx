@@ -7,14 +7,32 @@ import { useTraffic } from "@/hooks/useTraffic";
 import type { TicketKey, TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
 import type { useTicketCart } from "@/hooks/useTicketCart";
+import type { EventSettings } from "@/types/settings";
+
+/** Configuration for each WeeZTix ticket slot */
+interface TicketEntry {
+  key: TicketKey;
+  className: string;
+  defaultGroup: string | null;
+  hasViewTee?: boolean;
+}
+
+/** All available WeeZTix ticket slots with their default visual config */
+const WEEZTIX_TICKETS: TicketEntry[] = [
+  { key: "general", className: "", defaultGroup: null },
+  { key: "vip", className: "ticket-option--vip", defaultGroup: "VIP Experiences" },
+  { key: "vip-tee", className: "ticket-option--vip-black", defaultGroup: "VIP Experiences", hasViewTee: true },
+  { key: "valentine", className: "ticket-option--valentine", defaultGroup: null },
+];
 
 interface TicketWidgetProps {
   eventSlug: string;
   cart: ReturnType<typeof useTicketCart>;
+  settings?: EventSettings | null;
   onViewTee?: () => void;
 }
 
-export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) {
+export function TicketWidget({ eventSlug, cart, settings, onViewTee }: TicketWidgetProps) {
   const { trackAddToCart: trackCartEvent, trackInitiateCheckout } =
     useDataLayer();
   const { trackAddToCart: metaTrackAddToCart, trackInitiateCheckout: metaTrackInitiateCheckout } = useMetaTracking();
@@ -98,6 +116,40 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
     window.location.assign(url);
   }, [cart, eventSlug, trackInitiateCheckout, metaTrackInitiateCheckout]);
 
+  // Build ordered ticket entries with group assignments
+  const { ungrouped, namedGroups } = useMemo(() => {
+    const groupMap = (settings?.ticket_group_map as Record<string, string | null>) || {};
+    const groups = (settings?.ticket_groups as string[]) || ["VIP Experiences"];
+    const customOrder = settings?.weeztixTicketOrder as string[] | undefined;
+
+    // Build list of visible tickets
+    let entries = WEEZTIX_TICKETS
+      .filter((entry) => entry.key !== "valentine" || cart.tickets.valentine.id)
+      .map((entry) => ({
+        ...entry,
+        group: groupMap[entry.key] !== undefined ? groupMap[entry.key] : entry.defaultGroup,
+      }));
+
+    // Apply custom order if set
+    if (customOrder && customOrder.length > 0) {
+      entries.sort((a, b) => {
+        const aIdx = customOrder.indexOf(a.key);
+        const bIdx = customOrder.indexOf(b.key);
+        return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+      });
+    }
+
+    const ug = entries.filter((e) => !e.group);
+    const ng = groups
+      .map((name) => ({
+        name,
+        tickets: entries.filter((e) => e.group === name),
+      }))
+      .filter((g) => g.tickets.length > 0);
+
+    return { ungrouped: ug, namedGroups: ng };
+  }, [settings, cart.tickets.valentine.id]);
+
   // Cart summary items
   const cartItems = useMemo(() => {
     const items: { name: string; qty: number; size?: string }[] = [];
@@ -117,6 +169,18 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
   }, [cart.tickets, cart.teeSizes]);
 
   const checkoutDisabled = cart.totalQty === 0;
+
+  const renderTicketOption = (entry: TicketEntry & { group: string | null }) => (
+    <TicketOption
+      key={entry.key}
+      ticketKey={entry.key}
+      ticket={cart.tickets[entry.key]}
+      className={entry.className}
+      onAdd={() => handleAdd(entry.key)}
+      onRemove={() => handleRemove(entry.key)}
+      onViewTee={entry.hasViewTee ? onViewTee : undefined}
+    />
+  );
 
   return (
     <>
@@ -174,48 +238,18 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
                 </div>
               </div>
 
-              {/* General Release */}
-              <TicketOption
-                ticketKey="general"
-                ticket={cart.tickets.general}
-                onAdd={() => handleAdd("general")}
-                onRemove={() => handleRemove("general")}
-              />
+              {/* Ungrouped tickets */}
+              {ungrouped.map(renderTicketOption)}
 
-              {/* VIP Section Header */}
-              <div className="vip-section-header">
-                VIP Experiences<span style={{ color: "#e5e4e2" }}>_</span>
-              </div>
-
-              {/* VIP Ticket */}
-              <TicketOption
-                ticketKey="vip"
-                ticket={cart.tickets.vip}
-                className="ticket-option--vip"
-                onAdd={() => handleAdd("vip")}
-                onRemove={() => handleRemove("vip")}
-              />
-
-              {/* VIP Black + Tee */}
-              <TicketOption
-                ticketKey="vip-tee"
-                ticket={cart.tickets["vip-tee"]}
-                className="ticket-option--vip-black"
-                onAdd={() => handleAdd("vip-tee")}
-                onRemove={() => handleRemove("vip-tee")}
-                onViewTee={onViewTee}
-              />
-
-              {/* Valentine's Special — only show if configured */}
-              {cart.tickets.valentine.id && (
-                <TicketOption
-                  ticketKey="valentine"
-                  ticket={cart.tickets.valentine}
-                  className="ticket-option--valentine"
-                  onAdd={() => handleAdd("valentine")}
-                  onRemove={() => handleRemove("valentine")}
-                />
-              )}
+              {/* Named groups with headers */}
+              {namedGroups.map((group) => (
+                <div key={group.name}>
+                  <div className="vip-section-header">
+                    {group.name}<span style={{ color: "#e5e4e2" }}>_</span>
+                  </div>
+                  {group.tickets.map(renderTicketOption)}
+                </div>
+              ))}
 
               {/* Checkout Button */}
               <button

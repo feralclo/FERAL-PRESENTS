@@ -222,8 +222,9 @@ describe("useTicketCart", () => {
   describe("settings update", () => {
     it("preserves cart quantities when settings change", () => {
       const { result, rerender } = renderHook(
-        ({ settings }) => useTicketCart(settings),
-        { initialProps: { settings: null } }
+        ({ settings }: { settings: Parameters<typeof useTicketCart>[0] }) =>
+          useTicketCart(settings),
+        { initialProps: { settings: null as Parameters<typeof useTicketCart>[0] } }
       );
 
       // Add tickets
@@ -235,10 +236,8 @@ describe("useTicketCart", () => {
       const newSettings = {
         ticketName1: "Updated Name",
         ticketId1: "new-id-123",
-      };
-      rerender({
-        settings: newSettings as Parameters<typeof useTicketCart>[0],
-      });
+      } as Parameters<typeof useTicketCart>[0];
+      rerender({ settings: newSettings });
 
       // Quantities should be preserved
       expect(result.current.tickets.general.qty).toBe(2);

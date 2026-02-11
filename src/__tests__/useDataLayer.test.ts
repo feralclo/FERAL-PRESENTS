@@ -3,7 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useDataLayer } from "@/hooks/useDataLayer";
 
 beforeEach(() => {
-  (window as Record<string, unknown>).dataLayer = [];
+  (window as unknown as Record<string, unknown>).dataLayer = [];
 });
 
 describe("useDataLayer", () => {
@@ -49,7 +49,7 @@ describe("useDataLayer", () => {
     });
 
     it("creates dataLayer if it does not exist", () => {
-      delete (window as Record<string, unknown>).dataLayer;
+      delete (window as unknown as Record<string, unknown>).dataLayer;
       const { result } = renderHook(() => useDataLayer());
       act(() => result.current.push({ event: "init" }));
       expect(window.dataLayer).toBeDefined();

@@ -29,10 +29,12 @@ src/
 │   │   ├── traffic/page.tsx      # Traffic analytics
 │   │   ├── popup/page.tsx        # Popup analytics
 │   │   ├── events/[slug]/page.tsx # Event editor
-│   │   └── settings/page.tsx     # Platform settings
+│   │   ├── settings/page.tsx     # Platform settings
+│   │   └── health/page.tsx       # System health dashboard (master user only)
 │   └── api/
 │       ├── settings/route.ts     # Settings CRUD
 │       ├── track/route.ts        # Traffic/popup event tracking
+│       ├── health/route.ts       # System health checks endpoint
 │       └── stripe/webhook/route.ts # Stripe webhook (placeholder)
 ├── components/
 │   ├── landing/                  # Landing page components
@@ -44,6 +46,7 @@ src/
 │   ├── useTraffic.ts             # Traffic/funnel tracking
 │   ├── useDataLayer.ts           # GTM dataLayer helpers
 │   ├── useTicketCart.ts           # Ticket cart state management
+│   ├── useMetaTracking.ts        # Meta Pixel + CAPI tracking (stable refs)
 │   └── useScrollReveal.ts        # Scroll-triggered animations
 ├── lib/
 │   ├── constants.ts              # ORG_ID, table names, ticket IDs, API keys
@@ -120,6 +123,39 @@ All credentials in `.env.local` (gitignored). Required vars:
 - `traffic_events` — funnel tracking (landing, tickets, checkout, purchase, add_to_cart)
 - `popup_events` — popup interaction tracking (impressions, clicked, closed)
 - More tables to come for: orders, tickets, events, organisations, users
+
+## Testing
+
+### Framework
+- **Vitest** + **@testing-library/react** (jsdom environment)
+- Config: `vitest.config.ts` — path aliases, setup file, jsdom
+- Setup: `src/__tests__/setup.ts` — localStorage mock, crypto mock, jest-dom matchers
+- Run: `npm test` (single run) or `npm run test:watch` (watch mode)
+
+### Rules for Writing Tests
+1. **Every new hook must have a test file** — `src/__tests__/useHookName.test.ts`
+2. **Every new API route must have a test file** — `src/__tests__/api/routeName.test.ts`
+3. **Referential stability tests are mandatory** for any hook that returns objects/functions consumed as useEffect/useCallback dependencies. This prevents the duplicate-event flooding bug we fixed in useMetaTracking.
+4. **Test what matters, skip what doesn't** — focus on:
+   - State logic (cart calculations, quantity management)
+   - Referential stability (useMemo/useCallback return values)
+   - API shape (returned methods exist and have correct types)
+   - Edge cases (zero quantities, empty carts, missing settings)
+   - Payment flows (Stripe integration — critical path)
+5. **Don't test** — pure UI rendering, CSS classes, static text content
+6. **Tests must pass before committing** — run `npm test` and fix failures
+
+### Current Test Coverage
+- `useTicketCart` — 22 tests (state, add/remove, tee sizes, cart params, checkout URL, settings preservation)
+- `useMetaTracking` — 10 tests (referential stability, consent gating, API shape)
+- `useDataLayer` — 8 tests (referential stability, event pushing, tracking helpers)
+
+### Adding Tests for New Features
+When building a new feature, write tests that cover:
+- The hook's public API (what it returns)
+- State transitions (add → remove → reset)
+- Integration with settings (admin-configurable values)
+- Error/edge cases (null settings, empty data, network failures)
 
 ## Design Principles
 - Dark aesthetic (#0e0e0e background, red #ff0033 accent)

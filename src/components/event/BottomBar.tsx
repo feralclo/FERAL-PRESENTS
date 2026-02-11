@@ -5,6 +5,7 @@ interface BottomBarProps {
   cartTotal?: string;
   cartQty?: number;
   onBuyNow: () => void;
+  onCheckout?: () => void;
 }
 
 export function BottomBar({
@@ -12,6 +13,7 @@ export function BottomBar({
   cartTotal,
   cartQty = 0,
   onBuyNow,
+  onCheckout,
 }: BottomBarProps) {
   const hasCart = cartQty > 0 && cartTotal;
 
@@ -39,7 +41,7 @@ export function BottomBar({
             {cartQty} ticket{cartQty !== 1 ? "s" : ""}
           </span>
         )}
-        <button className="bottom-bar__cta" onClick={onBuyNow}>
+        <button className="bottom-bar__cta" onClick={hasCart && onCheckout ? onCheckout : onBuyNow}>
           {hasCart ? "Checkout" : "Buy Now"}
         </button>
       </div>

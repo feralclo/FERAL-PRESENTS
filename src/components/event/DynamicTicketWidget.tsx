@@ -15,6 +15,7 @@ interface DynamicTicketWidgetProps {
   ticketTypes: TicketTypeRow[];
   currency: string;
   onCartChange?: (totalPrice: number, totalQty: number) => void;
+  onCheckoutReady?: (checkoutFn: (() => void) | null) => void;
 }
 
 /** Tier → CSS class mapping for visual styling */
@@ -31,6 +32,7 @@ export function DynamicTicketWidget({
   ticketTypes,
   currency,
   onCartChange,
+  onCheckoutReady,
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
@@ -175,6 +177,11 @@ export function DynamicTicketWidget({
     const url = getCheckoutUrl();
     if (url) window.location.assign(url);
   }, [getCheckoutUrl]);
+
+  // Expose checkout handler to parent (for bottom bar)
+  useEffect(() => {
+    onCheckoutReady?.(totalQty > 0 ? handleCheckout : null);
+  }, [totalQty, handleCheckout, onCheckoutReady]);
 
   // Express checkout (Apple Pay / Google Pay) success — redirect to confirmation
   const handleExpressSuccess = useCallback(

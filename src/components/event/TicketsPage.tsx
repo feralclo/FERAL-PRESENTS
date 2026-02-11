@@ -47,6 +47,11 @@ export function TicketsPage({ slug }: TicketsPageProps) {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  const handleCheckout = useCallback(() => {
+    const url = cart.getCheckoutUrl(slug);
+    if (url) window.location.assign(url);
+  }, [cart, slug]);
+
   return (
     <>
       <header className="header" id="header">
@@ -99,7 +104,13 @@ export function TicketsPage({ slug }: TicketsPageProps) {
         </section>
       </main>
 
-      <BottomBar onBuyNow={scrollToTickets} />
+      <BottomBar
+        fromPrice={`£${cart.totalPrice > 0 ? cart.totalPrice.toFixed(2) : "26.46"}`}
+        cartTotal={cart.totalQty > 0 ? `£${cart.totalPrice.toFixed(2)}` : undefined}
+        cartQty={cart.totalQty}
+        onBuyNow={scrollToTickets}
+        onCheckout={handleCheckout}
+      />
 
       <TeeModal
         isOpen={teeModalOpen}

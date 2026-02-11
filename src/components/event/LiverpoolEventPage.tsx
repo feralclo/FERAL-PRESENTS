@@ -70,6 +70,11 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
     }
   }, []);
 
+  const handleCheckout = useCallback(() => {
+    const url = cart.getCheckoutUrl(slug);
+    if (url) window.location.assign(url);
+  }, [cart, slug]);
+
   const coverImage = settings?.minimalBgImage || null;
 
   return (
@@ -177,6 +182,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
         cartTotal={cart.totalQty > 0 ? `£${cart.totalPrice.toFixed(2)}` : undefined}
         cartQty={cart.totalQty}
         onBuyNow={scrollToTickets}
+        onCheckout={handleCheckout}
       />
 
       <TeeModal

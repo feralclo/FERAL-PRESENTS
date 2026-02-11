@@ -163,8 +163,13 @@ function ExpressCheckoutInner({
           },
           buttonHeight: 48,
           layout: {
-            maxColumns: 2,
+            maxColumns: 1,
             maxRows: 1,
+          },
+          paymentMethods: {
+            link: "never",
+            applePay: "auto",
+            googlePay: "auto",
           },
         }}
       />

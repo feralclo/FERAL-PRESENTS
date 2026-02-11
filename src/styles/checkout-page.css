@@ -794,28 +794,7 @@ html, body {
    TICKET PAGE EXPRESS CHECKOUT
    ======================================== */
 .feral-tickets__express {
-  margin-top: 8px;
-}
-
-.feral-tickets__express-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-}
-
-.feral-tickets__express-divider-line {
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.feral-tickets__express-divider-text {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #555;
+  margin-top: 12px;
 }
 
 .feral-tickets__express-error {
@@ -844,6 +823,9 @@ html, body {
 }
 
 .native-checkout__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-bottom: 8px;
 }
 

@@ -308,11 +308,6 @@ export function DynamicTicketWidget({
               {/* Express Checkout (Apple Pay / Google Pay) */}
               {isStripe && totalQty > 0 && (
                 <div className="feral-tickets__express">
-                  <div className="feral-tickets__express-divider">
-                    <span className="feral-tickets__express-divider-line" />
-                    <span className="feral-tickets__express-divider-text">or</span>
-                    <span className="feral-tickets__express-divider-line" />
-                  </div>
                   <ExpressCheckout
                     eventId={eventId}
                     currency={currency}

@@ -602,10 +602,15 @@ function SinglePageCheckoutForm({
                   applePay: "buy",
                   googlePay: "buy",
                 },
-                buttonHeight: 50,
+                buttonHeight: 54,
                 layout: {
-                  maxColumns: 2,
+                  maxColumns: 1,
                   maxRows: 1,
+                },
+                paymentMethods: {
+                  link: "never",
+                  applePay: "auto",
+                  googlePay: "auto",
                 },
               }}
             />

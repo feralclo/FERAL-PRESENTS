@@ -163,9 +163,9 @@ export async function POST(request: NextRequest) {
           application_fee_amount: applicationFee,
           description: `${event.name} — ${description}`,
           metadata,
-          // Only card — Apple Pay & Google Pay process as card type.
-          // Blocks Klarna, iDEAL, etc. at the PaymentIntent level.
-          payment_method_types: ["card"],
+          automatic_payment_methods: {
+            enabled: true,
+          },
           receipt_email: customer.email.toLowerCase(),
         },
         {

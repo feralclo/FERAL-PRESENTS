@@ -32,7 +32,9 @@ const EVENT_META: Record<
   },
 };
 
-/** Fetch event from DB if it exists (any payment method) */
+/** Fetch event from DB if it exists (any payment method).
+ *  WeeZTix events must have ticket_types populated (via migration)
+ *  before they switch from the hardcoded page to DynamicEventPage. */
 async function getDynamicEvent(slug: string) {
   try {
     const supabase = await getSupabaseServer();
@@ -45,7 +47,17 @@ async function getDynamicEvent(slug: string) {
       .eq("org_id", ORG_ID)
       .single();
 
-    if (data) return data;
+    if (data) {
+      // WeeZTix events need ticket_types in DB before using DynamicEventPage
+      // (migration must be complete — otherwise fall through to hardcoded page)
+      if (
+        data.payment_method === "weeztix" &&
+        (!data.ticket_types || data.ticket_types.length === 0)
+      ) {
+        return null;
+      }
+      return data;
+    }
   } catch {
     // Fall through
   }

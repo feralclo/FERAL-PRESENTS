@@ -1832,18 +1832,84 @@ export default function EventEditorPage() {
                         }}
                         value={group || ""}
                         onChange={(e) => {
-                          const newMap = { ...groupMap, [slot.key]: e.target.value || null };
-                          updateSetting("ticket_group_map", newMap);
+                          const val = e.target.value;
+                          if (val === "__new__") {
+                            const name = prompt("Enter new group name:");
+                            if (!name?.trim()) return;
+                            const trimmed = name.trim();
+                            if (!groups.includes(trimmed)) {
+                              updateSetting("ticket_groups", [...groups, trimmed]);
+                            }
+                            const newMap = { ...groupMap, [slot.key]: trimmed };
+                            updateSetting("ticket_group_map", newMap);
+                          } else {
+                            const newMap = { ...groupMap, [slot.key]: val || null };
+                            updateSetting("ticket_group_map", newMap);
+                          }
                         }}
                       >
                         <option value="">No group</option>
                         {groups.map((g) => <option key={g} value={g}>{g}</option>)}
+                        <option value="__new__">+ New group...</option>
                       </select>
                     </div>
                   );
                 });
               })()}
             </div>
+            {/* Manage groups */}
+            {((settings.ticket_groups as string[]) || []).length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <span style={{ color: "#666", fontSize: "0.65rem", fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>
+                  GROUPS:
+                </span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                  {((settings.ticket_groups as string[]) || []).map((g) => (
+                    <span
+                      key={g}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 10px", background: "#1a1a1a", border: "1px solid #333",
+                        fontSize: "0.65rem", fontFamily: "'Space Mono', monospace", color: "#ccc",
+                      }}
+                    >
+                      {g}
+                      <button
+                        type="button"
+                        style={{
+                          background: "none", border: "none", color: "#666",
+                          cursor: "pointer", fontSize: "0.7rem", padding: 0, lineHeight: 1,
+                        }}
+                        title={`Rename or delete "${g}"`}
+                        onClick={() => {
+                          const action = prompt(`Group: "${g}"\nType a new name to rename, or type DELETE to remove:`);
+                          if (!action) return;
+                          const groups = ((settings.ticket_groups as string[]) || []);
+                          const gMap = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
+                          if (action === "DELETE") {
+                            updateSetting("ticket_groups", groups.filter((x) => x !== g));
+                            for (const key of Object.keys(gMap)) {
+                              if (gMap[key] === g) gMap[key] = null;
+                            }
+                            updateSetting("ticket_group_map", gMap);
+                          } else {
+                            const trimmed = action.trim();
+                            if (!trimmed) return;
+                            updateSetting("ticket_groups", groups.map((x) => x === g ? trimmed : x));
+                            for (const key of Object.keys(gMap)) {
+                              if (gMap[key] === g) gMap[key] = trimmed;
+                            }
+                            updateSetting("ticket_group_map", gMap);
+                          }
+                        }}
+                      >
+                        &#9998;
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="admin-section">

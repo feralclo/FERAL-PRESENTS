@@ -21,6 +21,7 @@ describe("useTicketCart", () => {
       expect(result.current.tickets.general.id).toBe(DEFAULT_TICKETS.GENERAL);
       expect(result.current.tickets.vip.id).toBe(DEFAULT_TICKETS.VIP);
       expect(result.current.tickets["vip-tee"].id).toBe(DEFAULT_TICKETS.VIP_TEE);
+      expect(result.current.tickets.valentine.id).toBe(DEFAULT_TICKETS.VALENTINE);
     });
 
     it("uses settings ticket IDs when provided", () => {
@@ -28,9 +29,11 @@ describe("useTicketCart", () => {
         ticketId1: "custom-general-id",
         ticketId2: "custom-vip-id",
         ticketId3: "custom-viptee-id",
+        ticketId4: "custom-valentine-id",
         ticketName1: "Early Bird",
         ticketName2: "Premium",
         ticketName3: "Premium + Merch",
+        ticketName4: "V-Day Special",
       };
       const { result } = renderHook(() =>
         useTicketCart(settings as Parameters<typeof useTicketCart>[0])
@@ -38,7 +41,9 @@ describe("useTicketCart", () => {
       expect(result.current.tickets.general.id).toBe("custom-general-id");
       expect(result.current.tickets.vip.id).toBe("custom-vip-id");
       expect(result.current.tickets["vip-tee"].id).toBe("custom-viptee-id");
+      expect(result.current.tickets.valentine.id).toBe("custom-valentine-id");
       expect(result.current.tickets.general.name).toBe("Early Bird");
+      expect(result.current.tickets.valentine.name).toBe("V-Day Special");
     });
   });
 
@@ -64,6 +69,22 @@ describe("useTicketCart", () => {
       const { result } = renderHook(() => useTicketCart(null));
       act(() => result.current.addTicket("general")); // £26.46
       act(() => result.current.addTicket("vip")); // £35.00
+      expect(result.current.totalQty).toBe(2);
+      expect(result.current.totalPrice).toBeCloseTo(61.46);
+    });
+
+    it("increments valentine ticket quantity", () => {
+      const { result } = renderHook(() => useTicketCart(null));
+      act(() => result.current.addTicket("valentine"));
+      expect(result.current.tickets.valentine.qty).toBe(1);
+      expect(result.current.totalQty).toBe(1);
+      expect(result.current.totalPrice).toBeCloseTo(35.0);
+    });
+
+    it("handles valentine + general mixed", () => {
+      const { result } = renderHook(() => useTicketCart(null));
+      act(() => result.current.addTicket("general")); // £26.46
+      act(() => result.current.addTicket("valentine")); // £35.00
       expect(result.current.totalQty).toBe(2);
       expect(result.current.totalPrice).toBeCloseTo(61.46);
     });
@@ -159,6 +180,16 @@ describe("useTicketCart", () => {
       expect(param).toMatch(/:1:L$/);
     });
 
+    it("builds correct param for valentine ticket with custom ID", () => {
+      const settings = { ticketId4: "val-uuid-123" };
+      const { result } = renderHook(() =>
+        useTicketCart(settings as Parameters<typeof useTicketCart>[0])
+      );
+      act(() => result.current.addTicket("valentine"));
+      const param = result.current.getCartParam();
+      expect(param).toBe("val-uuid-123:1");
+    });
+
     it("creates separate items per size for VIP+Tee", () => {
       const { result } = renderHook(() => useTicketCart(null));
       act(() => result.current.addTeeSize("M"));
@@ -209,11 +240,13 @@ describe("useTicketCart", () => {
       const { result } = renderHook(() => useTicketCart(null));
       act(() => result.current.addTicket("general"));
       act(() => result.current.addTicket("vip"));
+      act(() => result.current.addTicket("valentine"));
       act(() => result.current.addTeeSize("M"));
       act(() => result.current.reset());
       expect(result.current.totalQty).toBe(0);
       expect(result.current.totalPrice).toBe(0);
       expect(result.current.teeSizes.M).toBe(0);
+      expect(result.current.tickets.valentine.qty).toBe(0);
     });
   });
 

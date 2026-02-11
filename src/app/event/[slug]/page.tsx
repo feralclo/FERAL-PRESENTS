@@ -32,7 +32,7 @@ const EVENT_META: Record<
   },
 };
 
-/** Fetch event from DB if it exists and is non-WeeZTix */
+/** Fetch event from DB if it exists (any payment method) */
 async function getDynamicEvent(slug: string) {
   try {
     const supabase = await getSupabaseServer();
@@ -45,9 +45,7 @@ async function getDynamicEvent(slug: string) {
       .eq("org_id", ORG_ID)
       .single();
 
-    if (data && data.payment_method !== "weeztix") {
-      return data;
-    }
+    if (data) return data;
   } catch {
     // Fall through
   }

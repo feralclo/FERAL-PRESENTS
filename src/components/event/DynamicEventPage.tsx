@@ -5,8 +5,12 @@ import { Header } from "@/components/layout/Header";
 import { EventHero } from "./EventHero";
 import { DynamicTicketWidget } from "./DynamicTicketWidget";
 import { BottomBar } from "./BottomBar";
+import { DiscountPopup } from "./DiscountPopup";
+import { EngagementTracker } from "./EngagementTracker";
+import { SocialProofToast } from "./SocialProofToast";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useSettings } from "@/hooks/useSettings";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -16,6 +20,7 @@ interface DynamicEventPageProps {
 export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const headerHidden = useHeaderScroll();
   const { trackViewContent } = useMetaTracking();
+  const { settings } = useSettings();
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -91,6 +96,33 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
 
   // Lineup from DB
   const lineup = event.lineup || [];
+
+  // Ticket group data from settings
+  const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
+  const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null> | undefined) || {};
+
+  // WeeZTix ID mapping from settings (for checkout URL generation)
+  const isWeeZTix = event.payment_method === "weeztix";
+  const weeztixIds = useMemo(() => {
+    if (!isWeeZTix || !settings) return undefined;
+    const map: Record<number, string> = {};
+    if (settings.ticketId1) map[0] = settings.ticketId1 as string;
+    if (settings.ticketId2) map[1] = settings.ticketId2 as string;
+    if (settings.ticketId3) map[2] = settings.ticketId3 as string;
+    return Object.keys(map).length > 0 ? map : undefined;
+  }, [isWeeZTix, settings]);
+
+  const weeztixSizeIds = useMemo(() => {
+    if (!isWeeZTix || !settings) return undefined;
+    const map: Record<string, string> = {};
+    if (settings.sizeIdXS) map["XS"] = settings.sizeIdXS as string;
+    if (settings.sizeIdS) map["S"] = settings.sizeIdS as string;
+    if (settings.sizeIdM) map["M"] = settings.sizeIdM as string;
+    if (settings.sizeIdL) map["L"] = settings.sizeIdL as string;
+    if (settings.sizeIdXL) map["XL"] = settings.sizeIdXL as string;
+    if (settings.sizeIdXXL) map["XXL"] = settings.sizeIdXXL as string;
+    return Object.keys(map).length > 0 ? map : undefined;
+  }, [isWeeZTix, settings]);
 
   return (
     <>
@@ -195,6 +227,10 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 currency={event.currency}
                 onCartChange={handleCartChange}
                 onCheckoutReady={handleCheckoutReady}
+                ticketGroups={ticketGroups}
+                ticketGroupMap={ticketGroupMap}
+                weeztixIds={weeztixIds}
+                weeztixSizeIds={weeztixSizeIds}
               />
             </div>
           </div>
@@ -222,6 +258,11 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
           </div>
         </div>
       </footer>
+
+      {/* Engagement features */}
+      <DiscountPopup />
+      <EngagementTracker />
+      <SocialProofToast />
     </>
   );
 }

@@ -39,6 +39,12 @@ export interface EventSettings {
   teeBack?: string;     // Tee back view (URL or base64)
   coverImage?: string;
 
+  // Ticket Groups — organise ticket types into named sections (e.g. "VIP Experiences")
+  // Stored as array of group names; null/undefined group = default ungrouped section
+  ticket_groups?: string[];
+  // Map ticket_type ID → group name (null = default ungrouped section)
+  ticket_group_map?: Record<string, string | null>;
+
   // Any additional dynamic fields
   [key: string]: unknown;
 }

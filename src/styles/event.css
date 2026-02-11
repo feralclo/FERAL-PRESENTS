@@ -437,6 +437,29 @@
   color: var(--white);
 }
 
+/* Ticket Groups — named sections (e.g. "VIP Experiences") */
+.ticket-group {
+  margin-top: 20px;
+}
+
+.ticket-group__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.ticket-group__name {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
 .feral-tickets__checkout {
   width: 100%;
   padding: 16px 24px;

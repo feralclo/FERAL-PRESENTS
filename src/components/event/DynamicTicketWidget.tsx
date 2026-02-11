@@ -16,6 +16,14 @@ interface DynamicTicketWidgetProps {
   currency: string;
   onCartChange?: (totalPrice: number, totalQty: number) => void;
   onCheckoutReady?: (checkoutFn: (() => void) | null) => void;
+  /** Named ticket groups (e.g. ["VIP Experiences"]) */
+  ticketGroups?: string[];
+  /** Map ticket type ID → group name (null = default ungrouped) */
+  ticketGroupMap?: Record<string, string | null>;
+  /** WeeZTix ticket IDs by sort_order for checkout URL generation */
+  weeztixIds?: Record<number, string>;
+  /** WeeZTix size-specific ticket IDs (e.g. { XS: "uuid", S: "uuid", ... }) */
+  weeztixSizeIds?: Record<string, string>;
 }
 
 /** Tier → CSS class mapping for visual styling */
@@ -33,6 +41,10 @@ export function DynamicTicketWidget({
   currency,
   onCartChange,
   onCheckoutReady,
+  ticketGroups,
+  ticketGroupMap,
+  weeztixIds,
+  weeztixSizeIds,
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
@@ -154,24 +166,41 @@ export function DynamicTicketWidget({
     onCartChange?.(totalPrice, totalQty);
   }, [totalPrice, totalQty, onCartChange]);
 
+  const isWeeZTix = paymentMethod === "weeztix";
+
   const getCheckoutUrl = useCallback(() => {
     const items: string[] = [];
     for (const tt of activeTypes) {
       const qty = quantities[tt.id] || 0;
       if (qty <= 0) continue;
 
-      if (tt.includes_merch && merchSizes[tt.id]) {
-        // Each size as separate cart item
-        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-          if (sQty > 0) items.push(`${tt.id}:${sQty}:${size}`);
+      if (isWeeZTix) {
+        // WeeZTix checkout: use WeeZTix ticket IDs from settings
+        if (tt.includes_merch && merchSizes[tt.id] && weeztixSizeIds) {
+          // Size-specific WeeZTix IDs for merch tickets
+          for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
+            const sizeId = weeztixSizeIds[size];
+            if (sQty > 0 && sizeId) items.push(`${sizeId}:${sQty}:${size}`);
+          }
+        } else {
+          // Map by sort_order: ticket at sort_order N → weeztixIds[N]
+          const wId = weeztixIds?.[tt.sort_order];
+          if (wId) items.push(`${wId}:${qty}`);
         }
       } else {
-        items.push(`${tt.id}:${qty}`);
+        // Native checkout: use our DB ticket type IDs
+        if (tt.includes_merch && merchSizes[tt.id]) {
+          for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
+            if (sQty > 0) items.push(`${tt.id}:${sQty}:${size}`);
+          }
+        } else {
+          items.push(`${tt.id}:${qty}`);
+        }
       }
     }
     if (items.length === 0) return null;
     return `/event/${eventSlug}/checkout/?cart=${encodeURIComponent(items.join(","))}`;
-  }, [activeTypes, quantities, merchSizes, eventSlug]);
+  }, [activeTypes, quantities, merchSizes, eventSlug, isWeeZTix, weeztixIds, weeztixSizeIds]);
 
   const handleCheckout = useCallback(() => {
     const url = getCheckoutUrl();
@@ -264,63 +293,95 @@ export function DynamicTicketWidget({
 
           <div className="event-tickets__embed" id="tickets-embed">
             <div className="feral-tickets" id="feral-tickets">
-              {activeTypes.map((tt) => {
-                const tierClass = TIER_CLASS[tt.tier || "standard"] || "";
-                const qty = getQty(tt.id);
-                const priceDisplay =
-                  Number(tt.price) % 1 === 0
-                    ? Number(tt.price)
-                    : Number(tt.price).toFixed(2);
+              {(() => {
+                // Group tickets: default group first, then named groups
+                const groupMap = ticketGroupMap || {};
+                const groups = ticketGroups || [];
+                const defaultGroup = activeTypes.filter(
+                  (tt) => !groupMap[tt.id]
+                );
+                const namedGroups = groups.map((name) => ({
+                  name,
+                  tickets: activeTypes.filter(
+                    (tt) => groupMap[tt.id] === name
+                  ),
+                })).filter((g) => g.tickets.length > 0);
+
+                const renderTicket = (tt: TicketTypeRow) => {
+                  const tierClass = TIER_CLASS[tt.tier || "standard"] || "";
+                  const qty = getQty(tt.id);
+                  const priceDisplay =
+                    Number(tt.price) % 1 === 0
+                      ? Number(tt.price)
+                      : Number(tt.price).toFixed(2);
+
+                  return (
+                    <div
+                      key={tt.id}
+                      className={`ticket-option ${tierClass}`}
+                      data-ticket-id={tt.id}
+                    >
+                      <div className="ticket-option__row">
+                        <div className="ticket-option__info">
+                          <span className="ticket-option__name">{tt.name}</span>
+                          <span className="ticket-option__perks">
+                            {tt.description || "Standard entry"}
+                          </span>
+                        </div>
+                        <span className="ticket-option__price">
+                          {currSymbol}{priceDisplay}
+                        </span>
+                      </div>
+                      <div className="ticket-option__bottom">
+                        {tt.includes_merch ? (
+                          <span
+                            className="ticket-option__view-tee"
+                            style={{ cursor: "default", opacity: 0.6 }}
+                          >
+                            Includes merch
+                          </span>
+                        ) : (
+                          <span />
+                        )}
+                        <div className="ticket-option__controls">
+                          <button
+                            className="ticket-option__btn"
+                            onClick={() => removeTicket(tt)}
+                            aria-label="Remove"
+                          >
+                            &minus;
+                          </button>
+                          <span className="ticket-option__qty">{qty}</span>
+                          <button
+                            className="ticket-option__btn"
+                            onClick={() => addTicket(tt)}
+                            aria-label="Add"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                };
 
                 return (
-                  <div
-                    key={tt.id}
-                    className={`ticket-option ${tierClass}`}
-                    data-ticket-id={tt.id}
-                  >
-                    <div className="ticket-option__row">
-                      <div className="ticket-option__info">
-                        <span className="ticket-option__name">{tt.name}</span>
-                        <span className="ticket-option__perks">
-                          {tt.description || "Standard entry"}
-                        </span>
+                  <>
+                    {/* Default (ungrouped) tickets */}
+                    {defaultGroup.map(renderTicket)}
+
+                    {/* Named groups with headers */}
+                    {namedGroups.map((group) => (
+                      <div key={group.name} className="ticket-group">
+                        <div className="ticket-group__header">
+                          <span className="ticket-group__name">{group.name}</span>
+                        </div>
+                        {group.tickets.map(renderTicket)}
                       </div>
-                      <span className="ticket-option__price">
-                        {currSymbol}{priceDisplay}
-                      </span>
-                    </div>
-                    <div className="ticket-option__bottom">
-                      {tt.includes_merch ? (
-                        <span
-                          className="ticket-option__view-tee"
-                          style={{ cursor: "default", opacity: 0.6 }}
-                        >
-                          Includes merch
-                        </span>
-                      ) : (
-                        <span />
-                      )}
-                      <div className="ticket-option__controls">
-                        <button
-                          className="ticket-option__btn"
-                          onClick={() => removeTicket(tt)}
-                          aria-label="Remove"
-                        >
-                          &minus;
-                        </button>
-                        <span className="ticket-option__qty">{qty}</span>
-                        <button
-                          className="ticket-option__btn"
-                          onClick={() => addTicket(tt)}
-                          aria-label="Add"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    ))}
+                  </>
                 );
-              })}
+              })()}
 
               {/* Checkout Button */}
               <button

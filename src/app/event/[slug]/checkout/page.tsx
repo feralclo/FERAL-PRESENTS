@@ -20,7 +20,7 @@ export default async function CheckoutRoute({
 }) {
   const { slug } = await params;
 
-  // Check if event exists in events table with non-weeztix payment
+  // Check if event exists in events table and uses native (non-WeeZTix) payment
   let nativeEvent = null;
   try {
     const supabase = await getSupabaseServer();
@@ -32,6 +32,7 @@ export default async function CheckoutRoute({
         .eq("org_id", ORG_ID)
         .single();
 
+      // WeeZTix events still use the WeeZTix checkout embed (CheckoutPage)
       if (data && data.payment_method !== "weeztix") {
         nativeEvent = data;
       }

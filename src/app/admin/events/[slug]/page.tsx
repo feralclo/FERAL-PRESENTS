@@ -554,13 +554,20 @@ export default function EventEditorPage() {
             event.settings_key ||
             `feral_event_${event.slug}`;
 
+          // Always include ticket group config in settings
+          const groupData = {
+            ticket_groups: settings.ticket_groups || [],
+            ticket_group_map: settings.ticket_group_map || {},
+          };
+
           const dataToSave = event.payment_method === "weeztix"
-            ? settings
+            ? { ...settings, ...groupData }
             : {
                 theme: event.theme || "default",
                 minimalBlurStrength: settings.minimalBlurStrength ?? 4,
                 minimalStaticStrength: settings.minimalStaticStrength ?? 5,
                 minimalBgEnabled: !!(event.hero_image || event.cover_image),
+                ...groupData,
               };
 
           await supabase.from(TABLES.SITE_SETTINGS).upsert(
@@ -854,13 +861,12 @@ export default function EventEditorPage() {
         </div>
       </div>
 
-      {/* ─── Section: Page Content (native checkout only) ─── */}
-      {isNativeCheckout && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">Page Content</h2>
-          <p style={{ color: "#888", fontSize: "0.8rem", marginBottom: 16 }}>
-            This content appears on the public event page.
-          </p>
+      {/* ─── Section: Page Content ─── */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">Page Content</h2>
+        <p style={{ color: "#888", fontSize: "0.8rem", marginBottom: 16 }}>
+          This content appears on the public event page.
+        </p>
           <div className="admin-form">
             <div className="admin-form__row">
               <div className="admin-form__field">
@@ -919,7 +925,6 @@ export default function EventEditorPage() {
             </div>
           </div>
         </div>
-      )}
 
       {/* ─── Section: Status & Settings ─── */}
       <div className="admin-section">
@@ -1215,9 +1220,8 @@ export default function EventEditorPage() {
         </div>
       </div>
 
-      {/* ─── Section: Ticket Types (native checkout only) ─── */}
-      {isNativeCheckout && (
-        <div className="admin-section">
+      {/* ─── Section: Ticket Types ─── */}
+      <div className="admin-section">
           <div className="admin-section-header">
             <h2 className="admin-section__title" style={{ marginBottom: 0 }}>
               Ticket Types
@@ -1369,6 +1373,99 @@ export default function EventEditorPage() {
                           </button>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Ticket Group assignment */}
+                    <div className="admin-form__field">
+                      <label className="admin-form__label">Group</label>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <select
+                          className="admin-form__input"
+                          style={{ flex: 1 }}
+                          value={
+                            (settings.ticket_group_map as Record<string, string | null> | undefined)?.[tt.id] ?? ""
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "__new__") {
+                              const name = prompt("Enter new group name:");
+                              if (!name?.trim()) return;
+                              const trimmed = name.trim();
+                              // Add to groups list if not already there
+                              const groups = ((settings.ticket_groups as string[]) || []);
+                              if (!groups.includes(trimmed)) {
+                                updateSetting("ticket_groups", [...groups, trimmed]);
+                              }
+                              // Assign this ticket to the new group
+                              const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
+                              map[tt.id] = trimmed;
+                              updateSetting("ticket_group_map", map);
+                            } else {
+                              const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
+                              map[tt.id] = val || null;
+                              updateSetting("ticket_group_map", map);
+                            }
+                          }}
+                        >
+                          <option value="">(No group)</option>
+                          {((settings.ticket_groups as string[]) || []).map((g) => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                          <option value="__new__">+ Create new group...</option>
+                        </select>
+                        {/* Rename/delete group button */}
+                        {(settings.ticket_group_map as Record<string, string | null> | undefined)?.[tt.id] && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentGroup = (settings.ticket_group_map as Record<string, string | null>)?.[tt.id];
+                              if (!currentGroup) return;
+                              const action = prompt(
+                                `Group: "${currentGroup}"\nType a new name to rename, or type DELETE to remove this group:`
+                              );
+                              if (!action) return;
+                              if (action === "DELETE") {
+                                // Remove group from list and unassign all tickets
+                                const groups = ((settings.ticket_groups as string[]) || []).filter((g) => g !== currentGroup);
+                                const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
+                                for (const key of Object.keys(map)) {
+                                  if (map[key] === currentGroup) map[key] = null;
+                                }
+                                updateSetting("ticket_groups", groups);
+                                updateSetting("ticket_group_map", map);
+                              } else {
+                                // Rename group
+                                const newName = action.trim();
+                                if (!newName) return;
+                                const groups = ((settings.ticket_groups as string[]) || []).map(
+                                  (g) => g === currentGroup ? newName : g
+                                );
+                                const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
+                                for (const key of Object.keys(map)) {
+                                  if (map[key] === currentGroup) map[key] = newName;
+                                }
+                                updateSetting("ticket_groups", groups);
+                                updateSetting("ticket_group_map", map);
+                              }
+                            }}
+                            style={{
+                              background: "none",
+                              border: "1px solid #333",
+                              color: "#888",
+                              fontSize: "0.65rem",
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                              fontFamily: "'Space Mono', monospace",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Edit Group
+                          </button>
+                        )}
+                      </div>
+                      <span style={{ fontSize: "0.65rem", color: "#555", marginTop: 4, display: "block" }}>
+                        Tickets in the same group appear together on the event page with a section header.
+                      </span>
                     </div>
 
                     <div className="admin-form__row">
@@ -1556,7 +1653,6 @@ export default function EventEditorPage() {
             </div>
           )}
         </div>
-      )}
 
       {/* ─── Section: WeeZTix Configuration (legacy) ─── */}
       {event.payment_method === "weeztix" && (

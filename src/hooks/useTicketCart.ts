@@ -180,7 +180,7 @@ function buildInitialState(
     },
     "vip-tee": {
       id: settings?.ticketId3 || DEFAULT_TICKETS.VIP_TEE,
-      name: settings?.ticketName3 || "VIP Black + Tee",
+      name: settings?.ticketName3 || "VIP Ticket + T-Shirt",
       subtitle:
         settings?.ticketSubtitle3 ||
         "VIP entry + exclusive event tee",

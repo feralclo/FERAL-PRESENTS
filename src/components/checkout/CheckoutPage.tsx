@@ -17,7 +17,7 @@ import "@/styles/checkout-page.css";
 const TICKET_NAMES: Record<string, string> = {
   [DEFAULT_TICKETS.GENERAL]: "General Release",
   [DEFAULT_TICKETS.VIP]: "VIP Ticket",
-  [DEFAULT_TICKETS.VIP_TEE]: "VIP Black + Tee",
+  [DEFAULT_TICKETS.VIP_TEE]: "VIP Ticket + T-Shirt",
 };
 
 function parseCart(cartParam: string | null): ParsedCartItem[] {

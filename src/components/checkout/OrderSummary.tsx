@@ -16,7 +16,7 @@ export function OrderSummary({ items }: OrderSummaryProps) {
             <span className="checkout-summary__qty">{item.qty}x</span>
             <span className="checkout-summary__name">{item.name}</span>
             {item.size && (
-              <span className="checkout-summary__size">size: {item.size}</span>
+              <span className="checkout-summary__size">Size: {item.size}</span>
             )}
           </div>
         ))}

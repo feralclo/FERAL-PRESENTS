@@ -202,9 +202,17 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
                         <span>
                           {item.qty}x {item.name}
                           {item.size && (
-                            <span style={{ color: "#ff0033", marginLeft: 6, fontWeight: 700 }}>
-                              {item.size}
-                            </span>
+                            <>
+                              <span style={{ color: "#888", marginLeft: 8, marginRight: 4, fontWeight: 400 }}>
+                                &mdash;
+                              </span>
+                              <span style={{ color: "#fff", fontWeight: 700 }}>
+                                Size:
+                              </span>
+                              <span style={{ color: "#ff0033", marginLeft: 4, fontWeight: 700 }}>
+                                {item.size}
+                              </span>
+                            </>
                           )}
                         </span>
                       </div>
@@ -234,7 +242,7 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
             </button>
             <div className="size-popup__title">Select Your Size</div>
             <div className="size-popup__subtitle">
-              VIP Black + Limited Edition Tee
+              VIP Ticket + Limited Edition T-Shirt
             </div>
             <div className="size-popup__options">
               {TEE_SIZES.map((size) => (

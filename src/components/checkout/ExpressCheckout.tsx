@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Elements,
   ExpressCheckoutElement,
@@ -182,20 +182,30 @@ function ExpressCheckoutInner({
  *
  * Used on the ticket/event page to show Apple Pay / Google Pay buttons.
  * Creates its own Elements context with deferred intent mode.
- * When the user confirms in the wallet:
- *   1. Creates PaymentIntent with customer data from wallet
- *   2. Confirms payment
- *   3. Creates order
- *   4. Calls onSuccess with the order
+ *
+ * Only shows Apple Pay (iPhone/Safari) or Google Pay (Android/Chrome).
+ * All other express methods (Link, Klarna, etc.) are blocked.
+ *
+ * NOTE: Apple Pay requires domain registration in Stripe Dashboard:
+ *   Dashboard → Settings → Payment methods → Apple Pay → Add domain
+ *   Google Pay works automatically on Chrome with a saved card.
  */
 export function ExpressCheckout(props: ExpressCheckoutProps) {
   const [stripeAccountId, setStripeAccountId] = useState<string | undefined>(
     undefined
   );
   const [ready, setReady] = useState(false);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    async function fetchConfig() {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    // Start Stripe.js loading immediately (parallel with account fetch)
+    getStripeClient();
+
+    // Fetch connected account config
+    (async () => {
       try {
         const res = await fetch("/api/stripe/account");
         const data = await res.json();
@@ -204,8 +214,7 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
         // No connected account — use platform
       }
       setReady(true);
-    }
-    fetchConfig();
+    })();
   }, []);
 
   if (!ready) return null;
@@ -217,6 +226,9 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
     mode: "payment",
     amount: amountInSmallest,
     currency: props.currency.toLowerCase(),
+    // Restrict to card only — Apple Pay & Google Pay process as card,
+    // this blocks Klarna, Link, iDEAL, etc. from appearing
+    paymentMethodTypes: ["card"],
     appearance: {
       theme: "night",
       variables: {

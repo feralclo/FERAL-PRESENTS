@@ -740,11 +740,12 @@ html, body {
    EXPRESS CHECKOUT SECTION
    ======================================== */
 .express-checkout-section {
-  margin-bottom: 0;
+  margin-bottom: 8px;
 }
 
 .express-checkout {
   min-height: 48px;
+  width: 100%;
 }
 
 /* Divider: "or pay with card" */
@@ -826,7 +827,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .native-checkout__heading {
@@ -835,7 +836,7 @@ html, body {
   letter-spacing: 3px;
   text-transform: uppercase;
   color: #fff;
-  margin-bottom: 24px;
+  margin: 0;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -843,7 +844,7 @@ html, body {
 .native-checkout__form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .native-checkout__row {

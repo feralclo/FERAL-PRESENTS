@@ -186,8 +186,11 @@ function StripeCheckoutPage({
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
 
-  // Fetch connected account on mount
+  // Load Stripe.js + fetch account config in parallel for speed
   useEffect(() => {
+    // Pre-warm Stripe.js loading immediately
+    getStripeClient();
+
     (async () => {
       try {
         const res = await fetch("/api/stripe/account");
@@ -223,6 +226,9 @@ function StripeCheckoutPage({
     mode: "payment",
     amount: amountInSmallest,
     currency: event.currency.toLowerCase(),
+    // Restrict to card — Apple Pay & Google Pay process as card.
+    // Blocks Klarna, Link, iDEAL, etc. from appearing anywhere.
+    paymentMethodTypes: ["card"],
     appearance: {
       theme: "night",
       variables: {

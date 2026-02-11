@@ -24,6 +24,10 @@ interface DynamicTicketWidgetProps {
   weeztixIds?: Record<number, string>;
   /** WeeZTix size-specific ticket IDs (e.g. { XS: "uuid", S: "uuid", ... }) */
   weeztixSizeIds?: Record<string, string>;
+  /** Called when user clicks "View Merch" on a ticket type with merch images */
+  onViewMerch?: (ticketType: TicketTypeRow) => void;
+  /** Ref that receives a function to add merch from an external source (e.g. TeeModal) */
+  addMerchRef?: React.MutableRefObject<((ticketTypeId: string, size: string, qty: number) => void) | null>;
 }
 
 /** Tier → CSS class mapping for visual styling */
@@ -45,6 +49,8 @@ export function DynamicTicketWidget({
   ticketGroupMap,
   weeztixIds,
   weeztixSizeIds,
+  onViewMerch,
+  addMerchRef,
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
@@ -146,6 +152,36 @@ export function DynamicTicketWidget({
     }
     setSizePopup(null);
   }, [sizePopup, activeTypes, metaTrackAddToCart, currency]);
+
+  // Expose addMerch function for external callers (TeeModal)
+  const addMerchExternal = useCallback(
+    (ticketTypeId: string, size: string, qty: number) => {
+      setMerchSizes((prev) => {
+        const sizes = { ...(prev[ticketTypeId] || {}) };
+        sizes[size] = (sizes[size] || 0) + qty;
+        const newTotal = Object.values(sizes).reduce((a, b) => a + b, 0);
+        setQuantities((qPrev) => ({ ...qPrev, [ticketTypeId]: newTotal }));
+        return { ...prev, [ticketTypeId]: sizes };
+      });
+      const tt = activeTypes.find((t) => t.id === ticketTypeId);
+      if (tt) {
+        metaTrackAddToCart({
+          content_name: tt.name,
+          content_ids: [tt.id],
+          content_type: "product",
+          value: Number(tt.price) * qty,
+          currency,
+          num_items: qty,
+        });
+      }
+    },
+    [activeTypes, metaTrackAddToCart, currency]
+  );
+
+  useEffect(() => {
+    if (addMerchRef) addMerchRef.current = addMerchExternal;
+    return () => { if (addMerchRef) addMerchRef.current = null; };
+  }, [addMerchRef, addMerchExternal]);
 
   const totalQty = useMemo(
     () => Object.values(quantities).reduce((a, b) => a + b, 0),
@@ -334,12 +370,22 @@ export function DynamicTicketWidget({
                       </div>
                       <div className="ticket-option__bottom">
                         {tt.includes_merch ? (
-                          <span
-                            className="ticket-option__view-tee"
-                            style={{ cursor: "default", opacity: 0.6 }}
-                          >
-                            Includes merch
-                          </span>
+                          tt.merch_images?.front || tt.merch_images?.back ? (
+                            <span
+                              className="ticket-option__view-tee"
+                              onClick={() => onViewMerch?.(tt)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              View Merch
+                            </span>
+                          ) : (
+                            <span
+                              className="ticket-option__view-tee"
+                              style={{ cursor: "default", opacity: 0.6 }}
+                            >
+                              Includes merch
+                            </span>
+                          )
                         ) : (
                           <span />
                         )}

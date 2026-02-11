@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
 
@@ -8,9 +8,24 @@ interface TeeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (size: TeeSize, qty: number) => void;
+  /** Merch product name (default: "Liverpool March 2026 Tee") */
+  merchName?: string;
+  /** Merch description copy (default: Liverpool hardcoded copy) */
+  merchDescription?: string;
+  /** Front/back image URLs (default: Liverpool images) */
+  merchImages?: { front?: string; back?: string };
+  /** Price per item for the "Add to Cart" button (default: 65) */
+  merchPrice?: number;
+  /** Currency symbol (default: "£") */
+  currencySymbol?: string;
+  /** Available sizes (default: TEE_SIZES) */
+  availableSizes?: string[];
+  /** VIP badge text (default: "Includes VIP Tickets — Liverpool March 2026") */
+  vipBadge?: string;
 }
 
-const IMAGES = [
+// Hardcoded Liverpool fallbacks
+const LIVERPOOL_IMAGES = [
   {
     view: "back",
     src: "/images/LIVERPOOL MARCH BACK.png",
@@ -23,47 +38,100 @@ const IMAGES = [
   },
 ];
 
-export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
+export function TeeModal({
+  isOpen,
+  onClose,
+  onAddToCart,
+  merchName,
+  merchDescription,
+  merchImages,
+  merchPrice,
+  currencySymbol = "\u00a3",
+  availableSizes,
+  vipBadge,
+}: TeeModalProps) {
+  // Build image array from props or use Liverpool defaults
+  const images = useMemo(() => {
+    if (merchImages?.front || merchImages?.back) {
+      const imgs: { view: string; src: string; alt: string }[] = [];
+      if (merchImages.back) {
+        imgs.push({
+          view: "back",
+          src: merchImages.back,
+          alt: `${merchName || "Merch"} Back`,
+        });
+      }
+      if (merchImages.front) {
+        imgs.push({
+          view: "front",
+          src: merchImages.front,
+          alt: `${merchName || "Merch"} Front`,
+        });
+      }
+      return imgs;
+    }
+    return LIVERPOOL_IMAGES;
+  }, [merchImages, merchName]);
+
+  const title = merchName || "Liverpool March 2026 Tee";
+  const description =
+    merchDescription ||
+    "This design exists only for Liverpool March 2026. Once they\u2019re gone, they\u2019re gone forever.";
+  const price = merchPrice ?? 65;
+  const vipText =
+    vipBadge || "Includes VIP Tickets \u2014 Liverpool March 2026";
+  const sizes = (availableSizes || TEE_SIZES) as TeeSize[];
+
   const [activeView, setActiveView] = useState("back");
-  const [selectedSize, setSelectedSize] = useState<TeeSize>("M");
+  const [selectedSize, setSelectedSize] = useState<TeeSize>(
+    sizes.includes("M" as TeeSize) ? ("M" as TeeSize) : sizes[0]
+  );
   const [qty, setQty] = useState(1);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
 
   const touchStartX = useRef(0);
 
+  // Reset active view when images change
+  useEffect(() => {
+    if (images.length > 0) {
+      setActiveView(images[0].view);
+    }
+  }, [images]);
+
   // Keyboard navigation (ArrowLeft, ArrowRight, Escape)
   useEffect(() => {
     if (!fullscreenOpen) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowLeft") {
-        setFullscreenIndex((i) => (i - 1 + IMAGES.length) % IMAGES.length);
+        setFullscreenIndex((i) => (i - 1 + images.length) % images.length);
       } else if (e.key === "ArrowRight") {
-        setFullscreenIndex((i) => (i + 1) % IMAGES.length);
+        setFullscreenIndex((i) => (i + 1) % images.length);
       } else if (e.key === "Escape") {
         setFullscreenOpen(false);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fullscreenOpen]);
+  }, [fullscreenOpen, images.length]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   }, []);
 
-  const onTouchEnd = useCallback((e: React.TouchEvent) => {
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(delta) > 50) {
-      if (delta < 0) {
-        // Swipe left → next
-        setFullscreenIndex((i) => (i + 1) % IMAGES.length);
-      } else {
-        // Swipe right → prev
-        setFullscreenIndex((i) => (i - 1 + IMAGES.length) % IMAGES.length);
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const delta = e.changedTouches[0].clientX - touchStartX.current;
+      if (Math.abs(delta) > 50) {
+        if (delta < 0) {
+          setFullscreenIndex((i) => (i + 1) % images.length);
+        } else {
+          setFullscreenIndex((i) => (i - 1 + images.length) % images.length);
+        }
       }
-    }
-  }, []);
+    },
+    [images.length]
+  );
 
   const handleAdd = useCallback(() => {
     onAddToCart(selectedSize, qty);
@@ -73,11 +141,11 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
 
   const openFullscreen = useCallback(
     (view: string) => {
-      const idx = IMAGES.findIndex((img) => img.view === view);
+      const idx = images.findIndex((img) => img.view === view);
       setFullscreenIndex(idx >= 0 ? idx : 0);
       setFullscreenOpen(true);
     },
-    []
+    [images]
   );
 
   if (!isOpen && !fullscreenOpen) return null;
@@ -104,14 +172,12 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
                   Event Exclusive
                 </span>
               </div>
-              <span className="tee-modal__title">
-                Liverpool March 2026 Tee
-              </span>
+              <span className="tee-modal__title">{title}</span>
             </div>
 
             <div className="tee-modal__viewer">
               <div className="tee-modal__image-tabs">
-                {IMAGES.map((img) => (
+                {images.map((img) => (
                   <button
                     key={img.view}
                     className={`tee-modal__tab ${
@@ -124,7 +190,7 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
                 ))}
               </div>
               <div className="tee-modal__image-container">
-                {IMAGES.map((img) => (
+                {images.map((img) => (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     key={img.view}
@@ -145,15 +211,14 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
               <div className="tee-modal__exclusive-headline">
                 One-Time Drop. Never Again.
               </div>
-              <p className="tee-modal__exclusive-text">
-                This design exists only for Liverpool March 2026. Once
-                they&apos;re gone, they&apos;re gone forever.
-              </p>
+              <p className="tee-modal__exclusive-text">{description}</p>
               <div className="tee-modal__badges">
                 <span className="tee-modal__badge">Limited Edition</span>
-                <span className="tee-modal__badge">Collector&apos;s Piece</span>
+                <span className="tee-modal__badge">
+                  Collector&apos;s Piece
+                </span>
                 <span className="tee-modal__badge tee-modal__badge--vip">
-                  Includes VIP Tickets — Liverpool March 2026
+                  {vipText}
                 </span>
               </div>
             </div>
@@ -161,7 +226,7 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
             <div className="tee-modal__sizes">
               <span className="tee-modal__sizes-label">Select Size</span>
               <div className="tee-modal__size-options">
-                {TEE_SIZES.map((size) => (
+                {sizes.map((size) => (
                   <button
                     key={size}
                     className={`tee-modal__size ${
@@ -192,7 +257,8 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
                 </button>
               </div>
               <button className="tee-modal__add-btn" onClick={handleAdd}>
-                Add to Cart &mdash; &pound;{(65 * qty).toFixed(0)}
+                Add to Cart &mdash; {currencySymbol}
+                {(price * qty).toFixed(0)}
               </button>
             </div>
           </div>
@@ -230,7 +296,7 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
             onClick={(e) => {
               e.stopPropagation();
               setFullscreenIndex(
-                (fullscreenIndex - 1 + IMAGES.length) % IMAGES.length
+                (fullscreenIndex - 1 + images.length) % images.length
               );
             }}
             aria-label="Previous"
@@ -250,7 +316,7 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
             className="tee-modal__fullscreen-nav tee-modal__fullscreen-nav--next"
             onClick={(e) => {
               e.stopPropagation();
-              setFullscreenIndex((fullscreenIndex + 1) % IMAGES.length);
+              setFullscreenIndex((fullscreenIndex + 1) % images.length);
             }}
             aria-label="Next"
           >
@@ -268,13 +334,13 @@ export function TeeModal({ isOpen, onClose, onAddToCart }: TeeModalProps) {
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={IMAGES[fullscreenIndex].src}
-            alt={IMAGES[fullscreenIndex].alt}
+            src={images[fullscreenIndex].src}
+            alt={images[fullscreenIndex].alt}
             onClick={(e) => e.stopPropagation()}
           />
 
           <div className="tee-modal__fullscreen-dots">
-            {IMAGES.map((_, i) => (
+            {images.map((_, i) => (
               <span
                 key={i}
                 className={`tee-modal__fullscreen-dot ${

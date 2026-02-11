@@ -65,6 +65,9 @@ export interface Ticket {
   holder_last_name?: string;
   holder_email?: string;
   merch_size?: string;
+  merch_collected?: boolean;
+  merch_collected_at?: string;
+  merch_collected_by?: string;
   scanned_at?: string;
   scanned_by?: string;
   scan_location?: string;

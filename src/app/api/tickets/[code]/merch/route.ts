@@ -3,8 +3,9 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
 /**
- * POST /api/tickets/[code]/scan — Mark a ticket as scanned.
- * Prevents double-scanning. Returns scan details if already used.
+ * POST /api/tickets/[code]/merch — Mark merchandise as collected.
+ * Same QR code as entry scan, different endpoint for merch desk.
+ * Independent of entry scan (merch can be collected before or after door scan).
  */
 export async function POST(
   request: NextRequest,
@@ -13,10 +14,7 @@ export async function POST(
   try {
     const { code } = await params;
     const body = await request.json().catch(() => ({}));
-    const { scanned_by, scan_location } = body as {
-      scanned_by?: string;
-      scan_location?: string;
-    };
+    const { collected_by } = body as { collected_by?: string };
 
     const supabase = await getSupabaseServer();
     if (!supabase) {
@@ -30,7 +28,7 @@ export async function POST(
     const { data: ticket, error } = await supabase
       .from(TABLES.TICKETS)
       .select(
-        "*, ticket_type:ticket_types(name), event:events(name, slug, venue_name, date_start)"
+        "*, ticket_type:ticket_types(name), event:events(name, slug)"
       )
       .eq("ticket_code", code)
       .eq("org_id", ORG_ID)
@@ -38,57 +36,49 @@ export async function POST(
 
     if (error || !ticket) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Ticket not found",
-          status: "invalid",
-        },
+        { success: false, error: "Ticket not found" },
         { status: 404 }
       );
     }
 
-    // Check if already scanned
-    if (ticket.status === "used") {
+    // Check ticket has merch
+    if (!ticket.merch_size) {
+      return NextResponse.json(
+        { success: false, error: "This ticket does not include merchandise" },
+        { status: 400 }
+      );
+    }
+
+    // Check cancelled/expired
+    if (ticket.status === "cancelled" || ticket.status === "expired") {
+      return NextResponse.json(
+        { success: false, error: `Ticket is ${ticket.status}` },
+        { status: 400 }
+      );
+    }
+
+    // Check if already collected
+    if (ticket.merch_collected) {
       return NextResponse.json(
         {
           success: false,
-          error: "Ticket already scanned",
-          status: "already_used",
-          scanned_at: ticket.scanned_at,
-          scanned_by: ticket.scanned_by,
-          ticket: {
-            ticket_code: ticket.ticket_code,
-            holder_first_name: ticket.holder_first_name,
-            holder_last_name: ticket.holder_last_name,
-            ticket_type: ticket.ticket_type,
-            event: ticket.event,
-          },
+          error: "Merchandise already collected",
+          merch_size: ticket.merch_size,
+          collected_at: ticket.merch_collected_at,
+          collected_by: ticket.merch_collected_by,
         },
         { status: 409 }
       );
     }
 
-    // Check if cancelled/expired
-    if (ticket.status !== "valid") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Ticket is ${ticket.status}`,
-          status: ticket.status,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Mark as scanned
+    // Mark as collected
     const now = new Date().toISOString();
     const { error: updateErr } = await supabase
       .from(TABLES.TICKETS)
       .update({
-        status: "used",
-        scanned_at: now,
-        scanned_by: scanned_by || "scanner",
-        scan_location: scan_location || null,
+        merch_collected: true,
+        merch_collected_at: now,
+        merch_collected_by: collected_by || "merch_desk",
       })
       .eq("id", ticket.id)
       .eq("org_id", ORG_ID);
@@ -102,14 +92,11 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      status: "valid",
+      merch_size: ticket.merch_size,
       ticket: {
         ticket_code: ticket.ticket_code,
         holder_first_name: ticket.holder_first_name,
         holder_last_name: ticket.holder_last_name,
-        holder_email: ticket.holder_email,
-        merch_size: ticket.merch_size,
-        merch_collected: ticket.merch_collected || false,
         ticket_type: ticket.ticket_type,
         event: ticket.event,
       },

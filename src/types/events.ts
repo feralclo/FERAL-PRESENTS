@@ -51,6 +51,8 @@ export interface TicketTypeRow {
   includes_merch: boolean;
   merch_type?: string;
   merch_sizes?: string[];
+  merch_description?: string;
+  merch_images?: { front?: string; back?: string };
   status: "active" | "hidden" | "sold_out" | "archived";
   sale_start?: string;
   sale_end?: string;

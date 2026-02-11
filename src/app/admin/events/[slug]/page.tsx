@@ -621,6 +621,8 @@ export default function EventEditorPage() {
             includes_merch: tt.includes_merch,
             merch_type: tt.merch_type || null,
             merch_sizes: tt.merch_sizes || null,
+            merch_description: tt.merch_description || null,
+            merch_images: tt.merch_images || null,
             min_per_order: tt.min_per_order,
             max_per_order: tt.max_per_order,
             sale_start: tt.sale_start || null,
@@ -1605,47 +1607,109 @@ export default function EventEditorPage() {
                       </label>
                     </div>
                     {tt.includes_merch && (
-                      <div className="admin-form__row">
+                      <>
+                        <div className="admin-form__row">
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">
+                              Merch Type
+                            </label>
+                            <input
+                              type="text"
+                              className="admin-form__input"
+                              value={tt.merch_type || ""}
+                              onChange={(e) =>
+                                updateTicketType(
+                                  i,
+                                  "merch_type",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="e.g. T-Shirt"
+                            />
+                          </div>
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">
+                              Available Sizes
+                            </label>
+                            <input
+                              type="text"
+                              className="admin-form__input"
+                              value={(tt.merch_sizes || []).join(", ")}
+                              onChange={(e) =>
+                                updateTicketType(
+                                  i,
+                                  "merch_sizes",
+                                  e.target.value
+                                    .split(",")
+                                    .map((s) => s.trim())
+                                    .filter(Boolean)
+                                )
+                              }
+                              placeholder="XS, S, M, L, XL, XXL"
+                            />
+                          </div>
+                        </div>
+
                         <div className="admin-form__field">
                           <label className="admin-form__label">
-                            Merch Type
+                            Merch Description
                           </label>
-                          <input
-                            type="text"
+                          <textarea
                             className="admin-form__input"
-                            value={tt.merch_type || ""}
+                            rows={3}
+                            value={tt.merch_description || ""}
                             onChange={(e) =>
                               updateTicketType(
                                 i,
-                                "merch_type",
+                                "merch_description",
                                 e.target.value
                               )
                             }
-                            placeholder="e.g. T-Shirt"
+                            placeholder="One-time drop. Never again. This design exists only for this event..."
                           />
                         </div>
-                        <div className="admin-form__field">
-                          <label className="admin-form__label">
-                            Available Sizes
-                          </label>
-                          <input
-                            type="text"
-                            className="admin-form__input"
-                            value={(tt.merch_sizes || []).join(", ")}
-                            onChange={(e) =>
-                              updateTicketType(
-                                i,
-                                "merch_sizes",
-                                e.target.value
-                                  .split(",")
-                                  .map((s) => s.trim())
-                                  .filter(Boolean)
-                              )
-                            }
-                            placeholder="XS, S, M, L, XL, XXL"
-                          />
+
+                        <div className="admin-form__row">
+                          <div className="admin-form__field">
+                            <ImageField
+                              label="Merch Image — Front"
+                              value={
+                                (
+                                  tt.merch_images as
+                                    | { front?: string; back?: string }
+                                    | undefined
+                                )?.front || ""
+                              }
+                              onChange={(v) =>
+                                updateTicketType(i, "merch_images", {
+                                  ...((tt.merch_images as Record<string, string>) || {}),
+                                  front: v,
+                                })
+                              }
+                              uploadKey={`merch_${tt.id || `new-${i}`}_front`}
+                            />
+                          </div>
+                          <div className="admin-form__field">
+                            <ImageField
+                              label="Merch Image — Back"
+                              value={
+                                (
+                                  tt.merch_images as
+                                    | { front?: string; back?: string }
+                                    | undefined
+                                )?.back || ""
+                              }
+                              onChange={(v) =>
+                                updateTicketType(i, "merch_images", {
+                                  ...((tt.merch_images as Record<string, string>) || {}),
+                                  back: v,
+                                })
+                              }
+                              uploadKey={`merch_${tt.id || `new-${i}`}_back`}
+                            />
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>

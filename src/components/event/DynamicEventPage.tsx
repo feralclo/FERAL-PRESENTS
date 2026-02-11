@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import { EventHero } from "./EventHero";
 import { DynamicTicketWidget } from "./DynamicTicketWidget";
+import { TeeModal } from "./TeeModal";
 import { BottomBar } from "./BottomBar";
 import { DiscountPopup } from "./DiscountPopup";
 import { EngagementTracker } from "./EngagementTracker";
@@ -52,6 +53,27 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const handleCheckoutReady = useCallback((fn: (() => void) | null) => {
     setCheckoutFn(() => fn);
   }, []);
+
+  // Merch modal state
+  const [teeModalOpen, setTeeModalOpen] = useState(false);
+  const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
+
+  const handleViewMerch = useCallback((tt: TicketTypeRow) => {
+    setTeeModalTicketType(tt);
+    setTeeModalOpen(true);
+  }, []);
+
+  // Ref for adding merch from TeeModal into the ticket widget cart
+  const addMerchRef = useRef<((ticketTypeId: string, size: string, qty: number) => void) | null>(null);
+
+  const handleTeeAdd = useCallback(
+    (size: string, qty: number) => {
+      if (teeModalTicketType && addMerchRef.current) {
+        addMerchRef.current(teeModalTicketType.id, size, qty);
+      }
+    },
+    [teeModalTicketType]
+  );
 
   const scrollToTickets = useCallback(() => {
     const el = document.getElementById("tickets");
@@ -231,6 +253,8 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 ticketGroupMap={ticketGroupMap}
                 weeztixIds={weeztixIds}
                 weeztixSizeIds={weeztixSizeIds}
+                onViewMerch={handleViewMerch}
+                addMerchRef={addMerchRef}
               />
             </div>
           </div>
@@ -258,6 +282,26 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
           </div>
         </div>
       </footer>
+
+      {/* Merch Modal — data-driven from ticket type config */}
+      {teeModalTicketType && (
+        <TeeModal
+          isOpen={teeModalOpen}
+          onClose={() => setTeeModalOpen(false)}
+          onAddToCart={handleTeeAdd}
+          merchName={
+            teeModalTicketType.merch_type
+              ? `${event.name} ${teeModalTicketType.merch_type}`
+              : `${event.name} Merch`
+          }
+          merchDescription={teeModalTicketType.merch_description}
+          merchImages={teeModalTicketType.merch_images}
+          merchPrice={Number(teeModalTicketType.price)}
+          currencySymbol={currSymbol}
+          availableSizes={teeModalTicketType.merch_sizes}
+          vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
+        />
+      )}
 
       {/* Engagement features */}
       <DiscountPopup />

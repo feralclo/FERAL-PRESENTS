@@ -242,7 +242,17 @@ export default function OrderDetailPage() {
             <tbody>
               {order.items.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.ticket_type?.name || "—"}</td>
+                  <td>
+                    {item.ticket_type?.name || "—"}
+                    {item.merch_size && (
+                      <span
+                        className="admin-badge"
+                        style={{ marginLeft: 8, background: "#ff003322", color: "#ff0033" }}
+                      >
+                        MERCH
+                      </span>
+                    )}
+                  </td>
                   <td className="admin-table__mono">{item.qty}</td>
                   <td className="admin-table__mono">
                     £{Number(item.unit_price).toFixed(2)}
@@ -268,7 +278,7 @@ export default function OrderDetailPage() {
                 <th>Code</th>
                 <th>Status</th>
                 <th>Holder</th>
-                <th>Size</th>
+                <th>Merch</th>
                 <th>Scanned</th>
               </tr>
             </thead>
@@ -292,7 +302,30 @@ export default function OrderDetailPage() {
                   <td>
                     {ticket.holder_first_name} {ticket.holder_last_name}
                   </td>
-                  <td>{ticket.merch_size || "—"}</td>
+                  <td>
+                    {ticket.merch_size ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontWeight: 700 }}>{ticket.merch_size}</span>
+                        {ticket.merch_collected ? (
+                          <span
+                            className="admin-badge"
+                            style={{ background: "#4ecb7122", color: "#4ecb71" }}
+                          >
+                            Collected
+                          </span>
+                        ) : (
+                          <span
+                            className="admin-badge"
+                            style={{ background: "#ffc10722", color: "#ffc107" }}
+                          >
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="admin-table__mono">
                     {ticket.scanned_at
                       ? new Date(ticket.scanned_at).toLocaleString("en-GB")

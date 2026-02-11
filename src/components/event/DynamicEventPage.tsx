@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { EventHero } from "./EventHero";
 import { DynamicTicketWidget } from "./DynamicTicketWidget";
 import { BottomBar } from "./BottomBar";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -14,6 +15,24 @@ interface DynamicEventPageProps {
 
 export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const headerHidden = useHeaderScroll();
+  const meta = useMetaTracking();
+
+  // Track ViewContent on mount
+  useEffect(() => {
+    const ids = (event.ticket_types || [])
+      .filter((tt) => tt.status === "active")
+      .map((tt) => tt.id);
+    const minPrice = ids.length > 0
+      ? Math.min(...(event.ticket_types || []).filter((tt) => tt.status === "active").map((tt) => Number(tt.price)))
+      : 0;
+    meta.trackViewContent({
+      content_name: `${event.name} — Event Page`,
+      content_ids: ids,
+      content_type: "product",
+      value: minPrice,
+      currency: event.currency || "GBP",
+    });
+  }, [event, meta]);
 
   // Track cart state from ticket widget for bottom bar
   const [cartTotal, setCartTotal] = useState(0);

@@ -11,6 +11,7 @@ import { EngagementTracker } from "./EngagementTracker";
 import { useSettings } from "@/hooks/useSettings";
 import { useTicketCart } from "@/hooks/useTicketCart";
 import { useDataLayer } from "@/hooks/useDataLayer";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import type { TeeSize } from "@/types/tickets";
 
@@ -22,6 +23,7 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
   const { settings } = useSettings();
   const cart = useTicketCart(settings);
   const { push } = useDataLayer();
+  const meta = useMetaTracking();
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const headerHidden = useHeaderScroll();
 
@@ -39,7 +41,18 @@ export function LiverpoolEventPage({ slug }: LiverpoolEventPageProps) {
       value: 26.46,
       currency: "GBP",
     });
-  }, [push]);
+    meta.trackViewContent({
+      content_name: "FERAL Liverpool — Event Page",
+      content_ids: [
+        "6b45169f-cf51-4600-8682-d6f79dcb59ae",
+        "bb73bb64-ba1a-4a23-9a05-f2b57bca51cf",
+        "53c5262b-93ba-412e-bb5c-84ebc445a734",
+      ],
+      content_type: "product",
+      value: 26.46,
+      currency: "GBP",
+    });
+  }, [push, meta]);
 
   const handleTeeAdd = useCallback(
     (size: TeeSize, qty: number) => {

@@ -9,6 +9,7 @@ import { OrderSummary } from "./OrderSummary";
 import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { useTraffic } from "@/hooks/useTraffic";
 import { useDataLayer } from "@/hooks/useDataLayer";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { DEFAULT_TICKETS } from "@/lib/constants";
 import type { ParsedCartItem } from "@/types/tickets";
 import "@/styles/checkout-page.css";
@@ -55,6 +56,7 @@ export function CheckoutPage({ slug }: CheckoutPageProps) {
   const cartParam = searchParams.get("cart");
   const qtyParam = searchParams.get("qty");
   const { push } = useDataLayer();
+  const meta = useMetaTracking();
   useTraffic();
 
   // Loading state — controlled by WeeZTix progress callbacks
@@ -84,14 +86,21 @@ export function CheckoutPage({ slug }: CheckoutPageProps) {
   // Track checkout event
   useEffect(() => {
     const ids = cartItems.map((item) => item.ticketId);
+    const numItems = cartItems.reduce((sum, item) => sum + item.qty, 0);
     push({
       event: "initiate_checkout",
       content_ids: ids,
       content_type: "product",
       currency: "GBP",
-      num_items: cartItems.reduce((sum, item) => sum + item.qty, 0),
+      num_items: numItems,
     });
-  }, [cartItems, push]);
+    meta.trackInitiateCheckout({
+      content_ids: ids,
+      content_type: "product",
+      currency: "GBP",
+      num_items: numItems,
+    });
+  }, [cartItems, push, meta]);
 
   // WeeZTix progress callback
   const handleProgress = useCallback((pct: number, detail: string) => {

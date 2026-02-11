@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 
@@ -33,6 +34,7 @@ export function DynamicTicketWidget({
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
+  const meta = useMetaTracking();
   const [expressError, setExpressError] = useState("");
 
   // Only show active ticket types, sorted by sort_order
@@ -71,8 +73,16 @@ export function DynamicTicketWidget({
         ...prev,
         [tt.id]: Math.min((prev[tt.id] || 0) + 1, tt.max_per_order),
       }));
+      meta.trackAddToCart({
+        content_name: tt.name,
+        content_ids: [tt.id],
+        content_type: "product",
+        value: Number(tt.price),
+        currency,
+        num_items: 1,
+      });
     },
-    []
+    [meta, currency]
   );
 
   const removeTicket = useCallback(
@@ -102,6 +112,7 @@ export function DynamicTicketWidget({
   const handleSizeConfirm = useCallback(() => {
     if (!sizePopup) return;
     const { ticketTypeId, selectedSize } = sizePopup;
+    const tt = activeTypes.find((t) => t.id === ticketTypeId);
     setMerchSizes((prev) => {
       const sizes = { ...(prev[ticketTypeId] || {}) };
       sizes[selectedSize] = (sizes[selectedSize] || 0) + 1;
@@ -109,8 +120,18 @@ export function DynamicTicketWidget({
       setQuantities((qPrev) => ({ ...qPrev, [ticketTypeId]: newTotal }));
       return { ...prev, [ticketTypeId]: sizes };
     });
+    if (tt) {
+      meta.trackAddToCart({
+        content_name: tt.name,
+        content_ids: [tt.id],
+        content_type: "product",
+        value: Number(tt.price),
+        currency,
+        num_items: 1,
+      });
+    }
     setSizePopup(null);
-  }, [sizePopup]);
+  }, [sizePopup, activeTypes, meta, currency]);
 
   const totalQty = useMemo(
     () => Object.values(quantities).reduce((a, b) => a + b, 0),

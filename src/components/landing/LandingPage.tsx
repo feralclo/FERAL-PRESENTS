@@ -8,11 +8,13 @@ import { ContactSection } from "./ContactSection";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useDataLayer } from "@/hooks/useDataLayer";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 
 export function LandingPage() {
   const { push } = useDataLayer();
+  const meta = useMetaTracking();
 
   // Activate scroll reveal for [data-reveal] elements (Events, Contact sections)
   useScrollReveal();
@@ -26,7 +28,8 @@ export function LandingPage() {
       content_type: "website",
       currency: "GBP",
     });
-  }, [push]);
+    meta.trackPageView();
+  }, [push, meta]);
 
 
   return (

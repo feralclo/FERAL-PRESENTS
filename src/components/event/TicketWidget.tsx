@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useDataLayer } from "@/hooks/useDataLayer";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import type { TicketKey, TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
@@ -16,6 +17,7 @@ interface TicketWidgetProps {
 export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) {
   const { trackAddToCart: trackCartEvent, trackInitiateCheckout } =
     useDataLayer();
+  const meta = useMetaTracking();
   const { trackAddToCart: trackTraffic, trackEngagement } = useTraffic();
   const [sizePopupOpen, setSizePopupOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<TeeSize>("M");
@@ -30,10 +32,18 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
       cart.addTicket(key);
       const ticket = cart.tickets[key];
       trackCartEvent(ticket.name, [ticket.id], ticket.price, ticket.qty + 1);
+      meta.trackAddToCart({
+        content_name: ticket.name,
+        content_ids: [ticket.id],
+        content_type: "product",
+        value: ticket.price,
+        currency: "GBP",
+        num_items: 1,
+      });
       trackTraffic(ticket.name, ticket.price, 1);
       trackEngagement("interact_tickets");
     },
-    [cart, trackCartEvent, trackTraffic, trackEngagement]
+    [cart, trackCartEvent, meta, trackTraffic, trackEngagement]
   );
 
   const handleRemove = useCallback(
@@ -56,9 +66,17 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
     setSizePopupOpen(false);
     const ticket = cart.tickets["vip-tee"];
     trackCartEvent(ticket.name, [ticket.id], ticket.price, 1);
+    meta.trackAddToCart({
+      content_name: ticket.name,
+      content_ids: [ticket.id],
+      content_type: "product",
+      value: ticket.price,
+      currency: "GBP",
+      num_items: 1,
+    });
     trackTraffic(ticket.name, ticket.price, 1);
     trackEngagement("interact_tickets");
-  }, [cart, selectedSize, trackCartEvent, trackTraffic, trackEngagement]);
+  }, [cart, selectedSize, trackCartEvent, meta, trackTraffic, trackEngagement]);
 
   const handleCheckout = useCallback(() => {
     const url = cart.getCheckoutUrl(eventSlug);
@@ -68,10 +86,17 @@ export function TicketWidget({ eventSlug, cart, onViewTee }: TicketWidgetProps) 
       .filter((t) => t.qty > 0)
       .map((t) => t.id);
     trackInitiateCheckout(ids, cart.totalPrice, cart.totalQty);
+    meta.trackInitiateCheckout({
+      content_ids: ids,
+      content_type: "product",
+      value: cart.totalPrice,
+      currency: "GBP",
+      num_items: cart.totalQty,
+    });
 
     // Use window.location for full page load (WeeZTix requires fresh page)
     window.location.assign(url);
-  }, [cart, eventSlug, trackInitiateCheckout]);
+  }, [cart, eventSlug, trackInitiateCheckout, meta]);
 
   // Cart summary items
   const cartItems = useMemo(() => {

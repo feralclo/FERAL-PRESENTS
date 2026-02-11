@@ -3,7 +3,9 @@ import Script from "next/script";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { Scanlines } from "@/components/layout/Scanlines";
 import { GTM_ID } from "@/lib/constants";
-import "@/styles/globals.css";
+import "@/styles/base.css";
+import "@/styles/effects.css";
+import "@/styles/cookie.css";
 
 export const metadata: Metadata = {
   title: "FERAL PRESENTS",

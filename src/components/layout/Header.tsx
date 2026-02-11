@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import "@/styles/header.css";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);

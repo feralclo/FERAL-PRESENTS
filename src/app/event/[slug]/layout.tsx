@@ -3,6 +3,7 @@ import { SETTINGS_KEYS, TABLES, ORG_ID } from "@/lib/constants";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { SettingsProvider } from "@/hooks/useSettings";
 import type { ReactNode } from "react";
+import "@/styles/event.css";
 
 /** Always fetch fresh data — admin changes must appear immediately */
 export const dynamic = "force-dynamic";

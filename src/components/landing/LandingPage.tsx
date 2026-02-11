@@ -11,6 +11,7 @@ import { useDataLayer } from "@/hooks/useDataLayer";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import "@/styles/landing.css";
 
 export function LandingPage() {
   const { push } = useDataLayer();

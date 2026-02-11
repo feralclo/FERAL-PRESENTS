@@ -148,11 +148,16 @@ src/
 │   ├── analytics.ts                       # TrafficEvent, PopupEvent types
 │   └── marketing.ts                       # MarketingSettings, MetaEventPayload, MetaCAPIRequest
 └── styles/
-    ├── globals.css                        # All site styles (dark theme, responsive)
-    ├── admin.css                          # Admin dashboard styles
-    ├── tickets-page.css                   # Ticket selection page
-    ├── checkout-page.css                  # Checkout + payment form
-    └── popup.css                          # Discount popup
+    ├── base.css                          # Reset, CSS variables, typography, footer, reveal animations
+    ├── effects.css                       # CRT scanlines + noise texture overlays
+    ├── header.css                        # Header, navigation, mobile menu, buttons
+    ├── landing.css                       # Hero, events grid, about pillars, contact form
+    ├── event.css                         # Event pages, tickets, modals, bottom bar, minimal theme
+    ├── cookie.css                        # Cookie consent banner + preferences modal
+    ├── admin.css                         # Admin dashboard styles
+    ├── tickets-page.css                  # Ticket selection page (WeeZTix)
+    ├── checkout-page.css                 # Checkout + payment form
+    └── popup.css                         # Discount popup
 ```
 
 ### Legacy Files (Repo Root)
@@ -450,3 +455,47 @@ When building a new feature, write tests for:
 - **Mobile-first**: Most ticket buyers are on phones
 - **No FOUC**: Server-side settings fetch, immediate render
 - **Live updates**: Admin changes reflect on the live site instantly via Supabase realtime
+
+---
+
+## CSS Architecture
+
+### File Organization
+CSS is split into component-aligned files instead of one monolithic stylesheet. Each file is imported only where needed:
+
+| File | Loaded By | Scope |
+|------|-----------|-------|
+| `base.css` | Root layout (`app/layout.tsx`) | Global — reset, CSS variables, typography, footer, reveal animations |
+| `effects.css` | Root layout (`app/layout.tsx`) | Global — CRT scanlines + noise overlays |
+| `cookie.css` | Root layout (`app/layout.tsx`) | Global — consent banner (appears on all pages) |
+| `header.css` | `Header.tsx` | Navigation, mobile menu, buttons |
+| `landing.css` | `LandingPage.tsx` | Hero, events grid, about pillars, contact form |
+| `event.css` | Event layout (`app/event/[slug]/layout.tsx`) | Event pages, tickets, modals, bottom bar, minimal theme |
+| `admin.css` | Admin layout (`app/admin/layout.tsx`) | Admin dashboard |
+| `tickets-page.css` | `TicketsPage.tsx` | WeeZTix ticket selection |
+| `checkout-page.css` | Checkout components | Checkout + payment form |
+| `popup.css` | `DiscountPopup.tsx` | Discount popup |
+
+### CSS Variables (defined in `base.css :root`)
+```css
+--bg-dark: #0e0e0e;           --card-bg: #1a1a1a;
+--card-border: #2a2a2a;        --accent: #ff0033;
+--text-primary: #fff;          --text-secondary: #888;
+--text-muted: #555;            --font-mono: 'Space Mono', monospace;
+--font-sans: 'Inter', sans-serif;
+```
+
+### Standardized Breakpoints
+```
+@media (max-width: 1024px)  — Tablet landscape / small desktop
+@media (max-width: 768px)   — Tablet portrait / large phone
+@media (max-width: 480px)   — Phone
+```
+
+### Rules for New CSS
+1. **Component-level imports** — new components import their own CSS file
+2. **BEM naming** — `.block__element--modifier` (28 prefixes already in use)
+3. **Use CSS custom properties** from `base.css :root` for all colors, fonts, spacing
+4. **CSS Modules** for all new components — prevents class name collisions as the platform scales
+5. **No Tailwind** — removed; all styles are hand-written CSS
+6. **Responsive rules live with their component** — media queries go in the same file as the styles they modify

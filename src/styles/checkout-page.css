@@ -340,17 +340,19 @@ html.checkout-active .noise {
 }
 
 .order-summary-mobile__content {
-  max-height: 0;
+  display: grid;
+  grid-template-rows: 0fr;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .order-summary-mobile__content--expanded {
-  max-height: 500px;
+  grid-template-rows: 1fr;
 }
 
 .order-summary-mobile__content-inner {
-  padding: 0 24px 20px;
+  min-height: 0;
+  padding: 4px 24px 20px;
 }
 
 /* Hide mobile summary on desktop */
@@ -372,11 +374,12 @@ html.checkout-active .noise {
    (Used by both mobile and desktop)
    ======================================== */
 
-/* Item list */
+/* Item list — padding-top prevents qty badge (top: -6px) from being clipped */
 .order-summary__items {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding-top: 8px;
 }
 
 .order-summary__item {
@@ -1624,11 +1627,12 @@ html.checkout-active .noise {
   }
 }
 
-/* On desktop within two-column layout, native-checkout
-   doesn't need max-width constraint since the column handles it */
+/* On desktop within two-column layout, constrain form width.
+   ~480px content width forces Stripe PaymentElement to stack:
+   card number on its own row, expiry + CVC together below. */
 @media (min-width: 900px) {
   .checkout-layout__main .native-checkout {
-    max-width: none;
-    padding: 32px 0 48px 48px;
+    max-width: 520px;
+    padding: 32px 24px 48px 48px;
   }
 }

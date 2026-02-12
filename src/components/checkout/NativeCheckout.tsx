@@ -741,6 +741,11 @@ function SinglePageCheckoutForm({
                 options={{
                   layout: "tabs",
                   business: { name: "FERAL PRESENTS" },
+                  wallets: {
+                    applePay: "never",
+                    googlePay: "never",
+                    link: "never",
+                  },
                 }}
               />
             </div>
@@ -1191,17 +1196,23 @@ function OrderItems({
     return tt?.merch_images?.front || null;
   };
 
+  // Event cover image for non-merch items (use cover_image first, then hero_image,
+  // then media API fallback). Kept as a small thumbnail so it doesn't slow down load.
+  const eventImage = event?.cover_image || event?.hero_image
+    || (event?.id ? `/api/media/event_${event.id}_cover` : null);
+
   return (
     <div className="order-summary__items">
       {cartLines.map((line, i) => {
         const merchImg = getMerchImage(line);
+        const thumbnail = merchImg || eventImage;
         return (
           <div key={i} className="order-summary__item">
             <div className="order-summary__item-visual">
-              {merchImg ? (
+              {thumbnail ? (
                 <div className="order-summary__item-image">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={merchImg} alt="" className="order-summary__item-img" />
+                  <img src={thumbnail} alt="" className="order-summary__item-img" />
                 </div>
               ) : (
                 <div className="order-summary__item-placeholder">

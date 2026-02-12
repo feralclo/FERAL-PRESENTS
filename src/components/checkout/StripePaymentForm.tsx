@@ -101,6 +101,11 @@ function PaymentForm({
             options={{
               layout: "accordion",
               business: { name: "FERAL PRESENTS" },
+              wallets: {
+                applePay: "never",
+                googlePay: "never",
+                link: "never",
+              },
             }}
           />
         </div>

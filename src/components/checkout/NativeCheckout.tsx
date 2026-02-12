@@ -786,116 +786,125 @@ function SinglePageCheckoutForm({
               All transactions are secure and encrypted.
             </p>
 
-            {/* ── CARD PAYMENT BOX ── */}
-            <div
-              className={`payment-box${paymentMethod === "card" ? " payment-box--active" : ""}`}
-              onClick={() => paymentMethod !== "card" && setPaymentMethod("card")}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("card")}
-            >
-              <div className="payment-box__header">
-                <span className={`payment-box__radio${paymentMethod === "card" ? " payment-box__radio--checked" : ""}`} />
-                <span className="payment-box__title">Credit / Debit Card</span>
-                <span className="payment-box__icons">
-                  {/* Visa */}
-                  <svg viewBox="0 0 750 471" className="payment-box__card-icon" aria-label="Visa">
-                    <rect width="750" height="471" rx="40" fill="#1A1F71" />
-                    <path d="M278.2 334.2h-60.6l37.9-233.9h60.6L278.2 334.2z" fill="#fff" />
-                    <path d="M524.3 105.1c-12-4.6-30.7-9.5-54.1-9.5-59.7 0-101.7 31.7-102 77.1-.3 33.6 30 52.3 52.9 63.5 23.5 11.4 31.4 18.7 31.3 28.9-.2 15.6-18.8 22.7-36.1 22.7-24.1 0-36.9-3.5-56.7-12.2l-7.8-3.7-8.4 52.2c14.1 6.5 40.1 12.1 67.1 12.4 63.5 0 104.7-31.3 105.2-79.8.2-26.6-15.9-46.8-50.8-63.5-21.2-10.8-34.1-18-33.9-28.9 0-9.7 10.9-20 34.6-20 19.7-.3 34 4.2 45.1 9l5.4 2.7 8.2-50.9z" fill="#fff" />
-                    <path d="M661.6 100.3h-46.7c-14.5 0-25.3 4.2-31.7 19.3L487 334.2h63.5s10.4-28.8 12.7-35.1h77.6c1.8 8.2 7.4 35.1 7.4 35.1H704L661.6 100.3zm-74.8 184.6c5-13.5 24.2-65.5 24.2-65.5-.4.6 5-13.6 8-22.4l4.1 20.3s11.6 56.1 14.1 67.6h-50.4z" fill="#fff" />
-                    <path d="M232.8 100.3L173.6 261l-6.4-32.5c-11-37.5-45.5-78.2-84-98.5l54.1 204h64l95.1-233.9h-63.6z" fill="#fff" />
-                    <path d="M120.8 100.3H24.6L24 105c75.9 19.4 126.2 66.2 147 122.5L149 121.1c-3.5-14.5-14.1-19.6-28.2-20.8z" fill="#F7B600" />
-                  </svg>
-                  {/* Mastercard */}
-                  <svg viewBox="0 0 750 471" className="payment-box__card-icon" aria-label="Mastercard">
-                    <rect width="750" height="471" rx="40" fill="#000" />
-                    <circle cx="299" cy="235.5" r="148" fill="#EB001B" />
-                    <circle cx="451" cy="235.5" r="148" fill="#F79E1B" />
-                    <path d="M375 119.8a148 148 0 00-76 115.7 148 148 0 0076 115.7 148 148 0 0076-115.7 148 148 0 00-76-115.7z" fill="#FF5F00" />
-                  </svg>
-                  {/* Amex */}
-                  <svg viewBox="0 0 750 471" className="payment-box__card-icon" aria-label="Amex">
-                    <rect width="750" height="471" rx="40" fill="#2557D6" />
-                    <path d="M0 235.5h750" stroke="#fff" strokeWidth="0" />
-                    <path fillRule="evenodd" clipRule="evenodd" d="M83.5 326.5V195l41.8-50h73l16.5 22 17-22h375v121.8L590 284l17.3 42.5H471l-17-22.2-17.3 22.2H124.5l-8.7-20.8H96l-8.8 20.8H83.5zm29.3-10.5h29l45-107h-32l-21 52.5-22.5-52.5h-31.5L125 316h-12.2zm125.7 0h88.5v-23h-58v-20h56.5v-22.5H269v-19h58v-23h-88.5V316zm107 0h30l-2-23 36.5-.5 10 23.5h31.5l-44-108.5h-34L345.5 316zm42-44l12.5-32 12 32h-24.5zm69.5 44h27.5v-68.5l42 68.5h30.5V207.5h-27.5v64l-39-64H484V316zm89.5 0h27.5v-85.5h32v-23H514v23h32.5V316z" fill="#fff" />
-                  </svg>
-                  {/* +2 badge */}
-                  <span className="payment-box__more">+2</span>
-                </span>
-              </div>
-
-              {/* Card content — collapsible */}
-              <div className={`payment-box__content${paymentMethod === "card" ? " payment-box__content--open" : ""}`}>
-                <Elements stripe={stripePromise} options={cardElementsOptions}>
-                  <CardFields
-                    ref={cardRef}
-                    onReady={() => setCardReady(true)}
-                  />
-                </Elements>
-
-                {/* Name on card */}
-                <input
-                  type="text"
-                  className="native-checkout__input payment-box__name-input"
-                  value={nameOnCard}
-                  onChange={(e) => setNameOnCard(e.target.value)}
-                  placeholder="Name on card"
-                  autoComplete="cc-name"
-                />
-
-                {/* Country */}
-                <select
-                  className="native-checkout__input payment-box__country-select"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* ── KLARNA PAYMENT BOX ── */}
-            <div
-              className={`payment-box payment-box--klarna${paymentMethod === "klarna" ? " payment-box--active" : ""}`}
-              onClick={() => paymentMethod !== "klarna" && setPaymentMethod("klarna")}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("klarna")}
-            >
-              <div className="payment-box__header">
-                <span className={`payment-box__radio${paymentMethod === "klarna" ? " payment-box__radio--checked" : ""}`} />
-                <span className="payment-box__title">Klarna</span>
-                <svg viewBox="0 0 750 471" className="payment-box__klarna-logo" aria-label="Klarna">
-                  <rect width="750" height="471" rx="40" fill="#FFB3C7" />
-                  <path d="M255 120h55c0 46.5-21.5 87.5-55 115l110 116h-77l-90-106.5V351h-55V120h55v101c27.5-24.5 46.5-60 57-101zm192 0h55v231h-55V120zm148 178a41 41 0 110 82 41 41 0 010-82z" fill="#0A0B09" />
-                </svg>
-              </div>
-
-              {/* Klarna content — collapsible */}
-              <div className={`payment-box__content${paymentMethod === "klarna" ? " payment-box__content--open" : ""}`}>
-                <div className="klarna-info">
-                  <p className="klarna-info__text">
-                    Pay later or in instalments with Klarna. You&apos;ll be redirected to Klarna to complete your purchase securely.
-                  </p>
+            {/* ── UNIFIED PAYMENT OPTIONS CONTAINER ── */}
+            <div className="payment-options">
+              {/* Card option */}
+              <div
+                className={`payment-option${paymentMethod === "card" ? " payment-option--active" : ""}`}
+                onClick={() => paymentMethod !== "card" && setPaymentMethod("card")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("card")}
+              >
+                <div className="payment-option__header">
+                  <span className={`payment-option__radio${paymentMethod === "card" ? " payment-option__radio--checked" : ""}`} />
+                  <span className="payment-option__title">Credit / Debit Card</span>
+                  <span className="payment-option__icons">
+                    {/* Visa — simplified for small render */}
+                    <span className="payment-option__card-badge" style={{ background: "#1A1F71" }}>
+                      <svg viewBox="0 0 24 16" fill="none" aria-label="Visa">
+                        <path d="M10.5 10.5H9L10 5.5h1.5l-1 5zm4.5-5l-1.4 3.4-.2-.8-.5-2.1s-.1-.5-.7-.5h-2.1l0 .1c.6.2 1.2.4 1.6.7l1.3 4.7h1.5l2.3-5.5H15zm-8 0L5.7 9l-.2-.8C5 6.9 3.8 5.9 2.5 5.3l1.2 5.2h1.5l2.3-5H7zm11.8 5h1.3L19 5.5h-1.2c-.4 0-.8.3-.9.6l-2.2 4.9h1.5l.3-.8h1.8l.2.8zm-1.5-1.9l.7-2 .4 2h-1.1z" fill="#fff"/>
+                      </svg>
+                    </span>
+                    {/* Mastercard — two circles */}
+                    <span className="payment-option__card-badge" style={{ background: "#252525" }}>
+                      <svg viewBox="0 0 24 16" fill="none" aria-label="Mastercard">
+                        <circle cx="9" cy="8" r="5" fill="#EB001B"/>
+                        <circle cx="15" cy="8" r="5" fill="#F79E1B"/>
+                        <path d="M12 4.4a5 5 0 010 7.2 5 5 0 000-7.2z" fill="#FF5F00"/>
+                      </svg>
+                    </span>
+                    {/* Amex — simple text badge */}
+                    <span className="payment-option__card-badge" style={{ background: "#2557D6" }}>
+                      <svg viewBox="0 0 24 16" fill="none" aria-label="Amex">
+                        <text x="12" y="10.5" textAnchor="middle" fill="#fff" fontSize="6" fontWeight="700" fontFamily="Arial,sans-serif">AMEX</text>
+                      </svg>
+                    </span>
+                    <span className="payment-option__more">+2</span>
+                  </span>
                 </div>
 
-                {/* Country for Klarna */}
-                <select
-                  className="native-checkout__input payment-box__country-select"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                {/* Card content — collapsible */}
+                <div className={`payment-option__content${paymentMethod === "card" ? " payment-option__content--open" : ""}`}>
+                  <Elements stripe={stripePromise} options={cardElementsOptions}>
+                    <CardFields
+                      ref={cardRef}
+                      onReady={() => setCardReady(true)}
+                    />
+                  </Elements>
+
+                  {/* Name on card */}
+                  <input
+                    type="text"
+                    className="native-checkout__input payment-option__name-input"
+                    value={nameOnCard}
+                    onChange={(e) => setNameOnCard(e.target.value)}
+                    placeholder="Name on card"
+                    autoComplete="cc-name"
+                  />
+
+                  {/* Country */}
+                  <div className="payment-option__select-wrapper">
+                    <select
+                      className="native-checkout__input payment-option__country-select"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <svg className="payment-option__select-chevron" viewBox="0 0 24 24" fill="none">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Klarna option */}
+              <div
+                className={`payment-option${paymentMethod === "klarna" ? " payment-option--active" : ""}`}
+                onClick={() => paymentMethod !== "klarna" && setPaymentMethod("klarna")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("klarna")}
+              >
+                <div className="payment-option__header">
+                  <span className={`payment-option__radio${paymentMethod === "klarna" ? " payment-option__radio--checked" : ""}`} />
+                  <span className="payment-option__title">Klarna</span>
+                  <span className="payment-option__card-badge payment-option__card-badge--klarna" style={{ background: "#FFB3C7" }}>
+                    <svg viewBox="0 0 24 16" fill="none" aria-label="Klarna">
+                      <text x="12" y="10.5" textAnchor="middle" fill="#0A0B09" fontSize="5.5" fontWeight="800" fontFamily="Arial,sans-serif">Klarna</text>
+                    </svg>
+                  </span>
+                </div>
+
+                {/* Klarna content — collapsible */}
+                <div className={`payment-option__content${paymentMethod === "klarna" ? " payment-option__content--open" : ""}`}>
+                  <p className="klarna-info__text">
+                    Pay later or in instalments with Klarna. You&apos;ll be redirected to complete your purchase.
+                  </p>
+
+                  {/* Country for Klarna */}
+                  <div className="payment-option__select-wrapper">
+                    <select
+                      className="native-checkout__input payment-option__country-select"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <svg className="payment-option__select-chevron" viewBox="0 0 24 24" fill="none">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

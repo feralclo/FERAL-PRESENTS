@@ -102,7 +102,7 @@ html.checkout-active .noise {
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   padding: 0 24px;
-  height: 64px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,7 +138,7 @@ html.checkout-active .noise {
 }
 
 .checkout-header__logo {
-  height: 36px;
+  height: 44px;
   width: auto;
   display: block;
 }
@@ -153,8 +153,8 @@ html.checkout-active .noise {
 }
 
 .checkout-header__lock {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   color: #333;
 }
 
@@ -262,14 +262,14 @@ html.checkout-active .noise {
   .checkout-layout__main {
     flex: 1;
     border-right: 1px solid rgba(255, 255, 255, 0.06);
-    padding-right: 48px;
+    padding-right: 32px;
   }
 
   .checkout-layout__sidebar {
     display: block;
-    width: 380px;
+    width: 360px;
     flex-shrink: 0;
-    padding-left: 48px;
+    padding-left: 32px;
     padding-top: 32px;
     position: sticky;
     top: 96px;
@@ -1030,40 +1030,44 @@ html.checkout-active .noise {
 }
 
 /* ========================================
-   PAYMENT BOX — Separate card/Klarna boxes
-   Accordion-style: one open at a time
+   PAYMENT OPTIONS — Unified container
+   All payment methods share one border.
+   Accordion: one open at a time.
    ======================================== */
-.payment-box {
+.payment-options {
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.01);
+  overflow: hidden;
+}
+
+/* Each payment option row */
+.payment-option {
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: background 0.15s ease;
 }
 
-.payment-box + .payment-box {
-  margin-top: 12px;
+.payment-option + .payment-option {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.payment-box:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+.payment-option:hover {
+  background: rgba(255, 255, 255, 0.015);
 }
 
-.payment-box--active {
-  border-color: rgba(255, 0, 51, 0.35);
+.payment-option--active {
   background: rgba(255, 255, 255, 0.02);
   cursor: default;
 }
 
 /* Header row: radio + title + icons */
-.payment-box__header {
+.payment-option__header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 18px;
+  padding: 14px 16px;
 }
 
 /* Radio indicator */
-.payment-box__radio {
+.payment-option__radio {
   width: 18px;
   height: 18px;
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -1073,11 +1077,11 @@ html.checkout-active .noise {
   transition: border-color 0.2s ease;
 }
 
-.payment-box__radio--checked {
+.payment-option__radio--checked {
   border-color: #ff0033;
 }
 
-.payment-box__radio--checked::after {
+.payment-option__radio--checked::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -1089,7 +1093,7 @@ html.checkout-active .noise {
   background: #ff0033;
 }
 
-.payment-box__title {
+.payment-option__title {
   flex: 1;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
@@ -1100,33 +1104,51 @@ html.checkout-active .noise {
   transition: color 0.15s ease;
 }
 
-.payment-box--active .payment-box__title {
+.payment-option--active .payment-option__title {
   color: #fff;
 }
 
-/* Card brand icons */
-.payment-box__icons {
+/* Card brand icons row */
+.payment-option__icons {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
-.payment-box__card-icon {
-  width: 36px;
-  height: 23px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-/* "+2" badge */
-.payment-box__more {
+/* Individual card badge — rounded rect with SVG inside */
+.payment-option__card-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 23px;
-  padding: 0 5px;
+  width: 34px;
+  height: 22px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.payment-option__card-badge svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Klarna badge — slightly wider for text */
+.payment-option__card-badge--klarna {
+  width: 44px;
+  height: 22px;
+  margin-left: auto;
+}
+
+/* "+2" more badge */
+.payment-option__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 4px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 3px;
@@ -1138,52 +1160,57 @@ html.checkout-active .noise {
   line-height: 1;
 }
 
-/* Klarna logo in header */
-.payment-box__klarna-logo {
-  width: 52px;
-  height: 32px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
 /* Collapsible content area */
-.payment-box__content {
+.payment-option__content {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.25s ease,
-              padding 0.35s ease;
-  padding: 0 18px;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              padding 0.3s ease;
+  padding: 0 16px;
 }
 
-.payment-box__content--open {
+.payment-option__content--open {
   max-height: 500px;
   opacity: 1;
-  padding: 4px 18px 20px;
+  padding: 4px 16px 18px;
 }
 
-/* Name on card field inside payment box */
-.payment-box__name-input {
+/* Name on card field */
+.payment-option__name-input {
   margin-top: 12px;
 }
 
-/* Country dropdown */
-.payment-box__country-select {
+/* Country select wrapper — positions the chevron icon */
+.payment-option__select-wrapper {
+  position: relative;
   margin-top: 12px;
+}
+
+.payment-option__country-select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  padding-right: 40px;
+  -moz-appearance: none;
+  padding-right: 44px;
   cursor: pointer;
 }
 
-.payment-box__country-select option {
+.payment-option__country-select option {
   background: #1a1a1a;
   color: #fff;
+}
+
+/* Chevron arrow for dropdown */
+.payment-option__select-chevron {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #888;
+  pointer-events: none;
 }
 
 /* ========================================
@@ -1291,18 +1318,14 @@ html.checkout-active .noise {
 }
 
 /* ========================================
-   KLARNA INFO (inside payment box)
+   KLARNA INFO TEXT
    ======================================== */
-.klarna-info {
-  padding: 4px 0 8px;
-}
-
 .klarna-info__text {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   color: #888;
-  line-height: 1.6;
-  margin: 0;
+  line-height: 1.5;
+  margin: 0 0 4px;
 }
 
 /* ========================================
@@ -1822,7 +1845,7 @@ html.checkout-active .noise {
    ======================================== */
 @media (max-width: 600px) {
   .checkout-header {
-    height: 56px;
+    height: 60px;
     padding: 0 16px;
   }
 
@@ -1831,7 +1854,7 @@ html.checkout-active .noise {
   }
 
   .checkout-header__logo {
-    height: 28px;
+    height: 34px;
   }
 
   .checkout-header__secure {
@@ -1839,8 +1862,8 @@ html.checkout-active .noise {
   }
 
   .checkout-header__lock {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
   }
 
   .checkout-timer {
@@ -1893,33 +1916,33 @@ html.checkout-active .noise {
     grid-template-columns: 1fr;
   }
 
-  /* Payment boxes: compact on mobile */
-  .payment-box__header {
-    padding: 14px 14px;
+  /* Payment options: compact on mobile */
+  .payment-option__header {
+    padding: 12px 12px;
     gap: 10px;
   }
 
-  .payment-box__card-icon {
+  .payment-option__card-badge {
     width: 30px;
     height: 19px;
   }
 
-  .payment-box__more {
-    min-width: 24px;
+  .payment-option__card-badge--klarna {
+    width: 38px;
+    height: 19px;
+  }
+
+  .payment-option__more {
+    min-width: 22px;
     height: 19px;
     font-size: 9px;
   }
 
-  .payment-box__klarna-logo {
-    width: 44px;
-    height: 27px;
+  .payment-option__content--open {
+    padding: 4px 12px 14px;
   }
 
-  .payment-box__content--open {
-    padding: 4px 14px 16px;
-  }
-
-  .payment-box__title {
+  .payment-option__title {
     font-size: 13px;
   }
 
@@ -1948,7 +1971,7 @@ html.checkout-active .noise {
 /* On desktop within two-column layout, give the form comfortable width */
 @media (min-width: 960px) {
   .checkout-layout__main .native-checkout {
-    max-width: 600px;
-    padding: 32px 24px 48px 48px;
+    max-width: 560px;
+    padding: 32px 16px 48px 40px;
   }
 }

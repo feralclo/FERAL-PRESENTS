@@ -399,8 +399,8 @@ html.checkout-active .noise {
   height: 100%;
   object-fit: contain;
   object-position: center top;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45))
-          drop-shadow(0 0 1px rgba(255, 255, 255, 0.04));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55))
+          drop-shadow(0 0 1px rgba(255, 255, 255, 0.05));
 }
 
 .order-item__ticket-qty {

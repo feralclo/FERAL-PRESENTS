@@ -286,8 +286,8 @@ function StripeCheckoutPage({
 
   const amountInSmallest = toSmallestUnit(subtotal);
 
-  // Elements options for ExpressCheckoutElement (needs mode: "payment")
-  const expressElementsOptions: StripeElementsOptions = {
+  // Shared Elements options — single context for Express + Card elements
+  const elementsOptions: StripeElementsOptions = {
     mode: "payment",
     amount: amountInSmallest,
     currency: event.currency.toLowerCase(),
@@ -300,6 +300,12 @@ function StripeCheckoutPage({
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       },
     },
+    fonts: [
+      {
+        cssSrc:
+          "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap",
+      },
+    ],
   };
 
   return (
@@ -316,7 +322,7 @@ function StripeCheckoutPage({
 
       <div className="checkout-layout">
         <div className="checkout-layout__main">
-          <Elements stripe={stripePromise} options={expressElementsOptions}>
+          <Elements stripe={stripePromise} options={elementsOptions}>
             <SinglePageCheckoutForm
               slug={slug}
               event={event}
@@ -670,16 +676,6 @@ function SinglePageCheckoutForm({
     ]
   );
 
-  // Card Elements options (separate from Express Elements — Link disabled)
-  const cardElementsOptions: StripeElementsOptions = {
-    fonts: [
-      {
-        cssSrc:
-          "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap",
-      },
-    ],
-  };
-
   const isReady =
     paymentMethod === "card" ? cardReady : true;
 
@@ -826,12 +822,10 @@ function SinglePageCheckoutForm({
 
                 {/* Card content — collapsible */}
                 <div className={`payment-option__content${paymentMethod === "card" ? " payment-option__content--open" : ""}`}>
-                  <Elements stripe={stripePromise} options={cardElementsOptions}>
-                    <CardFields
-                      ref={cardRef}
-                      onReady={() => setCardReady(true)}
-                    />
-                  </Elements>
+                  <CardFields
+                    ref={cardRef}
+                    onReady={() => setCardReady(true)}
+                  />
 
                   {/* Name on card */}
                   <input

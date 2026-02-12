@@ -650,6 +650,7 @@ export default function EventEditorPage() {
             status: tt.status,
             sort_order: tt.sort_order,
             includes_merch: tt.includes_merch,
+            merch_name: tt.merch_name || null,
             merch_type: tt.merch_type || null,
             merch_sizes: tt.merch_sizes || null,
             merch_description: tt.merch_description || null,
@@ -1586,6 +1587,10 @@ export default function EventEditorPage() {
                         </div>
                         {tt.includes_merch && (
                           <>
+                            <div className="admin-form__field">
+                              <label className="admin-form__label">Merch Name</label>
+                              <input type="text" className="admin-form__input" value={tt.merch_name || ""} onChange={(e) => updateTicketType(i, "merch_name", e.target.value)} placeholder="e.g. FERAL x Liverpool Drop Tee" />
+                            </div>
                             <div className="admin-form__row">
                               <div className="admin-form__field">
                                 <label className="admin-form__label">Merch Type</label>

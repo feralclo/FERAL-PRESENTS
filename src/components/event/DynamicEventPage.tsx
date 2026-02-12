@@ -294,9 +294,10 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
           onClose={() => setTeeModalOpen(false)}
           onAddToCart={handleTeeAdd}
           merchName={
-            teeModalTicketType.merch_type
-              ? `${event.name} ${teeModalTicketType.merch_type}`
-              : `${event.name} Merch`
+            teeModalTicketType.merch_name
+              || (teeModalTicketType.merch_type
+                ? `${event.name} ${teeModalTicketType.merch_type}`
+                : `${event.name} Merch`)
           }
           merchDescription={teeModalTicketType.merch_description}
           merchImages={teeModalTicketType.merch_images}

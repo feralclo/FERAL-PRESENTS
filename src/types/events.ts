@@ -49,6 +49,7 @@ export interface TicketTypeRow {
   sold: number;
   sort_order: number;
   includes_merch: boolean;
+  merch_name?: string;
   merch_type?: string;
   merch_sizes?: string[];
   merch_description?: string;

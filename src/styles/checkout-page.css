@@ -363,52 +363,45 @@ html.checkout-active .noise {
    ======================================== */
 
 /* ========================================
-   ORDER ITEMS — Ticket-style cards + merch
+   ORDER ITEMS — Ticket cards + nested merch
    ======================================== */
 .order-items {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-/* ── Ticket card ── */
-.order-ticket {
+/* Each order item: ticket row + optional merch sub-item */
+.order-item {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+/* ── Ticket row ── */
+.order-item__ticket {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-left: 3px solid #ff0033;
+  gap: 10px;
+  padding: 12px;
 }
 
-.order-ticket__icon-col {
+.order-item__icon {
+  width: 18px;
+  height: 18px;
+  color: #666;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 0, 51, 0.08);
-  border-radius: 6px;
   margin-top: 1px;
 }
 
-.order-ticket__icon {
-  width: 20px;
-  height: 20px;
-  color: #ff0033;
-}
-
-.order-ticket__info {
+.order-item__info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
-.order-ticket__name {
+.order-item__name {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -419,79 +412,62 @@ html.checkout-active .noise {
   white-space: nowrap;
 }
 
-.order-ticket__event {
+.order-item__event {
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 500;
   color: #999;
-  letter-spacing: 0.1px;
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.order-ticket__meta {
+.order-item__meta {
   font-family: 'Inter', sans-serif;
   font-size: 11px;
-  color: #666;
+  color: #555;
   line-height: 1.3;
 }
 
-.order-ticket__right {
+.order-item__right {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+  padding-top: 1px;
 }
 
-.order-ticket__qty {
+.order-item__qty {
   font-family: 'Space Mono', monospace;
   font-size: 11px;
-  color: #666;
-  letter-spacing: 0.5px;
+  color: #555;
 }
 
-.order-ticket__price {
+.order-item__price {
   font-family: 'Space Mono', monospace;
   font-size: 13px;
   font-weight: 600;
   color: #fff;
 }
 
-/* ── Merch sub-items ── */
-.order-merch {
-  padding-left: 6px;
+/* ── Merch sub-item (nested below ticket) ── */
+.order-item__merch {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.01);
 }
 
-.order-merch__label {
-  display: block;
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #555;
-  margin-bottom: 8px;
-}
-
-.order-merch__item {
+.order-item__merch-inner {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 2px solid rgba(255, 255, 255, 0.1);
 }
 
-.order-merch__item + .order-merch__item {
-  margin-top: 6px;
-}
-
-.order-merch__thumb {
-  width: 40px;
-  height: 40px;
+.order-item__merch-thumb {
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -502,19 +478,23 @@ html.checkout-active .noise {
   justify-content: center;
 }
 
-.order-merch__thumb-img {
+.order-item__merch-thumb--empty {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.order-item__merch-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.order-merch__thumb-placeholder {
-  width: 20px;
-  height: 20px;
+.order-item__merch-placeholder {
+  width: 18px;
+  height: 18px;
   color: #444;
 }
 
-.order-merch__info {
+.order-item__merch-info {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -522,7 +502,16 @@ html.checkout-active .noise {
   gap: 1px;
 }
 
-.order-merch__name {
+.order-item__merch-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #555;
+  line-height: 1;
+}
+
+.order-item__merch-name {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 500;
@@ -533,30 +522,10 @@ html.checkout-active .noise {
   white-space: nowrap;
 }
 
-.order-merch__size {
+.order-item__merch-size {
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   color: #666;
-}
-
-.order-merch__right {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-}
-
-.order-merch__qty {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  color: #555;
-}
-
-.order-merch__price {
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  color: #ccc;
 }
 
 /* Divider */

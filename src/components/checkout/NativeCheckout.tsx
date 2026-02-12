@@ -1448,7 +1448,8 @@ function OrderSummaryDesktop({
 
 /* ================================================================
    ORDER ITEMS — shared between mobile and desktop summaries
-   Ticket-style layout: tickets shown as event cards, merch as sub-items.
+   Each cart line renders as a ticket card. Lines with merch_size
+   show the ticket info PLUS a nested merch sub-item below.
    ================================================================ */
 
 function OrderItems({
@@ -1460,13 +1461,11 @@ function OrderItems({
   symbol: string;
   event?: Event & { ticket_types: TicketTypeRow[] };
 }) {
-  const getMerchImage = (line: CartLine): string | null => {
-    if (!line.merch_size || !event?.ticket_types) return null;
-    const tt = event.ticket_types.find((t) => t.id === line.ticket_type_id);
-    return tt?.merch_images?.front || null;
-  };
+  // Look up TicketTypeRow for merch metadata
+  const getTicketType = (id: string): TicketTypeRow | undefined =>
+    event?.ticket_types?.find((t) => t.id === id);
 
-  // Format event date for display
+  // Format event date
   const eventDate = event?.date_start
     ? new Date(event.date_start).toLocaleDateString("en-GB", {
         weekday: "short",
@@ -1483,78 +1482,79 @@ function OrderItems({
       })
     : null);
 
-  // Separate ticket lines from merch lines
-  const ticketLines = cartLines.filter((l) => !l.merch_size);
-  const merchLines = cartLines.filter((l) => l.merch_size);
+  // Venue + date combined
+  const eventMeta = [eventDate, event?.venue_name].filter(Boolean).join(" · ");
 
   return (
     <div className="order-items">
-      {/* Ticket items — styled as event ticket cards */}
-      {ticketLines.map((line, i) => (
-        <div key={`ticket-${i}`} className="order-ticket">
-          <div className="order-ticket__icon-col">
-            <svg className="order-ticket__icon" viewBox="0 0 24 24" fill="none">
-              <path d="M2 9a3 3 0 013-3h14a3 3 0 013 3" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M2 9a3 3 0 003 3 3 3 0 000 6H5a3 3 0 01-3-3V9z" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M22 9a3 3 0 01-3 3 3 3 0 000 6h1a3 3 0 003-3V9z" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M5 18h14a3 3 0 003-3" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M9 6v2M9 16v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M9 10v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
-            </svg>
-          </div>
-          <div className="order-ticket__info">
-            <span className="order-ticket__name">{line.name}</span>
-            {event?.name && (
-              <span className="order-ticket__event">{event.name}</span>
-            )}
-            {(eventDate || event?.venue_name) && (
-              <span className="order-ticket__meta">
-                {eventDate}{eventDate && event?.venue_name ? " · " : ""}{event?.venue_name}
-              </span>
-            )}
-            {eventTime && (
-              <span className="order-ticket__meta">Doors {eventTime}</span>
-            )}
-          </div>
-          <div className="order-ticket__right">
-            <span className="order-ticket__qty">×{line.qty}</span>
-            <span className="order-ticket__price">{symbol}{(line.price * line.qty).toFixed(2)}</span>
-          </div>
-        </div>
-      ))}
+      {cartLines.map((line, i) => {
+        const tt = getTicketType(line.ticket_type_id);
+        const hasMerch = !!line.merch_size;
+        const merchImg = hasMerch ? (tt?.merch_images?.front || null) : null;
+        const merchName = tt?.merch_name
+          || (tt?.merch_type ? `${event?.name || ""} ${tt.merch_type}` : null);
 
-      {/* Merch items — compact sub-items with image */}
-      {merchLines.length > 0 && (
-        <div className="order-merch">
-          <span className="order-merch__label">Included merch</span>
-          {merchLines.map((line, i) => {
-            const merchImg = getMerchImage(line);
-            return (
-              <div key={`merch-${i}`} className="order-merch__item">
-                <div className="order-merch__thumb">
+        return (
+          <div key={i} className="order-item">
+            {/* Ticket row */}
+            <div className="order-item__ticket">
+              <svg className="order-item__icon" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M2 10h3M19 10h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M8 6v12" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2"/>
+              </svg>
+              <div className="order-item__info">
+                <span className="order-item__name">{line.name}</span>
+                {event?.name && (
+                  <span className="order-item__event">{event.name}</span>
+                )}
+                {eventMeta && (
+                  <span className="order-item__meta">{eventMeta}</span>
+                )}
+                {eventTime && (
+                  <span className="order-item__meta">Doors {eventTime}</span>
+                )}
+              </div>
+              <div className="order-item__right">
+                <span className="order-item__qty">×{line.qty}</span>
+                <span className="order-item__price">
+                  {symbol}{(line.price * line.qty).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Merch sub-item (if ticket includes merch) */}
+            {hasMerch && (
+              <div className="order-item__merch">
+                <div className="order-item__merch-inner">
                   {merchImg ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={merchImg} alt="" className="order-merch__thumb-img" />
+                    <div className="order-item__merch-thumb">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={merchImg} alt="" className="order-item__merch-img" />
+                    </div>
                   ) : (
-                    <svg className="order-merch__thumb-placeholder" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 3L4 7v2l8 4 8-4V7l-8-4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                      <path d="M4 9v6l8 4 8-4V9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
+                    <div className="order-item__merch-thumb order-item__merch-thumb--empty">
+                      <svg viewBox="0 0 24 24" fill="none" className="order-item__merch-placeholder">
+                        <path d="M12 3l-2 3h4l-2-3zM6 6h12l1 3H5l1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                        <path d="M5 9h14v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="1.2"/>
+                      </svg>
+                    </div>
                   )}
-                </div>
-                <div className="order-merch__info">
-                  <span className="order-merch__name">{line.name}</span>
-                  <span className="order-merch__size">Size: {line.merch_size}</span>
-                </div>
-                <div className="order-merch__right">
-                  <span className="order-merch__qty">×{line.qty}</span>
-                  <span className="order-merch__price">{symbol}{(line.price * line.qty).toFixed(2)}</span>
+                  <div className="order-item__merch-info">
+                    <span className="order-item__merch-label">Included merch</span>
+                    <span className="order-item__merch-name">
+                      {merchName || line.name}
+                    </span>
+                    <span className="order-item__merch-size">
+                      Size: {line.merch_size}
+                    </span>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

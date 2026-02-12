@@ -7,6 +7,7 @@ import {
   generateOrderNumber,
   generateTicketCode,
 } from "@/lib/ticket-utils";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 
 /**
  * POST /api/stripe/confirm-order
@@ -110,10 +111,10 @@ export async function POST(request: NextRequest) {
     const items: { ticket_type_id: string; qty: number; merch_size?: string }[] =
       JSON.parse(itemsJson);
 
-    // Fetch event
+    // Fetch event (include venue/date fields for order confirmation email)
     const { data: event } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, currency")
+      .select("id, name, slug, currency, venue_name, date_start, doors_time")
       .eq("id", eventId)
       .eq("org_id", orgId)
       .single();
@@ -328,6 +329,37 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", customerId);
     }
+
+    // Send order confirmation email (fire-and-forget — never blocks the response)
+    sendOrderConfirmationEmail({
+      orgId,
+      order: {
+        id: order.id,
+        order_number: order.order_number,
+        total,
+        currency: (event.currency || "GBP").toUpperCase(),
+      },
+      customer: {
+        first_name: customerFirstName,
+        last_name: customerLastName,
+        email: customerEmail,
+      },
+      event: {
+        name: event.name,
+        slug: event.slug,
+        venue_name: event.venue_name,
+        date_start: event.date_start,
+        doors_time: event.doors_time,
+        currency: event.currency,
+      },
+      tickets: allTickets.map((t) => ({
+        ticket_code: t.ticket_code,
+        ticket_type_name: ttMap.get(t.ticket_type_id)?.name || "Ticket",
+        merch_size: t.merch_size,
+      })),
+    }).catch(() => {
+      // Silently catch — email failure must never affect the order response
+    });
 
     // Revalidate pages
     if (event.slug) {

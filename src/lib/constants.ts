@@ -25,6 +25,7 @@ export const SETTINGS_KEYS = {
   KOMPASS: "feral_event_kompass",
   EVENTS_LIST: "feral_events_list",
   MARKETING: "feral_marketing",
+  EMAIL: "feral_email",
 } as const;
 
 // Default ticket IDs (fallbacks if settings not loaded)

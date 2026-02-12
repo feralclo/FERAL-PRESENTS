@@ -1,13 +1,109 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
+import type { EmailSettings } from "@/types/email";
+import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
+
+/* ================================================================
+   TEMPLATE VARIABLES REFERENCE
+   Shown to the user so they know what placeholders are available.
+   ================================================================ */
+
+const TEMPLATE_VARS = [
+  { var: "{{customer_name}}", desc: "Customer's first name" },
+  { var: "{{event_name}}", desc: "Event name" },
+  { var: "{{venue_name}}", desc: "Venue name" },
+  { var: "{{event_date}}", desc: "Event date" },
+  { var: "{{order_number}}", desc: "Order number" },
+  { var: "{{ticket_count}}", desc: "Number of tickets" },
+];
 
 export default function AdminSettings() {
   const [confirmReset, setConfirmReset] = useState("");
   const [status, setStatus] = useState("");
 
+  // ── Email settings state ──
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>(DEFAULT_EMAIL_SETTINGS);
+  const [emailLoading, setEmailLoading] = useState(true);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailStatus, setEmailStatus] = useState("");
+
+  // Load email settings on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+          setEmailLoading(false);
+          return;
+        }
+        const { data } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", "feral_email")
+          .single();
+
+        if (data?.data && typeof data.data === "object") {
+          setEmailSettings({
+            ...DEFAULT_EMAIL_SETTINGS,
+            ...(data.data as Partial<EmailSettings>),
+          });
+        }
+      } catch {
+        // No settings saved yet — defaults are fine
+      }
+      setEmailLoading(false);
+    })();
+  }, []);
+
+  // Save email settings
+  const handleSaveEmail = useCallback(async () => {
+    setEmailSaving(true);
+    setEmailStatus("");
+
+    try {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        setEmailStatus("Error: Supabase not configured");
+        setEmailSaving(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .upsert(
+          {
+            key: "feral_email",
+            data: emailSettings,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "key" }
+        );
+
+      if (error) {
+        setEmailStatus(`Error: ${error.message}`);
+      } else {
+        setEmailStatus("Email settings saved");
+      }
+    } catch {
+      setEmailStatus("Error: Failed to save");
+    }
+
+    setEmailSaving(false);
+  }, [emailSettings]);
+
+  // Helper to update a single email settings field
+  const updateEmail = <K extends keyof EmailSettings>(
+    key: K,
+    value: EmailSettings[K]
+  ) => {
+    setEmailSettings((prev) => ({ ...prev, [key]: value }));
+    setEmailStatus(""); // Clear status on change
+  };
+
+  // ── Danger zone handlers ──
   const handleResetTraffic = useCallback(async () => {
     if (confirmReset !== "RESET") {
       setStatus('Type "RESET" to confirm');
@@ -22,7 +118,7 @@ export default function AdminSettings() {
     const { error } = await supabase
       .from(TABLES.TRAFFIC_EVENTS)
       .delete()
-      .neq("id", 0); // Delete all rows
+      .neq("id", 0);
 
     if (error) {
       setStatus(`Error: ${error.message}`);
@@ -62,6 +158,306 @@ export default function AdminSettings() {
         SETTINGS
       </h1>
 
+      {/* ── ORDER EMAILS ── */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">ORDER EMAILS</h2>
+        <p style={{ color: "#888", fontSize: "0.85rem", marginBottom: "20px" }}>
+          Configure order confirmation emails sent to customers after purchase.
+          Customers receive their tickets as a PDF attachment with QR codes.
+        </p>
+
+        {emailLoading ? (
+          <p style={{ color: "#555", fontSize: "0.85rem" }}>Loading...</p>
+        ) : (
+          <>
+            {/* Enable/disable toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+              <label style={{
+                position: "relative",
+                display: "inline-block",
+                width: "44px",
+                height: "24px",
+                flexShrink: 0,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={emailSettings.order_confirmation_enabled}
+                  onChange={(e) => updateEmail("order_confirmation_enabled", e.target.checked)}
+                  style={{ opacity: 0, width: 0, height: 0, position: "absolute" }}
+                />
+                <span style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: emailSettings.order_confirmation_enabled ? "#ff0033" : "#333",
+                  borderRadius: "24px",
+                  cursor: "pointer",
+                  transition: "background 0.2s",
+                }} />
+                <span style={{
+                  position: "absolute",
+                  height: "18px",
+                  width: "18px",
+                  left: emailSettings.order_confirmation_enabled ? "23px" : "3px",
+                  bottom: "3px",
+                  background: emailSettings.order_confirmation_enabled ? "#fff" : "#888",
+                  borderRadius: "50%",
+                  transition: "left 0.2s, background 0.2s",
+                }} />
+              </label>
+              <span style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "0.8rem",
+                letterSpacing: "1px",
+                color: emailSettings.order_confirmation_enabled ? "#fff" : "#666",
+              }}>
+                {emailSettings.order_confirmation_enabled ? "ENABLED" : "DISABLED"}
+              </span>
+            </div>
+
+            {/* Sender Identity */}
+            <div style={{ marginBottom: "24px" }}>
+              <h3 style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "0.7rem",
+                letterSpacing: "2px",
+                color: "#666",
+                textTransform: "uppercase",
+                marginBottom: "12px",
+              }}>Sender Identity</h3>
+              <div className="admin-form__group" style={{ marginBottom: "8px" }}>
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  From Name
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={emailSettings.from_name}
+                  onChange={(e) => updateEmail("from_name", e.target.value)}
+                  placeholder="FERAL PRESENTS"
+                  style={{ maxWidth: "400px" }}
+                />
+              </div>
+              <div className="admin-form__group" style={{ marginBottom: "8px" }}>
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  From Email
+                </label>
+                <input
+                  className="admin-form__input"
+                  type="email"
+                  value={emailSettings.from_email}
+                  onChange={(e) => updateEmail("from_email", e.target.value)}
+                  placeholder="tickets@feralpresents.com"
+                  style={{ maxWidth: "400px" }}
+                />
+              </div>
+              <div className="admin-form__group">
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  Reply-To Email (optional)
+                </label>
+                <input
+                  className="admin-form__input"
+                  type="email"
+                  value={emailSettings.reply_to || ""}
+                  onChange={(e) => updateEmail("reply_to", e.target.value || undefined)}
+                  placeholder="support@feralpresents.com"
+                  style={{ maxWidth: "400px" }}
+                />
+              </div>
+            </div>
+
+            {/* Branding */}
+            <div style={{ marginBottom: "24px" }}>
+              <h3 style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "0.7rem",
+                letterSpacing: "2px",
+                color: "#666",
+                textTransform: "uppercase",
+                marginBottom: "12px",
+              }}>Branding</h3>
+              <div className="admin-form__group" style={{ marginBottom: "8px" }}>
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  Accent Color
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input
+                    type="color"
+                    value={emailSettings.accent_color}
+                    onChange={(e) => updateEmail("accent_color", e.target.value)}
+                    style={{
+                      width: "40px",
+                      height: "36px",
+                      border: "1px solid #333",
+                      background: "transparent",
+                      cursor: "pointer",
+                      padding: "2px",
+                    }}
+                  />
+                  <input
+                    className="admin-form__input"
+                    value={emailSettings.accent_color}
+                    onChange={(e) => updateEmail("accent_color", e.target.value)}
+                    placeholder="#ff0033"
+                    style={{ maxWidth: "120px" }}
+                  />
+                </div>
+              </div>
+              <div className="admin-form__group" style={{ marginBottom: "8px" }}>
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  Logo URL (optional)
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={emailSettings.logo_url || ""}
+                  onChange={(e) => updateEmail("logo_url", e.target.value || undefined)}
+                  placeholder="https://yoursite.com/logo.png"
+                  style={{ maxWidth: "400px" }}
+                />
+              </div>
+              <div className="admin-form__group">
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  Footer Text
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={emailSettings.footer_text}
+                  onChange={(e) => updateEmail("footer_text", e.target.value)}
+                  placeholder="FERAL PRESENTS"
+                  style={{ maxWidth: "400px" }}
+                />
+              </div>
+            </div>
+
+            {/* Template */}
+            <div style={{ marginBottom: "24px" }}>
+              <h3 style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "0.7rem",
+                letterSpacing: "2px",
+                color: "#666",
+                textTransform: "uppercase",
+                marginBottom: "12px",
+              }}>Order Confirmation Template</h3>
+
+              {/* Template variables reference */}
+              <div style={{
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                padding: "12px 16px",
+                marginBottom: "16px",
+              }}>
+                <div style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: "0.65rem",
+                  letterSpacing: "1.5px",
+                  color: "#555",
+                  textTransform: "uppercase",
+                  marginBottom: "8px",
+                }}>
+                  Available Variables
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                  {TEMPLATE_VARS.map((v) => (
+                    <span
+                      key={v.var}
+                      title={v.desc}
+                      style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: "0.75rem",
+                        color: "#ff0033",
+                        background: "rgba(255,0,51,0.06)",
+                        border: "1px solid rgba(255,0,51,0.15)",
+                        padding: "3px 8px",
+                        cursor: "help",
+                      }}
+                    >
+                      {v.var}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="admin-form__group" style={{ marginBottom: "8px" }}>
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  Subject Line
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={emailSettings.order_confirmation_subject}
+                  onChange={(e) => updateEmail("order_confirmation_subject", e.target.value)}
+                  placeholder="Your tickets for {{event_name}}"
+                  style={{ maxWidth: "500px" }}
+                />
+              </div>
+              <div className="admin-form__group" style={{ marginBottom: "8px" }}>
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  Heading
+                </label>
+                <input
+                  className="admin-form__input"
+                  value={emailSettings.order_confirmation_heading}
+                  onChange={(e) => updateEmail("order_confirmation_heading", e.target.value)}
+                  placeholder="You're in."
+                  style={{ maxWidth: "400px" }}
+                />
+              </div>
+              <div className="admin-form__group">
+                <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
+                  Message
+                </label>
+                <textarea
+                  className="admin-form__input"
+                  value={emailSettings.order_confirmation_message}
+                  onChange={(e) => updateEmail("order_confirmation_message", e.target.value)}
+                  placeholder="Your order is confirmed and your tickets are attached..."
+                  rows={3}
+                  style={{ maxWidth: "500px", resize: "vertical", minHeight: "80px" }}
+                />
+              </div>
+            </div>
+
+            {/* Save button */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <button
+                className="admin-form__save"
+                onClick={handleSaveEmail}
+                disabled={emailSaving}
+                style={{ background: "#ff0033" }}
+              >
+                {emailSaving ? "Saving..." : "Save Email Settings"}
+              </button>
+              {emailStatus && (
+                <span style={{
+                  fontSize: "0.8rem",
+                  color: emailStatus.includes("Error") ? "#ff0033" : "#4ecb71",
+                }}>
+                  {emailStatus}
+                </span>
+              )}
+            </div>
+
+            {/* ENV reminder */}
+            <div style={{
+              marginTop: "20px",
+              padding: "12px 16px",
+              background: "rgba(255,193,7,0.04)",
+              border: "1px dashed rgba(255,193,7,0.2)",
+            }}>
+              <p style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "0.7rem",
+                letterSpacing: "1px",
+                color: "#ffc107",
+                margin: 0,
+              }}>
+                Requires <code style={{ color: "#fff" }}>RESEND_API_KEY</code> environment variable.
+                Emails will be silently skipped if not configured.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── PLATFORM INFO ── */}
       <div className="admin-section">
         <h2 className="admin-section__title">PLATFORM INFO</h2>
         <table className="admin-table">
@@ -84,7 +480,11 @@ export default function AdminSettings() {
             </tr>
             <tr>
               <td style={{ color: "#888" }}>Payments</td>
-              <td>WeeZTix (migrating to Stripe)</td>
+              <td>Stripe (Connect)</td>
+            </tr>
+            <tr>
+              <td style={{ color: "#888" }}>Email</td>
+              <td>Resend</td>
             </tr>
             <tr>
               <td style={{ color: "#888" }}>Org ID</td>
@@ -94,6 +494,7 @@ export default function AdminSettings() {
         </table>
       </div>
 
+      {/* ── DANGER ZONE ── */}
       <div className="admin-section">
         <h2 className="admin-section__title">DANGER ZONE</h2>
         <p

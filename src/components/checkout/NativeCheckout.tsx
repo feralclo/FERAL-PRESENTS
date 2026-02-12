@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Elements,
   ExpressCheckoutElement,
-  PaymentElement,
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -38,6 +40,35 @@ interface CartLine {
   price: number;
   merch_size?: string;
 }
+
+interface CardFieldsHandle {
+  confirmPayment: (
+    clientSecret: string,
+    billingDetails: { name: string; email: string }
+  ) => Promise<{
+    error?: { message?: string };
+    paymentIntent?: { id: string; status: string };
+  }>;
+}
+
+/* ================================================================
+   CARD ELEMENT STYLE — shared across all card inputs
+   ================================================================ */
+
+const CARD_ELEMENT_STYLE = {
+  base: {
+    fontSize: "14px",
+    color: "#ffffff",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    fontSmoothing: "antialiased",
+    "::placeholder": {
+      color: "#555555",
+    },
+  },
+  invalid: {
+    color: "#ff6b6b",
+  },
+};
 
 /* ================================================================
    MAIN CHECKOUT COMPONENT
@@ -186,9 +217,6 @@ function StripeCheckoutPage({
   symbol: string;
   onComplete: (order: Order) => void;
 }) {
-  const [stripeAccountId, setStripeAccountId] = useState<string | undefined>(
-    undefined
-  );
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
 
@@ -202,7 +230,6 @@ function StripeCheckoutPage({
         const res = await fetch("/api/stripe/account");
         const data = await res.json();
         const acctId = data.stripe_account_id || undefined;
-        setStripeAccountId(acctId);
         setStripePromise(getStripeClient(acctId));
       } catch {
         setStripePromise(getStripeClient());
@@ -227,7 +254,8 @@ function StripeCheckoutPage({
 
   const amountInSmallest = toSmallestUnit(subtotal);
 
-  const elementsOptions: StripeElementsOptions = {
+  // Elements options for ExpressCheckoutElement (needs mode: "payment")
+  const expressElementsOptions: StripeElementsOptions = {
     mode: "payment",
     amount: amountInSmallest,
     currency: event.currency.toLowerCase(),
@@ -237,70 +265,7 @@ function StripeCheckoutPage({
         colorPrimary: "#ff0033",
         colorBackground: "#1a1a1a",
         colorText: "#ffffff",
-        colorDanger: "#ff0033",
-        colorTextPlaceholder: "#666666",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        fontSizeBase: "14px",
-        borderRadius: "0px",
-        spacingUnit: "4px",
-        spacingGridRow: "16px",
-        spacingGridColumn: "12px",
-      },
-      rules: {
-        ".Input": {
-          backgroundColor: "rgba(255, 255, 255, 0.04)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          padding: "15px 16px",
-          transition: "border-color 0.15s ease",
-          fontSize: "14px",
-          color: "#ffffff",
-        },
-        ".Input:focus": {
-          borderColor: "rgba(255, 0, 51, 0.5)",
-          boxShadow: "none",
-        },
-        ".Input--invalid": {
-          borderColor: "rgba(255, 0, 51, 0.5)",
-          color: "#ffffff",
-        },
-        ".Label": {
-          color: "transparent",
-          fontSize: "0px",
-          lineHeight: "0",
-          margin: "0",
-          padding: "0",
-          height: "0",
-          overflow: "hidden",
-        },
-        ".Tab": {
-          backgroundColor: "rgba(255, 255, 255, 0.02)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          color: "#aaaaaa",
-          fontFamily: "'Inter', sans-serif",
-          fontSize: "13px",
-          letterSpacing: "0.2px",
-          padding: "14px 16px",
-        },
-        ".Tab:hover": {
-          backgroundColor: "rgba(255, 255, 255, 0.04)",
-          color: "#ffffff",
-        },
-        ".Tab--selected": {
-          backgroundColor: "rgba(255, 255, 255, 0.04)",
-          borderColor: "rgba(255, 255, 255, 0.15)",
-          color: "#ffffff",
-        },
-        ".TabIcon": {
-          fill: "#888888",
-        },
-        ".TabIcon--selected": {
-          fill: "#ffffff",
-        },
-        ".Error": {
-          fontFamily: "'Space Mono', monospace",
-          fontSize: "11px",
-          color: "#ff0033",
-        },
       },
     },
   };
@@ -319,7 +284,7 @@ function StripeCheckoutPage({
 
       <div className="checkout-layout">
         <div className="checkout-layout__main">
-          <Elements stripe={stripePromise} options={elementsOptions}>
+          <Elements stripe={stripePromise} options={expressElementsOptions}>
             <SinglePageCheckoutForm
               slug={slug}
               event={event}
@@ -328,6 +293,7 @@ function StripeCheckoutPage({
               totalQty={totalQty}
               symbol={symbol}
               onComplete={onComplete}
+              stripePromise={stripePromise}
             />
           </Elements>
         </div>
@@ -350,8 +316,8 @@ function StripeCheckoutPage({
 
 /* ================================================================
    SINGLE-PAGE CHECKOUT FORM
-   Inside Elements context — has access to Stripe + Elements.
-   Contains both ExpressCheckout and Card payment.
+   Inside outer Elements context (mode: "payment") for Express.
+   Card fields use a nested Elements context for individual elements.
    ================================================================ */
 
 function SinglePageCheckoutForm({
@@ -362,6 +328,7 @@ function SinglePageCheckoutForm({
   totalQty,
   symbol,
   onComplete,
+  stripePromise,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -370,6 +337,7 @@ function SinglePageCheckoutForm({
   totalQty: number;
   symbol: string;
   onComplete: (order: Order) => void;
+  stripePromise: Promise<Stripe | null>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -380,8 +348,10 @@ function SinglePageCheckoutForm({
   const [lastName, setLastName] = useState("");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
-  const [paymentReady, setPaymentReady] = useState(false);
+  const [cardReady, setCardReady] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "klarna">("card");
+  const cardRef = useRef<CardFieldsHandle>(null);
 
   // Handle Express Checkout click — configure wallet sheet
   const handleExpressClick = useCallback(
@@ -496,11 +466,10 @@ function SinglePageCheckoutForm({
     [stripe, elements, event, cartLines, slug, subtotal, onComplete]
   );
 
-  // Handle card form submission
-  const handleCardSubmit = useCallback(
+  // Handle form submission (card or Klarna)
+  const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!stripe || !elements) return;
 
       setError("");
 
@@ -525,14 +494,6 @@ function SinglePageCheckoutForm({
       setProcessing(true);
 
       try {
-        // Validate Stripe elements
-        const { error: submitError } = await elements.submit();
-        if (submitError) {
-          setError(submitError.message || "Please check your card details.");
-          setProcessing(false);
-          return;
-        }
-
         // 1. Create PaymentIntent
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
@@ -559,23 +520,75 @@ function SinglePageCheckoutForm({
           return;
         }
 
-        // 2. Confirm payment
-        const { error: confirmError } = await stripe.confirmPayment({
-          elements,
-          clientSecret: data.client_secret,
-          confirmParams: {
-            return_url: `${window.location.origin}/event/${slug}/checkout/?pi=${data.payment_intent_id}`,
-          },
-          redirect: "if_required",
-        });
+        if (paymentMethod === "card") {
+          // 2a. Confirm card payment via CardFields handle
+          if (!cardRef.current) {
+            setError("Card form not ready. Please try again.");
+            setProcessing(false);
+            return;
+          }
 
-        if (confirmError) {
-          setError(confirmError.message || "Payment failed. Please try again.");
-          setProcessing(false);
+          const result = await cardRef.current.confirmPayment(
+            data.client_secret,
+            {
+              name: `${firstName.trim()} ${lastName.trim()}`,
+              email: email.trim().toLowerCase(),
+            }
+          );
+
+          if (result.error) {
+            setError(result.error.message || "Payment failed. Please try again.");
+            setProcessing(false);
+            return;
+          }
+
+          if (
+            result.paymentIntent &&
+            result.paymentIntent.status === "requires_action"
+          ) {
+            setError(
+              "Additional verification required. Please follow the prompts."
+            );
+            setProcessing(false);
+            return;
+          }
+        } else {
+          // 2b. Confirm Klarna payment (redirects to Klarna)
+          const stripeInstance = await stripePromise;
+          if (!stripeInstance) {
+            setError("Payment system not ready. Please try again.");
+            setProcessing(false);
+            return;
+          }
+
+          const { error: klarnaError } = await stripeInstance.confirmKlarnaPayment(
+            data.client_secret,
+            {
+              payment_method: {
+                billing_details: {
+                  email: email.trim().toLowerCase(),
+                  name: `${firstName.trim()} ${lastName.trim()}`,
+                  address: {
+                    country: event.currency === "EUR" ? "BE" : "GB",
+                  },
+                },
+              },
+              return_url: `${window.location.origin}/event/${slug}/checkout/?pi=${data.payment_intent_id}`,
+            }
+          );
+
+          if (klarnaError) {
+            setError(
+              klarnaError.message || "Klarna payment failed. Please try again."
+            );
+            setProcessing(false);
+            return;
+          }
+          // User has been redirected to Klarna — nothing more to do
           return;
         }
 
-        // 3. Create order
+        // 3. Confirm order (card path only — Klarna confirms via redirect)
         const orderRes = await fetch("/api/stripe/confirm-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -608,8 +621,32 @@ function SinglePageCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, email, firstName, lastName, cartLines, event, slug, subtotal, onComplete]
+    [
+      email,
+      firstName,
+      lastName,
+      cartLines,
+      event,
+      slug,
+      subtotal,
+      paymentMethod,
+      stripePromise,
+      onComplete,
+    ]
   );
+
+  // Card Elements options (separate from Express Elements)
+  const cardElementsOptions: StripeElementsOptions = {
+    fonts: [
+      {
+        cssSrc:
+          "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap",
+      },
+    ],
+  };
+
+  const isReady =
+    paymentMethod === "card" ? cardReady : true;
 
   return (
     <div className="native-checkout">
@@ -661,8 +698,8 @@ function SinglePageCheckoutForm({
           </div>
         )}
 
-        {/* ── CARD PAYMENT FORM ── */}
-        <form onSubmit={handleCardSubmit} className="native-checkout__form">
+        {/* ── CHECKOUT FORM ── */}
+        <form onSubmit={handleSubmit} className="native-checkout__form">
           {/* Contact */}
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Contact</h2>
@@ -705,7 +742,7 @@ function SinglePageCheckoutForm({
 
           {/* Payment */}
           <div className="native-checkout__section">
-            <h2 className="native-checkout__heading">Payment</h2>
+            <h2 className="native-checkout__heading">Payment Details</h2>
             <p className="native-checkout__subtitle">
               <svg className="native-checkout__subtitle-lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
@@ -713,25 +750,84 @@ function SinglePageCheckoutForm({
               </svg>
               All transactions are secure and encrypted.
             </p>
-            <div className="stripe-payment-element-wrapper">
-              <PaymentElement
-                onReady={() => setPaymentReady(true)}
-                options={{
-                  layout: {
-                    type: "accordion",
-                    defaultCollapsed: false,
-                    radios: true,
-                    spacedAccordionItems: true,
-                  },
-                  paymentMethodOrder: ["card", "klarna"],
-                  business: { name: "FERAL PRESENTS" },
-                  wallets: {
-                    applePay: "never",
-                    googlePay: "never",
-                    link: "never",
-                  },
-                }}
-              />
+
+            {/* Payment Method Selector (tabbed panel) */}
+            <div className="payment-method-selector">
+              <div className="payment-method-selector__tabs">
+                {/* Card tab */}
+                <button
+                  type="button"
+                  className={`payment-method-tab${paymentMethod === "card" ? " payment-method-tab--active" : ""}`}
+                  onClick={() => setPaymentMethod("card")}
+                >
+                  <span className="payment-method-tab__radio" />
+                  <span className="payment-method-tab__label">Credit / Debit Card</span>
+                  <span className="payment-method-tab__icons">
+                    {/* Visa */}
+                    <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon" aria-label="Visa">
+                      <rect width="38" height="24" rx="3" fill="#1434CB" />
+                      <path d="M16.5 16h-2.2l1.4-8.4h2.2L16.5 16zm7.7-8.2c-.4-.2-1.1-.3-1.9-.3-2.1 0-3.6 1.1-3.6 2.6 0 1.2 1 1.8 1.8 2.2.8.4 1.1.6 1.1.9 0 .5-.6.7-1.2.7-.8 0-1.3-.1-2-.4l-.3-.1-.3 1.8c.5.2 1.4.4 2.3.4 2.2 0 3.7-1.1 3.7-2.7 0-.9-.5-1.6-1.8-2.1-.7-.4-1.2-.6-1.2-1 0-.3.4-.7 1.2-.7.7 0 1.2.1 1.5.3l.2.1.3-1.7zm-15.8 0L6.7 14l-.2-1-.7-3.5c-.1-.4-.5-.6-.9-.7H1l0 .2c.8.2 1.6.5 2.1.9.3.2.4.4.5.7l1.6 6h2.2l3.3-8.4h-2.3z" fill="#fff" />
+                    </svg>
+                    {/* Mastercard */}
+                    <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon" aria-label="Mastercard">
+                      <rect width="38" height="24" rx="3" fill="#252525" />
+                      <circle cx="15" cy="12" r="6.5" fill="#EB001B" />
+                      <circle cx="23" cy="12" r="6.5" fill="#F79E1B" />
+                      <path d="M19 7a6.5 6.5 0 010 10 6.5 6.5 0 000-10z" fill="#FF5F00" />
+                    </svg>
+                    {/* Amex */}
+                    <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon" aria-label="Amex">
+                      <rect width="38" height="24" rx="3" fill="#2557D6" />
+                      <path d="M6.5 12.8h1.7l-.85-2-.85 2zm18.3-4.5H23l-2.1 2.3-2-2.3h-6.2l-3.2 7.4h2.6l.6-1.5h3.4l.6 1.5h4.6l-2.4-2.7 2.4-2.7h1.8l-2.3 2.6 2.4 2.8h-2l-2-2.3-2.1 2.3h-3.7l-.6-1.4H9l-.6 1.4H6l3.2-7.4z" fill="#fff" />
+                    </svg>
+                    {/* +2 badge */}
+                    <span className="payment-method-tab__more">+2</span>
+                  </span>
+                </button>
+
+                {/* Klarna tab */}
+                <button
+                  type="button"
+                  className={`payment-method-tab${paymentMethod === "klarna" ? " payment-method-tab--active" : ""}`}
+                  onClick={() => setPaymentMethod("klarna")}
+                >
+                  <span className="payment-method-tab__radio" />
+                  <span className="payment-method-tab__label">Klarna</span>
+                  <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon payment-method-tab__card-icon--klarna" aria-label="Klarna">
+                    <rect width="38" height="24" rx="3" fill="#FFB3C7" />
+                    <path d="M11 7h2c0 1.7-.8 3.2-2 4.3L15 16h-2.8l-3.3-3.9V16H7V7h2v3.7c1-.9 1.7-2.2 2-3.7zm7 0h2v9h-2V7zm5.5 6.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#0A0B09" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Card content */}
+              <div
+                className="payment-method-content"
+                style={{ display: paymentMethod === "card" ? "block" : "none" }}
+              >
+                <Elements stripe={stripePromise} options={cardElementsOptions}>
+                  <CardFields
+                    ref={cardRef}
+                    onReady={() => setCardReady(true)}
+                  />
+                </Elements>
+              </div>
+
+              {/* Klarna content */}
+              <div
+                className="payment-method-content"
+                style={{ display: paymentMethod === "klarna" ? "block" : "none" }}
+              >
+                <div className="klarna-info">
+                  <svg className="klarna-info__icon" viewBox="0 0 38 24" aria-label="Klarna">
+                    <rect width="38" height="24" rx="3" fill="#FFB3C7" />
+                    <path d="M11 7h2c0 1.7-.8 3.2-2 4.3L15 16h-2.8l-3.3-3.9V16H7V7h2v3.7c1-.9 1.7-2.2 2-3.7zm7 0h2v9h-2V7zm5.5 6.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#0A0B09" />
+                  </svg>
+                  <p className="klarna-info__text">
+                    Pay later or in instalments with Klarna. You&apos;ll be redirected to Klarna to complete your purchase securely.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -742,9 +838,13 @@ function SinglePageCheckoutForm({
           <button
             type="submit"
             className="native-checkout__submit"
-            disabled={processing || !paymentReady || !stripe}
+            disabled={processing || !isReady || !stripe}
           >
-            {processing ? "Processing..." : "PAY NOW"}
+            {processing
+              ? "Processing..."
+              : paymentMethod === "klarna"
+                ? "CONTINUE TO KLARNA"
+                : "PAY NOW"}
           </button>
 
           {/* Trust Signal */}
@@ -778,6 +878,116 @@ function SinglePageCheckoutForm({
     </div>
   );
 }
+
+/* ================================================================
+   CARD FIELDS — Individual Stripe card elements with custom UI
+   Renders card number, expiry, CVC with custom placeholders and layout.
+   Uses forwardRef + useImperativeHandle to expose confirmPayment.
+   ================================================================ */
+
+const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
+  function CardFields({ onReady }, ref) {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [numberReady, setNumberReady] = useState(false);
+    const [expiryReady, setExpiryReady] = useState(false);
+    const [cvcReady, setCvcReady] = useState(false);
+    const readyNotified = useRef(false);
+
+    useEffect(() => {
+      if (numberReady && expiryReady && cvcReady && !readyNotified.current) {
+        readyNotified.current = true;
+        onReady();
+      }
+    }, [numberReady, expiryReady, cvcReady, onReady]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        confirmPayment: async (clientSecret, billingDetails) => {
+          if (!stripe || !elements) {
+            return { error: { message: "Payment not ready. Please try again." } };
+          }
+
+          const cardNumber = elements.getElement(CardNumberElement);
+          if (!cardNumber) {
+            return { error: { message: "Card details not available." } };
+          }
+
+          const result = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: {
+              card: cardNumber,
+              billing_details: billingDetails,
+            },
+          });
+
+          return result;
+        },
+      }),
+      [stripe, elements]
+    );
+
+    return (
+      <div className="card-fields">
+        {/* Card Number */}
+        <div className="card-fields__number-wrapper">
+          <CardNumberElement
+            onReady={() => setNumberReady(true)}
+            options={{
+              style: CARD_ELEMENT_STYLE,
+              placeholder: "Card number",
+              showIcon: false,
+            }}
+          />
+          <svg
+            className="card-fields__lock-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="5"
+              y="11"
+              width="14"
+              height="10"
+              rx="2"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            />
+            <path
+              d="M8 11V7a4 4 0 018 0v4"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+
+        {/* Expiry + CVC row (side by side on desktop, stacked on mobile) */}
+        <div className="card-fields__row">
+          <div className="card-fields__expiry">
+            <CardExpiryElement
+              onReady={() => setExpiryReady(true)}
+              options={{
+                style: CARD_ELEMENT_STYLE,
+                placeholder: "Expiration date (MM/YY)",
+              }}
+            />
+          </div>
+          <div className="card-fields__cvc">
+            <CardCvcElement
+              onReady={() => setCvcReady(true)}
+              options={{
+                style: CARD_ELEMENT_STYLE,
+                placeholder: "Security code",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
 
 /* ================================================================
    TEST MODE CHECKOUT

@@ -239,7 +239,7 @@ html.checkout-active .noise {
   flex: 1;
   display: flex;
   flex-direction: column;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
 }
@@ -253,7 +253,7 @@ html.checkout-active .noise {
   display: none;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 960px) {
   .checkout-layout {
     flex-direction: row;
     gap: 0;
@@ -344,7 +344,7 @@ html.checkout-active .noise {
 }
 
 /* Hide mobile summary on desktop */
-@media (min-width: 900px) {
+@media (min-width: 960px) {
   .order-summary-mobile {
     display: none;
   }
@@ -1030,6 +1030,227 @@ html.checkout-active .noise {
 }
 
 /* ========================================
+   PAYMENT METHOD SELECTOR (tabbed panel)
+   Card + Klarna tabs with unified content area
+   ======================================== */
+.payment-method-selector {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.payment-method-selector__tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.payment-method-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: none;
+  cursor: pointer;
+  color: #888;
+  transition: background 0.15s ease, color 0.15s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  text-align: left;
+}
+
+.payment-method-tab + .payment-method-tab {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.payment-method-tab:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.payment-method-tab--active {
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+}
+
+/* Radio indicator */
+.payment-method-tab__radio {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+.payment-method-tab--active .payment-method-tab__radio {
+  border-color: #ff0033;
+}
+
+.payment-method-tab--active .payment-method-tab__radio::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff0033;
+}
+
+.payment-method-tab__label {
+  flex: 1;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+/* Card brand icons row */
+.payment-method-tab__icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.payment-method-tab__card-icon {
+  width: 30px;
+  height: 19px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.payment-method-tab__card-icon--klarna {
+  width: 36px;
+  height: 22px;
+}
+
+/* "+2" badge */
+.payment-method-tab__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 19px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #666;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+/* Content area below tabs */
+.payment-method-content {
+  padding: 20px 16px;
+}
+
+/* ========================================
+   CARD FIELDS — Individual Stripe elements
+   ======================================== */
+.card-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Card number wrapper — positions lock icon */
+.card-fields__number-wrapper {
+  position: relative;
+}
+
+.card-fields__number-wrapper .StripeElement {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 48px 15px 16px;
+  transition: border-color 0.15s ease;
+}
+
+.card-fields__number-wrapper .StripeElement--focus {
+  border-color: rgba(255, 0, 51, 0.5);
+}
+
+.card-fields__number-wrapper .StripeElement--invalid {
+  border-color: rgba(255, 0, 51, 0.5);
+}
+
+/* Persistent lock icon in card number field */
+.card-fields__lock-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #555;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Expiry + CVC row */
+.card-fields__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.card-fields__expiry .StripeElement,
+.card-fields__cvc .StripeElement {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 16px;
+  transition: border-color 0.15s ease;
+}
+
+.card-fields__expiry .StripeElement--focus,
+.card-fields__cvc .StripeElement--focus {
+  border-color: rgba(255, 0, 51, 0.5);
+}
+
+.card-fields__expiry .StripeElement--invalid,
+.card-fields__cvc .StripeElement--invalid {
+  border-color: rgba(255, 0, 51, 0.5);
+}
+
+/* Mobile: stack all card fields vertically */
+@media (max-width: 768px) {
+  .card-fields__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   KLARNA INFO (inside payment method panel)
+   ======================================== */
+.klarna-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.klarna-info__icon {
+  width: 44px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.klarna-info__text {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ========================================
    TICKET PAGE EXPRESS CHECKOUT
    ======================================== */
 .feral-tickets__express {
@@ -1052,7 +1273,7 @@ html.checkout-active .noise {
    NATIVE CHECKOUT FORM
    ======================================== */
 .native-checkout {
-  max-width: 560px;
+  max-width: 620px;
   margin: 0 auto;
   padding: 32px 24px 48px;
 }
@@ -1070,12 +1291,13 @@ html.checkout-active .noise {
 
 .native-checkout__heading {
   font-family: 'Space Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 3px;
+  font-size: 14px;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
   color: #fff;
+  font-weight: 700;
   margin: 0;
-  padding-bottom: 12px;
+  padding-bottom: 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -1607,8 +1829,44 @@ html.checkout-active .noise {
     padding: 24px 16px 40px;
   }
 
+  .native-checkout__heading {
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+
   .native-checkout__row {
     grid-template-columns: 1fr;
+  }
+
+  /* Payment tabs: stack label + icons vertically on very small screens */
+  .payment-method-tab {
+    padding: 12px 12px;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .payment-method-tab__icons {
+    gap: 3px;
+  }
+
+  .payment-method-tab__card-icon {
+    width: 26px;
+    height: 16px;
+  }
+
+  .payment-method-tab__card-icon--klarna {
+    width: 32px;
+    height: 20px;
+  }
+
+  .payment-method-tab__more {
+    min-width: 22px;
+    height: 16px;
+    font-size: 9px;
+  }
+
+  .payment-method-content {
+    padding: 16px 12px;
   }
 
   .order-summary-mobile__toggle {
@@ -1633,12 +1891,10 @@ html.checkout-active .noise {
   }
 }
 
-/* On desktop within two-column layout, constrain form width.
-   ~480px content width forces Stripe PaymentElement to stack:
-   card number on its own row, expiry + CVC together below. */
-@media (min-width: 900px) {
+/* On desktop within two-column layout, give the form comfortable width */
+@media (min-width: 960px) {
   .checkout-layout__main .native-checkout {
-    max-width: 520px;
+    max-width: 600px;
     padding: 32px 24px 48px 48px;
   }
 }

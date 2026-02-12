@@ -3237,6 +3237,16 @@ body:has(.bottom-bar) .footer {
     margin-left: -16px;
     margin-right: -16px;
   }
+
+  /* On mobile: Lineup above About (HTML order is About → Lineup for desktop) */
+  .event-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .event-info__section--lineup {
+    order: -1;
+  }
 }
 
 @media (max-width: 768px) {

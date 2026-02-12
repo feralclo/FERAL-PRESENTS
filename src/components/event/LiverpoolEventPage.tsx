@@ -170,7 +170,12 @@ export function LiverpoolEventPage({ slug, event }: LiverpoolEventPageProps) {
             <div className="event-content__grid">
               {/* Left: Event Info */}
               <div className="event-info" id="eventInfo">
-                <div className="event-info__section">
+                <div className="event-info__section event-info__section--about">
+                  <h2 className="event-info__heading">About</h2>
+                  <p className="event-info__text">{aboutText}</p>
+                </div>
+
+                <div className="event-info__section event-info__section--lineup">
                   <h2 className="event-info__heading">
                     Lineup{" "}
                     <span className="event-info__az">[A-Z]</span>
@@ -186,12 +191,7 @@ export function LiverpoolEventPage({ slug, event }: LiverpoolEventPageProps) {
                   </div>
                 </div>
 
-                <div className="event-info__section">
-                  <h2 className="event-info__heading">About</h2>
-                  <p className="event-info__text">{aboutText}</p>
-                </div>
-
-                <div className="event-info__section">
+                <div className="event-info__section event-info__section--details">
                   <h2 className="event-info__heading">Details</h2>
                   <p className="event-info__text">{detailsText}</p>
                 </div>

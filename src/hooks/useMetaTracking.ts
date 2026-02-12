@@ -39,15 +39,16 @@ function getSettings(): Promise<MarketingSettings | null> {
   return _fetchPromise;
 }
 
-/** Check if user has granted marketing cookie consent */
+/** Check if user has NOT explicitly rejected marketing cookies.
+ *  Track by default — only block if user actively opted out. */
 function hasMarketingConsent(): boolean {
   try {
     const raw = localStorage.getItem("feral_cookie_consent");
-    if (!raw) return false; // No decision yet → deny
+    if (!raw) return true; // No decision yet → allow (track by default)
     const data = JSON.parse(raw);
-    return data.marketing === true;
+    return data.marketing !== false; // Only block on explicit rejection
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -143,30 +144,25 @@ function sendCAPI(
 export function useMetaTracking() {
   const initialised = useRef(false);
 
-  // Fetch settings and load pixel on first mount
+  // Fetch settings and load pixel immediately (track by default)
   useEffect(() => {
     if (initialised.current) return;
     initialised.current = true;
 
-    getSettings().then((s) => {
-      if (s?.meta_tracking_enabled && s.meta_pixel_id) {
-        if (hasMarketingConsent()) {
-          loadPixel(s.meta_pixel_id);
-        }
-        // else: pixel loads when consent is granted (storage listener below)
-      }
+    getSettings().then(() => {
+      // Load pixel immediately — hasMarketingConsent() defaults to true
+      tryLoadPixel();
     });
 
-    // Listen for consent changes — load pixel when user accepts marketing cookies
-    // after the page has already loaded (e.g. cookie banner interaction).
+    // Listen for consent changes — if user explicitly rejects via cookie
+    // banner, future firePixelEvent calls will be blocked. If they later
+    // re-accept, pixel will load if it wasn't already.
     const onStorage = (e: StorageEvent) => {
       if (e.key !== "feral_cookie_consent") return;
       tryLoadPixel();
     };
     window.addEventListener("storage", onStorage);
 
-    // Also listen for same-tab localStorage writes (StorageEvent only fires
-    // in OTHER tabs). We patch this via a custom event dispatched by CookieConsent.
     const onConsentUpdate = () => tryLoadPixel();
     window.addEventListener("feral_consent_update", onConsentUpdate);
 

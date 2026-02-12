@@ -16,13 +16,12 @@ function pushConsentDefaults() {
     "0": "consent",
     "1": "default",
     "2": {
-      ad_storage: "denied",
-      ad_user_data: "denied",
-      ad_personalization: "denied",
-      analytics_storage: "denied",
+      ad_storage: "granted",
+      ad_user_data: "granted",
+      ad_personalization: "granted",
+      analytics_storage: "granted",
       functionality_storage: "granted",
       security_storage: "granted",
-      wait_for_update: 500,
     },
   });
 }

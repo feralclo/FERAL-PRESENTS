@@ -197,9 +197,17 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
             <div className="event-content__grid">
               {/* Left: Event Info */}
               <div className="event-info" id="eventInfo">
-                {/* Lineup Section (first on mobile for immediate impact) */}
+                {/* About Section */}
+                {event.about_text && (
+                  <div className="event-info__section event-info__section--about">
+                    <h2 className="event-info__heading">About</h2>
+                    <p className="event-info__text">{event.about_text}</p>
+                  </div>
+                )}
+
+                {/* Lineup Section (moves above About on mobile via CSS order) */}
                 {lineup.length > 0 && (
-                  <div className="event-info__section">
+                  <div className="event-info__section event-info__section--lineup">
                     <h2 className="event-info__heading">
                       Lineup{" "}
                       <span className="event-info__az">[A-Z]</span>
@@ -216,17 +224,9 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                   </div>
                 )}
 
-                {/* About Section */}
-                {event.about_text && (
-                  <div className="event-info__section">
-                    <h2 className="event-info__heading">About</h2>
-                    <p className="event-info__text">{event.about_text}</p>
-                  </div>
-                )}
-
                 {/* Details Section */}
                 {event.details_text && (
-                  <div className="event-info__section">
+                  <div className="event-info__section event-info__section--details">
                     <h2 className="event-info__heading">Details</h2>
                     <p className="event-info__text">{event.details_text}</p>
                   </div>
@@ -236,7 +236,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 {!event.about_text &&
                   !event.details_text &&
                   event.description && (
-                    <div className="event-info__section">
+                    <div className="event-info__section event-info__section--about">
                       <h2 className="event-info__heading">About</h2>
                       <p className="event-info__text">{event.description}</p>
                     </div>

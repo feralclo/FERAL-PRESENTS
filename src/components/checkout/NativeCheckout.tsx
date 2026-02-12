@@ -1448,7 +1448,7 @@ function OrderSummaryDesktop({
 
 /* ================================================================
    ORDER ITEMS — shared between mobile and desktop summaries
-   Renders each cart line with optional image, name, qty, price.
+   Ticket-style layout: tickets shown as event cards, merch as sub-items.
    ================================================================ */
 
 function OrderItems({
@@ -1466,66 +1466,95 @@ function OrderItems({
     return tt?.merch_images?.front || null;
   };
 
-  // Event cover image for non-merch items (use cover_image first, then hero_image,
-  // then media API fallback). Kept as a small thumbnail so it doesn't slow down load.
-  const eventImage = event?.cover_image || event?.hero_image
-    || (event?.id ? `/api/media/event_${event.id}_cover` : null);
+  // Format event date for display
+  const eventDate = event?.date_start
+    ? new Date(event.date_start).toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
+  const eventTime = event?.doors_time || (event?.date_start
+    ? new Date(event.date_start).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null);
+
+  // Separate ticket lines from merch lines
+  const ticketLines = cartLines.filter((l) => !l.merch_size);
+  const merchLines = cartLines.filter((l) => l.merch_size);
 
   return (
-    <div className="order-summary__items">
-      {cartLines.map((line, i) => {
-        const merchImg = getMerchImage(line);
-        const thumbnail = merchImg || eventImage;
-        return (
-          <div key={i} className="order-summary__item">
-            <div className="order-summary__item-visual">
-              {thumbnail ? (
-                <div className="order-summary__item-image">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={thumbnail} alt="" className="order-summary__item-img" />
-                </div>
-              ) : (
-                <div className="order-summary__item-placeholder">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="order-summary__item-ticket-icon"
-                  >
-                    <rect
-                      x="2"
-                      y="4"
-                      width="20"
-                      height="16"
-                      rx="2"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M2 10h20M9 4v16"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
-              )}
-              <span className="order-summary__item-badge">{line.qty}</span>
-            </div>
-            <div className="order-summary__item-info">
-              <span className="order-summary__item-name">{line.name}</span>
-              {line.merch_size && (
-                <span className="order-summary__item-variant">
-                  Size: {line.merch_size}
-                </span>
-              )}
-            </div>
-            <span className="order-summary__item-price">
-              {symbol}{(line.price * line.qty).toFixed(2)}
-            </span>
+    <div className="order-items">
+      {/* Ticket items — styled as event ticket cards */}
+      {ticketLines.map((line, i) => (
+        <div key={`ticket-${i}`} className="order-ticket">
+          <div className="order-ticket__icon-col">
+            <svg className="order-ticket__icon" viewBox="0 0 24 24" fill="none">
+              <path d="M2 9a3 3 0 013-3h14a3 3 0 013 3" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M2 9a3 3 0 003 3 3 3 0 000 6H5a3 3 0 01-3-3V9z" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M22 9a3 3 0 01-3 3 3 3 0 000 6h1a3 3 0 003-3V9z" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M5 18h14a3 3 0 003-3" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M9 6v2M9 16v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M9 10v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
+            </svg>
           </div>
-        );
-      })}
+          <div className="order-ticket__info">
+            <span className="order-ticket__name">{line.name}</span>
+            {event?.name && (
+              <span className="order-ticket__event">{event.name}</span>
+            )}
+            {(eventDate || event?.venue_name) && (
+              <span className="order-ticket__meta">
+                {eventDate}{eventDate && event?.venue_name ? " · " : ""}{event?.venue_name}
+              </span>
+            )}
+            {eventTime && (
+              <span className="order-ticket__meta">Doors {eventTime}</span>
+            )}
+          </div>
+          <div className="order-ticket__right">
+            <span className="order-ticket__qty">×{line.qty}</span>
+            <span className="order-ticket__price">{symbol}{(line.price * line.qty).toFixed(2)}</span>
+          </div>
+        </div>
+      ))}
+
+      {/* Merch items — compact sub-items with image */}
+      {merchLines.length > 0 && (
+        <div className="order-merch">
+          <span className="order-merch__label">Included merch</span>
+          {merchLines.map((line, i) => {
+            const merchImg = getMerchImage(line);
+            return (
+              <div key={`merch-${i}`} className="order-merch__item">
+                <div className="order-merch__thumb">
+                  {merchImg ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={merchImg} alt="" className="order-merch__thumb-img" />
+                  ) : (
+                    <svg className="order-merch__thumb-placeholder" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 3L4 7v2l8 4 8-4V7l-8-4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M4 9v6l8 4 8-4V9" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="order-merch__info">
+                  <span className="order-merch__name">{line.name}</span>
+                  <span className="order-merch__size">Size: {line.merch_size}</span>
+                </div>
+                <div className="order-merch__right">
+                  <span className="order-merch__qty">×{line.qty}</span>
+                  <span className="order-merch__price">{symbol}{(line.price * line.qty).toFixed(2)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

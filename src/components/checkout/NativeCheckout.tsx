@@ -1497,11 +1497,7 @@ function OrderItems({
             {/* Ticket row */}
             <div className="order-item__ticket">
               <div className="order-item__ticket-icon">
-                <svg viewBox="0 0 48 48" fill="none">
-                  <rect x="4" y="12" width="40" height="24" rx="4" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M4 20h5M39 20h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M16 12v24" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3"/>
-                </svg>
+                <img src="/images/ticketicon.svg" alt="" draggable={false} />
                 <span className="order-item__ticket-qty">{line.qty}</span>
               </div>
               <div className="order-item__info">

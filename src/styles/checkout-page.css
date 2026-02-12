@@ -393,16 +393,16 @@ html.checkout-active .noise {
   flex-shrink: 0;
 }
 
-.order-item__ticket-icon svg {
+.order-item__ticket-icon img {
   width: 100%;
   height: 100%;
-  color: #555;
+  object-fit: contain;
 }
 
 .order-item__ticket-qty {
   position: absolute;
-  top: 50%;
-  left: 62%;
+  top: 33%;
+  left: 50%;
   transform: translate(-50%, -50%);
   font-family: 'Space Mono', monospace;
   font-size: 13px;

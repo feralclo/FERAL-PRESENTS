@@ -200,28 +200,6 @@ export function TicketWidget({ eventSlug, cart, settings, onViewTee }: TicketWid
     <>
       <aside className="event-tickets" id="tickets">
         <div className="event-tickets__box">
-          {/* Mobile Compact Lineup Widget */}
-          <div className="lineup-widget">
-            <div className="lineup-widget__header">
-              <span className="lineup-widget__label">LINEUP</span>
-              <span className="lineup-widget__az">[A-Z]</span>
-            </div>
-            <div className="lineup-widget__artists">
-              <span>DARK MATTER</span>
-              <span className="lineup-widget__dot" />
-              <span>MIKA HEGGEMAN</span>
-              <span className="lineup-widget__dot" />
-              <span>NICOLAS JULIAN</span>
-              <span className="lineup-widget__dot" />
-              <span>SANDY KLETZ</span>
-              <span className="lineup-widget__dot" />
-              <span>SO JUICE</span>
-              <span className="lineup-widget__dot" />
-              <span>STEVIE</span>
-            </div>
-            <div className="lineup-widget__line" />
-          </div>
-
           <h3 className="event-tickets__heading">
             Get Tickets<span className="text-red">_</span>
           </h3>

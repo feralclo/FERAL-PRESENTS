@@ -3229,6 +3229,7 @@ body:has(.bottom-bar) .footer {
     padding: 24px 16px;
     border-left: none;
     border-right: none;
+    border-top: none;
   }
 
   .event-tickets__embed {
@@ -3259,6 +3260,12 @@ body:has(.bottom-bar) .footer {
   .event-hero__details {
     flex-direction: column;
     gap: 12px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .event-hero__detail {
+    align-items: center;
   }
 
   .event-content {
@@ -3311,5 +3318,17 @@ body:has(.bottom-bar) .footer {
 
   .event-hero__detail-value {
     font-size: 12px;
+  }
+
+  /* Location + Age: span full width and centre */
+  .event-hero__detail:nth-child(3),
+  .event-hero__detail:nth-child(4) {
+    grid-column: 1 / -1;
+    text-align: center;
+    align-items: center;
+  }
+
+  .event-hero__detail:nth-child(3) .event-hero__detail-value {
+    white-space: nowrap;
   }
 }

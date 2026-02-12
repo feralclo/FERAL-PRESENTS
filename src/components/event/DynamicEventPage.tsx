@@ -197,15 +197,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
             <div className="event-content__grid">
               {/* Left: Event Info */}
               <div className="event-info" id="eventInfo">
-                {/* About Section */}
-                {event.about_text && (
-                  <div className="event-info__section">
-                    <h2 className="event-info__heading">About</h2>
-                    <p className="event-info__text">{event.about_text}</p>
-                  </div>
-                )}
-
-                {/* Lineup Section */}
+                {/* Lineup Section (first on mobile for immediate impact) */}
                 {lineup.length > 0 && (
                   <div className="event-info__section">
                     <h2 className="event-info__heading">
@@ -221,6 +213,14 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* About Section */}
+                {event.about_text && (
+                  <div className="event-info__section">
+                    <h2 className="event-info__heading">About</h2>
+                    <p className="event-info__text">{event.about_text}</p>
                   </div>
                 )}
 

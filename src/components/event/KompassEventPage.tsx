@@ -145,19 +145,6 @@ export function KompassEventPage() {
               {/* Left: Event Info */}
               <div className="event-info" id="eventInfo">
                 <div className="event-info__section">
-                  <h2 className="event-info__heading">About</h2>
-                  <p className="event-info__text">
-                    We&apos;re gearing up for a rousing debut by{" "}
-                    <a href="https://www.instagram.com/onlynumbers_uju/" target="_blank" rel="noopener noreferrer">@onlynumbers_uju</a>
-                    {" "}&amp;{" "}
-                    <a href="https://www.instagram.com/vladimircauchemar/" target="_blank" rel="noopener noreferrer">@vladimircauchemar</a>
-                    {" "}- backed up by stronghold{" "}
-                    <a href="https://www.instagram.com/basswell/" target="_blank" rel="noopener noreferrer">@basswell</a>
-                    {" "}and the grittiest of local selectors to keep the pressure high.
-                  </p>
-                </div>
-
-                <div className="event-info__section">
                   <h2 className="event-info__heading">Lineup</h2>
                   <div className="event-info__lineup">
                     {[
@@ -175,6 +162,19 @@ export function KompassEventPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                <div className="event-info__section">
+                  <h2 className="event-info__heading">About</h2>
+                  <p className="event-info__text">
+                    We&apos;re gearing up for a rousing debut by{" "}
+                    <a href="https://www.instagram.com/onlynumbers_uju/" target="_blank" rel="noopener noreferrer">@onlynumbers_uju</a>
+                    {" "}&amp;{" "}
+                    <a href="https://www.instagram.com/vladimircauchemar/" target="_blank" rel="noopener noreferrer">@vladimircauchemar</a>
+                    {" "}- backed up by stronghold{" "}
+                    <a href="https://www.instagram.com/basswell/" target="_blank" rel="noopener noreferrer">@basswell</a>
+                    {" "}and the grittiest of local selectors to keep the pressure high.
+                  </p>
                 </div>
 
                 <div className="event-info__section">

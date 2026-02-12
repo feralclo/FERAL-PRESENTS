@@ -1079,6 +1079,24 @@ html.checkout-active .noise {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.native-checkout__subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #666;
+  letter-spacing: 0.2px;
+  margin: 0;
+}
+
+.native-checkout__subtitle-lock {
+  width: 12px;
+  height: 12px;
+  color: #555;
+  flex-shrink: 0;
+}
+
 .native-checkout__form {
   display: flex;
   flex-direction: column;
@@ -1112,7 +1130,7 @@ html.checkout-active .noise {
   color: #fff;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  padding: 13px 16px;
+  padding: 15px 16px;
   outline: none;
   transition: border-color 0.15s ease;
 }
@@ -1599,12 +1617,6 @@ html.checkout-active .noise {
 
   .order-summary-mobile__content {
     padding: 4px 16px 16px;
-  }
-
-  /* Force Stripe PaymentElement to stack ALL fields vertically on mobile:
-     card number, expiry, and CVC each on their own line. */
-  .stripe-payment-element-wrapper {
-    max-width: 290px;
   }
 
   .order-confirmation {

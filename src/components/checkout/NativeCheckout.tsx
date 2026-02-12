@@ -250,7 +250,7 @@ function StripeCheckoutPage({
         ".Input": {
           backgroundColor: "rgba(255, 255, 255, 0.04)",
           border: "1px solid rgba(255, 255, 255, 0.1)",
-          padding: "13px 16px",
+          padding: "15px 16px",
           transition: "border-color 0.15s ease",
           fontSize: "14px",
           color: "#ffffff",
@@ -274,23 +274,27 @@ function StripeCheckoutPage({
         },
         ".Tab": {
           backgroundColor: "rgba(255, 255, 255, 0.02)",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
           color: "#aaaaaa",
-          fontFamily: "'Space Mono', monospace",
-          fontSize: "11px",
-          letterSpacing: "1px",
+          fontFamily: "'Inter', sans-serif",
+          fontSize: "13px",
+          letterSpacing: "0.2px",
+          padding: "14px 16px",
         },
         ".Tab:hover": {
           backgroundColor: "rgba(255, 255, 255, 0.04)",
           color: "#ffffff",
         },
         ".Tab--selected": {
-          backgroundColor: "rgba(255, 0, 51, 0.08)",
-          borderColor: "rgba(255, 0, 51, 0.3)",
+          backgroundColor: "rgba(255, 255, 255, 0.04)",
+          borderColor: "rgba(255, 255, 255, 0.15)",
           color: "#ffffff",
         },
+        ".TabIcon": {
+          fill: "#888888",
+        },
         ".TabIcon--selected": {
-          fill: "#ff0033",
+          fill: "#ffffff",
         },
         ".Error": {
           fontFamily: "'Space Mono', monospace",
@@ -702,11 +706,24 @@ function SinglePageCheckoutForm({
           {/* Payment */}
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Payment</h2>
+            <p className="native-checkout__subtitle">
+              <svg className="native-checkout__subtitle-lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
+                <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              All transactions are secure and encrypted.
+            </p>
             <div className="stripe-payment-element-wrapper">
               <PaymentElement
                 onReady={() => setPaymentReady(true)}
                 options={{
-                  layout: "tabs",
+                  layout: {
+                    type: "accordion",
+                    defaultCollapsed: false,
+                    radios: true,
+                    spacedAccordionItems: true,
+                  },
+                  paymentMethodOrder: ["card", "klarna"],
                   business: { name: "FERAL PRESENTS" },
                   wallets: {
                     applePay: "never",

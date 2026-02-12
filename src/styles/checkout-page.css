@@ -340,18 +340,6 @@ html.checkout-active .noise {
 }
 
 .order-summary-mobile__content {
-  display: grid;
-  grid-template-rows: 0fr;
-  overflow: hidden;
-  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.order-summary-mobile__content--expanded {
-  grid-template-rows: 1fr;
-}
-
-.order-summary-mobile__content-inner {
-  min-height: 0;
   padding: 4px 24px 20px;
 }
 
@@ -1130,7 +1118,7 @@ html.checkout-active .noise {
 }
 
 .native-checkout__input::placeholder {
-  color: #444;
+  color: #555;
 }
 
 .native-checkout__input:focus {
@@ -1609,8 +1597,14 @@ html.checkout-active .noise {
     padding: 14px 16px;
   }
 
-  .order-summary-mobile__content-inner {
-    padding: 0 16px 16px;
+  .order-summary-mobile__content {
+    padding: 4px 16px 16px;
+  }
+
+  /* Force Stripe PaymentElement to stack ALL fields vertically on mobile:
+     card number, expiry, and CVC each on their own line. */
+  .stripe-payment-element-wrapper {
+    max-width: 290px;
   }
 
   .order-confirmation {

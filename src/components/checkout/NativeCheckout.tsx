@@ -238,7 +238,7 @@ function StripeCheckoutPage({
         colorBackground: "#1a1a1a",
         colorText: "#ffffff",
         colorDanger: "#ff0033",
-        colorTextPlaceholder: "#555555",
+        colorTextPlaceholder: "#666666",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         fontSizeBase: "14px",
         borderRadius: "0px",
@@ -264,12 +264,13 @@ function StripeCheckoutPage({
           color: "#ffffff",
         },
         ".Label": {
-          fontFamily: "'Space Mono', monospace",
-          fontSize: "9px",
-          letterSpacing: "2px",
-          textTransform: "uppercase" as const,
-          color: "#666666",
-          fontWeight: "400",
+          color: "transparent",
+          fontSize: "0px",
+          lineHeight: "0",
+          margin: "0",
+          padding: "0",
+          height: "0",
+          overflow: "hidden",
         },
         ".Tab": {
           backgroundColor: "rgba(255, 255, 255, 0.02)",
@@ -373,7 +374,6 @@ function SinglePageCheckoutForm({
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [paymentReady, setPaymentReady] = useState(false);
@@ -544,7 +544,6 @@ function SinglePageCheckoutForm({
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               email: email.trim().toLowerCase(),
-              phone: phone.trim() || undefined,
             },
           }),
         });
@@ -605,7 +604,7 @@ function SinglePageCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, email, firstName, lastName, phone, cartLines, event, slug, subtotal, onComplete]
+    [stripe, elements, email, firstName, lastName, cartLines, event, slug, subtotal, onComplete]
   );
 
   return (
@@ -663,71 +662,39 @@ function SinglePageCheckoutForm({
           {/* Contact */}
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Contact</h2>
-            <div className="native-checkout__field">
-              <label className="native-checkout__label" htmlFor="checkout-email">
-                Email *
-              </label>
-              <input
-                id="checkout-email"
-                type="email"
-                className="native-checkout__input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                autoComplete="email"
-                autoFocus
-              />
-            </div>
+            <input
+              type="email"
+              className="native-checkout__input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              required
+              autoComplete="email"
+              autoFocus
+            />
           </div>
 
           {/* Customer Details */}
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Details</h2>
             <div className="native-checkout__row">
-              <div className="native-checkout__field">
-                <label className="native-checkout__label" htmlFor="checkout-fname">
-                  First Name *
-                </label>
-                <input
-                  id="checkout-fname"
-                  type="text"
-                  className="native-checkout__input"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="First name"
-                  required
-                  autoComplete="given-name"
-                />
-              </div>
-              <div className="native-checkout__field">
-                <label className="native-checkout__label" htmlFor="checkout-lname">
-                  Last Name *
-                </label>
-                <input
-                  id="checkout-lname"
-                  type="text"
-                  className="native-checkout__input"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Last name"
-                  required
-                  autoComplete="family-name"
-                />
-              </div>
-            </div>
-            <div className="native-checkout__field">
-              <label className="native-checkout__label" htmlFor="checkout-phone">
-                Phone (optional)
-              </label>
               <input
-                id="checkout-phone"
-                type="tel"
+                type="text"
                 className="native-checkout__input"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+44 7700 000000"
-                autoComplete="tel"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First name"
+                required
+                autoComplete="given-name"
+              />
+              <input
+                type="text"
+                className="native-checkout__input"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Last name"
+                required
+                autoComplete="family-name"
               />
             </div>
           </div>
@@ -820,7 +787,6 @@ function TestModeCheckout({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -859,7 +825,6 @@ function TestModeCheckout({
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               email: email.trim().toLowerCase(),
-              phone: phone.trim() || undefined,
             },
           }),
         });
@@ -877,7 +842,7 @@ function TestModeCheckout({
         setSubmitting(false);
       }
     },
-    [firstName, lastName, email, phone, cartLines, event.id, onComplete]
+    [firstName, lastName, email, cartLines, event.id, onComplete]
   );
 
   return (
@@ -899,56 +864,34 @@ function TestModeCheckout({
               <form onSubmit={handleSubmit} className="native-checkout__form">
                 <div className="native-checkout__section">
                   <h2 className="native-checkout__heading">Your Details</h2>
-                  <div className="native-checkout__field">
-                    <label className="native-checkout__label">Email *</label>
-                    <input
-                      type="email"
-                      className="native-checkout__input"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="your@email.com"
-                      required
-                      autoComplete="email"
-                      autoFocus
-                    />
-                  </div>
-
+                  <input
+                    type="email"
+                    className="native-checkout__input"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email"
+                    required
+                    autoComplete="email"
+                    autoFocus
+                  />
                   <div className="native-checkout__row">
-                    <div className="native-checkout__field">
-                      <label className="native-checkout__label">First Name *</label>
-                      <input
-                        type="text"
-                        className="native-checkout__input"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="First name"
-                        required
-                        autoComplete="given-name"
-                      />
-                    </div>
-                    <div className="native-checkout__field">
-                      <label className="native-checkout__label">Last Name *</label>
-                      <input
-                        type="text"
-                        className="native-checkout__input"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Last name"
-                        required
-                        autoComplete="family-name"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="native-checkout__field">
-                    <label className="native-checkout__label">Phone (optional)</label>
                     <input
-                      type="tel"
+                      type="text"
                       className="native-checkout__input"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+44 7700 000000"
-                      autoComplete="tel"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="First name"
+                      required
+                      autoComplete="given-name"
+                    />
+                    <input
+                      type="text"
+                      className="native-checkout__input"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Last name"
+                      required
+                      autoComplete="family-name"
                     />
                   </div>
                 </div>
@@ -1114,10 +1057,8 @@ function OrderSummaryMobile({
         </span>
       </button>
 
-      <div
-        className={`order-summary-mobile__content${expanded ? " order-summary-mobile__content--expanded" : ""}`}
-      >
-        <div className="order-summary-mobile__content-inner">
+      {expanded && (
+        <div className="order-summary-mobile__content">
           <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
           <div className="order-summary__divider" />
           <div className="order-summary__totals">
@@ -1134,7 +1075,7 @@ function OrderSummaryMobile({
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

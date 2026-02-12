@@ -385,11 +385,11 @@ html.checkout-active .noise {
   gap: 14px;
 }
 
-/* Ticket icon — large, with qty embedded inside */
+/* Ticket icon — large, anchored top, with qty embedded inside */
 .order-item__ticket-icon {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
 }
 
@@ -397,15 +397,16 @@ html.checkout-active .noise {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center top;
 }
 
 .order-item__ticket-qty {
   position: absolute;
   top: 33%;
-  left: 50%;
+  left: 53%;
   transform: translate(-50%, -50%);
   font-family: 'Space Mono', monospace;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
   line-height: 1;
@@ -464,7 +465,7 @@ html.checkout-active .noise {
   align-items: center;
   gap: 12px;
   margin-top: 10px;
-  padding-left: 58px;
+  padding-left: 70px;
 }
 
 .order-item__merch-thumb {

@@ -382,16 +382,16 @@ html.checkout-active .noise {
 .order-item__ticket {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 10px;
 }
 
-/* Ticket icon — large, anchored top, with qty embedded inside */
+/* Ticket icon — anchored top, with qty embedded inside */
 .order-item__ticket-icon {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
-  margin-left: 10px;
+  margin-left: 4px;
 }
 
 .order-item__ticket-icon img {
@@ -399,6 +399,8 @@ html.checkout-active .noise {
   height: 100%;
   object-fit: contain;
   object-position: center top;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45))
+          drop-shadow(0 0 1px rgba(255, 255, 255, 0.04));
 }
 
 .order-item__ticket-qty {
@@ -466,7 +468,7 @@ html.checkout-active .noise {
   align-items: center;
   gap: 12px;
   margin-top: 10px;
-  padding-left: 70px;
+  padding-left: 62px; /* icon(48) + margin-left(4) + gap(10) = 62 — aligns with text */
 }
 
 .order-item__merch-thumb {
@@ -528,10 +530,10 @@ html.checkout-active .noise {
   color: #666;
 }
 
-/* Mobile: reduce merch indent */
+/* Mobile: align merch under ticket text, not flush left */
 @media (max-width: 600px) {
   .order-item__merch {
-    padding-left: 0;
+    padding-left: 62px;
   }
 }
 

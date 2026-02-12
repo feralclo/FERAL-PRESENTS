@@ -91,18 +91,22 @@ function LoginForm() {
           style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }}
         />
         <h1 className="admin-login__title">Admin Access</h1>
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} action="/admin/login/" method="POST">
           <input
             type="email"
+            id="email"
+            name="email"
             placeholder="Email"
             className="admin-login__input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
+            autoComplete="username email"
             required
           />
           <input
             type="password"
+            id="password"
+            name="password"
             placeholder="Password"
             className="admin-login__input"
             value={password}

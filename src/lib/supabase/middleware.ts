@@ -3,6 +3,18 @@ import { type NextRequest, NextResponse } from "next/server";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 
 /**
+ * Cookie options for auth session cookies.
+ * Explicit maxAge ensures sessions persist across Vercel deployments.
+ * 30 days = 2592000 seconds.
+ */
+const COOKIE_OPTIONS = {
+  path: "/",
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  maxAge: 60 * 60 * 24 * 30, // 30 days
+};
+
+/**
  * Create a Supabase client for Next.js middleware.
  *
  * Middleware can't use next/headers cookies() — it must read/write cookies
@@ -29,9 +41,9 @@ export function createMiddlewareClient(request: NextRequest) {
         );
         // Re-create response with updated request
         response = NextResponse.next({ request });
-        // Set cookies on the response (for the browser)
+        // Set cookies on the response (for the browser) with explicit persistence options
         cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options)
+          response.cookies.set(name, value, { ...COOKIE_OPTIONS, ...options })
         );
       },
     },

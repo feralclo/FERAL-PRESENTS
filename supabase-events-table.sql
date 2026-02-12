@@ -34,10 +34,10 @@ CREATE TABLE IF NOT EXISTS events (
 
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select" ON events FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow public insert" ON events FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow public update" ON events FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public delete" ON events FOR DELETE TO anon USING (true);
+-- Public can read events (event listings)
+CREATE POLICY "anon_select" ON events FOR SELECT TO anon USING (true);
+-- Authenticated admin gets full access
+CREATE POLICY "auth_all" ON events FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_events_org_id ON events(org_id);
 CREATE INDEX IF NOT EXISTS idx_events_slug ON events(org_id, slug);

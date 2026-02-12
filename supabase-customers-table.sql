@@ -20,9 +20,12 @@ CREATE TABLE IF NOT EXISTS customers (
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select" ON customers FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow public insert" ON customers FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow public update" ON customers FOR UPDATE TO anon USING (true) WITH CHECK (true);
+-- Checkout needs: check if exists (SELECT), create (INSERT), update stats (UPDATE)
+CREATE POLICY "anon_select" ON customers FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_insert" ON customers FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_update" ON customers FOR UPDATE TO anon USING (true) WITH CHECK (true);
+-- Authenticated admin gets full access
+CREATE POLICY "auth_all" ON customers FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_customers_org ON customers(org_id);
 CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(org_id, email);

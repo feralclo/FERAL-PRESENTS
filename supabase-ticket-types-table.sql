@@ -26,10 +26,11 @@ CREATE TABLE IF NOT EXISTS ticket_types (
 
 ALTER TABLE ticket_types ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select" ON ticket_types FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow public insert" ON ticket_types FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow public update" ON ticket_types FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public delete" ON ticket_types FOR DELETE TO anon USING (true);
+-- Public can read ticket types (event pages show pricing) and update sold count (checkout)
+CREATE POLICY "anon_select" ON ticket_types FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_update" ON ticket_types FOR UPDATE TO anon USING (true) WITH CHECK (true);
+-- Authenticated admin gets full access
+CREATE POLICY "auth_all" ON ticket_types FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_ticket_types_event ON ticket_types(event_id);
 CREATE INDEX IF NOT EXISTS idx_ticket_types_org ON ticket_types(org_id);

@@ -19,10 +19,8 @@ CREATE TABLE IF NOT EXISTS guest_list (
 
 ALTER TABLE guest_list ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select" ON guest_list FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow public insert" ON guest_list FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow public update" ON guest_list FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow public delete" ON guest_list FOR DELETE TO anon USING (true);
+-- Admin only — no public access to guest list
+CREATE POLICY "auth_all" ON guest_list FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_guest_list_event ON guest_list(event_id);
 CREATE INDEX IF NOT EXISTS idx_guest_list_org ON guest_list(org_id);

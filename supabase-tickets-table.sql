@@ -26,9 +26,10 @@ CREATE TABLE IF NOT EXISTS tickets (
 
 ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select" ON tickets FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow public insert" ON tickets FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow public update" ON tickets FOR UPDATE TO anon USING (true) WITH CHECK (true);
+-- Checkout can only create tickets
+CREATE POLICY "anon_insert" ON tickets FOR INSERT TO anon WITH CHECK (true);
+-- Authenticated admin gets full access (read, scan, cancel)
+CREATE POLICY "auth_all" ON tickets FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_tickets_code ON tickets(org_id, ticket_code);
 CREATE INDEX IF NOT EXISTS idx_tickets_order ON tickets(order_id);

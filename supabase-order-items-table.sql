@@ -14,8 +14,11 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select" ON order_items FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow public insert" ON order_items FOR INSERT TO anon WITH CHECK (true);
+-- Checkout creates order items
+CREATE POLICY "anon_select" ON order_items FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_insert" ON order_items FOR INSERT TO anon WITH CHECK (true);
+-- Authenticated admin gets full access
+CREATE POLICY "auth_all" ON order_items FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_ticket_type ON order_items(ticket_type_id);

@@ -10,29 +10,16 @@ CREATE TABLE IF NOT EXISTS site_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable Row Level Security (RLS) but allow public read/write
+-- Enable Row Level Security (RLS)
 ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 
--- Allow anonymous users to read settings (for event pages)
-CREATE POLICY "Allow public select" ON site_settings
-  FOR SELECT TO anon
-  USING (true);
+-- Public can read settings (event pages need this)
+CREATE POLICY "anon_select" ON site_settings
+  FOR SELECT TO anon USING (true);
 
--- Allow anonymous users to insert settings (for admin panel)
-CREATE POLICY "Allow public insert" ON site_settings
-  FOR INSERT TO anon
-  WITH CHECK (true);
-
--- Allow anonymous users to update settings (for admin panel)
-CREATE POLICY "Allow public update" ON site_settings
-  FOR UPDATE TO anon
-  USING (true)
-  WITH CHECK (true);
-
--- Allow anonymous users to delete settings (for reset functionality)
-CREATE POLICY "Allow public delete" ON site_settings
-  FOR DELETE TO anon
-  USING (true);
+-- Authenticated admin gets full access
+CREATE POLICY "auth_all" ON site_settings
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- Create index on updated_at for sorting
 CREATE INDEX IF NOT EXISTS idx_site_settings_updated ON site_settings(updated_at);

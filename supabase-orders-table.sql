@@ -26,9 +26,11 @@ CREATE TABLE IF NOT EXISTS orders (
 
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select" ON orders FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow public insert" ON orders FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow public update" ON orders FOR UPDATE TO anon USING (true) WITH CHECK (true);
+-- Checkout needs SELECT (dedup check) and INSERT (create order)
+CREATE POLICY "anon_select" ON orders FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_insert" ON orders FOR INSERT TO anon WITH CHECK (true);
+-- Authenticated admin gets full access (including UPDATE for refunds)
+CREATE POLICY "auth_all" ON orders FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_orders_org ON orders(org_id);
 CREATE INDEX IF NOT EXISTS idx_orders_event ON orders(event_id);

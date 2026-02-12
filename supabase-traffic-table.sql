@@ -19,23 +19,16 @@ CREATE TABLE IF NOT EXISTS traffic_events (
   product_qty INTEGER        -- for add_to_cart events
 );
 
--- Enable Row Level Security (RLS) but allow public insert and select
+-- Enable Row Level Security (RLS)
 ALTER TABLE traffic_events ENABLE ROW LEVEL SECURITY;
 
--- Allow anonymous users to insert events (for tracking)
-CREATE POLICY "Allow public insert" ON traffic_events
-  FOR INSERT TO anon
-  WITH CHECK (true);
+-- Anonymous tracking — insert only
+CREATE POLICY "anon_insert" ON traffic_events
+  FOR INSERT TO anon WITH CHECK (true);
 
--- Allow anonymous users to read events (for admin dashboard)
-CREATE POLICY "Allow public select" ON traffic_events
-  FOR SELECT TO anon
-  USING (true);
-
--- Allow anonymous users to delete events (for reset functionality)
-CREATE POLICY "Allow public delete" ON traffic_events
-  FOR DELETE TO anon
-  USING (true);
+-- Authenticated admin gets full access (read dashboard, reset data)
+CREATE POLICY "auth_all" ON traffic_events
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_traffic_events_type ON traffic_events(event_type);

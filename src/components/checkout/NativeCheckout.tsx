@@ -744,6 +744,13 @@ function SinglePageCheckoutForm({
               autoComplete="email"
               autoFocus
             />
+            <p className="native-checkout__email-hint">
+              <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Your tickets will be sent to this email
+            </p>
           </div>
 
           {/* Customer Details */}
@@ -1197,6 +1204,13 @@ function TestModeCheckout({
                     autoComplete="email"
                     autoFocus
                   />
+                  <p className="native-checkout__email-hint">
+                    <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                      <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Your tickets will be sent to this email
+                  </p>
                   <div className="native-checkout__row">
                     <input
                       type="text"

@@ -391,6 +391,7 @@ html.checkout-active .noise {
   width: 56px;
   height: 56px;
   flex-shrink: 0;
+  margin-left: 10px;
 }
 
 .order-item__ticket-icon img {
@@ -403,10 +404,10 @@ html.checkout-active .noise {
 .order-item__ticket-qty {
   position: absolute;
   top: 33%;
-  left: 53%;
+  left: 50%;
   transform: translate(-50%, -50%);
   font-family: 'Space Mono', monospace;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #fff;
   line-height: 1;

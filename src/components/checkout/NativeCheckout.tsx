@@ -50,6 +50,12 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
+  // Suppress scanlines/noise on checkout pages
+  useEffect(() => {
+    document.documentElement.classList.add("checkout-active");
+    return () => document.documentElement.classList.remove("checkout-active");
+  }, []);
+
   // Parse cart from URL
   const cartLines: CartLine[] = useMemo(() => {
     if (!cartParam) return [];
@@ -105,7 +111,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
   // Show loading for express redirect
   if (piParam && !completedOrder) {
     return (
-      <>
+      <div className="checkout-page">
         <CheckoutHeader slug={slug} />
         <div className="stripe-payment-loading" style={{ minHeight: "60vh" }}>
           <div className="stripe-payment-loading__spinner" />
@@ -113,7 +119,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
             Confirming your order...
           </span>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -143,7 +149,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
     );
   }
 
-  // Stripe checkout — single-page, optimized
+  // Stripe checkout
   return (
     <StripeCheckoutPage
       slug={slug}
@@ -159,8 +165,8 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
 
 /* ================================================================
    STRIPE CHECKOUT PAGE
-   Single-page checkout with Express Checkout at top,
-   card payment form below. Maximum conversion.
+   Two-column on desktop (form left, order summary right).
+   Collapsible order summary on mobile.
    ================================================================ */
 
 function StripeCheckoutPage({
@@ -207,16 +213,15 @@ function StripeCheckoutPage({
 
   if (!stripeReady || !stripePromise) {
     return (
-      <>
+      <div className="checkout-page">
         <CheckoutHeader slug={slug} />
-        <OrderSummaryStrip cartLines={cartLines} symbol={symbol} event={event} />
-        <div className="stripe-payment-loading" style={{ minHeight: "40vh" }}>
+        <div className="stripe-payment-loading" style={{ minHeight: "60vh" }}>
           <div className="stripe-payment-loading__spinner" />
           <span className="stripe-payment-loading__text">
-            Loading secure checkout...
+            Securing checkout...
           </span>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -296,24 +301,45 @@ function StripeCheckoutPage({
   };
 
   return (
-    <>
+    <div className="checkout-page">
       <CheckoutHeader slug={slug} />
-      <OrderSummaryStrip cartLines={cartLines} symbol={symbol} event={event} />
 
-      <Elements stripe={stripePromise} options={elementsOptions}>
-        <SinglePageCheckoutForm
-          slug={slug}
-          event={event}
-          cartLines={cartLines}
-          subtotal={subtotal}
-          totalQty={totalQty}
-          symbol={symbol}
-          onComplete={onComplete}
-        />
-      </Elements>
+      {/* Mobile: collapsible order summary */}
+      <OrderSummaryMobile
+        cartLines={cartLines}
+        symbol={symbol}
+        subtotal={subtotal}
+        event={event}
+      />
+
+      <div className="checkout-layout">
+        <div className="checkout-layout__main">
+          <Elements stripe={stripePromise} options={elementsOptions}>
+            <SinglePageCheckoutForm
+              slug={slug}
+              event={event}
+              cartLines={cartLines}
+              subtotal={subtotal}
+              totalQty={totalQty}
+              symbol={symbol}
+              onComplete={onComplete}
+            />
+          </Elements>
+        </div>
+
+        {/* Desktop: sidebar order summary */}
+        <aside className="checkout-layout__sidebar">
+          <OrderSummaryDesktop
+            cartLines={cartLines}
+            symbol={symbol}
+            subtotal={subtotal}
+            event={event}
+          />
+        </aside>
+      </div>
 
       <CheckoutFooter />
-    </>
+    </div>
   );
 }
 
@@ -723,28 +749,13 @@ function SinglePageCheckoutForm({
           {/* Error */}
           {error && <div className="native-checkout__error">{error}</div>}
 
-          {/* Order Total */}
-          <div className="native-checkout__total">
-            <div className="native-checkout__total-row">
-              <span>
-                {totalQty} ticket{totalQty !== 1 ? "s" : ""}
-              </span>
-              <span className="native-checkout__total-price">
-                {symbol}
-                {subtotal.toFixed(2)}
-              </span>
-            </div>
-          </div>
-
           {/* Pay Button */}
           <button
             type="submit"
             className="native-checkout__submit"
             disabled={processing || !paymentReady || !stripe}
           >
-            {processing
-              ? "Processing..."
-              : `PAY ${symbol}${subtotal.toFixed(2)}`}
+            {processing ? "Processing..." : "PAY NOW"}
           </button>
 
           {/* Trust Signal */}
@@ -865,100 +876,109 @@ function TestModeCheckout({
   );
 
   return (
-    <>
+    <div className="checkout-page">
       <CheckoutHeader slug={slug} />
-      <OrderSummaryStrip cartLines={cartLines} symbol={symbol} event={event} />
 
-      <div className="native-checkout">
-        <div className="native-checkout__inner">
-          <div className="native-checkout__section">
-            <h2 className="native-checkout__heading">Your Details</h2>
-            <form onSubmit={handleSubmit} className="native-checkout__form">
-              <div className="native-checkout__field">
-                <label className="native-checkout__label">Email *</label>
-                <input
-                  type="email"
-                  className="native-checkout__input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  autoComplete="email"
-                  autoFocus
-                />
-              </div>
+      {/* Mobile: collapsible order summary */}
+      <OrderSummaryMobile
+        cartLines={cartLines}
+        symbol={symbol}
+        subtotal={subtotal}
+        event={event}
+      />
 
-              <div className="native-checkout__row">
-                <div className="native-checkout__field">
-                  <label className="native-checkout__label">First Name *</label>
-                  <input
-                    type="text"
-                    className="native-checkout__input"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="First name"
-                    required
-                    autoComplete="given-name"
-                  />
+      <div className="checkout-layout">
+        <div className="checkout-layout__main">
+          <div className="native-checkout">
+            <div className="native-checkout__inner">
+              <form onSubmit={handleSubmit} className="native-checkout__form">
+                <div className="native-checkout__section">
+                  <h2 className="native-checkout__heading">Your Details</h2>
+                  <div className="native-checkout__field">
+                    <label className="native-checkout__label">Email *</label>
+                    <input
+                      type="email"
+                      className="native-checkout__input"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      required
+                      autoComplete="email"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="native-checkout__row">
+                    <div className="native-checkout__field">
+                      <label className="native-checkout__label">First Name *</label>
+                      <input
+                        type="text"
+                        className="native-checkout__input"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="First name"
+                        required
+                        autoComplete="given-name"
+                      />
+                    </div>
+                    <div className="native-checkout__field">
+                      <label className="native-checkout__label">Last Name *</label>
+                      <input
+                        type="text"
+                        className="native-checkout__input"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Last name"
+                        required
+                        autoComplete="family-name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="native-checkout__field">
+                    <label className="native-checkout__label">Phone (optional)</label>
+                    <input
+                      type="tel"
+                      className="native-checkout__input"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+44 7700 000000"
+                      autoComplete="tel"
+                    />
+                  </div>
                 </div>
-                <div className="native-checkout__field">
-                  <label className="native-checkout__label">Last Name *</label>
-                  <input
-                    type="text"
-                    className="native-checkout__input"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Last name"
-                    required
-                    autoComplete="family-name"
-                  />
+
+                {error && <div className="native-checkout__error">{error}</div>}
+
+                <button
+                  type="submit"
+                  className="native-checkout__submit"
+                  disabled={submitting}
+                >
+                  {submitting ? "Processing..." : "PAY NOW"}
+                </button>
+
+                <div className="native-checkout__test-badge">
+                  TEST MODE — No real payment will be processed
                 </div>
-              </div>
-
-              <div className="native-checkout__field">
-                <label className="native-checkout__label">Phone (optional)</label>
-                <input
-                  type="tel"
-                  className="native-checkout__input"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+44 7700 000000"
-                  autoComplete="tel"
-                />
-              </div>
-
-              {error && <div className="native-checkout__error">{error}</div>}
-
-              <div className="native-checkout__total">
-                <div className="native-checkout__total-row">
-                  <span>
-                    {totalQty} ticket{totalQty !== 1 ? "s" : ""}
-                  </span>
-                  <span className="native-checkout__total-price">
-                    {symbol}
-                    {subtotal.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="native-checkout__submit"
-                disabled={submitting}
-              >
-                {submitting ? "Processing..." : "PAY NOW"}
-              </button>
-
-              <div className="native-checkout__test-badge">
-                TEST MODE — No real payment will be processed
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
+
+        {/* Desktop: sidebar order summary */}
+        <aside className="checkout-layout__sidebar">
+          <OrderSummaryDesktop
+            cartLines={cartLines}
+            symbol={symbol}
+            subtotal={subtotal}
+            event={event}
+          />
+        </aside>
       </div>
 
       <CheckoutFooter />
-    </>
+    </div>
   );
 }
 
@@ -1004,13 +1024,159 @@ function CheckoutHeader({ slug }: { slug: string }) {
             strokeLinecap="round"
           />
         </svg>
-        <span>Secure Checkout</span>
       </div>
     </div>
   );
 }
 
-function OrderSummaryStrip({
+/* ================================================================
+   ORDER SUMMARY — MOBILE (collapsible, Shopify-style)
+   Shows "Order summary [chevron] .... £total" toggle bar.
+   Expands to show items + subtotal + total.
+   ================================================================ */
+
+function OrderSummaryMobile({
+  cartLines,
+  symbol,
+  subtotal,
+  event,
+}: {
+  cartLines: CartLine[];
+  symbol: string;
+  subtotal: number;
+  event?: Event & { ticket_types: TicketTypeRow[] };
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="order-summary-mobile">
+      <button
+        className="order-summary-mobile__toggle"
+        onClick={() => setExpanded(!expanded)}
+        type="button"
+        aria-expanded={expanded}
+      >
+        <div className="order-summary-mobile__toggle-left">
+          <svg
+            className="order-summary-mobile__cart-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <line
+              x1="3"
+              y1="6"
+              x2="21"
+              y2="6"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M16 10a4 4 0 01-8 0"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="order-summary-mobile__toggle-label">
+            {expanded ? "Hide" : "Show"} order summary
+          </span>
+          <svg
+            className={`order-summary-mobile__chevron${expanded ? " order-summary-mobile__chevron--up" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6 9l6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <span className="order-summary-mobile__toggle-total">
+          {symbol}{subtotal.toFixed(2)}
+        </span>
+      </button>
+
+      <div
+        className={`order-summary-mobile__content${expanded ? " order-summary-mobile__content--expanded" : ""}`}
+      >
+        <div className="order-summary-mobile__content-inner">
+          <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+          <div className="order-summary__divider" />
+          <div className="order-summary__totals">
+            <div className="order-summary__row">
+              <span>Subtotal</span>
+              <span>{symbol}{subtotal.toFixed(2)}</span>
+            </div>
+            <div className="order-summary__row order-summary__row--total">
+              <span>Total</span>
+              <span>
+                <span className="order-summary__currency">{event?.currency || "GBP"}</span>
+                {" "}{symbol}{subtotal.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   ORDER SUMMARY — DESKTOP (sticky sidebar)
+   Always visible, shows items + subtotal + total.
+   ================================================================ */
+
+function OrderSummaryDesktop({
+  cartLines,
+  symbol,
+  subtotal,
+  event,
+}: {
+  cartLines: CartLine[];
+  symbol: string;
+  subtotal: number;
+  event?: Event & { ticket_types: TicketTypeRow[] };
+}) {
+  return (
+    <div className="order-summary-desktop">
+      <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+      <div className="order-summary__divider" />
+      <div className="order-summary__totals">
+        <div className="order-summary__row">
+          <span>Subtotal</span>
+          <span>{symbol}{subtotal.toFixed(2)}</span>
+        </div>
+        <div className="order-summary__row order-summary__row--total">
+          <span>Total</span>
+          <span>
+            <span className="order-summary__currency">{event?.currency || "GBP"}</span>
+            {" "}{symbol}{subtotal.toFixed(2)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   ORDER ITEMS — shared between mobile and desktop summaries
+   Renders each cart line with optional image, name, qty, price.
+   ================================================================ */
+
+function OrderItems({
   cartLines,
   symbol,
   event,
@@ -1019,7 +1185,6 @@ function OrderSummaryStrip({
   symbol: string;
   event?: Event & { ticket_types: TicketTypeRow[] };
 }) {
-  // Find merch image for a cart line
   const getMerchImage = (line: CartLine): string | null => {
     if (!line.merch_size || !event?.ticket_types) return null;
     const tt = event.ticket_types.find((t) => t.id === line.ticket_type_id);
@@ -1027,40 +1192,59 @@ function OrderSummaryStrip({
   };
 
   return (
-    <div className="checkout-summary">
-      <div className="checkout-summary__label">Order Summary</div>
-      <div className="checkout-summary__items">
-        {cartLines.map((line, i) => {
-          const merchImg = getMerchImage(line);
-          return (
-            <div key={i} className={`checkout-summary__item${line.merch_size ? " checkout-summary__item--merch" : ""}`}>
-              {line.merch_size && merchImg && (
-                <div className="checkout-summary__thumb">
+    <div className="order-summary__items">
+      {cartLines.map((line, i) => {
+        const merchImg = getMerchImage(line);
+        return (
+          <div key={i} className="order-summary__item">
+            <div className="order-summary__item-visual">
+              {merchImg ? (
+                <div className="order-summary__item-image">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={merchImg}
-                    alt="Merch"
-                    className="checkout-summary__thumb-img"
-                  />
+                  <img src={merchImg} alt="" className="order-summary__item-img" />
+                </div>
+              ) : (
+                <div className="order-summary__item-placeholder">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="order-summary__item-ticket-icon"
+                  >
+                    <rect
+                      x="2"
+                      y="4"
+                      width="20"
+                      height="16"
+                      rx="2"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                    <path
+                      d="M2 10h20M9 4v16"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </div>
               )}
-              <div className="checkout-summary__item-details">
-                <div className="checkout-summary__item-row">
-                  <span className="checkout-summary__qty">{line.qty}x</span>
-                  <span className="checkout-summary__name">{line.name}</span>
-                  <span className="checkout-summary__price">
-                    {symbol}
-                    {(line.price * line.qty).toFixed(2)}
-                  </span>
-                </div>
-                {line.merch_size && (
-                  <span className="checkout-summary__size">Size: {line.merch_size}</span>
-                )}
-              </div>
+              <span className="order-summary__item-badge">{line.qty}</span>
             </div>
-          );
-        })}
-      </div>
+            <div className="order-summary__item-info">
+              <span className="order-summary__item-name">{line.name}</span>
+              {line.merch_size && (
+                <span className="order-summary__item-variant">
+                  Size: {line.merch_size}
+                </span>
+              )}
+            </div>
+            <span className="order-summary__item-price">
+              {symbol}{(line.price * line.qty).toFixed(2)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

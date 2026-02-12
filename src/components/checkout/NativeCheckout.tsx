@@ -44,12 +44,44 @@ interface CartLine {
 interface CardFieldsHandle {
   confirmPayment: (
     clientSecret: string,
-    billingDetails: { name: string; email: string }
+    billingDetails: {
+      name: string;
+      email: string;
+      address?: { country: string };
+    }
   ) => Promise<{
     error?: { message?: string };
     paymentIntent?: { id: string; status: string };
   }>;
 }
+
+/* ================================================================
+   COUNTRIES LIST — for billing country dropdown
+   ================================================================ */
+
+const COUNTRIES = [
+  { code: "GB", name: "United Kingdom" },
+  { code: "US", name: "United States" },
+  { code: "IE", name: "Ireland" },
+  { code: "DE", name: "Germany" },
+  { code: "FR", name: "France" },
+  { code: "NL", name: "Netherlands" },
+  { code: "BE", name: "Belgium" },
+  { code: "ES", name: "Spain" },
+  { code: "IT", name: "Italy" },
+  { code: "PT", name: "Portugal" },
+  { code: "AT", name: "Austria" },
+  { code: "CH", name: "Switzerland" },
+  { code: "SE", name: "Sweden" },
+  { code: "NO", name: "Norway" },
+  { code: "DK", name: "Denmark" },
+  { code: "FI", name: "Finland" },
+  { code: "PL", name: "Poland" },
+  { code: "CZ", name: "Czech Republic" },
+  { code: "AU", name: "Australia" },
+  { code: "CA", name: "Canada" },
+  { code: "NZ", name: "New Zealand" },
+];
 
 /* ================================================================
    CARD ELEMENT STYLE — shared across all card inputs
@@ -346,6 +378,8 @@ function SinglePageCheckoutForm({
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [nameOnCard, setNameOnCard] = useState("");
+  const [country, setCountry] = useState(event.currency === "EUR" ? "BE" : "GB");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [cardReady, setCardReady] = useState(false);
@@ -531,8 +565,9 @@ function SinglePageCheckoutForm({
           const result = await cardRef.current.confirmPayment(
             data.client_secret,
             {
-              name: `${firstName.trim()} ${lastName.trim()}`,
+              name: nameOnCard.trim() || `${firstName.trim()} ${lastName.trim()}`,
               email: email.trim().toLowerCase(),
+              address: { country },
             }
           );
 
@@ -568,9 +603,7 @@ function SinglePageCheckoutForm({
                 billing_details: {
                   email: email.trim().toLowerCase(),
                   name: `${firstName.trim()} ${lastName.trim()}`,
-                  address: {
-                    country: event.currency === "EUR" ? "BE" : "GB",
-                  },
+                  address: { country },
                 },
               },
               return_url: `${window.location.origin}/event/${slug}/checkout/?pi=${data.payment_intent_id}`,
@@ -625,6 +658,8 @@ function SinglePageCheckoutForm({
       email,
       firstName,
       lastName,
+      nameOnCard,
+      country,
       cartLines,
       event,
       slug,
@@ -635,7 +670,7 @@ function SinglePageCheckoutForm({
     ]
   );
 
-  // Card Elements options (separate from Express Elements)
+  // Card Elements options (separate from Express Elements — Link disabled)
   const cardElementsOptions: StripeElementsOptions = {
     fonts: [
       {
@@ -751,82 +786,116 @@ function SinglePageCheckoutForm({
               All transactions are secure and encrypted.
             </p>
 
-            {/* Payment Method Selector (tabbed panel) */}
-            <div className="payment-method-selector">
-              <div className="payment-method-selector__tabs">
-                {/* Card tab */}
-                <button
-                  type="button"
-                  className={`payment-method-tab${paymentMethod === "card" ? " payment-method-tab--active" : ""}`}
-                  onClick={() => setPaymentMethod("card")}
-                >
-                  <span className="payment-method-tab__radio" />
-                  <span className="payment-method-tab__label">Credit / Debit Card</span>
-                  <span className="payment-method-tab__icons">
-                    {/* Visa */}
-                    <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon" aria-label="Visa">
-                      <rect width="38" height="24" rx="3" fill="#1434CB" />
-                      <path d="M16.5 16h-2.2l1.4-8.4h2.2L16.5 16zm7.7-8.2c-.4-.2-1.1-.3-1.9-.3-2.1 0-3.6 1.1-3.6 2.6 0 1.2 1 1.8 1.8 2.2.8.4 1.1.6 1.1.9 0 .5-.6.7-1.2.7-.8 0-1.3-.1-2-.4l-.3-.1-.3 1.8c.5.2 1.4.4 2.3.4 2.2 0 3.7-1.1 3.7-2.7 0-.9-.5-1.6-1.8-2.1-.7-.4-1.2-.6-1.2-1 0-.3.4-.7 1.2-.7.7 0 1.2.1 1.5.3l.2.1.3-1.7zm-15.8 0L6.7 14l-.2-1-.7-3.5c-.1-.4-.5-.6-.9-.7H1l0 .2c.8.2 1.6.5 2.1.9.3.2.4.4.5.7l1.6 6h2.2l3.3-8.4h-2.3z" fill="#fff" />
-                    </svg>
-                    {/* Mastercard */}
-                    <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon" aria-label="Mastercard">
-                      <rect width="38" height="24" rx="3" fill="#252525" />
-                      <circle cx="15" cy="12" r="6.5" fill="#EB001B" />
-                      <circle cx="23" cy="12" r="6.5" fill="#F79E1B" />
-                      <path d="M19 7a6.5 6.5 0 010 10 6.5 6.5 0 000-10z" fill="#FF5F00" />
-                    </svg>
-                    {/* Amex */}
-                    <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon" aria-label="Amex">
-                      <rect width="38" height="24" rx="3" fill="#2557D6" />
-                      <path d="M6.5 12.8h1.7l-.85-2-.85 2zm18.3-4.5H23l-2.1 2.3-2-2.3h-6.2l-3.2 7.4h2.6l.6-1.5h3.4l.6 1.5h4.6l-2.4-2.7 2.4-2.7h1.8l-2.3 2.6 2.4 2.8h-2l-2-2.3-2.1 2.3h-3.7l-.6-1.4H9l-.6 1.4H6l3.2-7.4z" fill="#fff" />
-                    </svg>
-                    {/* +2 badge */}
-                    <span className="payment-method-tab__more">+2</span>
-                  </span>
-                </button>
-
-                {/* Klarna tab */}
-                <button
-                  type="button"
-                  className={`payment-method-tab${paymentMethod === "klarna" ? " payment-method-tab--active" : ""}`}
-                  onClick={() => setPaymentMethod("klarna")}
-                >
-                  <span className="payment-method-tab__radio" />
-                  <span className="payment-method-tab__label">Klarna</span>
-                  <svg viewBox="0 0 38 24" className="payment-method-tab__card-icon payment-method-tab__card-icon--klarna" aria-label="Klarna">
-                    <rect width="38" height="24" rx="3" fill="#FFB3C7" />
-                    <path d="M11 7h2c0 1.7-.8 3.2-2 4.3L15 16h-2.8l-3.3-3.9V16H7V7h2v3.7c1-.9 1.7-2.2 2-3.7zm7 0h2v9h-2V7zm5.5 6.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#0A0B09" />
+            {/* ── CARD PAYMENT BOX ── */}
+            <div
+              className={`payment-box${paymentMethod === "card" ? " payment-box--active" : ""}`}
+              onClick={() => paymentMethod !== "card" && setPaymentMethod("card")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("card")}
+            >
+              <div className="payment-box__header">
+                <span className={`payment-box__radio${paymentMethod === "card" ? " payment-box__radio--checked" : ""}`} />
+                <span className="payment-box__title">Credit / Debit Card</span>
+                <span className="payment-box__icons">
+                  {/* Visa */}
+                  <svg viewBox="0 0 750 471" className="payment-box__card-icon" aria-label="Visa">
+                    <rect width="750" height="471" rx="40" fill="#1A1F71" />
+                    <path d="M278.2 334.2h-60.6l37.9-233.9h60.6L278.2 334.2z" fill="#fff" />
+                    <path d="M524.3 105.1c-12-4.6-30.7-9.5-54.1-9.5-59.7 0-101.7 31.7-102 77.1-.3 33.6 30 52.3 52.9 63.5 23.5 11.4 31.4 18.7 31.3 28.9-.2 15.6-18.8 22.7-36.1 22.7-24.1 0-36.9-3.5-56.7-12.2l-7.8-3.7-8.4 52.2c14.1 6.5 40.1 12.1 67.1 12.4 63.5 0 104.7-31.3 105.2-79.8.2-26.6-15.9-46.8-50.8-63.5-21.2-10.8-34.1-18-33.9-28.9 0-9.7 10.9-20 34.6-20 19.7-.3 34 4.2 45.1 9l5.4 2.7 8.2-50.9z" fill="#fff" />
+                    <path d="M661.6 100.3h-46.7c-14.5 0-25.3 4.2-31.7 19.3L487 334.2h63.5s10.4-28.8 12.7-35.1h77.6c1.8 8.2 7.4 35.1 7.4 35.1H704L661.6 100.3zm-74.8 184.6c5-13.5 24.2-65.5 24.2-65.5-.4.6 5-13.6 8-22.4l4.1 20.3s11.6 56.1 14.1 67.6h-50.4z" fill="#fff" />
+                    <path d="M232.8 100.3L173.6 261l-6.4-32.5c-11-37.5-45.5-78.2-84-98.5l54.1 204h64l95.1-233.9h-63.6z" fill="#fff" />
+                    <path d="M120.8 100.3H24.6L24 105c75.9 19.4 126.2 66.2 147 122.5L149 121.1c-3.5-14.5-14.1-19.6-28.2-20.8z" fill="#F7B600" />
                   </svg>
-                </button>
+                  {/* Mastercard */}
+                  <svg viewBox="0 0 750 471" className="payment-box__card-icon" aria-label="Mastercard">
+                    <rect width="750" height="471" rx="40" fill="#000" />
+                    <circle cx="299" cy="235.5" r="148" fill="#EB001B" />
+                    <circle cx="451" cy="235.5" r="148" fill="#F79E1B" />
+                    <path d="M375 119.8a148 148 0 00-76 115.7 148 148 0 0076 115.7 148 148 0 0076-115.7 148 148 0 00-76-115.7z" fill="#FF5F00" />
+                  </svg>
+                  {/* Amex */}
+                  <svg viewBox="0 0 750 471" className="payment-box__card-icon" aria-label="Amex">
+                    <rect width="750" height="471" rx="40" fill="#2557D6" />
+                    <path d="M0 235.5h750" stroke="#fff" strokeWidth="0" />
+                    <path fillRule="evenodd" clipRule="evenodd" d="M83.5 326.5V195l41.8-50h73l16.5 22 17-22h375v121.8L590 284l17.3 42.5H471l-17-22.2-17.3 22.2H124.5l-8.7-20.8H96l-8.8 20.8H83.5zm29.3-10.5h29l45-107h-32l-21 52.5-22.5-52.5h-31.5L125 316h-12.2zm125.7 0h88.5v-23h-58v-20h56.5v-22.5H269v-19h58v-23h-88.5V316zm107 0h30l-2-23 36.5-.5 10 23.5h31.5l-44-108.5h-34L345.5 316zm42-44l12.5-32 12 32h-24.5zm69.5 44h27.5v-68.5l42 68.5h30.5V207.5h-27.5v64l-39-64H484V316zm89.5 0h27.5v-85.5h32v-23H514v23h32.5V316z" fill="#fff" />
+                  </svg>
+                  {/* +2 badge */}
+                  <span className="payment-box__more">+2</span>
+                </span>
               </div>
 
-              {/* Card content */}
-              <div
-                className="payment-method-content"
-                style={{ display: paymentMethod === "card" ? "block" : "none" }}
-              >
+              {/* Card content — collapsible */}
+              <div className={`payment-box__content${paymentMethod === "card" ? " payment-box__content--open" : ""}`}>
                 <Elements stripe={stripePromise} options={cardElementsOptions}>
                   <CardFields
                     ref={cardRef}
                     onReady={() => setCardReady(true)}
                   />
                 </Elements>
+
+                {/* Name on card */}
+                <input
+                  type="text"
+                  className="native-checkout__input payment-box__name-input"
+                  value={nameOnCard}
+                  onChange={(e) => setNameOnCard(e.target.value)}
+                  placeholder="Name on card"
+                  autoComplete="cc-name"
+                />
+
+                {/* Country */}
+                <select
+                  className="native-checkout__input payment-box__country-select"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* ── KLARNA PAYMENT BOX ── */}
+            <div
+              className={`payment-box payment-box--klarna${paymentMethod === "klarna" ? " payment-box--active" : ""}`}
+              onClick={() => paymentMethod !== "klarna" && setPaymentMethod("klarna")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("klarna")}
+            >
+              <div className="payment-box__header">
+                <span className={`payment-box__radio${paymentMethod === "klarna" ? " payment-box__radio--checked" : ""}`} />
+                <span className="payment-box__title">Klarna</span>
+                <svg viewBox="0 0 750 471" className="payment-box__klarna-logo" aria-label="Klarna">
+                  <rect width="750" height="471" rx="40" fill="#FFB3C7" />
+                  <path d="M255 120h55c0 46.5-21.5 87.5-55 115l110 116h-77l-90-106.5V351h-55V120h55v101c27.5-24.5 46.5-60 57-101zm192 0h55v231h-55V120zm148 178a41 41 0 110 82 41 41 0 010-82z" fill="#0A0B09" />
+                </svg>
               </div>
 
-              {/* Klarna content */}
-              <div
-                className="payment-method-content"
-                style={{ display: paymentMethod === "klarna" ? "block" : "none" }}
-              >
+              {/* Klarna content — collapsible */}
+              <div className={`payment-box__content${paymentMethod === "klarna" ? " payment-box__content--open" : ""}`}>
                 <div className="klarna-info">
-                  <svg className="klarna-info__icon" viewBox="0 0 38 24" aria-label="Klarna">
-                    <rect width="38" height="24" rx="3" fill="#FFB3C7" />
-                    <path d="M11 7h2c0 1.7-.8 3.2-2 4.3L15 16h-2.8l-3.3-3.9V16H7V7h2v3.7c1-.9 1.7-2.2 2-3.7zm7 0h2v9h-2V7zm5.5 6.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#0A0B09" />
-                  </svg>
                   <p className="klarna-info__text">
                     Pay later or in instalments with Klarna. You&apos;ll be redirected to Klarna to complete your purchase securely.
                   </p>
                 </div>
+
+                {/* Country for Klarna */}
+                <select
+                  className="native-checkout__input payment-box__country-select"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -937,6 +1006,7 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
               style: CARD_ELEMENT_STYLE,
               placeholder: "Card number",
               showIcon: false,
+              disableLink: true,
             }}
           />
           <svg
@@ -974,7 +1044,7 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
               }}
             />
           </div>
-          <div className="card-fields__cvc">
+          <div className="card-fields__cvc-wrapper">
             <CardCvcElement
               onReady={() => setCvcReady(true)}
               options={{
@@ -982,6 +1052,27 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
                 placeholder: "Security code",
               }}
             />
+            {/* Shield/CVC icon */}
+            <svg
+              className="card-fields__cvc-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 2L4 6v5c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M9 12l2 2 4-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ interface DynamicTicketWidgetProps {
   paymentMethod: string;
   ticketTypes: TicketTypeRow[];
   currency: string;
-  onCartChange?: (totalPrice: number, totalQty: number) => void;
+  onCartChange?: (totalPrice: number, totalQty: number, items: { name: string; qty: number; size?: string }[]) => void;
   onCheckoutReady?: (checkoutFn: (() => void) | null) => void;
   /** Named ticket groups (e.g. ["VIP Experiences"]) */
   ticketGroups?: string[];
@@ -198,11 +198,6 @@ export function DynamicTicketWidget({
     [quantities, activeTypes]
   );
 
-  // Notify parent of cart changes (for bottom bar updates)
-  useEffect(() => {
-    onCartChange?.(totalPrice, totalQty);
-  }, [totalPrice, totalQty, onCartChange]);
-
   const isWeeZTix = paymentMethod === "weeztix";
 
   const getCheckoutUrl = useCallback(() => {
@@ -296,6 +291,11 @@ export function DynamicTicketWidget({
     }
     return items;
   }, [activeTypes, quantities, merchSizes]);
+
+  // Notify parent of cart changes (for bottom bar updates)
+  useEffect(() => {
+    onCartChange?.(totalPrice, totalQty, cartItems);
+  }, [totalPrice, totalQty, cartItems, onCartChange]);
 
   // Find minimum price for display
   const minPrice = activeTypes.length > 0

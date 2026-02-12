@@ -118,13 +118,15 @@ export function useTicketCart(settings: EventSettings | null) {
 
       if (key === "vip-tee") {
         // For VIP+Tee, each size is a separate cart item
+        // Format: ticketId:qty:SIZE:name
         TEE_SIZES.forEach((size) => {
           if (teeSizes[size] <= 0) return;
           const sizeTicketId = sizeIds[size] || ticket.id;
-          items.push(`${sizeTicketId}:${teeSizes[size]}:${size}`);
+          items.push(`${sizeTicketId}:${teeSizes[size]}:${size}:${encodeURIComponent(ticket.name)}`);
         });
       } else {
-        items.push(`${ticket.id}:${ticket.qty}`);
+        // Format: ticketId:qty::name (empty size slot)
+        items.push(`${ticket.id}:${ticket.qty}::${encodeURIComponent(ticket.name)}`);
       }
     });
 
@@ -144,12 +146,31 @@ export function useTicketCart(settings: EventSettings | null) {
     setState(buildInitialState(settings));
   }, [settings]);
 
+  /** Cart items as a flat array for display (e.g. in BottomBar, OrderSummary) */
+  const cartItems = useMemo(() => {
+    const items: { name: string; qty: number; size?: string }[] = [];
+    Object.entries(state.tickets).forEach(([key, ticket]) => {
+      if (ticket.qty <= 0) return;
+      if (key === "vip-tee") {
+        TEE_SIZES.forEach((size) => {
+          if (state.teeSizes[size] > 0) {
+            items.push({ name: ticket.name, qty: state.teeSizes[size], size });
+          }
+        });
+      } else {
+        items.push({ name: ticket.name, qty: ticket.qty });
+      }
+    });
+    return items;
+  }, [state.tickets, state.teeSizes]);
+
   return {
     tickets: state.tickets,
     teeSizes: state.teeSizes,
     sizeIds: state.sizeIds,
     totalQty,
     totalPrice,
+    cartItems,
     addTicket,
     removeTicket,
     addTeeSize,

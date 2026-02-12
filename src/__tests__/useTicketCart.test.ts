@@ -159,7 +159,8 @@ describe("useTicketCart", () => {
       act(() => result.current.addTicket("general"));
       act(() => result.current.addTicket("general"));
       const param = result.current.getCartParam();
-      expect(param).toBe(`${DEFAULT_TICKETS.GENERAL}:2`);
+      // Format: ticketId:qty::encodedName
+      expect(param).toBe(`${DEFAULT_TICKETS.GENERAL}:2::General%20Release`);
     });
 
     it("builds correct param for multiple ticket types", () => {
@@ -176,8 +177,8 @@ describe("useTicketCart", () => {
       const { result } = renderHook(() => useTicketCart(null));
       act(() => result.current.addTeeSize("L"));
       const param = result.current.getCartParam();
-      // Should contain ticketId:qty:SIZE format
-      expect(param).toMatch(/:1:L$/);
+      // Format: ticketId:qty:SIZE:encodedName
+      expect(param).toMatch(/:1:L:VIP%20Ticket%20%2B%20T-Shirt$/);
     });
 
     it("builds correct param for valentine ticket with custom ID", () => {
@@ -187,7 +188,8 @@ describe("useTicketCart", () => {
       );
       act(() => result.current.addTicket("valentine"));
       const param = result.current.getCartParam();
-      expect(param).toBe("val-uuid-123:1");
+      // Format: ticketId:qty::encodedName
+      expect(param).toBe("val-uuid-123:1::Valentine's%20Special");
     });
 
     it("creates separate items per size for VIP+Tee", () => {
@@ -197,8 +199,9 @@ describe("useTicketCart", () => {
       const param = result.current.getCartParam();
       const items = param.split(",");
       expect(items).toHaveLength(2);
-      expect(items.some((i) => i.endsWith(":1:M"))).toBe(true);
-      expect(items.some((i) => i.endsWith(":1:L"))).toBe(true);
+      // Format: ticketId:qty:SIZE:encodedName
+      expect(items.some((i) => i.includes(":1:M:"))).toBe(true);
+      expect(items.some((i) => i.includes(":1:L:"))).toBe(true);
     });
   });
 

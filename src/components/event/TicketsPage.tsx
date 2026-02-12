@@ -108,6 +108,7 @@ export function TicketsPage({ slug }: TicketsPageProps) {
         fromPrice={`£${cart.totalPrice > 0 ? cart.totalPrice.toFixed(2) : "26.46"}`}
         cartTotal={cart.totalQty > 0 ? `£${cart.totalPrice.toFixed(2)}` : undefined}
         cartQty={cart.totalQty}
+        cartItems={cart.cartItems}
         onBuyNow={scrollToTickets}
         onCheckout={handleCheckout}
       />

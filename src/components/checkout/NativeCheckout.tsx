@@ -209,7 +209,7 @@ function StripeCheckoutPage({
     return (
       <>
         <CheckoutHeader slug={slug} />
-        <OrderSummaryStrip cartLines={cartLines} symbol={symbol} />
+        <OrderSummaryStrip cartLines={cartLines} symbol={symbol} event={event} />
         <div className="stripe-payment-loading" style={{ minHeight: "40vh" }}>
           <div className="stripe-payment-loading__spinner" />
           <span className="stripe-payment-loading__text">
@@ -298,7 +298,7 @@ function StripeCheckoutPage({
   return (
     <>
       <CheckoutHeader slug={slug} />
-      <OrderSummaryStrip cartLines={cartLines} symbol={symbol} />
+      <OrderSummaryStrip cartLines={cartLines} symbol={symbol} event={event} />
 
       <Elements stripe={stripePromise} options={elementsOptions}>
         <SinglePageCheckoutForm
@@ -867,7 +867,7 @@ function TestModeCheckout({
   return (
     <>
       <CheckoutHeader slug={slug} />
-      <OrderSummaryStrip cartLines={cartLines} symbol={symbol} />
+      <OrderSummaryStrip cartLines={cartLines} symbol={symbol} event={event} />
 
       <div className="native-checkout">
         <div className="native-checkout__inner">
@@ -1013,27 +1013,53 @@ function CheckoutHeader({ slug }: { slug: string }) {
 function OrderSummaryStrip({
   cartLines,
   symbol,
+  event,
 }: {
   cartLines: CartLine[];
   symbol: string;
+  event?: Event & { ticket_types: TicketTypeRow[] };
 }) {
+  // Find merch image for a cart line
+  const getMerchImage = (line: CartLine): string | null => {
+    if (!line.merch_size || !event?.ticket_types) return null;
+    const tt = event.ticket_types.find((t) => t.id === line.ticket_type_id);
+    return tt?.merch_images?.front || null;
+  };
+
   return (
     <div className="checkout-summary">
       <div className="checkout-summary__label">Order Summary</div>
       <div className="checkout-summary__items">
-        {cartLines.map((line, i) => (
-          <div key={i} className="checkout-summary__item">
-            <span className="checkout-summary__qty">{line.qty}x</span>
-            <span className="checkout-summary__name">{line.name}</span>
-            {line.merch_size && (
-              <span className="checkout-summary__size">{line.merch_size}</span>
-            )}
-            <span className="checkout-summary__price">
-              {symbol}
-              {(line.price * line.qty).toFixed(2)}
-            </span>
-          </div>
-        ))}
+        {cartLines.map((line, i) => {
+          const merchImg = getMerchImage(line);
+          return (
+            <div key={i} className={`checkout-summary__item${line.merch_size ? " checkout-summary__item--merch" : ""}`}>
+              {line.merch_size && merchImg && (
+                <div className="checkout-summary__thumb">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={merchImg}
+                    alt="Merch"
+                    className="checkout-summary__thumb-img"
+                  />
+                </div>
+              )}
+              <div className="checkout-summary__item-details">
+                <div className="checkout-summary__item-row">
+                  <span className="checkout-summary__qty">{line.qty}x</span>
+                  <span className="checkout-summary__name">{line.name}</span>
+                  <span className="checkout-summary__price">
+                    {symbol}
+                    {(line.price * line.qty).toFixed(2)}
+                  </span>
+                </div>
+                {line.merch_size && (
+                  <span className="checkout-summary__size">Size: {line.merch_size}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

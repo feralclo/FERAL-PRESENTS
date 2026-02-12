@@ -14,11 +14,12 @@ import { DEFAULT_TICKETS } from "@/lib/constants";
 import type { ParsedCartItem } from "@/types/tickets";
 import "@/styles/checkout-page.css";
 
-// Ticket ID → display name mapping
+// Ticket ID → display name fallback mapping
 const TICKET_NAMES: Record<string, string> = {
   [DEFAULT_TICKETS.GENERAL]: "General Release",
   [DEFAULT_TICKETS.VIP]: "VIP Ticket",
   [DEFAULT_TICKETS.VIP_TEE]: "VIP Ticket + T-Shirt",
+  [DEFAULT_TICKETS.VALENTINE]: "Valentine\u2019s Special",
 };
 
 function parseCart(cartParam: string | null): ParsedCartItem[] {
@@ -40,7 +41,9 @@ function parseCart(cartParam: string | null): ParsedCartItem[] {
       const ticketId = segments[0];
       const qty = parseInt(segments[1], 10) || 1;
       const size = segments[2] || undefined;
-      const name = TICKET_NAMES[ticketId] || "Ticket";
+      // Name passed in cart URL (4th segment) takes priority over hardcoded map
+      const urlName = segments[3] ? decodeURIComponent(segments[3]) : undefined;
+      const name = urlName || TICKET_NAMES[ticketId] || "Ticket";
       items.push({ ticketId, name, qty, size });
     }
   }

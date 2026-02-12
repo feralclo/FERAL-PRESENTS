@@ -1,9 +1,16 @@
 "use client";
 
+interface CartSummaryItem {
+  name: string;
+  qty: number;
+  size?: string;
+}
+
 interface BottomBarProps {
   fromPrice?: string;
   cartTotal?: string;
   cartQty?: number;
+  cartItems?: CartSummaryItem[];
   onBuyNow: () => void;
   onCheckout?: () => void;
 }
@@ -12,6 +19,7 @@ export function BottomBar({
   fromPrice = "£26.46",
   cartTotal,
   cartQty = 0,
+  cartItems,
   onBuyNow,
   onCheckout,
 }: BottomBarProps) {
@@ -24,9 +32,24 @@ export function BottomBar({
           <span className="bottom-bar__amount">
             {hasCart ? cartTotal : `From ${fromPrice}`}
           </span>
-          <span className="bottom-bar__subtitle">
-            Incl. booking fee. No surprises.
-          </span>
+          {hasCart && cartItems && cartItems.length > 0 ? (
+            <span className="bottom-bar__subtitle" style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {cartItems.map((item, i) => (
+                <span key={i} style={{ fontSize: "0.6rem", color: "#aaa", lineHeight: 1.3 }}>
+                  {item.qty}x {item.name}
+                  {item.size && (
+                    <span style={{ color: "#ff0033", marginLeft: 4, fontWeight: 600 }}>
+                      {item.size}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="bottom-bar__subtitle">
+              Incl. booking fee. No surprises.
+            </span>
+          )}
         </div>
         {hasCart && (
           <span

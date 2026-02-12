@@ -43,11 +43,13 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   // Track cart state from ticket widget for bottom bar
   const [cartTotal, setCartTotal] = useState(0);
   const [cartQty, setCartQty] = useState(0);
+  const [cartItems, setCartItems] = useState<{ name: string; qty: number; size?: string }[]>([]);
   const [checkoutFn, setCheckoutFn] = useState<(() => void) | null>(null);
 
-  const handleCartChange = useCallback((total: number, qty: number) => {
+  const handleCartChange = useCallback((total: number, qty: number, items: { name: string; qty: number; size?: string }[]) => {
     setCartTotal(total);
     setCartQty(qty);
+    setCartItems(items);
   }, []);
 
   const handleCheckoutReady = useCallback((fn: (() => void) | null) => {
@@ -266,6 +268,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
         fromPrice={`${currSymbol}${minPrice % 1 === 0 ? minPrice : minPrice.toFixed(2)}`}
         cartTotal={cartQty > 0 ? `${currSymbol}${cartTotal.toFixed(2)}` : undefined}
         cartQty={cartQty}
+        cartItems={cartItems}
         onBuyNow={scrollToTickets}
         onCheckout={checkoutFn ?? undefined}
       />

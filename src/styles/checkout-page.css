@@ -1318,14 +1318,55 @@ html.checkout-active .noise {
 }
 
 /* ========================================
-   KLARNA INFO TEXT
+   KLARNA DETAIL (expanded content)
    ======================================== */
-.klarna-info__text {
+.klarna-detail {
+  padding: 2px 0 4px;
+}
+
+.klarna-detail__headline {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
+  color: #ccc;
+  line-height: 1.5;
+  margin: 0 0 6px;
+}
+
+.klarna-detail__headline strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.klarna-detail__terms {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: #666;
+  line-height: 1.4;
+  margin: 0 0 14px;
+}
+
+.klarna-detail__redirect {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.klarna-detail__redirect-icon {
+  width: 20px;
+  height: 20px;
+  color: #666;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.klarna-detail__redirect-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
   color: #888;
   line-height: 1.5;
-  margin: 0 0 4px;
 }
 
 /* ========================================

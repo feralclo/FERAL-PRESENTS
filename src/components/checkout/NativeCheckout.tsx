@@ -800,24 +800,24 @@ function SinglePageCheckoutForm({
                   <span className={`payment-option__radio${paymentMethod === "card" ? " payment-option__radio--checked" : ""}`} />
                   <span className="payment-option__title">Credit / Debit Card</span>
                   <span className="payment-option__icons">
-                    {/* Visa — simplified for small render */}
+                    {/* Visa */}
                     <span className="payment-option__card-badge" style={{ background: "#1A1F71" }}>
-                      <svg viewBox="0 0 24 16" fill="none" aria-label="Visa">
-                        <path d="M10.5 10.5H9L10 5.5h1.5l-1 5zm4.5-5l-1.4 3.4-.2-.8-.5-2.1s-.1-.5-.7-.5h-2.1l0 .1c.6.2 1.2.4 1.6.7l1.3 4.7h1.5l2.3-5.5H15zm-8 0L5.7 9l-.2-.8C5 6.9 3.8 5.9 2.5 5.3l1.2 5.2h1.5l2.3-5H7zm11.8 5h1.3L19 5.5h-1.2c-.4 0-.8.3-.9.6l-2.2 4.9h1.5l.3-.8h1.8l.2.8zm-1.5-1.9l.7-2 .4 2h-1.1z" fill="#fff"/>
+                      <svg viewBox="0 0 32 20" fill="none" aria-label="Visa">
+                        <text x="16" y="13.5" textAnchor="middle" fill="#fff" fontSize="8.5" fontWeight="700" fontStyle="italic" fontFamily="Arial,sans-serif">VISA</text>
                       </svg>
                     </span>
-                    {/* Mastercard — two circles */}
+                    {/* Mastercard */}
                     <span className="payment-option__card-badge" style={{ background: "#252525" }}>
-                      <svg viewBox="0 0 24 16" fill="none" aria-label="Mastercard">
-                        <circle cx="9" cy="8" r="5" fill="#EB001B"/>
-                        <circle cx="15" cy="8" r="5" fill="#F79E1B"/>
-                        <path d="M12 4.4a5 5 0 010 7.2 5 5 0 000-7.2z" fill="#FF5F00"/>
+                      <svg viewBox="0 0 32 20" fill="none" aria-label="Mastercard">
+                        <circle cx="12.5" cy="10" r="6" fill="#EB001B"/>
+                        <circle cx="19.5" cy="10" r="6" fill="#F79E1B"/>
+                        <path d="M16 5.4a6 6 0 010 9.2 6 6 0 000-9.2z" fill="#FF5F00"/>
                       </svg>
                     </span>
-                    {/* Amex — simple text badge */}
+                    {/* Amex */}
                     <span className="payment-option__card-badge" style={{ background: "#2557D6" }}>
-                      <svg viewBox="0 0 24 16" fill="none" aria-label="Amex">
-                        <text x="12" y="10.5" textAnchor="middle" fill="#fff" fontSize="6" fontWeight="700" fontFamily="Arial,sans-serif">AMEX</text>
+                      <svg viewBox="0 0 32 20" fill="none" aria-label="Amex">
+                        <text x="16" y="13" textAnchor="middle" fill="#fff" fontSize="7" fontWeight="700" fontFamily="Arial,sans-serif">AMEX</text>
                       </svg>
                     </span>
                     <span className="payment-option__more">+2</span>
@@ -875,34 +875,36 @@ function SinglePageCheckoutForm({
                   <span className={`payment-option__radio${paymentMethod === "klarna" ? " payment-option__radio--checked" : ""}`} />
                   <span className="payment-option__title">Klarna</span>
                   <span className="payment-option__card-badge payment-option__card-badge--klarna" style={{ background: "#FFB3C7" }}>
-                    <svg viewBox="0 0 24 16" fill="none" aria-label="Klarna">
-                      <text x="12" y="10.5" textAnchor="middle" fill="#0A0B09" fontSize="5.5" fontWeight="800" fontFamily="Arial,sans-serif">Klarna</text>
+                    <svg viewBox="0 0 32 20" fill="none" aria-label="Klarna">
+                      <text x="16" y="13" textAnchor="middle" fill="#0A0B09" fontSize="6.5" fontWeight="800" fontFamily="Arial,sans-serif">Klarna</text>
                     </svg>
                   </span>
                 </div>
 
                 {/* Klarna content — collapsible */}
                 <div className={`payment-option__content${paymentMethod === "klarna" ? " payment-option__content--open" : ""}`}>
-                  <p className="klarna-info__text">
-                    Pay later or in instalments with Klarna. You&apos;ll be redirected to complete your purchase.
-                  </p>
-
-                  {/* Country for Klarna */}
-                  <div className="payment-option__select-wrapper">
-                    <select
-                      className="native-checkout__input payment-option__country-select"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                    >
-                      {COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <svg className="payment-option__select-chevron" viewBox="0 0 24 24" fill="none">
-                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                  <div className="klarna-detail">
+                    <p className="klarna-detail__headline">
+                      Pay in 30 days or 3 interest-free payments of{" "}
+                      <strong>{symbol}{(subtotal / 3).toFixed(2)}</strong>
+                    </p>
+                    <p className="klarna-detail__terms">
+                      18+, T&amp;Cs apply. Credit subject to status.
+                    </p>
+                    <div className="klarna-detail__redirect">
+                      {/* Redirect / external link icon */}
+                      <svg className="klarna-detail__redirect-icon" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+                        <rect x="6" y="8" width="12" height="9" rx="1" fill="currentColor" opacity="0.15"/>
+                        <rect x="6" y="6" width="12" height="2.5" rx="0.5" fill="currentColor" opacity="0.3"/>
+                        <circle cx="8" cy="7.2" r="0.6" fill="currentColor"/>
+                        <circle cx="9.8" cy="7.2" r="0.6" fill="currentColor"/>
+                        <circle cx="11.6" cy="7.2" r="0.6" fill="currentColor"/>
+                      </svg>
+                      <span className="klarna-detail__redirect-text">
+                        After submission, you will be redirected to securely complete next steps.
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

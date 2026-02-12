@@ -32,6 +32,12 @@ export interface EventSettings {
   ticketPrice3?: number;
   ticketPrice4?: number;
 
+  // Ticket design tiers (WeeZTix — override the default tier per slot)
+  ticketTier1?: string;
+  ticketTier2?: string;
+  ticketTier3?: string;
+  ticketTier4?: string;
+
   // Theme
   theme?: "minimal" | "default" | null;
   minimalBgEnabled?: boolean;

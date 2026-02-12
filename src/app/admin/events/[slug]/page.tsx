@@ -445,6 +445,8 @@ export default function EventEditorPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
+  const [dragItem, setDragItem] = useState<{ type: "group" | "ticket"; id: string } | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   // Load event by slug
   useEffect(() => {
@@ -1268,6 +1270,11 @@ export default function EventEditorPage() {
                 + Add Ticket
               </button>
             )}
+            {!isNativeCheckout && (
+              <span style={{ color: "#555", fontSize: "0.6rem", fontFamily: "'Space Mono', monospace", alignSelf: "center" }}>
+                WeeZTix: 4 fixed slots
+              </span>
+            )}
             <button
               className="admin-btn admin-btn--secondary"
               onClick={() => {
@@ -1343,15 +1350,49 @@ export default function EventEditorPage() {
               key={gName || "__ungrouped"}
               style={{
                 marginBottom: 16,
-                border: gName ? "1px solid #2a2a2a" : "none",
+                border: gName ? `1px solid ${dragOver === `group:${gName}` ? "#ff0033" : "#2a2a2a"}` : "none",
                 background: gName ? "#0e0e0e" : "transparent",
+                transition: "border-color 0.15s",
               }}
+              onDragOver={gName ? (e) => {
+                e.preventDefault();
+                if (dragItem?.type === "group" && dragItem.id !== gName) {
+                  setDragOver(`group:${gName}`);
+                }
+              } : undefined}
+              onDragLeave={gName ? () => setDragOver(null) : undefined}
+              onDrop={gName ? (e) => {
+                e.preventDefault();
+                setDragOver(null);
+                if (dragItem?.type === "group" && dragItem.id !== gName) {
+                  // Reorder: move dragged group to this group's position
+                  const groups = [...allGroups];
+                  const fromIdx = groups.indexOf(dragItem.id);
+                  const toIdx = groups.indexOf(gName);
+                  if (fromIdx !== -1 && toIdx !== -1) {
+                    groups.splice(fromIdx, 1);
+                    groups.splice(toIdx, 0, dragItem.id);
+                    updateSetting("ticket_groups", groups);
+                  }
+                }
+                setDragItem(null);
+              } : undefined}
             >
               {gName ? (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "10px 14px", background: "#141414", borderBottom: "1px solid #2a2a2a",
-                }}>
+                <div
+                  draggable
+                  onDragStart={(e) => {
+                    setDragItem({ type: "group", id: gName });
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", gName);
+                  }}
+                  onDragEnd={() => { setDragItem(null); setDragOver(null); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 14px", background: "#141414", borderBottom: "1px solid #2a2a2a",
+                    cursor: "grab",
+                  }}>
+                  <span style={{ color: "#444", fontSize: "1rem", cursor: "grab", userSelect: "none" }} title="Drag to reorder">&#x2807;</span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <button type="button" onClick={() => moveGroup(gName, "up")} disabled={gIdx === 0} style={arrowBtn(gIdx > 0)}>&#9650;</button>
                     <button type="button" onClick={() => moveGroup(gName, "down")} disabled={gIdx === total - 1} style={arrowBtn(gIdx < total - 1)}>&#9660;</button>
@@ -1391,12 +1432,53 @@ export default function EventEditorPage() {
             const renderStripeCard = (tt: TicketTypeRow, i: number, canUp: boolean, canDown: boolean) => {
               const isExp = expandedTickets.has(tt.id || `new-${i}`);
               const tierLabel = tt.tier || "standard";
+              const cardId = tt.id || `new-${i}`;
               return (
-                <div key={tt.id || `new-${i}`} style={{ border: "1px solid #222", background: "#111" }}>
+                <div
+                  key={cardId}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragItem({ type: "ticket", id: cardId });
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", cardId);
+                  }}
+                  onDragEnd={() => { setDragItem(null); setDragOver(null); }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragItem?.type === "ticket" && dragItem.id !== cardId) {
+                      setDragOver(`ticket:${cardId}`);
+                    }
+                  }}
+                  onDragLeave={() => setDragOver(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOver(null);
+                    if (dragItem?.type === "ticket" && dragItem.id !== cardId) {
+                      const fromIdx = ticketTypes.findIndex((t) => (t.id || `new-${ticketTypes.indexOf(t)}`) === dragItem.id);
+                      const toIdx = i;
+                      if (fromIdx !== -1 && fromIdx !== toIdx) {
+                        setTicketTypes((prev) => {
+                          const next = [...prev];
+                          const [moved] = next.splice(fromIdx, 1);
+                          next.splice(toIdx, 0, moved);
+                          return next.map((t, idx) => ({ ...t, sort_order: idx }));
+                        });
+                      }
+                    }
+                    setDragItem(null);
+                  }}
+                  style={{
+                    border: `1px solid ${dragOver === `ticket:${cardId}` ? "#ff0033" : "#222"}`,
+                    background: "#111",
+                    transition: "border-color 0.15s",
+                  }}
+                >
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", userSelect: "none" }}
-                    onClick={() => toggleExpanded(tt.id || `new-${i}`)}
+                    onClick={() => toggleExpanded(cardId)}
                   >
+                    <span style={{ color: "#444", fontSize: "0.9rem", cursor: "grab", userSelect: "none" }} onClick={(e) => e.stopPropagation()} title="Drag to reorder">&#x2807;</span>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }} onClick={(e) => e.stopPropagation()}>
                       <button type="button" onClick={() => moveTicketType(i, "up")} disabled={!canUp} style={arrowBtn(canUp)}>&#9650;</button>
                       <button type="button" onClick={() => moveTicketType(i, "down")} disabled={!canDown} style={arrowBtn(canDown)}>&#9660;</button>
@@ -1618,20 +1700,67 @@ export default function EventEditorPage() {
             valentine: { border: "#e8365d", color: "#ff7eb3" },
           };
 
+          const TIER_OPTIONS = [
+            { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#ff0033", color: "#fff" },
+            { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)", border: "#e5e4e2", color: "#e5e4e2" },
+            { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
+            { id: "valentine", label: "Valentine", desc: "Pink-red with hearts", bg: "linear-gradient(135deg, #2a0a14 0%, #1f0810 100%)", border: "#e8365d", color: "#ff7eb3" },
+          ] as const;
+
           const renderWeeztixCard = (slot: typeof SLOTS[0], canUp: boolean, canDown: boolean) => {
             const isExp = expandedTickets.has(slot.key);
             const name = (settings[`ticketName${slot.num}` as keyof typeof settings] as string) || slot.defaultName;
             const subtitle = (settings[`ticketSubtitle${slot.num}` as keyof typeof settings] as string) || slot.defaultSubtitle;
             const price = (settings[`ticketPrice${slot.num}` as keyof typeof settings] as number) ?? slot.defaultPrice;
             const ticketId = (settings[`ticketId${slot.num}` as keyof typeof settings] as string) || "";
-            const ts = TIER_STYLE[slot.tier] || TIER_STYLE.standard;
+            const currentTier = (settings[`ticketTier${slot.num}` as keyof typeof settings] as string) || slot.tier;
+            const ts = TIER_STYLE[currentTier] || TIER_STYLE.standard;
 
             return (
-              <div key={slot.key} style={{ border: "1px solid #222", background: "#111" }}>
+              <div
+                key={slot.key}
+                draggable
+                onDragStart={(e) => {
+                  setDragItem({ type: "ticket", id: slot.key });
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", slot.key);
+                }}
+                onDragEnd={() => { setDragItem(null); setDragOver(null); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragItem?.type === "ticket" && dragItem.id !== slot.key) {
+                    setDragOver(`ticket:${slot.key}`);
+                  }
+                }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDragOver(null);
+                  if (dragItem?.type === "ticket" && dragItem.id !== slot.key) {
+                    // Reorder weeztix slots via drag
+                    const cur = sortedSlots.map((s) => s.key);
+                    const fromIdx = cur.indexOf(dragItem.id);
+                    const toIdx = cur.indexOf(slot.key);
+                    if (fromIdx !== -1 && toIdx !== -1) {
+                      cur.splice(fromIdx, 1);
+                      cur.splice(toIdx, 0, dragItem.id);
+                      updateSetting("weeztixTicketOrder", cur);
+                    }
+                  }
+                  setDragItem(null);
+                }}
+                style={{
+                  border: `1px solid ${dragOver === `ticket:${slot.key}` ? "#ff0033" : "#222"}`,
+                  background: "#111",
+                  transition: "border-color 0.15s",
+                }}
+              >
                 <div
                   style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", userSelect: "none" }}
                   onClick={() => toggleExpanded(slot.key)}
                 >
+                  <span style={{ color: "#444", fontSize: "0.9rem", cursor: "grab", userSelect: "none" }} onClick={(e) => e.stopPropagation()} title="Drag to reorder">&#x2807;</span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }} onClick={(e) => e.stopPropagation()}>
                     <button type="button" onClick={() => moveSlot(slot.key, "up")} disabled={!canUp} style={arrowBtn(canUp)}>&#9650;</button>
                     <button type="button" onClick={() => moveSlot(slot.key, "down")} disabled={!canDown} style={arrowBtn(canDown)}>&#9660;</button>
@@ -1641,7 +1770,7 @@ export default function EventEditorPage() {
                   <span style={{
                     fontSize: "0.55rem", fontFamily: "'Space Mono', monospace", textTransform: "uppercase",
                     padding: "2px 8px", border: `1px solid ${ts.border}`, color: ts.color,
-                  }}>{slot.tier === "valentine" ? "\u2665 " : ""}{slot.tier}</span>
+                  }}>{currentTier === "valentine" ? "\u2665 " : ""}{currentTier}</span>
                   <span style={{ color: "#555", fontSize: "0.7rem" }}>{isExp ? "\u25BE" : "\u25B8"}</span>
                 </div>
                 {isExp && (
@@ -1668,6 +1797,21 @@ export default function EventEditorPage() {
                         </div>
                       </div>
                       <div className="admin-form__field">
+                        <label className="admin-form__label">Ticket Design Tier</label>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+                          {TIER_OPTIONS.map((tier) => (
+                            <button key={tier.id} type="button" onClick={() => updateSetting(`ticketTier${slot.num}`, tier.id)} style={{
+                              padding: "10px 8px", border: currentTier === tier.id ? `2px solid ${tier.border}` : "1px solid #333",
+                              background: tier.bg, color: tier.color, fontSize: "0.7rem", fontFamily: "'Space Mono', monospace",
+                              textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer", textAlign: "center",
+                            }}>
+                              {tier.id === "valentine" ? `\u2665 ${tier.label}` : tier.label}
+                              <span style={{ display: "block", fontSize: "0.55rem", color: tier.color, opacity: 0.6, marginTop: 2 }}>{tier.desc}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="admin-form__field">
                         <label className="admin-form__label">Group</label>
                         <select className="admin-form__input" value={getSlotGroup(slot.key) || ""} onChange={(e) => assignToGroup(slot.key, e.target.value)}>
                           <option value="">(No group)</option>
@@ -1682,7 +1826,7 @@ export default function EventEditorPage() {
             );
           };
 
-          const visibleSlots = sortedSlots.filter((s) => s.key !== "valentine" || !!(settings.ticketId4));
+          const visibleSlots = sortedSlots;
           const wUngrouped = visibleSlots.filter((s) => !getSlotGroup(s.key));
           const wSections: React.ReactNode[] = [];
 

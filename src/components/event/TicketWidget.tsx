@@ -17,12 +17,20 @@ interface TicketEntry {
   hasViewTee?: boolean;
 }
 
+/** Tier to CSS class mapping */
+const TIER_CLASS: Record<string, string> = {
+  standard: "",
+  platinum: "ticket-option--vip",
+  black: "ticket-option--vip-black",
+  valentine: "ticket-option--valentine",
+};
+
 /** All available WeeZTix ticket slots with their default visual config */
-const WEEZTIX_TICKETS: TicketEntry[] = [
-  { key: "general", className: "", defaultGroup: null },
-  { key: "vip", className: "ticket-option--vip", defaultGroup: "VIP Experiences" },
-  { key: "vip-tee", className: "ticket-option--vip-black", defaultGroup: "VIP Experiences", hasViewTee: true },
-  { key: "valentine", className: "ticket-option--valentine", defaultGroup: null },
+const WEEZTIX_TICKETS: (TicketEntry & { num: number; defaultTier: string })[] = [
+  { key: "general", className: "", defaultGroup: null, num: 1, defaultTier: "standard" },
+  { key: "vip", className: "ticket-option--vip", defaultGroup: "VIP Experiences", num: 2, defaultTier: "platinum" },
+  { key: "vip-tee", className: "ticket-option--vip-black", defaultGroup: "VIP Experiences", hasViewTee: true, num: 3, defaultTier: "black" },
+  { key: "valentine", className: "ticket-option--valentine", defaultGroup: null, num: 4, defaultTier: "valentine" },
 ];
 
 interface TicketWidgetProps {
@@ -122,13 +130,18 @@ export function TicketWidget({ eventSlug, cart, settings, onViewTee }: TicketWid
     const groups = (settings?.ticket_groups as string[]) || ["VIP Experiences"];
     const customOrder = settings?.weeztixTicketOrder as string[] | undefined;
 
-    // Build list of visible tickets
+    // Build list of visible tickets with configurable tiers
     let entries = WEEZTIX_TICKETS
       .filter((entry) => entry.key !== "valentine" || cart.tickets.valentine.id)
-      .map((entry) => ({
-        ...entry,
-        group: groupMap[entry.key] !== undefined ? groupMap[entry.key] : entry.defaultGroup,
-      }));
+      .map((entry) => {
+        const tierKey = `ticketTier${entry.num}` as keyof typeof settings;
+        const tier = (settings?.[tierKey] as string) || entry.defaultTier;
+        return {
+          ...entry,
+          className: TIER_CLASS[tier] ?? entry.className,
+          group: groupMap[entry.key] !== undefined ? groupMap[entry.key] : entry.defaultGroup,
+        };
+      });
 
     // Apply custom order if set
     if (customOrder && customOrder.length > 0) {
@@ -176,6 +189,7 @@ export function TicketWidget({ eventSlug, cart, settings, onViewTee }: TicketWid
       ticketKey={entry.key}
       ticket={cart.tickets[entry.key]}
       className={entry.className}
+      isValentine={entry.className === "ticket-option--valentine"}
       onAdd={() => handleAdd(entry.key)}
       onRemove={() => handleRemove(entry.key)}
       onViewTee={entry.hasViewTee ? onViewTee : undefined}
@@ -341,6 +355,7 @@ function TicketOption({
   ticketKey,
   ticket,
   className = "",
+  isValentine,
   onAdd,
   onRemove,
   onViewTee,
@@ -348,13 +363,14 @@ function TicketOption({
   ticketKey: TicketKey;
   ticket: { id: string; name: string; subtitle: string; price: number; qty: number };
   className?: string;
+  isValentine?: boolean;
   onAdd: () => void;
   onRemove: () => void;
   onViewTee?: () => void;
 }) {
   return (
     <div className={`ticket-option ${className}`} data-ticket-id={ticket.id}>
-      {ticketKey === "valentine" && (
+      {isValentine && (
         <div className="ticket-option__hearts">
           {[...Array(5)].map((_, i) => (
             <span key={i} className="ticket-option__heart">{"\u2665"}</span>

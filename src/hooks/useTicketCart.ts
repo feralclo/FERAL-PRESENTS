@@ -168,14 +168,14 @@ function buildInitialState(
       id: settings?.ticketId1 || DEFAULT_TICKETS.GENERAL,
       name: settings?.ticketName1 || "General Release",
       subtitle: settings?.ticketSubtitle1 || "Standard entry",
-      price: 26.46,
+      price: settings?.ticketPrice1 ?? 26.46,
       qty: 0,
     },
     vip: {
       id: settings?.ticketId2 || DEFAULT_TICKETS.VIP,
       name: settings?.ticketName2 || "VIP Ticket",
       subtitle: settings?.ticketSubtitle2 || "VIP entry + perks",
-      price: 35.0,
+      price: settings?.ticketPrice2 ?? 35.0,
       qty: 0,
     },
     "vip-tee": {
@@ -184,7 +184,7 @@ function buildInitialState(
       subtitle:
         settings?.ticketSubtitle3 ||
         "VIP entry + exclusive event tee",
-      price: 65.0,
+      price: settings?.ticketPrice3 ?? 65.0,
       qty: 0,
     },
     valentine: {
@@ -193,7 +193,7 @@ function buildInitialState(
       subtitle:
         settings?.ticketSubtitle4 ||
         "Valentine's entry + perks",
-      price: 35.0,
+      price: settings?.ticketPrice4 ?? 35.0,
       qty: 0,
     },
   };

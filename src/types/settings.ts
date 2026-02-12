@@ -26,6 +26,12 @@ export interface EventSettings {
   ticketSubtitle3?: string;
   ticketSubtitle4?: string;
 
+  // Ticket prices (WeeZTix — display prices, actual price from WeeZTix)
+  ticketPrice1?: number;
+  ticketPrice2?: number;
+  ticketPrice3?: number;
+  ticketPrice4?: number;
+
   // Theme
   theme?: "minimal" | "default" | null;
   minimalBgEnabled?: boolean;

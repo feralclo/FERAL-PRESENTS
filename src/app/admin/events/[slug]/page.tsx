@@ -444,6 +444,7 @@ export default function EventEditorPage() {
   const [notFound, setNotFound] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
 
   // Load event by slug
   useEffect(() => {
@@ -547,6 +548,24 @@ export default function EventEditorPage() {
       return next.map((tt, i) => ({ ...tt, sort_order: i }));
     });
   }, []);
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedTickets((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const moveGroup = useCallback((groupName: string, direction: "up" | "down") => {
+    const groups = [...((settings.ticket_groups as string[]) || [])];
+    const idx = groups.indexOf(groupName);
+    if (idx === -1) return;
+    const target = direction === "up" ? idx - 1 : idx + 1;
+    if (target < 0 || target >= groups.length) return;
+    [groups[idx], groups[target]] = [groups[target], groups[idx]];
+    updateSetting("ticket_groups", groups);
+  }, [settings, updateSetting]);
 
   const handleSave = useCallback(async () => {
     if (!event) return;
@@ -1232,824 +1251,470 @@ export default function EventEditorPage() {
         </div>
       </div>
 
-      {/* ─── Section: Ticket Types ─── */}
+
+      {/* ─── Section: Ticket Layout ─── */}
       <div className="admin-section">
-          <div className="admin-section-header">
-            <h2 className="admin-section__title" style={{ marginBottom: 0 }}>
-              Ticket Types
-            </h2>
+        <div className="admin-section-header">
+          <h2 className="admin-section__title" style={{ marginBottom: 0 }}>
+            Ticket Layout
+          </h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            {isNativeCheckout && (
+              <button
+                className="admin-btn admin-btn--primary"
+                onClick={addTicketType}
+                style={{ fontSize: "0.7rem", padding: "8px 16px" }}
+              >
+                + Add Ticket
+              </button>
+            )}
             <button
-              className="admin-btn admin-btn--primary"
-              onClick={addTicketType}
+              className="admin-btn admin-btn--secondary"
+              onClick={() => {
+                const name = prompt("Enter group name:");
+                if (!name?.trim()) return;
+                const trimmed = name.trim();
+                const existing = (settings.ticket_groups as string[]) || [];
+                if (!existing.includes(trimmed)) {
+                  updateSetting("ticket_groups", [...existing, trimmed]);
+                }
+              }}
               style={{ fontSize: "0.7rem", padding: "8px 16px" }}
             >
-              + Add Ticket Type
+              + Create Group
             </button>
           </div>
+        </div>
+        <p style={{ color: "#666", fontSize: "0.7rem", marginTop: 8, marginBottom: 20 }}>
+          This mirrors your event page. Ungrouped tickets appear first, then each group in order.
+          Click a ticket to expand and edit its settings.
+        </p>
 
-          {ticketTypes.length === 0 ? (
-            <p
+        {(() => {
+          const allGroups = (settings.ticket_groups as string[]) || [];
+          const groupMap = (settings.ticket_group_map as Record<string, string | null>) || {};
+
+          const arrowBtn = (enabled: boolean): React.CSSProperties => ({
+            width: 22, height: 14, padding: 0, border: "1px solid #333",
+            background: enabled ? "#1a1a1a" : "#0a0a0a",
+            color: enabled ? "#aaa" : "#333",
+            cursor: enabled ? "pointer" : "default",
+            fontSize: "0.55rem",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          });
+
+          const handleEditGroup = (gName: string) => {
+            const action = prompt(`Group: "${gName}"\nType a new name to rename, or type DELETE to remove:`);
+            if (!action) return;
+            const gList = (settings.ticket_groups as string[]) || [];
+            const gm = { ...groupMap };
+            if (action === "DELETE") {
+              updateSetting("ticket_groups", gList.filter((x) => x !== gName));
+              for (const k of Object.keys(gm)) { if (gm[k] === gName) gm[k] = null; }
+              updateSetting("ticket_group_map", gm);
+            } else {
+              const t = action.trim();
+              if (!t) return;
+              updateSetting("ticket_groups", gList.map((x) => x === gName ? t : x));
+              for (const k of Object.keys(gm)) { if (gm[k] === gName) gm[k] = t; }
+              updateSetting("ticket_group_map", gm);
+            }
+          };
+
+          const assignToGroup = (ticketId: string, val: string) => {
+            if (val === "__new__") {
+              const name = prompt("Enter new group name:");
+              if (!name?.trim()) return;
+              const trimmed = name.trim();
+              const existing = (settings.ticket_groups as string[]) || [];
+              if (!existing.includes(trimmed)) updateSetting("ticket_groups", [...existing, trimmed]);
+              updateSetting("ticket_group_map", { ...groupMap, [ticketId]: trimmed });
+            } else {
+              updateSetting("ticket_group_map", { ...groupMap, [ticketId]: val || null });
+            }
+          };
+
+          /* ── Group container ── */
+          const renderGroup = (
+            gName: string | null, gIdx: number, total: number,
+            children: React.ReactNode, count: number,
+          ) => (
+            <div
+              key={gName || "__ungrouped"}
               style={{
-                color: "#888",
-                fontSize: "0.85rem",
-                marginTop: 16,
+                marginBottom: 16,
+                border: gName ? "1px solid #2a2a2a" : "none",
+                background: gName ? "#0e0e0e" : "transparent",
               }}
             >
-              No ticket types yet. Add your first ticket type to start selling.
-            </p>
-          ) : (
-            <div className="admin-ticket-types">
-              {ticketTypes.map((tt, i) => (
-                <div key={tt.id || `new-${i}`} className="admin-ticket-card">
-                  <div className="admin-ticket-card__header">
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <button
-                          type="button"
-                          onClick={() => moveTicketType(i, "up")}
-                          disabled={i === 0}
-                          style={{
-                            width: 22, height: 16, padding: 0, border: "1px solid #333",
-                            background: i === 0 ? "#111" : "#1a1a1a", color: i === 0 ? "#333" : "#aaa",
-                            cursor: i === 0 ? "default" : "pointer", fontSize: "0.6rem",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}
-                          title="Move up"
-                        >
-                          &#9650;
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveTicketType(i, "down")}
-                          disabled={i === ticketTypes.length - 1}
-                          style={{
-                            width: 22, height: 16, padding: 0, border: "1px solid #333",
-                            background: i === ticketTypes.length - 1 ? "#111" : "#1a1a1a",
-                            color: i === ticketTypes.length - 1 ? "#333" : "#aaa",
-                            cursor: i === ticketTypes.length - 1 ? "default" : "pointer", fontSize: "0.6rem",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}
-                          title="Move down"
-                        >
-                          &#9660;
-                        </button>
-                      </div>
-                      <span className="admin-ticket-card__number">
-                        #{i + 1}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {tt.sold > 0 && (
-                        <span
-                          style={{
-                            color: "#4ecb71",
-                            fontSize: "0.7rem",
-                            fontFamily: "'Space Mono', monospace",
-                          }}
-                        >
-                          {tt.sold} sold
-                        </span>
-                      )}
-                      <button
-                        className="admin-btn-icon admin-btn-icon--danger"
-                        onClick={() => {
-                          if (tt.sold > 0) {
-                            if (
-                              !confirm(
-                                `This ticket type has ${tt.sold} sales. Are you sure you want to delete it?`
-                              )
-                            )
-                              return;
-                          }
-                          removeTicketType(i);
-                        }}
-                        title="Delete ticket type"
-                      >
-                        &times;
-                      </button>
-                    </div>
+              {gName ? (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 14px", background: "#141414", borderBottom: "1px solid #2a2a2a",
+                }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <button type="button" onClick={() => moveGroup(gName, "up")} disabled={gIdx === 0} style={arrowBtn(gIdx > 0)}>&#9650;</button>
+                    <button type="button" onClick={() => moveGroup(gName, "down")} disabled={gIdx === total - 1} style={arrowBtn(gIdx < total - 1)}>&#9660;</button>
                   </div>
+                  <span style={{
+                    flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.8rem",
+                    color: "#fff", textTransform: "uppercase", letterSpacing: "0.05em",
+                  }}>{gName}</span>
+                  <span style={{ color: "#555", fontSize: "0.6rem", fontFamily: "'Space Mono', monospace" }}>
+                    {count} ticket{count !== 1 ? "s" : ""}
+                  </span>
+                  <button type="button" onClick={() => handleEditGroup(gName)} style={{
+                    background: "none", border: "1px solid #333", color: "#888",
+                    fontSize: "0.6rem", padding: "4px 10px", cursor: "pointer",
+                    fontFamily: "'Space Mono', monospace",
+                  }}>&#9998; Edit</button>
+                </div>
+              ) : (
+                <div style={{ padding: "0 0 6px", marginBottom: 4 }}>
+                  <span style={{
+                    fontFamily: "'Space Mono', monospace", fontSize: "0.65rem",
+                    color: "#555", textTransform: "uppercase", letterSpacing: "0.1em",
+                  }}>UNGROUPED</span>
+                </div>
+              )}
+              <div style={{ padding: gName ? "8px" : "0", display: "flex", flexDirection: "column", gap: 4 }}>
+                {children}
+              </div>
+            </div>
+          );
 
-                  <div className="admin-form">
-                    <div className="admin-form__row">
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">Name *</label>
-                        <input
-                          type="text"
-                          className="admin-form__input"
-                          value={tt.name}
-                          onChange={(e) =>
-                            updateTicketType(i, "name", e.target.value)
-                          }
-                          placeholder="e.g. General Admission"
-                        />
-                      </div>
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">Status</label>
-                        <select
-                          className="admin-form__input"
-                          value={tt.status}
-                          onChange={(e) =>
-                            updateTicketType(i, "status", e.target.value)
-                          }
-                        >
-                          <option value="active">Active</option>
-                          <option value="hidden">Hidden</option>
-                          <option value="sold_out">Sold Out</option>
-                          <option value="archived">Archived</option>
-                        </select>
-                      </div>
+          /* ──────── STRIPE / TEST EVENTS ──────── */
+          if (isNativeCheckout) {
+            const ungrouped = ticketTypes.filter((tt) => !groupMap[tt.id]);
+            const sections: React.ReactNode[] = [];
+
+            const renderStripeCard = (tt: TicketTypeRow, i: number, canUp: boolean, canDown: boolean) => {
+              const isExp = expandedTickets.has(tt.id || `new-${i}`);
+              const tierLabel = tt.tier || "standard";
+              return (
+                <div key={tt.id || `new-${i}`} style={{ border: "1px solid #222", background: "#111" }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", userSelect: "none" }}
+                    onClick={() => toggleExpanded(tt.id || `new-${i}`)}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                      <button type="button" onClick={() => moveTicketType(i, "up")} disabled={!canUp} style={arrowBtn(canUp)}>&#9650;</button>
+                      <button type="button" onClick={() => moveTicketType(i, "down")} disabled={!canDown} style={arrowBtn(canDown)}>&#9660;</button>
                     </div>
-
-                    <div className="admin-form__field">
-                      <label className="admin-form__label">Description</label>
-                      <input
-                        type="text"
-                        className="admin-form__input"
-                        value={tt.description || ""}
-                        onChange={(e) =>
-                          updateTicketType(i, "description", e.target.value)
-                        }
-                        placeholder="Brief description of this ticket tier"
-                      />
-                    </div>
-
-                    <div className="admin-form__field">
-                      <label className="admin-form__label">Ticket Design Tier</label>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
-                        {([
-                          { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#ff0033", color: "#fff" },
-                          { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)", border: "#e5e4e2", color: "#e5e4e2" },
-                          { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
-                          { id: "valentine", label: "Valentine", desc: "Pink-red with hearts", bg: "linear-gradient(135deg, #2a0a14 0%, #1f0810 100%)", border: "#e8365d", color: "#ff7eb3" },
-                        ] as const).map((tier) => (
+                    <span style={{ flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#fff" }}>
+                      {tt.name || "Untitled"}
+                    </span>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#888" }}>
+                      {currSym}{Number(tt.price).toFixed(2)}
+                    </span>
+                    <span style={{
+                      fontSize: "0.55rem", fontFamily: "'Space Mono', monospace", textTransform: "uppercase",
+                      padding: "2px 8px", border: "1px solid #333", color: "#666",
+                    }}>{tierLabel}</span>
+                    {tt.sold > 0 && (
+                      <span style={{ color: "#4ecb71", fontSize: "0.65rem", fontFamily: "'Space Mono', monospace" }}>{tt.sold} sold</span>
+                    )}
+                    <span style={{ color: "#555", fontSize: "0.7rem" }}>{isExp ? "\u25BE" : "\u25B8"}</span>
+                  </div>
+                  {isExp && (
+                    <div style={{ padding: "12px 14px", borderTop: "1px solid #1a1a1a" }}>
+                      <div className="admin-form">
+                        <div className="admin-form__row">
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Name *</label>
+                            <input type="text" className="admin-form__input" value={tt.name} onChange={(e) => updateTicketType(i, "name", e.target.value)} placeholder="e.g. General Admission" />
+                          </div>
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Status</label>
+                            <select className="admin-form__input" value={tt.status} onChange={(e) => updateTicketType(i, "status", e.target.value)}>
+                              <option value="active">Active</option>
+                              <option value="hidden">Hidden</option>
+                              <option value="sold_out">Sold Out</option>
+                              <option value="archived">Archived</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">Description</label>
+                          <input type="text" className="admin-form__input" value={tt.description || ""} onChange={(e) => updateTicketType(i, "description", e.target.value)} placeholder="Brief description of this ticket tier" />
+                        </div>
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">Ticket Design Tier</label>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+                            {([
+                              { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#ff0033", color: "#fff" },
+                              { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)", border: "#e5e4e2", color: "#e5e4e2" },
+                              { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
+                              { id: "valentine", label: "Valentine", desc: "Pink-red with hearts", bg: "linear-gradient(135deg, #2a0a14 0%, #1f0810 100%)", border: "#e8365d", color: "#ff7eb3" },
+                            ] as const).map((tier) => (
+                              <button key={tier.id} type="button" onClick={() => updateTicketType(i, "tier", tier.id)} style={{
+                                padding: "10px 8px", border: (tt.tier || "standard") === tier.id ? `2px solid ${tier.border}` : "1px solid #333",
+                                background: tier.bg, color: tier.color, fontSize: "0.7rem", fontFamily: "'Space Mono', monospace",
+                                textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer", textAlign: "center",
+                              }}>
+                                {tier.id === "valentine" ? `\u2665 ${tier.label}` : tier.label}
+                                <span style={{ display: "block", fontSize: "0.55rem", color: tier.color, opacity: 0.6, marginTop: 2 }}>{tier.desc}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">Group</label>
+                          <select className="admin-form__input" value={groupMap[tt.id] || ""} onChange={(e) => assignToGroup(tt.id, e.target.value)}>
+                            <option value="">(No group)</option>
+                            {allGroups.map((g) => <option key={g} value={g}>{g}</option>)}
+                            <option value="__new__">+ Create new group...</option>
+                          </select>
+                        </div>
+                        <div className="admin-form__row">
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Price ({currSym})</label>
+                            <input type="number" className="admin-form__input" value={tt.price} onChange={(e) => updateTicketType(i, "price", Number(e.target.value))} min="0" step="0.01" />
+                          </div>
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Capacity</label>
+                            <input type="number" className="admin-form__input" value={tt.capacity ?? ""} onChange={(e) => updateTicketType(i, "capacity", e.target.value ? Number(e.target.value) : null)} placeholder="Unlimited" min="0" />
+                          </div>
+                        </div>
+                        <div className="admin-form__row">
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Min per Order</label>
+                            <input type="number" className="admin-form__input" value={tt.min_per_order} onChange={(e) => updateTicketType(i, "min_per_order", Number(e.target.value))} min="1" />
+                          </div>
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Max per Order</label>
+                            <input type="number" className="admin-form__input" value={tt.max_per_order} onChange={(e) => updateTicketType(i, "max_per_order", Number(e.target.value))} min="1" />
+                          </div>
+                        </div>
+                        <div className="admin-form__row">
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Sale Start</label>
+                            <input type="datetime-local" className="admin-form__input" value={toDatetimeLocal(tt.sale_start)} onChange={(e) => updateTicketType(i, "sale_start", fromDatetimeLocal(e.target.value))} />
+                          </div>
+                          <div className="admin-form__field">
+                            <label className="admin-form__label">Sale End</label>
+                            <input type="datetime-local" className="admin-form__input" value={toDatetimeLocal(tt.sale_end)} onChange={(e) => updateTicketType(i, "sale_end", fromDatetimeLocal(e.target.value))} />
+                          </div>
+                        </div>
+                        <div className="admin-form__field">
+                          <label className="admin-form__label" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                            <input type="checkbox" checked={tt.includes_merch} onChange={(e) => updateTicketType(i, "includes_merch", e.target.checked)} />
+                            Includes Merchandise
+                          </label>
+                        </div>
+                        {tt.includes_merch && (
+                          <>
+                            <div className="admin-form__row">
+                              <div className="admin-form__field">
+                                <label className="admin-form__label">Merch Type</label>
+                                <input type="text" className="admin-form__input" value={tt.merch_type || ""} onChange={(e) => updateTicketType(i, "merch_type", e.target.value)} placeholder="e.g. T-Shirt" />
+                              </div>
+                              <div className="admin-form__field">
+                                <label className="admin-form__label">Available Sizes</label>
+                                <input type="text" className="admin-form__input" value={(tt.merch_sizes || []).join(", ")} onChange={(e) => updateTicketType(i, "merch_sizes", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} placeholder="XS, S, M, L, XL, XXL" />
+                              </div>
+                            </div>
+                            <div className="admin-form__field">
+                              <label className="admin-form__label">Merch Description</label>
+                              <textarea className="admin-form__input" rows={3} value={tt.merch_description || ""} onChange={(e) => updateTicketType(i, "merch_description", e.target.value)} placeholder="One-time drop. Never again..." />
+                            </div>
+                            <div className="admin-form__row">
+                              <div className="admin-form__field">
+                                <ImageField label="Merch Image — Front" value={(tt.merch_images as { front?: string; back?: string } | undefined)?.front || ""} onChange={(v) => updateTicketType(i, "merch_images", { ...((tt.merch_images as Record<string, string>) || {}), front: v })} uploadKey={`merch_${tt.id || `new-${i}`}_front`} />
+                              </div>
+                              <div className="admin-form__field">
+                                <ImageField label="Merch Image — Back" value={(tt.merch_images as { front?: string; back?: string } | undefined)?.back || ""} onChange={(v) => updateTicketType(i, "merch_images", { ...((tt.merch_images as Record<string, string>) || {}), back: v })} uploadKey={`merch_${tt.id || `new-${i}`}_back`} />
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
                           <button
-                            key={tier.id}
-                            type="button"
-                            onClick={() => updateTicketType(i, "tier", tier.id)}
-                            style={{
-                              padding: "10px 8px",
-                              border: (tt.tier || "standard") === tier.id
-                                ? `2px solid ${tier.border}`
-                                : "1px solid #333",
-                              background: tier.bg,
-                              color: tier.color,
-                              fontSize: "0.7rem",
-                              fontFamily: "'Space Mono', monospace",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                              cursor: "pointer",
-                              textAlign: "center",
+                            className="admin-btn admin-btn--danger"
+                            style={{ fontSize: "0.65rem", padding: "6px 14px" }}
+                            onClick={() => {
+                              if (tt.sold > 0) {
+                                if (!confirm(`This ticket type has ${tt.sold} sales. Are you sure?`)) return;
+                              }
+                              removeTicketType(i);
                             }}
-                          >
-                            {tier.id === "valentine" ? `\u2665 ${tier.label}` : tier.label}
-                            <span style={{ display: "block", fontSize: "0.55rem", color: tier.color, opacity: 0.6, marginTop: 2 }}>
-                              {tier.desc}
-                            </span>
-                          </button>
-                        ))}
+                          >Delete Ticket</button>
+                        </div>
                       </div>
                     </div>
+                  )}
+                </div>
+              );
+            };
 
-                    {/* Ticket Group assignment */}
-                    <div className="admin-form__field">
-                      <label className="admin-form__label">Group</label>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <select
-                          className="admin-form__input"
-                          style={{ flex: 1 }}
-                          value={
-                            (settings.ticket_group_map as Record<string, string | null> | undefined)?.[tt.id] ?? ""
-                          }
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === "__new__") {
-                              const name = prompt("Enter new group name:");
-                              if (!name?.trim()) return;
-                              const trimmed = name.trim();
-                              // Add to groups list if not already there
-                              const groups = ((settings.ticket_groups as string[]) || []);
-                              if (!groups.includes(trimmed)) {
-                                updateSetting("ticket_groups", [...groups, trimmed]);
-                              }
-                              // Assign this ticket to the new group
-                              const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
-                              map[tt.id] = trimmed;
-                              updateSetting("ticket_group_map", map);
-                            } else {
-                              const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
-                              map[tt.id] = val || null;
-                              updateSetting("ticket_group_map", map);
-                            }
-                          }}
-                        >
+            if (ungrouped.length > 0) {
+              sections.push(renderGroup(null, -1, 0,
+                ungrouped.map((tt) => {
+                  const i = ticketTypes.indexOf(tt);
+                  return renderStripeCard(tt, i, i > 0, i < ticketTypes.length - 1);
+                }), ungrouped.length));
+            }
+
+            allGroups.forEach((gName, gi) => {
+              const gTickets = ticketTypes.filter((tt) => groupMap[tt.id] === gName);
+              sections.push(renderGroup(gName, gi, allGroups.length,
+                gTickets.length > 0
+                  ? gTickets.map((tt) => {
+                      const i = ticketTypes.indexOf(tt);
+                      return renderStripeCard(tt, i, i > 0, i < ticketTypes.length - 1);
+                    })
+                  : <p style={{ color: "#555", fontSize: "0.7rem", padding: "8px 0", textAlign: "center" }}>
+                      No tickets in this group yet. Assign tickets from their expanded settings.
+                    </p>,
+                gTickets.length));
+            });
+
+            if (sections.length === 0 && ticketTypes.length === 0) {
+              sections.push(
+                <p key="empty" style={{ color: "#888", fontSize: "0.85rem" }}>
+                  No ticket types yet. Add your first ticket type to start selling.
+                </p>
+              );
+            }
+
+            return sections;
+          }
+
+          /* ──────── WEEZTIX EVENTS ──────── */
+          const SLOTS = [
+            { key: "general", num: 1, defaultName: "General Release", defaultSubtitle: "Standard entry", defaultPrice: 26.46, tier: "standard" as const },
+            { key: "vip", num: 2, defaultName: "VIP Ticket", defaultSubtitle: "VIP entry", defaultPrice: 35.00, tier: "platinum" as const },
+            { key: "vip-tee", num: 3, defaultName: "VIP Black + Tee", defaultSubtitle: "VIP + exclusive tee", defaultPrice: 65.00, tier: "black" as const },
+            { key: "valentine", num: 4, defaultName: "Valentine\u2019s Special", defaultSubtitle: "Valentine\u2019s entry + perks", defaultPrice: 35.00, tier: "valentine" as const },
+          ];
+
+          const wOrder = (settings.weeztixTicketOrder as string[]) || SLOTS.map((s) => s.key);
+          const sortedSlots = [...SLOTS].sort((a, b) => {
+            const ai = wOrder.indexOf(a.key);
+            const bi = wOrder.indexOf(b.key);
+            return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+          });
+
+          const getSlotGroup = (key: string): string | null => {
+            if (groupMap[key] !== undefined) return groupMap[key];
+            if (key === "vip" || key === "vip-tee") return "VIP Experiences";
+            return null;
+          };
+
+          const moveSlot = (slotKey: string, dir: "up" | "down") => {
+            const cur = sortedSlots.map((s) => s.key);
+            const idx = cur.indexOf(slotKey);
+            if (idx === -1) return;
+            const target = dir === "up" ? idx - 1 : idx + 1;
+            if (target < 0 || target >= cur.length) return;
+            [cur[idx], cur[target]] = [cur[target], cur[idx]];
+            updateSetting("weeztixTicketOrder", cur);
+          };
+
+          const TIER_STYLE: Record<string, { border: string; color: string }> = {
+            standard: { border: "#333", color: "#666" },
+            platinum: { border: "#e5e4e2", color: "#e5e4e2" },
+            black: { border: "rgba(255,255,255,0.3)", color: "#aaa" },
+            valentine: { border: "#e8365d", color: "#ff7eb3" },
+          };
+
+          const renderWeeztixCard = (slot: typeof SLOTS[0], canUp: boolean, canDown: boolean) => {
+            const isExp = expandedTickets.has(slot.key);
+            const name = (settings[`ticketName${slot.num}` as keyof typeof settings] as string) || slot.defaultName;
+            const subtitle = (settings[`ticketSubtitle${slot.num}` as keyof typeof settings] as string) || slot.defaultSubtitle;
+            const price = (settings[`ticketPrice${slot.num}` as keyof typeof settings] as number) ?? slot.defaultPrice;
+            const ticketId = (settings[`ticketId${slot.num}` as keyof typeof settings] as string) || "";
+            const ts = TIER_STYLE[slot.tier] || TIER_STYLE.standard;
+
+            return (
+              <div key={slot.key} style={{ border: "1px solid #222", background: "#111" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", userSelect: "none" }}
+                  onClick={() => toggleExpanded(slot.key)}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                    <button type="button" onClick={() => moveSlot(slot.key, "up")} disabled={!canUp} style={arrowBtn(canUp)}>&#9650;</button>
+                    <button type="button" onClick={() => moveSlot(slot.key, "down")} disabled={!canDown} style={arrowBtn(canDown)}>&#9660;</button>
+                  </div>
+                  <span style={{ flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#fff" }}>{name}</span>
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#888" }}>{currSym}{Number(price).toFixed(2)}</span>
+                  <span style={{
+                    fontSize: "0.55rem", fontFamily: "'Space Mono', monospace", textTransform: "uppercase",
+                    padding: "2px 8px", border: `1px solid ${ts.border}`, color: ts.color,
+                  }}>{slot.tier === "valentine" ? "\u2665 " : ""}{slot.tier}</span>
+                  <span style={{ color: "#555", fontSize: "0.7rem" }}>{isExp ? "\u25BE" : "\u25B8"}</span>
+                </div>
+                {isExp && (
+                  <div style={{ padding: "12px 14px", borderTop: "1px solid #1a1a1a" }}>
+                    <div className="admin-form">
+                      <div className="admin-form__row">
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">Name</label>
+                          <input className="admin-form__input" value={name} onChange={(e) => updateSetting(`ticketName${slot.num}`, e.target.value)} placeholder={slot.defaultName} />
+                        </div>
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">Subtitle</label>
+                          <input className="admin-form__input" value={subtitle} onChange={(e) => updateSetting(`ticketSubtitle${slot.num}`, e.target.value)} placeholder={slot.defaultSubtitle} />
+                        </div>
+                      </div>
+                      <div className="admin-form__row">
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">Display Price ({currSym})</label>
+                          <input type="number" className="admin-form__input" value={price} onChange={(e) => updateSetting(`ticketPrice${slot.num}`, Number(e.target.value))} min="0" step="0.01" />
+                        </div>
+                        <div className="admin-form__field">
+                          <label className="admin-form__label">WeeZTix ID</label>
+                          <input className="admin-form__input" value={ticketId} onChange={(e) => updateSetting(`ticketId${slot.num}`, e.target.value)} placeholder="WeeZTix ticket UUID" style={{ fontSize: "0.7rem" }} />
+                        </div>
+                      </div>
+                      <div className="admin-form__field">
+                        <label className="admin-form__label">Group</label>
+                        <select className="admin-form__input" value={getSlotGroup(slot.key) || ""} onChange={(e) => assignToGroup(slot.key, e.target.value)}>
                           <option value="">(No group)</option>
-                          {((settings.ticket_groups as string[]) || []).map((g) => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
+                          {allGroups.map((g) => <option key={g} value={g}>{g}</option>)}
                           <option value="__new__">+ Create new group...</option>
                         </select>
-                        {/* Rename/delete group button */}
-                        {(settings.ticket_group_map as Record<string, string | null> | undefined)?.[tt.id] && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const currentGroup = (settings.ticket_group_map as Record<string, string | null>)?.[tt.id];
-                              if (!currentGroup) return;
-                              const action = prompt(
-                                `Group: "${currentGroup}"\nType a new name to rename, or type DELETE to remove this group:`
-                              );
-                              if (!action) return;
-                              if (action === "DELETE") {
-                                // Remove group from list and unassign all tickets
-                                const groups = ((settings.ticket_groups as string[]) || []).filter((g) => g !== currentGroup);
-                                const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
-                                for (const key of Object.keys(map)) {
-                                  if (map[key] === currentGroup) map[key] = null;
-                                }
-                                updateSetting("ticket_groups", groups);
-                                updateSetting("ticket_group_map", map);
-                              } else {
-                                // Rename group
-                                const newName = action.trim();
-                                if (!newName) return;
-                                const groups = ((settings.ticket_groups as string[]) || []).map(
-                                  (g) => g === currentGroup ? newName : g
-                                );
-                                const map = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
-                                for (const key of Object.keys(map)) {
-                                  if (map[key] === currentGroup) map[key] = newName;
-                                }
-                                updateSetting("ticket_groups", groups);
-                                updateSetting("ticket_group_map", map);
-                              }
-                            }}
-                            style={{
-                              background: "none",
-                              border: "1px solid #333",
-                              color: "#888",
-                              fontSize: "0.65rem",
-                              padding: "6px 10px",
-                              cursor: "pointer",
-                              fontFamily: "'Space Mono', monospace",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Edit Group
-                          </button>
-                        )}
-                      </div>
-                      <span style={{ fontSize: "0.65rem", color: "#555", marginTop: 4, display: "block" }}>
-                        Tickets in the same group appear together on the event page with a section header.
-                      </span>
-                    </div>
-
-                    <div className="admin-form__row">
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">
-                          Price ({currSym})
-                        </label>
-                        <input
-                          type="number"
-                          className="admin-form__input"
-                          value={tt.price}
-                          onChange={(e) =>
-                            updateTicketType(
-                              i,
-                              "price",
-                              Number(e.target.value)
-                            )
-                          }
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">Capacity</label>
-                        <input
-                          type="number"
-                          className="admin-form__input"
-                          value={tt.capacity ?? ""}
-                          onChange={(e) =>
-                            updateTicketType(
-                              i,
-                              "capacity",
-                              e.target.value ? Number(e.target.value) : null
-                            )
-                          }
-                          placeholder="Unlimited"
-                          min="0"
-                        />
                       </div>
                     </div>
-
-                    <div className="admin-form__row">
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">
-                          Min per Order
-                        </label>
-                        <input
-                          type="number"
-                          className="admin-form__input"
-                          value={tt.min_per_order}
-                          onChange={(e) =>
-                            updateTicketType(
-                              i,
-                              "min_per_order",
-                              Number(e.target.value)
-                            )
-                          }
-                          min="1"
-                        />
-                      </div>
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">
-                          Max per Order
-                        </label>
-                        <input
-                          type="number"
-                          className="admin-form__input"
-                          value={tt.max_per_order}
-                          onChange={(e) =>
-                            updateTicketType(
-                              i,
-                              "max_per_order",
-                              Number(e.target.value)
-                            )
-                          }
-                          min="1"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="admin-form__row">
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">Sale Start</label>
-                        <input
-                          type="datetime-local"
-                          className="admin-form__input"
-                          value={toDatetimeLocal(tt.sale_start)}
-                          onChange={(e) =>
-                            updateTicketType(
-                              i,
-                              "sale_start",
-                              fromDatetimeLocal(e.target.value)
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="admin-form__field">
-                        <label className="admin-form__label">Sale End</label>
-                        <input
-                          type="datetime-local"
-                          className="admin-form__input"
-                          value={toDatetimeLocal(tt.sale_end)}
-                          onChange={(e) =>
-                            updateTicketType(
-                              i,
-                              "sale_end",
-                              fromDatetimeLocal(e.target.value)
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    {/* Merch options */}
-                    <div className="admin-form__field">
-                      <label
-                        className="admin-form__label"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={tt.includes_merch}
-                          onChange={(e) =>
-                            updateTicketType(
-                              i,
-                              "includes_merch",
-                              e.target.checked
-                            )
-                          }
-                        />
-                        Includes Merchandise
-                      </label>
-                    </div>
-                    {tt.includes_merch && (
-                      <>
-                        <div className="admin-form__row">
-                          <div className="admin-form__field">
-                            <label className="admin-form__label">
-                              Merch Type
-                            </label>
-                            <input
-                              type="text"
-                              className="admin-form__input"
-                              value={tt.merch_type || ""}
-                              onChange={(e) =>
-                                updateTicketType(
-                                  i,
-                                  "merch_type",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="e.g. T-Shirt"
-                            />
-                          </div>
-                          <div className="admin-form__field">
-                            <label className="admin-form__label">
-                              Available Sizes
-                            </label>
-                            <input
-                              type="text"
-                              className="admin-form__input"
-                              value={(tt.merch_sizes || []).join(", ")}
-                              onChange={(e) =>
-                                updateTicketType(
-                                  i,
-                                  "merch_sizes",
-                                  e.target.value
-                                    .split(",")
-                                    .map((s) => s.trim())
-                                    .filter(Boolean)
-                                )
-                              }
-                              placeholder="XS, S, M, L, XL, XXL"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="admin-form__field">
-                          <label className="admin-form__label">
-                            Merch Description
-                          </label>
-                          <textarea
-                            className="admin-form__input"
-                            rows={3}
-                            value={tt.merch_description || ""}
-                            onChange={(e) =>
-                              updateTicketType(
-                                i,
-                                "merch_description",
-                                e.target.value
-                              )
-                            }
-                            placeholder="One-time drop. Never again. This design exists only for this event..."
-                          />
-                        </div>
-
-                        <div className="admin-form__row">
-                          <div className="admin-form__field">
-                            <ImageField
-                              label="Merch Image — Front"
-                              value={
-                                (
-                                  tt.merch_images as
-                                    | { front?: string; back?: string }
-                                    | undefined
-                                )?.front || ""
-                              }
-                              onChange={(v) =>
-                                updateTicketType(i, "merch_images", {
-                                  ...((tt.merch_images as Record<string, string>) || {}),
-                                  front: v,
-                                })
-                              }
-                              uploadKey={`merch_${tt.id || `new-${i}`}_front`}
-                            />
-                          </div>
-                          <div className="admin-form__field">
-                            <ImageField
-                              label="Merch Image — Back"
-                              value={
-                                (
-                                  tt.merch_images as
-                                    | { front?: string; back?: string }
-                                    | undefined
-                                )?.back || ""
-                              }
-                              onChange={(v) =>
-                                updateTicketType(i, "merch_images", {
-                                  ...((tt.merch_images as Record<string, string>) || {}),
-                                  back: v,
-                                })
-                              }
-                              uploadKey={`merch_${tt.id || `new-${i}`}_back`}
-                            />
-                          </div>
-                        </div>
-                      </>
-                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            );
+          };
 
-      {/* ─── Section: WeeZTix Configuration (legacy) ─── */}
+          const visibleSlots = sortedSlots.filter((s) => s.key !== "valentine" || !!(settings.ticketId4));
+          const wUngrouped = visibleSlots.filter((s) => !getSlotGroup(s.key));
+          const wSections: React.ReactNode[] = [];
+
+          if (wUngrouped.length > 0) {
+            wSections.push(renderGroup(null, -1, 0,
+              wUngrouped.map((s, idx) => renderWeeztixCard(s, idx > 0, idx < wUngrouped.length - 1)),
+              wUngrouped.length));
+          }
+
+          allGroups.forEach((gName, gi) => {
+            const gSlots = visibleSlots.filter((s) => getSlotGroup(s.key) === gName);
+            wSections.push(renderGroup(gName, gi, allGroups.length,
+              gSlots.length > 0
+                ? gSlots.map((s, idx) => renderWeeztixCard(s, idx > 0, idx < gSlots.length - 1))
+                : <p style={{ color: "#555", fontSize: "0.7rem", padding: "8px 0", textAlign: "center" }}>No tickets in this group yet.</p>,
+              gSlots.length));
+          });
+
+          if (wSections.length === 0) {
+            wSections.push(
+              <p key="empty" style={{ color: "#888", fontSize: "0.85rem" }}>
+                Configure ticket IDs to see tickets here.
+              </p>
+            );
+          }
+
+          return wSections;
+        })()}
+      </div>
+
       {event.payment_method === "weeztix" && (
         <>
-          {/* Ticket Display Order */}
-          <div className="admin-section">
-            <h2 className="admin-section__title">Ticket Display Order</h2>
-            <p style={{ color: "#888", fontSize: "0.8rem", marginBottom: 16 }}>
-              Drag tickets up or down to change their order on the event page.
-              Ungrouped tickets appear first, then grouped sections.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {(() => {
-                const SLOTS: { key: string; label: string; defaultGroup: string | null }[] = [
-                  { key: "general", label: "General Release", defaultGroup: null },
-                  { key: "vip", label: "VIP Ticket", defaultGroup: "VIP Experiences" },
-                  { key: "vip-tee", label: "VIP Black + Tee", defaultGroup: "VIP Experiences" },
-                  { key: "valentine", label: "Valentine's Special", defaultGroup: null },
-                ];
-                const order = (settings.weeztixTicketOrder as string[] | undefined) || SLOTS.map((s) => s.key);
-                const groupMap = (settings.ticket_group_map as Record<string, string | null>) || {};
-                const groups = (settings.ticket_groups as string[]) || ["VIP Experiences"];
-                const sortedSlots = [...SLOTS].sort((a, b) => {
-                  const aIdx = order.indexOf(a.key);
-                  const bIdx = order.indexOf(b.key);
-                  return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
-                });
-
-                const moveSlot = (idx: number, dir: "up" | "down") => {
-                  const target = dir === "up" ? idx - 1 : idx + 1;
-                  if (target < 0 || target >= sortedSlots.length) return;
-                  const newOrder = sortedSlots.map((s) => s.key);
-                  [newOrder[idx], newOrder[target]] = [newOrder[target], newOrder[idx]];
-                  updateSetting("weeztixTicketOrder", newOrder);
-                };
-
-                return sortedSlots.map((slot, idx) => {
-                  const group = groupMap[slot.key] !== undefined ? groupMap[slot.key] : slot.defaultGroup;
-                  return (
-                    <div
-                      key={slot.key}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        padding: "10px 12px", background: "#111", border: "1px solid #333",
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <button
-                          type="button" onClick={() => moveSlot(idx, "up")} disabled={idx === 0}
-                          style={{
-                            width: 22, height: 16, padding: 0, border: "1px solid #333",
-                            background: idx === 0 ? "#0a0a0a" : "#1a1a1a",
-                            color: idx === 0 ? "#333" : "#aaa",
-                            cursor: idx === 0 ? "default" : "pointer", fontSize: "0.6rem",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}
-                        >&#9650;</button>
-                        <button
-                          type="button" onClick={() => moveSlot(idx, "down")} disabled={idx === sortedSlots.length - 1}
-                          style={{
-                            width: 22, height: 16, padding: 0, border: "1px solid #333",
-                            background: idx === sortedSlots.length - 1 ? "#0a0a0a" : "#1a1a1a",
-                            color: idx === sortedSlots.length - 1 ? "#333" : "#aaa",
-                            cursor: idx === sortedSlots.length - 1 ? "default" : "pointer", fontSize: "0.6rem",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}
-                        >&#9660;</button>
-                      </div>
-                      <span style={{
-                        flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.75rem",
-                        color: "#fff", letterSpacing: "0.03em",
-                      }}>
-                        {settings[`ticketName${SLOTS.findIndex((s) => s.key === slot.key) + 1}` as keyof typeof settings] as string || slot.label}
-                      </span>
-                      <select
-                        style={{
-                          background: "#1a1a1a", color: "#aaa", border: "1px solid #333",
-                          padding: "4px 8px", fontSize: "0.65rem", fontFamily: "'Space Mono', monospace",
-                        }}
-                        value={group || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === "__new__") {
-                            const name = prompt("Enter new group name:");
-                            if (!name?.trim()) return;
-                            const trimmed = name.trim();
-                            if (!groups.includes(trimmed)) {
-                              updateSetting("ticket_groups", [...groups, trimmed]);
-                            }
-                            const newMap = { ...groupMap, [slot.key]: trimmed };
-                            updateSetting("ticket_group_map", newMap);
-                          } else {
-                            const newMap = { ...groupMap, [slot.key]: val || null };
-                            updateSetting("ticket_group_map", newMap);
-                          }
-                        }}
-                      >
-                        <option value="">No group</option>
-                        {groups.map((g) => <option key={g} value={g}>{g}</option>)}
-                        <option value="__new__">+ New group...</option>
-                      </select>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-            {/* Manage groups */}
-            {((settings.ticket_groups as string[]) || []).length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <span style={{ color: "#666", fontSize: "0.65rem", fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>
-                  GROUPS:
-                </span>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                  {((settings.ticket_groups as string[]) || []).map((g) => (
-                    <span
-                      key={g}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "4px 10px", background: "#1a1a1a", border: "1px solid #333",
-                        fontSize: "0.65rem", fontFamily: "'Space Mono', monospace", color: "#ccc",
-                      }}
-                    >
-                      {g}
-                      <button
-                        type="button"
-                        style={{
-                          background: "none", border: "none", color: "#666",
-                          cursor: "pointer", fontSize: "0.7rem", padding: 0, lineHeight: 1,
-                        }}
-                        title={`Rename or delete "${g}"`}
-                        onClick={() => {
-                          const action = prompt(`Group: "${g}"\nType a new name to rename, or type DELETE to remove:`);
-                          if (!action) return;
-                          const groups = ((settings.ticket_groups as string[]) || []);
-                          const gMap = { ...((settings.ticket_group_map as Record<string, string | null>) || {}) };
-                          if (action === "DELETE") {
-                            updateSetting("ticket_groups", groups.filter((x) => x !== g));
-                            for (const key of Object.keys(gMap)) {
-                              if (gMap[key] === g) gMap[key] = null;
-                            }
-                            updateSetting("ticket_group_map", gMap);
-                          } else {
-                            const trimmed = action.trim();
-                            if (!trimmed) return;
-                            updateSetting("ticket_groups", groups.map((x) => x === g ? trimmed : x));
-                            for (const key of Object.keys(gMap)) {
-                              if (gMap[key] === g) gMap[key] = trimmed;
-                            }
-                            updateSetting("ticket_group_map", gMap);
-                          }
-                        }}
-                      >
-                        &#9998;
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="admin-section">
-            <h2 className="admin-section__title">WeeZTix Configuration</h2>
-            <p
-              style={{
-                color: "#888",
-                fontSize: "0.8rem",
-                marginBottom: 16,
-              }}
-            >
-              This event uses WeeZTix for checkout. Configure the external
-              ticket IDs below.
-            </p>
-            <div className="admin-form">
-              <div className="admin-form__field">
-                <label className="admin-form__label">
-                  General Release ID
-                </label>
-                <input
-                  className="admin-form__input"
-                  value={settings.ticketId1 || ""}
-                  onChange={(e) => updateSetting("ticketId1", e.target.value)}
-                  placeholder="WeeZTix ticket UUID"
-                />
-              </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">VIP Ticket ID</label>
-                <input
-                  className="admin-form__input"
-                  value={settings.ticketId2 || ""}
-                  onChange={(e) => updateSetting("ticketId2", e.target.value)}
-                  placeholder="WeeZTix ticket UUID"
-                />
-              </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">
-                  VIP Black + Tee ID
-                </label>
-                <input
-                  className="admin-form__input"
-                  value={settings.ticketId3 || ""}
-                  onChange={(e) => updateSetting("ticketId3", e.target.value)}
-                  placeholder="WeeZTix ticket UUID"
-                />
-              </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">
-                  Valentine&apos;s Special ID
-                </label>
-                <input
-                  className="admin-form__input"
-                  value={settings.ticketId4 || ""}
-                  onChange={(e) => updateSetting("ticketId4", e.target.value)}
-                  placeholder="WeeZTix ticket UUID (leave empty to hide)"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="admin-section">
-            <h2 className="admin-section__title">WeeZTix Ticket Names</h2>
-            <div className="admin-form">
-              <div className="admin-form__row">
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Ticket 1 Name</label>
-                  <input
-                    className="admin-form__input"
-                    value={settings.ticketName1 || ""}
-                    onChange={(e) =>
-                      updateSetting("ticketName1", e.target.value)
-                    }
-                    placeholder="General Release"
-                  />
-                </div>
-                <div className="admin-form__field">
-                  <label className="admin-form__label">
-                    Ticket 1 Subtitle
-                  </label>
-                  <input
-                    className="admin-form__input"
-                    value={settings.ticketSubtitle1 || ""}
-                    onChange={(e) =>
-                      updateSetting("ticketSubtitle1", e.target.value)
-                    }
-                    placeholder="Standard entry"
-                  />
-                </div>
-              </div>
-              <div className="admin-form__row">
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Ticket 2 Name</label>
-                  <input
-                    className="admin-form__input"
-                    value={settings.ticketName2 || ""}
-                    onChange={(e) =>
-                      updateSetting("ticketName2", e.target.value)
-                    }
-                    placeholder="VIP Ticket"
-                  />
-                </div>
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Ticket 3 Name</label>
-                  <input
-                    className="admin-form__input"
-                    value={settings.ticketName3 || ""}
-                    onChange={(e) =>
-                      updateSetting("ticketName3", e.target.value)
-                    }
-                    placeholder="VIP Black + Tee"
-                  />
-                </div>
-              </div>
-              <div className="admin-form__row">
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Ticket 4 Name</label>
-                  <input
-                    className="admin-form__input"
-                    value={settings.ticketName4 || ""}
-                    onChange={(e) =>
-                      updateSetting("ticketName4", e.target.value)
-                    }
-                    placeholder="Valentine's Special"
-                  />
-                </div>
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Ticket 4 Subtitle</label>
-                  <input
-                    className="admin-form__input"
-                    value={settings.ticketSubtitle4 || ""}
-                    onChange={(e) =>
-                      updateSetting("ticketSubtitle4", e.target.value)
-                    }
-                    placeholder="Valentine's entry + perks"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="admin-section">
             <h2 className="admin-section__title">Size-Specific Tee IDs</h2>
             <div className="admin-form">

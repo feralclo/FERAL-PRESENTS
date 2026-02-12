@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * GET /api/orders/[id]/pdf — Generate and download PDF tickets for an order
@@ -11,6 +12,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { id } = await params;
     const supabase = await getSupabaseServer();
     if (!supabase) {

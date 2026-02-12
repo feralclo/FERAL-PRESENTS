@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * POST /api/upload — Upload an image and get back a serving URL.
@@ -14,6 +15,9 @@ import { TABLES } from "@/lib/constants";
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { imageData, key } = await request.json();
 
     if (!imageData || !key) {

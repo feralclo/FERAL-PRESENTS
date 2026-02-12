@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * POST /api/orders/[id]/refund — Mark order as refunded
@@ -10,6 +11,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { id } = await params;
     const body = await request.json();
     const { reason } = body;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://feralpresents.com";
@@ -11,6 +12,9 @@ const BASE_URL =
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return NextResponse.json(

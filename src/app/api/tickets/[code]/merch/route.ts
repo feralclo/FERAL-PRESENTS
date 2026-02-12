@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * POST /api/tickets/[code]/merch — Mark merchandise as collected.
@@ -12,6 +13,9 @@ export async function POST(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { code } = await params;
     const body = await request.json().catch(() => ({}));
     const { collected_by } = body as { collected_by?: string };

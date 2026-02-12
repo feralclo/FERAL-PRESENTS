@@ -6,12 +6,16 @@ import {
   generateOrderNumber,
   generateTicketCode,
 } from "@/lib/ticket-utils";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * GET /api/orders — List orders with optional filters
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return NextResponse.json(
@@ -95,6 +99,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const body = await request.json();
     const { event_id, items, customer } = body;
 

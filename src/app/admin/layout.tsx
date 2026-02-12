@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import "@/styles/admin.css";
-
-const ADMIN_USER = process.env.NEXT_PUBLIC_ADMIN_USER || "HARRY";
-const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASS || "Parker5656!";
 
 /* Red SVG icons for sidebar nav — modern monoline style */
 const svgIcon = (d: string) => (
@@ -29,70 +27,23 @@ const NAV_ITEMS = [
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
-  // Check existing session
-  useEffect(() => {
-    const session = sessionStorage.getItem("feral_admin_auth");
-    if (session === "true") {
-      setAuthenticated(true);
-    }
-  }, []);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
-      sessionStorage.setItem("feral_admin_auth", "true");
-      setAuthenticated(true);
-      setError("");
-    } else {
-      setError("Invalid credentials");
-    }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("feral_admin_auth");
-    setAuthenticated(false);
-  };
-
-  if (!authenticated) {
-    return (
-      <div className="admin-login">
-        <div className="admin-login__box">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/FERAL LOGO.svg" alt="FERAL" style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }} />
-          <h1 className="admin-login__title">Admin Access</h1>
-          <form onSubmit={handleLogin}>
-            <input
-              type="text"
-              placeholder="Username"
-              className="admin-login__input"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              className="admin-login__input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-            {error && <p className="admin-login__error">{error}</p>}
-            <button type="submit" className="admin-login__btn">
-              LOGIN
-            </button>
-          </form>
-        </div>
-      </div>
-    );
+  // Login page renders without the admin chrome — middleware handles auth
+  const isLoginPage = pathname.startsWith("/admin/login");
+  if (isLoginPage) {
+    return <>{children}</>;
   }
+
+  const handleLogout = async () => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    router.replace("/admin/login/");
+  };
 
   return (
     <div className="admin-layout">

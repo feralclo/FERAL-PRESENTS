@@ -29,8 +29,19 @@ export async function POST(request: NextRequest) {
 
     let event: Stripe.Event;
 
-    // Verify webhook signature if secret is configured
-    if (webhookSecret) {
+    // Verify webhook signature — required in production to prevent forged events
+    if (!webhookSecret) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("STRIPE_WEBHOOK_SECRET is required in production");
+        return NextResponse.json(
+          { error: "Webhook not configured" },
+          { status: 500 }
+        );
+      }
+      // Dev/test only: accept unverified events with warning
+      console.warn("[webhook] No STRIPE_WEBHOOK_SECRET — accepting unverified event (dev only)");
+      event = JSON.parse(body) as Stripe.Event;
+    } else {
       const signature = request.headers.get("stripe-signature");
       if (!signature) {
         return NextResponse.json(
@@ -47,9 +58,6 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-    } else {
-      // No webhook secret configured — parse the event directly (dev/test only)
-      event = JSON.parse(body) as Stripe.Event;
     }
 
     // Handle the event

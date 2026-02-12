@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * GET /api/guest-list/[eventId] — Get guest list for an event
@@ -10,6 +11,9 @@ export async function GET(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { eventId } = await params;
     const supabase = await getSupabaseServer();
     if (!supabase) {
@@ -58,6 +62,9 @@ export async function GET(
  */
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const body = await request.json();
     const { id, ...updates } = body;
 
@@ -105,6 +112,9 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { id } = await request.json();
 
     if (!id) {

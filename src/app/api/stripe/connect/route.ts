@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { DEFAULT_ACCOUNT_TYPE } from "@/lib/stripe/config";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * POST /api/stripe/connect — Create a new Stripe Connect account.
@@ -11,6 +12,9 @@ import { DEFAULT_ACCOUNT_TYPE } from "@/lib/stripe/config";
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const stripe = getStripe();
     const body = await request.json();
 
@@ -107,6 +111,9 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const stripe = getStripe();
 
     const accounts = await stripe.accounts.list({ limit: 100 });

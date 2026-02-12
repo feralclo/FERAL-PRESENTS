@@ -26,6 +26,7 @@ Everything built must serve that multi-tenant future. Every database query filte
 
 ```
 src/
+├── middleware.ts                            # Auth session refresh, route protection, security headers
 ├── app/
 │   ├── layout.tsx                          # Root layout (fonts, GTM, consent, scanlines)
 │   ├── page.tsx                            # Landing page (/)
@@ -37,7 +38,8 @@ src/
 │   │   ├── error.tsx                       # Error boundary
 │   │   └── loading.tsx                     # Loading skeleton (logo + progress bar)
 │   ├── admin/
-│   │   ├── layout.tsx                      # Auth gate + sidebar nav (12 items)
+│   │   ├── layout.tsx                      # Sidebar nav (12 items) + logout (auth via middleware)
+│   │   ├── login/page.tsx                  # Supabase Auth login page (email/password)
 │   │   ├── page.tsx                        # Dashboard (KPIs, quick links)
 │   │   ├── events/page.tsx                 # Event list + create form
 │   │   ├── events/[slug]/page.tsx          # Event editor (tickets, theme, images, lineup)
@@ -53,6 +55,8 @@ src/
 │   │   ├── settings/page.tsx               # Platform settings + danger zone resets
 │   │   └── health/page.tsx                 # System health monitoring
 │   └── api/
+│       ├── auth/login/route.ts             # POST sign in with Supabase Auth
+│       ├── auth/logout/route.ts            # POST sign out + clear cookies
 │       ├── settings/route.ts               # GET/POST settings by key
 │       ├── track/route.ts                  # POST traffic/popup events
 │       ├── health/route.ts                 # GET system health checks
@@ -126,6 +130,7 @@ src/
 │   ├── useHeaderScroll.ts                 # Header hide/show on scroll
 │   └── useScrollReveal.ts                 # IntersectionObserver scroll animations
 ├── lib/
+│   ├── auth.ts                            # requireAuth(), getSession() — API route auth helpers
 │   ├── constants.ts                       # ORG_ID, TABLES, SETTINGS_KEYS, default IDs
 │   ├── settings.ts                        # fetchSettings (server), saveSettings (client)
 │   ├── klaviyo.ts                         # Email subscription + identify
@@ -135,6 +140,7 @@ src/
 │   ├── ticket-utils.ts                    # generateTicketCode, generateOrderNumber
 │   ├── supabase/
 │   │   ├── client.ts                      # Browser Supabase client (singleton, no-cache)
+│   │   ├── middleware.ts                  # Supabase client for Next.js middleware
 │   │   └── server.ts                      # Server Supabase client (cookies, no-cache)
 │   └── stripe/
 │       ├── client.ts                      # Browser Stripe.js (lazy singleton, Connect-aware)
@@ -242,6 +248,64 @@ EventPage [Server Component, force-dynamic]
 - All Supabase fetches use `cache: "no-store"` — settings changes must appear immediately
 - Apple Pay verification file: aggressive cache (`max-age=86400`)
 - Uploaded media: aggressive cache (`max-age=31536000`)
+
+### Authentication & Security
+The platform uses Supabase Auth for admin authentication with defense-in-depth:
+
+**Authentication flow:**
+1. Admin navigates to `/admin/` → middleware checks for valid Supabase session
+2. No session → redirect to `/admin/login/` (Supabase Auth email/password)
+3. Successful login → session cookie set → middleware allows access
+4. Logout → `supabase.auth.signOut()` → cookies cleared → redirect to login
+
+**Key files:**
+- `src/middleware.ts` — Next.js middleware: session refresh, route protection, security headers
+- `src/lib/auth.ts` — `requireAuth()` helper for API route defense-in-depth
+- `src/lib/supabase/middleware.ts` — Supabase client configured for middleware cookie handling
+- `src/app/admin/login/page.tsx` — Login page using Supabase Auth
+- `src/app/api/auth/login/route.ts` — Server-side login API
+- `src/app/api/auth/logout/route.ts` — Server-side logout API
+
+**Two layers of API protection:**
+1. **Middleware** (first layer) — blocks unauthenticated requests to protected API routes at the edge
+2. **`requireAuth()`** (second layer) — each protected API handler verifies auth independently
+
+**Public API routes (no auth required):**
+- `POST /api/stripe/payment-intent` — customer checkout
+- `POST /api/stripe/confirm-order` — payment confirmation
+- `POST /api/stripe/webhook` — Stripe webhooks (verified by signature)
+- `GET /api/stripe/account` — Stripe account ID for checkout
+- `GET /api/stripe/apple-pay-verify` — Apple Pay verification
+- `GET /api/events`, `GET /api/events/[id]` — public event data
+- `GET /api/settings` — public settings for event pages
+- `GET /api/media/[key]` — public media serving
+- `POST /api/track` — analytics tracking
+- `POST /api/meta/capi` — Meta CAPI
+- `GET /api/health` — system health
+
+**Protected API routes (admin auth required):**
+- All `POST/PUT/DELETE` on `/api/settings`, `/api/events`, `/api/orders`
+- All `/api/customers`, `/api/guest-list`, `/api/upload`
+- All `/api/stripe/connect/*`, `/api/stripe/apple-pay-domain`
+- All `/api/tickets/[code]/*` (scanner endpoints)
+- All `/api/orders/*` (list, detail, refund, export, PDF)
+
+**Security headers** (applied globally via `next.config.ts` and middleware):
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+
+**Rules for new routes:**
+1. Every new admin API route must call `requireAuth()` at the top
+2. Every new public API route must be added to `PUBLIC_API_PREFIXES` in middleware.ts
+3. Never hardcode secrets in source — use environment variables only
+4. Stripe webhook must always verify signatures in production
+
+**Setting up admin users:**
+Admin users must be created in the Supabase Auth dashboard (Authentication → Users → Add User).
+There is no self-registration — admin access is invitation-only.
 
 ---
 
@@ -381,8 +445,8 @@ NEXT_PUBLIC_SITE_URL              # Site URL for CAPI event_source_url
 NEXT_PUBLIC_KLAVIYO_LIST_ID       # Klaviyo email list ID
 NEXT_PUBLIC_KLAVIYO_COMPANY_ID    # Klaviyo company ID
 NEXT_PUBLIC_WEEZTIX_SHOP_ID      # WeeZTix shop ID (legacy)
-NEXT_PUBLIC_ADMIN_USER            # Admin username (temporary)
-NEXT_PUBLIC_ADMIN_PASS            # Admin password (temporary)
+# NEXT_PUBLIC_ADMIN_USER          # REMOVED — replaced by Supabase Auth
+# NEXT_PUBLIC_ADMIN_PASS          # REMOVED — replaced by Supabase Auth
 ```
 
 ---
@@ -438,9 +502,9 @@ When building a new feature, write tests for:
 1. **Email confirmations** — send tickets via email after purchase (SendGrid/Postmark). No email integration exists yet.
 2. **Scanner PWA** — mobile web app for door staff. API endpoints exist (`/api/tickets/[code]` and `/api/tickets/[code]/scan`) but no frontend app.
 3. **Google Ads + TikTok tracking** — placeholders exist in marketing page but no implementation
-4. **Proper authentication** — admin uses hardcoded credentials in sessionStorage. Needs Supabase Auth or similar.
-5. **Multi-tenant promoter dashboard** — Stripe Connect is built, but the actual promoter-facing dashboard (separate from FERAL admin) doesn't exist yet.
-6. **Security hardening** — API routes have no auth middleware, no rate limiting, no security headers in next.config.ts, Supabase keys hardcoded as fallbacks in constants.ts
+4. **Multi-tenant promoter dashboard** — Stripe Connect is built, but the actual promoter-facing dashboard (separate from FERAL admin) doesn't exist yet.
+5. **Rate limiting** — API routes have no request rate limiting. Consider adding for payment and auth endpoints.
+6. **Supabase RLS policies** — Row-Level Security policies should be configured in Supabase dashboard to enforce org_id isolation at the database level.
 
 ---
 

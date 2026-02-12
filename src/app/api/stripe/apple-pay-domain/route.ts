@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * POST /api/stripe/apple-pay-domain
@@ -20,6 +21,9 @@ import { TABLES } from "@/lib/constants";
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const stripe = getStripe();
     const body = await request.json();
     const { domain } = body;
@@ -75,6 +79,9 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const stripe = getStripe();
 
     // Check for connected account

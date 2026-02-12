@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * GET /api/stripe/connect/[accountId] — Get connected account details.
@@ -9,6 +10,9 @@ export async function GET(
   { params }: { params: Promise<{ accountId: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { accountId } = await params;
     const stripe = getStripe();
 
@@ -51,6 +55,9 @@ export async function DELETE(
   { params }: { params: Promise<{ accountId: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { accountId } = await params;
     const stripe = getStripe();
 

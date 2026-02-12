@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * GET /api/tickets/[code] — Validate a ticket by its code.
@@ -11,6 +12,9 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { code } = await params;
     const supabase = await getSupabaseServer();
     if (!supabase) {

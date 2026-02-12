@@ -1461,7 +1461,6 @@ function OrderItems({
   symbol: string;
   event?: Event & { ticket_types: TicketTypeRow[] };
 }) {
-  // Look up TicketTypeRow for merch metadata
   const getTicketType = (id: string): TicketTypeRow | undefined =>
     event?.ticket_types?.find((t) => t.id === id);
 
@@ -1482,7 +1481,6 @@ function OrderItems({
       })
     : null);
 
-  // Venue + date combined
   const eventMeta = [eventDate, event?.venue_name].filter(Boolean).join(" · ");
 
   return (
@@ -1498,11 +1496,14 @@ function OrderItems({
           <div key={i} className="order-item">
             {/* Ticket row */}
             <div className="order-item__ticket">
-              <svg className="order-item__icon" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M2 10h3M19 10h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M8 6v12" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2 2"/>
-              </svg>
+              <div className="order-item__ticket-icon">
+                <svg viewBox="0 0 48 48" fill="none">
+                  <rect x="4" y="12" width="40" height="24" rx="4" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M4 20h5M39 20h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M16 12v24" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3"/>
+                </svg>
+                <span className="order-item__ticket-qty">{line.qty}</span>
+              </div>
               <div className="order-item__info">
                 <span className="order-item__name">{line.name}</span>
                 {event?.name && (
@@ -1515,40 +1516,33 @@ function OrderItems({
                   <span className="order-item__meta">Doors {eventTime}</span>
                 )}
               </div>
-              <div className="order-item__right">
-                <span className="order-item__qty">×{line.qty}</span>
-                <span className="order-item__price">
-                  {symbol}{(line.price * line.qty).toFixed(2)}
-                </span>
-              </div>
+              <span className="order-item__price">
+                {symbol}{(line.price * line.qty).toFixed(2)}
+              </span>
             </div>
 
-            {/* Merch sub-item (if ticket includes merch) */}
+            {/* Merch sub-item */}
             {hasMerch && (
               <div className="order-item__merch">
-                <div className="order-item__merch-inner">
+                <div className="order-item__merch-thumb">
                   {merchImg ? (
-                    <div className="order-item__merch-thumb">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={merchImg} alt="" className="order-item__merch-img" />
-                    </div>
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={merchImg} alt="" className="order-item__merch-img" />
                   ) : (
-                    <div className="order-item__merch-thumb order-item__merch-thumb--empty">
-                      <svg viewBox="0 0 24 24" fill="none" className="order-item__merch-placeholder">
-                        <path d="M12 3l-2 3h4l-2-3zM6 6h12l1 3H5l1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-                        <path d="M5 9h14v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="1.2"/>
-                      </svg>
-                    </div>
+                    <svg viewBox="0 0 24 24" fill="none" className="order-item__merch-placeholder">
+                      <path d="M12 3l-2 3h4l-2-3zM6 6h12l1 3H5l1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                      <path d="M5 9h14v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="1.2"/>
+                    </svg>
                   )}
-                  <div className="order-item__merch-info">
-                    <span className="order-item__merch-label">Included merch</span>
-                    <span className="order-item__merch-name">
-                      {merchName || line.name}
-                    </span>
-                    <span className="order-item__merch-size">
-                      Size: {line.merch_size}
-                    </span>
-                  </div>
+                </div>
+                <div className="order-item__merch-info">
+                  <span className="order-item__merch-label">Included merch</span>
+                  <span className="order-item__merch-name">
+                    {merchName || line.name}
+                  </span>
+                  <span className="order-item__merch-size">
+                    Size: {line.merch_size}
+                  </span>
                 </div>
               </div>
             )}

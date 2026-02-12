@@ -363,34 +363,52 @@ html.checkout-active .noise {
    ======================================== */
 
 /* ========================================
-   ORDER ITEMS — Ticket cards + nested merch
+   ORDER ITEMS — Clean, borderless layout
+   Line separators between items, no boxes.
    ======================================== */
 .order-items {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
-/* Each order item: ticket row + optional merch sub-item */
-.order-item {
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.015);
+/* Each order item — separated by lines, no box */
+.order-item + .order-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 14px;
+  padding-top: 14px;
 }
 
 /* ── Ticket row ── */
 .order-item__ticket {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
+  gap: 14px;
 }
 
-.order-item__icon {
-  width: 18px;
-  height: 18px;
-  color: #666;
+/* Ticket icon — large, with qty embedded inside */
+.order-item__ticket-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
-  margin-top: 1px;
+}
+
+.order-item__ticket-icon svg {
+  width: 100%;
+  height: 100%;
+  color: #555;
+}
+
+.order-item__ticket-qty {
+  position: absolute;
+  top: 50%;
+  left: 62%;
+  transform: translate(-50%, -50%);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
 }
 
 .order-item__info {
@@ -398,7 +416,8 @@ html.checkout-active .noise {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  padding-top: 2px;
 }
 
 .order-item__name {
@@ -430,44 +449,27 @@ html.checkout-active .noise {
   line-height: 1.3;
 }
 
-.order-item__right {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  padding-top: 1px;
-}
-
-.order-item__qty {
-  font-family: 'Space Mono', monospace;
-  font-size: 11px;
-  color: #555;
-}
-
 .order-item__price {
+  flex-shrink: 0;
   font-family: 'Space Mono', monospace;
   font-size: 13px;
   font-weight: 600;
   color: #fff;
+  padding-top: 2px;
 }
 
-/* ── Merch sub-item (nested below ticket) ── */
+/* ── Merch sub-item ── */
 .order-item__merch {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.01);
-}
-
-.order-item__merch-inner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 10px;
+  padding-left: 58px;
 }
 
 .order-item__merch-thumb {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -478,10 +480,6 @@ html.checkout-active .noise {
   justify-content: center;
 }
 
-.order-item__merch-thumb--empty {
-  background: rgba(255, 255, 255, 0.02);
-}
-
 .order-item__merch-img {
   width: 100%;
   height: 100%;
@@ -489,8 +487,8 @@ html.checkout-active .noise {
 }
 
 .order-item__merch-placeholder {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   color: #444;
 }
 
@@ -526,6 +524,13 @@ html.checkout-active .noise {
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   color: #666;
+}
+
+/* Mobile: reduce merch indent */
+@media (max-width: 600px) {
+  .order-item__merch {
+    padding-left: 0;
+  }
 }
 
 /* Divider */

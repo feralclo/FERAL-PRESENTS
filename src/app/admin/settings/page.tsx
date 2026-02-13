@@ -86,7 +86,16 @@ export default function AdminSettings() {
   const [logoProcessing, setLogoProcessing] = useState(false);
   const [logoUploadError, setLogoUploadError] = useState("");
 
-  // Load email settings on mount
+  // ── Resend connection status ──
+  const [resendStatus, setResendStatus] = useState<{
+    configured: boolean;
+    verified: boolean;
+    domains: { name: string; status: string }[];
+    error?: string;
+    loading: boolean;
+  }>({ configured: false, verified: false, domains: [], loading: true });
+
+  // Load email settings + Resend connection status on mount
   useEffect(() => {
     (async () => {
       try {
@@ -111,6 +120,23 @@ export default function AdminSettings() {
         // No settings saved yet — defaults are fine
       }
       setEmailLoading(false);
+    })();
+
+    // Check Resend connection status
+    (async () => {
+      try {
+        const res = await fetch("/api/email/status");
+        const json = await res.json();
+        setResendStatus({ ...json, loading: false });
+      } catch {
+        setResendStatus({
+          configured: false,
+          verified: false,
+          domains: [],
+          error: "Failed to check status",
+          loading: false,
+        });
+      }
     })();
   }, []);
 
@@ -613,23 +639,134 @@ export default function AdminSettings() {
               )}
             </div>
 
-            {/* ENV reminder */}
+            {/* Resend connection status */}
             <div style={{
               marginTop: "20px",
-              padding: "12px 16px",
-              background: "rgba(255,193,7,0.04)",
-              border: "1px dashed rgba(255,193,7,0.2)",
+              padding: "14px 16px",
+              background: resendStatus.loading
+                ? "rgba(255,255,255,0.02)"
+                : resendStatus.verified
+                  ? "rgba(78,203,113,0.04)"
+                  : resendStatus.configured
+                    ? "rgba(255,193,7,0.04)"
+                    : "rgba(255,0,51,0.04)",
+              border: `1px solid ${
+                resendStatus.loading
+                  ? "rgba(255,255,255,0.06)"
+                  : resendStatus.verified
+                    ? "rgba(78,203,113,0.2)"
+                    : resendStatus.configured
+                      ? "rgba(255,193,7,0.2)"
+                      : "rgba(255,0,51,0.15)"
+              }`,
             }}>
-              <p style={{
-                fontFamily: "'Space Mono', monospace",
-                fontSize: "0.7rem",
-                letterSpacing: "1px",
-                color: "#ffc107",
-                margin: 0,
-              }}>
-                Requires <code style={{ color: "#fff" }}>RESEND_API_KEY</code> environment variable.
-                Emails will be silently skipped if not configured.
-              </p>
+              {resendStatus.loading ? (
+                <p style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: "0.7rem",
+                  letterSpacing: "1px",
+                  color: "#888",
+                  margin: 0,
+                }}>
+                  Checking email connection...
+                </p>
+              ) : resendStatus.verified ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: 4 }}>
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#4ecb71",
+                      display: "inline-block",
+                      boxShadow: "0 0 6px rgba(78,203,113,0.5)",
+                    }} />
+                    <span style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: "0.7rem",
+                      letterSpacing: "1px",
+                      color: "#4ecb71",
+                      textTransform: "uppercase",
+                    }}>
+                      Connected — Emails are live
+                    </span>
+                  </div>
+                  {resendStatus.domains.length > 0 && (
+                    <p style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: "0.65rem",
+                      color: "#888",
+                      margin: "4px 0 0 16px",
+                      letterSpacing: "0.5px",
+                    }}>
+                      {resendStatus.domains
+                        .filter((d) => d.status === "verified")
+                        .map((d) => d.name)
+                        .join(", ")}
+                    </p>
+                  )}
+                </div>
+              ) : resendStatus.configured ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: 4 }}>
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#ffc107",
+                      display: "inline-block",
+                    }} />
+                    <span style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: "0.7rem",
+                      letterSpacing: "1px",
+                      color: "#ffc107",
+                      textTransform: "uppercase",
+                    }}>
+                      API key set — Domain not verified
+                    </span>
+                  </div>
+                  <p style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: "0.65rem",
+                    color: "#888",
+                    margin: "4px 0 0 16px",
+                    letterSpacing: "0.5px",
+                  }}>
+                    {resendStatus.error || "Verify your domain in Resend to start sending emails."}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: 4 }}>
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#ff0033",
+                      display: "inline-block",
+                    }} />
+                    <span style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: "0.7rem",
+                      letterSpacing: "1px",
+                      color: "#ff0033",
+                      textTransform: "uppercase",
+                    }}>
+                      Not configured
+                    </span>
+                  </div>
+                  <p style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: "0.65rem",
+                    color: "#888",
+                    margin: "4px 0 0 16px",
+                    letterSpacing: "0.5px",
+                  }}>
+                    Add <code style={{ color: "#fff" }}>RESEND_API_KEY</code> to your environment variables and redeploy.
+                  </p>
+                </div>
+              )}
             </div>
           </>
         )}

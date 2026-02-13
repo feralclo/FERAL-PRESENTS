@@ -15,6 +15,95 @@ const STATUS_COLORS: Record<string, string> = {
   used: "#888",
 };
 
+interface TimelineEntry {
+  label: string;
+  detail?: string;
+  time: string;
+  color: string;
+  sortDate: Date;
+}
+
+function buildTimeline(order: Order): TimelineEntry[] {
+  const entries: TimelineEntry[] = [];
+  const fmt = (d: string) => new Date(d).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Order created
+  entries.push({
+    label: "Order placed",
+    detail: `${order.order_number} — £${Number(order.total).toFixed(2)}`,
+    time: fmt(order.created_at),
+    color: "#4ecb71",
+    sortDate: new Date(order.created_at),
+  });
+
+  // Payment processed
+  if (order.payment_ref && order.status !== "failed") {
+    entries.push({
+      label: "Payment processed",
+      detail: `via ${order.payment_method}${order.payment_ref ? ` (${order.payment_ref.slice(0, 20)}...)` : ""}`,
+      time: fmt(order.created_at),
+      color: "#4ecb71",
+      sortDate: new Date(new Date(order.created_at).getTime() + 1000),
+    });
+  }
+
+  // Email sent / failed (from order metadata)
+  const meta = (order.metadata || {}) as Record<string, unknown>;
+  if (meta.email_sent === true && typeof meta.email_sent_at === "string") {
+    entries.push({
+      label: "Confirmation email sent",
+      detail: `to ${meta.email_to || order.customer?.email || "customer"}`,
+      time: fmt(meta.email_sent_at as string),
+      color: "#4ecb71",
+      sortDate: new Date(meta.email_sent_at as string),
+    });
+  } else if (meta.email_sent === false && typeof meta.email_attempted_at === "string") {
+    entries.push({
+      label: "Email delivery failed",
+      detail: (meta.email_error as string) || "Unknown error",
+      time: fmt(meta.email_attempted_at as string),
+      color: "#ff0033",
+      sortDate: new Date(meta.email_attempted_at as string),
+    });
+  }
+
+  // Tickets scanned
+  if (order.tickets) {
+    for (const ticket of order.tickets) {
+      if (ticket.scanned_at) {
+        entries.push({
+          label: `Ticket scanned: ${ticket.ticket_code}`,
+          detail: ticket.scanned_by ? `by ${ticket.scanned_by}` : undefined,
+          time: fmt(ticket.scanned_at),
+          color: "#888",
+          sortDate: new Date(ticket.scanned_at),
+        });
+      }
+    }
+  }
+
+  // Refunded
+  if (order.status === "refunded" && order.refunded_at) {
+    entries.push({
+      label: "Order refunded",
+      detail: order.refund_reason || undefined,
+      time: fmt(order.refunded_at),
+      color: "#ff0033",
+      sortDate: new Date(order.refunded_at),
+    });
+  }
+
+  // Sort chronologically
+  entries.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+  return entries;
+}
+
 export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
@@ -337,6 +426,73 @@ export default function OrderDetailPage() {
           </table>
         </div>
       )}
+
+      {/* Timeline */}
+      <div className="admin-section">
+        <h2 className="admin-section__title">Timeline</h2>
+        <div style={{ position: "relative", paddingLeft: 24 }}>
+          {/* Vertical line */}
+          <div style={{
+            position: "absolute",
+            left: 7,
+            top: 4,
+            bottom: 4,
+            width: 2,
+            background: "#2a2a2a",
+          }} />
+
+          {buildTimeline(order).map((entry, i) => (
+            <div key={i} style={{
+              position: "relative",
+              paddingBottom: 20,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+            }}>
+              {/* Dot */}
+              <div style={{
+                position: "absolute",
+                left: -20,
+                top: 3,
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                background: entry.color,
+                border: "2px solid #0e0e0e",
+                boxShadow: `0 0 0 2px ${entry.color}33`,
+                flexShrink: 0,
+              }} />
+              <div>
+                <div style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: "0.75rem",
+                  color: "#fff",
+                  marginBottom: 2,
+                }}>
+                  {entry.label}
+                </div>
+                {entry.detail && (
+                  <div style={{
+                    fontSize: "0.7rem",
+                    color: "#888",
+                    marginBottom: 2,
+                  }}>
+                    {entry.detail}
+                  </div>
+                )}
+                <div style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: "0.6rem",
+                  color: "#555",
+                  letterSpacing: "0.5px",
+                }}>
+                  {entry.time}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

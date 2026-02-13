@@ -59,6 +59,35 @@ function formatEventDate(dateStr?: string): string {
 }
 
 /**
+ * Record email send status in the order's metadata JSONB field.
+ * Used to populate the order timeline in admin.
+ */
+async function recordEmailStatus(
+  orderId: string,
+  emailMeta: Record<string, unknown>
+): Promise<void> {
+  try {
+    const supabase = await getSupabaseServer();
+    if (!supabase) return;
+
+    // Merge into existing metadata (don't overwrite other fields)
+    const { data: existing } = await supabase
+      .from(TABLES.ORDERS)
+      .select("metadata")
+      .eq("id", orderId)
+      .single();
+
+    const currentMeta = (existing?.metadata as Record<string, unknown>) || {};
+    await supabase
+      .from(TABLES.ORDERS)
+      .update({ metadata: { ...currentMeta, ...emailMeta } })
+      .eq("id", orderId);
+  } catch {
+    // Never throw — recording email status must not cause issues
+  }
+}
+
+/**
  * Send order confirmation email with PDF tickets attached.
  *
  * This is called fire-and-forget from the order creation flow.
@@ -179,8 +208,22 @@ export async function sendOrderConfirmationEmail(params: {
 
     if (error) {
       console.error("[email] Resend error:", error);
+      // Record failure in order metadata
+      await recordEmailStatus(params.order.id, {
+        email_sent: false,
+        email_error: typeof error === "object" && "message" in error ? error.message : String(error),
+        email_attempted_at: new Date().toISOString(),
+        email_to: params.customer.email,
+      });
       return;
     }
+
+    // Record success in order metadata
+    await recordEmailStatus(supabase, params.order.id, {
+      email_sent: true,
+      email_sent_at: new Date().toISOString(),
+      email_to: params.customer.email,
+    });
 
     console.log(
       `[email] Order confirmation sent to ${params.customer.email} for ${params.order.order_number}`

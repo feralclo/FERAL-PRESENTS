@@ -12,7 +12,8 @@
 
 /*
  * Custom theme matching FERAL design system.
- * These CSS variables are consumed by shadcn/ui components.
+ * These CSS variables are consumed by shadcn/ui components (from the
+ * official registry) and mapped via Tailwind v4 @theme.
  */
 @theme inline {
   --color-background: #0e0e0e;
@@ -45,18 +46,4 @@
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
-}
-
-/*
- * shadcn/ui animation keyframes + utility classes.
- * Needed for components like Switch, Tabs transitions etc.
- */
-@layer utilities {
-  .animate-in {
-    animation: animate-in 0.2s ease-out;
-  }
-  @keyframes animate-in {
-    from { opacity: 0; transform: translateY(2px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
 }

@@ -144,7 +144,8 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
         <div className="p-6 rounded-b-lg" style={{ background: "linear-gradient(to bottom, #1a1a1a 0%, #e8e8ea 8%, #f4f4f5 16%)" }}>
           <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-lg" style={{ background: "#fff" }}>
             <div style={{ height: 4, backgroundColor: accent }} />
-            <div className="flex items-center justify-center" style={{ height: 80, background: settings.logo_url ? "#0e0e0e" : undefined }}>
+            {/* Header — matches actual email HTML: padding 28px top + 20px bottom + logo height */}
+            <div className="flex items-center justify-center" style={{ padding: "28px 32px 20px", background: settings.logo_url ? "#0e0e0e" : undefined }}>
               {settings.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={settings.logo_url} alt="Logo" style={{ height: logoH, width: "auto", maxWidth: 280, objectFit: "contain" }} />

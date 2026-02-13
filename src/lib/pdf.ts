@@ -108,6 +108,27 @@ export async function generateTicketsPDF(
     if (i > 0) doc.addPage();
     const t = tickets[i];
 
+    // ── Dynamic layout: Y positions flow based on logo height ──
+    // The preview mirrors this exact math so what you see is what you get.
+    const logoY = 10;
+    const brandH = logoDataUrl ? (() => {
+      const maxW = pageWidth * 0.7;
+      let lh = s.logo_height || 12;
+      const lw = lh * logoAspect;
+      if (lw > maxW) lh = maxW / logoAspect;
+      return lh;
+    })() : 12;
+    const dividerY = Math.max(logoY + brandH + 4, 28);
+    const eventNameY = dividerY + 12;
+    const venueY = eventNameY + 8;
+    const dateY = venueY + 6;
+    const typeY = dateY + 12;
+    const qrY = typeY + 10;
+    const qrBottom = qrY + s.qr_size;
+    const codeY = qrBottom + 8;
+    const holderY = codeY + 10;
+    const orderY = holderY + (s.show_holder ? 8 : 0);
+
     // Background
     doc.setFillColor(bgR, bgG, bgB);
     doc.rect(0, 0, 148, 210, "F");
@@ -119,19 +140,15 @@ export async function generateTicketsPDF(
     // Brand: logo or text
     if (logoDataUrl) {
       try {
-        // Replicate the preview's CSS: height = logo_height, width = auto, maxWidth = 70%.
-        // jsPDF has no object-fit — we must compute both dimensions manually.
         const maxW = pageWidth * 0.7;
         let logoW = (s.logo_height || 12) * logoAspect;
         let logoH = s.logo_height || 12;
-        // If the natural width exceeds the cap, shrink BOTH dimensions to maintain aspect ratio
         if (logoW > maxW) {
           logoW = maxW;
           logoH = maxW / logoAspect;
         }
-        doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, 10, logoW, logoH);
+        doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, logoY, logoW, logoH);
       } catch {
-        // Fallback to text if image embed fails
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
         doc.setTextColor(txR, txG, txB);
@@ -147,29 +164,29 @@ export async function generateTicketsPDF(
     // Divider
     doc.setDrawColor(40, 40, 40);
     doc.setLineWidth(0.3);
-    doc.line(24, 28, 124, 28);
+    doc.line(24, dividerY, 124, dividerY);
 
     // Event name
     doc.setFontSize(14);
     doc.setTextColor(txR, txG, txB);
-    doc.text(t.eventName.toUpperCase(), centerX, 40, { align: "center" });
+    doc.text(t.eventName.toUpperCase(), centerX, eventNameY, { align: "center" });
 
     // Venue + Date
     doc.setFontSize(9);
     doc.setTextColor(secR, secG, secB);
-    doc.text(t.venueName, centerX, 48, { align: "center" });
-    doc.text(t.eventDate, centerX, 54, { align: "center" });
+    doc.text(t.venueName, centerX, venueY, { align: "center" });
+    doc.text(t.eventDate, centerX, dateY, { align: "center" });
 
     // Ticket type
     doc.setFontSize(11);
     doc.setTextColor(acR, acG, acB);
-    doc.text(t.ticketType.toUpperCase(), centerX, 66, { align: "center" });
+    doc.text(t.ticketType.toUpperCase(), centerX, typeY, { align: "center" });
 
     // Merch size
     if (t.merchSize) {
       doc.setFontSize(9);
       doc.setTextColor(secR, secG, secB);
-      doc.text(`SIZE: ${t.merchSize}`, centerX, 73, { align: "center" });
+      doc.text(`SIZE: ${t.merchSize}`, centerX, typeY + 7, { align: "center" });
     }
 
     // QR Code
@@ -177,35 +194,30 @@ export async function generateTicketsPDF(
     try {
       const qrBuffer = await generateTicketQRBuffer(t.ticketCode);
       const qrBase64 = `data:image/png;base64,${qrBuffer.toString("base64")}`;
-      const qrX = centerX - qrSize / 2;
-      const qrY = t.merchSize ? 80 : 78;
-      doc.addImage(qrBase64, "PNG", qrX, qrY, qrSize, qrSize);
+      doc.addImage(qrBase64, "PNG", centerX - qrSize / 2, qrY, qrSize, qrSize);
     } catch {
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
-      doc.text("QR Code", centerX, 105, { align: "center" });
+      doc.text("QR Code", centerX, qrY + qrSize / 2, { align: "center" });
     }
 
     // Ticket code
     doc.setFontSize(14);
     doc.setTextColor(acR, acG, acB);
-    const codeY = t.merchSize ? 140 : 138;
     doc.text(t.ticketCode, centerX, codeY, { align: "center" });
 
     // Holder name
     if (s.show_holder) {
       doc.setFontSize(10);
       doc.setTextColor(txR, txG, txB);
-      doc.text(t.holderName, centerX, codeY + 10, { align: "center" });
+      doc.text(t.holderName, centerX, holderY, { align: "center" });
     }
 
     // Order number
     if (s.show_order) {
       doc.setFontSize(7);
       doc.setTextColor(100, 100, 100);
-      doc.text(`ORDER: ${t.orderNumber}`, centerX, codeY + (s.show_holder ? 18 : 10), {
-        align: "center",
-      });
+      doc.text(`ORDER: ${t.orderNumber}`, centerX, orderY, { align: "center" });
     }
 
     // Bottom divider

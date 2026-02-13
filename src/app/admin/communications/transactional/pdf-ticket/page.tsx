@@ -69,15 +69,38 @@ function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null>
   });
 }
 
-/* ── Live PDF ticket preview (pure HTML/CSS) ── */
+/**
+ * Live PDF ticket preview — uses absolute positioning with the SAME
+ * coordinate math as pdf.ts so what you see is exactly what gets generated.
+ *
+ * A5 = 148mm × 210mm. All positions are converted to percentages:
+ *   yPct = (mm / 210) * 100    xPct = (mm / 148) * 100
+ */
 function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; large?: boolean }) {
   const accent = s.accent_color || "#ff0033";
   const bg = s.bg_color || "#0e0e0e";
   const text = s.text_color || "#ffffff";
   const secondary = s.secondary_color || "#969696";
-  const qrPct = Math.round((s.qr_size / 148) * 100);
-  // Logo height scales: mm on A5 → percentage of 210mm height
-  const logoHPct = s.logo_url ? `${Math.round((s.logo_height / 210) * 100)}%` : undefined;
+
+  // ── Same layout math as pdf.ts (dynamic Y positions) ──
+  const logoY = 10;
+  const brandH = s.logo_url ? (s.logo_height || 12) : 12;
+  const dividerY = Math.max(logoY + brandH + 4, 28);
+  const eventNameY = dividerY + 12;
+  const venueY = eventNameY + 8;
+  const dateY = venueY + 6;
+  const typeY = dateY + 12;
+  const qrY = typeY + 10;
+  const qrBottom = qrY + s.qr_size;
+  const codeY = qrBottom + 8;
+  const holderY = codeY + 10;
+  const orderY = holderY + (s.show_holder ? 8 : 0);
+
+  // Convert mm to percentage of A5 page
+  const yPct = (mm: number) => `${(mm / 210) * 100}%`;
+  const hPct = (mm: number) => `${(mm / 210) * 100}%`;
+  const xPct = (mm: number) => `${(mm / 148) * 100}%`;
+  const wPct = (mm: number) => `${(mm / 148) * 100}%`;
 
   return (
     <div className="mx-auto" style={{ maxWidth: large ? 680 : 340 }}>
@@ -89,85 +112,127 @@ function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; la
           fontFamily: "'Inter', -apple-system, sans-serif",
         }}
       >
-        <div className="absolute inset-x-0 top-0" style={{ height: "1%", backgroundColor: accent }} />
+        {/* Top accent bar */}
+        <div className="absolute inset-x-0 top-0" style={{ height: hPct(2), backgroundColor: accent }} />
 
-        <div className="flex h-full flex-col items-center justify-between px-[12%] py-[8%]">
-          {/* Top: Brand — logo or text */}
-          <div className="w-full text-center">
-            {s.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={s.logo_url}
-                alt="Brand"
-                style={{ height: logoHPct, width: "auto", maxWidth: "70%", objectFit: "contain", margin: "0 auto" }}
-              />
-            ) : (
-              <div
-                style={{
-                  fontFamily: "'Space Mono', 'Courier New', monospace",
-                  fontSize: "clamp(10px, 3.5vw, 16px)",
-                  fontWeight: 700,
-                  color: text,
-                  letterSpacing: 2,
-                }}
-              >
-                {s.brand_name}
-              </div>
-            )}
-            <div className="mx-auto mt-[4%]" style={{ height: 1, backgroundColor: "#282828", width: "70%" }} />
+        {/* Brand: logo or text */}
+        {s.logo_url ? (
+          <div className="absolute left-0 right-0 flex justify-center" style={{ top: yPct(logoY), height: hPct(brandH) }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={s.logo_url}
+              alt="Brand"
+              style={{ height: "100%", width: "auto", maxWidth: "70%", objectFit: "contain" }}
+            />
           </div>
-
-          {/* Event info */}
-          <div className="w-full text-center" style={{ marginTop: "-2%" }}>
-            <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(10px, 3vw, 14px)", fontWeight: 700, color: text, letterSpacing: 1, textTransform: "uppercase" }}>
-              FERAL LIVERPOOL
-            </div>
-            <div style={{ fontSize: "clamp(7px, 2vw, 9px)", color: secondary, marginTop: 4 }}>Invisible Wind Factory</div>
-            <div style={{ fontSize: "clamp(7px, 2vw, 9px)", color: secondary, marginTop: 2 }}>Thursday 27 March 2026</div>
-            <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(8px, 2.4vw, 11px)", fontWeight: 700, color: accent, marginTop: 8, textTransform: "uppercase" }}>
-              GENERAL RELEASE
-            </div>
-          </div>
-
-          {/* QR Code placeholder */}
+        ) : (
           <div
-            className="flex items-center justify-center rounded-md"
-            style={{ width: `${qrPct}%`, aspectRatio: "1 / 1", backgroundColor: "#ffffff", padding: "3%" }}
+            className="absolute left-0 right-0 text-center"
+            style={{
+              top: yPct(16),
+              fontFamily: "'Space Mono', 'Courier New', monospace",
+              fontSize: "clamp(10px, 3.5cqi, 16px)",
+              fontWeight: 700,
+              color: text,
+              letterSpacing: 2,
+            }}
           >
-            <QrCode style={{ width: "80%", height: "80%", color: "#000" }} />
+            {s.brand_name}
           </div>
+        )}
 
-          {/* Ticket code */}
-          <div className="w-full text-center">
-            <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(10px, 3vw, 14px)", fontWeight: 700, color: accent, letterSpacing: 1 }}>
-              FERAL-A1B2C3D4
-            </div>
-            {s.show_holder && (
-              <div style={{ fontSize: "clamp(7px, 2.2vw, 10px)", color: `${text}cc`, marginTop: 6 }}>Alex Test</div>
-            )}
-            {s.show_order && (
-              <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(5px, 1.6vw, 7px)", color: "#646464", marginTop: 4 }}>
-                ORDER: FERAL-00042
-              </div>
-            )}
-          </div>
+        {/* Divider */}
+        <div
+          className="absolute"
+          style={{ top: yPct(dividerY), left: xPct(24), right: xPct(24), height: 1, backgroundColor: "#282828" }}
+        />
 
-          {/* Bottom */}
-          <div className="w-full text-center">
-            <div className="mx-auto mb-[3%]" style={{ height: 1, backgroundColor: "#282828", width: "70%" }} />
-            {s.show_disclaimer && (
-              <>
-                <div style={{ fontSize: "clamp(4px, 1.3vw, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase" }}>{s.disclaimer_line1}</div>
-                <div style={{ fontSize: "clamp(4px, 1.3vw, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 3 }}>{s.disclaimer_line2}</div>
-              </>
-            )}
-          </div>
+        {/* Event name */}
+        <div
+          className="absolute left-0 right-0 text-center"
+          style={{ top: yPct(eventNameY - 4), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(9px, 2.8cqi, 14px)", fontWeight: 700, color: text, letterSpacing: 1, textTransform: "uppercase" }}
+        >
+          FERAL LIVERPOOL
         </div>
 
-        <div className="absolute inset-x-0 bottom-0" style={{ height: "1%", backgroundColor: accent }} />
+        {/* Venue */}
+        <div className="absolute left-0 right-0 text-center" style={{ top: yPct(venueY - 3), fontSize: "clamp(6px, 1.8cqi, 9px)", color: secondary }}>
+          Invisible Wind Factory
+        </div>
+
+        {/* Date */}
+        <div className="absolute left-0 right-0 text-center" style={{ top: yPct(dateY - 3), fontSize: "clamp(6px, 1.8cqi, 9px)", color: secondary }}>
+          Thursday 27 March 2026
+        </div>
+
+        {/* Ticket type */}
+        <div
+          className="absolute left-0 right-0 text-center"
+          style={{ top: yPct(typeY - 3), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(7px, 2.2cqi, 11px)", fontWeight: 700, color: accent, textTransform: "uppercase" }}
+        >
+          GENERAL RELEASE
+        </div>
+
+        {/* QR Code placeholder */}
+        <div
+          className="absolute flex items-center justify-center rounded-md"
+          style={{
+            top: yPct(qrY),
+            left: `calc(50% - ${wPct(s.qr_size / 2)})`,
+            width: wPct(s.qr_size),
+            height: hPct(s.qr_size),
+            backgroundColor: "#ffffff",
+            padding: "1%",
+          }}
+        >
+          <QrCode style={{ width: "80%", height: "80%", color: "#000" }} />
+        </div>
+
+        {/* Ticket code */}
+        <div
+          className="absolute left-0 right-0 text-center"
+          style={{ top: yPct(codeY - 4), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(9px, 2.8cqi, 14px)", fontWeight: 700, color: accent, letterSpacing: 1 }}
+        >
+          FERAL-A1B2C3D4
+        </div>
+
+        {/* Holder name */}
+        {s.show_holder && (
+          <div className="absolute left-0 right-0 text-center" style={{ top: yPct(holderY - 3), fontSize: "clamp(6px, 2cqi, 10px)", color: `${text}cc` }}>
+            Alex Test
+          </div>
+        )}
+
+        {/* Order number */}
+        {s.show_order && (
+          <div
+            className="absolute left-0 right-0 text-center"
+            style={{ top: yPct(orderY - 2), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(4px, 1.4cqi, 7px)", color: "#646464" }}
+          >
+            ORDER: FERAL-00042
+          </div>
+        )}
+
+        {/* Bottom divider */}
+        <div className="absolute" style={{ top: yPct(175), left: xPct(24), right: xPct(24), height: 1, backgroundColor: "#282828" }} />
+
+        {/* Disclaimer */}
+        {s.show_disclaimer && (
+          <>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(182 - 2), fontSize: "clamp(3px, 1.2cqi, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase" }}>
+              {s.disclaimer_line1}
+            </div>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(187 - 2), fontSize: "clamp(3px, 1.2cqi, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase" }}>
+              {s.disclaimer_line2}
+            </div>
+          </>
+        )}
+
+        {/* Bottom accent bar */}
+        <div className="absolute inset-x-0" style={{ top: yPct(208), height: hPct(2), backgroundColor: accent }} />
       </div>
       <p className="mt-3 text-center text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-        A5 Ticket Preview
+        A5 Ticket Preview — actual size proportions
       </p>
     </div>
   );
@@ -340,7 +405,6 @@ export default function PdfTicketPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <Label>Logo Size</Label>
-                        <span className="font-mono text-xs text-muted-foreground">{settings.logo_height}mm</span>
                       </div>
                       <Slider
                         min={8}
@@ -349,6 +413,10 @@ export default function PdfTicketPage() {
                         value={[settings.logo_height]}
                         onValueChange={([v]) => update("logo_height", v)}
                       />
+                      <div className="flex justify-between text-[10px] text-muted-foreground/60">
+                        <span>Small</span>
+                        <span>Large</span>
+                      </div>
                     </div>
                   )}
 
@@ -390,7 +458,6 @@ export default function PdfTicketPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label>QR Code Size</Label>
-                      <span className="font-mono text-xs text-muted-foreground">{settings.qr_size}mm</span>
                     </div>
                     <Slider
                       min={30}
@@ -399,6 +466,10 @@ export default function PdfTicketPage() {
                       value={[settings.qr_size]}
                       onValueChange={([v]) => update("qr_size", v)}
                     />
+                    <div className="flex justify-between text-[10px] text-muted-foreground/60">
+                      <span>Small</span>
+                      <span>Large</span>
+                    </div>
                   </div>
 
                   <Separator />

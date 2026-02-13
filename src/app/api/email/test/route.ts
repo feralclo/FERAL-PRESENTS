@@ -4,13 +4,14 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
-import type { EmailSettings, OrderEmailData } from "@/types/email";
-import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
+import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
+import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
+import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 
 /**
  * POST /api/email/test
  *
- * Sends a test order confirmation email with sample data.
+ * Sends a test order confirmation email with sample data and a demo PDF ticket.
  * Requires admin auth and a valid Resend API key.
  */
 export async function POST(request: NextRequest) {
@@ -34,18 +35,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch current email settings
-    let settings: EmailSettings = DEFAULT_EMAIL_SETTINGS;
+    // Fetch email + PDF ticket settings in parallel
+    let emailSettings: EmailSettings = DEFAULT_EMAIL_SETTINGS;
+    let pdfSettings: PdfTicketSettings = DEFAULT_PDF_TICKET_SETTINGS;
+
     try {
       const supabase = await getSupabaseServer();
       if (supabase) {
-        const { data } = await supabase
-          .from(TABLES.SITE_SETTINGS)
-          .select("data")
-          .eq("key", "feral_email")
-          .single();
-        if (data?.data && typeof data.data === "object") {
-          settings = { ...DEFAULT_EMAIL_SETTINGS, ...(data.data as Partial<EmailSettings>) };
+        const [emailResult, pdfResult] = await Promise.all([
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_email").single(),
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_pdf_ticket").single(),
+        ]);
+
+        if (emailResult.data?.data && typeof emailResult.data.data === "object") {
+          emailSettings = { ...DEFAULT_EMAIL_SETTINGS, ...(emailResult.data.data as Partial<EmailSettings>) };
+        }
+        if (pdfResult.data?.data && typeof pdfResult.data.data === "object") {
+          pdfSettings = { ...DEFAULT_PDF_TICKET_SETTINGS, ...(pdfResult.data.data as Partial<PdfTicketSettings>) };
         }
       }
     } catch {
@@ -71,26 +77,46 @@ export async function POST(request: NextRequest) {
     };
 
     // Resolve relative logo URL to absolute — email clients need full URLs
-    if (settings.logo_url && !settings.logo_url.startsWith("http")) {
+    if (emailSettings.logo_url && !emailSettings.logo_url.startsWith("http")) {
       const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
       if (siteUrl) {
-        settings = {
-          ...settings,
-          logo_url: `${siteUrl}${settings.logo_url.startsWith("/") ? "" : "/"}${settings.logo_url}`,
+        emailSettings = {
+          ...emailSettings,
+          logo_url: `${siteUrl}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`,
         };
       }
     }
 
-    const { subject, html, text } = buildOrderConfirmationEmail(settings, sampleOrder);
+    const { subject, html, text } = buildOrderConfirmationEmail(emailSettings, sampleOrder);
+
+    // Generate demo PDF ticket with sample data + real QR codes
+    const sampleTickets: TicketPDFData[] = sampleOrder.tickets.map((t) => ({
+      ticketCode: t.ticket_code,
+      eventName: sampleOrder.event_name,
+      eventDate: sampleOrder.event_date,
+      venueName: sampleOrder.venue_name,
+      ticketType: t.ticket_type,
+      holderName: `${sampleOrder.customer_first_name} ${sampleOrder.customer_last_name}`,
+      orderNumber: sampleOrder.order_number,
+    }));
+
+    const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings);
 
     const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({
-      from: `${settings.from_name} <${settings.from_email}>`,
+      from: `${emailSettings.from_name} <${emailSettings.from_email}>`,
       to: [to],
       subject: `[TEST] ${subject}`,
       html,
       text,
-      replyTo: settings.reply_to || undefined,
+      replyTo: emailSettings.reply_to || undefined,
+      attachments: [
+        {
+          filename: `${sampleOrder.order_number}-tickets.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
     });
 
     if (error) {

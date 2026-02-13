@@ -4,8 +4,8 @@ import { TABLES } from "@/lib/constants";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
-import type { EmailSettings, OrderEmailData } from "@/types/email";
-import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
+import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
+import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 
 /**
  * Lazy-initialized Resend client.
@@ -39,6 +39,29 @@ async function getEmailSettings(orgId: string): Promise<EmailSettings> {
     // Settings not found — use defaults
   }
   return DEFAULT_EMAIL_SETTINGS;
+}
+
+/**
+ * Fetch PDF ticket design settings for an org.
+ */
+async function getPdfTicketSettings(orgId: string): Promise<PdfTicketSettings> {
+  try {
+    const supabase = await getSupabaseServer();
+    if (!supabase) return DEFAULT_PDF_TICKET_SETTINGS;
+
+    const { data } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", `${orgId}_pdf_ticket`)
+      .single();
+
+    if (data?.data && typeof data.data === "object") {
+      return { ...DEFAULT_PDF_TICKET_SETTINGS, ...(data.data as Partial<PdfTicketSettings>) };
+    }
+  } catch {
+    // Settings not found — use defaults
+  }
+  return DEFAULT_PDF_TICKET_SETTINGS;
 }
 
 /**
@@ -187,7 +210,8 @@ export async function sendOrderConfirmationEmail(params: {
       merchSize: t.merch_size,
     }));
 
-    const pdfBuffer = await generateTicketsPDF(pdfData);
+    const pdfSettings = await getPdfTicketSettings(params.orgId);
+    const pdfBuffer = await generateTicketsPDF(pdfData, pdfSettings);
 
     // Send via Resend
     const { error } = await resend.emails.send({

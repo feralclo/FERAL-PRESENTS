@@ -3,6 +3,8 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { requireAuth } from "@/lib/auth";
+import type { PdfTicketSettings } from "@/types/email";
+import { DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 
 /**
  * GET /api/orders/[id]/pdf — Generate and download PDF tickets for an order
@@ -82,7 +84,20 @@ export async function GET(
       })
     );
 
-    const pdfBuffer = await generateTicketsPDF(ticketData);
+    // Fetch custom PDF ticket design settings
+    let pdfSettings: Partial<PdfTicketSettings> = {};
+    try {
+      const { data: settingsRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", `${ORG_ID}_pdf_ticket`)
+        .single();
+      if (settingsRow?.data && typeof settingsRow.data === "object") {
+        pdfSettings = settingsRow.data as Partial<PdfTicketSettings>;
+      }
+    } catch { /* use defaults */ }
+
+    const pdfBuffer = await generateTicketsPDF(ticketData, pdfSettings);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

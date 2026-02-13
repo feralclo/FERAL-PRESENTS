@@ -14,14 +14,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ChevronLeft,
-  Upload,
   X as XIcon,
   AlertTriangle,
   SendHorizonal,
   CheckCircle2,
+  ImageIcon,
+  RefreshCw,
 } from "lucide-react";
 
 /* ── Logo processing: auto-trim transparent pixels + resize ── */
@@ -33,14 +35,12 @@ function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null>
       const img = new Image();
       img.onload = () => {
         try {
-          // Draw at original size to scan for content bounds
           const src = document.createElement("canvas");
           const sCtx = src.getContext("2d")!;
           src.width = img.width;
           src.height = img.height;
           sCtx.drawImage(img, 0, 0);
 
-          // Find tight bounding box around non-transparent pixels
           const pixels = sCtx.getImageData(0, 0, src.width, src.height).data;
           let top = src.height, bottom = 0, left = src.width, right = 0;
           for (let y = 0; y < src.height; y++) {
@@ -54,13 +54,11 @@ function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null>
             }
           }
 
-          // Fallback if nothing detected
           if (top > bottom || left > right) {
             top = 0; bottom = src.height - 1;
             left = 0; right = src.width - 1;
           }
 
-          // Add small breathing room
           top = Math.max(0, top - 2);
           left = Math.max(0, left - 2);
           bottom = Math.min(src.height - 1, bottom + 2);
@@ -69,7 +67,6 @@ function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null>
           const cropW = right - left + 1;
           const cropH = bottom - top + 1;
 
-          // Scale to fit maxWidth
           let outW = cropW, outH = cropH;
           if (outW > maxWidth) {
             outH = Math.round((outH * maxWidth) / outW);
@@ -111,6 +108,7 @@ const TEMPLATE_VARS = [
 /* ── Email preview ── */
 function EmailPreview({ settings }: { settings: EmailSettings }) {
   const accent = settings.accent_color || "#ff0033";
+  const logoH = settings.logo_height || 48;
   const previewSubject = settings.order_confirmation_subject
     .replace("{{event_name}}", "FERAL Liverpool").replace("{{order_number}}", "FERAL-00042");
   const previewHeading = settings.order_confirmation_heading
@@ -121,83 +119,85 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
     .replace("{{order_number}}", "FERAL-00042").replace("{{ticket_count}}", "2");
 
   return (
-    <Card className="overflow-hidden">
+    <div className="mx-auto max-w-2xl">
       {/* Email client chrome */}
-      <div className="px-5 py-3.5 border-b border-border">
-        <div className="flex items-center gap-1.5 mb-3">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
-          <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
-          <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
-        </div>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider w-14">From</span>
-            <span className="text-xs text-foreground">{settings.from_name} &lt;{settings.from_email}&gt;</span>
+      <Card className="overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border">
+          <div className="flex items-center gap-1.5 mb-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider w-14">Subject</span>
-            <span className="text-xs text-foreground font-medium">{previewSubject}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Email body */}
-      <div className="p-6" style={{ background: "#f4f4f5" }}>
-        <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-md" style={{ background: "#fff" }}>
-          <div style={{ height: 4, backgroundColor: accent }} />
-          <div className="py-7 px-8 text-center" style={{ background: settings.logo_url ? "#0e0e0e" : undefined }}>
-            {settings.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={settings.logo_url} alt="Logo" style={{ height: 48, width: "auto", maxWidth: 240, display: "inline-block", objectFit: "contain" }} />
-            ) : (
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 14, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: "#111" }}>
-                {settings.from_name}
-              </div>
-            )}
-          </div>
-          <div className="px-8 pt-0 pb-2 text-center">
-            <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: 24, fontWeight: 700, color: "#111", letterSpacing: 1, margin: 0 }}>{previewHeading}</h1>
-          </div>
-          <div className="px-8 pb-6 text-center">
-            <p style={{ fontSize: 15, lineHeight: 1.6, color: "#555", margin: 0 }}>{previewMessage}</p>
-          </div>
-          <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
-          <div className="px-8 py-5">
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Event</div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: "#111", marginBottom: 4 }}>FERAL Liverpool</div>
-            <div style={{ fontSize: 14, color: "#666" }}>Thursday 27 March 2026 · Invisible Wind Factory</div>
-          </div>
-          <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
-          <div className="px-8 py-5">
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 12 }}>Order Details</div>
-            <div className="flex justify-between" style={{ fontSize: 14, color: "#666", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>FERAL-00042</span></div>
-            <div className="flex justify-between" style={{ fontSize: 14, color: "#666", padding: "4px 0" }}><span>Tickets</span><span style={{ color: "#111" }}>2</span></div>
-            <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#666" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>£52.92</span></div>
-          </div>
-          <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
-          <div className="px-8 pt-5 pb-2">
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Your Tickets</div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Your PDF tickets with QR codes are attached to this email.</div>
-          </div>
-          <div className="px-8 pb-6">
-            <div style={{ background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
-                <div style={{ fontSize: 13, color: "#666" }}>General Release</div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-A1B2C3D4</div>
-              </div>
-              <div style={{ padding: "12px 16px" }}>
-                <div style={{ fontSize: 13, color: "#666" }}>General Release</div>
-                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-E5F6G7H8</div>
-              </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider w-14">From</span>
+              <span className="text-xs text-foreground">{settings.from_name} &lt;{settings.from_email}&gt;</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider w-14">Subject</span>
+              <span className="text-xs text-foreground font-medium">{previewSubject}</span>
             </div>
           </div>
-          <div style={{ padding: "20px 32px", background: "#fafafa", borderTop: "1px solid #f0f0f0", textAlign: "center" }}>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#aaa", marginBottom: 4 }}>{settings.footer_text || settings.from_name}</div>
-            <div style={{ fontSize: 11, color: "#bbb" }}>This is an automated order confirmation. Please do not reply directly to this email.</div>
+        </div>
+
+        {/* Email body */}
+        <div className="p-6" style={{ background: "#f4f4f5" }}>
+          <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-md" style={{ background: "#fff" }}>
+            <div style={{ height: 4, backgroundColor: accent }} />
+            <div className="py-7 px-8 text-center" style={{ background: settings.logo_url ? "#0e0e0e" : undefined }}>
+              {settings.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={settings.logo_url} alt="Logo" style={{ height: logoH, width: "auto", maxWidth: 280, display: "inline-block", objectFit: "contain" }} />
+              ) : (
+                <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 14, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: "#111" }}>
+                  {settings.from_name}
+                </div>
+              )}
+            </div>
+            <div className="px-8 pt-0 pb-2 text-center">
+              <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: 24, fontWeight: 700, color: "#111", letterSpacing: 1, margin: 0 }}>{previewHeading}</h1>
+            </div>
+            <div className="px-8 pb-6 text-center">
+              <p style={{ fontSize: 15, lineHeight: 1.6, color: "#555", margin: 0 }}>{previewMessage}</p>
+            </div>
+            <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
+            <div className="px-8 py-5">
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Event</div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "#111", marginBottom: 4 }}>FERAL Liverpool</div>
+              <div style={{ fontSize: 14, color: "#666" }}>Thursday 27 March 2026 · Invisible Wind Factory</div>
+            </div>
+            <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
+            <div className="px-8 py-5">
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 12 }}>Order Details</div>
+              <div className="flex justify-between" style={{ fontSize: 14, color: "#666", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>FERAL-00042</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, color: "#666", padding: "4px 0" }}><span>Tickets</span><span style={{ color: "#111" }}>2</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#666" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>£52.92</span></div>
+            </div>
+            <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
+            <div className="px-8 pt-5 pb-2">
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Your Tickets</div>
+              <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Your PDF tickets with QR codes are attached to this email.</div>
+            </div>
+            <div className="px-8 pb-6">
+              <div style={{ background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
+                <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
+                  <div style={{ fontSize: 13, color: "#666" }}>General Release</div>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-A1B2C3D4</div>
+                </div>
+                <div style={{ padding: "12px 16px" }}>
+                  <div style={{ fontSize: 13, color: "#666" }}>General Release</div>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-E5F6G7H8</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "20px 32px", background: "#fafafa", borderTop: "1px solid #f0f0f0", textAlign: "center" }}>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#aaa", marginBottom: 4 }}>{settings.footer_text || settings.from_name}</div>
+              <div style={{ fontSize: 11, color: "#bbb" }}>This is an automated order confirmation. Please do not reply directly to this email.</div>
+            </div>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
@@ -318,15 +318,28 @@ export default function OrderConfirmationPage() {
         </Card>
       )}
 
-      {/* Tabs */}
+      {/* Tabs — line variant for cleaner look */}
       <Tabs defaultValue="settings">
-        <TabsList className="mb-6">
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between border-b border-border mb-6">
+          <TabsList variant="line">
+            <TabsTrigger value="settings" className="text-sm">Settings</TabsTrigger>
+            <TabsTrigger value="preview" className="text-sm">Preview</TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-2 pb-1">
+            <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+            {status && (
+              <span className={`text-xs font-medium flex items-center gap-1 ${status.includes("Error") ? "text-destructive" : "text-success"}`}>
+                {!status.includes("Error") && <CheckCircle2 size={12} />}
+                {status}
+              </span>
+            )}
+          </div>
+        </div>
 
         <TabsContent value="settings">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
             {/* Left — form */}
             <div className="space-y-6">
               {/* Sender Identity */}
@@ -347,7 +360,7 @@ export default function OrderConfirmationPage() {
                   <div className="space-y-2">
                     <Label>Reply-To Email</Label>
                     <Input type="email" value={settings.reply_to || ""} onChange={(e) => update("reply_to", e.target.value || undefined)} placeholder="support@feralpresents.com" className="max-w-sm" />
-                    <p className="text-[11px] text-muted-foreground">Optional — where customer replies go</p>
+                    <p className="text-[11px] text-muted-foreground">Where customer replies go</p>
                   </div>
                 </CardContent>
               </Card>
@@ -358,7 +371,8 @@ export default function OrderConfirmationPage() {
                   <CardTitle>Branding</CardTitle>
                   <CardDescription>Customise the visual identity of your emails</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
+                  {/* Accent Color */}
                   <div className="space-y-2">
                     <Label>Accent Color</Label>
                     <div className="flex items-center gap-3">
@@ -374,37 +388,47 @@ export default function OrderConfirmationPage() {
 
                   <Separator />
 
-                  <div className="space-y-2">
-                    <Label>Email Logo</Label>
-                    <p className="text-[11px] text-muted-foreground">Transparent PNGs are auto-cropped to remove empty space</p>
-                    {settings.logo_url ? (
-                      <div className="group relative inline-block rounded-lg border border-border bg-[#0e0e0e] p-5 max-w-md">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={settings.logo_url} alt="Logo" style={{ maxWidth: 260, maxHeight: 80, display: "block", objectFit: "contain" }} />
-                        {/* Overlay actions */}
-                        <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-black/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                          <Button
-                            variant="secondary"
-                            size="sm"
+                  {/* Email Logo */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Email Logo</Label>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Transparent PNGs are auto-cropped</p>
+                      </div>
+                      {settings.logo_url && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
                             onClick={() => logoFileRef.current?.click()}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                           >
-                            <Upload size={14} />
+                            <RefreshCw size={11} />
                             Replace
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => update("logo_url", undefined)}
+                            className="inline-flex items-center rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
-                            <XIcon size={14} />
-                            Remove
-                          </Button>
+                            <XIcon size={12} />
+                          </button>
                         </div>
+                      )}
+                    </div>
+
+                    {settings.logo_url ? (
+                      <div className="rounded-lg border border-border bg-[#0e0e0e] p-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={settings.logo_url}
+                          alt="Logo"
+                          style={{ height: settings.logo_height || 48, width: "auto", maxWidth: 280, objectFit: "contain" }}
+                        />
                         <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
                       </div>
                     ) : (
                       <div
-                        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all max-w-md ${
+                        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all max-w-md ${
                           logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
                         }`}
                         onClick={() => logoFileRef.current?.click()}
@@ -412,15 +436,37 @@ export default function OrderConfirmationPage() {
                         onDragLeave={() => setLogoDragging(false)}
                         onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
                       >
-                        <Upload size={20} className="mx-auto mb-2 text-muted-foreground" />
+                        <ImageIcon size={18} className="mx-auto mb-1.5 text-muted-foreground/50" />
                         <p className="text-xs text-muted-foreground">
-                          {logoProcessing ? "Processing..." : "Drag & drop or click to upload"}
+                          {logoProcessing ? "Processing..." : "Drop image or click to upload"}
                         </p>
-                        <p className="text-[10px] text-muted-foreground/50 mt-1">PNG, JPG or WebP · Max 5MB</p>
+                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP · Max 5MB</p>
                         <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
                       </div>
                     )}
                   </div>
+
+                  {/* Logo Size slider — only show when a logo is set */}
+                  {settings.logo_url && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label>Logo Size</Label>
+                          <span className="font-mono text-xs text-muted-foreground">{settings.logo_height || 48}px</span>
+                        </div>
+                        <Slider
+                          min={24}
+                          max={80}
+                          step={2}
+                          value={[settings.logo_height || 48]}
+                          onValueChange={([v]) => update("logo_height", v)}
+                          className="max-w-xs"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Height of the logo in the email header</p>
+                      </div>
+                    </>
+                  )}
 
                   <Separator />
 
@@ -468,19 +514,6 @@ export default function OrderConfirmationPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Save bar */}
-              <div className="flex items-center gap-3">
-                <Button onClick={handleSave} disabled={saving}>
-                  {saving ? "Saving..." : "Save Settings"}
-                </Button>
-                {status && (
-                  <span className={`text-xs font-medium flex items-center gap-1.5 ${status.includes("Error") ? "text-destructive" : "text-success"}`}>
-                    {!status.includes("Error") && <CheckCircle2 size={14} />}
-                    {status}
-                  </span>
-                )}
-              </div>
             </div>
 
             {/* Right — test email */}
@@ -491,7 +524,7 @@ export default function OrderConfirmationPage() {
                     <SendHorizonal size={14} className="text-primary" />
                     <CardTitle className="text-xs">Send Test Email</CardTitle>
                   </div>
-                  <CardDescription>Send a test with sample data to preview in a real inbox</CardDescription>
+                  <CardDescription>Preview in a real inbox with sample data and PDF ticket attachment</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Input

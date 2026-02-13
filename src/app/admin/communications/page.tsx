@@ -220,7 +220,7 @@ export default function CommunicationsPage() {
           status="live"
           templates={[
             { name: "Order Confirmation", href: "/admin/communications/transactional/order-confirmation/", active: emailEnabled, icon: FileText },
-            { name: "PDF Ticket", href: "/admin/communications/transactional/order-confirmation/", active: false, icon: Receipt },
+            { name: "PDF Ticket", href: "/admin/communications/transactional/pdf-ticket/", active: true, icon: Receipt },
           ]}
         />
         <ChannelCard

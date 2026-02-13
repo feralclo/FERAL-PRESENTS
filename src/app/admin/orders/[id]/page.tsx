@@ -219,7 +219,7 @@ export default function OrderDetailPage() {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
           <p className="text-sm text-muted-foreground">Loading order...</p>
         </div>
       </div>
@@ -337,7 +337,7 @@ export default function OrderDetailPage() {
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Package size={15} className="text-primary" />
+              <Package size={15} className="text-muted-foreground" />
               Order Summary
             </CardTitle>
           </CardHeader>
@@ -357,7 +357,7 @@ export default function OrderDetailPage() {
               </div>
               <div className="flex items-center justify-between bg-accent/20 px-5 py-3">
                 <span className="text-sm font-semibold text-foreground">Total</span>
-                <span className="font-mono text-lg font-bold text-primary">
+                <span className="font-mono text-lg font-bold text-foreground">
                   {formatCurrency(Number(order.total))}
                 </span>
               </div>
@@ -386,7 +386,7 @@ export default function OrderDetailPage() {
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <User size={15} className="text-primary" />
+              <User size={15} className="text-muted-foreground" />
               Customer
             </CardTitle>
           </CardHeader>
@@ -449,7 +449,7 @@ export default function OrderDetailPage() {
         <Card className="mt-4 overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Ticket size={15} className="text-primary" />
+              <Ticket size={15} className="text-muted-foreground" />
               Items ({order.items.length})
             </CardTitle>
           </CardHeader>
@@ -512,7 +512,7 @@ export default function OrderDetailPage() {
         <Card className="mt-4 overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ScanLine size={15} className="text-primary" />
+              <ScanLine size={15} className="text-muted-foreground" />
               Tickets ({order.tickets.length})
             </CardTitle>
           </CardHeader>
@@ -524,12 +524,12 @@ export default function OrderDetailPage() {
                   className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
-                      <Ticket size={14} className="text-primary" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <Ticket size={14} className="text-muted-foreground" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[13px] font-bold text-primary">
+                        <span className="font-mono text-[13px] font-bold text-foreground">
                           {ticket.ticket_code}
                         </span>
                         <Badge
@@ -582,7 +582,7 @@ export default function OrderDetailPage() {
         <Card className="mt-4">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock size={15} className="text-primary" />
+              <Clock size={15} className="text-muted-foreground" />
               Timeline
             </CardTitle>
           </CardHeader>

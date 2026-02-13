@@ -16,37 +16,43 @@
 
 /*
  * FERAL design system — consumed by shadcn/ui via Tailwind v4 @theme.
+ *
+ * Color palette based on zinc scale for a clean dark UI:
+ *   Background/Card: zinc-950 (#09090b) — borders create card distinction
+ *   Sidebar: slightly lighter grey (#111113) for subtle separation
+ *   Borders: zinc-800 (#27272a) — thin, visible dividers
+ *   Muted surfaces: zinc-900 (#18181b)
  */
 @theme inline {
-  --color-background: #0e0e0e;
-  --color-foreground: #ffffff;
-  --color-card: #111111;
-  --color-card-foreground: #ffffff;
-  --color-popover: #111111;
-  --color-popover-foreground: #ffffff;
+  --color-background: #09090b;
+  --color-foreground: #fafafa;
+  --color-card: #09090b;
+  --color-card-foreground: #fafafa;
+  --color-popover: #09090b;
+  --color-popover-foreground: #fafafa;
   --color-primary: #ff0033;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #1a1a1a;
-  --color-secondary-foreground: #ffffff;
-  --color-muted: #1a1a1a;
-  --color-muted-foreground: #71717a;
-  --color-accent: #1a1a1a;
-  --color-accent-foreground: #ffffff;
+  --color-secondary: #18181b;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #18181b;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #18181b;
+  --color-accent-foreground: #fafafa;
   --color-destructive: #ff0033;
   --color-destructive-foreground: #ffffff;
-  --color-border: #222222;
-  --color-input: #2a2a2a;
+  --color-border: #27272a;
+  --color-input: #27272a;
   --color-ring: #ff0033;
   --color-success: #22c55e;
   --color-success-foreground: #ffffff;
   --color-warning: #eab308;
   --color-warning-foreground: #ffffff;
-  --color-sidebar: #080808;
+  --color-sidebar: #111113;
   --color-sidebar-foreground: #a1a1aa;
   --color-sidebar-primary: #ff0033;
-  --color-sidebar-accent: #111111;
-  --color-sidebar-accent-foreground: #ffffff;
-  --color-sidebar-border: #151515;
+  --color-sidebar-accent: #18181b;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-border: #1e1e22;
   --color-sidebar-ring: #ff0033;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
@@ -125,19 +131,19 @@
 /* Dark scrollbar for admin area */
 [data-admin] {
   scrollbar-width: thin;
-  scrollbar-color: #222 transparent;
+  scrollbar-color: #27272a transparent;
 }
 [data-admin] ::-webkit-scrollbar { width: 6px; height: 6px; }
 [data-admin] ::-webkit-scrollbar-track { background: transparent; }
-[data-admin] ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
-[data-admin] ::-webkit-scrollbar-thumb:hover { background: #333; }
+[data-admin] ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+[data-admin] ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
 /* Prevent browser autofill from turning inputs white */
 [data-admin] input:-webkit-autofill,
 [data-admin] input:-webkit-autofill:hover,
 [data-admin] input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 40px #0e0e0e inset !important;
-  -webkit-text-fill-color: #fff !important;
-  caret-color: #fff !important;
+  -webkit-box-shadow: 0 0 0 40px #09090b inset !important;
+  -webkit-text-fill-color: #fafafa !important;
+  caret-color: #fafafa !important;
   transition: background-color 5000s ease-in-out 0s;
 }

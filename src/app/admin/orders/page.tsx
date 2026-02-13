@@ -10,8 +10,8 @@ import { TABLES, ORG_ID } from "@/lib/constants";
 import {
   ShoppingBag,
   DollarSign,
-  TrendingUp,
   Ticket,
+  Shirt,
   Download,
   ChevronRight,
   Hash,
@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 
 /* ── Types ── */
+type Period = "today" | "7d" | "30d";
+
 interface OrderRow {
   id: string;
   order_number: string;
@@ -53,17 +55,50 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
+const PERIODS: { key: Period; label: string }[] = [
+  { key: "today", label: "Today" },
+  { key: "7d", label: "7 Days" },
+  { key: "30d", label: "30 Days" },
+];
+
+/* ── Period selector ── */
+function PeriodSelector({
+  period,
+  onChange,
+}: {
+  period: Period;
+  onChange: (p: Period) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
+      {PERIODS.map((p) => (
+        <button
+          key={p.key}
+          onClick={() => onChange(p.key)}
+          className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
+            period === p.key
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ── Stat card ── */
 function StatCard({
   label,
   value,
   icon: Icon,
-  accent,
+  detail,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  accent?: boolean;
+  detail?: string;
 }) {
   return (
     <Card className="group relative overflow-hidden">
@@ -73,25 +108,35 @@ function StatCard({
             <p className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
               {label}
             </p>
-            <p
-              className={`mt-2 font-mono text-2xl font-bold tracking-wide ${
-                accent ? "text-primary" : "text-foreground"
-              }`}
-            >
+            <p className="mt-2 font-mono text-2xl font-bold tracking-wide text-foreground">
               {value}
             </p>
+            {detail && (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">{detail}</p>
+            )}
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
-            <Icon size={18} strokeWidth={1.75} className="text-primary" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+            <Icon size={18} strokeWidth={1.75} className="text-muted-foreground" />
           </div>
         </div>
       </CardContent>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
     </Card>
   );
 }
 
-/* ── Date formatting ── */
+/* ── Helpers ── */
+function getDateStart(period: Period): string {
+  const now = new Date();
+  switch (period) {
+    case "today":
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    case "7d":
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    case "30d":
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  }
+}
+
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -115,12 +160,15 @@ export default function OrdersPage() {
   const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
   const [filterEvent, setFilterEvent] = useState("");
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("");
+  const [period, setPeriod] = useState<Period>("today");
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  // Stats
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [todayOrders, setTodayOrders] = useState(0);
+  // Period-filtered stats
+  const [orderCount, setOrderCount] = useState(0);
+  const [revenue, setRevenue] = useState(0);
   const [ticketsSold, setTicketsSold] = useState(0);
+  const [merchRevenue, setMerchRevenue] = useState(0);
+  const [merchItems, setMerchItems] = useState(0);
 
   const loadOrders = useCallback(async () => {
     const params = new URLSearchParams();
@@ -131,10 +179,7 @@ export default function OrdersPage() {
     const res = await fetch(`/api/orders?${params}`);
     const json = await res.json();
 
-    if (json.data) {
-      setOrders(json.data);
-      setTotalOrders(json.total || json.data.length);
-    }
+    if (json.data) setOrders(json.data);
     setLoading(false);
   }, [filterEvent, filterStatus]);
 
@@ -152,31 +197,53 @@ export default function OrdersPage() {
   }, []);
 
   const loadStats = useCallback(async () => {
+    setStatsLoading(true);
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    const [{ data: allOrders }, { count: ticketCount }] = await Promise.all([
-      supabase
-        .from(TABLES.ORDERS)
-        .select("total, status, created_at")
-        .eq("org_id", ORG_ID),
-      supabase
-        .from(TABLES.TICKETS)
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", ORG_ID),
-    ]);
+    const dateStart = getDateStart(period);
 
-    if (allOrders) {
-      const completed = allOrders.filter((o) => o.status === "completed");
-      setTotalRevenue(completed.reduce((s, o) => s + Number(o.total), 0));
+    // Completed orders in period
+    const { data: completedOrders } = await supabase
+      .from(TABLES.ORDERS)
+      .select("id, total")
+      .eq("org_id", ORG_ID)
+      .eq("status", "completed")
+      .gte("created_at", dateStart);
 
-      const today = new Date().toISOString().slice(0, 10);
-      setTodayOrders(
-        allOrders.filter((o) => o.created_at.slice(0, 10) === today).length
-      );
-    }
+    const ords = completedOrders || [];
+    setOrderCount(ords.length);
+    setRevenue(ords.reduce((s, o) => s + Number(o.total), 0));
+
+    // Tickets sold in period
+    const { count: ticketCount } = await supabase
+      .from(TABLES.TICKETS)
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", ORG_ID)
+      .gte("created_at", dateStart);
+
     setTicketsSold(ticketCount || 0);
-  }, []);
+
+    // Merch — order items with merch_size for completed orders in period
+    const orderIds = ords.map((o) => o.id);
+    if (orderIds.length > 0) {
+      const { data: merch } = await supabase
+        .from(TABLES.ORDER_ITEMS)
+        .select("unit_price, qty")
+        .eq("org_id", ORG_ID)
+        .in("order_id", orderIds)
+        .not("merch_size", "is", null);
+
+      const items = merch || [];
+      setMerchRevenue(items.reduce((s, i) => s + Number(i.unit_price) * i.qty, 0));
+      setMerchItems(items.reduce((s, i) => s + i.qty, 0));
+    } else {
+      setMerchRevenue(0);
+      setMerchItems(0);
+    }
+
+    setStatsLoading(false);
+  }, [period]);
 
   const handleExportCSV = useCallback(async () => {
     setExporting(true);
@@ -209,13 +276,18 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadEvents();
+  }, [loadEvents]);
+
+  useEffect(() => {
     loadStats();
-  }, [loadEvents, loadStats]);
+  }, [loadStats]);
 
   useEffect(() => {
     setLoading(true);
     loadOrders();
   }, [loadOrders]);
+
+  const v = (n: string) => (statsLoading ? "..." : n);
 
   return (
     <div>
@@ -229,41 +301,44 @@ export default function OrdersPage() {
             Manage and track all orders
           </p>
         </div>
-        {orders.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            disabled={exporting}
-          >
-            <Download size={14} />
-            {exporting ? "Exporting..." : "Export CSV"}
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          <PeriodSelector period={period} onChange={setPeriod} />
+          {orders.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={exporting}
+            >
+              <Download size={14} />
+              {exporting ? "Exporting..." : "Export CSV"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Total Orders"
-          value={totalOrders.toLocaleString()}
+          label="Orders"
+          value={v(orderCount.toLocaleString())}
           icon={ShoppingBag}
         />
         <StatCard
           label="Revenue"
-          value={formatCurrency(totalRevenue)}
+          value={v(formatCurrency(revenue))}
           icon={DollarSign}
-          accent
-        />
-        <StatCard
-          label="Today"
-          value={todayOrders.toLocaleString()}
-          icon={TrendingUp}
         />
         <StatCard
           label="Tickets Sold"
-          value={ticketsSold.toLocaleString()}
+          value={v(ticketsSold.toLocaleString())}
           icon={Ticket}
+        />
+        <StatCard
+          label="Merch Sold"
+          value={v(formatCurrency(merchRevenue))}
+          icon={Shirt}
+          detail={statsLoading ? undefined : `${merchItems} item${merchItems !== 1 ? "s" : ""}`}
         />
       </div>
 
@@ -316,7 +391,7 @@ export default function OrdersPage() {
           <Card>
             <CardContent className="flex items-center justify-center py-16">
               <div className="flex flex-col items-center gap-3">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
                 <p className="text-sm text-muted-foreground">Loading orders...</p>
               </div>
             </CardContent>
@@ -341,7 +416,7 @@ export default function OrdersPage() {
               <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
                 <Calendar size={10} /> Date
               </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
                 Event
               </span>
               <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
@@ -369,7 +444,7 @@ export default function OrdersPage() {
                 >
                   {/* Desktop row */}
                   <div className="hidden items-center px-5 py-3.5 lg:grid lg:grid-cols-[1fr_1fr_1.5fr_2fr_1fr_1fr_0.8fr_auto]">
-                    <span className="font-mono text-[13px] font-semibold text-primary">
+                    <span className="font-mono text-[13px] font-semibold text-foreground">
                       {order.order_number}
                     </span>
                     <span className="font-mono text-xs text-muted-foreground">
@@ -409,7 +484,7 @@ export default function OrdersPage() {
                   <div className="flex items-center justify-between px-5 py-4 lg:hidden">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2.5">
-                        <span className="font-mono text-[13px] font-semibold text-primary">
+                        <span className="font-mono text-[13px] font-semibold text-foreground">
                           {order.order_number}
                         </span>
                         <Badge variant={STATUS_VARIANT[order.status] || "secondary"} className="text-[10px]">

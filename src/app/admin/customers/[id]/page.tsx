@@ -114,30 +114,24 @@ function StatCard({
   value,
   icon: Icon,
   detail,
-  accent,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   detail?: string;
-  accent?: boolean;
 }) {
   return (
     <Card className="group relative overflow-hidden">
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
-            <Icon size={16} strokeWidth={1.75} className="text-primary" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <Icon size={16} strokeWidth={1.75} className="text-muted-foreground" />
           </div>
           <div className="min-w-0">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[1.5px] text-muted-foreground">
               {label}
             </p>
-            <p
-              className={`mt-0.5 font-mono text-lg font-bold tracking-wide ${
-                accent ? "text-primary" : "text-foreground"
-              }`}
-            >
+            <p className="mt-0.5 font-mono text-lg font-bold tracking-wide text-foreground">
               {value}
             </p>
             {detail && (
@@ -146,7 +140,6 @@ function StatCard({
           </div>
         </div>
       </CardContent>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
     </Card>
   );
 }
@@ -204,7 +197,7 @@ export default function CustomerProfilePage() {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
           <p className="text-sm text-muted-foreground">Loading customer...</p>
         </div>
       </div>
@@ -303,7 +296,6 @@ export default function CustomerProfilePage() {
           label="Lifetime Value"
           value={formatCurrency(totalSpent)}
           icon={DollarSign}
-          accent
         />
         <StatCard
           label="Avg Order"
@@ -330,7 +322,7 @@ export default function CustomerProfilePage() {
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Package size={15} className="text-primary" />
+              <Package size={15} className="text-muted-foreground" />
               Order History ({orders.length})
             </CardTitle>
           </CardHeader>
@@ -352,7 +344,7 @@ export default function CustomerProfilePage() {
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2.5">
-                          <span className="font-mono text-[13px] font-semibold text-primary">
+                          <span className="font-mono text-[13px] font-semibold text-foreground">
                             {order.order_number}
                           </span>
                           <Badge
@@ -395,7 +387,7 @@ export default function CustomerProfilePage() {
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ScanLine size={15} className="text-primary" />
+              <ScanLine size={15} className="text-muted-foreground" />
               Tickets ({tickets.length})
             </CardTitle>
           </CardHeader>
@@ -414,12 +406,12 @@ export default function CustomerProfilePage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
-                          <TicketIcon size={13} className="text-primary" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <TicketIcon size={13} className="text-muted-foreground" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[12px] font-bold text-primary">
+                            <span className="font-mono text-[12px] font-bold text-foreground">
                               {ticket.ticket_code}
                             </span>
                             <Badge
@@ -469,7 +461,7 @@ export default function CustomerProfilePage() {
         <Card className="mt-4 overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Shirt size={15} className="text-primary" />
+              <Shirt size={15} className="text-muted-foreground" />
               Merchandise ({merchTickets.length} items)
             </CardTitle>
           </CardHeader>
@@ -509,7 +501,7 @@ export default function CustomerProfilePage() {
         <Card className="mt-4">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock size={15} className="text-primary" />
+              <Clock size={15} className="text-muted-foreground" />
               Notes
             </CardTitle>
           </CardHeader>

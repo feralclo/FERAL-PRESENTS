@@ -78,13 +78,11 @@ function StatCard({
   value,
   icon: Icon,
   detail,
-  accent,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   detail?: string;
-  accent?: boolean;
 }) {
   return (
     <Card className="group relative overflow-hidden">
@@ -94,11 +92,7 @@ function StatCard({
             <p className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
               {label}
             </p>
-            <p
-              className={`mt-2 font-mono text-2xl font-bold tracking-wide ${
-                accent ? "text-primary" : "text-foreground"
-              }`}
-            >
+            <p className="mt-2 font-mono text-2xl font-bold tracking-wide text-foreground">
               {value}
             </p>
             {detail && (
@@ -107,12 +101,11 @@ function StatCard({
               </p>
             )}
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
-            <Icon size={18} strokeWidth={1.75} className="text-primary" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+            <Icon size={18} strokeWidth={1.75} className="text-muted-foreground" />
           </div>
         </div>
       </CardContent>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
     </Card>
   );
 }
@@ -131,10 +124,10 @@ function QuickLink({
 }) {
   return (
     <Link href={href} className="group block">
-      <Card className="overflow-hidden transition-colors duration-150 hover:border-primary/20">
+      <Card className="overflow-hidden transition-colors duration-150 hover:border-muted-foreground/20">
         <CardContent className="flex items-center gap-4 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10 transition-all duration-150 group-hover:bg-primary/15">
-            <Icon size={18} className="text-primary" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted transition-all duration-150 group-hover:bg-accent">
+            <Icon size={18} className="text-muted-foreground transition-colors group-hover:text-foreground" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -329,7 +322,6 @@ export default function AdminDashboard() {
           value={loading ? "..." : `£${kpi.revenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
           detail={`Completed orders ${periodLabel(period)}`}
-          accent
         />
         <StatCard
           label="Orders"

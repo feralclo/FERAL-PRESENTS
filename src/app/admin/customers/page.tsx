@@ -23,13 +23,11 @@ function StatCard({
   value,
   icon: Icon,
   detail,
-  accent,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   detail?: string;
-  accent?: boolean;
 }) {
   return (
     <Card className="group relative overflow-hidden">
@@ -39,23 +37,18 @@ function StatCard({
             <p className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
               {label}
             </p>
-            <p
-              className={`mt-2 font-mono text-2xl font-bold tracking-wide ${
-                accent ? "text-primary" : "text-foreground"
-              }`}
-            >
+            <p className="mt-2 font-mono text-2xl font-bold tracking-wide text-foreground">
               {value}
             </p>
             {detail && (
               <p className="mt-1.5 text-[11px] text-muted-foreground">{detail}</p>
             )}
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
-            <Icon size={18} strokeWidth={1.75} className="text-primary" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+            <Icon size={18} strokeWidth={1.75} className="text-muted-foreground" />
           </div>
         </div>
       </CardContent>
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
     </Card>
   );
 }
@@ -134,7 +127,6 @@ export default function CustomersPage() {
           label="Total Revenue"
           value={formatCurrency(totalRevenue)}
           icon={DollarSign}
-          accent
         />
         <StatCard
           label="Avg Spend"

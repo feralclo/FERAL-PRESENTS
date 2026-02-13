@@ -17,22 +17,43 @@ let _settings: MarketingSettings | null = null;
 let _fetchPromise: Promise<MarketingSettings | null> | null = null;
 let _pixelLoaded = false;
 
-/** Fetch marketing settings from our API (cached for the page lifecycle) */
+/** Fetch marketing settings from our API (cached for the page lifecycle).
+ *  Failed fetches are NOT cached — the next call will retry. */
 function getSettings(): Promise<MarketingSettings | null> {
   if (_settings) return Promise.resolve(_settings);
   if (_fetchPromise) return _fetchPromise;
 
   _fetchPromise = fetch(`/api/settings?key=${SETTINGS_KEYS.MARKETING}`)
-    .then((res) => (res.ok ? res.json() : null))
+    .then((res) => {
+      if (!res.ok) {
+        console.warn(`[Meta] Settings API returned ${res.status}`);
+        return null;
+      }
+      return res.json();
+    })
     .then((json) => {
       _settings = (json?.data as MarketingSettings) || null;
       if (!_settings) {
-        console.warn("[Meta] Marketing settings not found or not configured");
+        console.warn(
+          "[Meta] Marketing settings not found — check admin/marketing config.",
+          "API response data:", json?.data
+        );
+        // Clear cached promise so the next call retries instead of
+        // permanently returning null for the rest of the page lifecycle.
+        _fetchPromise = null;
+      } else {
+        console.debug(
+          "[Meta] Settings loaded — tracking:",
+          _settings.meta_tracking_enabled ? "enabled" : "disabled",
+          "| pixel:", _settings.meta_pixel_id ? "configured" : "missing"
+        );
       }
       return _settings;
     })
     .catch((err) => {
       console.warn("[Meta] Failed to fetch marketing settings:", err);
+      // Clear cached promise so subsequent calls retry
+      _fetchPromise = null;
       return null;
     });
 
@@ -64,24 +85,32 @@ function loadPixel(pixelId: string) {
   _pixelLoaded = true;
 
   const w = window as any;
-  if (w.fbq) return; // Already loaded externally
 
-  const n: any = (w.fbq = function () {
-    n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-  });
-  if (!w._fbq) w._fbq = n;
-  n.push = n;
-  n.loaded = true;
-  n.version = "2.0";
-  n.queue = [];
+  if (!w.fbq) {
+    // Create the fbq queue function
+    const n: any = (w.fbq = function () {
+      n.callMethod
+        ? n.callMethod.apply(n, arguments)
+        : n.queue.push(arguments);
+    });
+    if (!w._fbq) w._fbq = n;
+    n.push = n;
+    n.loaded = true;
+    n.version = "2.0";
+    n.queue = [];
 
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = "https://connect.facebook.net/en_US/fbevents.js";
-  document.head.appendChild(script);
+    // Inject the fbevents.js script
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    document.head.appendChild(script);
+  }
 
-  // Init pixel — do NOT fire automatic PageView (components handle it with event_id)
+  // Init pixel — always call init even if fbq was loaded externally (e.g. GTM).
+  // Calling init multiple times with the same ID is safe — Meta deduplicates.
+  // Do NOT fire automatic PageView (components handle it with event_id).
   w.fbq("init", pixelId);
+  console.debug("[Meta] Pixel loaded and initialized:", pixelId);
 }
 
 /**
@@ -90,8 +119,16 @@ function loadPixel(pixelId: string) {
  */
 function tryLoadPixel() {
   if (_pixelLoaded) return;
-  if (!_settings?.meta_tracking_enabled || !_settings.meta_pixel_id) return;
-  if (!hasMarketingConsent()) return;
+  if (!_settings?.meta_tracking_enabled || !_settings.meta_pixel_id) {
+    if (_settings && !_settings.meta_tracking_enabled) {
+      console.debug("[Meta] Tracking disabled in settings — pixel not loaded");
+    }
+    return;
+  }
+  if (!hasMarketingConsent()) {
+    console.debug("[Meta] Marketing consent not granted — pixel not loaded");
+    return;
+  }
   loadPixel(_settings.meta_pixel_id);
 }
 
@@ -102,7 +139,10 @@ function firePixelEvent(
   eventId: string
 ) {
   if (!hasMarketingConsent()) return;
-  if (typeof window === "undefined" || !window.fbq) return;
+  if (typeof window === "undefined" || !window.fbq) {
+    console.debug(`[Meta] Pixel not available — skipping client ${eventName}`);
+    return;
+  }
   window.fbq("track", eventName, params, { eventID: eventId });
 }
 
@@ -178,6 +218,7 @@ export function useMetaTracking() {
       const eventId = crypto.randomUUID();
       firePixelEvent("PageView", {}, eventId);
       sendCAPI("PageView", eventId);
+      console.debug("[Meta] PageView fired:", eventId);
     });
   }, []);
 
@@ -194,6 +235,7 @@ export function useMetaTracking() {
         const eventId = crypto.randomUUID();
         firePixelEvent("ViewContent", params, eventId);
         sendCAPI("ViewContent", eventId, params);
+        console.debug("[Meta] ViewContent fired:", params.content_name, eventId);
       });
     },
     []
@@ -213,6 +255,7 @@ export function useMetaTracking() {
         const eventId = crypto.randomUUID();
         firePixelEvent("AddToCart", params, eventId);
         sendCAPI("AddToCart", eventId, params);
+        console.debug("[Meta] AddToCart fired:", params.value, params.currency, eventId);
       });
     },
     []
@@ -231,6 +274,7 @@ export function useMetaTracking() {
         const eventId = crypto.randomUUID();
         firePixelEvent("InitiateCheckout", params, eventId);
         sendCAPI("InitiateCheckout", eventId, params);
+        console.debug("[Meta] InitiateCheckout fired:", eventId);
       });
     },
     []
@@ -250,6 +294,7 @@ export function useMetaTracking() {
         const eventId = crypto.randomUUID();
         firePixelEvent("Purchase", params, eventId);
         sendCAPI("Purchase", eventId, params);
+        console.debug("[Meta] Purchase fired:", params.order_id, eventId);
       });
     },
     []

@@ -1973,6 +1973,30 @@ html.checkout-active .noise {
   border-color: #555;
 }
 
+.order-confirmation__wallet-buttons {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.order-confirmation__btn--wallet {
+  flex: 1;
+  background: #111;
+  color: #fff;
+  border: 1px solid #333;
+  font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-decoration: none;
+  text-align: center;
+}
+
+.order-confirmation__btn--wallet:hover {
+  background: #1a1a1a;
+  border-color: #555;
+}
+
 /* ========================================
    RESPONSIVE — MOBILE
    ======================================== */

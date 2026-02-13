@@ -112,6 +112,22 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
   const piParam = searchParams.get("pi");
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
+
+  // Fetch wallet pass settings (lightweight — just checks if enabled)
+  useEffect(() => {
+    fetch("/api/settings?key=feral_wallet_passes")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data) {
+          setWalletPassEnabled({
+            apple: json.data.apple_wallet_enabled || false,
+            google: json.data.google_wallet_enabled || false,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Suppress scanlines/noise on checkout pages
   useEffect(() => {
@@ -193,6 +209,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
         order={completedOrder}
         slug={slug}
         eventName={event.name}
+        walletPassEnabled={walletPassEnabled}
       />
     );
   }

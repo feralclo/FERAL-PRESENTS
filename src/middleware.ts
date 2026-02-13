@@ -51,6 +51,12 @@ function isPublicApiRoute(pathname: string, method: string): boolean {
     if (pathname.startsWith(prefix)) return true;
   }
 
+  // Wallet pass downloads — public GET only (order UUID = unguessable access token)
+  // Matches: /api/orders/[uuid]/wallet/apple and /api/orders/[uuid]/wallet/google
+  if (method === "GET" && /^\/api\/orders\/[^/]+\/wallet\/(apple|google)$/.test(pathname)) {
+    return true;
+  }
+
   // Public GET-only routes (read access for event pages)
   if (method === "GET") {
     for (const route of PUBLIC_API_EXACT_GETS) {

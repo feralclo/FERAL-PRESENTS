@@ -26,6 +26,7 @@ export const SETTINGS_KEYS = {
   EVENTS_LIST: "feral_events_list",
   MARKETING: "feral_marketing",
   EMAIL: "feral_email",
+  WALLET_PASSES: "feral_wallet_passes",
 } as const;
 
 // Default ticket IDs (fallbacks if settings not loaded)

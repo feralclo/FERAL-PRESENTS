@@ -3,9 +3,9 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
-import { buildOrderConfirmationEmail } from "@/lib/email-templates";
-import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
-import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
+import { buildOrderConfirmationEmail, type EmailWalletLinks } from "@/lib/email-templates";
+import type { EmailSettings, OrderEmailData, PdfTicketSettings, WalletPassSettings } from "@/types/email";
+import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS, DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
 
 /**
  * Lazy-initialized Resend client.
@@ -39,6 +39,29 @@ async function getEmailSettings(orgId: string): Promise<EmailSettings> {
     // Settings not found — use defaults
   }
   return DEFAULT_EMAIL_SETTINGS;
+}
+
+/**
+ * Fetch wallet pass settings for an org.
+ */
+async function getWalletPassSettings(orgId: string): Promise<WalletPassSettings> {
+  try {
+    const supabase = await getSupabaseServer();
+    if (!supabase) return DEFAULT_WALLET_PASS_SETTINGS;
+
+    const { data } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", `${orgId}_wallet_passes`)
+      .single();
+
+    if (data?.data && typeof data.data === "object") {
+      return { ...DEFAULT_WALLET_PASS_SETTINGS, ...(data.data as Partial<WalletPassSettings>) };
+    }
+  } catch {
+    // Settings not found — use defaults (wallets disabled)
+  }
+  return DEFAULT_WALLET_PASS_SETTINGS;
 }
 
 /**
@@ -207,9 +230,59 @@ export async function sendOrderConfirmationEmail(params: {
       settings = { ...settings, logo_url: "cid:brand-logo" };
     }
 
+    // Generate wallet pass links (if enabled) — needed before building email HTML
+    let walletLinks: EmailWalletLinks | undefined;
+    try {
+      const walletSettings = await getWalletPassSettings(params.orgId);
+      const siteUrl = (
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+      ).replace(/\/$/, "");
+
+      if (siteUrl && (walletSettings.apple_wallet_enabled || walletSettings.google_wallet_enabled)) {
+        walletLinks = {};
+
+        // Apple Wallet — link to download endpoint (generates .pkpass on click)
+        if (walletSettings.apple_wallet_enabled) {
+          walletLinks.appleWalletUrl = `${siteUrl}/api/orders/${params.order.id}/wallet/apple`;
+        }
+
+        // Google Wallet — generate save URL inline (contains signed JWT)
+        if (walletSettings.google_wallet_enabled) {
+          try {
+            const { generateGoogleWalletUrl } = await import("@/lib/wallet-passes");
+            const walletTickets = params.tickets.map((t) => ({
+              ticketCode: t.ticket_code,
+              eventName: params.event.name,
+              venueName: params.event.venue_name || "",
+              eventDate: params.event.date_start || "",
+              doorsTime: params.event.doors_time,
+              ticketType: t.ticket_type_name,
+              holderName: `${params.customer.first_name} ${params.customer.last_name}`,
+              orderNumber: params.order.order_number,
+              merchSize: t.merch_size,
+            }));
+            const googleUrl = generateGoogleWalletUrl(walletTickets, walletSettings);
+            if (googleUrl) walletLinks.googleWalletUrl = googleUrl;
+          } catch {
+            // Google Wallet URL generation failed — proceed without it
+          }
+        }
+
+        // Clear wallet links if both ended up empty
+        if (!walletLinks.appleWalletUrl && !walletLinks.googleWalletUrl) {
+          walletLinks = undefined;
+        }
+      }
+    } catch {
+      // Wallet link generation failed — proceed without wallet buttons
+    }
+
     const { subject, html, text } = buildOrderConfirmationEmail(
       settings,
-      orderEmailData
+      orderEmailData,
+      walletLinks,
     );
 
     // Generate PDF tickets for attachment

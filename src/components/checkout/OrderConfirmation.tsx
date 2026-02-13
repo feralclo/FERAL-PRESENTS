@@ -9,16 +9,23 @@ interface OrderConfirmationProps {
   order: Order;
   slug: string;
   eventName: string;
+  walletPassEnabled?: {
+    apple?: boolean;
+    google?: boolean;
+  };
 }
 
 export function OrderConfirmation({
   order,
   slug,
   eventName,
+  walletPassEnabled,
 }: OrderConfirmationProps) {
   const { trackPurchase } = useMetaTracking();
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
   const [downloading, setDownloading] = useState(false);
+  const [walletDownloading, setWalletDownloading] = useState<string | null>(null);
+  const [googleWalletUrl, setGoogleWalletUrl] = useState<string | null>(null);
   const purchaseTracked = useRef(false);
 
   // Track Purchase event once when order confirmation mounts
@@ -71,6 +78,41 @@ export function OrderConfirmation({
     }
     loadQRCodes();
   }, [order.tickets]);
+
+  // Fetch Google Wallet URL if enabled
+  useEffect(() => {
+    if (!walletPassEnabled?.google || !order.id) return;
+    fetch(`/api/orders/${order.id}/wallet/google`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.url) setGoogleWalletUrl(json.url);
+      })
+      .catch(() => {});
+  }, [order.id, walletPassEnabled?.google]);
+
+  const handleAddToAppleWallet = async () => {
+    setWalletDownloading("apple");
+    try {
+      const res = await fetch(`/api/orders/${order.id}/wallet/apple`);
+      if (!res.ok) throw new Error("Failed to generate wallet pass");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Determine filename based on content type
+      const contentType = res.headers.get("Content-Type") || "";
+      const ext = contentType.includes("pkpasses") ? "pkpasses" : "pkpass";
+      a.download = `${order.order_number}-tickets.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Silently fail — wallet pass is supplementary
+    }
+    setWalletDownloading(null);
+  };
 
   const handleDownloadPDF = async () => {
     setDownloading(true);
@@ -206,6 +248,32 @@ export function OrderConfirmation({
             >
               {downloading ? "Generating PDF..." : "Download Tickets (PDF)"}
             </button>
+
+            {/* Wallet Pass Buttons */}
+            {(walletPassEnabled?.apple || walletPassEnabled?.google) && (
+              <div className="order-confirmation__wallet-buttons">
+                {walletPassEnabled.apple && (
+                  <button
+                    onClick={handleAddToAppleWallet}
+                    className="order-confirmation__btn order-confirmation__btn--wallet"
+                    disabled={walletDownloading === "apple"}
+                  >
+                    {walletDownloading === "apple" ? "Adding..." : "Add to Apple Wallet"}
+                  </button>
+                )}
+                {walletPassEnabled.google && googleWalletUrl && (
+                  <a
+                    href={googleWalletUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="order-confirmation__btn order-confirmation__btn--wallet"
+                  >
+                    Save to Google Wallet
+                  </a>
+                )}
+              </div>
+            )}
+
             <a
               href={`/event/${slug}/`}
               className="order-confirmation__btn order-confirmation__btn--secondary"

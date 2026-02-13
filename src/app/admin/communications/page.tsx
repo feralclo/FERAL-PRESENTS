@@ -14,6 +14,7 @@ import {
   FileText,
   Receipt,
   ShoppingCart,
+  Smartphone,
 } from "lucide-react";
 
 /* ── Stat card ── */
@@ -140,6 +141,7 @@ export default function CommunicationsPage() {
   }>({ configured: false, verified: false, loading: true });
 
   const [emailEnabled, setEmailEnabled] = useState(false);
+  const [walletEnabled, setWalletEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/email/status")
@@ -151,6 +153,13 @@ export default function CommunicationsPage() {
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.order_confirmation_enabled) setEmailEnabled(true);
+      })
+      .catch(() => {});
+
+    fetch("/api/settings?key=feral_wallet_passes")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data?.apple_wallet_enabled || json?.data?.google_wallet_enabled) setWalletEnabled(true);
       })
       .catch(() => {});
   }, []);
@@ -221,6 +230,7 @@ export default function CommunicationsPage() {
           templates={[
             { name: "Order Confirmation", href: "/admin/communications/transactional/order-confirmation/", active: emailEnabled, icon: FileText },
             { name: "PDF Ticket", href: "/admin/communications/transactional/pdf-ticket/", active: true, icon: Receipt },
+            { name: "Wallet Passes", href: "/admin/communications/transactional/wallet-passes/", active: walletEnabled, icon: Smartphone },
           ]}
         />
         <ChannelCard

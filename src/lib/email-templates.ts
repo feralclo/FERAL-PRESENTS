@@ -44,9 +44,16 @@ function resolveUrl(url: string | undefined): string | undefined {
   return `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
+/** Optional wallet pass URLs to include in the email */
+export interface EmailWalletLinks {
+  appleWalletUrl?: string;   // Direct download URL for .pkpass file
+  googleWalletUrl?: string;  // Google Wallet "Save" URL
+}
+
 export function buildOrderConfirmationEmail(
   settings: EmailSettings,
-  order: OrderEmailData
+  order: OrderEmailData,
+  walletLinks?: EmailWalletLinks,
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
   const accent = s.accent_color || "#ff0033";
@@ -272,9 +279,65 @@ export function buildOrderConfirmationEmail(
             </td>
           </tr>
 
+          ${walletLinks?.appleWalletUrl || walletLinks?.googleWalletUrl ? `
+          <!-- Wallet Passes -->
+          <tr>
+            <td style="padding: 0 32px 8px;">
+              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
+                ADD TO WALLET
+              </div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-bottom: 16px;">
+                Save your ${order.tickets.length > 1 ? "tickets" : "ticket"} to your phone for quick access at the door.
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 32px 24px; text-align: center;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  ${walletLinks.appleWalletUrl ? `
+                  <td style="padding: 0 ${walletLinks.googleWalletUrl ? "6px" : "0"} 0 0;">
+                    <a href="${escapeHtml(walletLinks.appleWalletUrl)}" style="display: inline-block; text-decoration: none;" target="_blank">
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="border-radius: 8px; overflow: hidden; background-color: #000000;">
+                        <tr>
+                          <td style="padding: 10px 20px; text-align: center;">
+                            <div style="font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 10px; color: #ffffff; letter-spacing: 0.3px; line-height: 1;">Add to</div>
+                            <div style="font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; line-height: 1.3; letter-spacing: -0.2px;">Apple Wallet</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </a>
+                  </td>
+                  ` : ""}
+                  ${walletLinks.googleWalletUrl ? `
+                  <td style="padding: 0 0 0 ${walletLinks.appleWalletUrl ? "6px" : "0"};">
+                    <a href="${escapeHtml(walletLinks.googleWalletUrl)}" style="display: inline-block; text-decoration: none;" target="_blank">
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="border-radius: 8px; overflow: hidden; background-color: #000000;">
+                        <tr>
+                          <td style="padding: 10px 20px; text-align: center;">
+                            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; color: #ffffff; letter-spacing: 0.3px; line-height: 1;">Save to</div>
+                            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 600; color: #ffffff; line-height: 1.3; letter-spacing: -0.2px;">Google Wallet</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </a>
+                  </td>
+                  ` : ""}
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 32px;">
+              <div style="height: 1px; background-color: #eee;"></div>
+            </td>
+          </tr>
+          ` : ""}
+
           <!-- CTA -->
           <tr>
-            <td style="padding: 0 32px 32px; text-align: center;">
+            <td style="padding: ${walletLinks?.appleWalletUrl || walletLinks?.googleWalletUrl ? "16px" : "0"} 32px 32px; text-align: center;">
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #999; margin-bottom: 12px;">
                 Present your QR code at the door for scanning.
               </div>
@@ -303,6 +366,10 @@ export function buildOrderConfirmationEmail(
 </body>
 </html>`;
 
+  const walletTextSection = walletLinks?.appleWalletUrl || walletLinks?.googleWalletUrl
+    ? `\nADD TO WALLET${walletLinks.appleWalletUrl ? `\nApple Wallet: ${walletLinks.appleWalletUrl}` : ""}${walletLinks.googleWalletUrl ? `\nGoogle Wallet: ${walletLinks.googleWalletUrl}` : ""}\n`
+    : "";
+
   const text = `${heading}
 
 ${message}
@@ -322,6 +389,7 @@ YOUR TICKETS
 ${ticketCodesText}
 
 Your PDF tickets with QR codes are attached to this email.
+${walletTextSection}
 Present your QR code at the door for scanning.
 
 ---

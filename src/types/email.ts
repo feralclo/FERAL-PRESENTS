@@ -92,6 +92,59 @@ export const DEFAULT_PDF_TICKET_SETTINGS: PdfTicketSettings = {
   disclaimer_line2: "PRESENT THIS QR CODE AT THE DOOR FOR SCANNING",
 };
 
+/**
+ * Wallet pass settings stored in site_settings table (key: feral_wallet_passes).
+ * Controls Apple Wallet and Google Wallet pass generation for tickets.
+ * Disabled by default — promoters opt in from the communications dashboard.
+ */
+export interface WalletPassSettings {
+  // Master toggles
+  apple_wallet_enabled: boolean;
+  google_wallet_enabled: boolean;
+
+  // Branding
+  logo_url?: string;              // Logo for wallet pass (URL or media key)
+  strip_url?: string;             // Strip/banner image for pass header
+  accent_color: string;           // Pass label/highlight color (hex)
+  bg_color: string;               // Pass background color (hex)
+  text_color: string;             // Foreground text color (hex)
+  label_color: string;            // Field label color (hex)
+
+  // Content
+  organization_name: string;      // Org name shown on pass (e.g. "FERAL PRESENTS")
+  description: string;            // Pass description (e.g. "Event Ticket")
+
+  // Fields shown on back of pass
+  show_holder: boolean;           // Show ticket holder name
+  show_order_number: boolean;     // Show order number
+  show_terms: boolean;            // Show terms/conditions on back
+  terms_text: string;             // Terms content for back of pass
+
+  // Apple Wallet specific (certificates configured via env vars)
+  apple_pass_type_id?: string;    // e.g. "pass.com.feralpresents.ticket"
+  apple_team_id?: string;         // Apple Developer Team ID
+
+  // Google Wallet specific (service account configured via env vars)
+  google_issuer_id?: string;      // Google Pay Console Issuer ID
+  google_class_suffix?: string;   // Suffix for pass class ID
+}
+
+/** Default wallet pass settings */
+export const DEFAULT_WALLET_PASS_SETTINGS: WalletPassSettings = {
+  apple_wallet_enabled: false,
+  google_wallet_enabled: false,
+  accent_color: "#ff0033",
+  bg_color: "#0e0e0e",
+  text_color: "#ffffff",
+  label_color: "#ff0033",
+  organization_name: "FERAL PRESENTS",
+  description: "Event Ticket",
+  show_holder: true,
+  show_order_number: true,
+  show_terms: true,
+  terms_text: "This ticket is valid for one entry only. Present your QR code at the door for scanning. Tickets are non-transferable unless otherwise stated. The organiser reserves the right to refuse entry.",
+};
+
 /** Default email settings for new orgs */
 export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   order_confirmation_enabled: true,

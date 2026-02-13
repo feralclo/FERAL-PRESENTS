@@ -120,8 +120,8 @@ export async function generateTicketsPDF(
     if (logoDataUrl) {
       try {
         const logoH = s.logo_height || 12;
-        // Use actual aspect ratio, capped to fit page width
-        const logoW = Math.min(logoH * logoAspect, 120);
+        // Use actual aspect ratio, capped to 70% of page width (matches preview)
+        const logoW = Math.min(logoH * logoAspect, pageWidth * 0.7);
         doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, 10, logoW, logoH);
       } catch {
         // Fallback to text if image embed fails

@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
-import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
+import { generateTicketsPDF, getSiteUrl, type TicketPDFData } from "@/lib/pdf";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     // Fetch email + PDF ticket settings in parallel
     let emailSettings: EmailSettings = DEFAULT_EMAIL_SETTINGS;
     let pdfSettings: PdfTicketSettings = DEFAULT_PDF_TICKET_SETTINGS;
+    let pdfLogoBase64: string | null = null;
 
     try {
       const supabase = await getSupabaseServer();
@@ -53,9 +54,32 @@ export async function POST(request: NextRequest) {
         if (pdfResult.data?.data && typeof pdfResult.data.data === "object") {
           pdfSettings = { ...DEFAULT_PDF_TICKET_SETTINGS, ...(pdfResult.data.data as Partial<PdfTicketSettings>) };
         }
+
+        // Fetch PDF logo base64 directly from DB (avoids serverless self-fetch)
+        if (pdfSettings.logo_url) {
+          const m = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
+          if (m) {
+            const { data: row } = await supabase
+              .from(TABLES.SITE_SETTINGS).select("data")
+              .eq("key", `media_${m[1]}`).single();
+            const d = row?.data as { image?: string } | null;
+            if (d?.image) pdfLogoBase64 = d.image;
+          }
+        }
       }
     } catch {
       // Use defaults
+    }
+
+    // Resolve email logo URL to absolute — email clients need full https:// URLs
+    if (emailSettings.logo_url && !emailSettings.logo_url.startsWith("http")) {
+      const siteUrl = getSiteUrl();
+      if (siteUrl) {
+        emailSettings = {
+          ...emailSettings,
+          logo_url: `${siteUrl}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`,
+        };
+      }
     }
 
     // Sample order data for the test email
@@ -76,46 +100,9 @@ export async function POST(request: NextRequest) {
       ],
     };
 
-    // Fetch logo base64 from DB for both email CID and PDF embedding
-    let emailLogoBase64: string | null = null;
-    let pdfLogoBase64: string | null = null;
-
-    try {
-      const supabase = await getSupabaseServer();
-      if (supabase) {
-        // Email logo
-        if (emailSettings.logo_url) {
-          const m = emailSettings.logo_url.match(/\/api\/media\/(.+)$/);
-          if (m) {
-            const { data: row } = await supabase
-              .from(TABLES.SITE_SETTINGS).select("data")
-              .eq("key", `media_${m[1]}`).single();
-            const d = row?.data as { image?: string } | null;
-            if (d?.image) emailLogoBase64 = d.image;
-          }
-        }
-        // PDF logo (may be same or different key)
-        if (pdfSettings.logo_url) {
-          const m = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
-          if (m) {
-            const { data: row } = await supabase
-              .from(TABLES.SITE_SETTINGS).select("data")
-              .eq("key", `media_${m[1]}`).single();
-            const d = row?.data as { image?: string } | null;
-            if (d?.image) pdfLogoBase64 = d.image;
-          }
-        }
-      }
-    } catch { /* logo fetch failed, emails will use text fallback */ }
-
-    // Use CID (Content-ID) for email logo — works in all email clients
-    if (emailLogoBase64) {
-      emailSettings = { ...emailSettings, logo_url: "cid:brand-logo" };
-    }
-
     const { subject, html, text } = buildOrderConfirmationEmail(emailSettings, sampleOrder);
 
-    // Generate demo PDF ticket with sample data + real QR codes
+    // Generate demo PDF ticket
     const sampleTickets: TicketPDFData[] = sampleOrder.tickets.map((t) => ({
       ticketCode: t.ticket_code,
       eventName: sampleOrder.event_name,
@@ -128,28 +115,6 @@ export async function POST(request: NextRequest) {
 
     const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings, pdfLogoBase64);
 
-    // Build attachments
-    const attachments: { filename: string; content: Buffer | string; contentType?: string; cid?: string }[] = [
-      {
-        filename: `${sampleOrder.order_number}-tickets.pdf`,
-        content: pdfBuffer,
-        contentType: "application/pdf",
-      },
-    ];
-
-    // Add logo as inline CID attachment if available
-    if (emailLogoBase64) {
-      const base64Match = emailLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
-      if (base64Match) {
-        attachments.push({
-          filename: "logo.png",
-          content: Buffer.from(base64Match[2], "base64"),
-          contentType: base64Match[1],
-          cid: "brand-logo",
-        });
-      }
-    }
-
     const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({
       from: `${emailSettings.from_name} <${emailSettings.from_email}>`,
@@ -158,7 +123,13 @@ export async function POST(request: NextRequest) {
       html,
       text,
       replyTo: emailSettings.reply_to || undefined,
-      attachments,
+      attachments: [
+        {
+          filename: `${sampleOrder.order_number}-tickets.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
     });
 
     if (error) {

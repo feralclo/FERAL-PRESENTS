@@ -6,112 +6,192 @@ import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
-
-/* Red SVG icons for sidebar nav — modern monoline style */
-const svgIcon = (d: string) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff0033" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: d }} />
-);
+import {
+  LayoutDashboard,
+  CalendarDays,
+  FileText,
+  Users,
+  ClipboardCheck,
+  MessageSquare,
+  Activity,
+  CreditCard,
+  Zap,
+  Megaphone,
+  Mail,
+  Settings,
+  HeartPulse,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+} from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/admin/", label: "Dashboard", icon: svgIcon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>') },
-  { href: "/admin/events/", label: "Events", icon: svgIcon('<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>') },
-  { href: "/admin/orders/", label: "Orders", icon: svgIcon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>') },
-  { href: "/admin/customers/", label: "Customers", icon: svgIcon('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>') },
-  { href: "/admin/guest-list/", label: "Guest List", icon: svgIcon('<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/>') },
-  { href: "/admin/popup/", label: "Popup Performance", icon: svgIcon('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>') },
-  { href: "/admin/traffic/", label: "Traffic Analytics", icon: svgIcon('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>') },
-  { href: "/admin/payments/", label: "Payment Settings", icon: svgIcon('<path d="M2 10h20"/><path d="M2 14h20"/><rect x="2" y="5" width="20" height="14" rx="2"/>') },
-  { href: "/admin/connect/", label: "Stripe Connect", icon: svgIcon('<circle cx="12" cy="12" r="3"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>') },
-  { href: "/admin/marketing/", label: "Marketing", icon: svgIcon('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>') },
-  { href: "/admin/communications/", label: "Communications", icon: svgIcon('<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>') },
-  { href: "/admin/settings/", label: "Settings", icon: svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>') },
-  { href: "/admin/health/", label: "System Health", icon: svgIcon('<path d="M4.5 12.5l3 3 5-6 3 3 4.5-5"/><rect x="2" y="3" width="20" height="18" rx="2"/>') },
+  { href: "/admin/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/events/", label: "Events", icon: CalendarDays },
+  { href: "/admin/orders/", label: "Orders", icon: FileText },
+  { href: "/admin/customers/", label: "Customers", icon: Users },
+  { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
+  { href: "/admin/popup/", label: "Popup Performance", icon: MessageSquare },
+  { href: "/admin/traffic/", label: "Traffic Analytics", icon: Activity },
+  { href: "/admin/payments/", label: "Payment Settings", icon: CreditCard },
+  { href: "/admin/connect/", label: "Stripe Connect", icon: Zap },
+  { href: "/admin/marketing/", label: "Marketing", icon: Megaphone },
+  { href: "/admin/communications/", label: "Communications", icon: Mail },
+  { href: "/admin/settings/", label: "Settings", icon: Settings },
+  { href: "/admin/health/", label: "System Health", icon: HeartPulse },
 ];
+
+function isActive(pathname: string, href: string): boolean {
+  if (href === "/admin/") {
+    return pathname === "/admin" || pathname === "/admin/";
+  }
+  return pathname === href || pathname === href.slice(0, -1) || pathname.startsWith(href);
+}
+
+/* ── Page title from pathname ── */
+function getPageTitle(pathname: string): string {
+  const match = NAV_ITEMS.find((item) => isActive(pathname, item.href));
+  return match?.label || "Admin";
+}
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
-  // Login page renders without the admin chrome — middleware handles auth
+  // Login page renders without the admin chrome
   const isLoginPage = pathname.startsWith("/admin/login");
-  if (isLoginPage) {
-    return <>{children}</>;
-  }
+  if (isLoginPage) return <>{children}</>;
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+    if (supabase) await supabase.auth.signOut();
     router.replace("/admin/login/");
   };
 
+  const pageTitle = getPageTitle(pathname);
+
   return (
-    <div className="admin-layout">
-      {/* Sidebar */}
-      <aside className={`admin-sidebar ${sidebarOpen ? "admin-sidebar--open" : ""}`}>
-        <div className="admin-sidebar__header">
-          <Link href="/admin/" className="admin-sidebar__logo">
+    <div className="flex min-h-screen bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar ── */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-border bg-[#111] transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Sidebar header */}
+        <div className="flex h-[60px] items-center justify-between border-b border-border px-5">
+          <Link href="/admin/" className="flex items-center gap-2.5 no-underline">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/FERAL LOGO.svg" alt="FERAL" style={{ height: 24, opacity: 0.9 }} />
-            <span style={{ marginLeft: 10, color: "#ff0033", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "3px", fontFamily: "'Space Mono', monospace" }}>ADMIN</span>
+            <img src="/images/FERAL LOGO.svg" alt="FERAL" className="h-[22px] opacity-90" />
+            <span className="font-mono text-[0.7rem] font-bold tracking-[3px] text-primary">
+              ADMIN
+            </span>
           </Link>
           <button
-            className="admin-sidebar__close"
             onClick={() => setSidebarOpen(false)}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground lg:hidden"
           >
-            &times;
+            <X size={18} />
           </button>
         </div>
-        <nav className="admin-sidebar__nav">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`admin-sidebar__link ${
-                pathname === item.href ||
-                pathname === item.href.slice(0, -1) ||
-                (item.href !== "/admin/" && pathname.startsWith(item.href))
-                  ? "admin-sidebar__link--active"
-                  : ""
-              }`}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span className="admin-sidebar__icon">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-3">
+          <div className="px-3 space-y-0.5">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`group flex items-center gap-3 rounded-md px-3 py-2.5 text-[0.82rem] transition-all no-underline ${
+                    active
+                      ? "bg-primary/10 text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                  }`}
+                >
+                  <Icon
+                    size={18}
+                    strokeWidth={1.8}
+                    className={`flex-shrink-0 transition-colors ${
+                      active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                    }`}
+                  />
+                  <span className="truncate">{item.label}</span>
+                  {active && (
+                    <ChevronRight size={14} className="ml-auto text-primary/60" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
-        <button className="admin-sidebar__logout" onClick={handleLogout}>
-          Logout
-        </button>
+
+        {/* Logout */}
+        <div className="border-t border-border p-3">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[0.82rem] text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-primary"
+          >
+            <LogOut size={18} strokeWidth={1.8} />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
-      {/* Main content */}
-      <div className="admin-main">
-        <header className="admin-header">
-          <button
-            className="admin-header__toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <Link href="/admin/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/FERAL LOGO.svg" alt="FERAL" style={{ height: 22, opacity: 0.9 }} />
-            <span style={{ marginLeft: 10, color: "#ff0033", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "3px", fontFamily: "'Space Mono', monospace" }}>ADMIN</span>
-          </Link>
-          <div className="admin-header__status">
-            <span className="admin-header__dot" />
-            <span>Live</span>
+      {/* ── Main content area ── */}
+      <div className="flex flex-1 flex-col lg:ml-[260px]">
+        {/* Top header */}
+        <header className="sticky top-0 z-30 flex h-[60px] items-center justify-between border-b border-border bg-[#111]/95 backdrop-blur-md px-5">
+          {/* Left: hamburger (mobile) + page title */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-secondary lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
+            {/* Mobile logo */}
+            <Link
+              href="/admin/"
+              className="flex items-center gap-2 no-underline lg:hidden"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/FERAL LOGO.svg" alt="FERAL" className="h-[20px] opacity-90" />
+              <span className="font-mono text-[0.65rem] font-bold tracking-[3px] text-primary">
+                ADMIN
+              </span>
+            </Link>
+            {/* Desktop page title */}
+            <h1 className="hidden font-mono text-sm font-bold tracking-[2px] text-foreground uppercase lg:block">
+              {pageTitle}
+            </h1>
+          </div>
+
+          {/* Right: status indicator */}
+          <div className="flex items-center gap-2 text-[0.75rem] text-success">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-40" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+            </span>
+            <span className="font-mono tracking-wider uppercase">Live</span>
           </div>
         </header>
-        <div className="admin-content">{children}</div>
+
+        {/* Page content */}
+        <main className="admin-content flex-1">{children}</main>
       </div>
     </div>
   );

@@ -6,6 +6,15 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import type { EmailSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
+import {
+  ChevronLeft,
+  Upload,
+  Trash2,
+  AlertCircle,
+  Settings as SettingsIcon,
+  Eye,
+  SendHorizonal,
+} from "lucide-react";
 
 /* ── Logo image compression ── */
 
@@ -393,7 +402,7 @@ export default function OrderConfirmationPage() {
           href="/admin/communications/"
           className="inline-flex items-center gap-1 text-xs font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors no-underline mb-2"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          <ChevronLeft size={14} />
           Communications
         </Link>
         <div className="flex items-center justify-between">
@@ -421,12 +430,12 @@ export default function OrderConfirmationPage() {
             : "border-destructive/20 bg-destructive/5"
         }`}>
           <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${resendStatus.configured ? "bg-warning" : "bg-destructive"}`} />
+            <AlertCircle size={14} className={resendStatus.configured ? "text-warning" : "text-destructive"} />
             <span className="font-mono text-xs tracking-wider uppercase" style={{ color: resendStatus.configured ? "#ffc107" : "#ff0033" }}>
               {resendStatus.configured ? "Domain not verified" : "Email not configured"}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 ml-4">
+          <p className="text-xs text-muted-foreground mt-1 ml-6">
             {resendStatus.configured
               ? "Verify your domain in Resend to start sending emails."
               : <>Add <code className="text-foreground">RESEND_API_KEY</code> to your environment variables and redeploy.</>}
@@ -436,19 +445,26 @@ export default function OrderConfirmationPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-0 mb-6 border-b border-border">
-        {(["settings", "preview"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-3 font-mono text-xs tracking-wider uppercase transition-colors border-b-2 -mb-px ${
-              activeTab === tab
-                ? "text-primary border-primary"
-                : "text-muted-foreground border-transparent hover:text-foreground"
-            }`}
-          >
-            {tab === "settings" ? "Settings" : "Preview"}
-          </button>
-        ))}
+        {([
+          { key: "settings" as const, label: "Settings", icon: SettingsIcon },
+          { key: "preview" as const, label: "Preview", icon: Eye },
+        ]).map((tab) => {
+          const TabIcon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-5 py-3 font-mono text-xs tracking-wider uppercase transition-colors border-b-2 -mb-px ${
+                activeTab === tab.key
+                  ? "text-primary border-primary"
+                  : "text-muted-foreground border-transparent hover:text-foreground"
+              }`}
+            >
+              <TabIcon size={14} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "settings" ? (
@@ -493,15 +509,16 @@ export default function OrderConfirmationPage() {
                       </div>
                       <button
                         onClick={() => update("logo_url", undefined)}
-                        className="block mt-2 px-3 py-1.5 text-[0.65rem] font-mono tracking-wider uppercase border border-primary text-primary bg-transparent cursor-pointer hover:bg-primary/10 transition-colors rounded"
+                        className="flex items-center gap-1.5 mt-2 px-3 py-1.5 text-[0.65rem] font-mono tracking-wider uppercase border border-primary text-primary bg-transparent cursor-pointer hover:bg-primary/10 transition-colors rounded"
                       >
+                        <Trash2 size={12} />
                         Remove Logo
                       </button>
                     </div>
                   )}
                   <div
                     className={`border-2 border-dashed p-5 text-center cursor-pointer transition-colors max-w-md rounded ${
-                      logoDragging ? "border-primary" : "border-border"
+                      logoDragging ? "border-primary bg-primary/5" : "border-border"
                     }`}
                     onClick={() => logoFileRef.current?.click()}
                     onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
@@ -513,6 +530,7 @@ export default function OrderConfirmationPage() {
                       if (file) handleLogoFile(file);
                     }}
                   >
+                    <Upload size={20} className="mx-auto mb-2 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">
                       {logoProcessing ? "Uploading..." : settings.logo_url
                         ? "Drag & drop to replace, or click to select"
@@ -590,9 +608,12 @@ export default function OrderConfirmationPage() {
           {/* Test email sidebar */}
           <div>
             <div className="rounded-lg border border-border bg-card p-5 sticky top-20">
-              <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[2px] text-muted-foreground mb-3">
-                Send Test Email
-              </h3>
+              <div className="flex items-center gap-2 mb-3">
+                <SendHorizonal size={14} className="text-primary" />
+                <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[2px] text-muted-foreground">
+                  Send Test Email
+                </h3>
+              </div>
               <p className="text-xs text-muted-foreground mb-4">
                 Send a test email with sample data to preview how it looks in a real inbox.
               </p>

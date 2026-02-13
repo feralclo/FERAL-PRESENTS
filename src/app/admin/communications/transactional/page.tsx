@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, FileText, Send, Receipt } from "lucide-react";
 
 export default function TransactionalPage() {
   const [emailEnabled, setEmailEnabled] = useState(false);
@@ -21,6 +22,7 @@ export default function TransactionalPage() {
       description: "Sent after successful purchase — includes ticket codes and PDF attachment",
       href: "/admin/communications/transactional/order-confirmation/",
       active: emailEnabled,
+      icon: FileText,
     },
     {
       name: "Ticket Delivery",
@@ -28,6 +30,7 @@ export default function TransactionalPage() {
       href: "/admin/communications/transactional/order-confirmation/",
       active: emailEnabled,
       note: "Shares settings with Order Confirmation",
+      icon: Send,
     },
     {
       name: "Invoices",
@@ -35,6 +38,7 @@ export default function TransactionalPage() {
       href: "#",
       active: false,
       note: "Coming soon",
+      icon: Receipt,
     },
   ];
 
@@ -46,7 +50,7 @@ export default function TransactionalPage() {
           href="/admin/communications/"
           className="inline-flex items-center gap-1 text-xs font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors no-underline mb-2"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          <ChevronLeft size={14} />
           Communications
         </Link>
         <h1 className="font-mono text-lg font-bold tracking-[3px] text-foreground uppercase">
@@ -59,33 +63,35 @@ export default function TransactionalPage() {
 
       {/* Template list */}
       <div className="space-y-3">
-        {templates.map((t) => (
-          <Link
-            key={t.name}
-            href={t.href}
-            className="flex items-center justify-between p-5 rounded-lg border border-border bg-card transition-colors hover:bg-card/80 group no-underline"
-          >
-            <div className="flex items-center gap-4">
-              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${t.active ? "bg-success shadow-[0_0_6px_rgba(78,203,113,0.4)]" : "bg-muted-foreground/30"}`} />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                    {t.name}
-                  </span>
-                  {t.note && (
-                    <span className="text-[0.6rem] font-mono tracking-wider text-muted-foreground/60 uppercase">
-                      {t.note}
+        {templates.map((t) => {
+          const Icon = t.icon;
+          return (
+            <Link
+              key={t.name}
+              href={t.href}
+              className="flex items-center justify-between p-5 rounded-lg border border-border bg-card transition-colors hover:bg-card/80 group no-underline"
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${t.active ? "bg-success shadow-[0_0_6px_rgba(78,203,113,0.4)]" : "bg-muted-foreground/30"}`} />
+                <Icon size={16} className="text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                      {t.name}
                     </span>
-                  )}
+                    {t.note && (
+                      <span className="text-[0.6rem] font-mono tracking-wider text-muted-foreground/60 uppercase">
+                        {t.note}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
               </div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </Link>
-        ))}
+              <ChevronRight size={16} className="text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

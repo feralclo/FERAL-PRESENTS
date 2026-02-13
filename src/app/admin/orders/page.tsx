@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -154,6 +154,20 @@ function formatDate(d: string) {
    ORDERS PAGE
    ════════════════════════════════════════════════════════ */
 export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+        </div>
+      }
+    >
+      <OrdersContent />
+    </Suspense>
+  );
+}
+
+function OrdersContent() {
   const searchParams = useSearchParams();
   const customerIdParam = searchParams.get("customer_id");
   const customerNameParam = searchParams.get("customer_name");

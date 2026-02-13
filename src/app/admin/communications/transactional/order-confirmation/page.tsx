@@ -238,18 +238,18 @@ export default function OrderConfirmationPage() {
   return (
     <div>
       {/* Breadcrumb + title + switch */}
-      <div className="mb-6">
-        <Link href="/admin/communications/" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors no-underline mb-3">
+      <div className="mb-8">
+        <Link href="/admin/communications/" className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground">
           <ChevronLeft size={14} />
           Communications
         </Link>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="font-mono text-base font-semibold tracking-wider text-foreground uppercase">Order Confirmation</h1>
-            <p className="text-sm text-muted-foreground mt-1">Email sent after a successful purchase with PDF tickets attached.</p>
+            <h1 className="font-mono text-sm font-semibold tracking-[2px] text-foreground uppercase">Order Confirmation</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Email sent after a successful purchase with PDF tickets attached.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant={settings.order_confirmation_enabled ? "success" : "secondary"} className="text-[10px]">
+          <div className="flex shrink-0 items-center gap-3">
+            <Badge variant={settings.order_confirmation_enabled ? "success" : "secondary"} className="text-[10px] font-semibold">
               {settings.order_confirmation_enabled ? "Enabled" : "Disabled"}
             </Badge>
             <Switch

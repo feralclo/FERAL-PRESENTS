@@ -1,9 +1,8 @@
 /*
- * Tailwind CSS for new admin sections (Communications, etc.)
+ * Tailwind CSS for admin dashboard (shadcn/ui foundation)
  *
- * IMPORTANT: We skip Preflight (Tailwind's CSS reset) to avoid breaking
- * existing hand-written CSS throughout the site. Only utilities + theme
- * are loaded. Existing admin pages are completely unaffected.
+ * Includes a scoped base reset for the admin area so shadcn components
+ * render correctly without breaking public-facing pages.
  */
 @layer theme, base, components, utilities;
 
@@ -11,39 +10,100 @@
 @import "tailwindcss/utilities" layer(utilities);
 
 /*
- * Custom theme matching FERAL design system.
- * These CSS variables are consumed by shadcn/ui components (from the
- * official registry) and mapped via Tailwind v4 @theme.
+ * FERAL design system — consumed by shadcn/ui via Tailwind v4 @theme.
  */
 @theme inline {
   --color-background: #0e0e0e;
   --color-foreground: #ffffff;
-  --color-card: #141414;
+  --color-card: #111111;
   --color-card-foreground: #ffffff;
-  --color-popover: #141414;
+  --color-popover: #111111;
   --color-popover-foreground: #ffffff;
   --color-primary: #ff0033;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #1e1e1e;
+  --color-secondary: #1a1a1a;
   --color-secondary-foreground: #ffffff;
-  --color-muted: #1e1e1e;
+  --color-muted: #1a1a1a;
   --color-muted-foreground: #71717a;
-  --color-accent: #1e1e1e;
+  --color-accent: #1a1a1a;
   --color-accent-foreground: #ffffff;
   --color-destructive: #ff0033;
   --color-destructive-foreground: #ffffff;
-  --color-border: #232323;
-  --color-input: #232323;
+  --color-border: #1e1e1e;
+  --color-input: #1e1e1e;
   --color-ring: #ff0033;
   --color-success: #22c55e;
+  --color-success-foreground: #ffffff;
   --color-warning: #eab308;
-  --color-sidebar: #0a0a0a;
+  --color-warning-foreground: #ffffff;
+  --color-sidebar: #080808;
   --color-sidebar-foreground: #a1a1aa;
-  --color-sidebar-accent: #141414;
+  --color-sidebar-primary: #ff0033;
+  --color-sidebar-accent: #111111;
   --color-sidebar-accent-foreground: #ffffff;
-  --color-sidebar-border: #1a1a1a;
+  --color-sidebar-border: #151515;
+  --color-sidebar-ring: #ff0033;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
+}
+
+/*
+ * Admin-scoped base reset — provides the Preflight essentials
+ * that shadcn/ui components need without touching public pages.
+ *
+ * Scoped to [data-admin] so it only applies inside the admin shell.
+ */
+@layer base {
+  [data-admin] *,
+  [data-admin] *::before,
+  [data-admin] *::after {
+    border-color: var(--color-border);
+  }
+
+  [data-admin] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Reset headings inside admin to not have browser defaults */
+  [data-admin] h1,
+  [data-admin] h2,
+  [data-admin] h3,
+  [data-admin] h4,
+  [data-admin] h5,
+  [data-admin] h6 {
+    font-size: inherit;
+    font-weight: inherit;
+    margin: 0;
+  }
+
+  /* Reset paragraph margins */
+  [data-admin] p {
+    margin: 0;
+  }
+
+  /* Links inherit and have no underline by default */
+  [data-admin] a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  /* Buttons and inputs inherit font */
+  [data-admin] button,
+  [data-admin] input,
+  [data-admin] textarea,
+  [data-admin] select {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Code blocks */
+  [data-admin] code {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 0.875em;
+  }
 }

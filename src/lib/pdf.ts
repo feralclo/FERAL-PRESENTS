@@ -25,6 +25,31 @@ function hexRgb(hex: string): [number, number, number] {
 }
 
 /**
+ * Fetch an image URL and return as a data URL for embedding in the PDF.
+ * Returns null if the fetch fails or the URL is not an image.
+ */
+async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+  try {
+    // Resolve relative URLs
+    let absoluteUrl = url;
+    if (!url.startsWith("http") && !url.startsWith("data:")) {
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+      if (!siteUrl) return null;
+      absoluteUrl = `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+    }
+    if (url.startsWith("data:")) return url;
+
+    const res = await fetch(absoluteUrl);
+    if (!res.ok) return null;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const contentType = res.headers.get("content-type") || "image/png";
+    return `data:${contentType};base64,${buffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Generate a PDF containing all tickets.
  * Each ticket gets a full A5 page with branding,
  * event details, holder info, and QR code.
@@ -47,6 +72,12 @@ export async function generateTicketsPDF(
   const [txR, txG, txB] = hexRgb(s.text_color);
   const [secR, secG, secB] = hexRgb(s.secondary_color);
 
+  // Pre-fetch logo if configured (do once, reuse for all pages)
+  let logoDataUrl: string | null = null;
+  if (s.logo_url) {
+    logoDataUrl = await fetchImageAsDataUrl(s.logo_url);
+  }
+
   for (let i = 0; i < tickets.length; i++) {
     if (i > 0) doc.addPage();
     const t = tickets[i];
@@ -59,11 +90,26 @@ export async function generateTicketsPDF(
     doc.setFillColor(acR, acG, acB);
     doc.rect(0, 0, 148, 2, "F");
 
-    // Brand name
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(txR, txG, txB);
-    doc.text(s.brand_name, centerX, 22, { align: "center" });
+    // Brand: logo or text
+    if (logoDataUrl) {
+      try {
+        const logoH = s.logo_height || 12;
+        // Estimate width based on a ~3:1 aspect ratio assumption
+        const logoW = logoH * 3;
+        doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, 14, logoW, logoH);
+      } catch {
+        // Fallback to text if image embed fails
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(txR, txG, txB);
+        doc.text(s.brand_name, centerX, 22, { align: "center" });
+      }
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(txR, txG, txB);
+      doc.text(s.brand_name, centerX, 22, { align: "center" });
+    }
 
     // Divider
     doc.setDrawColor(40, 40, 40);

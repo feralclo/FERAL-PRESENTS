@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
@@ -18,21 +18,69 @@ import {
   ChevronLeft,
   CheckCircle2,
   QrCode,
-  RotateCcw,
+  ImageIcon,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
+/* ── Logo processing ── */
+
+function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const src = document.createElement("canvas");
+          const sCtx = src.getContext("2d")!;
+          src.width = img.width;
+          src.height = img.height;
+          sCtx.drawImage(img, 0, 0);
+          const pixels = sCtx.getImageData(0, 0, src.width, src.height).data;
+          let top = src.height, bottom = 0, left = src.width, right = 0;
+          for (let y = 0; y < src.height; y++) {
+            for (let x = 0; x < src.width; x++) {
+              if (pixels[(y * src.width + x) * 4 + 3] > 10) {
+                if (y < top) top = y;
+                if (y > bottom) bottom = y;
+                if (x < left) left = x;
+                if (x > right) right = x;
+              }
+            }
+          }
+          if (top > bottom || left > right) { top = 0; bottom = src.height - 1; left = 0; right = src.width - 1; }
+          top = Math.max(0, top - 2); left = Math.max(0, left - 2);
+          bottom = Math.min(src.height - 1, bottom + 2); right = Math.min(src.width - 1, right + 2);
+          const cropW = right - left + 1, cropH = bottom - top + 1;
+          let outW = cropW, outH = cropH;
+          if (outW > maxWidth) { outH = Math.round((outH * maxWidth) / outW); outW = maxWidth; }
+          const out = document.createElement("canvas");
+          out.width = outW; out.height = outH;
+          out.getContext("2d")!.drawImage(src, left, top, cropW, cropH, 0, 0, outW, outH);
+          resolve(out.toDataURL("image/png"));
+        } catch { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
 /* ── Live PDF ticket preview (pure HTML/CSS) ── */
-function TicketPreview({ settings: s }: { settings: PdfTicketSettings }) {
+function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; large?: boolean }) {
   const accent = s.accent_color || "#ff0033";
   const bg = s.bg_color || "#0e0e0e";
   const text = s.text_color || "#ffffff";
   const secondary = s.secondary_color || "#969696";
-  // QR size scales proportionally (50mm on A5 = ~33% of 148mm width)
   const qrPct = Math.round((s.qr_size / 148) * 100);
+  // Logo height scales: mm on A5 → percentage of 210mm height
+  const logoHPct = s.logo_url ? `${Math.round((s.logo_height / 210) * 100)}%` : undefined;
 
   return (
-    <div className="mx-auto" style={{ maxWidth: 340 }}>
-      {/* A5 aspect ratio: 148:210 */}
+    <div className="mx-auto" style={{ maxWidth: large ? 480 : 340 }}>
       <div
         className="relative overflow-hidden rounded-lg shadow-2xl"
         style={{
@@ -41,57 +89,42 @@ function TicketPreview({ settings: s }: { settings: PdfTicketSettings }) {
           fontFamily: "'Inter', -apple-system, sans-serif",
         }}
       >
-        {/* Top accent bar */}
         <div className="absolute inset-x-0 top-0" style={{ height: "1%", backgroundColor: accent }} />
 
-        {/* Content */}
         <div className="flex h-full flex-col items-center justify-between px-[12%] py-[8%]">
-          {/* Top: Brand */}
+          {/* Top: Brand — logo or text */}
           <div className="w-full text-center">
-            <div
-              style={{
-                fontFamily: "'Space Mono', 'Courier New', monospace",
-                fontSize: "clamp(10px, 3.5vw, 16px)",
-                fontWeight: 700,
-                color: text,
-                letterSpacing: 2,
-              }}
-            >
-              {s.brand_name}
-            </div>
+            {s.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={s.logo_url}
+                alt="Brand"
+                style={{ height: logoHPct, maxHeight: 48, width: "auto", maxWidth: "70%", objectFit: "contain", margin: "0 auto" }}
+              />
+            ) : (
+              <div
+                style={{
+                  fontFamily: "'Space Mono', 'Courier New', monospace",
+                  fontSize: "clamp(10px, 3.5vw, 16px)",
+                  fontWeight: 700,
+                  color: text,
+                  letterSpacing: 2,
+                }}
+              >
+                {s.brand_name}
+              </div>
+            )}
             <div className="mx-auto mt-[4%]" style={{ height: 1, backgroundColor: "#282828", width: "70%" }} />
           </div>
 
           {/* Event info */}
           <div className="w-full text-center" style={{ marginTop: "-2%" }}>
-            <div
-              style={{
-                fontFamily: "'Space Mono', 'Courier New', monospace",
-                fontSize: "clamp(10px, 3vw, 14px)",
-                fontWeight: 700,
-                color: text,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-              }}
-            >
+            <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(10px, 3vw, 14px)", fontWeight: 700, color: text, letterSpacing: 1, textTransform: "uppercase" }}>
               FERAL LIVERPOOL
             </div>
-            <div style={{ fontSize: "clamp(7px, 2vw, 9px)", color: secondary, marginTop: 4 }}>
-              Invisible Wind Factory
-            </div>
-            <div style={{ fontSize: "clamp(7px, 2vw, 9px)", color: secondary, marginTop: 2 }}>
-              Thursday 27 March 2026
-            </div>
-            <div
-              style={{
-                fontFamily: "'Space Mono', 'Courier New', monospace",
-                fontSize: "clamp(8px, 2.4vw, 11px)",
-                fontWeight: 700,
-                color: accent,
-                marginTop: 8,
-                textTransform: "uppercase",
-              }}
-            >
+            <div style={{ fontSize: "clamp(7px, 2vw, 9px)", color: secondary, marginTop: 4 }}>Invisible Wind Factory</div>
+            <div style={{ fontSize: "clamp(7px, 2vw, 9px)", color: secondary, marginTop: 2 }}>Thursday 27 March 2026</div>
+            <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(8px, 2.4vw, 11px)", fontWeight: 700, color: accent, marginTop: 8, textTransform: "uppercase" }}>
               GENERAL RELEASE
             </div>
           </div>
@@ -99,45 +132,21 @@ function TicketPreview({ settings: s }: { settings: PdfTicketSettings }) {
           {/* QR Code placeholder */}
           <div
             className="flex items-center justify-center rounded-md"
-            style={{
-              width: `${qrPct}%`,
-              aspectRatio: "1 / 1",
-              backgroundColor: "#ffffff",
-              padding: "3%",
-            }}
+            style={{ width: `${qrPct}%`, aspectRatio: "1 / 1", backgroundColor: "#ffffff", padding: "3%" }}
           >
             <QrCode style={{ width: "80%", height: "80%", color: "#000" }} />
           </div>
 
           {/* Ticket code */}
           <div className="w-full text-center">
-            <div
-              style={{
-                fontFamily: "'Space Mono', 'Courier New', monospace",
-                fontSize: "clamp(10px, 3vw, 14px)",
-                fontWeight: 700,
-                color: accent,
-                letterSpacing: 1,
-              }}
-            >
+            <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(10px, 3vw, 14px)", fontWeight: 700, color: accent, letterSpacing: 1 }}>
               FERAL-A1B2C3D4
             </div>
-
             {s.show_holder && (
-              <div style={{ fontSize: "clamp(7px, 2.2vw, 10px)", color: `${text}cc`, marginTop: 6 }}>
-                Alex Test
-              </div>
+              <div style={{ fontSize: "clamp(7px, 2.2vw, 10px)", color: `${text}cc`, marginTop: 6 }}>Alex Test</div>
             )}
-
             {s.show_order && (
-              <div
-                style={{
-                  fontFamily: "'Space Mono', 'Courier New', monospace",
-                  fontSize: "clamp(5px, 1.6vw, 7px)",
-                  color: "#646464",
-                  marginTop: 4,
-                }}
-              >
+              <div style={{ fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(5px, 1.6vw, 7px)", color: "#646464", marginTop: 4 }}>
                 ORDER: FERAL-00042
               </div>
             )}
@@ -148,37 +157,15 @@ function TicketPreview({ settings: s }: { settings: PdfTicketSettings }) {
             <div className="mx-auto mb-[3%]" style={{ height: 1, backgroundColor: "#282828", width: "70%" }} />
             {s.show_disclaimer && (
               <>
-                <div
-                  style={{
-                    fontSize: "clamp(4px, 1.3vw, 6px)",
-                    color: "#505050",
-                    letterSpacing: 0.5,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {s.disclaimer_line1}
-                </div>
-                <div
-                  style={{
-                    fontSize: "clamp(4px, 1.3vw, 6px)",
-                    color: "#505050",
-                    letterSpacing: 0.5,
-                    textTransform: "uppercase",
-                    marginTop: 3,
-                  }}
-                >
-                  {s.disclaimer_line2}
-                </div>
+                <div style={{ fontSize: "clamp(4px, 1.3vw, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase" }}>{s.disclaimer_line1}</div>
+                <div style={{ fontSize: "clamp(4px, 1.3vw, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 3 }}>{s.disclaimer_line2}</div>
               </>
             )}
           </div>
         </div>
 
-        {/* Bottom accent bar */}
         <div className="absolute inset-x-0 bottom-0" style={{ height: "1%", backgroundColor: accent }} />
       </div>
-
-      {/* Label under preview */}
       <p className="mt-3 text-center text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
         A5 Ticket Preview
       </p>
@@ -195,6 +182,9 @@ export default function PdfTicketPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const [logoProcessing, setLogoProcessing] = useState(false);
+  const [logoDragging, setLogoDragging] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -228,10 +218,18 @@ export default function PdfTicketPage() {
     setSaving(false);
   }, [settings]);
 
-  const handleReset = () => {
-    setSettings(DEFAULT_PDF_TICKET_SETTINGS);
-    setStatus("");
-  };
+  const handleLogoFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
+    setLogoProcessing(true);
+    const result = await trimAndResizeLogo(file, 400);
+    if (!result) { setLogoProcessing(false); return; }
+    try {
+      const res = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageData: result, key: "pdf-ticket-logo" }) });
+      const json = await res.json();
+      if (res.ok && json.url) update("logo_url", json.url);
+    } catch { /* upload failed */ }
+    setLogoProcessing(false);
+  }, []);
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -261,10 +259,6 @@ export default function PdfTicketPage() {
             <TabsTrigger value="preview" className="text-sm">Full Preview</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2 pb-1">
-            <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground">
-              <RotateCcw size={12} />
-              Reset
-            </Button>
             <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save"}
             </Button>
@@ -286,18 +280,92 @@ export default function PdfTicketPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Brand Identity</CardTitle>
-                  <CardDescription>Text and colours shown on every ticket</CardDescription>
+                  <CardDescription>Logo or text shown at the top of every ticket</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Logo upload */}
+                  <div className="space-y-3">
+                    <Label>Ticket Logo</Label>
+                    <p className="text-[11px] text-muted-foreground">Upload a logo to replace the brand name text. Transparent PNGs are auto-cropped.</p>
+
+                    {settings.logo_url ? (
+                      <div
+                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#0e0e0e] p-4"
+                        onClick={() => logoFileRef.current?.click()}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={settings.logo_url}
+                          alt="Logo"
+                          style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
+                        />
+                        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
+                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); update("logo_url", undefined); }}
+                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-red-500/30 hover:text-red-400"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }} />
+                      </div>
+                    ) : (
+                      <div
+                        className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all max-w-xs ${
+                          logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                        }`}
+                        onClick={() => logoFileRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                        onDragLeave={() => setLogoDragging(false)}
+                        onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const f = e.dataTransfer.files[0]; if (f) handleLogoFile(f); }}
+                      >
+                        <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
+                        <p className="text-xs text-muted-foreground">{logoProcessing ? "Processing..." : "Drop image or click to upload"}</p>
+                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP</p>
+                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Logo size slider — only when logo is set */}
+                  {settings.logo_url && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label>Logo Size</Label>
+                        <span className="font-mono text-xs text-muted-foreground">{settings.logo_height}mm</span>
+                      </div>
+                      <Slider
+                        min={8}
+                        max={24}
+                        step={1}
+                        value={[settings.logo_height]}
+                        onValueChange={([v]) => update("logo_height", v)}
+                      />
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Brand name — always editable (fallback when no logo) */}
                   <div className="space-y-2">
-                    <Label>Brand Name</Label>
+                    <Label>Brand Name {settings.logo_url && <span className="text-muted-foreground font-normal">(fallback)</span>}</Label>
                     <Input
                       value={settings.brand_name}
                       onChange={(e) => update("brand_name", e.target.value)}
                       placeholder="FERAL PRESENTS"
                       className="max-w-sm font-mono uppercase"
                     />
-                    <p className="text-[11px] text-muted-foreground">Displayed at the top of every ticket</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {settings.logo_url ? "Used when the logo can't be rendered" : "Displayed at the top of every ticket"}
+                    </p>
                   </div>
 
                   <Separator />
@@ -319,7 +387,6 @@ export default function PdfTicketPage() {
                   <CardDescription>Control the size and visibility of ticket elements</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {/* QR Size */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label>QR Code Size</Label>
@@ -331,13 +398,11 @@ export default function PdfTicketPage() {
                       step={2}
                       value={[settings.qr_size]}
                       onValueChange={([v]) => update("qr_size", v)}
-                      className="max-w-xs"
                     />
                   </div>
 
                   <Separator />
 
-                  {/* Toggle switches */}
                   <div className="space-y-4">
                     <ToggleRow label="Show Holder Name" description="Display the ticket holder's name" checked={settings.show_holder} onChange={(v) => update("show_holder", v)} />
                     <ToggleRow label="Show Order Number" description="Display the order reference" checked={settings.show_order} onChange={(v) => update("show_order", v)} />
@@ -384,10 +449,10 @@ export default function PdfTicketPage() {
           </div>
         </TabsContent>
 
-        {/* Full preview tab */}
+        {/* Full preview tab — much bigger */}
         <TabsContent value="preview">
-          <div className="flex justify-center py-4">
-            <TicketPreview settings={settings} />
+          <div className="flex justify-center py-6">
+            <TicketPreview settings={settings} large />
           </div>
         </TabsContent>
       </Tabs>

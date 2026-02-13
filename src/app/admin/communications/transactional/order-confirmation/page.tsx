@@ -18,12 +18,12 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ChevronLeft,
-  X as XIcon,
   AlertTriangle,
   SendHorizonal,
   CheckCircle2,
   ImageIcon,
-  RefreshCw,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 /* ── Logo processing: auto-trim transparent pixels + resize ── */
@@ -109,6 +109,7 @@ const TEMPLATE_VARS = [
 function EmailPreview({ settings }: { settings: EmailSettings }) {
   const accent = settings.accent_color || "#ff0033";
   const logoH = settings.logo_height || 48;
+
   const previewSubject = settings.order_confirmation_subject
     .replace("{{event_name}}", "FERAL Liverpool").replace("{{order_number}}", "FERAL-00042");
   const previewHeading = settings.order_confirmation_heading
@@ -120,7 +121,6 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      {/* Email client chrome */}
       <Card className="overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border">
           <div className="flex items-center gap-1.5 mb-3">
@@ -140,21 +140,21 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
           </div>
         </div>
 
-        {/* Email body */}
+        {/* Email body — fixed header height, logo scales within */}
         <div className="p-6" style={{ background: "#f4f4f5" }}>
           <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-md" style={{ background: "#fff" }}>
             <div style={{ height: 4, backgroundColor: accent }} />
-            <div className="py-7 px-8 text-center" style={{ background: settings.logo_url ? "#0e0e0e" : undefined }}>
+            <div className="flex items-center justify-center" style={{ height: 80, background: settings.logo_url ? "#0e0e0e" : undefined }}>
               {settings.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={settings.logo_url} alt="Logo" style={{ height: logoH, width: "auto", maxWidth: 280, display: "inline-block", objectFit: "contain" }} />
+                <img src={settings.logo_url} alt="Logo" style={{ height: logoH, width: "auto", maxWidth: 280, objectFit: "contain" }} />
               ) : (
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 14, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: "#111" }}>
                   {settings.from_name}
                 </div>
               )}
             </div>
-            <div className="px-8 pt-0 pb-2 text-center">
+            <div className="px-8 pt-4 pb-2 text-center">
               <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: 24, fontWeight: 700, color: "#111", letterSpacing: 1, margin: 0 }}>{previewHeading}</h1>
             </div>
             <div className="px-8 pb-6 text-center">
@@ -318,7 +318,7 @@ export default function OrderConfirmationPage() {
         </Card>
       )}
 
-      {/* Tabs — line variant for cleaner look */}
+      {/* Tabs */}
       <Tabs defaultValue="settings">
         <div className="flex items-center justify-between border-b border-border mb-6">
           <TabsList variant="line">
@@ -372,7 +372,6 @@ export default function OrderConfirmationPage() {
                   <CardDescription>Customise the visual identity of your emails</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {/* Accent Color */}
                   <div className="space-y-2">
                     <Label>Accent Color</Label>
                     <div className="flex items-center gap-3">
@@ -390,40 +389,37 @@ export default function OrderConfirmationPage() {
 
                   {/* Email Logo */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label>Email Logo</Label>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">Transparent PNGs are auto-cropped</p>
-                      </div>
-                      {settings.logo_url && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => logoFileRef.current?.click()}
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          >
-                            <RefreshCw size={11} />
-                            Replace
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => update("logo_url", undefined)}
-                            className="inline-flex items-center rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <XIcon size={12} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    <Label>Email Logo</Label>
+                    <p className="text-[11px] text-muted-foreground">Transparent PNGs are auto-cropped. Shown in the email header.</p>
 
                     {settings.logo_url ? (
-                      <div className="rounded-lg border border-border bg-[#0e0e0e] p-4">
+                      <div
+                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#0e0e0e] p-4"
+                        onClick={() => logoFileRef.current?.click()}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={settings.logo_url}
                           alt="Logo"
                           style={{ height: settings.logo_height || 48, width: "auto", maxWidth: 280, objectFit: "contain" }}
                         />
+                        {/* Hover: tiny icon buttons top-right */}
+                        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
+                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); update("logo_url", undefined); }}
+                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-red-500/30 hover:text-red-400"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
                         <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
                       </div>
                     ) : (
@@ -461,7 +457,6 @@ export default function OrderConfirmationPage() {
                           step={2}
                           value={[settings.logo_height || 48]}
                           onValueChange={([v]) => update("logo_height", v)}
-                          className="max-w-xs"
                         />
                         <p className="text-[10px] text-muted-foreground">Height of the logo in the email header</p>
                       </div>
@@ -484,7 +479,6 @@ export default function OrderConfirmationPage() {
                   <CardDescription>Customise the content of the order confirmation email</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Variable chips */}
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Available Variables</p>
                     <div className="flex flex-wrap gap-1.5">

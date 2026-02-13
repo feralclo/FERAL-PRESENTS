@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -26,6 +26,9 @@ import {
   LogOut,
   PanelLeft,
   X,
+  ChevronsUpDown,
+  User as UserIcon,
+  Receipt,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -88,16 +91,43 @@ function getPageTitle(pathname: string): string {
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   if (pathname.startsWith("/admin/login")) return <>{children}</>;
+
+  // Fetch user email on mount
+  useEffect(() => {
+    (async () => {
+      const supabase = getSupabaseClient();
+      if (!supabase) return;
+      const { data } = await supabase.auth.getUser();
+      if (data.user?.email) setUserEmail(data.user.email);
+    })();
+  }, []);
+
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [userMenuOpen]);
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();
     if (supabase) await supabase.auth.signOut();
     router.replace("/admin/login/");
   };
+
+  // Initials for avatar
+  const initials = userEmail ? userEmail.charAt(0).toUpperCase() : "A";
 
   return (
     <div data-admin className="flex min-h-screen bg-background">
@@ -181,18 +211,59 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        {/* Logout */}
-        <div className="shrink-0 border-t border-sidebar-border p-3">
+        {/* ── User footer ── */}
+        <div ref={menuRef} className="relative shrink-0 border-t border-sidebar-border">
+          {/* Dropdown menu — positioned above */}
+          {userMenuOpen && (
+            <div className="absolute inset-x-3 bottom-full mb-2 rounded-lg border border-sidebar-border bg-sidebar p-1 shadow-xl shadow-black/30">
+              <Link
+                href="/admin/settings/"
+                onClick={() => { setUserMenuOpen(false); setOpen(false); }}
+                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-white"
+              >
+                <Settings size={14} className="text-sidebar-foreground/60" />
+                Settings
+              </Link>
+              <button
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-white"
+                onClick={() => setUserMenuOpen(false)}
+              >
+                <UserIcon size={14} className="text-sidebar-foreground/60" />
+                Account
+              </button>
+              <button
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-white"
+                onClick={() => setUserMenuOpen(false)}
+              >
+                <Receipt size={14} className="text-sidebar-foreground/60" />
+                Billing
+              </button>
+              <div className="my-1 h-px bg-sidebar-border" />
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut size={14} className="text-sidebar-foreground/60" />
+                Log out
+              </button>
+            </div>
+          )}
+
+          {/* User info button */}
           <button
-            onClick={handleLogout}
-            className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-sidebar-foreground transition-all duration-150 hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex w-full items-center gap-3 p-3 transition-colors hover:bg-sidebar-accent/30"
           >
-            <LogOut
-              size={16}
-              strokeWidth={1.75}
-              className="shrink-0 transition-colors duration-150 group-hover:text-destructive"
-            />
-            <span>Logout</span>
+            {/* Avatar */}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/80 to-primary/40 text-[11px] font-bold text-white">
+              {initials}
+            </div>
+            {/* Name + email */}
+            <div className="flex-1 text-left overflow-hidden">
+              <p className="truncate text-[13px] font-medium text-white">FERAL</p>
+              <p className="truncate text-[11px] text-sidebar-foreground/50">{userEmail || "admin"}</p>
+            </div>
+            <ChevronsUpDown size={14} className="shrink-0 text-sidebar-foreground/40" />
           </button>
         </div>
       </aside>

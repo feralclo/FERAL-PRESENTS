@@ -62,6 +62,8 @@ export interface OrderEmailData {
  */
 export interface PdfTicketSettings {
   brand_name: string;            // Text at top of ticket (e.g. "FERAL PRESENTS")
+  logo_url?: string;             // Optional logo image URL (replaces brand_name text)
+  logo_height: number;           // Logo height in mm on the PDF (8–24, default 12)
   accent_color: string;          // Accent bars + ticket code color (hex)
   bg_color: string;              // Background color (hex)
   text_color: string;            // Primary text color (hex)
@@ -77,6 +79,7 @@ export interface PdfTicketSettings {
 /** Default PDF ticket settings */
 export const DEFAULT_PDF_TICKET_SETTINGS: PdfTicketSettings = {
   brand_name: "FERAL PRESENTS",
+  logo_height: 12,
   accent_color: "#ff0033",
   bg_color: "#0e0e0e",
   text_color: "#ffffff",

@@ -108,7 +108,7 @@ const TEMPLATE_VARS = [
 /* ── Email preview ── */
 function EmailPreview({ settings }: { settings: EmailSettings }) {
   const accent = settings.accent_color || "#ff0033";
-  const logoH = settings.logo_height || 48;
+  const logoH = Math.min(settings.logo_height || 48, 64);
 
   const previewSubject = settings.order_confirmation_subject
     .replace("{{event_name}}", "FERAL Liverpool").replace("{{order_number}}", "FERAL-00042");
@@ -144,8 +144,8 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
         <div className="p-6 rounded-b-lg" style={{ background: "linear-gradient(to bottom, #1a1a1a 0%, #e8e8ea 8%, #f4f4f5 16%)" }}>
           <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-lg" style={{ background: "#fff" }}>
             <div style={{ height: 4, backgroundColor: accent }} />
-            {/* Header — matches actual email HTML: padding 16px top + 12px bottom + logo height */}
-            <div className="flex items-center justify-center" style={{ padding: "16px 32px 12px", background: settings.logo_url ? "#0e0e0e" : undefined }}>
+            {/* Header — fixed 80px, logo scales inside, container never changes */}
+            <div className="flex items-center justify-center" style={{ height: 80, padding: "0 32px", background: settings.logo_url ? "#0e0e0e" : undefined }}>
               {settings.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={settings.logo_url} alt="Logo" style={{ height: logoH, width: "auto", maxWidth: 280, objectFit: "contain" }} />
@@ -453,10 +453,10 @@ export default function OrderConfirmationPage() {
                       <div className="space-y-3">
                         <Label>Logo Size</Label>
                         <Slider
-                          min={24}
-                          max={160}
+                          min={20}
+                          max={64}
                           step={2}
-                          value={[settings.logo_height || 48]}
+                          value={[Math.min(settings.logo_height || 48, 64)]}
                           onValueChange={([v]) => update("logo_height", v)}
                         />
                         <div className="flex justify-between">

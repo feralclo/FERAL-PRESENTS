@@ -23,9 +23,12 @@ import {
   Clock,
   TrendingUp,
   ScanLine,
-  CheckCircle2,
   Shirt,
   Repeat,
+  CreditCard,
+  Send,
+  AlertCircle,
+  UserPlus,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -37,8 +40,9 @@ interface CustomerOrder {
   currency: string;
   payment_method: string;
   created_at: string;
+  metadata?: Record<string, unknown>;
   event: { name: string; slug: string; date_start: string } | null;
-  items?: { qty: number; merch_size?: string }[];
+  items?: { qty: number; merch_size?: string; unit_price: number }[];
 }
 
 interface CustomerTicket {
@@ -61,8 +65,6 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "se
   refunded: "destructive",
   cancelled: "secondary",
   failed: "destructive",
-  valid: "success",
-  used: "secondary",
 };
 
 /* ── Helpers ── */
@@ -92,15 +94,9 @@ function getInitials(first?: string, last?: string): string {
   return `${(first?.[0] || "").toUpperCase()}${(last?.[0] || "").toUpperCase()}`;
 }
 
-function daysSince(dateStr: string): number {
-  const d = new Date(dateStr);
-  const now = new Date();
-  return Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 function memberSince(dateStr?: string): string {
   if (!dateStr) return "—";
-  const days = daysSince(dateStr);
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 30) return `${days} days ago`;
@@ -138,6 +134,102 @@ function StatCard({
   );
 }
 
+/* ── Timeline ── */
+interface TimelineEntry {
+  label: string;
+  detail?: string;
+  time: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  sortDate: Date;
+}
+
+function buildCustomerTimeline(
+  customer: Customer,
+  orders: CustomerOrder[],
+  tickets: CustomerTicket[]
+): TimelineEntry[] {
+  const entries: TimelineEntry[] = [];
+  const fmt = (d: string) => formatDateTime(d);
+
+  // Customer created
+  entries.push({
+    label: "Customer created",
+    detail: `${customer.first_name} ${customer.last_name} added to the platform`,
+    time: fmt(customer.created_at),
+    icon: UserPlus,
+    sortDate: new Date(customer.created_at),
+  });
+
+  // Each order
+  for (const order of orders) {
+    entries.push({
+      label: `Order ${order.order_number} placed`,
+      detail: `${formatCurrency(Number(order.total))}${order.event?.name ? ` — ${order.event.name}` : ""}`,
+      time: fmt(order.created_at),
+      icon: ShoppingBag,
+      sortDate: new Date(order.created_at),
+    });
+
+    // Payment processed
+    if (order.status === "completed") {
+      entries.push({
+        label: `Payment confirmed`,
+        detail: `${order.order_number} via ${order.payment_method}`,
+        time: fmt(order.created_at),
+        icon: CreditCard,
+        sortDate: new Date(new Date(order.created_at).getTime() + 1000),
+      });
+    }
+
+    // Email sent
+    const meta = (order.metadata || {}) as Record<string, unknown>;
+    if (meta.email_sent === true && typeof meta.email_sent_at === "string") {
+      entries.push({
+        label: "Confirmation email sent",
+        detail: `for ${order.order_number}`,
+        time: fmt(meta.email_sent_at as string),
+        icon: Send,
+        sortDate: new Date(meta.email_sent_at as string),
+      });
+    } else if (meta.email_sent === false && typeof meta.email_attempted_at === "string") {
+      entries.push({
+        label: "Email delivery failed",
+        detail: (meta.email_error as string) || `for ${order.order_number}`,
+        time: fmt(meta.email_attempted_at as string),
+        icon: AlertCircle,
+        sortDate: new Date(meta.email_attempted_at as string),
+      });
+    }
+
+    // Refund
+    if (order.status === "refunded") {
+      entries.push({
+        label: `Order ${order.order_number} refunded`,
+        detail: formatCurrency(Number(order.total)),
+        time: fmt(order.created_at),
+        icon: DollarSign,
+        sortDate: new Date(new Date(order.created_at).getTime() + 2000),
+      });
+    }
+  }
+
+  // Ticket scans
+  for (const ticket of tickets) {
+    if (ticket.scanned_at) {
+      entries.push({
+        label: "Ticket scanned at door",
+        detail: `${ticket.ticket_code}${ticket.event?.name ? ` — ${ticket.event.name}` : ""}${ticket.scanned_by ? ` by ${ticket.scanned_by}` : ""}`,
+        time: fmt(ticket.scanned_at),
+        icon: ScanLine,
+        sortDate: new Date(ticket.scanned_at),
+      });
+    }
+  }
+
+  entries.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+  return entries;
+}
+
 /* ════════════════════════════════════════════════════════
    CUSTOMER PROFILE PAGE
    ════════════════════════════════════════════════════════ */
@@ -154,7 +246,6 @@ export default function CustomerProfilePage() {
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    // Fetch customer, orders, and tickets in parallel
     const [customerResult, ordersResult, ticketsResult] = await Promise.all([
       supabase
         .from(TABLES.CUSTOMERS)
@@ -164,7 +255,7 @@ export default function CustomerProfilePage() {
         .single(),
       supabase
         .from(TABLES.ORDERS)
-        .select("id, order_number, status, total, currency, payment_method, created_at, event:events(name, slug, date_start), items:order_items(qty, merch_size)")
+        .select("id, order_number, status, total, currency, payment_method, created_at, metadata, event:events(name, slug, date_start), items:order_items(qty, merch_size, unit_price)")
         .eq("customer_id", customerId)
         .eq("org_id", ORG_ID)
         .order("created_at", { ascending: false }),
@@ -218,7 +309,21 @@ export default function CustomerProfilePage() {
   const avgOrderValue = completedOrders.length > 0 ? totalSpent / completedOrders.length : 0;
   const scannedTickets = tickets.filter((t) => t.scanned_at);
   const eventsAttended = new Set(scannedTickets.map((t) => t.event?.name)).size;
-  const merchTickets = tickets.filter((t) => t.merch_size);
+
+  // Merch spend
+  const merchSpend = completedOrders.reduce((total, order) => {
+    const merchItems = (order.items || []).filter((i) => i.merch_size);
+    return total + merchItems.reduce((s, i) => s + Number(i.unit_price) * i.qty, 0);
+  }, 0);
+
+  // Latest order
+  const latestOrder = orders[0] || null;
+  const latestOrderTicketQty = latestOrder
+    ? (latestOrder.items || []).reduce((s, i) => s + i.qty, 0)
+    : 0;
+
+  // Timeline
+  const timeline = buildCustomerTimeline(customer, orders, tickets);
 
   return (
     <div>
@@ -231,13 +336,12 @@ export default function CustomerProfilePage() {
       </Link>
 
       {/* Customer Header */}
-      <Card className="mb-6 overflow-hidden">
+      <Card className="mb-6">
         <CardContent className="p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              {/* Large avatar */}
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20">
-                <span className="font-mono text-xl font-bold text-primary">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
+                <span className="font-mono text-lg font-bold text-muted-foreground">
                   {getInitials(customer.first_name, customer.last_name)}
                 </span>
               </div>
@@ -247,12 +351,12 @@ export default function CustomerProfilePage() {
                     {customer.first_name} {customer.last_name}
                   </h1>
                   {customer.total_orders > 2 && (
-                    <Badge variant="success" className="text-[10px] font-semibold">
+                    <Badge variant="secondary" className="text-[10px] font-semibold">
                       <Repeat size={10} /> Loyal
                     </Badge>
                   )}
                   {totalSpent >= 200 && (
-                    <Badge variant="default" className="text-[10px] font-semibold">
+                    <Badge variant="secondary" className="text-[10px] font-semibold">
                       VIP
                     </Badge>
                   )}
@@ -280,7 +384,7 @@ export default function CustomerProfilePage() {
       </Card>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Orders"
           value={customer.total_orders.toString()}
@@ -303,192 +407,87 @@ export default function CustomerProfilePage() {
           detail={`${scannedTickets.length} scanned`}
         />
         <StatCard
-          label="Events"
+          label="Events Attended"
           value={eventsAttended.toString()}
           icon={CalendarDays}
-          detail="Attended"
+        />
+        <StatCard
+          label="Merch Spend"
+          value={formatCurrency(merchSpend)}
+          icon={Shirt}
         />
       </div>
 
-      {/* Orders + Tickets in 2 columns on large screens */}
-      <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {/* Order History */}
-        <Card className="overflow-hidden">
+      {/* Latest Order */}
+      <div className="mt-6">
+        <Card>
           <CardHeader className="border-b border-border pb-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Package size={15} className="text-muted-foreground" />
-              Order History ({orders.length})
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Package size={15} className="text-muted-foreground" />
+                Latest Order
+              </CardTitle>
+              {orders.length > 1 && (
+                <Link href={`/admin/orders/?customer_id=${customerId}`}>
+                  <Button variant="outline" size="sm">
+                    View All Orders ({orders.length})
+                    <ChevronRight size={14} />
+                  </Button>
+                </Link>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            {orders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10">
-                <Package size={28} className="text-muted-foreground/20" />
-                <p className="mt-2 text-xs text-muted-foreground">No orders yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {orders.map((order) => {
-                  const ticketQty = (order.items || []).reduce((s, i) => s + i.qty, 0);
-                  return (
-                    <Link
-                      key={order.id}
-                      href={`/admin/orders/${order.id}/`}
-                      className="group flex items-center justify-between px-5 py-3.5 transition-colors duration-100 hover:bg-accent/30"
+            {latestOrder ? (
+              <Link
+                href={`/admin/orders/${latestOrder.id}/`}
+                className="group flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[13px] font-semibold text-foreground">
+                      {latestOrder.order_number}
+                    </span>
+                    <Badge
+                      variant={STATUS_VARIANT[latestOrder.status] || "secondary"}
+                      className="text-[10px]"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2.5">
-                          <span className="font-mono text-[13px] font-semibold text-foreground">
-                            {order.order_number}
-                          </span>
-                          <Badge
-                            variant={STATUS_VARIANT[order.status] || "secondary"}
-                            className="text-[10px]"
-                          >
-                            {order.status}
-                          </Badge>
-                        </div>
-                        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{formatDate(order.created_at)}</span>
-                          {order.event?.name && (
-                            <>
-                              <span className="text-border">·</span>
-                              <span className="truncate">{order.event.name}</span>
-                            </>
-                          )}
-                          <span className="text-border">·</span>
-                          <span>{ticketQty} ticket{ticketQty !== 1 ? "s" : ""}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm font-semibold text-foreground">
-                          {formatCurrency(Number(order.total))}
-                        </span>
-                        <ChevronRight
-                          size={14}
-                          className="text-muted-foreground/20 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
-                        />
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Tickets */}
-        <Card className="overflow-hidden">
-          <CardHeader className="border-b border-border pb-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <ScanLine size={15} className="text-muted-foreground" />
-              Tickets ({tickets.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {tickets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10">
-                <TicketIcon size={28} className="text-muted-foreground/20" />
-                <p className="mt-2 text-xs text-muted-foreground">No tickets yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {tickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="px-5 py-3.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                          <TicketIcon size={13} className="text-muted-foreground" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-[12px] font-bold text-foreground">
-                              {ticket.ticket_code}
-                            </span>
-                            <Badge
-                              variant={STATUS_VARIANT[ticket.status] || "secondary"}
-                              className="text-[9px]"
-                            >
-                              {ticket.status}
-                            </Badge>
-                          </div>
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            {ticket.ticket_type?.name || "Ticket"}
-                            {ticket.event?.name ? ` · ${ticket.event.name}` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        {ticket.scanned_at ? (
-                          <div className="flex items-center gap-1">
-                            <CheckCircle2 size={11} className="text-success" />
-                            <span className="font-mono text-[10px] text-muted-foreground">
-                              Scanned
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="font-mono text-[10px] text-muted-foreground/40">
-                            Not scanned
-                          </span>
-                        )}
-                        {ticket.merch_size && (
-                          <div className="flex items-center gap-1">
-                            <Shirt size={10} className="text-muted-foreground" />
-                            <span className="font-mono text-[10px]">{ticket.merch_size}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      {latestOrder.status}
+                    </Badge>
                   </div>
-                ))}
+                  <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{formatDate(latestOrder.created_at)}</span>
+                    {latestOrder.event?.name && (
+                      <>
+                        <span className="text-border">·</span>
+                        <span>{latestOrder.event.name}</span>
+                      </>
+                    )}
+                    <span className="text-border">·</span>
+                    <span>{latestOrderTicketQty} ticket{latestOrderTicketQty !== 1 ? "s" : ""}</span>
+                    <span className="text-border">·</span>
+                    <span>{latestOrder.payment_method}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm font-semibold text-foreground">
+                    {formatCurrency(Number(latestOrder.total))}
+                  </span>
+                  <ChevronRight
+                    size={14}
+                    className="text-muted-foreground/20 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+                  />
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10">
+                <Package size={24} className="text-muted-foreground/20" />
+                <p className="mt-2 text-xs text-muted-foreground">No orders yet</p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Merch Summary (only if they have merch) */}
-      {merchTickets.length > 0 && (
-        <Card className="mt-4 overflow-hidden">
-          <CardHeader className="border-b border-border pb-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Shirt size={15} className="text-muted-foreground" />
-              Merchandise ({merchTickets.length} items)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {merchTickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="flex items-center justify-between px-5 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {ticket.ticket_code}
-                    </span>
-                    <span className="text-sm text-foreground">
-                      {ticket.ticket_type?.name || "Merch"}
-                    </span>
-                    <Badge variant="secondary" className="text-[10px] font-mono">
-                      {ticket.merch_size}
-                    </Badge>
-                  </div>
-                  <Badge
-                    variant={ticket.merch_collected ? "success" : "warning"}
-                    className="text-[10px]"
-                  >
-                    {ticket.merch_collected ? "Collected" : "Pending"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Notes */}
       {customer.notes && (
@@ -500,7 +499,50 @@ export default function CustomerProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <p className="text-sm text-foreground/80 whitespace-pre-wrap">{customer.notes}</p>
+            <p className="whitespace-pre-wrap text-sm text-foreground/80">{customer.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Timeline */}
+      {timeline.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Clock size={15} className="text-muted-foreground" />
+              Activity Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
+            <div className="relative pl-6">
+              {/* Vertical line */}
+              <div className="absolute bottom-0 left-[11px] top-0 w-px bg-border" />
+
+              {timeline.map((entry, i) => {
+                const Icon = entry.icon;
+                return (
+                  <div
+                    key={i}
+                    className={`relative flex items-start gap-4 ${
+                      i < timeline.length - 1 ? "pb-6" : ""
+                    }`}
+                  >
+                    <div className="absolute -left-6 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-background ring-2 ring-border text-muted-foreground">
+                      <Icon size={11} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{entry.label}</p>
+                      {entry.detail && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">{entry.detail}</p>
+                      )}
+                      <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                        {entry.time}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}

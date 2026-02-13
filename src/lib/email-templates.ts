@@ -118,7 +118,7 @@ export function buildOrderConfirmationEmail(
             <td style="padding: 28px 32px 20px; text-align: center;${s.logo_url ? " background-color: #0e0e0e;" : ""}">
               ${
                 s.logo_url
-                  ? `<img src="${escapeHtml(s.logo_url)}" alt="${escapeHtml(s.from_name)}" height="36" style="height: 36px; width: auto; display: inline-block;">`
+                  ? `<img src="${escapeHtml(s.logo_url)}" alt="${escapeHtml(s.from_name)}" height="48" style="height: 48px; width: auto; display: inline-block;">`
                   : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${escapeHtml(s.from_name)}</div>`
               }
             </td>

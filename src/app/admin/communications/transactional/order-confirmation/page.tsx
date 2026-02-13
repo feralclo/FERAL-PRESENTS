@@ -24,24 +24,63 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-/* ── Logo image compression ── */
+/* ── Logo processing: auto-trim transparent pixels + resize ── */
 
-function compressLogoImage(file: File, maxWidth: number, quality: number): Promise<string | null> {
+function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
         try {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d")!;
-          let w = img.width;
-          let h = img.height;
-          if (w > maxWidth) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
-          canvas.width = w;
-          canvas.height = h;
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/png", quality));
+          // Draw at original size to scan for content bounds
+          const src = document.createElement("canvas");
+          const sCtx = src.getContext("2d")!;
+          src.width = img.width;
+          src.height = img.height;
+          sCtx.drawImage(img, 0, 0);
+
+          // Find tight bounding box around non-transparent pixels
+          const pixels = sCtx.getImageData(0, 0, src.width, src.height).data;
+          let top = src.height, bottom = 0, left = src.width, right = 0;
+          for (let y = 0; y < src.height; y++) {
+            for (let x = 0; x < src.width; x++) {
+              if (pixels[(y * src.width + x) * 4 + 3] > 10) {
+                if (y < top) top = y;
+                if (y > bottom) bottom = y;
+                if (x < left) left = x;
+                if (x > right) right = x;
+              }
+            }
+          }
+
+          // Fallback if nothing detected
+          if (top > bottom || left > right) {
+            top = 0; bottom = src.height - 1;
+            left = 0; right = src.width - 1;
+          }
+
+          // Add small breathing room
+          top = Math.max(0, top - 2);
+          left = Math.max(0, left - 2);
+          bottom = Math.min(src.height - 1, bottom + 2);
+          right = Math.min(src.width - 1, right + 2);
+
+          const cropW = right - left + 1;
+          const cropH = bottom - top + 1;
+
+          // Scale to fit maxWidth
+          let outW = cropW, outH = cropH;
+          if (outW > maxWidth) {
+            outH = Math.round((outH * maxWidth) / outW);
+            outW = maxWidth;
+          }
+
+          const out = document.createElement("canvas");
+          out.width = outW;
+          out.height = outH;
+          out.getContext("2d")!.drawImage(src, left, top, cropW, cropH, 0, 0, outW, outH);
+          resolve(out.toDataURL("image/png"));
         } catch { resolve(null); }
       };
       img.onerror = () => resolve(null);
@@ -54,7 +93,7 @@ function compressLogoImage(file: File, maxWidth: number, quality: number): Promi
 
 async function processLogoFile(file: File): Promise<string | null> {
   if (file.size > 5 * 1024 * 1024) { alert("Image too large. Maximum is 5MB."); return null; }
-  const result = await compressLogoImage(file, 400, 0.9);
+  const result = await trimAndResizeLogo(file, 400);
   if (!result) alert("Failed to process image. Try a smaller file.");
   return result;
 }
@@ -106,10 +145,10 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
       <div className="p-6" style={{ background: "#f4f4f5" }}>
         <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-md" style={{ background: "#fff" }}>
           <div style={{ height: 4, backgroundColor: accent }} />
-          <div className={`py-6 px-8 text-center ${settings.logo_url ? "" : ""}`} style={{ background: settings.logo_url ? "#0e0e0e" : undefined }}>
+          <div className="py-7 px-8 text-center" style={{ background: settings.logo_url ? "#0e0e0e" : undefined }}>
             {settings.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={settings.logo_url} alt="Logo" style={{ height: 36, display: "inline-block" }} />
+              <img src={settings.logo_url} alt="Logo" style={{ height: 48, width: "auto", maxWidth: 240, display: "inline-block", objectFit: "contain" }} />
             ) : (
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 14, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: "#111" }}>
                 {settings.from_name}
@@ -337,34 +376,50 @@ export default function OrderConfirmationPage() {
 
                   <div className="space-y-2">
                     <Label>Email Logo</Label>
-                    {settings.logo_url && (
-                      <div className="mb-2">
-                        <div className="inline-block bg-muted border border-border p-4 rounded-lg">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={settings.logo_url} alt="Logo" style={{ maxWidth: 200, maxHeight: 60, display: "block" }} />
+                    <p className="text-[11px] text-muted-foreground">Transparent PNGs are auto-cropped to remove empty space</p>
+                    {settings.logo_url ? (
+                      <div className="group relative inline-block rounded-lg border border-border bg-[#0e0e0e] p-5 max-w-md">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={settings.logo_url} alt="Logo" style={{ maxWidth: 260, maxHeight: 80, display: "block", objectFit: "contain" }} />
+                        {/* Overlay actions */}
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-black/60 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => logoFileRef.current?.click()}
+                          >
+                            <Upload size={14} />
+                            Replace
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => update("logo_url", undefined)}
+                          >
+                            <XIcon size={14} />
+                            Remove
+                          </Button>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => update("logo_url", undefined)} className="mt-2 text-destructive hover:text-destructive">
-                          <XIcon size={14} />
-                          Remove
-                        </Button>
+                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
+                      </div>
+                    ) : (
+                      <div
+                        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all max-w-md ${
+                          logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                        }`}
+                        onClick={() => logoFileRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                        onDragLeave={() => setLogoDragging(false)}
+                        onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
+                      >
+                        <Upload size={20} className="mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">
+                          {logoProcessing ? "Processing..." : "Drag & drop or click to upload"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/50 mt-1">PNG, JPG or WebP · Max 5MB</p>
+                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
                       </div>
                     )}
-                    <div
-                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all max-w-md ${
-                        logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                      }`}
-                      onClick={() => logoFileRef.current?.click()}
-                      onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                      onDragLeave={() => setLogoDragging(false)}
-                      onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
-                    >
-                      <Upload size={20} className="mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">
-                        {logoProcessing ? "Uploading..." : "Drag & drop or click to upload"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/50 mt-1">PNG, JPG or WebP · Max 5MB</p>
-                      <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
-                    </div>
                   </div>
 
                   <Separator />

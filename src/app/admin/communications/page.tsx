@@ -12,7 +12,6 @@ import {
   WifiOff,
   AlertTriangle,
   FileText,
-  Send,
   Receipt,
   ShoppingCart,
 } from "lucide-react";
@@ -221,8 +220,7 @@ export default function CommunicationsPage() {
           status="live"
           templates={[
             { name: "Order Confirmation", href: "/admin/communications/transactional/order-confirmation/", active: emailEnabled, icon: FileText },
-            { name: "Ticket Delivery", href: "/admin/communications/transactional/order-confirmation/", active: emailEnabled, icon: Send },
-            { name: "Invoices", href: "/admin/communications/transactional/order-confirmation/", active: false, icon: Receipt },
+            { name: "PDF Ticket", href: "/admin/communications/transactional/order-confirmation/", active: false, icon: Receipt },
           ]}
         />
         <ChannelCard

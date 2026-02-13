@@ -70,6 +70,17 @@ export async function POST(request: NextRequest) {
       ],
     };
 
+    // Resolve relative logo URL to absolute — email clients need full URLs
+    if (settings.logo_url && !settings.logo_url.startsWith("http")) {
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+      if (siteUrl) {
+        settings = {
+          ...settings,
+          logo_url: `${siteUrl}${settings.logo_url.startsWith("/") ? "" : "/"}${settings.logo_url}`,
+        };
+      }
+    }
+
     const { subject, html, text } = buildOrderConfirmationEmail(settings, sampleOrder);
 
     const resend = new Resend(apiKey);

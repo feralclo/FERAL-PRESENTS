@@ -468,16 +468,26 @@ function ColorPicker({ label, value, onChange, hint }: {
   onChange: (v: string) => void;
   hint?: string;
 }) {
+  const ref = useRef<HTMLInputElement>(null);
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-8 h-8 rounded-md border border-input bg-transparent cursor-pointer p-0.5"
-        />
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => ref.current?.click()}
+          className="relative h-8 w-8 shrink-0 rounded-md border border-border cursor-pointer transition-all hover:ring-2 hover:ring-ring/30"
+          style={{ backgroundColor: value }}
+        >
+          <input
+            ref={ref}
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+            tabIndex={-1}
+          />
+        </button>
         <Input value={value} onChange={(e) => onChange(e.target.value)} className="w-24 font-mono text-xs" />
       </div>
       {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}

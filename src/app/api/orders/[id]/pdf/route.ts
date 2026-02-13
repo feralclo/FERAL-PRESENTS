@@ -97,7 +97,24 @@ export async function GET(
       }
     } catch { /* use defaults */ }
 
-    const pdfBuffer = await generateTicketsPDF(ticketData, pdfSettings);
+    // Fetch logo base64 directly from DB (avoids self-fetch on serverless)
+    let logoDataUrl: string | null = null;
+    if (pdfSettings.logo_url) {
+      const mediaMatch = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
+      if (mediaMatch) {
+        try {
+          const { data: mediaRow } = await supabase
+            .from(TABLES.SITE_SETTINGS)
+            .select("data")
+            .eq("key", `media_${mediaMatch[1]}`)
+            .single();
+          const mediaData = mediaRow?.data as { image?: string } | null;
+          if (mediaData?.image) logoDataUrl = mediaData.image;
+        } catch { /* logo fetch failed, will fall back to text */ }
+      }
+    }
+
+    const pdfBuffer = await generateTicketsPDF(ticketData, pdfSettings, logoDataUrl);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

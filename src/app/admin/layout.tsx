@@ -102,10 +102,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   // Fetch user email on mount
   useEffect(() => {
     (async () => {
-      const supabase = getSupabaseClient();
-      if (!supabase) return;
-      const { data } = await supabase.auth.getUser();
-      if (data.user?.email) setUserEmail(data.user.email);
+      try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        const { data } = await supabase.auth.getUser();
+        if (data.user?.email) setUserEmail(data.user.email);
+      } catch {
+        // Auth call can fail during navigation — ignore gracefully
+      }
     })();
   }, []);
 

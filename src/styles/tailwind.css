@@ -34,8 +34,8 @@
   --color-accent-foreground: #ffffff;
   --color-destructive: #ff0033;
   --color-destructive-foreground: #ffffff;
-  --color-border: #1e1e1e;
-  --color-input: #1e1e1e;
+  --color-border: #222222;
+  --color-input: #2a2a2a;
   --color-ring: #ff0033;
   --color-success: #22c55e;
   --color-success-foreground: #ffffff;
@@ -118,3 +118,27 @@
 [data-admin] ::-webkit-scrollbar-track { background: transparent; }
 [data-admin] ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
 [data-admin] ::-webkit-scrollbar-thumb:hover { background: #333; }
+
+/* Prevent browser autofill from turning inputs white */
+[data-admin] input:-webkit-autofill,
+[data-admin] input:-webkit-autofill:hover,
+[data-admin] input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px #0e0e0e inset !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Clean color picker swatch */
+[data-admin] input[type="color"] {
+  border: 0;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+[data-admin] input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+[data-admin] input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+[data-admin] input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }

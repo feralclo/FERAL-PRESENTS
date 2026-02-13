@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
 import { getCurrencySymbol } from "@/lib/stripe/config";
-import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
+import { generateTicketsPDF, getSiteUrl, type TicketPDFData } from "@/lib/pdf";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
@@ -183,7 +183,7 @@ export async function sendOrderConfirmationEmail(params: {
 
     // Resolve relative logo URL to absolute (emails need full URLs to render images)
     if (settings.logo_url && !settings.logo_url.startsWith("http")) {
-      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+      const siteUrl = getSiteUrl();
       if (siteUrl) {
         settings = {
           ...settings,
@@ -211,7 +211,28 @@ export async function sendOrderConfirmationEmail(params: {
     }));
 
     const pdfSettings = await getPdfTicketSettings(params.orgId);
-    const pdfBuffer = await generateTicketsPDF(pdfData, pdfSettings);
+
+    // Fetch PDF logo base64 directly from DB (avoids self-fetch on serverless)
+    let logoDataUrl: string | null = null;
+    if (pdfSettings.logo_url) {
+      const mediaMatch = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
+      if (mediaMatch) {
+        try {
+          const sb = await getSupabaseServer();
+          if (sb) {
+            const { data: mediaRow } = await sb
+              .from(TABLES.SITE_SETTINGS)
+              .select("data")
+              .eq("key", `media_${mediaMatch[1]}`)
+              .single();
+            const mediaData = mediaRow?.data as { image?: string } | null;
+            if (mediaData?.image) logoDataUrl = mediaData.image;
+          }
+        } catch { /* logo fetch failed */ }
+      }
+    }
+
+    const pdfBuffer = await generateTicketsPDF(pdfData, pdfSettings, logoDataUrl);
 
     // Send via Resend
     const { error } = await resend.emails.send({

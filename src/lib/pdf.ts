@@ -24,20 +24,34 @@ function hexRgb(hex: string): [number, number, number] {
   ];
 }
 
+/** Resolve the best site URL from available env vars. */
+export function getSiteUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "";
+}
+
 /**
  * Fetch an image URL and return as a data URL for embedding in the PDF.
  * Returns null if the fetch fails or the URL is not an image.
  */
 async function fetchImageAsDataUrl(url: string): Promise<string | null> {
   try {
-    // Resolve relative URLs
+    if (url.startsWith("data:")) return url;
+
     let absoluteUrl = url;
-    if (!url.startsWith("http") && !url.startsWith("data:")) {
-      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    if (!url.startsWith("http")) {
+      const siteUrl = getSiteUrl();
       if (!siteUrl) return null;
       absoluteUrl = `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`;
     }
-    if (url.startsWith("data:")) return url;
 
     const res = await fetch(absoluteUrl);
     if (!res.ok) return null;
@@ -58,7 +72,8 @@ async function fetchImageAsDataUrl(url: string): Promise<string | null> {
  */
 export async function generateTicketsPDF(
   tickets: TicketPDFData[],
-  customSettings?: Partial<PdfTicketSettings>
+  customSettings?: Partial<PdfTicketSettings>,
+  preloadedLogoDataUrl?: string | null
 ): Promise<Buffer> {
   const s = { ...DEFAULT_PDF_TICKET_SETTINGS, ...customSettings };
 
@@ -72,9 +87,9 @@ export async function generateTicketsPDF(
   const [txR, txG, txB] = hexRgb(s.text_color);
   const [secR, secG, secB] = hexRgb(s.secondary_color);
 
-  // Pre-fetch logo if configured (do once, reuse for all pages)
-  let logoDataUrl: string | null = null;
-  if (s.logo_url) {
+  // Use pre-loaded logo if provided, otherwise fetch via URL
+  let logoDataUrl: string | null = preloadedLogoDataUrl ?? null;
+  if (!logoDataUrl && s.logo_url) {
     logoDataUrl = await fetchImageAsDataUrl(s.logo_url);
   }
 

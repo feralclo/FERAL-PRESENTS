@@ -140,9 +140,9 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
           </div>
         </div>
 
-        {/* Email body — fixed header height, logo scales within */}
-        <div className="p-6" style={{ background: "#f4f4f5" }}>
-          <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-md" style={{ background: "#fff" }}>
+        {/* Email body — subtle gradient from card bg into light email bg */}
+        <div className="p-6 rounded-b-lg" style={{ background: "linear-gradient(to bottom, #1a1a1a 0%, #e8e8ea 8%, #f4f4f5 16%)" }}>
+          <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-lg" style={{ background: "#fff" }}>
             <div style={{ height: 4, backgroundColor: accent }} />
             <div className="flex items-center justify-center" style={{ height: 80, background: settings.logo_url ? "#0e0e0e" : undefined }}>
               {settings.logo_url ? (
@@ -374,13 +374,15 @@ export default function OrderConfirmationPage() {
                 <CardContent className="space-y-5">
                   <div className="space-y-2">
                     <Label>Accent Color</Label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={settings.accent_color}
-                        onChange={(e) => update("accent_color", e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-input bg-transparent cursor-pointer p-0.5"
-                      />
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative h-9 w-9 shrink-0 rounded-lg border border-border cursor-pointer transition-all hover:ring-2 hover:ring-ring/30" style={{ backgroundColor: settings.accent_color }}>
+                        <input
+                          type="color"
+                          value={settings.accent_color}
+                          onChange={(e) => update("accent_color", e.target.value)}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                      </div>
                       <Input value={settings.accent_color} onChange={(e) => update("accent_color", e.target.value)} className="w-28 font-mono" />
                     </div>
                   </div>
@@ -527,7 +529,7 @@ export default function OrderConfirmationPage() {
                     onChange={(e) => { setTestEmail(e.target.value); setTestStatus(""); }}
                     placeholder="your@email.com"
                   />
-                  <Button variant="outline" onClick={handleSendTest} disabled={testSending || !resendStatus.verified} className="w-full">
+                  <Button onClick={handleSendTest} disabled={testSending || !resendStatus.verified} className="w-full">
                     {testSending ? "Sending..." : "Send Test"}
                   </Button>
                   {testStatus && (

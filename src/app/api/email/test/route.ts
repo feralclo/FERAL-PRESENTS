@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
-import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
+import { generateTicketsPDF, getSiteUrl, type TicketPDFData } from "@/lib/pdf";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     // Resolve relative logo URL to absolute — email clients need full URLs
     if (emailSettings.logo_url && !emailSettings.logo_url.startsWith("http")) {
-      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+      const siteUrl = getSiteUrl();
       if (siteUrl) {
         emailSettings = {
           ...emailSettings,
@@ -88,6 +88,24 @@ export async function POST(request: NextRequest) {
     }
 
     const { subject, html, text } = buildOrderConfirmationEmail(emailSettings, sampleOrder);
+
+    // Fetch PDF logo base64 directly from DB (avoids self-fetch on serverless)
+    let logoDataUrl: string | null = null;
+    if (pdfSettings.logo_url) {
+      const supabase = await getSupabaseServer();
+      const mediaMatch = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
+      if (mediaMatch && supabase) {
+        try {
+          const { data: mediaRow } = await supabase
+            .from(TABLES.SITE_SETTINGS)
+            .select("data")
+            .eq("key", `media_${mediaMatch[1]}`)
+            .single();
+          const mediaData = mediaRow?.data as { image?: string } | null;
+          if (mediaData?.image) logoDataUrl = mediaData.image;
+        } catch { /* logo fetch failed */ }
+      }
+    }
 
     // Generate demo PDF ticket with sample data + real QR codes
     const sampleTickets: TicketPDFData[] = sampleOrder.tickets.map((t) => ({
@@ -100,7 +118,7 @@ export async function POST(request: NextRequest) {
       orderNumber: sampleOrder.order_number,
     }));
 
-    const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings);
+    const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings, logoDataUrl);
 
     const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({

@@ -35,7 +35,11 @@ export function replaceTemplateVars(
 function resolveUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
   if (url.startsWith("http") || url.startsWith("data:")) return url;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+  ).replace(/\/$/, "");
   if (!siteUrl) return url;
   return `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`;
 }

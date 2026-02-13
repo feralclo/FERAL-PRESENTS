@@ -100,7 +100,7 @@ export async function sendOrderConfirmationEmail(params: {
       return;
     }
 
-    const settings = await getEmailSettings(params.orgId);
+    let settings = await getEmailSettings(params.orgId);
 
     if (!settings.order_confirmation_enabled) {
       console.log("[email] Order confirmation emails disabled for org:", params.orgId);
@@ -128,6 +128,17 @@ export async function sendOrderConfirmationEmail(params: {
         merch_size: t.merch_size,
       })),
     };
+
+    // Resolve relative logo URL to absolute (emails need full URLs to render images)
+    if (settings.logo_url && !settings.logo_url.startsWith("http")) {
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+      if (siteUrl) {
+        settings = {
+          ...settings,
+          logo_url: `${siteUrl}${settings.logo_url.startsWith("/") ? "" : "/"}${settings.logo_url}`,
+        };
+      }
+    }
 
     // Build email HTML + subject + plain text
     const { subject, html, text } = buildOrderConfirmationEmail(

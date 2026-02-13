@@ -1,10 +1,60 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import type { EmailSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
+
+/* ── Logo image compression ── */
+
+function compressLogoImage(
+  file: File,
+  maxWidth: number,
+  quality: number
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d")!;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxWidth) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          }
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/png", quality));
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function processLogoFile(file: File): Promise<string | null> {
+  if (file.size > 5 * 1024 * 1024) {
+    alert("Image too large. Maximum is 5MB.");
+    return null;
+  }
+  // Logos should be crisp — use PNG, cap at 400px wide
+  const result = await compressLogoImage(file, 400, 0.9);
+  if (!result) {
+    alert("Failed to process image. Try a smaller file.");
+  }
+  return result;
+}
 
 /* ================================================================
    TEMPLATE VARIABLES REFERENCE
@@ -29,6 +79,12 @@ export default function AdminSettings() {
   const [emailLoading, setEmailLoading] = useState(true);
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailStatus, setEmailStatus] = useState("");
+
+  // ── Logo upload state ──
+  const logoFileRef = useRef<HTMLInputElement>(null);
+  const [logoDragging, setLogoDragging] = useState(false);
+  const [logoProcessing, setLogoProcessing] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState("");
 
   // Load email settings on mount
   useEffect(() => {
@@ -102,6 +158,40 @@ export default function AdminSettings() {
     setEmailSettings((prev) => ({ ...prev, [key]: value }));
     setEmailStatus(""); // Clear status on change
   };
+
+  // Handle logo file upload
+  const handleLogoFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) return;
+      setLogoProcessing(true);
+      setLogoUploadError("");
+
+      const compressed = await processLogoFile(file);
+      if (!compressed) {
+        setLogoProcessing(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageData: compressed, key: "email-logo" }),
+        });
+        const json = await res.json();
+        if (res.ok && json.url) {
+          updateEmail("logo_url", json.url);
+        } else {
+          setLogoUploadError(json.error || "Upload failed");
+        }
+      } catch {
+        setLogoUploadError("Network error during upload");
+      }
+      setLogoProcessing(false);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   // ── Danger zone handlers ──
   const handleResetTraffic = useCallback(async () => {
@@ -303,15 +393,103 @@ export default function AdminSettings() {
               </div>
               <div className="admin-form__group" style={{ marginBottom: "8px" }}>
                 <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>
-                  Logo URL (optional)
+                  Email Logo
                 </label>
-                <input
-                  className="admin-form__input"
-                  value={emailSettings.logo_url || ""}
-                  onChange={(e) => updateEmail("logo_url", e.target.value || undefined)}
-                  placeholder="https://yoursite.com/logo.png"
-                  style={{ maxWidth: "400px" }}
-                />
+                <p style={{ color: "#555", fontSize: "0.75rem", margin: "0 0 10px 0" }}>
+                  Upload a logo for the email header. PNG recommended for best compatibility.
+                  {!emailSettings.logo_url && " If no logo is set, your org name will be shown as text."}
+                </p>
+
+                {/* Logo preview */}
+                {emailSettings.logo_url && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{
+                      display: "inline-block",
+                      background: "#111",
+                      border: "1px solid #333",
+                      padding: "16px 24px",
+                      borderRadius: "4px",
+                    }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={emailSettings.logo_url}
+                        alt="Email logo preview"
+                        style={{
+                          maxWidth: 200,
+                          maxHeight: 60,
+                          display: "block",
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => updateEmail("logo_url", undefined)}
+                      style={{
+                        display: "block",
+                        marginTop: 8,
+                        fontSize: "0.65rem",
+                        padding: "6px 12px",
+                        background: "transparent",
+                        border: "1px solid #ff0033",
+                        color: "#ff0033",
+                        cursor: "pointer",
+                        fontFamily: "'Space Mono', monospace",
+                        letterSpacing: "1px",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Remove Logo
+                    </button>
+                  </div>
+                )}
+
+                {logoUploadError && (
+                  <div style={{ color: "#ff0033", fontSize: "0.7rem", marginBottom: 8 }}>
+                    {logoUploadError}
+                  </div>
+                )}
+
+                {/* Drop zone */}
+                <div
+                  style={{
+                    border: `2px dashed ${logoDragging ? "#ff0033" : "#333"}`,
+                    padding: 20,
+                    textAlign: "center",
+                    cursor: "pointer",
+                    transition: "border-color 0.15s",
+                    maxWidth: "400px",
+                  }}
+                  onClick={() => logoFileRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setLogoDragging(true);
+                  }}
+                  onDragLeave={() => setLogoDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setLogoDragging(false);
+                    const file = e.dataTransfer.files[0];
+                    if (file) handleLogoFile(file);
+                  }}
+                >
+                  <span style={{ fontSize: 12, color: "#888" }}>
+                    {logoProcessing
+                      ? "Uploading..."
+                      : emailSettings.logo_url
+                        ? "Drag & drop to replace, or click to select"
+                        : "Drag & drop your logo here, or click to select"}
+                  </span>
+                  <input
+                    ref={logoFileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleLogoFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
               </div>
               <div className="admin-form__group">
                 <label style={{ color: "#888", fontSize: "0.8rem", marginBottom: "4px", display: "block" }}>

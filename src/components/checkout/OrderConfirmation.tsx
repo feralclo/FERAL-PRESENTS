@@ -46,27 +46,25 @@ export function OrderConfirmation({
     });
   }, [order, trackPurchase]);
 
-  // Generate QR codes client-side for instant display
+  // Generate QR codes client-side for instant display.
+  // CRITICAL: Encodes the raw ticket code (e.g. "FERAL-A3B4C5D6") — NOT a URL.
+  // This must match the PDF and wallet pass QR codes exactly so that the same
+  // scanner resolves the same data regardless of which QR the customer presents.
   useEffect(() => {
     async function loadQRCodes() {
       if (!order.tickets || order.tickets.length === 0) return;
 
-      // Dynamically import qrcode for client-side use
       const QRCode = (await import("qrcode")).default;
-      const baseUrl =
-        typeof window !== "undefined"
-          ? window.location.origin
-          : "https://feralpresents.com";
 
       const codes: Record<string, string> = {};
       for (const ticket of order.tickets) {
         try {
           codes[ticket.ticket_code] = await QRCode.toDataURL(
-            `${baseUrl}/api/tickets/${ticket.ticket_code}`,
+            ticket.ticket_code,
             {
-              errorCorrectionLevel: "M",
+              errorCorrectionLevel: "H",
               margin: 2,
-              width: 200,
+              width: 300,
               color: { dark: "#000000", light: "#ffffff" },
             }
           );

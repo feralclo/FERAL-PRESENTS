@@ -43,19 +43,6 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "se
   used: "secondary",
 };
 
-const STATUS_ACCENT: Record<string, string> = {
-  completed: "#22c55e",
-  pending: "#eab308",
-  refunded: "#ff0033",
-  cancelled: "#71717a",
-  failed: "#ff0033",
-};
-
-const TICKET_STATUS_ACCENT: Record<string, string> = {
-  valid: "#22c55e",
-  used: "#71717a",
-  cancelled: "#ff0033",
-};
 
 /* ── Timeline ── */
 interface TimelineEntry {
@@ -83,7 +70,7 @@ function buildTimeline(order: Order): TimelineEntry[] {
     detail: `${order.order_number} — £${Number(order.total).toFixed(2)}`,
     time: fmt(order.created_at),
     icon: ShoppingBag,
-    color: "text-success",
+    color: "text-muted-foreground",
     sortDate: new Date(order.created_at),
   });
 
@@ -93,7 +80,7 @@ function buildTimeline(order: Order): TimelineEntry[] {
       detail: `via ${order.payment_method}${order.payment_ref ? ` (${order.payment_ref.slice(0, 20)}...)` : ""}`,
       time: fmt(order.created_at),
       icon: CreditCard,
-      color: "text-success",
+      color: "text-muted-foreground",
       sortDate: new Date(new Date(order.created_at).getTime() + 1000),
     });
   }
@@ -105,7 +92,7 @@ function buildTimeline(order: Order): TimelineEntry[] {
       detail: `to ${meta.email_to || order.customer?.email || "customer"}`,
       time: fmt(meta.email_sent_at as string),
       icon: Send,
-      color: "text-success",
+      color: "text-muted-foreground",
       sortDate: new Date(meta.email_sent_at as string),
     });
   } else if (meta.email_sent === false && typeof meta.email_attempted_at === "string") {
@@ -114,7 +101,7 @@ function buildTimeline(order: Order): TimelineEntry[] {
       detail: (meta.email_error as string) || "Unknown error",
       time: fmt(meta.email_attempted_at as string),
       icon: AlertCircle,
-      color: "text-destructive",
+      color: "text-muted-foreground",
       sortDate: new Date(meta.email_attempted_at as string),
     });
   }
@@ -140,7 +127,7 @@ function buildTimeline(order: Order): TimelineEntry[] {
       detail: order.refund_reason || undefined,
       time: fmt(order.refunded_at),
       icon: RotateCcw,
-      color: "text-destructive",
+      color: "text-muted-foreground",
       sortDate: new Date(order.refunded_at),
     });
   }
@@ -267,7 +254,6 @@ export default function OrderDetailPage() {
   const customer = order.customer;
   const event = order.event;
   const timeline = buildTimeline(order);
-  const accent = STATUS_ACCENT[order.status] || "#71717a";
 
   // Separate ticket items from merch items
   const ticketItems = (order.items || []).filter((item) => !item.merch_size);
@@ -285,11 +271,7 @@ export default function OrderDetailPage() {
         </Link>
 
         {/* Order header card */}
-        <Card className="relative overflow-hidden">
-          <div
-            className="absolute inset-x-0 top-0 h-[3px]"
-            style={{ background: accent }}
-          />
+        <Card>
           <CardContent className="p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -522,8 +504,8 @@ export default function OrderDetailPage() {
                   className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                      <Ticket size={14} className="text-primary" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                      <Ticket size={14} className="text-muted-foreground" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
@@ -554,35 +536,31 @@ export default function OrderDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
               {merchItems.map((item) => (
                 <div
                   key={item.id}
-                  className="relative overflow-hidden rounded-lg border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent p-4"
+                  className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-500/10">
-                        <Shirt size={18} className="text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.ticket_type?.name || "Merchandise"}
-                        </p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] font-bold">
-                            Size {item.merch_size}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Qty: {item.qty}
-                          </span>
-                        </div>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                      <Shirt size={14} className="text-muted-foreground" />
                     </div>
-                    <span className="font-mono text-sm font-bold text-foreground">
-                      {formatCurrency(Number(item.unit_price) * item.qty)}
-                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {item.ticket_type?.name || "Merchandise"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {item.qty} x {formatCurrency(Number(item.unit_price))}
+                        <span className="ml-2">
+                          Size {item.merch_size}
+                        </span>
+                      </p>
+                    </div>
                   </div>
+                  <span className="font-mono text-sm font-bold text-foreground">
+                    {formatCurrency(Number(item.unit_price) * item.qty)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -602,19 +580,11 @@ export default function OrderDetailPage() {
           <CardContent className="p-4">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {order.tickets.map((ticket) => {
-                const ticketAccent = TICKET_STATUS_ACCENT[ticket.status] || "#71717a";
                 return (
                   <div
                     key={ticket.id}
-                    className="relative overflow-hidden rounded-lg border border-border bg-muted/10"
+                    className="rounded-lg border border-border bg-muted/10 px-4 py-3.5"
                   >
-                    {/* Status accent */}
-                    <div
-                      className="absolute inset-y-0 left-0 w-[3px]"
-                      style={{ background: ticketAccent }}
-                    />
-
-                    <div className="py-3.5 pl-5 pr-4">
                       {/* Top row: code + status */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -670,7 +640,6 @@ export default function OrderDetailPage() {
                           </div>
                         )}
                       </div>
-                    </div>
                   </div>
                 );
               })}

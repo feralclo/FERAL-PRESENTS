@@ -5,6 +5,14 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import {
@@ -13,8 +21,6 @@ import {
   Ticket,
   Shirt,
   Download,
-  ChevronRight,
-  Calendar,
   Filter,
   Package,
 } from "lucide-react";
@@ -43,14 +49,6 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "se
   refunded: "destructive",
   cancelled: "secondary",
   failed: "destructive",
-};
-
-const STATUS_ACCENT: Record<string, string> = {
-  completed: "#22c55e",
-  pending: "#eab308",
-  refunded: "#ff0033",
-  cancelled: "#71717a",
-  failed: "#ff0033",
 };
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
@@ -94,40 +92,30 @@ function PeriodSelector({
   );
 }
 
-/* ── Stat card with accent strip ── */
+/* ── Stat card ── */
 function StatCard({
   label,
   value,
   icon: Icon,
   detail,
-  accent,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   detail?: string;
-  accent?: string;
 }) {
   return (
-    <Card className="relative overflow-hidden">
-      <div
-        className="absolute inset-x-0 top-0 h-[2px]"
-        style={{ background: accent || "var(--color-border)" }}
-      />
-      <CardContent className="p-6">
+    <Card>
+      <CardContent className="p-5">
         <div className="flex items-center justify-between">
-          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            {label}
-          </p>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50">
-            <Icon size={14} strokeWidth={1.5} className="text-muted-foreground" />
-          </div>
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+          <Icon size={14} strokeWidth={1.5} className="text-muted-foreground/50" />
         </div>
         <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-foreground">
           {value}
         </p>
         {detail && (
-          <p className="mt-1.5 text-xs text-muted-foreground">{detail}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
         )}
       </CardContent>
     </Card>
@@ -147,6 +135,10 @@ function getDateStart(period: Period): string {
   }
 }
 
+function formatCurrency(amount: number) {
+  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -154,23 +146,6 @@ function formatDate(d: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatCurrency(amount: number) {
-  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days}d ago`;
-  return formatDate(dateStr);
 }
 
 /* ════════════════════════════════════════════════════════
@@ -226,7 +201,6 @@ export default function OrdersPage() {
 
     const dateStart = getDateStart(period);
 
-    // Completed orders in period
     const { data: completedOrders } = await supabase
       .from(TABLES.ORDERS)
       .select("id, total")
@@ -238,7 +212,6 @@ export default function OrdersPage() {
     setOrderCount(ords.length);
     setRevenue(ords.reduce((s, o) => s + Number(o.total), 0));
 
-    // Tickets sold in period
     const { count: ticketCount } = await supabase
       .from(TABLES.TICKETS)
       .select("*", { count: "exact", head: true })
@@ -247,7 +220,6 @@ export default function OrdersPage() {
 
     setTicketsSold(ticketCount || 0);
 
-    // Merch — order items with merch_size for completed orders in period
     const orderIds = ords.map((o) => o.id);
     if (orderIds.length > 0) {
       const { data: merch } = await supabase
@@ -334,38 +306,34 @@ export default function OrdersPage() {
               disabled={exporting}
             >
               <Download size={14} />
-              {exporting ? "Exporting..." : "Export CSV"}
+              {exporting ? "Exporting..." : "CSV"}
             </Button>
           )}
         </div>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
           label="Orders"
           value={v(orderCount.toLocaleString())}
           icon={ShoppingBag}
-          accent="#ff0033"
         />
         <StatCard
           label="Revenue"
           value={v(formatCurrency(revenue))}
           icon={DollarSign}
-          accent="#22c55e"
         />
         <StatCard
           label="Tickets Sold"
           value={v(ticketsSold.toLocaleString())}
           icon={Ticket}
-          accent="#8b5cf6"
         />
         <StatCard
           label="Merch Revenue"
           value={v(formatCurrency(merchRevenue))}
           icon={Shirt}
           detail={statsLoading ? undefined : `${merchItems} item${merchItems !== 1 ? "s" : ""}`}
-          accent="#eab308"
         />
       </div>
 
@@ -406,7 +374,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders List */}
+      {/* Orders Table */}
       <div className="mt-4">
         {loading ? (
           <Card>
@@ -420,153 +388,78 @@ export default function OrdersPage() {
         ) : orders.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-20">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50">
-                <Package size={28} className="text-muted-foreground/40" />
-              </div>
-              <p className="mt-4 text-sm font-medium text-foreground">No orders found</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Try adjusting your filters or date range
-              </p>
+              <Package size={28} className="text-muted-foreground/30" />
+              <p className="mt-3 text-sm text-muted-foreground">No orders found</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {orders.map((order) => {
-              const accent = STATUS_ACCENT[order.status] || "#71717a";
-              return (
-                <Link
-                  key={order.id}
-                  href={`/admin/orders/${order.id}/`}
-                  className="group block"
-                >
-                  <Card className="relative overflow-hidden transition-all duration-150 hover:border-muted-foreground/20 hover:bg-card/80">
-                    {/* Status accent - left border */}
-                    <div
-                      className="absolute inset-y-0 left-0 w-[3px]"
-                      style={{ background: accent }}
-                    />
-
-                    <CardContent className="p-0">
-                      {/* Desktop row */}
-                      <div className="hidden items-center gap-4 py-4 pl-6 pr-5 lg:flex">
-                        {/* Order number + date */}
-                        <div className="w-36">
-                          <p className="font-mono text-[13px] font-bold text-foreground">
-                            {order.order_number}
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Order</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Tickets</TableHead>
+                  <TableHead>Payment</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.map((order) => (
+                  <TableRow key={order.id} className="cursor-pointer">
+                    <TableCell>
+                      <Link
+                        href={`/admin/orders/${order.id}/`}
+                        className="font-mono text-[13px] font-semibold text-foreground hover:underline"
+                      >
+                        {order.order_number}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatDate(order.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      {order.customer ? (
+                        <div>
+                          <p className="text-sm text-foreground">
+                            {order.customer.first_name} {order.customer.last_name}
                           </p>
-                          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/60">
-                            {timeAgo(order.created_at)}
+                          <p className="text-xs text-muted-foreground/60">
+                            {order.customer.email}
                           </p>
                         </div>
-
-                        {/* Event */}
-                        <div className="w-40">
-                          {order.event?.name ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-0.5 text-xs text-foreground/70">
-                              <Calendar size={10} className="text-muted-foreground/50" />
-                              {order.event.name}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground/30">—</span>
-                          )}
-                        </div>
-
-                        {/* Customer */}
-                        <div className="min-w-0 flex-1">
-                          {order.customer ? (
-                            <>
-                              <p className="truncate text-sm text-foreground">
-                                {order.customer.first_name} {order.customer.last_name}
-                              </p>
-                              <p className="truncate text-xs text-muted-foreground/60">
-                                {order.customer.email}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-sm text-muted-foreground/30">—</p>
-                          )}
-                        </div>
-
-                        {/* Status */}
-                        <div className="w-24">
-                          <Badge
-                            variant={STATUS_VARIANT[order.status] || "secondary"}
-                            className="text-[10px] font-semibold uppercase"
-                          >
-                            {order.status}
-                          </Badge>
-                        </div>
-
-                        {/* Tickets */}
-                        <div className="w-16 text-center">
-                          <div className="inline-flex items-center gap-1 rounded-md bg-muted/30 px-2 py-0.5">
-                            <Ticket size={10} className="text-muted-foreground/50" />
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {order.ticket_count || 0}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Total */}
-                        <div className="w-24 text-right">
-                          <span className="font-mono text-sm font-bold text-foreground">
-                            {formatCurrency(Number(order.total))}
-                          </span>
-                        </div>
-
-                        {/* Arrow */}
-                        <ChevronRight
-                          size={14}
-                          className="text-muted-foreground/15 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground/50"
-                        />
-                      </div>
-
-                      {/* Mobile row */}
-                      <div className="flex items-center gap-4 py-3.5 pl-5 pr-4 lg:hidden">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2.5">
-                            <span className="font-mono text-[13px] font-bold text-foreground">
-                              {order.order_number}
-                            </span>
-                            <Badge
-                              variant={STATUS_VARIANT[order.status] || "secondary"}
-                              className="text-[10px]"
-                            >
-                              {order.status}
-                            </Badge>
-                          </div>
-                          <p className="mt-1 truncate text-sm text-foreground/80">
-                            {order.customer
-                              ? `${order.customer.first_name} ${order.customer.last_name}`
-                              : "—"}
-                          </p>
-                          <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-                            <span>{timeAgo(order.created_at)}</span>
-                            {order.event?.name && (
-                              <>
-                                <span className="text-border">·</span>
-                                <span className="truncate">{order.event.name}</span>
-                              </>
-                            )}
-                            <span className="text-border">·</span>
-                            <span className="inline-flex items-center gap-1">
-                              <Ticket size={9} />
-                              {order.ticket_count || 0}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <span className="font-mono text-sm font-bold text-foreground">
-                            {formatCurrency(Number(order.total))}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+                      ) : (
+                        <span className="text-muted-foreground/30">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {order.event?.name || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={STATUS_VARIANT[order.status] || "secondary"}
+                        className="text-[10px] font-semibold uppercase"
+                      >
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center font-mono text-sm text-muted-foreground">
+                      {order.ticket_count || 0}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {order.payment_method}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
+                      {formatCurrency(Number(order.total))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
         )}
       </div>
     </div>

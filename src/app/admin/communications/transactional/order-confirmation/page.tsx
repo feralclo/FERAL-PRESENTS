@@ -95,43 +95,6 @@ async function processLogoFile(file: File): Promise<string | null> {
   return result;
 }
 
-/** Check if an existing logo URL has significant transparent padding. Returns trimmed data URL if so, null if already clean. */
-function autoTrimLogo(url: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const c = document.createElement("canvas");
-        const ctx = c.getContext("2d")!;
-        c.width = img.width; c.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        const d = ctx.getImageData(0, 0, c.width, c.height).data;
-        let top = c.height, bottom = 0, left = c.width, right = 0;
-        for (let y = 0; y < c.height; y++)
-          for (let x = 0; x < c.width; x++)
-            if (d[(y * c.width + x) * 4 + 3] > 10) {
-              if (y < top) top = y; if (y > bottom) bottom = y;
-              if (x < left) left = x; if (x > right) right = x;
-            }
-        if (top > bottom || left > right) { resolve(null); return; }
-        // Only re-process if >4px of transparent padding on any edge
-        if (top <= 4 && left <= 4 && (c.width - right - 1) <= 4 && (c.height - bottom - 1) <= 4) { resolve(null); return; }
-        top = Math.max(0, top - 2); left = Math.max(0, left - 2);
-        bottom = Math.min(c.height - 1, bottom + 2); right = Math.min(c.width - 1, right + 2);
-        const cropW = right - left + 1, cropH = bottom - top + 1;
-        let outW = cropW, outH = cropH;
-        if (outW > 400) { outH = Math.round((outH * 400) / outW); outW = 400; }
-        const out = document.createElement("canvas");
-        out.width = outW; out.height = outH;
-        out.getContext("2d")!.drawImage(c, left, top, cropW, cropH, 0, 0, outW, outH);
-        resolve(out.toDataURL("image/png"));
-      } catch { resolve(null); }
-    };
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
-
 /* ── Template variables ── */
 const TEMPLATE_VARS = [
   { var: "{{customer_name}}", desc: "Customer's first name" },
@@ -250,7 +213,8 @@ export default function OrderConfirmationPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const logoFileRef = useRef<HTMLInputElement>(null);
-  const autoTrimmedRef = useRef(false);
+  const autoTrimDoneRef = useRef(false);
+  const [displayLogoUrl, setDisplayLogoUrl] = useState<string | null>(null);
   const [logoDragging, setLogoDragging] = useState(false);
   const [logoProcessing, setLogoProcessing] = useState(false);
   const [testEmail, setTestEmail] = useState("");
@@ -271,19 +235,60 @@ export default function OrderConfirmationPage() {
     fetch("/api/email/status").then((r) => r.json()).then((json) => setResendStatus({ ...json, loading: false })).catch(() => setResendStatus({ configured: false, verified: false, loading: false }));
   }, []);
 
-  // Auto-crop existing logo if it has transparent padding (one-time upgrade for pre-trim-era logos)
+  // Display-time trim: always show the logo with transparent padding removed.
+  // Also re-uploads the trimmed version once so the stored image is clean.
   useEffect(() => {
-    if (!settings.logo_url || autoTrimmedRef.current || loading) return;
-    autoTrimmedRef.current = true;
-    autoTrimLogo(settings.logo_url).then(async (trimmed) => {
-      if (!trimmed) return;
+    const url = settings.logo_url;
+    if (!url) { setDisplayLogoUrl(null); return; }
+
+    const img = new Image();
+    img.onload = () => {
       try {
-        const res = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageData: trimmed, key: "email-logo" }) });
-        const json = await res.json();
-        if (res.ok && json.url) setSettings((prev) => ({ ...prev, logo_url: json.url }));
-      } catch { /* not critical */ }
-    });
-  }, [settings.logo_url, loading]);
+        const c = document.createElement("canvas");
+        const ctx = c.getContext("2d")!;
+        c.width = img.width; c.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        let t = c.height, b = 0, l = c.width, r = 0;
+        for (let y = 0; y < c.height; y++)
+          for (let x = 0; x < c.width; x++)
+            if (d[(y * c.width + x) * 4 + 3] > 10) {
+              if (y < t) t = y; if (y > b) b = y;
+              if (x < l) l = x; if (x > r) r = x;
+            }
+        if (t > b || l > r) { setDisplayLogoUrl(url); return; }
+
+        const needsTrim = t > 4 || l > 4 || (c.width - r - 1) > 4 || (c.height - b - 1) > 4;
+        if (!needsTrim) { setDisplayLogoUrl(url); return; }
+
+        t = Math.max(0, t - 2); l = Math.max(0, l - 2);
+        b = Math.min(c.height - 1, b + 2); r = Math.min(c.width - 1, r + 2);
+        const cW = r - l + 1, cH = b - t + 1;
+        let oW = cW, oH = cH;
+        if (oW > 400) { oH = Math.round((oH * 400) / oW); oW = 400; }
+        const out = document.createElement("canvas");
+        out.width = oW; out.height = oH;
+        out.getContext("2d")!.drawImage(c, l, t, cW, cH, 0, 0, oW, oH);
+        const trimmedDataUrl = out.toDataURL("image/png");
+
+        // Instantly show the trimmed version in the preview
+        setDisplayLogoUrl(trimmedDataUrl);
+
+        // Also re-upload the trimmed version to fix the stored image (one-time)
+        if (!autoTrimDoneRef.current) {
+          autoTrimDoneRef.current = true;
+          fetch("/api/upload", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageData: trimmedDataUrl, key: "email-logo" }),
+          }).then(r => r.json()).then(json => {
+            if (json.url) setSettings(prev => ({ ...prev, logo_url: json.url }));
+          }).catch(() => {});
+        }
+      } catch { setDisplayLogoUrl(url); }
+    };
+    img.onerror = () => setDisplayLogoUrl(url);
+    img.src = url;
+  }, [settings.logo_url]);
 
   const update = <K extends keyof EmailSettings>(key: K, value: EmailSettings[K]) => { setSettings((prev) => ({ ...prev, [key]: value })); setStatus(""); };
 
@@ -455,7 +460,7 @@ export default function OrderConfirmationPage() {
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={settings.logo_url}
+                          src={displayLogoUrl || settings.logo_url}
                           alt="Logo"
                           style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
                         />

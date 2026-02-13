@@ -19,7 +19,9 @@ Everything built must serve that multi-tenant future. Every database query filte
 | Analytics | GTM + Meta Pixel + Meta CAPI + Supabase tables | — |
 | Email Marketing | Klaviyo | — |
 | Testing | Vitest + Testing Library | 4.0.18 |
+| Admin UI | Tailwind CSS v4 + shadcn/ui (Radix UI) | 4.x |
 | QR/PDF | qrcode + jsPDF | — |
+| Email | Resend (transactional email + PDF attachments) | — |
 | Fonts | Google Fonts CDN (Space Mono, Inter) | — |
 
 ## Project Structure
@@ -52,6 +54,9 @@ src/
 │   │   ├── payments/page.tsx               # Stripe Connect setup (promoter-facing)
 │   │   ├── connect/page.tsx                # Stripe Connect admin (platform-level)
 │   │   ├── marketing/page.tsx              # Meta Pixel + CAPI config
+│   │   ├── communications/page.tsx          # Communications hub (transactional templates)
+│   │   ├── communications/transactional/order-confirmation/page.tsx  # Email template editor
+│   │   ├── communications/transactional/pdf-ticket/page.tsx          # PDF ticket design editor
 │   │   ├── settings/page.tsx               # Platform settings + danger zone resets
 │   │   └── health/page.tsx                 # System health monitoring
 │   └── api/
@@ -83,7 +88,8 @@ src/
 │       ├── stripe/connect/[accountId]/route.ts          # GET/DELETE account
 │       ├── stripe/connect/[accountId]/onboarding/route.ts # GET/POST onboarding
 │       ├── stripe/apple-pay-domain/route.ts # GET/POST Apple Pay domain registration
-│       └── stripe/apple-pay-verify/route.ts # GET serve Apple Pay verification file
+│       ├── stripe/apple-pay-verify/route.ts # GET serve Apple Pay verification file
+│       └── email/test/route.ts             # POST send test email with PDF attachment
 ├── components/
 │   ├── landing/
 │   │   ├── LandingPage.tsx                 # Full homepage orchestrator
@@ -116,6 +122,17 @@ src/
 │   │   ├── CheckoutTimer.tsx               # 8-minute urgency countdown
 │   │   ├── LoadingScreen.tsx               # Payment processing interstitial
 │   │   └── WeeZTixEmbed.tsx                # WeeZTix iframe embed (legacy)
+│   ├── ui/                                # shadcn/ui components (Tailwind + Radix UI)
+│   │   ├── button.tsx                     # Button with variants (default, ghost, outline, destructive)
+│   │   ├── card.tsx                       # Card, CardHeader, CardTitle, CardContent, CardFooter
+│   │   ├── input.tsx                      # Text input
+│   │   ├── textarea.tsx                   # Textarea
+│   │   ├── label.tsx                      # Form label
+│   │   ├── tabs.tsx                       # Tabs, TabsList, TabsTrigger, TabsContent
+│   │   ├── switch.tsx                     # Toggle switch
+│   │   ├── slider.tsx                     # Range slider
+│   │   ├── badge.tsx                      # Status badge with variants
+│   │   └── separator.tsx                  # Visual separator (horizontal/vertical)
 │   └── layout/
 │       ├── Header.tsx                      # Nav bar + hamburger menu
 │       ├── Footer.tsx                      # Copyright + status
@@ -135,7 +152,9 @@ src/
 │   ├── settings.ts                        # fetchSettings (server), saveSettings (client)
 │   ├── klaviyo.ts                         # Email subscription + identify
 │   ├── meta.ts                            # Meta CAPI: hash PII, send events
-│   ├── pdf.ts                             # PDF ticket generation (jsPDF, A5 format)
+│   ├── email.ts                           # Order confirmation email sender (Resend + PDF attachment)
+│   ├── email-templates.ts                 # HTML email template builder (order confirmation)
+│   ├── pdf.ts                             # PDF ticket generation (jsPDF, A5 format, custom branding)
 │   ├── qr.ts                              # QR code generation (data URL + PNG buffer)
 │   ├── ticket-utils.ts                    # generateTicketCode, generateOrderNumber
 │   ├── supabase/
@@ -151,6 +170,7 @@ src/
 │   ├── events.ts                          # Event, TicketTypeRow, EventStatus, PaymentMethod
 │   ├── orders.ts                          # Order, OrderItem, Ticket, Customer, GuestListEntry
 │   ├── tickets.ts                         # TicketKey, TicketType, TeeSize, CartItem
+│   ├── email.ts                           # EmailSettings, PdfTicketSettings, OrderEmailData
 │   ├── analytics.ts                       # TrafficEvent, PopupEvent types
 │   └── marketing.ts                       # MarketingSettings, MetaEventPayload, MetaCAPIRequest
 └── styles/
@@ -487,6 +507,9 @@ When building a new feature, write tests for:
 - Stripe checkout (PaymentIntent, Apple Pay, Google Pay, Klarna)
 - Stripe Connect (direct charges, platform fees, custom account onboarding)
 - QR ticket generation (ticket codes, QR data URLs, PDF download)
+- PDF ticket customization (A5 format, configurable colors, logo, QR size, disclaimers)
+- Email confirmations (Resend — order confirmation with PDF ticket attachment)
+- Email template customization (branding, logo, accent color, copy, logo sizing)
 - Meta Pixel + CAPI (client-side pixel, server-side conversion API)
 - Order management (create, list, detail, refund, CSV export)
 - Event CRUD (create events, configure ticket types, set themes)
@@ -494,17 +517,16 @@ When building a new feature, write tests for:
 - Guest list management (add guests, check-in, export)
 - Traffic analytics (funnel tracking, realtime updates)
 - Popup analytics (impressions, engagement, conversions)
-- Admin dashboard with 14 pages
+- Admin dashboard (Tailwind v4 + shadcn/ui, 14+ pages)
 - System health monitoring
-- Test infrastructure (40 tests)
+- Test infrastructure (77 tests)
 
 ### Still To Build
-1. **Email confirmations** — send tickets via email after purchase (SendGrid/Postmark). No email integration exists yet.
-2. **Scanner PWA** — mobile web app for door staff. API endpoints exist (`/api/tickets/[code]` and `/api/tickets/[code]/scan`) but no frontend app.
-3. **Google Ads + TikTok tracking** — placeholders exist in marketing page but no implementation
-4. **Multi-tenant promoter dashboard** — Stripe Connect is built, but the actual promoter-facing dashboard (separate from FERAL admin) doesn't exist yet.
-5. **Rate limiting** — API routes have no request rate limiting. Consider adding for payment and auth endpoints.
-6. **Supabase RLS policies** — Row-Level Security policies should be configured in Supabase dashboard to enforce org_id isolation at the database level.
+1. **Scanner PWA** — mobile web app for door staff. API endpoints exist (`/api/tickets/[code]` and `/api/tickets/[code]/scan`) but no frontend app.
+2. **Google Ads + TikTok tracking** — placeholders exist in marketing page but no implementation
+3. **Multi-tenant promoter dashboard** — Stripe Connect is built, but the actual promoter-facing dashboard (separate from FERAL admin) doesn't exist yet.
+4. **Rate limiting** — API routes have no request rate limiting. Consider adding for payment and auth endpoints.
+5. **Supabase RLS policies** — Row-Level Security policies should be configured in Supabase dashboard to enforce org_id isolation at the database level.
 
 ---
 
@@ -535,7 +557,8 @@ CSS is split into component-aligned files instead of one monolithic stylesheet. 
 | `header.css` | `Header.tsx` | Navigation, mobile menu, buttons |
 | `landing.css` | `LandingPage.tsx` | Hero, events grid, about pillars, contact form |
 | `event.css` | Event layout (`app/event/[slug]/layout.tsx`) | Event pages, tickets, modals, bottom bar, minimal theme |
-| `admin.css` | Admin layout (`app/admin/layout.tsx`) | Admin dashboard |
+| `tailwind.css` | Admin layout (`app/admin/layout.tsx`) | Tailwind v4 theme + utilities + admin-scoped preflight |
+| `admin.css` | Admin layout (`app/admin/layout.tsx`) | Admin dashboard supplementary styles |
 | `tickets-page.css` | `TicketsPage.tsx` | WeeZTix ticket selection |
 | `checkout-page.css` | Checkout components | Checkout + payment form |
 | `popup.css` | `DiscountPopup.tsx` | Discount popup |
@@ -556,10 +579,124 @@ CSS is split into component-aligned files instead of one monolithic stylesheet. 
 @media (max-width: 480px)   — Phone
 ```
 
-### Rules for New CSS
+### Rules for New CSS (Public Site)
 1. **Component-level imports** — new components import their own CSS file
 2. **BEM naming** — `.block__element--modifier` (28 prefixes already in use)
 3. **Use CSS custom properties** from `base.css :root` for all colors, fonts, spacing
 4. **CSS Modules** for all new components — prevents class name collisions as the platform scales
-5. **No Tailwind** — removed; all styles are hand-written CSS
+5. **No Tailwind on public pages** — public site uses hand-written CSS only
 6. **Responsive rules live with their component** — media queries go in the same file as the styles they modify
+
+---
+
+## Admin UI Stack (Tailwind + shadcn/ui)
+
+The admin dashboard (`/admin/*`) uses a completely separate UI stack from the public site: **Tailwind CSS v4 + shadcn/ui** (built on Radix UI primitives). This provides a modern, consistent component library without affecting the hand-written CSS on public pages.
+
+### Two Separate CSS Worlds (CRITICAL)
+The platform has two CSS systems that must not interfere:
+
+| Area | CSS System | Entry Point |
+|------|-----------|-------------|
+| Public site (events, checkout, landing) | Hand-written CSS (`base.css`, `event.css`, etc.) | `app/layout.tsx` |
+| Admin dashboard (`/admin/*`) | Tailwind v4 + shadcn/ui utilities | `app/admin/layout.tsx` via `tailwind.css` |
+
+**Isolation mechanism**: The admin layout renders `<div data-admin>`. All Tailwind preflight resets are scoped to `[data-admin]` so they never affect public pages.
+
+### CSS Cascade Layer Rules (DO NOT BREAK)
+The `src/styles/tailwind.css` file has a carefully tuned layer setup:
+
+```css
+@layer theme;
+@import "tailwindcss/theme" layer(theme);     /* Variables only — in a layer */
+@import "tailwindcss/utilities";               /* UNLAYERED — intentional! */
+```
+
+**Why utilities are unlayered**: The public site's `base.css` has an unlayered `* { margin: 0; padding: 0; }` reset. CSS cascade rules say unlayered styles always beat layered styles. If Tailwind utilities were in `@layer utilities`, the `*` reset would override every `p-4`, `m-2`, `gap-3` class — making the entire admin layout broken. By keeping utilities unlayered, they compete on specificity (class > universal selector) and win.
+
+**NEVER**:
+- Add `layer(utilities)` to the Tailwind utilities import
+- Move the utilities import into any `@layer` block
+- Add a global `*` reset that could override Tailwind classes
+
+### shadcn/ui Components
+
+**Location**: `src/components/ui/*.tsx`
+
+**Current components**: Button, Card, Input, Textarea, Label, Separator, Tabs, Badge, Switch, Slider
+
+**How to add new shadcn components**:
+1. Write the component manually in `src/components/ui/` following the shadcn pattern
+2. Use Radix UI primitives from the `radix-ui` package (already installed)
+3. Use `cn()` from `@/lib/utils` for className merging (clsx + tailwind-merge)
+4. Follow the existing component patterns — `React.forwardRef`, `ComponentRef`, CVA variants
+5. The shadcn CLI may not have registry access — creating components manually is identical
+
+**Example pattern** (every shadcn component follows this):
+```tsx
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+function ComponentName({ className, ...props }: React.ComponentProps<"div">) {
+  return <div className={cn("base-classes", className)} {...props} />;
+}
+
+export { ComponentName };
+```
+
+**For Radix-based components** (Tabs, Switch, Slider, etc.):
+```tsx
+import { Tabs as TabsPrimitive } from "radix-ui";
+
+function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.List>) {
+  return <TabsPrimitive.List className={cn("base-classes", className)} {...props} />;
+}
+```
+
+### Admin Design Tokens
+Design tokens are defined in `tailwind.css` via `@theme inline {}`. All shadcn components consume these:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-background` | `#0e0e0e` | Page background |
+| `--color-foreground` | `#ffffff` | Primary text |
+| `--color-primary` | `#ff0033` | Accent / brand color |
+| `--color-card` | `#111111` | Card backgrounds |
+| `--color-muted-foreground` | `#71717a` | Secondary text |
+| `--color-border` | `#1e1e1e` | Borders |
+| `--color-sidebar` | `#080808` | Sidebar background |
+| `--color-sidebar-foreground` | `#a1a1aa` | Sidebar text |
+| `--color-sidebar-accent` | `#111111` | Sidebar active item |
+| `--color-sidebar-border` | `#151515` | Sidebar borders |
+
+**Always use these tokens** via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values in admin components.
+
+### Admin UI Patterns
+
+**Image upload with hover overlay** (used for logos):
+- Dark preview background (`bg-[#0e0e0e]`) containing the image
+- Tiny icon buttons (24x24) positioned at top-right using `absolute top-2 right-2`
+- Glass-morphism style: `bg-white/10 backdrop-blur-sm text-white/70`
+- Appear on hover via `opacity-0 group-hover:opacity-100` on a parent with `group relative`
+- Use Pencil icon (edit) + Trash2 icon (remove) from lucide-react
+
+**Settings forms**:
+- Use shadcn `Card` for sections, `Label` + `Input`/`Textarea`/`Switch`/`Slider` for controls
+- Use shadcn `Tabs` (variant="line" where appropriate) for Settings/Preview/Full Preview
+- Color pickers: native `<input type="color">` with a small preview swatch
+- Save via `saveSettings()` from `@/lib/settings` — debounce where appropriate
+
+**Sidebar layout** (`app/admin/layout.tsx`):
+- Fixed sidebar (w-64) with sections, mobile overlay with slide transition
+- User footer at bottom: avatar (initials), org name, email, click for dropdown
+- Dropdown positioned above footer: `absolute inset-x-3 bottom-full mb-2`
+- Outside-click dismissal via `mousedown` event listener on `useRef`
+
+### Rules for New Admin Pages
+1. **Always `"use client"`** — admin pages use React state, effects, and browser APIs
+2. **Import `tailwind.css`** — already done via `admin/layout.tsx`, no extra import needed
+3. **Use shadcn components** — never recreate Button, Input, Card, Tabs, etc. from scratch
+4. **Use Tailwind classes** — all styling via utility classes, no hand-written CSS for admin
+5. **Use design tokens** — `bg-background`, `text-foreground`, `border-border`, etc.
+6. **Settings pattern** — fetch from `site_settings` table, save back via `/api/settings`
+7. **File uploads** — POST base64 to `/api/upload`, get back a media key for the URL

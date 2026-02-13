@@ -55,7 +55,7 @@ export function DynamicTicketWidget({
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
-  const { trackAddToCart: metaTrackAddToCart } = useMetaTracking();
+  const { trackAddToCart: metaTrackAddToCart, trackInitiateCheckout: metaTrackInitiateCheckout } = useMetaTracking();
   const [expressError, setExpressError] = useState("");
 
   // Only show active ticket types, sorted by sort_order
@@ -236,8 +236,22 @@ export function DynamicTicketWidget({
 
   const handleCheckout = useCallback(() => {
     const url = getCheckoutUrl();
-    if (url) window.location.assign(url);
-  }, [getCheckoutUrl]);
+    if (!url) return;
+
+    // Track InitiateCheckout before navigating
+    const ids = activeTypes
+      .filter((tt) => (quantities[tt.id] || 0) > 0)
+      .map((tt) => tt.id);
+    metaTrackInitiateCheckout({
+      content_ids: ids,
+      content_type: "product",
+      value: totalPrice,
+      currency,
+      num_items: totalQty,
+    });
+
+    window.location.assign(url);
+  }, [getCheckoutUrl, activeTypes, quantities, totalPrice, currency, totalQty, metaTrackInitiateCheckout]);
 
   // Expose checkout handler to parent (for bottom bar)
   useEffect(() => {

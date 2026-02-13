@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import type { Order } from "@/types/orders";
 import "@/styles/checkout-page.css";
 
@@ -15,8 +16,28 @@ export function OrderConfirmation({
   slug,
   eventName,
 }: OrderConfirmationProps) {
+  const { trackPurchase } = useMetaTracking();
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
   const [downloading, setDownloading] = useState(false);
+  const purchaseTracked = useRef(false);
+
+  // Track Purchase event once when order confirmation mounts
+  useEffect(() => {
+    if (purchaseTracked.current) return;
+    purchaseTracked.current = true;
+
+    const ticketTypeIds = order.items?.map((i) => i.ticket_type_id) || [];
+    const numItems = order.tickets?.length || order.items?.reduce((sum, i) => sum + i.qty, 0) || 0;
+
+    trackPurchase({
+      content_ids: ticketTypeIds,
+      content_type: "product",
+      value: Number(order.total),
+      currency: order.currency || "GBP",
+      num_items: numItems,
+      order_id: order.order_number,
+    });
+  }, [order, trackPurchase]);
 
   // Generate QR codes client-side for instant display
   useEffect(() => {

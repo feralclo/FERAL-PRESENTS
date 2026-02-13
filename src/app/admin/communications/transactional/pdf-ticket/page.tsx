@@ -80,7 +80,7 @@ function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; la
   const logoHPct = s.logo_url ? `${Math.round((s.logo_height / 210) * 100)}%` : undefined;
 
   return (
-    <div className="mx-auto" style={{ maxWidth: large ? 480 : 340 }}>
+    <div className="mx-auto" style={{ maxWidth: large ? 680 : 340 }}>
       <div
         className="relative overflow-hidden rounded-lg shadow-2xl"
         style={{
@@ -99,7 +99,7 @@ function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; la
               <img
                 src={s.logo_url}
                 alt="Brand"
-                style={{ height: logoHPct, maxHeight: 48, width: "auto", maxWidth: "70%", objectFit: "contain", margin: "0 auto" }}
+                style={{ height: logoHPct, width: "auto", maxWidth: "70%", objectFit: "contain", margin: "0 auto" }}
               />
             ) : (
               <div
@@ -344,7 +344,7 @@ export default function PdfTicketPage() {
                       </div>
                       <Slider
                         min={8}
-                        max={24}
+                        max={40}
                         step={1}
                         value={[settings.logo_height]}
                         onValueChange={([v]) => update("logo_height", v)}

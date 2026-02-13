@@ -94,9 +94,9 @@ export async function generateTicketsPDF(
     if (logoDataUrl) {
       try {
         const logoH = s.logo_height || 12;
-        // Estimate width based on a ~3:1 aspect ratio assumption
-        const logoW = logoH * 3;
-        doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, 14, logoW, logoH);
+        // Estimate width based on ~3:1 aspect ratio, capped to fit page
+        const logoW = Math.min(logoH * 3, 120);
+        doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, 10, logoW, logoH);
       } catch {
         // Fallback to text if image embed fails
         doc.setFont("helvetica", "bold");

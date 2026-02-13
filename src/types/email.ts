@@ -63,7 +63,7 @@ export interface OrderEmailData {
 export interface PdfTicketSettings {
   brand_name: string;            // Text at top of ticket (e.g. "FERAL PRESENTS")
   logo_url?: string;             // Optional logo image URL (replaces brand_name text)
-  logo_height: number;           // Logo height in mm on the PDF (8–24, default 12)
+  logo_height: number;           // Logo height in mm on the PDF (8–40, default 12)
   accent_color: string;          // Accent bars + ticket code color (hex)
   bg_color: string;              // Background color (hex)
   text_color: string;            // Primary text color (hex)

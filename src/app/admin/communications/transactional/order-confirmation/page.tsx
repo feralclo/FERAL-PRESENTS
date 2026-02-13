@@ -106,7 +106,7 @@ const TEMPLATE_VARS = [
 ];
 
 /* ── Email preview ── */
-function EmailPreview({ settings }: { settings: EmailSettings }) {
+function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMerch?: boolean }) {
   const accent = settings.accent_color || "#ff0033";
   const logoH = Math.min(settings.logo_height || 48, 100);
 
@@ -183,8 +183,9 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
             <div className="px-8 pb-6">
               <div style={{ background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
                 <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>General Release</div>
+                  <div style={{ fontSize: 13, color: "#666" }}>{showMerch ? "GA + Tee · Size M" : "General Release"}</div>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-A1B2C3D4</div>
+                  {showMerch && <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>Includes merch — present QR to collect</div>}
                 </div>
                 <div style={{ padding: "12px 16px" }}>
                   <div style={{ fontSize: 13, color: "#666" }}>General Release</div>
@@ -192,6 +193,13 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
                 </div>
               </div>
             </div>
+            {showMerch && (
+              <div className="px-8 pb-6">
+                <div style={{ fontSize: 12, lineHeight: 1.5, color: "#888", background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0", padding: "12px 16px" }}>
+                  <strong style={{ color: "#666" }}>Merch collection</strong> — Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.
+                </div>
+              </div>
+            )}
             <div style={{ padding: "20px 32px", background: "#fafafa", borderTop: "1px solid #f0f0f0", textAlign: "center" }}>
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#aaa", marginBottom: 4 }}>{settings.footer_text || settings.from_name}</div>
               <div style={{ fontSize: 11, color: "#bbb" }}>This is an automated order confirmation. Please do not reply directly to this email.</div>
@@ -220,6 +228,7 @@ export default function OrderConfirmationPage() {
   const [testEmail, setTestEmail] = useState("");
   const [testSending, setTestSending] = useState(false);
   const [testStatus, setTestStatus] = useState("");
+  const [previewMerch, setPreviewMerch] = useState(false);
   const [resendStatus, setResendStatus] = useState<{ configured: boolean; verified: boolean; loading: boolean }>({ configured: false, verified: false, loading: true });
 
   useEffect(() => {
@@ -342,12 +351,12 @@ export default function OrderConfirmationPage() {
     if (!testEmail) { setTestStatus("Enter an email address"); return; }
     setTestSending(true); setTestStatus("");
     try {
-      const res = await fetch("/api/email/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: testEmail }) });
+      const res = await fetch("/api/email/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: testEmail, includeMerch: previewMerch }) });
       const json = await res.json();
       setTestStatus(res.ok ? "Test email sent — check your inbox" : json.error || "Failed to send");
     } catch { setTestStatus("Network error"); }
     setTestSending(false);
-  }, [testEmail]);
+  }, [testEmail, previewMerch]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -608,6 +617,10 @@ export default function OrderConfirmationPage() {
                     onChange={(e) => { setTestEmail(e.target.value); setTestStatus(""); }}
                     placeholder="your@email.com"
                   />
+                  <div className="flex items-center gap-2">
+                    <Switch checked={previewMerch} onCheckedChange={setPreviewMerch} />
+                    <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setPreviewMerch(v => !v)}>Include merch in test</Label>
+                  </div>
                   <Button onClick={handleSendTest} disabled={testSending || !resendStatus.verified} className="w-full">
                     {testSending ? "Sending..." : "Send Test"}
                   </Button>
@@ -624,7 +637,13 @@ export default function OrderConfirmationPage() {
         </TabsContent>
 
         <TabsContent value="preview">
-          <EmailPreview settings={settings} />
+          <div className="flex flex-col items-center gap-4">
+            <EmailPreview settings={settings} showMerch={previewMerch} />
+            <div className="flex items-center gap-2">
+              <Switch checked={previewMerch} onCheckedChange={setPreviewMerch} />
+              <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setPreviewMerch(v => !v)}>Preview with merch</Label>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -123,7 +123,8 @@ export async function generateTicketsPDF(
     const venueY = eventNameY + 8;
     const dateY = venueY + 6;
     const typeY = dateY + 12;
-    const qrY = typeY + 10;
+    const merchOffset = t.merchSize ? 10 : 0; // Extra space for merch size + collection note
+    const qrY = typeY + 10 + merchOffset;
     const qrBottom = qrY + s.qr_size;
     const codeY = qrBottom + 8;
     const holderY = codeY + 10;
@@ -182,11 +183,13 @@ export async function generateTicketsPDF(
     doc.setTextColor(acR, acG, acB);
     doc.text(t.ticketType.toUpperCase(), centerX, typeY, { align: "center" });
 
-    // Merch size
+    // Merch size + collection note
     if (t.merchSize) {
       doc.setFontSize(9);
       doc.setTextColor(secR, secG, secB);
-      doc.text(`SIZE: ${t.merchSize}`, centerX, typeY + 7, { align: "center" });
+      doc.text(`INCLUDES MERCH · SIZE ${t.merchSize}`, centerX, typeY + 7, { align: "center" });
+      doc.setFontSize(6.5);
+      doc.text("Present this QR code to collect at the venue", centerX, typeY + 13, { align: "center" });
     }
 
     // QR Code

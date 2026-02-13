@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const to = body.to;
+    const includeMerch = body.includeMerch === true;
 
     if (!to || typeof to !== "string" || !to.includes("@")) {
       return NextResponse.json({ error: "Valid email address required" }, { status: 400 });
@@ -110,10 +111,15 @@ export async function POST(request: NextRequest) {
       doors_time: "9:30PM — 4:00AM",
       currency_symbol: "£",
       total: "52.92",
-      tickets: [
-        { ticket_code: "FERAL-A1B2C3D4", ticket_type: "General Release" },
-        { ticket_code: "FERAL-E5F6G7H8", ticket_type: "General Release" },
-      ],
+      tickets: includeMerch
+        ? [
+            { ticket_code: "FERAL-A1B2C3D4", ticket_type: "GA + Tee", merch_size: "M" },
+            { ticket_code: "FERAL-E5F6G7H8", ticket_type: "General Release" },
+          ]
+        : [
+            { ticket_code: "FERAL-A1B2C3D4", ticket_type: "General Release" },
+            { ticket_code: "FERAL-E5F6G7H8", ticket_type: "General Release" },
+          ],
     };
 
     const { subject, html, text } = buildOrderConfirmationEmail(emailSettings, sampleOrder);
@@ -127,6 +133,7 @@ export async function POST(request: NextRequest) {
       ticketType: t.ticket_type,
       holderName: `${sampleOrder.customer_first_name} ${sampleOrder.customer_last_name}`,
       orderNumber: sampleOrder.order_number,
+      merchSize: t.merch_size,
     }));
 
     const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings, pdfLogoBase64);

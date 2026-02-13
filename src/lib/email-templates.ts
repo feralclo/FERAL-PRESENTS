@@ -92,6 +92,7 @@ export function buildOrderConfirmationEmail(
   const doorsLine = order.doors_time ? `Doors ${order.doors_time}` : "";
 
   // Build ticket rows HTML
+  const hasMerch = order.tickets.some((t) => t.merch_size);
   const ticketRowsHtml = order.tickets
     .map(
       (t) => `
@@ -102,7 +103,10 @@ export function buildOrderConfirmationEmail(
           </div>
           <div style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: ${accent}; letter-spacing: 1px;">
             ${escapeHtml(t.ticket_code)}
-          </div>
+          </div>${t.merch_size ? `
+          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #999; margin-top: 4px;">
+            Includes merch — present QR to collect
+          </div>` : ""}
         </td>
       </tr>`
     )
@@ -294,6 +298,17 @@ export function buildOrderConfirmationEmail(
             </td>
           </tr>
 
+          ${hasMerch ? `
+          <!-- Merch collection note -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888; background: #fafafa; border-radius: 6px; border: 1px solid #f0f0f0; padding: 12px 16px;">
+                <strong style="color: #666;">Merch collection</strong> — Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.
+              </div>
+            </td>
+          </tr>
+          ` : ""}
+
           ${walletLinks?.appleWalletUrl || walletLinks?.googleWalletUrl ? `
           <!-- Wallet Passes -->
           <tr>
@@ -404,7 +419,7 @@ YOUR TICKETS
 ${ticketCodesText}
 
 Your PDF tickets with QR codes are attached to this email.
-${walletTextSection}
+${hasMerch ? "\nMERCH COLLECTION: Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.\n" : ""}${walletTextSection}
 Present your QR code at the door for scanning.
 
 ---

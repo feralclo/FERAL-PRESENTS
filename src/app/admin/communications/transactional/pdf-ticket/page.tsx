@@ -76,7 +76,7 @@ function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null>
  * A5 = 148mm × 210mm. All positions are converted to percentages:
  *   yPct = (mm / 210) * 100    xPct = (mm / 148) * 100
  */
-function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; large?: boolean }) {
+function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketSettings; large?: boolean; showMerch?: boolean }) {
   const accent = s.accent_color || "#ff0033";
   const bg = s.bg_color || "#0e0e0e";
   const text = s.text_color || "#ffffff";
@@ -90,7 +90,8 @@ function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; la
   const venueY = eventNameY + 8;
   const dateY = venueY + 6;
   const typeY = dateY + 12;
-  const qrY = typeY + 10;
+  const merchOffset = showMerch ? 10 : 0;
+  const qrY = typeY + 10 + merchOffset;
   const qrBottom = qrY + s.qr_size;
   const codeY = qrBottom + 8;
   const holderY = codeY + 10;
@@ -170,8 +171,20 @@ function TicketPreview({ settings: s, large }: { settings: PdfTicketSettings; la
           className="absolute left-0 right-0 text-center"
           style={{ top: yPct(typeY - 3), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(7px, 2.2cqi, 11px)", fontWeight: 700, color: accent, textTransform: "uppercase" }}
         >
-          GENERAL RELEASE
+          {showMerch ? "GA + TEE" : "GENERAL RELEASE"}
         </div>
+
+        {/* Merch info */}
+        {showMerch && (
+          <>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 4), fontSize: "clamp(6px, 1.8cqi, 9px)", color: secondary }}>
+              INCLUDES MERCH · SIZE M
+            </div>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 10), fontSize: "clamp(4px, 1.3cqi, 6.5px)", color: secondary }}>
+              Present this QR code to collect at the venue
+            </div>
+          </>
+        )}
 
         {/* QR Code placeholder */}
         <div
@@ -249,6 +262,7 @@ export default function PdfTicketPage() {
   const [status, setStatus] = useState("");
   const [logoProcessing, setLogoProcessing] = useState(false);
   const [logoDragging, setLogoDragging] = useState(false);
+  const [showMerch, setShowMerch] = useState(false);
   const logoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -514,16 +528,24 @@ export default function PdfTicketPage() {
             </div>
 
             {/* Right — live preview */}
-            <div className="xl:sticky xl:top-20 xl:self-start">
-              <TicketPreview settings={settings} />
+            <div className="xl:sticky xl:top-20 xl:self-start space-y-3">
+              <TicketPreview settings={settings} showMerch={showMerch} />
+              <div className="flex items-center justify-center gap-2">
+                <Switch checked={showMerch} onCheckedChange={setShowMerch} />
+                <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setShowMerch(v => !v)}>Preview with merch</Label>
+              </div>
             </div>
           </div>
         </TabsContent>
 
         {/* Full preview tab — much bigger */}
         <TabsContent value="preview">
-          <div className="flex justify-center py-6">
-            <TicketPreview settings={settings} large />
+          <div className="flex flex-col items-center gap-4 py-6">
+            <TicketPreview settings={settings} large showMerch={showMerch} />
+            <div className="flex items-center gap-2">
+              <Switch checked={showMerch} onCheckedChange={setShowMerch} />
+              <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setShowMerch(v => !v)}>Preview with merch</Label>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

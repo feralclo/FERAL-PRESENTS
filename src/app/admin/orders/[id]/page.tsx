@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import type { Order } from "@/types/orders";
 import {
   ArrowLeft,
@@ -26,6 +28,8 @@ import {
   AlertCircle,
   Send,
   ExternalLink,
+  QrCode,
+  XCircle,
 } from "lucide-react";
 
 /* ── Status styling ── */
@@ -37,6 +41,20 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "se
   failed: "destructive",
   valid: "success",
   used: "secondary",
+};
+
+const STATUS_ACCENT: Record<string, string> = {
+  completed: "#22c55e",
+  pending: "#eab308",
+  refunded: "#ff0033",
+  cancelled: "#71717a",
+  failed: "#ff0033",
+};
+
+const TICKET_STATUS_ACCENT: Record<string, string> = {
+  valid: "#22c55e",
+  used: "#71717a",
+  cancelled: "#ff0033",
 };
 
 /* ── Timeline ── */
@@ -146,6 +164,10 @@ function formatDateTime(d: string) {
   });
 }
 
+function getInitials(first?: string, last?: string): string {
+  return `${(first?.[0] || "").toUpperCase()}${(last?.[0] || "").toUpperCase()}`;
+}
+
 /* ════════════════════════════════════════════════════════
    ORDER DETAIL PAGE
    ════════════════════════════════════════════════════════ */
@@ -229,8 +251,10 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <Package size={40} className="text-muted-foreground/30" />
-        <p className="mt-3 text-sm text-muted-foreground">Order not found</p>
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50">
+          <Package size={28} className="text-muted-foreground/40" />
+        </div>
+        <p className="mt-4 text-sm font-medium text-foreground">Order not found</p>
         <Link href="/admin/orders/" className="mt-4">
           <Button variant="outline" size="sm">
             <ArrowLeft size={14} /> Back to Orders
@@ -243,6 +267,11 @@ export default function OrderDetailPage() {
   const customer = order.customer;
   const event = order.event;
   const timeline = buildTimeline(order);
+  const accent = STATUS_ACCENT[order.status] || "#71717a";
+
+  // Separate ticket items from merch items
+  const ticketItems = (order.items || []).filter((item) => !item.merch_size);
+  const merchItems = (order.items || []).filter((item) => item.merch_size);
 
   return (
     <div>
@@ -255,48 +284,63 @@ export default function OrderDetailPage() {
           <ArrowLeft size={12} /> Back to Orders
         </Link>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="font-mono text-xl font-bold tracking-wider text-foreground">
-                  {order.order_number}
-                </h1>
-                <Badge
-                  variant={STATUS_VARIANT[order.status] || "secondary"}
-                  className="text-[10px] font-semibold uppercase"
-                >
-                  {order.status}
-                </Badge>
+        {/* Order header card */}
+        <Card className="relative overflow-hidden">
+          <div
+            className="absolute inset-x-0 top-0 h-[3px]"
+            style={{ background: accent }}
+          />
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="font-mono text-xl font-bold tracking-wider text-foreground">
+                    {order.order_number}
+                  </h1>
+                  <Badge
+                    variant={STATUS_VARIANT[order.status] || "secondary"}
+                    className="text-[10px] font-semibold uppercase"
+                  >
+                    {order.status}
+                  </Badge>
+                </div>
+                <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock size={12} />
+                    {formatDateTime(order.created_at)}
+                  </span>
+                  {event?.name && (
+                    <>
+                      <span className="text-border">·</span>
+                      <span>{event.name}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatDateTime(order.created_at)}
-                {event?.name ? ` · ${event.name}` : ""}
-              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+                  <Download size={14} /> PDF
+                </Button>
+                {order.status === "completed" && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowRefund(!showRefund)}
+                  >
+                    <RotateCcw size={14} /> Refund
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
-              <Download size={14} /> PDF
-            </Button>
-            {order.status === "completed" && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowRefund(!showRefund)}
-              >
-                <RotateCcw size={14} /> Refund
-              </Button>
-            )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Refund Form */}
       {showRefund && (
         <Card className="mb-6 border-destructive/30">
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="mb-4 flex items-center gap-2">
               <AlertCircle size={16} className="text-destructive" />
               <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-destructive">
                 Process Refund
@@ -331,49 +375,55 @@ export default function OrderDetailPage() {
         </Card>
       )}
 
-      {/* Order Summary + Customer - 2 column grid */}
+      {/* Financial Summary + Customer — 2 column grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Order Summary */}
+        {/* Financial Summary */}
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Package size={15} className="text-muted-foreground" />
-              Order Summary
+              <DollarSign size={15} className="text-muted-foreground" />
+              Payment Summary
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border">
-              <div className="flex items-center justify-between px-5 py-3">
+              <div className="flex items-center justify-between px-5 py-3.5">
                 <span className="text-sm text-muted-foreground">Subtotal</span>
                 <span className="font-mono text-sm text-foreground">
                   {formatCurrency(Number(order.subtotal))}
                 </span>
               </div>
-              <div className="flex items-center justify-between px-5 py-3">
+              <div className="flex items-center justify-between px-5 py-3.5">
                 <span className="text-sm text-muted-foreground">Fees</span>
                 <span className="font-mono text-sm text-foreground">
                   {formatCurrency(Number(order.fees))}
                 </span>
               </div>
-              <div className="flex items-center justify-between bg-background/50 px-5 py-3">
+              <div className="flex items-center justify-between bg-muted/30 px-5 py-4">
                 <span className="text-sm font-semibold text-foreground">Total</span>
-                <span className="font-mono text-lg font-bold text-foreground">
+                <span className="font-mono text-xl font-bold text-foreground">
                   {formatCurrency(Number(order.total))}
                 </span>
               </div>
-              <div className="flex items-center justify-between px-5 py-3">
-                <span className="text-sm text-muted-foreground">Payment</span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {order.payment_method}
-                  {order.payment_ref && (
-                    <span className="ml-1.5 text-muted-foreground/50">
-                      {order.payment_ref.slice(0, 24)}...
-                    </span>
-                  )}
-                </span>
+              <div className="flex items-center justify-between px-5 py-3.5">
+                <span className="text-sm text-muted-foreground">Payment Method</span>
+                <div className="flex items-center gap-2">
+                  <CreditCard size={12} className="text-muted-foreground/50" />
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {order.payment_method}
+                  </span>
+                </div>
               </div>
+              {order.payment_ref && (
+                <div className="flex items-center justify-between px-5 py-3.5">
+                  <span className="text-sm text-muted-foreground">Reference</span>
+                  <span className="max-w-[200px] truncate font-mono text-[11px] text-muted-foreground/50">
+                    {order.payment_ref}
+                  </span>
+                </div>
+              )}
               {order.refund_reason && (
-                <div className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center justify-between px-5 py-3.5">
                   <span className="text-sm text-muted-foreground">Refund Reason</span>
                   <span className="text-sm text-destructive">{order.refund_reason}</span>
                 </div>
@@ -392,38 +442,44 @@ export default function OrderDetailPage() {
           </CardHeader>
           <CardContent className="p-5">
             {customer ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3.5">
-                  {/* Avatar */}
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
-                    <span className="font-mono text-sm font-bold text-primary">
-                      {(customer.first_name?.[0] || "").toUpperCase()}
-                      {(customer.last_name?.[0] || "").toUpperCase()}
-                    </span>
-                  </div>
+              <div className="space-y-5">
+                <div className="flex items-center gap-4">
+                  <Avatar
+                    size="lg"
+                    tier="primary"
+                    initials={getInitials(customer.first_name, customer.last_name)}
+                  />
                   <div>
                     <p className="text-sm font-semibold text-foreground">
                       {customer.first_name} {customer.last_name}
                     </p>
-                    <p className="text-xs text-muted-foreground">{customer.email}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{customer.email}</p>
                   </div>
                 </div>
 
-                <div className="space-y-2.5 pt-1">
+                <Separator />
+
+                <div className="grid grid-cols-2 gap-4">
                   {customer.phone && (
                     <div className="flex items-center gap-2.5">
-                      <Phone size={13} className="text-muted-foreground/50" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted/50">
+                        <Phone size={12} className="text-muted-foreground" />
+                      </div>
                       <span className="text-sm text-foreground/80">{customer.phone}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2.5">
-                    <ShoppingBag size={13} className="text-muted-foreground/50" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted/50">
+                      <ShoppingBag size={12} className="text-muted-foreground" />
+                    </div>
                     <span className="text-sm text-foreground/80">
                       {customer.total_orders || 0} order{(customer.total_orders || 0) !== 1 ? "s" : ""}
                     </span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <DollarSign size={13} className="text-muted-foreground/50" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted/50">
+                      <DollarSign size={12} className="text-muted-foreground" />
+                    </div>
                     <span className="text-sm text-foreground/80">
                       {formatCurrency(Number(customer.total_spent || 0))} lifetime
                     </span>
@@ -432,72 +488,53 @@ export default function OrderDetailPage() {
 
                 <Link
                   href={`/admin/customers/${customer.id}/`}
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   View Profile <ExternalLink size={11} />
                 </Link>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No customer data</p>
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/30">
+                  <User size={20} className="text-muted-foreground/30" />
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">No customer data</p>
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Order Items */}
-      {order.items && order.items.length > 0 && (
+      {/* What Was Ordered — Tickets */}
+      {ticketItems.length > 0 && (
         <Card className="mt-4 overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Ticket size={15} className="text-muted-foreground" />
-              Items ({order.items.length})
+              Ticket Types ({ticketItems.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            {/* Header */}
-            <div className="hidden border-b border-border px-5 py-2.5 sm:grid sm:grid-cols-[2fr_0.5fr_1fr_0.8fr_1fr]">
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                Ticket Type
-              </span>
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                Qty
-              </span>
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                Price
-              </span>
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                Size
-              </span>
-              <span className="text-right font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                Total
-              </span>
-            </div>
-            <div className="divide-y divide-border">
-              {order.items.map((item) => (
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              {ticketItems.map((item) => (
                 <div
                   key={item.id}
-                  className="px-5 py-3.5 sm:grid sm:grid-cols-[2fr_0.5fr_1fr_0.8fr_1fr] sm:items-center"
+                  className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-foreground">
-                      {item.ticket_type?.name || "—"}
-                    </span>
-                    {item.merch_size && (
-                      <Badge variant="default" className="text-[10px]">
-                        <Shirt size={10} /> Merch
-                      </Badge>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                      <Ticket size={14} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {item.ticket_type?.name || "Ticket"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {item.qty} x {formatCurrency(Number(item.unit_price))}
+                      </p>
+                    </div>
                   </div>
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {item.qty}
-                  </span>
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {formatCurrency(Number(item.unit_price))}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {item.merch_size || "—"}
-                  </span>
-                  <span className="text-right font-mono text-sm font-semibold text-foreground">
+                  <span className="font-mono text-sm font-bold text-foreground">
                     {formatCurrency(Number(item.unit_price) * item.qty)}
                   </span>
                 </div>
@@ -507,71 +544,136 @@ export default function OrderDetailPage() {
         </Card>
       )}
 
-      {/* Tickets */}
+      {/* What Was Ordered — Merchandise */}
+      {merchItems.length > 0 && (
+        <Card className="mt-4 overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Shirt size={15} className="text-muted-foreground" />
+              Merchandise ({merchItems.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {merchItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="relative overflow-hidden rounded-lg border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-500/10">
+                        <Shirt size={18} className="text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {item.ticket_type?.name || "Merchandise"}
+                        </p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] font-bold">
+                            Size {item.merch_size}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            Qty: {item.qty}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="font-mono text-sm font-bold text-foreground">
+                      {formatCurrency(Number(item.unit_price) * item.qty)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Individual Tickets */}
       {order.tickets && order.tickets.length > 0 && (
         <Card className="mt-4 overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ScanLine size={15} className="text-muted-foreground" />
-              Tickets ({order.tickets.length})
+              <QrCode size={15} className="text-muted-foreground" />
+              Individual Tickets ({order.tickets.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {order.tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <Ticket size={14} className="text-muted-foreground" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[13px] font-bold text-foreground">
-                          {ticket.ticket_code}
-                        </span>
-                        <Badge
-                          variant={STATUS_VARIANT[ticket.status] || "secondary"}
-                          className="text-[10px]"
-                        >
-                          {ticket.status}
-                        </Badge>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {order.tickets.map((ticket) => {
+                const ticketAccent = TICKET_STATUS_ACCENT[ticket.status] || "#71717a";
+                return (
+                  <div
+                    key={ticket.id}
+                    className="relative overflow-hidden rounded-lg border border-border bg-muted/10"
+                  >
+                    {/* Status accent */}
+                    <div
+                      className="absolute inset-y-0 left-0 w-[3px]"
+                      style={{ background: ticketAccent }}
+                    />
+
+                    <div className="py-3.5 pl-5 pr-4">
+                      {/* Top row: code + status */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[12px] font-bold text-foreground">
+                            {ticket.ticket_code}
+                          </span>
+                          <Badge
+                            variant={STATUS_VARIANT[ticket.status] || "secondary"}
+                            className="text-[9px]"
+                          >
+                            {ticket.status}
+                          </Badge>
+                        </div>
+                        {ticket.merch_size && (
+                          <Badge
+                            variant={ticket.merch_collected ? "success" : "warning"}
+                            className="gap-1 text-[9px]"
+                          >
+                            <Shirt size={9} />
+                            {ticket.merch_size}
+                            {ticket.merch_collected ? " Collected" : " Pending"}
+                          </Badge>
+                        )}
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
+
+                      {/* Holder name */}
+                      <p className="mt-1.5 text-xs text-muted-foreground">
                         {ticket.holder_first_name} {ticket.holder_last_name}
                       </p>
+
+                      {/* Scan status */}
+                      <div className="mt-2">
+                        {ticket.scanned_at ? (
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={11} className="text-success" />
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              Scanned {formatDateTime(ticket.scanned_at)}
+                            </span>
+                          </div>
+                        ) : ticket.status === "cancelled" ? (
+                          <div className="flex items-center gap-1.5">
+                            <XCircle size={11} className="text-destructive/50" />
+                            <span className="font-mono text-[10px] text-muted-foreground/40">
+                              Cancelled
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <QrCode size={11} className="text-muted-foreground/30" />
+                            <span className="font-mono text-[10px] text-muted-foreground/40">
+                              Awaiting scan
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    {ticket.merch_size && (
-                      <div className="flex items-center gap-1.5">
-                        <Shirt size={12} className="text-muted-foreground" />
-                        <span className="font-mono text-xs font-semibold">{ticket.merch_size}</span>
-                        <Badge
-                          variant={ticket.merch_collected ? "success" : "warning"}
-                          className="text-[10px]"
-                        >
-                          {ticket.merch_collected ? "Collected" : "Pending"}
-                        </Badge>
-                      </div>
-                    )}
-                    {ticket.scanned_at ? (
-                      <div className="flex items-center gap-1.5">
-                        <CheckCircle2 size={12} className="text-success" />
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          Scanned {formatDateTime(ticket.scanned_at)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="font-mono text-[11px] text-muted-foreground/40">
-                        Not scanned
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

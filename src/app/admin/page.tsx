@@ -72,30 +72,40 @@ function PeriodSelector({
   );
 }
 
-/* ── Stat card ── */
+/* ── Stat card with accent strip ── */
 function StatCard({
   label,
   value,
   icon: Icon,
   detail,
+  accent,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   detail?: string;
+  accent?: string;
 }) {
   return (
-    <Card>
+    <Card className="relative overflow-hidden">
+      <div
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: accent || "var(--color-border)" }}
+      />
       <CardContent className="p-6">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-          <Icon size={14} strokeWidth={1.5} className="shrink-0" />
-          {label}
-        </p>
-        <p className="mt-3 font-mono text-2xl font-bold tracking-tight text-foreground">
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            {label}
+          </p>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50">
+            <Icon size={14} strokeWidth={1.5} className="text-muted-foreground" />
+          </div>
+        </div>
+        <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-foreground">
           {value}
         </p>
         {detail && (
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{detail}</p>
         )}
       </CardContent>
     </Card>
@@ -116,9 +126,9 @@ function QuickLink({
 }) {
   return (
     <Link href={href} className="group block">
-      <Card className="transition-colors duration-150 hover:border-muted-foreground/30">
+      <Card className="transition-all duration-150 hover:border-muted-foreground/20 hover:bg-card/80">
         <CardContent className="flex items-center gap-4 p-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-background/60">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/50">
             <Icon size={18} className="text-muted-foreground transition-colors group-hover:text-foreground" />
           </div>
           <div className="min-w-0 flex-1">
@@ -127,7 +137,7 @@ function QuickLink({
           </div>
           <ChevronRight
             size={16}
-            className="text-muted-foreground/20 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+            className="text-muted-foreground/15 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground/50"
           />
         </CardContent>
       </Card>
@@ -314,24 +324,28 @@ export default function AdminDashboard() {
           value={loading ? "..." : `£${kpi.revenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
           detail={`Completed orders ${periodLabel(period)}`}
+          accent="#22c55e"
         />
         <StatCard
           label="Orders"
           value={loading ? "..." : kpi.orders.toLocaleString()}
           icon={ShoppingBag}
           detail={`Total completed ${periodLabel(period)}`}
+          accent="#ff0033"
         />
         <StatCard
           label="Tickets Sold"
           value={loading ? "..." : kpi.ticketsSold.toLocaleString()}
           icon={Ticket}
           detail={`Individual tickets issued`}
+          accent="#8b5cf6"
         />
         <StatCard
           label="Merch Revenue"
           value={loading ? "..." : `£${kpi.merchRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={Shirt}
           detail={`From merchandise add-ons`}
+          accent="#eab308"
         />
       </div>
 
@@ -346,24 +360,28 @@ export default function AdminDashboard() {
             value={traffic.totalTraffic.toLocaleString()}
             icon={Globe}
             detail="All page views"
+            accent="#3b82f6"
           />
           <StatCard
             label="Today's Traffic"
             value={traffic.todayTraffic.toLocaleString()}
             icon={TrendingUp}
             detail="Page views today"
+            accent="#06b6d4"
           />
           <StatCard
             label="Conversion Rate"
             value={traffic.conversionRate}
             icon={MousePointerClick}
             detail="Landing → Checkout"
+            accent="#f97316"
           />
           <StatCard
             label="Active Events"
             value={traffic.activeEvents.toString()}
             icon={Activity}
             detail="Draft or live"
+            accent="#ec4899"
           />
         </div>
       </div>

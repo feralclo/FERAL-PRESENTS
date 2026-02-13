@@ -14,11 +14,9 @@ import {
   Shirt,
   Download,
   ChevronRight,
-  Hash,
   Calendar,
-  User,
-  CreditCard,
   Filter,
+  Package,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -45,6 +43,14 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "se
   refunded: "destructive",
   cancelled: "secondary",
   failed: "destructive",
+};
+
+const STATUS_ACCENT: Record<string, string> = {
+  completed: "#22c55e",
+  pending: "#eab308",
+  refunded: "#ff0033",
+  cancelled: "#71717a",
+  failed: "#ff0033",
 };
 
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
@@ -88,30 +94,40 @@ function PeriodSelector({
   );
 }
 
-/* ── Stat card ── */
+/* ── Stat card with accent strip ── */
 function StatCard({
   label,
   value,
   icon: Icon,
   detail,
+  accent,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   detail?: string;
+  accent?: string;
 }) {
   return (
-    <Card>
+    <Card className="relative overflow-hidden">
+      <div
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: accent || "var(--color-border)" }}
+      />
       <CardContent className="p-6">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-          <Icon size={14} strokeWidth={1.5} className="shrink-0" />
-          {label}
-        </p>
-        <p className="mt-3 font-mono text-2xl font-bold tracking-tight text-foreground">
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            {label}
+          </p>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50">
+            <Icon size={14} strokeWidth={1.5} className="text-muted-foreground" />
+          </div>
+        </div>
+        <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-foreground">
           {value}
         </p>
         {detail && (
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{detail}</p>
         )}
       </CardContent>
     </Card>
@@ -142,6 +158,19 @@ function formatDate(d: string) {
 
 function formatCurrency(amount: number) {
   return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return formatDate(dateStr);
 }
 
 /* ════════════════════════════════════════════════════════
@@ -317,69 +346,67 @@ export default function OrdersPage() {
           label="Orders"
           value={v(orderCount.toLocaleString())}
           icon={ShoppingBag}
+          accent="#ff0033"
         />
         <StatCard
           label="Revenue"
           value={v(formatCurrency(revenue))}
           icon={DollarSign}
+          accent="#22c55e"
         />
         <StatCard
           label="Tickets Sold"
           value={v(ticketsSold.toLocaleString())}
           icon={Ticket}
+          accent="#8b5cf6"
         />
         <StatCard
-          label="Merch Sold"
+          label="Merch Revenue"
           value={v(formatCurrency(merchRevenue))}
           icon={Shirt}
           detail={statsLoading ? undefined : `${merchItems} item${merchItems !== 1 ? "s" : ""}`}
+          accent="#eab308"
         />
       </div>
 
       {/* Filters */}
-      <div className="mt-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              {/* Status tabs */}
-              <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
-                {STATUS_TABS.map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setFilterStatus(tab.key)}
-                    className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
-                      filterStatus === tab.key
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Status tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilterStatus(tab.key)}
+              className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
+                filterStatus === tab.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-              {/* Event filter */}
-              <div className="flex items-center gap-3">
-                <Filter size={14} className="text-muted-foreground" />
-                <select
-                  value={filterEvent}
-                  onChange={(e) => setFilterEvent(e.target.value)}
-                  className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-[color,box-shadow] focus:border-ring focus:ring-2 focus:ring-ring/50"
-                >
-                  <option value="">All Events</option>
-                  {events.map((evt) => (
-                    <option key={evt.id} value={evt.id}>
-                      {evt.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Event filter */}
+        <div className="flex items-center gap-3">
+          <Filter size={14} className="text-muted-foreground" />
+          <select
+            value={filterEvent}
+            onChange={(e) => setFilterEvent(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-[color,box-shadow] focus:border-ring focus:ring-2 focus:ring-ring/50"
+          >
+            <option value="">All Events</option>
+            {events.map((evt) => (
+              <option key={evt.id} value={evt.id}>
+                {evt.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders List */}
       <div className="mt-4">
         {loading ? (
           <Card>
@@ -392,123 +419,154 @@ export default function OrdersPage() {
           </Card>
         ) : orders.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <ShoppingBag size={40} className="text-muted-foreground/30" />
-              <p className="mt-3 text-sm text-muted-foreground">No orders found</p>
-              <p className="mt-1 text-xs text-muted-foreground/60">
-                Try adjusting your filters
+            <CardContent className="flex flex-col items-center justify-center py-20">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50">
+                <Package size={28} className="text-muted-foreground/40" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-foreground">No orders found</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Try adjusting your filters or date range
               </p>
             </CardContent>
           </Card>
         ) : (
-          <Card className="overflow-hidden">
-            {/* Table header */}
-            <div className="hidden border-b border-border px-5 py-3 lg:grid lg:grid-cols-[1fr_1fr_1.5fr_2fr_1fr_1fr_0.8fr_auto]">
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                <Hash size={10} /> Order
-              </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                <Calendar size={10} /> Date
-              </span>
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                Event
-              </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                <User size={10} /> Customer
-              </span>
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                Status
-              </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                <CreditCard size={10} /> Total
-              </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-                <Ticket size={10} /> Qty
-              </span>
-              <span />
-            </div>
-
-            {/* Table rows */}
-            <div className="divide-y divide-border">
-              {orders.map((order) => (
+          <div className="space-y-2">
+            {orders.map((order) => {
+              const accent = STATUS_ACCENT[order.status] || "#71717a";
+              return (
                 <Link
                   key={order.id}
                   href={`/admin/orders/${order.id}/`}
-                  className="group block transition-colors duration-100 hover:bg-accent/30"
+                  className="group block"
                 >
-                  {/* Desktop row */}
-                  <div className="hidden items-center px-5 py-3.5 lg:grid lg:grid-cols-[1fr_1fr_1.5fr_2fr_1fr_1fr_0.8fr_auto]">
-                    <span className="font-mono text-[13px] font-semibold text-foreground">
-                      {order.order_number}
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {formatDate(order.created_at)}
-                    </span>
-                    <span className="truncate text-sm text-foreground/80">
-                      {order.event?.name || "—"}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-foreground">
-                        {order.customer
-                          ? `${order.customer.first_name} ${order.customer.last_name}`
-                          : "—"}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {order.customer?.email || ""}
-                      </p>
-                    </div>
-                    <div>
-                      <Badge variant={STATUS_VARIANT[order.status] || "secondary"} className="text-[10px]">
-                        {order.status}
-                      </Badge>
-                    </div>
-                    <span className="font-mono text-sm font-semibold text-foreground">
-                      {formatCurrency(Number(order.total))}
-                    </span>
-                    <span className="font-mono text-sm text-muted-foreground">
-                      {order.ticket_count || "—"}
-                    </span>
-                    <ChevronRight
-                      size={14}
-                      className="text-muted-foreground/20 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+                  <Card className="relative overflow-hidden transition-all duration-150 hover:border-muted-foreground/20 hover:bg-card/80">
+                    {/* Status accent - left border */}
+                    <div
+                      className="absolute inset-y-0 left-0 w-[3px]"
+                      style={{ background: accent }}
                     />
-                  </div>
 
-                  {/* Mobile row */}
-                  <div className="flex items-center justify-between px-5 py-4 lg:hidden">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono text-[13px] font-semibold text-foreground">
-                          {order.order_number}
-                        </span>
-                        <Badge variant={STATUS_VARIANT[order.status] || "secondary"} className="text-[10px]">
-                          {order.status}
-                        </Badge>
+                    <CardContent className="p-0">
+                      {/* Desktop row */}
+                      <div className="hidden items-center gap-4 py-4 pl-6 pr-5 lg:flex">
+                        {/* Order number + date */}
+                        <div className="w-36">
+                          <p className="font-mono text-[13px] font-bold text-foreground">
+                            {order.order_number}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/60">
+                            {timeAgo(order.created_at)}
+                          </p>
+                        </div>
+
+                        {/* Event */}
+                        <div className="w-40">
+                          {order.event?.name ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-0.5 text-xs text-foreground/70">
+                              <Calendar size={10} className="text-muted-foreground/50" />
+                              {order.event.name}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/30">—</span>
+                          )}
+                        </div>
+
+                        {/* Customer */}
+                        <div className="min-w-0 flex-1">
+                          {order.customer ? (
+                            <>
+                              <p className="truncate text-sm text-foreground">
+                                {order.customer.first_name} {order.customer.last_name}
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground/60">
+                                {order.customer.email}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-muted-foreground/30">—</p>
+                          )}
+                        </div>
+
+                        {/* Status */}
+                        <div className="w-24">
+                          <Badge
+                            variant={STATUS_VARIANT[order.status] || "secondary"}
+                            className="text-[10px] font-semibold uppercase"
+                          >
+                            {order.status}
+                          </Badge>
+                        </div>
+
+                        {/* Tickets */}
+                        <div className="w-16 text-center">
+                          <div className="inline-flex items-center gap-1 rounded-md bg-muted/30 px-2 py-0.5">
+                            <Ticket size={10} className="text-muted-foreground/50" />
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {order.ticket_count || 0}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Total */}
+                        <div className="w-24 text-right">
+                          <span className="font-mono text-sm font-bold text-foreground">
+                            {formatCurrency(Number(order.total))}
+                          </span>
+                        </div>
+
+                        {/* Arrow */}
+                        <ChevronRight
+                          size={14}
+                          className="text-muted-foreground/15 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground/50"
+                        />
                       </div>
-                      <p className="mt-1 truncate text-sm text-foreground/80">
-                        {order.customer
-                          ? `${order.customer.first_name} ${order.customer.last_name}`
-                          : "—"}
-                      </p>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{formatDate(order.created_at)}</span>
-                        <span className="text-border">|</span>
-                        <span>{order.event?.name || "—"}</span>
+
+                      {/* Mobile row */}
+                      <div className="flex items-center gap-4 py-3.5 pl-5 pr-4 lg:hidden">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5">
+                            <span className="font-mono text-[13px] font-bold text-foreground">
+                              {order.order_number}
+                            </span>
+                            <Badge
+                              variant={STATUS_VARIANT[order.status] || "secondary"}
+                              className="text-[10px]"
+                            >
+                              {order.status}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 truncate text-sm text-foreground/80">
+                            {order.customer
+                              ? `${order.customer.first_name} ${order.customer.last_name}`
+                              : "—"}
+                          </p>
+                          <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>{timeAgo(order.created_at)}</span>
+                            {order.event?.name && (
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="truncate">{order.event.name}</span>
+                              </>
+                            )}
+                            <span className="text-border">·</span>
+                            <span className="inline-flex items-center gap-1">
+                              <Ticket size={9} />
+                              {order.ticket_count || 0}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="font-mono text-sm font-bold text-foreground">
+                            {formatCurrency(Number(order.total))}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="font-mono text-sm font-semibold text-foreground">
-                        {formatCurrency(Number(order.total))}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {order.ticket_count || 0} ticket{(order.ticket_count || 0) !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </Link>
-              ))}
-            </div>
-          </Card>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

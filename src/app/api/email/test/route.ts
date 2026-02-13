@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
-import { generateTicketsPDF, getSiteUrl, type TicketPDFData } from "@/lib/pdf";
+import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     // Fetch email + PDF ticket settings in parallel
     let emailSettings: EmailSettings = DEFAULT_EMAIL_SETTINGS;
     let pdfSettings: PdfTicketSettings = DEFAULT_PDF_TICKET_SETTINGS;
+    let emailLogoBase64: string | null = null;
     let pdfLogoBase64: string | null = null;
 
     try {
@@ -55,7 +56,19 @@ export async function POST(request: NextRequest) {
           pdfSettings = { ...DEFAULT_PDF_TICKET_SETTINGS, ...(pdfResult.data.data as Partial<PdfTicketSettings>) };
         }
 
-        // Fetch PDF logo base64 directly from DB (avoids serverless self-fetch)
+        // Fetch email logo base64 directly from DB (avoids serverless self-fetch + URL dependency)
+        if (emailSettings.logo_url) {
+          const m = emailSettings.logo_url.match(/\/api\/media\/(.+)$/);
+          if (m) {
+            const { data: row } = await supabase
+              .from(TABLES.SITE_SETTINGS).select("data")
+              .eq("key", `media_${m[1]}`).single();
+            const d = row?.data as { image?: string } | null;
+            if (d?.image) emailLogoBase64 = d.image;
+          }
+        }
+
+        // Fetch PDF logo base64 directly from DB
         if (pdfSettings.logo_url) {
           const m = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
           if (m) {
@@ -71,15 +84,18 @@ export async function POST(request: NextRequest) {
       // Use defaults
     }
 
-    // Resolve email logo URL to absolute — email clients need full https:// URLs
-    if (emailSettings.logo_url && !emailSettings.logo_url.startsWith("http")) {
-      const siteUrl = getSiteUrl();
-      if (siteUrl) {
-        emailSettings = {
-          ...emailSettings,
-          logo_url: `${siteUrl}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`,
-        };
-      }
+    // Embed email logo as CID inline attachment.
+    //
+    // WHY CID: Hosted URLs require NEXT_PUBLIC_SITE_URL or VERCEL_URL to be set,
+    // and the email client must be able to fetch the URL. CID embeds the image
+    // directly in the email — zero external dependencies, works everywhere.
+    //
+    // WHY contentId (not cid): Resend SDK uses `contentId` property (camelCase).
+    // When set, Resend marks the attachment as Content-Disposition: inline with a
+    // Content-ID header. Email clients render it inline and do NOT show it in the
+    // attachment list. This is the standard MIME mechanism for inline images.
+    if (emailLogoBase64) {
+      emailSettings = { ...emailSettings, logo_url: "cid:brand-logo" };
     }
 
     // Sample order data for the test email
@@ -115,6 +131,29 @@ export async function POST(request: NextRequest) {
 
     const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings, pdfLogoBase64);
 
+    // Build attachments
+    const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [
+      {
+        filename: `${sampleOrder.order_number}-tickets.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ];
+
+    // Add logo as inline CID attachment — contentId tells Resend to set
+    // Content-Disposition: inline so it renders in the body, not the attachment list
+    if (emailLogoBase64) {
+      const base64Match = emailLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (base64Match) {
+        attachments.push({
+          filename: "logo.png",
+          content: Buffer.from(base64Match[2], "base64"),
+          contentType: base64Match[1],
+          contentId: "brand-logo",
+        });
+      }
+    }
+
     const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({
       from: `${emailSettings.from_name} <${emailSettings.from_email}>`,
@@ -123,13 +162,7 @@ export async function POST(request: NextRequest) {
       html,
       text,
       replyTo: emailSettings.reply_to || undefined,
-      attachments: [
-        {
-          filename: `${sampleOrder.order_number}-tickets.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
-      ],
+      attachments,
     });
 
     if (error) {

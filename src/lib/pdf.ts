@@ -119,9 +119,16 @@ export async function generateTicketsPDF(
     // Brand: logo or text
     if (logoDataUrl) {
       try {
-        const logoH = s.logo_height || 12;
-        // Use actual aspect ratio, capped to 70% of page width (matches preview)
-        const logoW = Math.min(logoH * logoAspect, pageWidth * 0.7);
+        // Replicate the preview's CSS: height = logo_height, width = auto, maxWidth = 70%.
+        // jsPDF has no object-fit — we must compute both dimensions manually.
+        const maxW = pageWidth * 0.7;
+        let logoW = (s.logo_height || 12) * logoAspect;
+        let logoH = s.logo_height || 12;
+        // If the natural width exceeds the cap, shrink BOTH dimensions to maintain aspect ratio
+        if (logoW > maxW) {
+          logoW = maxW;
+          logoH = maxW / logoAspect;
+        }
         doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, 10, logoW, logoH);
       } catch {
         // Fallback to text if image embed fails

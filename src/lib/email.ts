@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
 import { getCurrencySymbol } from "@/lib/stripe/config";
-import { generateTicketsPDF, getSiteUrl, type TicketPDFData } from "@/lib/pdf";
+import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
@@ -181,17 +181,30 @@ export async function sendOrderConfirmationEmail(params: {
       })),
     };
 
+    let emailLogoBase64: string | null = null;
     let pdfLogoBase64: string | null = null;
 
-    // Resolve email logo URL to absolute — email clients need full https:// URLs
-    if (settings.logo_url && !settings.logo_url.startsWith("http")) {
-      const siteUrl = getSiteUrl();
-      if (siteUrl) {
-        settings = {
-          ...settings,
-          logo_url: `${siteUrl}${settings.logo_url.startsWith("/") ? "" : "/"}${settings.logo_url}`,
-        };
+    // Fetch email logo base64 from DB for CID inline embedding
+    try {
+      const sb = await getSupabaseServer();
+      if (sb && settings.logo_url) {
+        const m = settings.logo_url.match(/\/api\/media\/(.+)$/);
+        if (m) {
+          const { data: row } = await sb
+            .from(TABLES.SITE_SETTINGS).select("data")
+            .eq("key", `media_${m[1]}`).single();
+          const d = row?.data as { image?: string } | null;
+          if (d?.image) emailLogoBase64 = d.image;
+        }
       }
+    } catch { /* logo fetch failed — email will use text fallback */ }
+
+    // Embed email logo as CID inline attachment.
+    // Uses contentId (the correct Resend SDK property) which sets Content-ID +
+    // Content-Disposition: inline. The image renders in the body and does NOT
+    // appear in the attachment list.
+    if (emailLogoBase64) {
+      settings = { ...settings, logo_url: "cid:brand-logo" };
     }
 
     const { subject, html, text } = buildOrderConfirmationEmail(
@@ -213,7 +226,7 @@ export async function sendOrderConfirmationEmail(params: {
 
     const pdfSettings = await getPdfTicketSettings(params.orgId);
 
-    // Fetch PDF logo from DB too (may be different key)
+    // Fetch PDF logo from DB (may be different from email logo)
     if (pdfSettings.logo_url) {
       const m = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
       if (m) {
@@ -232,7 +245,29 @@ export async function sendOrderConfirmationEmail(params: {
 
     const pdfBuffer = await generateTicketsPDF(pdfData, pdfSettings, pdfLogoBase64);
 
-    // Send via Resend — only the PDF ticket is attached
+    // Build attachments — PDF always included
+    const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [
+      {
+        filename: `${params.order.order_number}-tickets.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ];
+
+    // Add logo as inline CID attachment (contentId = Content-Disposition: inline)
+    if (emailLogoBase64) {
+      const base64Match = emailLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (base64Match) {
+        attachments.push({
+          filename: "logo.png",
+          content: Buffer.from(base64Match[2], "base64"),
+          contentType: base64Match[1],
+          contentId: "brand-logo",
+        });
+      }
+    }
+
+    // Send via Resend
     const { error } = await resend.emails.send({
       from: `${settings.from_name} <${settings.from_email}>`,
       replyTo: settings.reply_to || undefined,
@@ -240,13 +275,7 @@ export async function sendOrderConfirmationEmail(params: {
       subject,
       html,
       text,
-      attachments: [
-        {
-          filename: `${params.order.order_number}-tickets.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
-      ],
+      attachments,
     });
 
     if (error) {

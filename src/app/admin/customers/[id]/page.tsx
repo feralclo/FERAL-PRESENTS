@@ -121,24 +121,18 @@ function StatCard({
   detail?: string;
 }) {
   return (
-    <Card className="group relative overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-            <Icon size={16} strokeWidth={1.75} className="text-muted-foreground" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[1.5px] text-muted-foreground">
-              {label}
-            </p>
-            <p className="mt-0.5 font-mono text-lg font-bold tracking-wide text-foreground">
-              {value}
-            </p>
-            {detail && (
-              <p className="text-[10px] text-muted-foreground">{detail}</p>
-            )}
-          </div>
-        </div>
+    <Card>
+      <CardContent className="p-5">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Icon size={13} strokeWidth={1.5} className="shrink-0" />
+          {label}
+        </p>
+        <p className="mt-2 font-mono text-xl font-bold tracking-tight text-foreground">
+          {value}
+        </p>
+        {detail && (
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>
+        )}
       </CardContent>
     </Card>
   );

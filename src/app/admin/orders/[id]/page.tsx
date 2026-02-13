@@ -355,7 +355,7 @@ export default function OrderDetailPage() {
                   {formatCurrency(Number(order.fees))}
                 </span>
               </div>
-              <div className="flex items-center justify-between bg-accent/20 px-5 py-3">
+              <div className="flex items-center justify-between bg-background/50 px-5 py-3">
                 <span className="text-sm font-semibold text-foreground">Total</span>
                 <span className="font-mono text-lg font-bold text-foreground">
                   {formatCurrency(Number(order.total))}
@@ -432,7 +432,7 @@ export default function OrderDetailPage() {
 
                 <Link
                   href={`/admin/customers/${customer.id}/`}
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   View Profile <ExternalLink size={11} />
                 </Link>

@@ -18,17 +18,18 @@
  * FERAL design system — consumed by shadcn/ui via Tailwind v4 @theme.
  *
  * Color palette based on zinc scale for a clean dark UI:
- *   Background/Card: zinc-950 (#09090b) — borders create card distinction
- *   Sidebar: slightly lighter grey (#111113) for subtle separation
+ *   Background: zinc-950 (#09090b) — true black page background
+ *   Card/Popover: #111113 — raised surface (same as sidebar), separates from bg
+ *   Sidebar: #111113 — same shade as cards for visual cohesion
  *   Borders: zinc-800 (#27272a) — thin, visible dividers
- *   Muted surfaces: zinc-900 (#18181b)
+ *   Muted surfaces: zinc-900 (#18181b) — nested elements inside cards
  */
 @theme inline {
   --color-background: #09090b;
   --color-foreground: #fafafa;
-  --color-card: #09090b;
+  --color-card: #111113;
   --color-card-foreground: #fafafa;
-  --color-popover: #09090b;
+  --color-popover: #111113;
   --color-popover-foreground: #fafafa;
   --color-primary: #ff0033;
   --color-primary-foreground: #ffffff;
@@ -142,7 +143,7 @@
 [data-admin] input:-webkit-autofill,
 [data-admin] input:-webkit-autofill:hover,
 [data-admin] input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 40px #09090b inset !important;
+  -webkit-box-shadow: 0 0 0 40px #111113 inset !important;
   -webkit-text-fill-color: #fafafa !important;
   caret-color: #fafafa !important;
   transition: background-color 5000s ease-in-out 0s;

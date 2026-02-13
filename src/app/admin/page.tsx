@@ -85,26 +85,18 @@ function StatCard({
   detail?: string;
 }) {
   return (
-    <Card className="group relative overflow-hidden">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
-              {label}
-            </p>
-            <p className="mt-2 font-mono text-2xl font-bold tracking-wide text-foreground">
-              {value}
-            </p>
-            {detail && (
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                {detail}
-              </p>
-            )}
-          </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-            <Icon size={18} strokeWidth={1.75} className="text-muted-foreground" />
-          </div>
-        </div>
+    <Card>
+      <CardContent className="p-6">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+          <Icon size={14} strokeWidth={1.5} className="shrink-0" />
+          {label}
+        </p>
+        <p className="mt-3 font-mono text-2xl font-bold tracking-tight text-foreground">
+          {value}
+        </p>
+        {detail && (
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -124,9 +116,9 @@ function QuickLink({
 }) {
   return (
     <Link href={href} className="group block">
-      <Card className="overflow-hidden transition-colors duration-150 hover:border-muted-foreground/20">
-        <CardContent className="flex items-center gap-4 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted transition-all duration-150 group-hover:bg-accent">
+      <Card className="transition-colors duration-150 hover:border-muted-foreground/30">
+        <CardContent className="flex items-center gap-4 p-5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-background/60">
             <Icon size={18} className="text-muted-foreground transition-colors group-hover:text-foreground" />
           </div>
           <div className="min-w-0 flex-1">
@@ -135,7 +127,7 @@ function QuickLink({
           </div>
           <ChevronRight
             size={16}
-            className="text-muted-foreground/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+            className="text-muted-foreground/20 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
           />
         </CardContent>
       </Card>

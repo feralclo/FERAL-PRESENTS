@@ -219,7 +219,7 @@ export async function sendOrderConfirmationEmail(params: {
     }
 
     // Record success in order metadata
-    await recordEmailStatus(supabase, params.order.id, {
+    await recordEmailStatus(params.order.id, {
       email_sent: true,
       email_sent_at: new Date().toISOString(),
       email_to: params.customer.email,

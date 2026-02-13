@@ -90,13 +90,18 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
   const venueY = eventNameY + 8;
   const dateY = venueY + 6;
   const typeY = dateY + 12;
-  const merchOffset = showMerch ? 14 : 0;
+  const merchOffset = showMerch ? 16 : 0;
   const qrY = typeY + 10 + merchOffset;
   const qrBottom = qrY + s.qr_size;
   const codeY = qrBottom + 8;
-  const merchNoteOffset = showMerch ? 6 : 0;
-  const holderY = codeY + 10 + merchNoteOffset;
+  const holderY = codeY + 10;
   const orderY = holderY + (s.show_holder ? 8 : 0);
+
+  // Bottom section positions — dynamic to prevent overlap with merch content
+  const bottomContentEnd = s.show_order ? orderY + 3 : (s.show_holder ? holderY + 3 : codeY + 3);
+  const bottomDividerY = Math.max(bottomContentEnd + 3, 175);
+  const disclaimerY1 = bottomDividerY + 7;
+  const disclaimerY2 = disclaimerY1 + 6;
 
   // Convert mm to percentage of A5 page
   const yPct = (mm: number) => `${(mm / 210) * 100}%`;
@@ -175,14 +180,17 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
           {showMerch ? "GA + TEE" : "GENERAL RELEASE"}
         </div>
 
-        {/* Merch info */}
+        {/* Merch info (above QR — customer reads before scanning) */}
         {showMerch && (
           <>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 5), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(4px, 1.4cqi, 7px)", fontWeight: 700, color: accent, letterSpacing: 1, textTransform: "uppercase" }}>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 4), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(4px, 1.4cqi, 7px)", fontWeight: 700, color: accent, letterSpacing: 1, textTransform: "uppercase" }}>
               INCLUDES MERCH
             </div>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 11), fontSize: "clamp(5px, 1.7cqi, 8.5px)", color: secondary }}>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 9), fontSize: "clamp(5px, 1.6cqi, 8px)", color: secondary }}>
               FERAL Tee · Size M
+            </div>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 14), fontSize: "clamp(3.5px, 1.2cqi, 6px)", color: secondary }}>
+              Present QR for entry &amp; merch collection
             </div>
           </>
         )}
@@ -210,13 +218,6 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
           FERAL-A1B2C3D4
         </div>
 
-        {/* Merch collection note */}
-        {showMerch && (
-          <div className="absolute left-0 right-0 text-center" style={{ top: yPct(codeY + 1), fontSize: "clamp(4px, 1.3cqi, 6.5px)", color: secondary }}>
-            This QR is your entry ticket &amp; merch collection pass
-          </div>
-        )}
-
         {/* Holder name */}
         {s.show_holder && (
           <div className="absolute left-0 right-0 text-center" style={{ top: yPct(holderY - 3), fontSize: "clamp(6px, 2cqi, 10px)", color: `${text}cc` }}>
@@ -234,16 +235,16 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
           </div>
         )}
 
-        {/* Bottom divider */}
-        <div className="absolute" style={{ top: yPct(175), left: xPct(24), right: xPct(24), height: 1, backgroundColor: "#282828" }} />
+        {/* Bottom divider (dynamic position — moves down if merch content pushes it) */}
+        <div className="absolute" style={{ top: yPct(bottomDividerY), left: xPct(24), right: xPct(24), height: 1, backgroundColor: "#282828" }} />
 
         {/* Disclaimer */}
         {s.show_disclaimer && (
           <>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(182 - 2), fontSize: "clamp(4px, 1.4cqi, 7px)", color: secondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(disclaimerY1 - 2), fontSize: "clamp(4px, 1.4cqi, 7px)", color: secondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {s.disclaimer_line1}
             </div>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(188 - 2), fontSize: "clamp(4px, 1.4cqi, 7px)", color: secondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(disclaimerY2 - 2), fontSize: "clamp(4px, 1.4cqi, 7px)", color: secondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {s.disclaimer_line2}
             </div>
           </>

@@ -50,7 +50,7 @@ export function buildOrderConfirmationEmail(
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
   const accent = s.accent_color || "#ff0033";
-  const logoH = Math.min(s.logo_height || 48, 64);
+  const logoH = Math.min(s.logo_height || 48, 100);
   const logoUrl = resolveUrl(s.logo_url);
 
   const vars: EmailTemplateVars = {
@@ -128,9 +128,9 @@ export function buildOrderConfirmationEmail(
             <td style="height: 4px; background-color: ${accent};"></td>
           </tr>
 
-          <!-- Header (fixed 80px — logo scales inside, container never changes) -->
+          <!-- Header (fixed 120px — logo scales inside, container never changes) -->
           <tr>
-            <td style="height: 80px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e;" : ""}">
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e;" : ""}">
               ${
                 logoUrl
                   ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}" height="${logoH}" style="height: ${logoH}px; width: auto; display: inline-block;">`

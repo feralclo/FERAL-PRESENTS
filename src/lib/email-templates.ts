@@ -57,8 +57,20 @@ export function buildOrderConfirmationEmail(
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
   const accent = s.accent_color || "#ff0033";
-  const logoH = Math.min(s.logo_height || 48, 100);
   const logoUrl = resolveUrl(s.logo_url);
+
+  // Calculate exact logo dimensions (same approach as PDF generator)
+  // This ensures the email renders at exactly the same size as the preview.
+  const configuredH = Math.min(s.logo_height || 48, 100);
+  let logoH = configuredH;
+  let logoW: number | undefined;
+  if (s.logo_aspect_ratio && logoUrl) {
+    logoW = Math.round(configuredH * s.logo_aspect_ratio);
+    if (logoW > 280) {
+      logoW = 280;
+      logoH = Math.round(280 / s.logo_aspect_ratio);
+    }
+  }
 
   const vars: EmailTemplateVars = {
     customer_name: order.customer_first_name,
@@ -138,11 +150,12 @@ export function buildOrderConfirmationEmail(
           </tr>
 
           <!-- Header (fixed 120px — logo scales inside, container never changes) -->
+          <!-- Dark bg uses linear-gradient so dark mode engines treat it as an image and won't invert -->
           <tr>
-            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e;" : ""}">
+            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
               ${
                 logoUrl
-                  ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}" height="${logoH}" style="height: ${logoH}px; width: auto; max-width: 280px; display: inline-block;">`
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}"${logoW ? ` width="${logoW}"` : ""} height="${logoH}" style="${logoW ? `width: ${logoW}px` : "width: auto"}; height: ${logoH}px; display: inline-block;">`
                   : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${escapeHtml(s.from_name)}</div>`
               }
             </td>

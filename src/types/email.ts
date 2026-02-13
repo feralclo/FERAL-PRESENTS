@@ -15,6 +15,7 @@ export interface EmailSettings {
   // Branding
   logo_url?: string;       // Logo for email header (URL)
   logo_height: number;     // Logo height in pixels (20–100, default 48)
+  logo_aspect_ratio?: number; // Width/height ratio (auto-calculated on upload)
   accent_color: string;    // Brand color (hex, e.g. "#ff0033")
 
   // Order confirmation template (supports {{variables}})

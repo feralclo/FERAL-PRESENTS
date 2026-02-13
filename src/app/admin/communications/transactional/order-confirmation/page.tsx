@@ -256,10 +256,19 @@ export default function OrderConfirmationPage() {
               if (y < t) t = y; if (y > b) b = y;
               if (x < l) l = x; if (x > r) r = x;
             }
-        if (t > b || l > r) { setDisplayLogoUrl(url); return; }
+        if (t > b || l > r) {
+          setDisplayLogoUrl(url);
+          // Backfill aspect ratio for logos uploaded before this field existed
+          if (!settings.logo_aspect_ratio) setSettings(prev => prev.logo_aspect_ratio ? prev : { ...prev, logo_aspect_ratio: img.width / img.height });
+          return;
+        }
 
         const needsTrim = t > 4 || l > 4 || (c.width - r - 1) > 4 || (c.height - b - 1) > 4;
-        if (!needsTrim) { setDisplayLogoUrl(url); return; }
+        if (!needsTrim) {
+          setDisplayLogoUrl(url);
+          if (!settings.logo_aspect_ratio) setSettings(prev => prev.logo_aspect_ratio ? prev : { ...prev, logo_aspect_ratio: img.width / img.height });
+          return;
+        }
 
         t = Math.max(0, t - 2); l = Math.max(0, l - 2);
         b = Math.min(c.height - 1, b + 2); r = Math.min(c.width - 1, r + 2);
@@ -273,6 +282,9 @@ export default function OrderConfirmationPage() {
 
         // Instantly show the trimmed version in the preview
         setDisplayLogoUrl(trimmedDataUrl);
+
+        // Backfill aspect ratio from trimmed dimensions
+        if (!settings.logo_aspect_ratio) setSettings(prev => prev.logo_aspect_ratio ? prev : { ...prev, logo_aspect_ratio: oW / oH });
 
         // Also re-upload the trimmed version to fix the stored image (one-time)
         if (!autoTrimDoneRef.current) {
@@ -311,7 +323,17 @@ export default function OrderConfirmationPage() {
     try {
       const res = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageData: compressed, key: "email-logo" }) });
       const json = await res.json();
-      if (res.ok && json.url) update("logo_url", json.url);
+      if (res.ok && json.url) {
+        // Measure the processed image to store its aspect ratio for exact email sizing
+        const aspectImg = new Image();
+        aspectImg.onload = () => {
+          const ratio = aspectImg.width / aspectImg.height;
+          setSettings(prev => ({ ...prev, logo_url: json.url, logo_aspect_ratio: ratio }));
+          setStatus("");
+        };
+        aspectImg.onerror = () => update("logo_url", json.url);
+        aspectImg.src = compressed;
+      }
     } catch { /* upload failed */ }
     setLogoProcessing(false);
   }, []);

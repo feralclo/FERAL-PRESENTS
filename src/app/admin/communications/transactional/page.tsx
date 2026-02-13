@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, FileText, Send, Receipt } from "lucide-react";
 
 export default function TransactionalPage() {
@@ -48,15 +50,15 @@ export default function TransactionalPage() {
       <div className="mb-6">
         <Link
           href="/admin/communications/"
-          className="inline-flex items-center gap-1 text-xs font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors no-underline mb-2"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors no-underline mb-3"
         >
           <ChevronLeft size={14} />
           Communications
         </Link>
-        <h1 className="font-mono text-lg font-bold tracking-[3px] text-foreground uppercase">
+        <h1 className="font-mono text-base font-semibold tracking-wider text-foreground uppercase">
           Transactional Emails
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-sm text-muted-foreground mt-1">
           Automated emails triggered by customer actions. These are essential for the purchase experience.
         </p>
       </div>
@@ -66,30 +68,31 @@ export default function TransactionalPage() {
         {templates.map((t) => {
           const Icon = t.icon;
           return (
-            <Link
-              key={t.name}
-              href={t.href}
-              className="flex items-center justify-between p-5 rounded-lg border border-border bg-card transition-colors hover:bg-card/80 group no-underline"
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${t.active ? "bg-success shadow-[0_0_6px_rgba(78,203,113,0.4)]" : "bg-muted-foreground/30"}`} />
-                <Icon size={16} className="text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                      {t.name}
-                    </span>
-                    {t.note && (
-                      <span className="text-[0.6rem] font-mono tracking-wider text-muted-foreground/60 uppercase">
-                        {t.note}
-                      </span>
-                    )}
+            <Card key={t.name} className="transition-colors hover:bg-accent/30">
+              <Link
+                href={t.href}
+                className="flex items-center justify-between p-5 group no-underline"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/80">
+                    <Icon size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                        {t.name}
+                      </span>
+                      {t.active && <Badge variant="success" className="text-[10px] py-0">Active</Badge>}
+                      {t.note && !t.active && (
+                        <Badge variant="secondary" className="text-[10px] py-0">{t.note}</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight size={16} className="text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-            </Link>
+                <ChevronRight size={16} className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors shrink-0" />
+              </Link>
+            </Card>
           );
         })}
       </div>

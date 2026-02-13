@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ShoppingCart, Sparkles } from "lucide-react";
 
 export default function MarketingPage() {
@@ -21,15 +23,15 @@ export default function MarketingPage() {
       <div className="mb-6">
         <Link
           href="/admin/communications/"
-          className="inline-flex items-center gap-1 text-xs font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors no-underline mb-2"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors no-underline mb-3"
         >
           <ChevronLeft size={14} />
           Communications
         </Link>
-        <h1 className="font-mono text-lg font-bold tracking-[3px] text-foreground uppercase">
+        <h1 className="font-mono text-base font-semibold tracking-wider text-foreground uppercase">
           Marketing Automation
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-sm text-muted-foreground mt-1">
           Automated campaigns and sequences to drive engagement and recover revenue.
         </p>
       </div>
@@ -39,43 +41,36 @@ export default function MarketingPage() {
         {automations.map((a) => {
           const Icon = a.icon;
           return (
-            <div
-              key={a.name}
-              className="flex items-center justify-between p-5 rounded-lg border border-border bg-card"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30 flex-shrink-0" />
-                <Icon size={16} className="text-muted-foreground flex-shrink-0" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      {a.name}
-                    </span>
-                    <span className="text-[0.6rem] font-mono tracking-wider text-muted-foreground/60 uppercase">
-                      {a.note}
-                    </span>
+            <Card key={a.name} className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/80">
+                    <Icon size={16} className="text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{a.description}</p>
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm font-medium text-foreground">{a.name}</span>
+                      <Badge variant="secondary" className="text-[10px] py-0">{a.note}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{a.description}</p>
+                  </div>
                 </div>
               </div>
-              <span className="font-mono text-[0.6rem] tracking-wider text-muted-foreground/40 uppercase flex-shrink-0">
-                Not Available
-              </span>
-            </div>
+            </Card>
           );
         })}
       </div>
 
-      {/* Future roadmap hint */}
-      <div className="mt-8 rounded-lg border border-border/50 bg-card/50 p-6 text-center">
-        <Sparkles size={20} className="mx-auto mb-2 text-muted-foreground" />
-        <div className="font-mono text-sm text-muted-foreground mb-1">
-          More automations coming soon
+      {/* Roadmap hint */}
+      <Card className="mt-8 border-dashed">
+        <div className="p-8 text-center">
+          <Sparkles size={20} className="mx-auto mb-3 text-muted-foreground" />
+          <p className="text-sm font-medium text-muted-foreground mb-1">More automations coming soon</p>
+          <p className="text-xs text-muted-foreground/60 max-w-md mx-auto">
+            Post-event follow-ups, review requests, early-bird announcements, and custom drip sequences are on the roadmap.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground/60 max-w-md mx-auto">
-          Post-event follow-ups, review requests, early-bird announcements, and custom drip sequences are on the roadmap.
-        </p>
-      </div>
+      </Card>
     </div>
   );
 }

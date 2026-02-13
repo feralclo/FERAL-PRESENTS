@@ -2,44 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Mail,
   Megaphone,
   ChevronRight,
   Wifi,
   WifiOff,
-  AlertCircle,
+  AlertTriangle,
   FileText,
   Send,
   Receipt,
   ShoppingCart,
 } from "lucide-react";
-
-/* ── Stat card ── */
-function StatCard({
-  label,
-  value,
-  sub,
-  children,
-}: {
-  label: string;
-  value?: string;
-  sub?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <span className="block font-mono text-[0.65rem] uppercase tracking-[2px] text-muted-foreground mb-2">
-        {label}
-      </span>
-      {value && (
-        <span className="block font-mono text-2xl font-bold text-foreground">{value}</span>
-      )}
-      {sub && <span className="block text-xs text-muted-foreground mt-1">{sub}</span>}
-      {children}
-    </div>
-  );
-}
 
 /* ── Channel card ── */
 function ChannelCard({
@@ -56,55 +32,53 @@ function ChannelCard({
   status: "live" | "coming-soon";
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-5 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-[#0e0e0e] border border-border">
-            <Icon size={18} strokeWidth={1.8} className="text-primary" />
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10">
+              <Icon size={18} strokeWidth={1.75} className="text-primary" />
+            </div>
+            <div>
+              <CardTitle>{title}</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">{description}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-mono text-sm font-bold tracking-wider text-foreground uppercase">
-              {title}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          </div>
+          {status === "live" ? (
+            <Badge variant="success" className="text-[10px]">Live</Badge>
+          ) : (
+            <Badge variant="secondary" className="text-[10px]">Soon</Badge>
+          )}
         </div>
-        {status === "live" ? (
-          <span className="flex items-center gap-1.5 font-mono text-[0.65rem] tracking-wider text-success uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            Live
-          </span>
-        ) : (
-          <span className="font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase">
-            Coming Soon
-          </span>
-        )}
-      </div>
-
-      {/* Template list */}
-      <div className="divide-y divide-border">
-        {templates.map((t) => {
+      </CardHeader>
+      <div className="border-t border-border">
+        {templates.map((t, i) => {
           const TIcon = t.icon;
           return (
             <Link
               key={t.name}
               href={t.href}
-              className="flex items-center justify-between p-4 transition-colors hover:bg-[rgba(255,255,255,0.02)] group no-underline"
+              className={`flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-accent/50 group no-underline ${
+                i < templates.length - 1 ? "border-b border-border" : ""
+              }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${t.active ? "bg-success" : "bg-muted-foreground/30"}`} />
-                <TIcon size={15} className="text-muted-foreground group-hover:text-foreground transition-colors" />
-                <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+                <div
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    t.active ? "bg-success shadow-[0_0_4px_rgba(34,197,94,0.6)]" : "bg-muted-foreground/20"
+                  }`}
+                />
+                <TIcon size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                <span className="text-[13px] text-foreground group-hover:text-primary transition-colors">
                   {t.name}
                 </span>
               </div>
-              <ChevronRight size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+              <ChevronRight size={14} className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
             </Link>
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -133,63 +107,63 @@ export default function CommunicationsPage() {
 
   return (
     <div>
-      {/* Page header */}
-      <div className="mb-6">
-        <h1 className="font-mono text-lg font-bold tracking-[3px] text-foreground uppercase mb-1">
-          Communications
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Manage all customer communications — transactional emails, marketing automation, and templates.
-        </p>
-      </div>
-
-      {/* Stats overview */}
+      {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          label="Email Provider"
-          value={resendStatus.loading ? "..." : resendStatus.verified ? "Resend" : "Not Set"}
-          sub={resendStatus.verified ? "Domain verified" : resendStatus.configured ? "Domain pending" : "Configure in environment"}
-        />
-        <StatCard
-          label="Active Templates"
-          value={emailEnabled ? "1" : "0"}
-          sub="Order Confirmation"
-        />
-        <StatCard
-          label="Channels"
-          value="1"
-          sub="Email"
-        />
-        <StatCard label="Connection">
-          {resendStatus.loading ? (
-            <span className="block text-sm text-muted-foreground">Checking...</span>
-          ) : resendStatus.verified ? (
-            <div className="flex items-center gap-2">
-              <Wifi size={16} className="text-success" />
-              <span className="font-mono text-sm font-bold text-success uppercase tracking-wider">
-                Connected
-              </span>
-            </div>
-          ) : resendStatus.configured ? (
-            <div className="flex items-center gap-2">
-              <AlertCircle size={16} className="text-warning" />
-              <span className="font-mono text-sm font-bold text-warning uppercase tracking-wider">
-                Pending
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <WifiOff size={16} className="text-destructive" />
-              <span className="font-mono text-sm font-bold text-destructive uppercase tracking-wider">
-                Not Configured
-              </span>
-            </div>
-          )}
-        </StatCard>
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Email Provider</p>
+            <p className="font-mono text-xl font-bold text-foreground tracking-wide">
+              {resendStatus.loading ? "..." : resendStatus.verified ? "Resend" : "Not Set"}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {resendStatus.verified ? "Domain verified" : resendStatus.configured ? "Domain pending" : "Configure in environment"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Active Templates</p>
+            <p className="font-mono text-xl font-bold text-foreground tracking-wide">{emailEnabled ? "1" : "0"}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Order Confirmation</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Channels</p>
+            <p className="font-mono text-xl font-bold text-foreground tracking-wide">1</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Email</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Connection</p>
+            {resendStatus.loading ? (
+              <p className="text-sm text-muted-foreground">Checking...</p>
+            ) : resendStatus.verified ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Wifi size={15} className="text-success" />
+                <span className="font-mono text-sm font-bold text-success uppercase tracking-wider">Connected</span>
+              </div>
+            ) : resendStatus.configured ? (
+              <div className="flex items-center gap-2 mt-1">
+                <AlertTriangle size={15} className="text-warning" />
+                <span className="font-mono text-sm font-bold text-warning uppercase tracking-wider">Pending</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-1">
+                <WifiOff size={15} className="text-destructive" />
+                <span className="font-mono text-sm font-bold text-destructive uppercase tracking-wider">Not Configured</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Channel sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <ChannelCard
           title="Transactional"
           description="Automated emails triggered by customer actions"

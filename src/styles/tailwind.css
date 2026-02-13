@@ -17,27 +17,46 @@
 @theme inline {
   --color-background: #0e0e0e;
   --color-foreground: #ffffff;
-  --color-card: #1a1a1a;
+  --color-card: #141414;
   --color-card-foreground: #ffffff;
-  --color-popover: #1a1a1a;
+  --color-popover: #141414;
   --color-popover-foreground: #ffffff;
   --color-primary: #ff0033;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #2a2a2a;
+  --color-secondary: #1e1e1e;
   --color-secondary-foreground: #ffffff;
-  --color-muted: #2a2a2a;
-  --color-muted-foreground: #888888;
-  --color-accent: #2a2a2a;
+  --color-muted: #1e1e1e;
+  --color-muted-foreground: #71717a;
+  --color-accent: #1e1e1e;
   --color-accent-foreground: #ffffff;
   --color-destructive: #ff0033;
   --color-destructive-foreground: #ffffff;
-  --color-border: #2a2a2a;
-  --color-input: #2a2a2a;
+  --color-border: #232323;
+  --color-input: #232323;
   --color-ring: #ff0033;
-  --color-success: #4ecb71;
-  --color-warning: #ffc107;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-sidebar: #0a0a0a;
+  --color-sidebar-foreground: #a1a1aa;
+  --color-sidebar-accent: #141414;
+  --color-sidebar-accent-foreground: #ffffff;
+  --color-sidebar-border: #1a1a1a;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
+}
+
+/*
+ * shadcn/ui animation keyframes + utility classes.
+ * Needed for components like Switch, Tabs transitions etc.
+ */
+@layer utilities {
+  .animate-in {
+    animation: animate-in 0.2s ease-out;
+  }
+  @keyframes animate-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 }

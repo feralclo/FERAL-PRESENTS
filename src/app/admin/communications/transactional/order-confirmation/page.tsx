@@ -95,6 +95,43 @@ async function processLogoFile(file: File): Promise<string | null> {
   return result;
 }
 
+/** Check if an existing logo URL has significant transparent padding. Returns trimmed data URL if so, null if already clean. */
+function autoTrimLogo(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        const ctx = c.getContext("2d")!;
+        c.width = img.width; c.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        let top = c.height, bottom = 0, left = c.width, right = 0;
+        for (let y = 0; y < c.height; y++)
+          for (let x = 0; x < c.width; x++)
+            if (d[(y * c.width + x) * 4 + 3] > 10) {
+              if (y < top) top = y; if (y > bottom) bottom = y;
+              if (x < left) left = x; if (x > right) right = x;
+            }
+        if (top > bottom || left > right) { resolve(null); return; }
+        // Only re-process if >4px of transparent padding on any edge
+        if (top <= 4 && left <= 4 && (c.width - right - 1) <= 4 && (c.height - bottom - 1) <= 4) { resolve(null); return; }
+        top = Math.max(0, top - 2); left = Math.max(0, left - 2);
+        bottom = Math.min(c.height - 1, bottom + 2); right = Math.min(c.width - 1, right + 2);
+        const cropW = right - left + 1, cropH = bottom - top + 1;
+        let outW = cropW, outH = cropH;
+        if (outW > 400) { outH = Math.round((outH * 400) / outW); outW = 400; }
+        const out = document.createElement("canvas");
+        out.width = outW; out.height = outH;
+        out.getContext("2d")!.drawImage(c, left, top, cropW, cropH, 0, 0, outW, outH);
+        resolve(out.toDataURL("image/png"));
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 /* ── Template variables ── */
 const TEMPLATE_VARS = [
   { var: "{{customer_name}}", desc: "Customer's first name" },
@@ -213,6 +250,7 @@ export default function OrderConfirmationPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const logoFileRef = useRef<HTMLInputElement>(null);
+  const autoTrimmedRef = useRef(false);
   const [logoDragging, setLogoDragging] = useState(false);
   const [logoProcessing, setLogoProcessing] = useState(false);
   const [testEmail, setTestEmail] = useState("");
@@ -232,6 +270,20 @@ export default function OrderConfirmationPage() {
     })();
     fetch("/api/email/status").then((r) => r.json()).then((json) => setResendStatus({ ...json, loading: false })).catch(() => setResendStatus({ configured: false, verified: false, loading: false }));
   }, []);
+
+  // Auto-crop existing logo if it has transparent padding (one-time upgrade for pre-trim-era logos)
+  useEffect(() => {
+    if (!settings.logo_url || autoTrimmedRef.current || loading) return;
+    autoTrimmedRef.current = true;
+    autoTrimLogo(settings.logo_url).then(async (trimmed) => {
+      if (!trimmed) return;
+      try {
+        const res = await fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageData: trimmed, key: "email-logo" }) });
+        const json = await res.json();
+        if (res.ok && json.url) setSettings((prev) => ({ ...prev, logo_url: json.url }));
+      } catch { /* not critical */ }
+    });
+  }, [settings.logo_url, loading]);
 
   const update = <K extends keyof EmailSettings>(key: K, value: EmailSettings[K]) => { setSettings((prev) => ({ ...prev, [key]: value })); setStatus(""); };
 
@@ -428,7 +480,7 @@ export default function OrderConfirmationPage() {
                       </div>
                     ) : (
                       <div
-                        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all max-w-md ${
+                        className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all max-w-xs ${
                           logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
                         }`}
                         onClick={() => logoFileRef.current?.click()}
@@ -436,11 +488,9 @@ export default function OrderConfirmationPage() {
                         onDragLeave={() => setLogoDragging(false)}
                         onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
                       >
-                        <ImageIcon size={18} className="mx-auto mb-1.5 text-muted-foreground/50" />
-                        <p className="text-xs text-muted-foreground">
-                          {logoProcessing ? "Processing..." : "Drop image or click to upload"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP · Max 5MB</p>
+                        <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
+                        <p className="text-xs text-muted-foreground">{logoProcessing ? "Processing..." : "Drop image or click to upload"}</p>
+                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP</p>
                         <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
                       </div>
                     )}

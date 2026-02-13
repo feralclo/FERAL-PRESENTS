@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,36 +22,6 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { Customer } from "@/types/orders";
-
-/* ── Stat card ── */
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  detail,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  detail?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <Icon size={14} strokeWidth={1.5} className="text-muted-foreground/50" />
-        </div>
-        <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-foreground">
-          {value}
-        </p>
-        {detail && (
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 /* ── Helpers ── */
 function formatCurrency(amount: number) {
@@ -211,7 +182,7 @@ export default function CustomersPage() {
                       <TableCell>
                         <Link
                           href={`/admin/customers/${cust.id}/`}
-                          className="text-sm font-medium text-foreground hover:underline"
+                          className="text-sm font-medium text-foreground transition-colors hover:text-primary"
                         >
                           {cust.first_name} {cust.last_name}
                         </Link>
@@ -230,10 +201,10 @@ export default function CustomersPage() {
                           {label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center font-mono text-sm text-foreground">
+                      <TableCell className="text-center font-mono text-sm tabular-nums text-foreground">
                         {cust.total_orders}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
+                      <TableCell className="text-right font-mono text-sm font-semibold tabular-nums text-foreground">
                         {formatCurrency(Number(cust.total_spent))}
                       </TableCell>
                       <TableCell className="text-sm text-foreground">

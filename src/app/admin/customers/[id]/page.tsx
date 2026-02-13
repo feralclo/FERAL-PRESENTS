@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -102,36 +103,6 @@ function memberSince(dateStr?: string): string {
   if (days < 30) return `${days} days ago`;
   if (days < 365) return `${Math.floor(days / 30)} months ago`;
   return `${Math.floor(days / 365)}+ years ago`;
-}
-
-/* ── Stat card (compact) ── */
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  detail,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  detail?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Icon size={13} strokeWidth={1.5} className="shrink-0" />
-          {label}
-        </p>
-        <p className="mt-2 font-mono text-xl font-bold tracking-tight text-foreground">
-          {value}
-        </p>
-        {detail && (
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
 }
 
 /* ── Timeline ── */
@@ -386,32 +357,38 @@ export default function CustomerProfilePage() {
       {/* KPI Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <StatCard
+          size="compact"
           label="Orders"
           value={customer.total_orders.toString()}
           icon={ShoppingBag}
         />
         <StatCard
+          size="compact"
           label="Lifetime Value"
           value={formatCurrency(totalSpent)}
           icon={DollarSign}
         />
         <StatCard
+          size="compact"
           label="Avg Order"
           value={formatCurrency(avgOrderValue)}
           icon={TrendingUp}
         />
         <StatCard
+          size="compact"
           label="Tickets"
           value={tickets.length.toString()}
           icon={TicketIcon}
           detail={`${scannedTickets.length} scanned`}
         />
         <StatCard
+          size="compact"
           label="Events Attended"
           value={eventsAttended.toString()}
           icon={CalendarDays}
         />
         <StatCard
+          size="compact"
           label="Merch Spend"
           value={formatCurrency(merchSpend)}
           icon={Shirt}
@@ -445,7 +422,7 @@ export default function CustomerProfilePage() {
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/admin/orders/${latestOrder.id}/`}
-                      className="font-mono text-[13px] font-semibold text-foreground hover:underline"
+                      className="font-mono text-[13px] font-semibold text-foreground transition-colors hover:text-primary"
                     >
                       {latestOrder.order_number}
                     </Link>

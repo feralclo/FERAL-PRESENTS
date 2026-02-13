@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,36 +92,6 @@ function PeriodSelector({
         </button>
       ))}
     </div>
-  );
-}
-
-/* ── Stat card ── */
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  detail,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  detail?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <Icon size={14} strokeWidth={1.5} className="text-muted-foreground/50" />
-        </div>
-        <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-foreground">
-          {value}
-        </p>
-        {detail && (
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -453,7 +424,7 @@ function OrdersContent() {
                     <TableCell>
                       <Link
                         href={`/admin/orders/${order.id}/`}
-                        className="font-mono text-[13px] font-semibold text-foreground hover:underline"
+                        className="font-mono text-[13px] font-semibold text-foreground transition-colors hover:text-primary"
                       >
                         {order.order_number}
                       </Link>
@@ -477,13 +448,13 @@ function OrdersContent() {
                         {order.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-sm text-foreground">
+                    <TableCell className="text-center font-mono text-sm tabular-nums text-foreground">
                       {order.ticket_count || 0}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
                       {order.payment_method}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
+                    <TableCell className="text-right font-mono text-sm font-semibold tabular-nums text-foreground">
                       {formatCurrency(Number(order.total))}
                     </TableCell>
                   </TableRow>

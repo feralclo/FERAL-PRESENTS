@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import {
@@ -69,36 +70,6 @@ function PeriodSelector({
         </button>
       ))}
     </div>
-  );
-}
-
-/* ── Stat card ── */
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  detail,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  detail?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <Icon size={14} strokeWidth={1.5} className="text-muted-foreground/50" />
-        </div>
-        <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-foreground">
-          {value}
-        </p>
-        {detail && (
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

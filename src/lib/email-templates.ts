@@ -110,6 +110,8 @@ export function buildOrderConfirmationEmail(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <title>${escapeHtml(subject)}</title>
   <!--[if mso]>
   <noscript>
@@ -121,7 +123,7 @@ export function buildOrderConfirmationEmail(
   </noscript>
   <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased;">
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
   <!-- Wrapper -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
     <tr>
@@ -140,7 +142,7 @@ export function buildOrderConfirmationEmail(
             <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e;" : ""}">
               ${
                 logoUrl
-                  ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}" height="${logoH}" style="height: ${logoH}px; width: auto; display: inline-block;">`
+                  ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}" height="${logoH}" style="height: ${logoH}px; width: auto; max-width: 280px; display: inline-block;">`
                   : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${escapeHtml(s.from_name)}</div>`
               }
             </td>

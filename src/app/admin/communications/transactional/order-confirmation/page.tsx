@@ -107,7 +107,7 @@ const TEMPLATE_VARS = [
 
 /* ── Email preview ── */
 function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMerch?: boolean }) {
-  const accent = settings.accent_color || "#ff0033";
+  const accent = settings.accent_color || "#8B5CF6";
   const logoH = Math.min(settings.logo_height || 48, 100);
 
   const previewSubject = settings.order_confirmation_subject
@@ -141,11 +141,11 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
         </div>
 
         {/* Email body — subtle gradient from card bg into light email bg */}
-        <div className="p-6 rounded-b-lg" style={{ background: "linear-gradient(to bottom, #1a1a1a 0%, #e8e8ea 8%, #f4f4f5 16%)" }}>
+        <div className="p-6 rounded-b-lg" style={{ background: "linear-gradient(to bottom, #111117 0%, #e8e8ea 8%, #f4f4f5 16%)" }}>
           <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-lg" style={{ background: "#fff" }}>
             <div style={{ height: 4, backgroundColor: accent }} />
             {/* Header — fixed 120px, logo scales inside, container never changes */}
-            <div className="flex items-center justify-center" style={{ height: 120, padding: "0 32px", background: settings.logo_url ? "#0e0e0e" : undefined }}>
+            <div className="flex items-center justify-center" style={{ height: 120, padding: "0 32px", background: settings.logo_url ? "#08080c" : undefined }}>
               {settings.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={settings.logo_url} alt="Logo" style={{ height: logoH, width: "auto", maxWidth: 280, objectFit: "contain" }} />
@@ -160,48 +160,48 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
               <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: 24, fontWeight: 700, color: "#111", letterSpacing: 1, margin: 0 }}>{previewHeading}</h1>
             </div>
             <div className="px-8 pb-6 text-center">
-              <p style={{ fontSize: 15, lineHeight: 1.6, color: "#555", margin: 0 }}>{previewMessage}</p>
+              <p style={{ fontSize: 15, lineHeight: 1.6, color: "#55557a", margin: 0 }}>{previewMessage}</p>
             </div>
             <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
             <div className="px-8 py-5">
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Event</div>
               <div style={{ fontSize: 17, fontWeight: 600, color: "#111", marginBottom: 4 }}>FERAL Liverpool</div>
-              <div style={{ fontSize: 14, color: "#666" }}>Thursday 27 March 2026 · Invisible Wind Factory</div>
+              <div style={{ fontSize: 14, color: "#6666a0" }}>Thursday 27 March 2026 · Invisible Wind Factory</div>
             </div>
             <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
             <div className="px-8 py-5">
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 12 }}>Order Details</div>
-              <div className="flex justify-between" style={{ fontSize: 14, color: "#666", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>FERAL-00042</span></div>
-              <div className="flex justify-between" style={{ fontSize: 14, color: "#666", padding: "4px 0" }}><span>Tickets</span><span style={{ color: "#111" }}>2</span></div>
-              <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#666" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>£52.92</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>FERAL-00042</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Tickets</span><span style={{ color: "#111" }}>2</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#6666a0" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>£52.92</span></div>
             </div>
             <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
             <div className="px-8 pt-5 pb-2">
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Your Tickets</div>
-              <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Your PDF tickets with QR codes are attached to this email.</div>
+              <div style={{ fontSize: 13, color: "#8888a0", marginBottom: 16 }}>Your PDF tickets with QR codes are attached to this email.</div>
             </div>
             <div className="px-8 pb-6">
               <div style={{ background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
                 <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>{showMerch ? "GA + Tee" : "General Release"}</div>
+                  <div style={{ fontSize: 13, color: "#6666a0" }}>{showMerch ? "GA + Tee" : "General Release"}</div>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-A1B2C3D4</div>
                   {showMerch && (
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed #e8e8e8" }}>
                       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: accent, marginBottom: 2 }}>INCLUDES MERCH</div>
-                      <div style={{ fontSize: 12, color: "#666" }}>FERAL Tee · Size M</div>
+                      <div style={{ fontSize: 12, color: "#6666a0" }}>FERAL Tee · Size M</div>
                     </div>
                   )}
                 </div>
                 <div style={{ padding: "12px 16px" }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>General Release</div>
+                  <div style={{ fontSize: 13, color: "#6666a0" }}>General Release</div>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-E5F6G7H8</div>
                 </div>
               </div>
             </div>
             {showMerch && (
               <div className="px-8 pb-6">
-                <div style={{ fontSize: 12, lineHeight: 1.5, color: "#888", background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0", padding: "12px 16px" }}>
-                  <strong style={{ color: "#666" }}>Merch collection</strong> — Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.
+                <div style={{ fontSize: 12, lineHeight: 1.5, color: "#8888a0", background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0", padding: "12px 16px" }}>
+                  <strong style={{ color: "#6666a0" }}>Merch collection</strong> — Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.
                 </div>
               </div>
             )}
@@ -491,7 +491,7 @@ export default function OrderConfirmationPage() {
 
                     {settings.logo_url ? (
                       <div
-                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#0e0e0e] p-4"
+                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
                         onClick={() => logoFileRef.current?.click()}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}

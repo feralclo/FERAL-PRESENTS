@@ -23,7 +23,7 @@ function StatCard({
 }) {
   if (size === "compact") {
     return (
-      <Card className="py-0 gap-0">
+      <Card className="py-0 gap-0 hover:border-primary/20 transition-all duration-300">
         <CardContent className="p-5">
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Icon size={13} strokeWidth={1.5} className="shrink-0" />
@@ -41,19 +41,19 @@ function StatCard({
   }
 
   return (
-    <Card className="py-0 gap-0">
+    <Card className="py-0 gap-0 group hover:border-primary/20 transition-all duration-300">
       <CardContent className="p-5">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50">
-            <Icon size={14} strokeWidth={1.5} className="text-muted-foreground/70" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10 transition-all duration-300 group-hover:bg-primary/12 group-hover:ring-primary/20">
+            <Icon size={15} strokeWidth={1.5} className="text-primary/70 transition-colors duration-300 group-hover:text-primary" />
           </div>
         </div>
-        <p className="mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight text-foreground">
+        <p className="mt-3 font-mono text-2xl font-bold tabular-nums tracking-tight text-foreground">
           {value}
         </p>
         {detail && (
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{detail}</p>
         )}
       </CardContent>
     </Card>

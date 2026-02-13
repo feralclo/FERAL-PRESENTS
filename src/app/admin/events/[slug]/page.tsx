@@ -29,10 +29,10 @@ const SLUG_TO_KEY: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "#ffc107",
-  live: "#4ecb71",
+  draft: "#FBBF24",
+  live: "#34D399",
   past: "#888",
-  cancelled: "#ff0033",
+  cancelled: "#8B5CF6",
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -175,7 +175,7 @@ function ImageField({
               style={{
                 maxWidth: "100%",
                 maxHeight: 150,
-                border: "1px solid #333",
+                border: "1px solid #1e1e2a",
                 background: "#111",
                 display: "block",
                 filter: blurPx != null ? `blur(${blurPx}px)` : undefined,
@@ -190,7 +190,7 @@ function ImageField({
                   background: "rgba(0,0,0,0.7)",
                   padding: "2px 6px",
                   fontSize: 9,
-                  color: "#888",
+                  color: "#8888a0",
                 }}
               >
                 Preview with blur
@@ -213,14 +213,14 @@ function ImageField({
       )}
 
       {uploadError && (
-        <div style={{ color: "#ff0033", fontSize: "0.7rem", marginBottom: 8 }}>
+        <div style={{ color: "#8B5CF6", fontSize: "0.7rem", marginBottom: 8 }}>
           {uploadError}
         </div>
       )}
 
       <div
         style={{
-          border: `2px dashed ${dragging ? "#ff0033" : "#333"}`,
+          border: `2px dashed ${dragging ? "#8B5CF6" : "#333"}`,
           padding: 20,
           textAlign: "center",
           cursor: "pointer",
@@ -240,7 +240,7 @@ function ImageField({
           if (file) handleFile(file);
         }}
       >
-        <span style={{ fontSize: 12, color: "#888" }}>
+        <span style={{ fontSize: 12, color: "#8888a0" }}>
           {processing
             ? "Uploading image..."
             : "Drag & drop image here, or click to select"}
@@ -345,7 +345,7 @@ function LineupInput({
           gap: 6,
           padding: "8px 10px",
           background: "#111",
-          border: "1px solid #333",
+          border: "1px solid #1e1e2a",
           borderRadius: 2,
           cursor: "text",
           minHeight: 42,
@@ -360,7 +360,7 @@ function LineupInput({
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              background: "#1a1a1a",
+              background: "#111117",
               border: "1px solid #444",
               padding: "4px 8px",
               fontSize: "0.75rem",
@@ -378,7 +378,7 @@ function LineupInput({
               style={{
                 background: "none",
                 border: "none",
-                color: "#ff0033",
+                color: "#8B5CF6",
                 cursor: "pointer",
                 padding: 0,
                 fontSize: "0.85rem",
@@ -420,7 +420,7 @@ function LineupInput({
           }}
         />
       </div>
-      <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 4, display: "block" }}>
+      <span style={{ fontSize: "0.7rem", color: "#55557a", marginTop: 4, display: "block" }}>
         Press Enter or comma to add. Backspace to remove last. Paste comma-separated lists.
       </span>
     </div>
@@ -722,7 +722,7 @@ export default function EventEditorPage() {
           href="/admin/events/"
           className="admin-link"
           style={{
-            color: "#ff0033",
+            color: "#8B5CF6",
             marginTop: 12,
             display: "inline-block",
           }}
@@ -766,7 +766,7 @@ export default function EventEditorPage() {
             >
               {event.status}
             </span>
-            <span style={{ color: "#666", fontSize: "0.75rem" }}>
+            <span style={{ color: "#6666a0", fontSize: "0.75rem" }}>
               /event/{event.slug}/
             </span>
           </div>
@@ -806,7 +806,7 @@ export default function EventEditorPage() {
         <div
           style={{
             background: "#1a0000",
-            border: "1px solid #ff003344",
+            border: "1px solid #8B5CF644",
             padding: "16px 20px",
             marginBottom: 16,
             display: "flex",
@@ -815,7 +815,7 @@ export default function EventEditorPage() {
             gap: 16,
           }}
         >
-          <span style={{ color: "#ff0033", fontSize: "0.8rem" }}>
+          <span style={{ color: "#8B5CF6", fontSize: "0.8rem" }}>
             Permanently delete &ldquo;{event.name}&rdquo;? This cannot be undone.
           </span>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -876,7 +876,7 @@ export default function EventEditorPage() {
                 placeholder="liverpool-june-2026"
               />
               <span
-                style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}
+                style={{ fontSize: "0.7rem", color: "#55557a", marginTop: 2 }}
               >
                 feralpresents.com/event/{event.slug}/
               </span>
@@ -898,7 +898,7 @@ export default function EventEditorPage() {
       {/* ─── Section: Page Content ─── */}
       <div className="admin-section">
         <h2 className="admin-section__title">Page Content</h2>
-        <p style={{ color: "#888", fontSize: "0.8rem", marginBottom: 16 }}>
+        <p style={{ color: "#8888a0", fontSize: "0.8rem", marginBottom: 16 }}>
           This content appears on the public event page.
         </p>
           <div className="admin-form">
@@ -912,7 +912,7 @@ export default function EventEditorPage() {
                   onChange={(e) => updateEvent("tag_line", e.target.value)}
                   placeholder="e.g. SECOND RELEASE NOW ACTIVE"
                 />
-                <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}>
+                <span style={{ fontSize: "0.7rem", color: "#55557a", marginTop: 2 }}>
                   Shown on the hero banner
                 </span>
               </div>
@@ -925,7 +925,7 @@ export default function EventEditorPage() {
                   onChange={(e) => updateEvent("doors_time", e.target.value)}
                   placeholder="e.g. 9:30PM — 4:00AM"
                 />
-                <span style={{ fontSize: "0.7rem", color: "#555", marginTop: 2 }}>
+                <span style={{ fontSize: "0.7rem", color: "#55557a", marginTop: 2 }}>
                   Display format for event page hero
                 </span>
               </div>
@@ -1019,10 +1019,10 @@ export default function EventEditorPage() {
             </div>
           </div>
           {event.payment_method === "stripe" && (
-            <div style={{ marginTop: 12, padding: "12px 16px", background: "rgba(78, 203, 113, 0.04)", border: "1px solid rgba(78, 203, 113, 0.1)" }}>
-              <span style={{ fontSize: 12, color: "#888" }}>
+            <div style={{ marginTop: 12, padding: "12px 16px", background: "rgba(52, 211, 153, 0.04)", border: "1px solid rgba(52, 211, 153, 0.1)" }}>
+              <span style={{ fontSize: 12, color: "#8888a0" }}>
                 Payments are handled automatically via your{" "}
-                <Link href="/admin/payments/" style={{ color: "#ff0033" }}>
+                <Link href="/admin/payments/" style={{ color: "#8B5CF6" }}>
                   Payment Settings
                 </Link>
                 . Make sure your payment setup is complete before going live.
@@ -1177,7 +1177,7 @@ export default function EventEditorPage() {
               onChange={(v) => updateEvent("cover_image", v)}
               uploadKey={event.id ? `event_${event.id}_cover` : undefined}
             />
-            <span style={{ fontSize: "0.65rem", color: "#555", display: "block", marginTop: -8 }}>
+            <span style={{ fontSize: "0.65rem", color: "#55557a", display: "block", marginTop: -8 }}>
               Tile image for event listings / homepage.
             </span>
           </div>
@@ -1188,7 +1188,7 @@ export default function EventEditorPage() {
               onChange={(v) => updateEvent("hero_image", v)}
               uploadKey={event.id ? `event_${event.id}_banner` : undefined}
             />
-            <span style={{ fontSize: "0.65rem", color: "#555", display: "block", marginTop: -8 }}>
+            <span style={{ fontSize: "0.65rem", color: "#55557a", display: "block", marginTop: -8 }}>
               Hero background on the event page. Any aspect ratio — auto-centered.
             </span>
           </div>
@@ -1272,7 +1272,7 @@ export default function EventEditorPage() {
               </button>
             )}
             {!isNativeCheckout && (
-              <span style={{ color: "#555", fontSize: "0.6rem", fontFamily: "'Space Mono', monospace", alignSelf: "center" }}>
+              <span style={{ color: "#55557a", fontSize: "0.6rem", fontFamily: "'Space Mono', monospace", alignSelf: "center" }}>
                 WeeZTix: 4 fixed slots
               </span>
             )}
@@ -1293,7 +1293,7 @@ export default function EventEditorPage() {
             </button>
           </div>
         </div>
-        <p style={{ color: "#666", fontSize: "0.7rem", marginTop: 8, marginBottom: 20 }}>
+        <p style={{ color: "#6666a0", fontSize: "0.7rem", marginTop: 8, marginBottom: 20 }}>
           This mirrors your event page. Ungrouped tickets appear first, then each group in order.
           Click a ticket to expand and edit its settings.
         </p>
@@ -1303,8 +1303,8 @@ export default function EventEditorPage() {
           const groupMap = (settings.ticket_group_map as Record<string, string | null>) || {};
 
           const arrowBtn = (enabled: boolean): React.CSSProperties => ({
-            width: 22, height: 14, padding: 0, border: "1px solid #333",
-            background: enabled ? "#1a1a1a" : "#0a0a0a",
+            width: 22, height: 14, padding: 0, border: "1px solid #1e1e2a",
+            background: enabled ? "#111117" : "#0a0a0a",
             color: enabled ? "#aaa" : "#333",
             cursor: enabled ? "pointer" : "default",
             fontSize: "0.55rem",
@@ -1351,8 +1351,8 @@ export default function EventEditorPage() {
               key={gName || "__ungrouped"}
               style={{
                 marginBottom: 16,
-                border: gName ? `1px solid ${dragOver === `group:${gName}` ? "#ff0033" : "#2a2a2a"}` : "none",
-                background: gName ? "#0e0e0e" : "transparent",
+                border: gName ? `1px solid ${dragOver === `group:${gName}` ? "#8B5CF6" : "#1e1e2a"}` : "none",
+                background: gName ? "#08080c" : "transparent",
                 transition: "border-color 0.15s",
               }}
               onDragOver={gName ? (e) => {
@@ -1390,7 +1390,7 @@ export default function EventEditorPage() {
                   onDragEnd={() => { setDragItem(null); setDragOver(null); }}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px", background: "#141414", borderBottom: "1px solid #2a2a2a",
+                    padding: "10px 14px", background: "#141414", borderBottom: "1px solid #1e1e2a",
                     cursor: "grab",
                   }}>
                   <span style={{ color: "#444", fontSize: "1rem", cursor: "grab", userSelect: "none" }} title="Drag to reorder">&#x2807;</span>
@@ -1402,11 +1402,11 @@ export default function EventEditorPage() {
                     flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.8rem",
                     color: "#fff", textTransform: "uppercase", letterSpacing: "0.05em",
                   }}>{gName}</span>
-                  <span style={{ color: "#555", fontSize: "0.6rem", fontFamily: "'Space Mono', monospace" }}>
+                  <span style={{ color: "#55557a", fontSize: "0.6rem", fontFamily: "'Space Mono', monospace" }}>
                     {count} ticket{count !== 1 ? "s" : ""}
                   </span>
                   <button type="button" onClick={() => handleEditGroup(gName)} style={{
-                    background: "none", border: "1px solid #333", color: "#888",
+                    background: "none", border: "1px solid #1e1e2a", color: "#8888a0",
                     fontSize: "0.6rem", padding: "4px 10px", cursor: "pointer",
                     fontFamily: "'Space Mono', monospace",
                   }}>&#9998; Edit</button>
@@ -1415,7 +1415,7 @@ export default function EventEditorPage() {
                 <div style={{ padding: "0 0 6px", marginBottom: 4 }}>
                   <span style={{
                     fontFamily: "'Space Mono', monospace", fontSize: "0.65rem",
-                    color: "#555", textTransform: "uppercase", letterSpacing: "0.1em",
+                    color: "#55557a", textTransform: "uppercase", letterSpacing: "0.1em",
                   }}>UNGROUPED</span>
                 </div>
               )}
@@ -1470,7 +1470,7 @@ export default function EventEditorPage() {
                     setDragItem(null);
                   }}
                   style={{
-                    border: `1px solid ${dragOver === `ticket:${cardId}` ? "#ff0033" : "#222"}`,
+                    border: `1px solid ${dragOver === `ticket:${cardId}` ? "#8B5CF6" : "#222"}`,
                     background: "#111",
                     transition: "border-color 0.15s",
                   }}
@@ -1487,20 +1487,20 @@ export default function EventEditorPage() {
                     <span style={{ flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#fff" }}>
                       {tt.name || "Untitled"}
                     </span>
-                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#888" }}>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#8888a0" }}>
                       {currSym}{Number(tt.price).toFixed(2)}
                     </span>
                     <span style={{
                       fontSize: "0.55rem", fontFamily: "'Space Mono', monospace", textTransform: "uppercase",
-                      padding: "2px 8px", border: "1px solid #333", color: "#666",
+                      padding: "2px 8px", border: "1px solid #1e1e2a", color: "#6666a0",
                     }}>{tierLabel}</span>
                     {tt.sold > 0 && (
-                      <span style={{ color: "#4ecb71", fontSize: "0.65rem", fontFamily: "'Space Mono', monospace" }}>{tt.sold} sold</span>
+                      <span style={{ color: "#34D399", fontSize: "0.65rem", fontFamily: "'Space Mono', monospace" }}>{tt.sold} sold</span>
                     )}
-                    <span style={{ color: "#555", fontSize: "0.7rem" }}>{isExp ? "\u25BE" : "\u25B8"}</span>
+                    <span style={{ color: "#55557a", fontSize: "0.7rem" }}>{isExp ? "\u25BE" : "\u25B8"}</span>
                   </div>
                   {isExp && (
-                    <div style={{ padding: "12px 14px", borderTop: "1px solid #1a1a1a" }}>
+                    <div style={{ padding: "12px 14px", borderTop: "1px solid #111117" }}>
                       <div className="admin-form">
                         <div className="admin-form__row">
                           <div className="admin-form__field">
@@ -1525,9 +1525,9 @@ export default function EventEditorPage() {
                           <label className="admin-form__label">Ticket Design Tier</label>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
                             {([
-                              { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#ff0033", color: "#fff" },
-                              { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)", border: "#e5e4e2", color: "#e5e4e2" },
-                              { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
+                              { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#8B5CF6", color: "#fff" },
+                              { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #1e1e2a 0%, #111117 100%)", border: "#e5e4e2", color: "#e5e4e2" },
+                              { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #111117 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
                               { id: "valentine", label: "Valentine", desc: "Pink-red with hearts", bg: "linear-gradient(135deg, #2a0a14 0%, #1f0810 100%)", border: "#e8365d", color: "#ff7eb3" },
                             ] as const).map((tier) => (
                               <button key={tier.id} type="button" onClick={() => updateTicketType(i, "tier", tier.id)} style={{
@@ -1650,7 +1650,7 @@ export default function EventEditorPage() {
                       const i = ticketTypes.indexOf(tt);
                       return renderStripeCard(tt, i, i > 0, i < ticketTypes.length - 1);
                     })
-                  : <p style={{ color: "#555", fontSize: "0.7rem", padding: "8px 0", textAlign: "center" }}>
+                  : <p style={{ color: "#55557a", fontSize: "0.7rem", padding: "8px 0", textAlign: "center" }}>
                       No tickets in this group yet. Assign tickets from their expanded settings.
                     </p>,
                 gTickets.length));
@@ -1658,7 +1658,7 @@ export default function EventEditorPage() {
 
             if (sections.length === 0 && ticketTypes.length === 0) {
               sections.push(
-                <p key="empty" style={{ color: "#888", fontSize: "0.85rem" }}>
+                <p key="empty" style={{ color: "#8888a0", fontSize: "0.85rem" }}>
                   No ticket types yet. Add your first ticket type to start selling.
                 </p>
               );
@@ -1699,16 +1699,16 @@ export default function EventEditorPage() {
           };
 
           const TIER_STYLE: Record<string, { border: string; color: string }> = {
-            standard: { border: "#333", color: "#666" },
+            standard: { border: "#333", color: "#6666a0" },
             platinum: { border: "#e5e4e2", color: "#e5e4e2" },
             black: { border: "rgba(255,255,255,0.3)", color: "#aaa" },
             valentine: { border: "#e8365d", color: "#ff7eb3" },
           };
 
           const TIER_OPTIONS = [
-            { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#ff0033", color: "#fff" },
-            { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)", border: "#e5e4e2", color: "#e5e4e2" },
-            { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
+            { id: "standard", label: "Standard", desc: "Default clean style", bg: "#111", border: "#8B5CF6", color: "#fff" },
+            { id: "platinum", label: "Platinum", desc: "Silver/VIP shimmer", bg: "linear-gradient(135deg, #1e1e2a 0%, #111117 100%)", border: "#e5e4e2", color: "#e5e4e2" },
+            { id: "black", label: "Black", desc: "Dark obsidian premium", bg: "linear-gradient(135deg, #0a0a0a 0%, #111117 100%)", border: "rgba(255,255,255,0.5)", color: "#fff" },
             { id: "valentine", label: "Valentine", desc: "Pink-red with hearts", bg: "linear-gradient(135deg, #2a0a14 0%, #1f0810 100%)", border: "#e8365d", color: "#ff7eb3" },
           ] as const;
 
@@ -1756,7 +1756,7 @@ export default function EventEditorPage() {
                   setDragItem(null);
                 }}
                 style={{
-                  border: `1px solid ${dragOver === `ticket:${slot.key}` ? "#ff0033" : "#222"}`,
+                  border: `1px solid ${dragOver === `ticket:${slot.key}` ? "#8B5CF6" : "#222"}`,
                   background: "#111",
                   transition: "border-color 0.15s",
                 }}
@@ -1771,15 +1771,15 @@ export default function EventEditorPage() {
                     <button type="button" onClick={() => moveSlot(slot.key, "down")} disabled={!canDown} style={arrowBtn(canDown)}>&#9660;</button>
                   </div>
                   <span style={{ flex: 1, fontFamily: "'Space Mono', monospace", fontSize: "0.75rem", color: "#fff" }}>{name}</span>
-                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#888" }}>{currSym}{Number(price).toFixed(2)}</span>
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: "0.7rem", color: "#8888a0" }}>{currSym}{Number(price).toFixed(2)}</span>
                   <span style={{
                     fontSize: "0.55rem", fontFamily: "'Space Mono', monospace", textTransform: "uppercase",
                     padding: "2px 8px", border: `1px solid ${ts.border}`, color: ts.color,
                   }}>{currentTier === "valentine" ? "\u2665 " : ""}{currentTier}</span>
-                  <span style={{ color: "#555", fontSize: "0.7rem" }}>{isExp ? "\u25BE" : "\u25B8"}</span>
+                  <span style={{ color: "#55557a", fontSize: "0.7rem" }}>{isExp ? "\u25BE" : "\u25B8"}</span>
                 </div>
                 {isExp && (
-                  <div style={{ padding: "12px 14px", borderTop: "1px solid #1a1a1a" }}>
+                  <div style={{ padding: "12px 14px", borderTop: "1px solid #111117" }}>
                     <div className="admin-form">
                       <div className="admin-form__row">
                         <div className="admin-form__field">
@@ -1846,13 +1846,13 @@ export default function EventEditorPage() {
             wSections.push(renderGroup(gName, gi, allGroups.length,
               gSlots.length > 0
                 ? gSlots.map((s, idx) => renderWeeztixCard(s, idx > 0, idx < gSlots.length - 1))
-                : <p style={{ color: "#555", fontSize: "0.7rem", padding: "8px 0", textAlign: "center" }}>No tickets in this group yet.</p>,
+                : <p style={{ color: "#55557a", fontSize: "0.7rem", padding: "8px 0", textAlign: "center" }}>No tickets in this group yet.</p>,
               gSlots.length));
           });
 
           if (wSections.length === 0) {
             wSections.push(
-              <p key="empty" style={{ color: "#888", fontSize: "0.85rem" }}>
+              <p key="empty" style={{ color: "#8888a0", fontSize: "0.85rem" }}>
                 Configure ticket IDs to see tickets here.
               </p>
             );
@@ -2029,8 +2029,8 @@ export default function EventEditorPage() {
               fontSize: "0.8rem",
               color:
                 saveMsg.includes("Error") || saveMsg.includes("error")
-                  ? "#ff0033"
-                  : "#4ecb71",
+                  ? "#8B5CF6"
+                  : "#34D399",
             }}
           >
             {saveMsg}

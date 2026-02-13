@@ -178,37 +178,37 @@ export default function StripeConnectPage() {
       {/* ─── Platform Fee Configuration ─── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 32 }}>
         <div className="admin-card">
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 8 }}>
             Default Platform Fee
           </div>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#ff0033", marginBottom: 4 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#8B5CF6", marginBottom: 4 }}>
             {DEFAULT_PLATFORM_FEE_PERCENT}%
           </div>
-          <div style={{ color: "#555", fontSize: 11 }}>
+          <div style={{ color: "#55557a", fontSize: 11 }}>
             Per transaction (configurable per event)
           </div>
         </div>
 
         <div className="admin-card">
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 8 }}>
             Minimum Fee
           </div>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#ff0033", marginBottom: 4 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#8B5CF6", marginBottom: 4 }}>
             £{(MIN_PLATFORM_FEE / 100).toFixed(2)}
           </div>
-          <div style={{ color: "#555", fontSize: 11 }}>
+          <div style={{ color: "#55557a", fontSize: 11 }}>
             Floor per transaction
           </div>
         </div>
 
         <div className="admin-card">
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 8 }}>
             Connected Accounts
           </div>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#ff0033", marginBottom: 4 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#8B5CF6", marginBottom: 4 }}>
             {loading ? "—" : accounts.length}
           </div>
-          <div style={{ color: "#555", fontSize: 11 }}>
+          <div style={{ color: "#55557a", fontSize: 11 }}>
             {activeAccounts.length} active, {pendingAccounts.length} pending
           </div>
         </div>
@@ -217,47 +217,47 @@ export default function StripeConnectPage() {
       {/* ─── Revenue Split Breakdown ─── */}
       <div className="admin-card" style={{ marginBottom: 32 }}>
         <h2 className="admin-card__title">Revenue Split Example</h2>
-        <p style={{ color: "#666", fontSize: 12, marginBottom: 16 }}>
+        <p style={{ color: "#6666a0", fontSize: 12, marginBottom: 16 }}>
           How a £30 ticket sale is split with the default {DEFAULT_PLATFORM_FEE_PERCENT}% platform fee:
         </p>
         <div style={{ display: "flex", gap: 0, height: 40, borderRadius: 4, overflow: "hidden", marginBottom: 16 }}>
           <div style={{
             flex: 100 - DEFAULT_PLATFORM_FEE_PERCENT,
-            background: "rgba(78, 203, 113, 0.15)",
+            background: "rgba(52, 211, 153, 0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontFamily: "'Space Mono', monospace",
             fontSize: 11,
-            color: "#4ecb71",
-            borderRight: "2px solid #1a1a1a",
+            color: "#34D399",
+            borderRight: "2px solid #111117",
           }}>
             Promoter: £{(30 * (1 - DEFAULT_PLATFORM_FEE_PERCENT / 100)).toFixed(2)}
           </div>
           <div style={{
             flex: DEFAULT_PLATFORM_FEE_PERCENT,
-            background: "rgba(255, 0, 51, 0.12)",
+            background: "rgba(139, 92, 246, 0.12)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontFamily: "'Space Mono', monospace",
             fontSize: 11,
-            color: "#ff0033",
+            color: "#8B5CF6",
           }}>
             Platform: £{(30 * DEFAULT_PLATFORM_FEE_PERCENT / 100).toFixed(2)}
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Charge Model</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 4 }}>Charge Model</div>
             <div style={{ color: "#ccc", fontSize: 12 }}>Direct Charges</div>
           </div>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Merchant of Record</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 4 }}>Merchant of Record</div>
             <div style={{ color: "#ccc", fontSize: 12 }}>Connected Account (Promoter)</div>
           </div>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Stripe Fees Paid By</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 4 }}>Stripe Fees Paid By</div>
             <div style={{ color: "#ccc", fontSize: 12 }}>Connected Account</div>
           </div>
         </div>
@@ -267,7 +267,7 @@ export default function StripeConnectPage() {
       {onboardingUrl && (
         <div className="admin-card" style={{ marginBottom: 32, borderColor: "rgba(246, 4, 52, 0.3)" }}>
           <h2 className="admin-card__title">Onboarding Link</h2>
-          <p style={{ color: "#888", fontSize: 13, marginBottom: 12 }}>
+          <p style={{ color: "#8888a0", fontSize: 13, marginBottom: 12 }}>
             Send this link to the promoter or open it yourself to complete KYC/onboarding:
           </p>
           <div style={{
@@ -276,7 +276,7 @@ export default function StripeConnectPage() {
             padding: "12px 16px",
             fontFamily: "'Space Mono', monospace",
             fontSize: 11,
-            color: "#ff0033",
+            color: "#8B5CF6",
             wordBreak: "break-all",
             marginBottom: 12,
           }}>
@@ -317,37 +317,37 @@ export default function StripeConnectPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 24px", marginBottom: 16 }}>
             <div>
               <span className="admin-form__label">Account ID</span>
-              <div style={{ color: "#ff0033", fontFamily: "'Space Mono', monospace", fontSize: 11 }}>
+              <div style={{ color: "#8B5CF6", fontFamily: "'Space Mono', monospace", fontSize: 11 }}>
                 {selectedAccount.account_id}
               </div>
             </div>
             <div>
               <span className="admin-form__label">Charges</span>
-              <div style={{ color: selectedAccount.charges_enabled ? "#4ecb71" : "#ff0033" }}>
+              <div style={{ color: selectedAccount.charges_enabled ? "#34D399" : "#8B5CF6" }}>
                 {selectedAccount.charges_enabled ? "Enabled" : "Disabled"}
               </div>
             </div>
             <div>
               <span className="admin-form__label">Payouts</span>
-              <div style={{ color: selectedAccount.payouts_enabled ? "#4ecb71" : "#ff0033" }}>
+              <div style={{ color: selectedAccount.payouts_enabled ? "#34D399" : "#8B5CF6" }}>
                 {selectedAccount.payouts_enabled ? "Enabled" : "Disabled"}
               </div>
             </div>
             <div>
               <span className="admin-form__label">KYC Status</span>
-              <div style={{ color: selectedAccount.details_submitted ? "#4ecb71" : "#ffc107" }}>
+              <div style={{ color: selectedAccount.details_submitted ? "#34D399" : "#FBBF24" }}>
                 {selectedAccount.details_submitted ? "Complete" : "Incomplete"}
               </div>
             </div>
             <div>
               <span className="admin-form__label">Card Payments</span>
-              <div style={{ color: selectedAccount.capabilities.card_payments === "active" ? "#4ecb71" : "#888" }}>
+              <div style={{ color: selectedAccount.capabilities.card_payments === "active" ? "#34D399" : "#888" }}>
                 {selectedAccount.capabilities.card_payments}
               </div>
             </div>
             <div>
               <span className="admin-form__label">Transfers</span>
-              <div style={{ color: selectedAccount.capabilities.transfers === "active" ? "#4ecb71" : "#888" }}>
+              <div style={{ color: selectedAccount.capabilities.transfers === "active" ? "#34D399" : "#888" }}>
                 {selectedAccount.capabilities.transfers}
               </div>
             </div>
@@ -355,10 +355,10 @@ export default function StripeConnectPage() {
 
           {selectedAccount.requirements.currently_due.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <span className="admin-form__label" style={{ color: "#ffc107" }}>Currently Due Requirements</span>
+              <span className="admin-form__label" style={{ color: "#FBBF24" }}>Currently Due Requirements</span>
               <ul style={{ listStyle: "none", padding: 0, margin: "4px 0" }}>
                 {selectedAccount.requirements.currently_due.map((req) => (
-                  <li key={req} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#888", padding: "2px 0" }}>
+                  <li key={req} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#8888a0", padding: "2px 0" }}>
                     {req}
                   </li>
                 ))}
@@ -368,10 +368,10 @@ export default function StripeConnectPage() {
 
           {selectedAccount.requirements.past_due.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <span className="admin-form__label" style={{ color: "#ff0033" }}>Past Due (Urgent)</span>
+              <span className="admin-form__label" style={{ color: "#8B5CF6" }}>Past Due (Urgent)</span>
               <ul style={{ listStyle: "none", padding: 0, margin: "4px 0" }}>
                 {selectedAccount.requirements.past_due.map((req) => (
-                  <li key={req} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#ff0033", padding: "2px 0" }}>
+                  <li key={req} style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: "#8B5CF6", padding: "2px 0" }}>
                     {req}
                   </li>
                 ))}
@@ -380,7 +380,7 @@ export default function StripeConnectPage() {
           )}
 
           {selectedAccount.requirements.disabled_reason && (
-            <div style={{ color: "#ff0033", fontFamily: "'Space Mono', monospace", fontSize: 11, marginBottom: 12, padding: "8px 12px", background: "rgba(255,0,51,0.06)", border: "1px solid rgba(255,0,51,0.15)" }}>
+            <div style={{ color: "#8B5CF6", fontFamily: "'Space Mono', monospace", fontSize: 11, marginBottom: 12, padding: "8px 12px", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
               Disabled Reason: {selectedAccount.requirements.disabled_reason}
             </div>
           )}
@@ -489,13 +489,13 @@ export default function StripeConnectPage() {
         )}
 
         {loading ? (
-          <div style={{ color: "#555", padding: "24px 0", textAlign: "center" }}>
+          <div style={{ color: "#55557a", padding: "24px 0", textAlign: "center" }}>
             Loading accounts...
           </div>
         ) : accounts.length === 0 ? (
-          <div style={{ color: "#555", padding: "24px 0", textAlign: "center" }}>
+          <div style={{ color: "#55557a", padding: "24px 0", textAlign: "center" }}>
             No connected accounts yet. Create one above or use{" "}
-            <a href="/admin/payments/" style={{ color: "#ff0033" }}>
+            <a href="/admin/payments/" style={{ color: "#8B5CF6" }}>
               Payment Settings
             </a>{" "}
             for the promoter-friendly setup.
@@ -519,11 +519,11 @@ export default function StripeConnectPage() {
                 {accounts.map((acc) => (
                   <tr key={acc.account_id}>
                     <td>
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#ff0033" }}>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: "#8B5CF6" }}>
                         {acc.account_id}
                       </div>
                       {acc.business_name && (
-                        <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: "#8888a0", marginTop: 2 }}>
                           {acc.business_name}
                         </div>
                       )}
@@ -535,14 +535,14 @@ export default function StripeConnectPage() {
                         letterSpacing: 1,
                         textTransform: "uppercase",
                         padding: "2px 6px",
-                        background: acc.type === "custom" ? "rgba(255, 0, 51, 0.06)" : "rgba(78, 203, 113, 0.06)",
-                        color: acc.type === "custom" ? "#ff0033" : "#4ecb71",
-                        border: `1px solid ${acc.type === "custom" ? "rgba(255, 0, 51, 0.15)" : "rgba(78, 203, 113, 0.15)"}`,
+                        background: acc.type === "custom" ? "rgba(139, 92, 246, 0.06)" : "rgba(52, 211, 153, 0.06)",
+                        color: acc.type === "custom" ? "#8B5CF6" : "#34D399",
+                        border: `1px solid ${acc.type === "custom" ? "rgba(139, 92, 246, 0.15)" : "rgba(52, 211, 153, 0.15)"}`,
                       }}>
                         {acc.type}
                       </span>
                     </td>
-                    <td style={{ fontSize: 12, color: "#888" }}>{acc.email || "—"}</td>
+                    <td style={{ fontSize: 12, color: "#8888a0" }}>{acc.email || "—"}</td>
                     <td>{acc.country || "—"}</td>
                     <td>
                       <StatusDot enabled={acc.charges_enabled} />
@@ -558,10 +558,10 @@ export default function StripeConnectPage() {
                         textTransform: "uppercase",
                         padding: "3px 8px",
                         background: acc.details_submitted
-                          ? "rgba(78, 203, 113, 0.1)"
+                          ? "rgba(52, 211, 153, 0.1)"
                           : "rgba(255, 193, 7, 0.1)",
-                        color: acc.details_submitted ? "#4ecb71" : "#ffc107",
-                        border: `1px solid ${acc.details_submitted ? "rgba(78, 203, 113, 0.2)" : "rgba(255, 193, 7, 0.2)"}`,
+                        color: acc.details_submitted ? "#34D399" : "#FBBF24",
+                        border: `1px solid ${acc.details_submitted ? "rgba(52, 211, 153, 0.2)" : "rgba(255, 193, 7, 0.2)"}`,
                       }}>
                         {acc.details_submitted ? "Complete" : "Pending"}
                       </span>
@@ -595,24 +595,24 @@ export default function StripeConnectPage() {
       {/* ─── Platform Architecture Reference ─── */}
       <div className="admin-card">
         <h2 className="admin-card__title">Architecture Reference</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 32px", color: "#888", fontSize: 12, lineHeight: 1.8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 32px", color: "#8888a0", fontSize: 12, lineHeight: 1.8 }}>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Connect Model</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 4 }}>Connect Model</div>
             <div style={{ color: "#ccc" }}>Sellers collect payments directly (Direct Charges)</div>
             <div>Connected account is the merchant of record. Platform takes application_fee_amount.</div>
           </div>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Account Types</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 4 }}>Account Types</div>
             <div style={{ color: "#ccc" }}>Custom (default) — fully white-labeled</div>
             <div>Express also supported for simpler onboarding. Standard accounts for future.</div>
           </div>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Fee Collection</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 4 }}>Fee Collection</div>
             <div style={{ color: "#ccc" }}>Platform collects processing fees</div>
             <div>Stripe processing fees deducted from connected account. Platform fee via application_fee_amount.</div>
           </div>
           <div>
-            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Onboarding</div>
+            <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#55557a", marginBottom: 4 }}>Onboarding</div>
             <div style={{ color: "#ccc" }}>Embedded components + hosted fallback</div>
             <div>Stripe handles KYC/liability. Account Links for hosted flow. Account Sessions for embedded.</div>
           </div>
@@ -631,7 +631,7 @@ function StatusDot({ enabled }: { enabled: boolean }) {
         width: 8,
         height: 8,
         borderRadius: "50%",
-        background: enabled ? "#4ecb71" : "#ff0033",
+        background: enabled ? "#34D399" : "#8B5CF6",
       }} />
       {enabled ? "Yes" : "No"}
     </span>

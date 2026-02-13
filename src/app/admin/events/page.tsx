@@ -15,10 +15,10 @@ function slugify(text: string): string {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "#ffc107",
-  live: "#4ecb71",
+  draft: "#FBBF24",
+  live: "#34D399",
   past: "#888",
-  cancelled: "#ff0033",
+  cancelled: "#8B5CF6",
   archived: "#555",
 };
 
@@ -348,9 +348,9 @@ export default function EventsPage() {
                 style={{
                   padding: "5px 12px",
                   fontSize: "0.72rem",
-                  background: statusFilter === tab.key ? "#ff003322" : "transparent",
-                  color: statusFilter === tab.key ? "#ff0033" : "#888",
-                  border: `1px solid ${statusFilter === tab.key ? "#ff003344" : "#333"}`,
+                  background: statusFilter === tab.key ? "#8B5CF622" : "transparent",
+                  color: statusFilter === tab.key ? "#8B5CF6" : "#888",
+                  border: `1px solid ${statusFilter === tab.key ? "#8B5CF644" : "#333"}`,
                   cursor: "pointer",
                   fontFamily: "'Space Mono', monospace",
                   letterSpacing: "0.5px",
@@ -365,7 +365,7 @@ export default function EventsPage() {
           {/* Date filters row */}
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <label style={{ fontSize: "0.7rem", color: "#888" }}>From</label>
+              <label style={{ fontSize: "0.7rem", color: "#8888a0" }}>From</label>
               <input
                 type="date"
                 className="admin-form__input"
@@ -375,7 +375,7 @@ export default function EventsPage() {
               />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <label style={{ fontSize: "0.7rem", color: "#888" }}>To</label>
+              <label style={{ fontSize: "0.7rem", color: "#8888a0" }}>To</label>
               <input
                 type="date"
                 className="admin-form__input"
@@ -389,7 +389,7 @@ export default function EventsPage() {
                 onClick={() => { setDateFrom(""); setDateTo(""); }}
                 style={{
                   fontSize: "0.68rem",
-                  color: "#ff0033",
+                  color: "#8B5CF6",
                   background: "none",
                   border: "none",
                   cursor: "pointer",
@@ -406,8 +406,8 @@ export default function EventsPage() {
                 padding: "5px 10px",
                 fontSize: "0.7rem",
                 background: "transparent",
-                color: "#888",
-                border: "1px solid #333",
+                color: "#8888a0",
+                border: "1px solid #1e1e2a",
                 cursor: "pointer",
                 fontFamily: "'Space Mono', monospace",
               }}
@@ -490,13 +490,13 @@ export default function EventsPage() {
                         style={{
                           background:
                             evt.payment_method === "test"
-                              ? "#ffc10722"
+                              ? "#FBBF2422"
                               : evt.payment_method === "stripe"
                                 ? "#635bff22"
                                 : "#88888822",
                           color:
                             evt.payment_method === "test"
-                              ? "#ffc107"
+                              ? "#FBBF24"
                               : evt.payment_method === "stripe"
                                 ? "#635bff"
                                 : "#888",
@@ -515,9 +515,9 @@ export default function EventsPage() {
                             style={{
                               padding: "3px 8px",
                               fontSize: "0.62rem",
-                              background: "#4ecb7122",
-                              color: "#4ecb71",
-                              border: "1px solid #4ecb7144",
+                              background: "#34D39922",
+                              color: "#34D399",
+                              border: "1px solid #34D39944",
                               cursor: "pointer",
                             }}
                           >
@@ -532,8 +532,8 @@ export default function EventsPage() {
                               padding: "3px 8px",
                               fontSize: "0.62rem",
                               background: "transparent",
-                              color: "#888",
-                              border: "1px solid #333",
+                              color: "#8888a0",
+                              border: "1px solid #1e1e2a",
                               cursor: "pointer",
                             }}
                           >
@@ -548,9 +548,9 @@ export default function EventsPage() {
                               style={{
                                 padding: "3px 8px",
                                 fontSize: "0.62rem",
-                                background: "#ff003322",
-                                color: "#ff0033",
-                                border: "1px solid #ff003344",
+                                background: "#8B5CF622",
+                                color: "#8B5CF6",
+                                border: "1px solid #8B5CF644",
                                 cursor: "pointer",
                               }}
                             >
@@ -562,8 +562,8 @@ export default function EventsPage() {
                                 padding: "3px 6px",
                                 fontSize: "0.62rem",
                                 background: "transparent",
-                                color: "#888",
-                                border: "1px solid #333",
+                                color: "#8888a0",
+                                border: "1px solid #1e1e2a",
                                 cursor: "pointer",
                               }}
                             >
@@ -578,8 +578,8 @@ export default function EventsPage() {
                               padding: "3px 8px",
                               fontSize: "0.62rem",
                               background: "transparent",
-                              color: "#ff003388",
-                              border: "1px solid #ff003333",
+                              color: "#8B5CF688",
+                              border: "1px solid #8B5CF633",
                               cursor: "pointer",
                             }}
                           >

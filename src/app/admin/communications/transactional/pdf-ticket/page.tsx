@@ -77,8 +77,8 @@ function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null>
  *   yPct = (mm / 210) * 100    xPct = (mm / 148) * 100
  */
 function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketSettings; large?: boolean; showMerch?: boolean }) {
-  const accent = s.accent_color || "#ff0033";
-  const bg = s.bg_color || "#0e0e0e";
+  const accent = s.accent_color || "#8B5CF6";
+  const bg = s.bg_color || "#08080c";
   const text = s.text_color || "#ffffff";
   const secondary = s.secondary_color || "#969696";
 
@@ -378,7 +378,7 @@ export default function PdfTicketPage() {
 
                     {settings.logo_url ? (
                       <div
-                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#0e0e0e] p-4"
+                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
                         onClick={() => logoFileRef.current?.click()}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}

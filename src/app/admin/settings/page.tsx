@@ -67,7 +67,7 @@ export default function AdminSettings() {
       {/* ── ORDER EMAILS (moved to Communications) ── */}
       <div className="admin-section">
         <h2 className="admin-section__title">ORDER EMAILS</h2>
-        <p style={{ color: "#888", fontSize: "0.85rem", marginBottom: "16px" }}>
+        <p style={{ color: "#8888a0", fontSize: "0.85rem", marginBottom: "16px" }}>
           Email settings have moved to the Communications section.
         </p>
         <Link
@@ -79,11 +79,11 @@ export default function AdminSettings() {
             fontFamily: "'Space Mono', monospace",
             fontSize: "0.75rem",
             letterSpacing: "1px",
-            color: "#ff0033",
+            color: "#8B5CF6",
             textDecoration: "none",
             padding: "10px 16px",
-            border: "1px solid rgba(255,0,51,0.3)",
-            background: "rgba(255,0,51,0.04)",
+            border: "1px solid rgba(139,92,246,0.3)",
+            background: "rgba(139,92,246,0.04)",
             transition: "background 0.15s, border-color 0.15s",
           }}
         >
@@ -101,31 +101,31 @@ export default function AdminSettings() {
         <table className="admin-table">
           <tbody>
             <tr>
-              <td style={{ color: "#888" }}>Platform</td>
+              <td style={{ color: "#8888a0" }}>Platform</td>
               <td>FERAL PRESENTS</td>
             </tr>
             <tr>
-              <td style={{ color: "#888" }}>Framework</td>
+              <td style={{ color: "#8888a0" }}>Framework</td>
               <td>Next.js (App Router)</td>
             </tr>
             <tr>
-              <td style={{ color: "#888" }}>Database</td>
+              <td style={{ color: "#8888a0" }}>Database</td>
               <td>Supabase (PostgreSQL)</td>
             </tr>
             <tr>
-              <td style={{ color: "#888" }}>Hosting</td>
+              <td style={{ color: "#8888a0" }}>Hosting</td>
               <td>Vercel</td>
             </tr>
             <tr>
-              <td style={{ color: "#888" }}>Payments</td>
+              <td style={{ color: "#8888a0" }}>Payments</td>
               <td>Stripe (Connect)</td>
             </tr>
             <tr>
-              <td style={{ color: "#888" }}>Email</td>
+              <td style={{ color: "#8888a0" }}>Email</td>
               <td>Resend</td>
             </tr>
             <tr>
-              <td style={{ color: "#888" }}>Org ID</td>
+              <td style={{ color: "#8888a0" }}>Org ID</td>
               <td>feral</td>
             </tr>
           </tbody>
@@ -137,7 +137,7 @@ export default function AdminSettings() {
         <h2 className="admin-section__title">DANGER ZONE</h2>
         <p
           style={{
-            color: "#888",
+            color: "#8888a0",
             fontSize: "0.85rem",
             marginBottom: "16px",
           }}
@@ -158,7 +158,7 @@ export default function AdminSettings() {
             className="admin-form__save"
             onClick={handleResetTraffic}
             style={{
-              background: confirmReset === "RESET" ? "#ff0033" : "#333",
+              background: confirmReset === "RESET" ? "#8B5CF6" : "#333",
             }}
           >
             Reset Traffic Data
@@ -167,7 +167,7 @@ export default function AdminSettings() {
             className="admin-form__save"
             onClick={handleResetPopups}
             style={{
-              background: confirmReset === "RESET" ? "#ff0033" : "#333",
+              background: confirmReset === "RESET" ? "#8B5CF6" : "#333",
             }}
           >
             Reset Popup Data
@@ -176,7 +176,7 @@ export default function AdminSettings() {
         {status && (
           <p
             style={{
-              color: status.includes("Error") ? "#ff0033" : "#4ecb71",
+              color: status.includes("Error") ? "#8B5CF6" : "#34D399",
               fontSize: "0.85rem",
               marginTop: "12px",
             }}

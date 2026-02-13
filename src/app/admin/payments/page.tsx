@@ -225,7 +225,7 @@ export default function PaymentSettingsPage() {
     return (
       <div style={{ maxWidth: 700 }}>
         <h1 className="admin-page-title">Payment Settings</h1>
-        <div style={{ color: "#555", padding: "48px 0", textAlign: "center" }}>
+        <div style={{ color: "#55557a", padding: "48px 0", textAlign: "center" }}>
           Loading...
         </div>
       </div>
@@ -256,7 +256,7 @@ export default function PaymentSettingsPage() {
                 width: 64,
                 height: 64,
                 borderRadius: "50%",
-                background: "rgba(255, 0, 51, 0.08)",
+                background: "rgba(139, 92, 246, 0.08)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -269,7 +269,7 @@ export default function PaymentSettingsPage() {
                 height="28"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#ff0033"
+                stroke="#8B5CF6"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -291,7 +291,7 @@ export default function PaymentSettingsPage() {
             >
               Set Up Payments
             </h2>
-            <p style={{ color: "#888", fontSize: 13, lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
+            <p style={{ color: "#8888a0", fontSize: 13, lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
               Add your business details to start accepting card payments, Apple
               Pay, Google Pay, and more. You&apos;ll need your business info and
               bank account details.
@@ -383,7 +383,7 @@ export default function PaymentSettingsPage() {
             </h2>
             <p
               style={{
-                color: "#888",
+                color: "#8888a0",
                 fontSize: 13,
                 lineHeight: 1.6,
                 maxWidth: 400,
@@ -438,7 +438,7 @@ export default function PaymentSettingsPage() {
             className="admin-card"
             style={{
               borderColor: status.charges_enabled
-                ? "rgba(78, 203, 113, 0.2)"
+                ? "rgba(52, 211, 153, 0.2)"
                 : "rgba(255, 193, 7, 0.2)",
             }}
           >
@@ -456,7 +456,7 @@ export default function PaymentSettingsPage() {
                   height: 48,
                   borderRadius: "50%",
                   background: status.charges_enabled
-                    ? "rgba(78, 203, 113, 0.1)"
+                    ? "rgba(52, 211, 153, 0.1)"
                     : "rgba(255, 193, 7, 0.1)",
                   display: "flex",
                   alignItems: "center",
@@ -466,9 +466,9 @@ export default function PaymentSettingsPage() {
                 }}
               >
                 {status.charges_enabled ? (
-                  <span style={{ color: "#4ecb71" }}>&#10003;</span>
+                  <span style={{ color: "#34D399" }}>&#10003;</span>
                 ) : (
-                  <span style={{ color: "#ffc107" }}>!</span>
+                  <span style={{ color: "#FBBF24" }}>!</span>
                 )}
               </div>
               <div>
@@ -486,7 +486,7 @@ export default function PaymentSettingsPage() {
                     ? "Payments Active"
                     : "Setup Incomplete"}
                 </h2>
-                <p style={{ color: "#888", fontSize: 13 }}>
+                <p style={{ color: "#8888a0", fontSize: 13 }}>
                   {status.charges_enabled
                     ? "You can accept payments. Funds will be deposited to your bank account."
                     : "Complete the verification to start accepting payments."}
@@ -522,7 +522,7 @@ export default function PaymentSettingsPage() {
                     fontSize: 9,
                     letterSpacing: 2,
                     textTransform: "uppercase",
-                    color: "#555",
+                    color: "#55557a",
                     marginBottom: 4,
                   }}
                 >
@@ -539,7 +539,7 @@ export default function PaymentSettingsPage() {
                     fontSize: 9,
                     letterSpacing: 2,
                     textTransform: "uppercase",
-                    color: "#555",
+                    color: "#55557a",
                     marginBottom: 4,
                   }}
                 >
@@ -556,7 +556,7 @@ export default function PaymentSettingsPage() {
                     fontSize: 9,
                     letterSpacing: 2,
                     textTransform: "uppercase",
-                    color: "#555",
+                    color: "#55557a",
                     marginBottom: 4,
                   }}
                 >
@@ -573,7 +573,7 @@ export default function PaymentSettingsPage() {
                     fontSize: 9,
                     letterSpacing: 2,
                     textTransform: "uppercase",
-                    color: "#555",
+                    color: "#55557a",
                     marginBottom: 4,
                   }}
                 >
@@ -581,7 +581,7 @@ export default function PaymentSettingsPage() {
                 </div>
                 <div
                   style={{
-                    color: "#ff0033",
+                    color: "#8B5CF6",
                     fontSize: 11,
                     fontFamily: "'Space Mono', monospace",
                   }}
@@ -649,7 +649,7 @@ export default function PaymentSettingsPage() {
                   {status.apple_pay_domains.length > 0 && (
                     <span
                       style={{
-                        color: "#555",
+                        color: "#55557a",
                         fontSize: 11,
                         marginLeft: 8,
                       }}
@@ -669,7 +669,7 @@ export default function PaymentSettingsPage() {
               <h2 className="admin-card__title">Action Required</h2>
               <p
                 style={{
-                  color: "#888",
+                  color: "#8888a0",
                   fontSize: 13,
                   marginBottom: 12,
                 }}
@@ -698,7 +698,7 @@ export default function PaymentSettingsPage() {
                       border: "1px solid rgba(255, 193, 7, 0.1)",
                     }}
                   >
-                    <span style={{ color: "#ffc107", fontSize: 14 }}>
+                    <span style={{ color: "#FBBF24", fontSize: 14 }}>
                       &#9679;
                     </span>
                     <span
@@ -726,13 +726,13 @@ export default function PaymentSettingsPage() {
           {/* Link to event setup */}
           <div className="admin-card" style={{ marginTop: 24 }}>
             <h2 className="admin-card__title">Next Steps</h2>
-            <p style={{ color: "#888", fontSize: 13, lineHeight: 1.6 }}>
+            <p style={{ color: "#8888a0", fontSize: 13, lineHeight: 1.6 }}>
               Your payment account is linked automatically. To start accepting
               payments for an event:
             </p>
             <ol
               style={{
-                color: "#888",
+                color: "#8888a0",
                 fontSize: 13,
                 lineHeight: 2,
                 paddingLeft: 20,
@@ -741,7 +741,7 @@ export default function PaymentSettingsPage() {
             >
               <li>
                 Go to{" "}
-                <Link href="/admin/events/" style={{ color: "#ff0033" }}>
+                <Link href="/admin/events/" style={{ color: "#8B5CF6" }}>
                   Events
                 </Link>
               </li>
@@ -766,10 +766,10 @@ function StatusBadge({ enabled }: { enabled: boolean }) {
         textTransform: "uppercase",
         padding: "3px 10px",
         background: enabled
-          ? "rgba(78, 203, 113, 0.1)"
-          : "rgba(255, 0, 51, 0.08)",
-        color: enabled ? "#4ecb71" : "#ff0033",
-        border: `1px solid ${enabled ? "rgba(78, 203, 113, 0.2)" : "rgba(255, 0, 51, 0.15)"}`,
+          ? "rgba(52, 211, 153, 0.1)"
+          : "rgba(139, 92, 246, 0.08)",
+        color: enabled ? "#34D399" : "#8B5CF6",
+        border: `1px solid ${enabled ? "rgba(52, 211, 153, 0.2)" : "rgba(139, 92, 246, 0.15)"}`,
       }}
     >
       {enabled ? "Active" : "Inactive"}

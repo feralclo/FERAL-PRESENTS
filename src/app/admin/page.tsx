@@ -55,14 +55,14 @@ function PeriodSelector({
   onChange: (p: Period) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
+    <div className="flex items-center gap-1 rounded-lg bg-secondary/80 p-1 ring-1 ring-border/50">
       {PERIODS.map((p) => (
         <button
           key={p.key}
           onClick={() => onChange(p.key)}
-          className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
+          className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-200 ${
             period === p.key
-              ? "bg-background text-foreground shadow-sm"
+              ? "bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -87,10 +87,10 @@ function QuickLink({
 }) {
   return (
     <Link href={href} className="group block">
-      <Card className="transition-all duration-150 hover:border-muted-foreground/20 hover:bg-card/80">
+      <Card className="transition-all duration-200 hover:border-primary/20 hover:shadow-[0_0_30px_rgba(139,92,246,0.06)]">
         <CardContent className="flex items-center gap-4 p-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/50">
-            <Icon size={18} className="text-muted-foreground transition-colors group-hover:text-foreground" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10 transition-all duration-200 group-hover:bg-primary/12 group-hover:ring-primary/20">
+            <Icon size={18} className="text-primary/60 transition-colors duration-200 group-hover:text-primary" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -98,7 +98,7 @@ function QuickLink({
           </div>
           <ChevronRight
             size={16}
-            className="text-muted-foreground/15 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground/50"
+            className="text-muted-foreground/0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/50"
           />
         </CardContent>
       </Card>
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
   return (
     <div>
       {/* Header with period selector */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
             Dashboard
@@ -311,8 +311,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Traffic Section */}
-      <div className="mt-8">
-        <h2 className="mb-4 font-mono text-xs font-medium uppercase tracking-[2px] text-muted-foreground">
+      <div className="mt-10">
+        <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
           Traffic & Engagement
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -321,35 +321,35 @@ export default function AdminDashboard() {
             value={traffic.totalTraffic.toLocaleString()}
             icon={Globe}
             detail="All page views"
-  
+
           />
           <StatCard
             label="Today's Traffic"
             value={traffic.todayTraffic.toLocaleString()}
             icon={TrendingUp}
             detail="Page views today"
-  
+
           />
           <StatCard
             label="Conversion Rate"
             value={traffic.conversionRate}
             icon={MousePointerClick}
             detail="Landing → Checkout"
-  
+
           />
           <StatCard
             label="Active Events"
             value={traffic.activeEvents.toString()}
             icon={Activity}
             detail="Draft or live"
-  
+
           />
         </div>
       </div>
 
       {/* Quick Links */}
-      <div className="mt-8">
-        <h2 className="mb-4 font-mono text-xs font-medium uppercase tracking-[2px] text-muted-foreground">
+      <div className="mt-10">
+        <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
           Quick Links
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

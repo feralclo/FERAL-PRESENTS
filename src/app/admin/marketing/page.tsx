@@ -129,7 +129,7 @@ export default function MarketingPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, color: "#555", fontFamily: "'Space Mono', monospace", fontSize: 11, letterSpacing: 2 }}>
+      <div style={{ padding: 40, color: "#55557a", fontFamily: "'Space Mono', monospace", fontSize: 11, letterSpacing: 2 }}>
         LOADING...
       </div>
     );
@@ -153,7 +153,7 @@ export default function MarketingPage() {
         style={{
           fontFamily: "'Space Mono', monospace",
           fontSize: 11,
-          color: "#555",
+          color: "#55557a",
           letterSpacing: 1,
           marginBottom: 32,
         }}
@@ -204,7 +204,7 @@ export default function MarketingPage() {
               style={{
                 fontFamily: "'Space Mono', monospace",
                 fontSize: 10,
-                color: "#555",
+                color: "#55557a",
                 letterSpacing: 0.5,
                 marginTop: 2,
               }}
@@ -246,7 +246,7 @@ export default function MarketingPage() {
               height: 24,
               borderRadius: 24,
               border: "none",
-              background: settings.meta_tracking_enabled ? "#ff0033" : "#333",
+              background: settings.meta_tracking_enabled ? "#8B5CF6" : "#333",
               position: "relative",
               cursor: "pointer",
               transition: "background 0.2s",
@@ -309,7 +309,7 @@ export default function MarketingPage() {
                 fontFamily: "'Space Mono', monospace",
                 fontSize: 9,
                 letterSpacing: 1,
-                color: "#555",
+                color: "#55557a",
                 cursor: "pointer",
                 textTransform: "uppercase",
               }}
@@ -340,7 +340,7 @@ export default function MarketingPage() {
               textTransform: "uppercase",
               background: "transparent",
               border: "1px solid rgba(255,255,255,0.12)",
-              color: "#888",
+              color: "#8888a0",
               padding: "10px 20px",
               cursor: testStatus === "testing" ? "wait" : "pointer",
               transition: "all 0.15s",
@@ -359,14 +359,14 @@ export default function MarketingPage() {
                 padding: "10px 14px",
                 background:
                   testStatus === "success"
-                    ? "rgba(78, 203, 113, 0.08)"
-                    : "rgba(255, 0, 51, 0.08)",
+                    ? "rgba(52, 211, 153, 0.08)"
+                    : "rgba(139, 92, 246, 0.08)",
                 border: `1px solid ${
                   testStatus === "success"
-                    ? "rgba(78, 203, 113, 0.2)"
-                    : "rgba(255, 0, 51, 0.2)"
+                    ? "rgba(52, 211, 153, 0.2)"
+                    : "rgba(139, 92, 246, 0.2)"
                 }`,
-                color: testStatus === "success" ? "#4ecb71" : "#ff0033",
+                color: testStatus === "success" ? "#34D399" : "#8B5CF6",
               }}
             >
               {testMessage}
@@ -388,7 +388,7 @@ export default function MarketingPage() {
           style={{
             fontFamily: "'Space Mono', monospace",
             fontSize: 11,
-            color: "#333",
+            color: "#1e1e2a",
             letterSpacing: 1,
           }}
         >
@@ -407,7 +407,7 @@ export default function MarketingPage() {
             fontWeight: 700,
             letterSpacing: 3,
             textTransform: "uppercase",
-            background: "#ff0033",
+            background: "#8B5CF6",
             color: "#fff",
             border: "none",
             padding: "14px 32px",
@@ -424,7 +424,7 @@ export default function MarketingPage() {
             style={{
               fontFamily: "'Space Mono', monospace",
               fontSize: 10,
-              color: "#4ecb71",
+              color: "#34D399",
               letterSpacing: 1,
             }}
           >
@@ -437,7 +437,7 @@ export default function MarketingPage() {
             style={{
               fontFamily: "'Space Mono', monospace",
               fontSize: 10,
-              color: "#ff0033",
+              color: "#8B5CF6",
               letterSpacing: 0.5,
             }}
           >
@@ -456,7 +456,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: 9,
   letterSpacing: 2,
   textTransform: "uppercase",
-  color: "#666",
+  color: "#6666a0",
   display: "block",
   marginBottom: 4,
 };

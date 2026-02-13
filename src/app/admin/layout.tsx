@@ -138,7 +138,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* ── Mobile overlay ── */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
@@ -173,7 +173,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Scrollable navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {NAV_SECTIONS.map((section) => (
-            <div key={section.label} className="mb-6">
+            <div key={section.label} className="mb-5">
               <div className="mb-2 px-3 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-sidebar-foreground/40">
                 {section.label}
               </div>
@@ -187,25 +187,25 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       href={item.href}
                       onClick={() => setOpen(false)}
                       className={cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+                        "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
                         active
-                          ? "bg-sidebar-accent text-white"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-white"
+                          ? "bg-primary/10 text-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
                       )}
                     >
                       <Icon
                         size={16}
                         strokeWidth={1.75}
                         className={cn(
-                          "shrink-0 transition-colors duration-150",
+                          "shrink-0 transition-colors duration-200",
                           active
                             ? "text-primary"
-                            : "text-sidebar-foreground/60 group-hover:text-white"
+                            : "text-sidebar-foreground/60 group-hover:text-foreground/80"
                         )}
                       />
                       <span>{item.label}</span>
                       {active && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(255,0,51,0.5)]" />
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
                       )}
                     </Link>
                   );
@@ -219,33 +219,33 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <div ref={menuRef} className="relative shrink-0 border-t border-sidebar-border">
           {/* Dropdown menu — positioned above */}
           {userMenuOpen && (
-            <div className="absolute inset-x-3 bottom-full mb-2 rounded-lg border border-sidebar-border bg-sidebar p-1 shadow-xl shadow-black/30">
+            <div className="absolute inset-x-3 bottom-full mb-2 rounded-xl border border-sidebar-border bg-sidebar p-1.5 shadow-xl shadow-black/40">
               <Link
                 href="/admin/settings/"
                 onClick={() => { setUserMenuOpen(false); setOpen(false); }}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-white"
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground"
               >
                 <Settings size={14} className="text-sidebar-foreground/60" />
                 Settings
               </Link>
               <button
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-white"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground"
                 onClick={() => setUserMenuOpen(false)}
               >
                 <UserIcon size={14} className="text-sidebar-foreground/60" />
                 Account
               </button>
               <button
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-white"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground"
                 onClick={() => setUserMenuOpen(false)}
               >
                 <Receipt size={14} className="text-sidebar-foreground/60" />
                 Billing
               </button>
-              <div className="my-1 h-px bg-sidebar-border" />
+              <div className="my-1.5 h-px bg-sidebar-border" />
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               >
                 <LogOut size={14} className="text-sidebar-foreground/60" />
                 Log out
@@ -259,12 +259,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             className="flex w-full items-center gap-3 p-3 transition-colors hover:bg-sidebar-accent/30"
           >
             {/* Avatar */}
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/80 to-primary/40 text-[11px] font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/60 to-primary/25 text-[11px] font-bold text-white ring-1 ring-primary/20">
               {initials}
             </div>
             {/* Name + email */}
             <div className="flex-1 text-left overflow-hidden">
-              <p className="truncate text-[13px] font-medium text-white">FERAL</p>
+              <p className="truncate text-[13px] font-medium text-foreground/90">FERAL</p>
               <p className="truncate text-[11px] text-sidebar-foreground/50">{userEmail || "admin"}</p>
             </div>
             <ChevronsUpDown size={14} className="shrink-0 text-sidebar-foreground/40" />
@@ -275,7 +275,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* ── Main area (offset by sidebar width on desktop) ── */}
       <div className="flex min-h-screen flex-1 flex-col lg:pl-64">
         {/* Sticky top header */}
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/80 px-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
             <Button

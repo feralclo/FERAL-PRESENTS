@@ -18,7 +18,7 @@ interface HealthResponse {
 const STATUS_CONFIG = {
   ok: { label: "OPERATIONAL", color: "#00c853", bg: "rgba(0, 200, 83, 0.08)" },
   degraded: { label: "DEGRADED", color: "#ffa726", bg: "rgba(255, 167, 38, 0.08)" },
-  down: { label: "DOWN", color: "#ff0033", bg: "rgba(255, 0, 51, 0.08)" },
+  down: { label: "DOWN", color: "#8B5CF6", bg: "rgba(139, 92, 246, 0.08)" },
 } as const;
 
 export default function SystemHealth() {
@@ -64,9 +64,9 @@ export default function SystemHealth() {
           style={{
             padding: "8px 16px",
             background: "transparent",
-            border: "1px solid #2a2a2a",
+            border: "1px solid #1e1e2a",
             borderRadius: 4,
-            color: "#888",
+            color: "#8888a0",
             fontFamily: "'Space Mono', monospace",
             fontSize: "0.7rem",
             letterSpacing: "1px",
@@ -118,7 +118,7 @@ export default function SystemHealth() {
             <span
               style={{
                 marginLeft: "auto",
-                color: "#555",
+                color: "#55557a",
                 fontSize: "0.7rem",
                 fontFamily: "'Space Mono', monospace",
               }}
@@ -130,8 +130,8 @@ export default function SystemHealth() {
       )}
 
       {error && (
-        <div className="admin-section" style={{ borderColor: "#ff003344" }}>
-          <p style={{ color: "#ff0033", fontFamily: "'Space Mono', monospace", fontSize: "0.8rem" }}>
+        <div className="admin-section" style={{ borderColor: "#8B5CF644" }}>
+          <p style={{ color: "#8B5CF6", fontFamily: "'Space Mono', monospace", fontSize: "0.8rem" }}>
             Error: {error}
           </p>
         </div>
@@ -202,7 +202,7 @@ export default function SystemHealth() {
                     style={{
                       display: "block",
                       marginTop: 8,
-                      color: "#666",
+                      color: "#6666a0",
                       fontSize: "0.7rem",
                       fontFamily: "'Inter', sans-serif",
                       lineHeight: 1.4,
@@ -251,7 +251,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <tr>
       <td
         style={{
-          color: "#888",
+          color: "#8888a0",
           fontFamily: "'Space Mono', monospace",
           fontSize: "0.7rem",
           letterSpacing: "1px",

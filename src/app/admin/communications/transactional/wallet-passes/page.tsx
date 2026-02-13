@@ -79,10 +79,10 @@ function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null>
    ═══════════════════════════════════════════════════════════ */
 
 function WalletPassPreview({ settings: s, large }: { settings: WalletPassSettings; large?: boolean }) {
-  const accent = s.accent_color || "#ff0033";
-  const bg = s.bg_color || "#0e0e0e";
+  const accent = s.accent_color || "#8B5CF6";
+  const bg = s.bg_color || "#08080c";
   const text = s.text_color || "#ffffff";
-  const label = s.label_color || "#ff0033";
+  const label = s.label_color || "#8B5CF6";
   const maxW = large ? 420 : 320;
 
   const hasMerch = true; // Preview always shows merch example
@@ -477,7 +477,7 @@ export default function WalletPassesPage() {
 
                         {settings.logo_url ? (
                           <div
-                            className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#0e0e0e] p-4"
+                            className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
                             onClick={() => logoFileRef.current?.click()}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -531,7 +531,7 @@ export default function WalletPassesPage() {
 
                         {settings.strip_url ? (
                           <div
-                            className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#0e0e0e] overflow-hidden"
+                            className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] overflow-hidden"
                             onClick={() => stripFileRef.current?.click()}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}

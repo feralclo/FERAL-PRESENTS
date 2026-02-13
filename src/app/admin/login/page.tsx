@@ -73,7 +73,7 @@ function LoginForm() {
             alt="FERAL"
             style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }}
           />
-          <p style={{ color: "#888", textAlign: "center", fontFamily: "'Space Mono', monospace" }}>
+          <p style={{ color: "#8888a0", textAlign: "center", fontFamily: "'Space Mono', monospace" }}>
             Checking session...
           </p>
         </div>
@@ -145,7 +145,7 @@ export default function AdminLoginPage() {
               alt="FERAL"
               style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }}
             />
-            <p style={{ color: "#888", textAlign: "center", fontFamily: "'Space Mono', monospace" }}>
+            <p style={{ color: "#8888a0", textAlign: "center", fontFamily: "'Space Mono', monospace" }}>
               Loading...
             </p>
           </div>

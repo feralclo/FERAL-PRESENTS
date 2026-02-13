@@ -3,6 +3,8 @@
  * Layout (sidebar, header) is now handled by Tailwind in layout.tsx.
  * This file contains styles for legacy admin pages (dashboard, events,
  * orders, customers, etc.) that haven't migrated to shadcn yet.
+ *
+ * Color palette: Electric Violet (#8B5CF6) with deep charcoal surfaces.
  */
 
 /* Hide scanlines and noise in admin */
@@ -20,23 +22,24 @@ body:has(.admin-login) > .noise {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0e0e0e;
+  background: #08080c;
 }
 
 .admin-login__box {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
+  background: #111117;
+  border: 1px solid #1e1e2a;
+  border-radius: 12px;
   padding: 40px;
   width: 100%;
   max-width: 400px;
   margin: 0 20px;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.3);
 }
 
 .admin-login__title {
   font-family: 'Space Mono', monospace;
   font-size: 1.5rem;
-  color: #fff;
+  color: #f0f0f5;
   text-align: center;
   margin-bottom: 24px;
   letter-spacing: 4px;
@@ -46,24 +49,25 @@ body:has(.admin-login) > .noise {
   display: block;
   width: 100%;
   padding: 12px 16px;
-  background: #0e0e0e;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  color: #fff;
+  background: #08080c;
+  border: 1px solid #1e1e2a;
+  border-radius: 6px;
+  color: #f0f0f5;
   font-family: 'Inter', sans-serif;
   font-size: 0.9rem;
   margin-bottom: 12px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
 }
 
 .admin-login__input:focus {
-  border-color: #ff0033;
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
 .admin-login__error {
-  color: #ff0033;
+  color: #F43F5E;
   font-size: 0.8rem;
   margin-bottom: 12px;
 }
@@ -72,19 +76,21 @@ body:has(.admin-login) > .noise {
   display: block;
   width: 100%;
   padding: 12px;
-  background: #ff0033;
+  background: #8B5CF6;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #fff;
   font-family: 'Space Mono', monospace;
   font-size: 0.9rem;
   letter-spacing: 2px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 12px rgba(139, 92, 246, 0.25);
 }
 
 .admin-login__btn:hover {
-  background: #cc0029;
+  background: #7C3AED;
+  box-shadow: 0 1px 20px rgba(139, 92, 246, 0.35);
 }
 
 /* ── Content area (shared) ── */
@@ -103,14 +109,19 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-stat-card {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
+  background: #111117;
+  border: 1px solid #1e1e2a;
+  border-radius: 12px;
   padding: 20px;
+  transition: border-color 0.2s;
+}
+
+.admin-stat-card:hover {
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .admin-stat-card__label {
-  color: #888;
+  color: #8888a0;
   font-size: 0.7rem;
   letter-spacing: 2px;
   font-family: 'Space Mono', monospace;
@@ -119,7 +130,7 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-stat-card__value {
-  color: #fff;
+  color: #f0f0f5;
   font-size: 2rem;
   font-weight: 700;
   font-family: 'Space Mono', monospace;
@@ -127,19 +138,19 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-stat-card__value--red {
-  color: #ff0033;
+  color: #8B5CF6;
 }
 
 .admin-stat-card__value--price {
-  color: #4ecb71;
+  color: #34D399;
 }
 
 /* ── Section ── */
 
 .admin-section {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
+  background: #111117;
+  border: 1px solid #1e1e2a;
+  border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
 }
@@ -147,7 +158,7 @@ body:has(.admin-login) > .noise {
 .admin-section__title {
   font-family: 'Space Mono', monospace;
   font-size: 0.85rem;
-  color: #fff;
+  color: #f0f0f5;
   letter-spacing: 2px;
   margin-bottom: 16px;
 }
@@ -173,7 +184,7 @@ body:has(.admin-login) > .noise {
 
 .admin-form__label {
   display: block;
-  color: #888;
+  color: #8888a0;
   font-size: 0.75rem;
   letter-spacing: 1px;
   margin-bottom: 6px;
@@ -183,36 +194,39 @@ body:has(.admin-login) > .noise {
 .admin-form__input {
   width: 100%;
   padding: 10px 14px;
-  background: #0e0e0e;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  color: #fff;
+  background: #08080c;
+  border: 1px solid #1e1e2a;
+  border-radius: 6px;
+  color: #f0f0f5;
   font-family: 'Inter', sans-serif;
   font-size: 0.85rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
 }
 
 .admin-form__input:focus {
-  border-color: #ff0033;
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
 .admin-form__save {
   padding: 10px 24px;
-  background: #ff0033;
+  background: #8B5CF6;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #fff;
   font-family: 'Space Mono', monospace;
   font-size: 0.8rem;
   letter-spacing: 1px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 12px rgba(139, 92, 246, 0.25);
 }
 
 .admin-form__save:hover {
-  background: #cc0029;
+  background: #7C3AED;
+  box-shadow: 0 1px 20px rgba(139, 92, 246, 0.35);
 }
 
 .admin-form__save:disabled {
@@ -233,14 +247,14 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-form__error {
-  background: rgba(255, 0, 51, 0.08);
-  border: 1px solid rgba(255, 0, 51, 0.2);
-  color: #ff0033;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  color: #F43F5E;
   font-family: 'Space Mono', monospace;
   font-size: 0.75rem;
   letter-spacing: 0.5px;
   padding: 10px 14px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .admin-form__textarea {
@@ -264,26 +278,26 @@ body:has(.admin-login) > .noise {
 .admin-table th {
   text-align: left;
   padding: 10px 12px;
-  color: #888;
+  color: #8888a0;
   font-size: 0.7rem;
   letter-spacing: 1px;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid #1e1e2a;
   font-family: 'Space Mono', monospace;
 }
 
 .admin-table td {
   padding: 10px 12px;
-  color: #fff;
+  color: #f0f0f5;
   font-size: 0.85rem;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid rgba(30, 30, 42, 0.5);
 }
 
 .admin-table tbody tr {
-  transition: background 0.1s;
+  transition: background 0.15s;
 }
 
 .admin-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .admin-table__mono {
@@ -292,12 +306,12 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-table__price {
-  color: #4ecb71;
+  color: #34D399;
   font-weight: 600;
 }
 
 .admin-table__sub {
-  color: #666;
+  color: #8888a0;
   font-size: 0.75rem;
   margin-top: 2px;
 }
@@ -307,7 +321,7 @@ body:has(.admin-login) > .noise {
 .admin-title {
   font-family: 'Space Mono', monospace;
   font-size: 1.4rem;
-  color: #fff;
+  color: #f0f0f5;
   letter-spacing: 3px;
   text-transform: uppercase;
   margin-bottom: 20px;
@@ -333,7 +347,7 @@ body:has(.admin-login) > .noise {
 
 .admin-back-link {
   display: inline-block;
-  color: #888;
+  color: #8888a0;
   font-family: 'Space Mono', monospace;
   font-size: 0.75rem;
   letter-spacing: 1px;
@@ -343,7 +357,7 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-back-link:hover {
-  color: #fff;
+  color: #f0f0f5;
 }
 
 /* ── Buttons ── */
@@ -355,19 +369,21 @@ body:has(.admin-login) > .noise {
   letter-spacing: 1.5px;
   text-transform: uppercase;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .admin-btn--primary {
-  background: #ff0033;
+  background: #8B5CF6;
   color: #fff;
+  box-shadow: 0 1px 12px rgba(139, 92, 246, 0.25);
 }
 
 .admin-btn--primary:hover {
-  background: #cc0029;
+  background: #7C3AED;
+  box-shadow: 0 1px 20px rgba(139, 92, 246, 0.35);
 }
 
 .admin-btn--primary:disabled {
@@ -377,23 +393,23 @@ body:has(.admin-login) > .noise {
 
 .admin-btn--secondary {
   background: transparent;
-  color: #888;
-  border: 1px solid #333;
+  color: #8888a0;
+  border: 1px solid #1e1e2a;
 }
 
 .admin-btn--secondary:hover {
-  color: #fff;
-  border-color: #555;
+  color: #f0f0f5;
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 .admin-btn--danger {
-  background: rgba(255, 0, 51, 0.12);
-  color: #ff0033;
-  border: 1px solid rgba(255, 0, 51, 0.2);
+  background: rgba(244, 63, 94, 0.1);
+  color: #F43F5E;
+  border: 1px solid rgba(244, 63, 94, 0.2);
 }
 
 .admin-btn--danger:hover {
-  background: rgba(255, 0, 51, 0.2);
+  background: rgba(244, 63, 94, 0.18);
 }
 
 .admin-btn--danger:disabled {
@@ -403,7 +419,7 @@ body:has(.admin-login) > .noise {
 
 .admin-btn--link {
   background: transparent;
-  color: #888;
+  color: #8888a0;
   border: none;
   padding: 0;
   text-decoration: none;
@@ -413,7 +429,7 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-btn--link:hover {
-  color: #fff;
+  color: #f0f0f5;
 }
 
 .admin-btn-icon {
@@ -422,19 +438,26 @@ body:has(.admin-login) > .noise {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
-  border: 1px solid #333;
-  color: #888;
+  border: 1px solid #1e1e2a;
+  color: #8888a0;
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .admin-btn-icon--danger:hover {
-  background: rgba(255, 0, 51, 0.12);
-  color: #ff0033;
-  border-color: rgba(255, 0, 51, 0.3);
+  background: rgba(244, 63, 94, 0.1);
+  color: #F43F5E;
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+/* ── Small Button ── */
+
+.admin-btn--small {
+  padding: 6px 12px;
+  font-size: 0.7rem;
 }
 
 /* ── Badges ── */
@@ -454,13 +477,13 @@ body:has(.admin-login) > .noise {
 /* ── Links ── */
 
 .admin-link {
-  color: #fff;
+  color: #f0f0f5;
   text-decoration: none;
   transition: color 0.15s;
 }
 
 .admin-link:hover {
-  color: #ff0033;
+  color: #8B5CF6;
 }
 
 /* ── Filters ── */
@@ -502,14 +525,14 @@ body:has(.admin-login) > .noise {
 
 .admin-funnel__fill {
   width: 100%;
-  background: #ff0033;
-  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #8B5CF6 0%, #7C3AED 100%);
+  border-radius: 6px 6px 0 0;
   transition: height 0.6s ease;
   min-height: 4px;
 }
 
 .admin-funnel__label {
-  color: #888;
+  color: #8888a0;
   font-size: 0.65rem;
   letter-spacing: 1px;
   margin-top: 8px;
@@ -518,7 +541,7 @@ body:has(.admin-login) > .noise {
 }
 
 .admin-funnel__count {
-  color: #fff;
+  color: #f0f0f5;
   font-size: 0.9rem;
   font-weight: 700;
   margin-top: 4px;
@@ -548,8 +571,8 @@ body:has(.admin-login) > .noise {
   align-items: center;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  color: #fff;
+  border-bottom: 1px solid rgba(30, 30, 42, 0.5);
+  color: #f0f0f5;
   font-size: 0.85rem;
 }
 
@@ -558,11 +581,11 @@ body:has(.admin-login) > .noise {
   font-size: 0.7rem;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #666;
+  color: #8888a0;
 }
 
 .admin-detail-price {
-  color: #4ecb71;
+  color: #34D399;
   font-family: 'Space Mono', monospace;
   font-weight: 700;
   font-size: 1.1rem;
@@ -571,14 +594,14 @@ body:has(.admin-login) > .noise {
 /* ── Refund Form ── */
 
 .admin-refund-form {
-  border-color: rgba(255, 0, 51, 0.2);
+  border-color: rgba(244, 63, 94, 0.2);
 }
 
 /* ── Loading ── */
 
 .admin-loading {
   text-align: center;
-  color: #888;
+  color: #8888a0;
   font-family: 'Space Mono', monospace;
   font-size: 0.8rem;
   letter-spacing: 2px;
@@ -589,20 +612,20 @@ body:has(.admin-login) > .noise {
 
 .admin-empty {
   text-align: center;
-  color: #888;
+  color: #8888a0;
   font-family: 'Inter', sans-serif;
   font-size: 0.9rem;
   padding: 40px 20px;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
+  background: #111117;
+  border: 1px solid #1e1e2a;
+  border-radius: 12px;
 }
 
 /* ── Check-in Button ── */
 
 .admin-checkin-btn {
   padding: 6px 14px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-family: 'Space Mono', monospace;
   font-size: 0.7rem;
   letter-spacing: 1px;
@@ -610,19 +633,19 @@ body:has(.admin-login) > .noise {
   cursor: pointer;
   transition: all 0.15s;
   background: transparent;
-  color: #888;
-  border: 1px solid #333;
+  color: #8888a0;
+  border: 1px solid #1e1e2a;
 }
 
 .admin-checkin-btn:hover {
-  color: #fff;
-  border-color: #555;
+  color: #f0f0f5;
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 .admin-checkin-btn--checked {
-  background: rgba(78, 203, 113, 0.12);
-  color: #4ecb71;
-  border-color: rgba(78, 203, 113, 0.3);
+  background: rgba(52, 211, 153, 0.1);
+  color: #34D399;
+  border-color: rgba(52, 211, 153, 0.25);
 }
 
 /* ── Editor Header ── */
@@ -651,21 +674,21 @@ body:has(.admin-login) > .noise {
 .admin-save-toast {
   padding: 10px 16px;
   margin-bottom: 16px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.8rem;
   font-family: 'Space Mono', monospace;
 }
 
 .admin-save-toast--success {
-  background: rgba(78, 203, 113, 0.08);
-  color: #4ecb71;
-  border: 1px solid rgba(78, 203, 113, 0.2);
+  background: rgba(52, 211, 153, 0.08);
+  color: #34D399;
+  border: 1px solid rgba(52, 211, 153, 0.2);
 }
 
 .admin-save-toast--error {
-  background: rgba(255, 0, 51, 0.08);
-  color: #ff0033;
-  border: 1px solid rgba(255, 0, 51, 0.2);
+  background: rgba(244, 63, 94, 0.08);
+  color: #F43F5E;
+  border: 1px solid rgba(244, 63, 94, 0.2);
 }
 
 /* ── Responsive ── */

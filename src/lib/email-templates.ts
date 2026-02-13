@@ -130,7 +130,7 @@ export function buildOrderConfirmationEmail(
 
           <!-- Header -->
           <tr>
-            <td style="padding: 28px 32px 20px; text-align: center;${logoUrl ? " background-color: #0e0e0e;" : ""}">
+            <td style="padding: 16px 32px 12px; text-align: center;${logoUrl ? " background-color: #0e0e0e;" : ""}">
               ${
                 logoUrl
                   ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}" height="${logoH}" style="height: ${logoH}px; width: auto; display: inline-block;">`
@@ -141,7 +141,7 @@ export function buildOrderConfirmationEmail(
 
           <!-- Heading -->
           <tr>
-            <td style="padding: 0 32px 8px; text-align: center;">
+            <td style="padding: 20px 32px 8px; text-align: center;">
               <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #111; letter-spacing: 1px;">
                 ${escapeHtml(heading)}
               </h1>

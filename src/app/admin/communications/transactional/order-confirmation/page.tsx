@@ -144,8 +144,8 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
         <div className="p-6 rounded-b-lg" style={{ background: "linear-gradient(to bottom, #1a1a1a 0%, #e8e8ea 8%, #f4f4f5 16%)" }}>
           <div className="mx-auto max-w-[520px] rounded-lg overflow-hidden shadow-lg" style={{ background: "#fff" }}>
             <div style={{ height: 4, backgroundColor: accent }} />
-            {/* Header — matches actual email HTML: padding 28px top + 20px bottom + logo height */}
-            <div className="flex items-center justify-center" style={{ padding: "28px 32px 20px", background: settings.logo_url ? "#0e0e0e" : undefined }}>
+            {/* Header — matches actual email HTML: padding 16px top + 12px bottom + logo height */}
+            <div className="flex items-center justify-center" style={{ padding: "16px 32px 12px", background: settings.logo_url ? "#0e0e0e" : undefined }}>
               {settings.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={settings.logo_url} alt="Logo" style={{ height: logoH, width: "auto", maxWidth: 280, objectFit: "contain" }} />
@@ -155,7 +155,8 @@ function EmailPreview({ settings }: { settings: EmailSettings }) {
                 </div>
               )}
             </div>
-            <div className="px-8 pt-4 pb-2 text-center">
+            {/* Heading — matches actual email HTML: padding 20px top + 8px bottom */}
+            <div style={{ padding: "20px 32px 8px", textAlign: "center" }}>
               <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: 24, fontWeight: 700, color: "#111", letterSpacing: 1, margin: 0 }}>{previewHeading}</h1>
             </div>
             <div className="px-8 pb-6 text-center">
@@ -450,18 +451,18 @@ export default function OrderConfirmationPage() {
                     <>
                       <Separator />
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label>Logo Size</Label>
-                          <span className="font-mono text-xs text-muted-foreground">{settings.logo_height || 48}px</span>
-                        </div>
+                        <Label>Logo Size</Label>
                         <Slider
                           min={24}
-                          max={80}
+                          max={160}
                           step={2}
                           value={[settings.logo_height || 48]}
                           onValueChange={([v]) => update("logo_height", v)}
                         />
-                        <p className="text-[10px] text-muted-foreground">Height of the logo in the email header</p>
+                        <div className="flex justify-between">
+                          <span className="text-[10px] text-muted-foreground">Small</span>
+                          <span className="text-[10px] text-muted-foreground">Large</span>
+                        </div>
                       </div>
                     </>
                   )}

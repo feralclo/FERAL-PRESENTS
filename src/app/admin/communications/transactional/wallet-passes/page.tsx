@@ -396,11 +396,10 @@ export default function WalletPassesPage() {
                           <AlertCircle size={12} className="mt-0.5 shrink-0" />
                           <span>
                             Missing:
-                            {!configStatus?.apple.hasCertificate && " Pass Certificate"}
-                            {!configStatus?.apple.hasWwdr && " WWDR Certificate"}
+                            {!configStatus?.apple.hasCertificate && " Pass Certificate (env var)"}
                             {!configStatus?.apple.hasPassTypeId && " Pass Type ID"}
                             {!configStatus?.apple.hasTeamId && " Team ID"}
-                            . Set these in environment variables.
+                            . Run the setup script or configure manually.
                           </span>
                         </div>
                       )}
@@ -432,9 +431,9 @@ export default function WalletPassesPage() {
                           <AlertCircle size={12} className="mt-0.5 shrink-0" />
                           <span>
                             Missing:
-                            {!configStatus?.google.hasServiceAccount && " Service Account Key"}
+                            {!configStatus?.google.hasServiceAccount && " Service Account Key (env var)"}
                             {!configStatus?.google.hasIssuerId && " Issuer ID"}
-                            . Set these in environment variables.
+                            . Run the setup script or configure manually.
                           </span>
                         </div>
                       )}
@@ -665,7 +664,7 @@ export default function WalletPassesPage() {
                         <>
                           <div className="space-y-1 mb-3">
                             <p className="text-xs font-semibold text-foreground">Apple Wallet</p>
-                            <p className="text-[11px] text-muted-foreground">Requires <code className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-foreground/70">APPLE_PASS_CERTIFICATE</code>, <code className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-foreground/70">APPLE_WWDR_CERTIFICATE</code> env vars</p>
+                            <p className="text-[11px] text-muted-foreground">Requires <code className="text-[10px] px-1 py-0.5 rounded bg-accent/10 text-foreground/70">APPLE_PASS_CERTIFICATE</code> env var. The WWDR G4 certificate is fetched automatically from Apple.</p>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">

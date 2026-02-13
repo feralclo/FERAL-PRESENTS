@@ -101,7 +101,8 @@ describe("Wallet pass library", () => {
       const status = walletModule.getWalletConfigStatus(DEFAULT_WALLET_PASS_SETTINGS);
       expect(status.apple.configured).toBe(false);
       expect(status.apple.hasCertificate).toBe(false);
-      expect(status.apple.hasWwdr).toBe(false);
+      // WWDR is always true — auto-fetched from Apple at runtime
+      expect(status.apple.hasWwdr).toBe(true);
       expect(status.apple.hasPassTypeId).toBe(false);
       expect(status.apple.hasTeamId).toBe(false);
     });
@@ -113,11 +114,13 @@ describe("Wallet pass library", () => {
       expect(status.google.hasIssuerId).toBe(false);
     });
 
-    it("detects partial Apple configuration", () => {
+    it("detects partial Apple configuration (cert but no IDs)", () => {
       process.env.APPLE_PASS_CERTIFICATE = "test-cert";
       const status = walletModule.getWalletConfigStatus(DEFAULT_WALLET_PASS_SETTINGS);
       expect(status.apple.hasCertificate).toBe(true);
-      expect(status.apple.hasWwdr).toBe(false);
+      // WWDR is always true — auto-fetched from Apple at runtime
+      expect(status.apple.hasWwdr).toBe(true);
+      // Still not configured — missing Pass Type ID and Team ID
       expect(status.apple.configured).toBe(false);
     });
 

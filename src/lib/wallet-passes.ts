@@ -53,20 +53,69 @@ interface AppleWalletConfig {
   teamId: string;            // Apple Developer Team ID
 }
 
+/* ── WWDR G4 Certificate Auto-Fetch ──
+ * The Apple WWDR (Worldwide Developer Relations) G4 intermediate certificate
+ * is a PUBLIC certificate required for Apple Wallet pass signing. It's not a
+ * secret — it's the same cert used by every Apple Wallet pass signer globally.
+ *
+ * We auto-fetch it from Apple's servers and cache it in memory so the user
+ * never needs to deal with it. Falls back to APPLE_WWDR_CERTIFICATE env var
+ * if the fetch fails (e.g. air-gapped server).
+ */
+const APPLE_WWDR_G4_URL = "https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer";
+let _cachedWwdrPem: string | null = null;
+
+async function getWwdrCertificate(): Promise<string | null> {
+  // 1. Check env var first (user override / air-gapped fallback)
+  const envWwdr = process.env.APPLE_WWDR_CERTIFICATE;
+  if (envWwdr) {
+    if (envWwdr.includes("-----BEGIN")) return envWwdr;
+    return Buffer.from(envWwdr, "base64").toString("utf-8");
+  }
+
+  // 2. Return cached version if available
+  if (_cachedWwdrPem) return _cachedWwdrPem;
+
+  // 3. Auto-fetch from Apple (DER format → convert to PEM)
+  try {
+    const response = await fetch(APPLE_WWDR_G4_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const derBuffer = Buffer.from(await response.arrayBuffer());
+    const base64 = derBuffer.toString("base64");
+    const pem = `-----BEGIN CERTIFICATE-----\n${base64.match(/.{1,64}/g)!.join("\n")}\n-----END CERTIFICATE-----`;
+    _cachedWwdrPem = pem;
+    console.log("[wallet] Auto-fetched Apple WWDR G4 certificate");
+    return pem;
+  } catch (err) {
+    console.error("[wallet] Failed to auto-fetch WWDR G4 certificate:", err);
+    return null;
+  }
+}
+
 /**
  * Read Apple Wallet signing configuration from environment variables.
  * Returns null if not configured (graceful degradation).
+ *
+ * Only requires 3 things from the user:
+ * 1. APPLE_PASS_CERTIFICATE — their .p12 pass certificate (base64)
+ * 2. Pass Type ID — in admin UI or APPLE_PASS_TYPE_IDENTIFIER env var
+ * 3. Team ID — in admin UI or APPLE_PASS_TEAM_IDENTIFIER env var
+ *
+ * The WWDR G4 certificate is auto-fetched from Apple.
+ * The certificate password defaults to empty if not set.
  */
-function getAppleWalletConfig(settings: WalletPassSettings): AppleWalletConfig | null {
+async function getAppleWalletConfig(settings: WalletPassSettings): Promise<AppleWalletConfig | null> {
   const cert = process.env.APPLE_PASS_CERTIFICATE;
   const password = process.env.APPLE_PASS_CERTIFICATE_PASSWORD || "";
-  const wwdr = process.env.APPLE_WWDR_CERTIFICATE;
   const passTypeId = settings.apple_pass_type_id || process.env.APPLE_PASS_TYPE_IDENTIFIER;
   const teamId = settings.apple_team_id || process.env.APPLE_PASS_TEAM_IDENTIFIER;
 
-  if (!cert || !wwdr || !passTypeId || !teamId) return null;
+  if (!cert || !passTypeId || !teamId) return null;
 
-  // Env vars store base64-encoded PEM content
+  const wwdrPem = await getWwdrCertificate();
+  if (!wwdrPem) return null;
+
+  // Env var stores base64-encoded PEM or raw PEM content
   const decodeCert = (val: string) => {
     if (val.includes("-----BEGIN")) return val;
     return Buffer.from(val, "base64").toString("utf-8");
@@ -75,7 +124,7 @@ function getAppleWalletConfig(settings: WalletPassSettings): AppleWalletConfig |
   return {
     passCertPem: decodeCert(cert),
     passCertPassword: password,
-    wwdrCertPem: decodeCert(wwdr),
+    wwdrCertPem: wwdrPem,
     passTypeId,
     teamId,
   };
@@ -559,9 +608,9 @@ export async function generateApplePass(
   ticket: WalletPassTicketData,
   settings: WalletPassSettings,
 ): Promise<Buffer | null> {
-  const config = getAppleWalletConfig(settings);
+  const config = await getAppleWalletConfig(settings);
   if (!config) {
-    console.log("[wallet] Apple Wallet not configured — missing certificates or identifiers");
+    console.log("[wallet] Apple Wallet not configured — missing certificate or identifiers");
     return null;
   }
 
@@ -921,7 +970,10 @@ export interface WalletConfigStatus {
  */
 export function getWalletConfigStatus(settings: WalletPassSettings): WalletConfigStatus {
   const hasCert = !!process.env.APPLE_PASS_CERTIFICATE;
-  const hasWwdr = !!process.env.APPLE_WWDR_CERTIFICATE;
+  // WWDR G4 cert is auto-fetched from Apple at runtime — always available unless
+  // the server is air-gapped AND the env var isn't set. Mark as true since auto-fetch
+  // handles it transparently.
+  const hasWwdr = true;
   const hasPassTypeId = !!(settings.apple_pass_type_id || process.env.APPLE_PASS_TYPE_IDENTIFIER);
   const hasTeamId = !!(settings.apple_team_id || process.env.APPLE_PASS_TEAM_IDENTIFIER);
 
@@ -930,7 +982,7 @@ export function getWalletConfigStatus(settings: WalletPassSettings): WalletConfi
 
   return {
     apple: {
-      configured: hasCert && hasWwdr && hasPassTypeId && hasTeamId,
+      configured: hasCert && hasPassTypeId && hasTeamId,
       hasCertificate: hasCert,
       hasWwdr,
       hasPassTypeId,

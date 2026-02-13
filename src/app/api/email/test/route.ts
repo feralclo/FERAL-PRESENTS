@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       total: "52.92",
       tickets: includeMerch
         ? [
-            { ticket_code: "FERAL-A1B2C3D4", ticket_type: "GA + Tee", merch_size: "M" },
+            { ticket_code: "FERAL-A1B2C3D4", ticket_type: "GA + Tee", merch_size: "M", merch_name: "FERAL Tee" },
             { ticket_code: "FERAL-E5F6G7H8", ticket_type: "General Release" },
           ]
         : [
@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
       holderName: `${sampleOrder.customer_first_name} ${sampleOrder.customer_last_name}`,
       orderNumber: sampleOrder.order_number,
       merchSize: t.merch_size,
+      merchName: t.merch_name,
     }));
 
     const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings, pdfLogoBase64);

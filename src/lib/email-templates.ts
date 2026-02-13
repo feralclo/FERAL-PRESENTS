@@ -95,28 +95,46 @@ export function buildOrderConfirmationEmail(
   const hasMerch = order.tickets.some((t) => t.merch_size);
   const ticketRowsHtml = order.tickets
     .map(
-      (t) => `
+      (t) => {
+        const merchLine = t.merch_size
+          ? t.merch_name
+            ? `${escapeHtml(t.merch_name)} · Size ${escapeHtml(t.merch_size)}`
+            : `Size ${escapeHtml(t.merch_size)}`
+          : "";
+        return `
       <tr>
         <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
           <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #666; margin-bottom: 2px;">
-            ${escapeHtml(t.ticket_type)}${t.merch_size ? ` · Size ${escapeHtml(t.merch_size)}` : ""}
+            ${escapeHtml(t.ticket_type)}
           </div>
           <div style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: ${accent}; letter-spacing: 1px;">
             ${escapeHtml(t.ticket_code)}
           </div>${t.merch_size ? `
-          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #999; margin-top: 4px;">
-            Includes merch — present QR to collect
+          <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #e8e8e8;">
+            <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: ${accent}; margin-bottom: 2px;">
+              INCLUDES MERCH
+            </div>
+            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #666;">
+              ${merchLine}
+            </div>
           </div>` : ""}
         </td>
-      </tr>`
+      </tr>`;
+      }
     )
     .join("");
 
   // Build ticket codes for plain text
   const ticketCodesText = order.tickets
     .map(
-      (t) =>
-        `  ${t.ticket_type}${t.merch_size ? ` (Size ${t.merch_size})` : ""}: ${t.ticket_code}`
+      (t) => {
+        const merchInfo = t.merch_size
+          ? t.merch_name
+            ? ` — Includes merch: ${t.merch_name}, Size ${t.merch_size}`
+            : ` — Includes merch: Size ${t.merch_size}`
+          : "";
+        return `  ${t.ticket_type}: ${t.ticket_code}${merchInfo}`;
+      }
     )
     .join("\n");
 

@@ -166,6 +166,7 @@ export async function sendOrderConfirmationEmail(params: {
     ticket_code: string;
     ticket_type_name: string;
     merch_size?: string;
+    merch_name?: string;
   }[];
 }): Promise<void> {
   try {
@@ -201,6 +202,7 @@ export async function sendOrderConfirmationEmail(params: {
         ticket_code: t.ticket_code,
         ticket_type: t.ticket_type_name,
         merch_size: t.merch_size,
+        merch_name: t.merch_name,
       })),
     };
 
@@ -295,6 +297,7 @@ export async function sendOrderConfirmationEmail(params: {
       holderName: `${params.customer.first_name} ${params.customer.last_name}`,
       orderNumber: params.order.order_number,
       merchSize: t.merch_size,
+      merchName: t.merch_name,
     }));
 
     const pdfSettings = await getPdfTicketSettings(params.orgId);

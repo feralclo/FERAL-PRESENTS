@@ -352,11 +352,15 @@ export async function POST(request: NextRequest) {
         doors_time: event.doors_time,
         currency: event.currency,
       },
-      tickets: allTickets.map((t) => ({
-        ticket_code: t.ticket_code,
-        ticket_type_name: ttMap.get(t.ticket_type_id)?.name || "Ticket",
-        merch_size: t.merch_size,
-      })),
+      tickets: allTickets.map((t) => {
+        const tt = ttMap.get(t.ticket_type_id);
+        return {
+          ticket_code: t.ticket_code,
+          ticket_type_name: tt?.name || "Ticket",
+          merch_size: t.merch_size,
+          merch_name: t.merch_size ? (tt?.merch_name || undefined) : undefined,
+        };
+      }),
     }).catch(() => {
       // Silently catch — email failure must never affect the order response
     });

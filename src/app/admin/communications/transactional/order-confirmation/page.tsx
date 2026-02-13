@@ -183,9 +183,14 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
             <div className="px-8 pb-6">
               <div style={{ background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
                 <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>{showMerch ? "GA + Tee · Size M" : "General Release"}</div>
+                  <div style={{ fontSize: 13, color: "#666" }}>{showMerch ? "GA + Tee" : "General Release"}</div>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-A1B2C3D4</div>
-                  {showMerch && <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>Includes merch — present QR to collect</div>}
+                  {showMerch && (
+                    <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed #e8e8e8" }}>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: accent, marginBottom: 2 }}>INCLUDES MERCH</div>
+                      <div style={{ fontSize: 12, color: "#666" }}>FERAL Tee · Size M</div>
+                    </div>
+                  )}
                 </div>
                 <div style={{ padding: "12px 16px" }}>
                   <div style={{ fontSize: 13, color: "#666" }}>General Release</div>

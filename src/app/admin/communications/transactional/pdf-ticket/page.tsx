@@ -90,11 +90,12 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
   const venueY = eventNameY + 8;
   const dateY = venueY + 6;
   const typeY = dateY + 12;
-  const merchOffset = showMerch ? 10 : 0;
+  const merchOffset = showMerch ? 14 : 0;
   const qrY = typeY + 10 + merchOffset;
   const qrBottom = qrY + s.qr_size;
   const codeY = qrBottom + 8;
-  const holderY = codeY + 10;
+  const merchNoteOffset = showMerch ? 6 : 0;
+  const holderY = codeY + 10 + merchNoteOffset;
   const orderY = holderY + (s.show_holder ? 8 : 0);
 
   // Convert mm to percentage of A5 page
@@ -177,11 +178,11 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
         {/* Merch info */}
         {showMerch && (
           <>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 4), fontSize: "clamp(6px, 1.8cqi, 9px)", color: secondary }}>
-              INCLUDES MERCH · SIZE M
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 5), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(4px, 1.4cqi, 7px)", fontWeight: 700, color: accent, letterSpacing: 1, textTransform: "uppercase" }}>
+              INCLUDES MERCH
             </div>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 10), fontSize: "clamp(4px, 1.3cqi, 6.5px)", color: secondary }}>
-              Present this QR code to collect at the venue
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 11), fontSize: "clamp(5px, 1.7cqi, 8.5px)", color: secondary }}>
+              FERAL Tee · Size M
             </div>
           </>
         )}
@@ -209,6 +210,13 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
           FERAL-A1B2C3D4
         </div>
 
+        {/* Merch collection note */}
+        {showMerch && (
+          <div className="absolute left-0 right-0 text-center" style={{ top: yPct(codeY + 1), fontSize: "clamp(4px, 1.3cqi, 6.5px)", color: secondary }}>
+            This QR is your entry ticket &amp; merch collection pass
+          </div>
+        )}
+
         {/* Holder name */}
         {s.show_holder && (
           <div className="absolute left-0 right-0 text-center" style={{ top: yPct(holderY - 3), fontSize: "clamp(6px, 2cqi, 10px)", color: `${text}cc` }}>
@@ -232,10 +240,10 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
         {/* Disclaimer */}
         {s.show_disclaimer && (
           <>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(182 - 2), fontSize: "clamp(3px, 1.2cqi, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase" }}>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(182 - 2), fontSize: "clamp(4px, 1.4cqi, 7px)", color: secondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {s.disclaimer_line1}
             </div>
-            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(187 - 2), fontSize: "clamp(3px, 1.2cqi, 6px)", color: "#505050", letterSpacing: 0.5, textTransform: "uppercase" }}>
+            <div className="absolute left-0 right-0 text-center" style={{ top: yPct(188 - 2), fontSize: "clamp(4px, 1.4cqi, 7px)", color: secondary, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {s.disclaimer_line2}
             </div>
           </>

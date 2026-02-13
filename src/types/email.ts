@@ -54,6 +54,7 @@ export interface OrderEmailData {
     ticket_code: string;
     ticket_type: string;
     merch_size?: string;
+    merch_name?: string;
   }[];
 }
 

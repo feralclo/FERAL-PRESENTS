@@ -12,6 +12,7 @@ export interface TicketPDFData {
   holderName: string;
   orderNumber: string;
   merchSize?: string;
+  merchName?: string;
 }
 
 /** Parse hex color to [r, g, b] tuple */
@@ -123,11 +124,12 @@ export async function generateTicketsPDF(
     const venueY = eventNameY + 8;
     const dateY = venueY + 6;
     const typeY = dateY + 12;
-    const merchOffset = t.merchSize ? 10 : 0; // Extra space for merch size + collection note
+    const merchOffset = t.merchSize ? 14 : 0; // Extra space for merch label + item name
     const qrY = typeY + 10 + merchOffset;
     const qrBottom = qrY + s.qr_size;
     const codeY = qrBottom + 8;
-    const holderY = codeY + 10;
+    const merchNoteOffset = t.merchSize ? 6 : 0; // Space for "This QR is your entry ticket..." note
+    const holderY = codeY + 10 + merchNoteOffset;
     const orderY = holderY + (s.show_holder ? 8 : 0);
 
     // Background
@@ -183,13 +185,19 @@ export async function generateTicketsPDF(
     doc.setTextColor(acR, acG, acB);
     doc.text(t.ticketType.toUpperCase(), centerX, typeY, { align: "center" });
 
-    // Merch size + collection note
+    // Merch info
     if (t.merchSize) {
-      doc.setFontSize(9);
+      // "INCLUDES MERCH" label
+      doc.setFontSize(7);
+      doc.setTextColor(acR, acG, acB);
+      doc.text("INCLUDES MERCH", centerX, typeY + 8, { align: "center" });
+      // Merch item name + size
+      const merchDetail = t.merchName
+        ? `${t.merchName} · Size ${t.merchSize}`
+        : `Size ${t.merchSize}`;
+      doc.setFontSize(8.5);
       doc.setTextColor(secR, secG, secB);
-      doc.text(`INCLUDES MERCH · SIZE ${t.merchSize}`, centerX, typeY + 7, { align: "center" });
-      doc.setFontSize(6.5);
-      doc.text("Present this QR code to collect at the venue", centerX, typeY + 13, { align: "center" });
+      doc.text(merchDetail, centerX, typeY + 14, { align: "center" });
     }
 
     // QR Code
@@ -208,6 +216,13 @@ export async function generateTicketsPDF(
     doc.setFontSize(14);
     doc.setTextColor(acR, acG, acB);
     doc.text(t.ticketCode, centerX, codeY, { align: "center" });
+
+    // Merch collection note (below ticket code)
+    if (t.merchSize) {
+      doc.setFontSize(6.5);
+      doc.setTextColor(secR, secG, secB);
+      doc.text("This QR is your entry ticket & merch collection pass", centerX, codeY + 5, { align: "center" });
+    }
 
     // Holder name
     if (s.show_holder) {
@@ -229,10 +244,10 @@ export async function generateTicketsPDF(
 
     // Disclaimer
     if (s.show_disclaimer) {
-      doc.setFontSize(6);
-      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(7);
+      doc.setTextColor(secR, secG, secB);
       doc.text(s.disclaimer_line1, centerX, 182, { align: "center" });
-      doc.text(s.disclaimer_line2, centerX, 187, { align: "center" });
+      doc.text(s.disclaimer_line2, centerX, 188, { align: "center" });
     }
 
     // Bottom accent line

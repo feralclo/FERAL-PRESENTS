@@ -1,13 +1,18 @@
 /*
  * Tailwind CSS for admin dashboard (shadcn/ui foundation)
  *
- * Includes a scoped base reset for the admin area so shadcn components
- * render correctly without breaking public-facing pages.
+ * CRITICAL: Utilities are imported WITHOUT a layer so they compete with
+ * base.css on specificity (class > universal) and WIN. If utilities were
+ * in @layer, the unlayered * { margin: 0 } from base.css would override
+ * every Tailwind margin/padding class.
  */
-@layer theme, base, components, utilities;
 
+/* Theme goes in a layer (just variables, no conflicts) */
+@layer theme;
 @import "tailwindcss/theme" layer(theme);
-@import "tailwindcss/utilities" layer(utilities);
+
+/* Utilities are UNLAYERED — this is intentional. See comment above. */
+@import "tailwindcss/utilities";
 
 /*
  * FERAL design system — consumed by shadcn/ui via Tailwind v4 @theme.
@@ -47,63 +52,53 @@
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
 }
 
 /*
- * Admin-scoped base reset — provides the Preflight essentials
- * that shadcn/ui components need without touching public pages.
- *
- * Scoped to [data-admin] so it only applies inside the admin shell.
+ * Admin-scoped Preflight — provides the base reset that shadcn needs.
+ * Scoped to [data-admin] so public pages are untouched.
  */
-@layer base {
-  [data-admin] *,
-  [data-admin] *::before,
-  [data-admin] *::after {
-    border-color: var(--color-border);
-  }
+[data-admin] {
+  font-family: var(--font-sans);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
 
-  [data-admin] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: var(--color-foreground);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+[data-admin] *,
+[data-admin] *::before,
+[data-admin] *::after {
+  border-color: var(--color-border);
+}
 
-  /* Reset headings inside admin to not have browser defaults */
-  [data-admin] h1,
-  [data-admin] h2,
-  [data-admin] h3,
-  [data-admin] h4,
-  [data-admin] h5,
-  [data-admin] h6 {
-    font-size: inherit;
-    font-weight: inherit;
-    margin: 0;
-  }
+[data-admin] h1,
+[data-admin] h2,
+[data-admin] h3,
+[data-admin] h4,
+[data-admin] h5,
+[data-admin] h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
 
-  /* Reset paragraph margins */
-  [data-admin] p {
-    margin: 0;
-  }
+[data-admin] a {
+  color: inherit;
+  text-decoration: inherit;
+}
 
-  /* Links inherit and have no underline by default */
-  [data-admin] a {
-    color: inherit;
-    text-decoration: inherit;
-  }
+[data-admin] button,
+[data-admin] input,
+[data-admin] textarea,
+[data-admin] select {
+  font: inherit;
+  color: inherit;
+}
 
-  /* Buttons and inputs inherit font */
-  [data-admin] button,
-  [data-admin] input,
-  [data-admin] textarea,
-  [data-admin] select {
-    font: inherit;
-    color: inherit;
-  }
-
-  /* Code blocks */
-  [data-admin] code {
-    font-family: 'Space Mono', ui-monospace, monospace;
-    font-size: 0.875em;
-  }
+[data-admin] img,
+[data-admin] svg {
+  display: inline;
+  max-width: initial;
 }

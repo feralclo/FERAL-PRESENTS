@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
   Download,
   Filter,
   Package,
+  ArrowLeft,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -152,6 +154,10 @@ function formatDate(d: string) {
    ORDERS PAGE
    ════════════════════════════════════════════════════════ */
 export default function OrdersPage() {
+  const searchParams = useSearchParams();
+  const customerIdParam = searchParams.get("customer_id");
+  const customerNameParam = searchParams.get("customer_name");
+
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -172,6 +178,7 @@ export default function OrdersPage() {
     const params = new URLSearchParams();
     if (filterEvent) params.set("event_id", filterEvent);
     if (filterStatus) params.set("status", filterStatus);
+    if (customerIdParam) params.set("customer_id", customerIdParam);
     params.set("limit", "100");
 
     const res = await fetch(`/api/orders?${params}`);
@@ -179,7 +186,7 @@ export default function OrdersPage() {
 
     if (json.data) setOrders(json.data);
     setLoading(false);
-  }, [filterEvent, filterStatus]);
+  }, [filterEvent, filterStatus, customerIdParam]);
 
   const loadEvents = useCallback(async () => {
     const supabase = getSupabaseClient();
@@ -289,12 +296,31 @@ export default function OrdersPage() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
-            Orders
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage and track all orders
-          </p>
+          {customerNameParam ? (
+            <>
+              <Link
+                href="/admin/customers/"
+                className="mb-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ArrowLeft size={12} /> Back to Customers
+              </Link>
+              <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
+                {customerNameParam}&apos;s Orders
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Viewing all orders for this customer
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
+                Orders
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Manage and track all orders
+              </p>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <PeriodSelector period={period} onChange={setPeriod} />
@@ -418,24 +444,15 @@ export default function OrdersPage() {
                         {order.order_number}
                       </Link>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
+                    <TableCell className="text-sm text-foreground">
                       {formatDate(order.created_at)}
                     </TableCell>
-                    <TableCell>
-                      {order.customer ? (
-                        <div>
-                          <p className="text-sm text-foreground">
-                            {order.customer.first_name} {order.customer.last_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground/60">
-                            {order.customer.email}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground/30">—</span>
-                      )}
+                    <TableCell className="text-sm text-foreground">
+                      {order.customer
+                        ? `${order.customer.first_name} ${order.customer.last_name}`
+                        : "—"}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-foreground">
                       {order.event?.name || "—"}
                     </TableCell>
                     <TableCell>
@@ -446,10 +463,10 @@ export default function OrdersPage() {
                         {order.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-sm text-muted-foreground">
+                    <TableCell className="text-center font-mono text-sm text-foreground">
                       {order.ticket_count || 0}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-sm text-foreground">
                       {order.payment_method}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm font-semibold text-foreground">

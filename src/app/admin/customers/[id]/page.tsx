@@ -428,7 +428,7 @@ export default function CustomerProfilePage() {
                 Latest Order
               </CardTitle>
               {orders.length > 1 && (
-                <Link href={`/admin/orders/?customer_id=${customerId}`}>
+                <Link href={`/admin/orders/?customer_id=${customerId}&customer_name=${encodeURIComponent(`${customer.first_name} ${customer.last_name}`)}`}>
                   <Button variant="outline" size="sm">
                     View All Orders ({orders.length})
                     <ChevronRight size={14} />
@@ -439,15 +439,16 @@ export default function CustomerProfilePage() {
           </CardHeader>
           <CardContent className="p-0">
             {latestOrder ? (
-              <Link
-                href={`/admin/orders/${latestOrder.id}/`}
-                className="group flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
-              >
-                <div className="min-w-0 flex-1">
+              <div>
+                {/* Order header */}
+                <div className="flex items-center justify-between border-b border-border px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-[13px] font-semibold text-foreground">
+                    <Link
+                      href={`/admin/orders/${latestOrder.id}/`}
+                      className="font-mono text-[13px] font-semibold text-foreground hover:underline"
+                    >
                       {latestOrder.order_number}
-                    </span>
+                    </Link>
                     <Badge
                       variant={STATUS_VARIANT[latestOrder.status] || "secondary"}
                       className="text-[10px]"
@@ -455,30 +456,78 @@ export default function CustomerProfilePage() {
                       {latestOrder.status}
                     </Badge>
                   </div>
-                  <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{formatDate(latestOrder.created_at)}</span>
-                    {latestOrder.event?.name && (
-                      <>
-                        <span className="text-border">·</span>
-                        <span>{latestOrder.event.name}</span>
-                      </>
-                    )}
-                    <span className="text-border">·</span>
-                    <span>{latestOrderTicketQty} ticket{latestOrderTicketQty !== 1 ? "s" : ""}</span>
-                    <span className="text-border">·</span>
-                    <span>{latestOrder.payment_method}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm font-semibold text-foreground">
+                  <span className="font-mono text-lg font-bold text-foreground">
                     {formatCurrency(Number(latestOrder.total))}
                   </span>
-                  <ChevronRight
-                    size={14}
-                    className="text-muted-foreground/20 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
-                  />
                 </div>
-              </Link>
+
+                {/* Order details grid */}
+                <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+                  <div className="bg-card px-5 py-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date</p>
+                    <p className="mt-1 text-sm text-foreground">{formatDate(latestOrder.created_at)}</p>
+                  </div>
+                  <div className="bg-card px-5 py-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Event</p>
+                    <p className="mt-1 text-sm text-foreground">{latestOrder.event?.name || "—"}</p>
+                  </div>
+                  <div className="bg-card px-5 py-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tickets</p>
+                    <p className="mt-1 text-sm text-foreground">{latestOrderTicketQty} ticket{latestOrderTicketQty !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="bg-card px-5 py-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Payment</p>
+                    <p className="mt-1 text-sm text-foreground">{latestOrder.payment_method}</p>
+                  </div>
+                </div>
+
+                {/* Order items breakdown */}
+                {latestOrder.items && latestOrder.items.length > 0 && (
+                  <div className="border-t border-border">
+                    {latestOrder.items.map((item, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-center justify-between px-5 py-3 ${
+                          i < latestOrder.items!.length - 1 ? "border-b border-border/50" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {item.merch_size ? (
+                            <Shirt size={14} className="text-muted-foreground/50" />
+                          ) : (
+                            <TicketIcon size={14} className="text-muted-foreground/50" />
+                          )}
+                          <div>
+                            <span className="text-sm text-foreground">
+                              {item.qty}x @ {formatCurrency(Number(item.unit_price))}
+                            </span>
+                            {item.merch_size && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                Size {item.merch_size}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-mono text-sm text-foreground">
+                          {formatCurrency(Number(item.unit_price) * item.qty)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* View full order link */}
+                <Link
+                  href={`/admin/orders/${latestOrder.id}/`}
+                  className="group flex items-center justify-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+                >
+                  View Full Order Details
+                  <ChevronRight
+                    size={12}
+                    className="transition-transform group-hover:translate-x-0.5"
+                  />
+                </Link>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10">
                 <Package size={24} className="text-muted-foreground/20" />

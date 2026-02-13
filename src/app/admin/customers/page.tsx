@@ -216,10 +216,10 @@ export default function CustomersPage() {
                           {cust.first_name} {cust.last_name}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-foreground">
                         {cust.email}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-foreground">
                         {cust.phone || "—"}
                       </TableCell>
                       <TableCell>
@@ -230,13 +230,13 @@ export default function CustomersPage() {
                           {label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center font-mono text-sm text-muted-foreground">
+                      <TableCell className="text-center font-mono text-sm text-foreground">
                         {cust.total_orders}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
                         {formatCurrency(Number(cust.total_spent))}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
+                      <TableCell className="text-sm text-foreground">
                         {cust.last_order_at ? formatDate(cust.last_order_at) : "—"}
                       </TableCell>
                     </TableRow>

@@ -187,7 +187,7 @@ export default function CustomersPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden py-0 gap-0">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">

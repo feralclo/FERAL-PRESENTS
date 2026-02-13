@@ -79,7 +79,7 @@ export interface PdfTicketSettings {
 /** Default PDF ticket settings */
 export const DEFAULT_PDF_TICKET_SETTINGS: PdfTicketSettings = {
   brand_name: "FERAL PRESENTS",
-  logo_height: 12,
+  logo_height: 20,
   accent_color: "#ff0033",
   bg_color: "#0e0e0e",
   text_color: "#ffffff",

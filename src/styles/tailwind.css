@@ -7,8 +7,8 @@
  * every Tailwind margin/padding class.
  */
 
-/* Theme goes in a layer (just variables, no conflicts) */
-@layer theme;
+/* Layer order — admin-reset is BELOW unlayered utilities */
+@layer theme, admin-reset;
 @import "tailwindcss/theme" layer(theme);
 
 /* Utilities are UNLAYERED — this is intentional. See comment above. */
@@ -58,56 +58,69 @@
 
 /*
  * Admin-scoped Preflight — provides the base reset that shadcn needs.
- * Scoped to [data-admin] so public pages are untouched.
+ *
+ * CRITICAL: This MUST be in @layer admin-reset so that unlayered Tailwind
+ * utilities always override it. Without the layer, [data-admin] button
+ * (specificity 0-1-1) beats .bg-primary (0-1-0) and all button/input
+ * styles become invisible.
  */
-[data-admin] {
-  font-family: var(--font-sans);
-  color: var(--color-foreground);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.5;
+@layer admin-reset {
+  [data-admin] {
+    font-family: var(--font-sans);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+
+  [data-admin] *,
+  [data-admin] *::before,
+  [data-admin] *::after {
+    border-color: var(--color-border);
+  }
+
+  [data-admin] h1,
+  [data-admin] h2,
+  [data-admin] h3,
+  [data-admin] h4,
+  [data-admin] h5,
+  [data-admin] h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  [data-admin] a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  [data-admin] button {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  [data-admin] input,
+  [data-admin] textarea,
+  [data-admin] select {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    margin: 0;
+  }
+
+  [data-admin] img,
+  [data-admin] svg {
+    display: inline;
+    max-width: initial;
+  }
 }
 
-[data-admin] *,
-[data-admin] *::before,
-[data-admin] *::after {
-  border-color: var(--color-border);
-}
-
-[data-admin] h1,
-[data-admin] h2,
-[data-admin] h3,
-[data-admin] h4,
-[data-admin] h5,
-[data-admin] h6 {
-  font-size: inherit;
-  font-weight: inherit;
-}
-
-[data-admin] a {
-  color: inherit;
-  text-decoration: inherit;
-}
-
-[data-admin] button,
-[data-admin] input,
-[data-admin] textarea,
-[data-admin] select {
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-[data-admin] img,
-[data-admin] svg {
-  display: inline;
-  max-width: initial;
-}
+/* ── Unlayered overrides (always apply, never beaten by utilities) ── */
 
 /* Dark scrollbar for admin area */
 [data-admin] {
@@ -128,17 +141,3 @@
   caret-color: #fff !important;
   transition: background-color 5000s ease-in-out 0s;
 }
-
-/* Clean color picker swatch */
-[data-admin] input[type="color"] {
-  border: 0;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  cursor: pointer;
-  overflow: hidden;
-}
-[data-admin] input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
-[data-admin] input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
-[data-admin] input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }

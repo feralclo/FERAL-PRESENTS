@@ -93,6 +93,17 @@ export async function generateTicketsPDF(
     logoDataUrl = await fetchImageAsDataUrl(s.logo_url);
   }
 
+  // Get logo dimensions from the data URL for correct aspect ratio
+  let logoAspect = 3; // fallback ratio (width / height)
+  if (logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(logoDataUrl);
+      if (props.width && props.height) {
+        logoAspect = props.width / props.height;
+      }
+    } catch { /* use fallback ratio */ }
+  }
+
   for (let i = 0; i < tickets.length; i++) {
     if (i > 0) doc.addPage();
     const t = tickets[i];
@@ -109,8 +120,8 @@ export async function generateTicketsPDF(
     if (logoDataUrl) {
       try {
         const logoH = s.logo_height || 12;
-        // Estimate width based on ~3:1 aspect ratio, capped to fit page
-        const logoW = Math.min(logoH * 3, 120);
+        // Use actual aspect ratio, capped to fit page width
+        const logoW = Math.min(logoH * logoAspect, 120);
         doc.addImage(logoDataUrl, "PNG", centerX - logoW / 2, 10, logoW, logoH);
       } catch {
         // Fallback to text if image embed fails

@@ -3,64 +3,91 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Order } from "@/types/orders";
+import {
+  ArrowLeft,
+  Download,
+  RotateCcw,
+  Package,
+  User,
+  CreditCard,
+  Phone,
+  ShoppingBag,
+  DollarSign,
+  Ticket,
+  Shirt,
+  ScanLine,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Send,
+  ExternalLink,
+} from "lucide-react";
 
-const STATUS_COLORS: Record<string, string> = {
-  completed: "#4ecb71",
-  pending: "#ffc107",
-  refunded: "#ff0033",
-  cancelled: "#888",
-  failed: "#ff0033",
-  valid: "#4ecb71",
-  used: "#888",
+/* ── Status styling ── */
+const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "secondary"> = {
+  completed: "success",
+  pending: "warning",
+  refunded: "destructive",
+  cancelled: "secondary",
+  failed: "destructive",
+  valid: "success",
+  used: "secondary",
 };
 
+/* ── Timeline ── */
 interface TimelineEntry {
   label: string;
   detail?: string;
   time: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   color: string;
   sortDate: Date;
 }
 
 function buildTimeline(order: Order): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
-  const fmt = (d: string) => new Date(d).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const fmt = (d: string) =>
+    new Date(d).toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-  // Order created
   entries.push({
     label: "Order placed",
     detail: `${order.order_number} — £${Number(order.total).toFixed(2)}`,
     time: fmt(order.created_at),
-    color: "#4ecb71",
+    icon: ShoppingBag,
+    color: "text-success",
     sortDate: new Date(order.created_at),
   });
 
-  // Payment processed
   if (order.payment_ref && order.status !== "failed") {
     entries.push({
       label: "Payment processed",
       detail: `via ${order.payment_method}${order.payment_ref ? ` (${order.payment_ref.slice(0, 20)}...)` : ""}`,
       time: fmt(order.created_at),
-      color: "#4ecb71",
+      icon: CreditCard,
+      color: "text-success",
       sortDate: new Date(new Date(order.created_at).getTime() + 1000),
     });
   }
 
-  // Email sent / failed (from order metadata)
   const meta = (order.metadata || {}) as Record<string, unknown>;
   if (meta.email_sent === true && typeof meta.email_sent_at === "string") {
     entries.push({
       label: "Confirmation email sent",
       detail: `to ${meta.email_to || order.customer?.email || "customer"}`,
       time: fmt(meta.email_sent_at as string),
-      color: "#4ecb71",
+      icon: Send,
+      color: "text-success",
       sortDate: new Date(meta.email_sent_at as string),
     });
   } else if (meta.email_sent === false && typeof meta.email_attempted_at === "string") {
@@ -68,42 +95,60 @@ function buildTimeline(order: Order): TimelineEntry[] {
       label: "Email delivery failed",
       detail: (meta.email_error as string) || "Unknown error",
       time: fmt(meta.email_attempted_at as string),
-      color: "#ff0033",
+      icon: AlertCircle,
+      color: "text-destructive",
       sortDate: new Date(meta.email_attempted_at as string),
     });
   }
 
-  // Tickets scanned
   if (order.tickets) {
     for (const ticket of order.tickets) {
       if (ticket.scanned_at) {
         entries.push({
-          label: `Ticket scanned: ${ticket.ticket_code}`,
-          detail: ticket.scanned_by ? `by ${ticket.scanned_by}` : undefined,
+          label: `Ticket scanned`,
+          detail: `${ticket.ticket_code}${ticket.scanned_by ? ` by ${ticket.scanned_by}` : ""}`,
           time: fmt(ticket.scanned_at),
-          color: "#888",
+          icon: ScanLine,
+          color: "text-muted-foreground",
           sortDate: new Date(ticket.scanned_at),
         });
       }
     }
   }
 
-  // Refunded
   if (order.status === "refunded" && order.refunded_at) {
     entries.push({
       label: "Order refunded",
       detail: order.refund_reason || undefined,
       time: fmt(order.refunded_at),
-      color: "#ff0033",
+      icon: RotateCcw,
+      color: "text-destructive",
       sortDate: new Date(order.refunded_at),
     });
   }
 
-  // Sort chronologically
   entries.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
   return entries;
 }
 
+/* ── Helpers ── */
+function formatCurrency(amount: number) {
+  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDateTime(d: string) {
+  return new Date(d).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   ORDER DETAIL PAGE
+   ════════════════════════════════════════════════════════ */
 export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
@@ -126,7 +171,8 @@ export default function OrderDetailPage() {
   }, [loadOrder]);
 
   const handleRefund = async () => {
-    if (!confirm("Are you sure you want to refund this order? All tickets will be cancelled.")) return;
+    if (!confirm("Are you sure you want to refund this order? All tickets will be cancelled."))
+      return;
 
     setRefunding(true);
     try {
@@ -138,6 +184,7 @@ export default function OrderDetailPage() {
 
       if (res.ok) {
         setShowRefund(false);
+        setRefundReason("");
         loadOrder();
       } else {
         const json = await res.json();
@@ -169,330 +216,412 @@ export default function OrderDetailPage() {
   };
 
   if (loading) {
-    return <div className="admin-loading">Loading order...</div>;
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading order...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!order) {
-    return <div className="admin-empty">Order not found.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <Package size={40} className="text-muted-foreground/30" />
+        <p className="mt-3 text-sm text-muted-foreground">Order not found</p>
+        <Link href="/admin/orders/" className="mt-4">
+          <Button variant="outline" size="sm">
+            <ArrowLeft size={14} /> Back to Orders
+          </Button>
+        </Link>
+      </div>
+    );
   }
 
   const customer = order.customer;
   const event = order.event;
+  const timeline = buildTimeline(order);
 
   return (
     <div>
-      <div className="admin-page-header">
-        <div>
-          <Link href="/admin/orders/" className="admin-back-link">
-            &larr; Back to Orders
-          </Link>
-          <h1 className="admin-title">{order.order_number}</h1>
-        </div>
-        <div className="admin-page-header__actions">
-          <button className="admin-btn admin-btn--secondary" onClick={handleDownloadPDF}>
-            Download PDF
-          </button>
-          {order.status === "completed" && (
-            <button
-              className="admin-btn admin-btn--danger"
-              onClick={() => setShowRefund(!showRefund)}
-            >
-              Refund Order
-            </button>
-          )}
+      {/* Header */}
+      <div className="mb-6">
+        <Link
+          href="/admin/orders/"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft size={12} /> Back to Orders
+        </Link>
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-mono text-xl font-bold tracking-wider text-foreground">
+                  {order.order_number}
+                </h1>
+                <Badge
+                  variant={STATUS_VARIANT[order.status] || "secondary"}
+                  className="text-[10px] font-semibold uppercase"
+                >
+                  {order.status}
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {formatDateTime(order.created_at)}
+                {event?.name ? ` · ${event.name}` : ""}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+              <Download size={14} /> PDF
+            </Button>
+            {order.status === "completed" && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowRefund(!showRefund)}
+              >
+                <RotateCcw size={14} /> Refund
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Refund Form */}
       {showRefund && (
-        <div className="admin-section admin-refund-form">
-          <h3 className="admin-section__title">Process Refund</h3>
-          <div className="admin-form__field">
-            <label className="admin-form__label">Reason (optional)</label>
-            <input
-              type="text"
-              className="admin-form__input"
-              value={refundReason}
-              onChange={(e) => setRefundReason(e.target.value)}
-              placeholder="Customer requested refund..."
-            />
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button
-              className="admin-btn admin-btn--danger"
-              onClick={handleRefund}
-              disabled={refunding}
-            >
-              {refunding ? "Processing..." : "Confirm Refund"}
-            </button>
-            <button
-              className="admin-btn admin-btn--secondary"
-              onClick={() => setShowRefund(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <Card className="mb-6 border-destructive/30">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertCircle size={16} className="text-destructive" />
+              <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-destructive">
+                Process Refund
+              </h3>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="Reason (optional)..."
+                className="flex-1"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleRefund}
+                  disabled={refunding}
+                >
+                  {refunding ? "Processing..." : "Confirm Refund"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRefund(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Order Info + Customer */}
-      <div className="admin-grid admin-grid--2">
-        <div className="admin-section">
-          <h2 className="admin-section__title">Order Details</h2>
-          <div className="admin-detail-list">
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Status</span>
-              <span
-                className="admin-badge"
-                style={{
-                  background: `${STATUS_COLORS[order.status] || "#888"}22`,
-                  color: STATUS_COLORS[order.status] || "#888",
-                }}
-              >
-                {order.status}
-              </span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Date</span>
-              <span>
-                {new Date(order.created_at).toLocaleString("en-GB")}
-              </span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Event</span>
-              <span>{event?.name || "—"}</span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Payment</span>
-              <span>{order.payment_method} / {order.payment_ref || "—"}</span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Total</span>
-              <span className="admin-detail-price">
-                £{Number(order.total).toFixed(2)}
-              </span>
-            </div>
-            {order.refund_reason && (
-              <div className="admin-detail-row">
-                <span className="admin-detail-label">Refund Reason</span>
-                <span>{order.refund_reason}</span>
+      {/* Order Summary + Customer - 2 column grid */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Order Summary */}
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Package size={15} className="text-primary" />
+              Order Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              <div className="flex items-center justify-between px-5 py-3">
+                <span className="text-sm text-muted-foreground">Subtotal</span>
+                <span className="font-mono text-sm text-foreground">
+                  {formatCurrency(Number(order.subtotal))}
+                </span>
               </div>
-            )}
-          </div>
-        </div>
+              <div className="flex items-center justify-between px-5 py-3">
+                <span className="text-sm text-muted-foreground">Fees</span>
+                <span className="font-mono text-sm text-foreground">
+                  {formatCurrency(Number(order.fees))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-accent/20 px-5 py-3">
+                <span className="text-sm font-semibold text-foreground">Total</span>
+                <span className="font-mono text-lg font-bold text-primary">
+                  {formatCurrency(Number(order.total))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between px-5 py-3">
+                <span className="text-sm text-muted-foreground">Payment</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {order.payment_method}
+                  {order.payment_ref && (
+                    <span className="ml-1.5 text-muted-foreground/50">
+                      {order.payment_ref.slice(0, 24)}...
+                    </span>
+                  )}
+                </span>
+              </div>
+              {order.refund_reason && (
+                <div className="flex items-center justify-between px-5 py-3">
+                  <span className="text-sm text-muted-foreground">Refund Reason</span>
+                  <span className="text-sm text-destructive">{order.refund_reason}</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="admin-section">
-          <h2 className="admin-section__title">Customer</h2>
-          <div className="admin-detail-list">
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Name</span>
-              <span>
-                {customer
-                  ? `${customer.first_name} ${customer.last_name}`
-                  : "—"}
-              </span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Email</span>
-              <span>{customer?.email || "—"}</span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Phone</span>
-              <span>{customer?.phone || "—"}</span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Total Orders</span>
-              <span>{customer?.total_orders || 0}</span>
-            </div>
-            <div className="admin-detail-row">
-              <span className="admin-detail-label">Total Spent</span>
-              <span>
-                £{Number(customer?.total_spent || 0).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* Customer */}
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <User size={15} className="text-primary" />
+              Customer
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
+            {customer ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3.5">
+                  {/* Avatar */}
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+                    <span className="font-mono text-sm font-bold text-primary">
+                      {(customer.first_name?.[0] || "").toUpperCase()}
+                      {(customer.last_name?.[0] || "").toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {customer.first_name} {customer.last_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{customer.email}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 pt-1">
+                  {customer.phone && (
+                    <div className="flex items-center gap-2.5">
+                      <Phone size={13} className="text-muted-foreground/50" />
+                      <span className="text-sm text-foreground/80">{customer.phone}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2.5">
+                    <ShoppingBag size={13} className="text-muted-foreground/50" />
+                    <span className="text-sm text-foreground/80">
+                      {customer.total_orders || 0} order{(customer.total_orders || 0) !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <DollarSign size={13} className="text-muted-foreground/50" />
+                    <span className="text-sm text-foreground/80">
+                      {formatCurrency(Number(customer.total_spent || 0))} lifetime
+                    </span>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/admin/customers/${customer.id}/`}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                >
+                  View Profile <ExternalLink size={11} />
+                </Link>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No customer data</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Order Items */}
       {order.items && order.items.length > 0 && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">Items</h2>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Ticket Type</th>
-                <th>Qty</th>
-                <th>Unit Price</th>
-                <th>Size</th>
-                <th>Line Total</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Card className="mt-4 overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Ticket size={15} className="text-primary" />
+              Items ({order.items.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Header */}
+            <div className="hidden border-b border-border px-5 py-2.5 sm:grid sm:grid-cols-[2fr_0.5fr_1fr_0.8fr_1fr]">
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
+                Ticket Type
+              </span>
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
+                Qty
+              </span>
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
+                Price
+              </span>
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
+                Size
+              </span>
+              <span className="text-right font-mono text-[10px] font-medium uppercase tracking-[2px] text-muted-foreground">
+                Total
+              </span>
+            </div>
+            <div className="divide-y divide-border">
               {order.items.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    {item.ticket_type?.name || "—"}
+                <div
+                  key={item.id}
+                  className="px-5 py-3.5 sm:grid sm:grid-cols-[2fr_0.5fr_1fr_0.8fr_1fr] sm:items-center"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-foreground">
+                      {item.ticket_type?.name || "—"}
+                    </span>
                     {item.merch_size && (
-                      <span
-                        className="admin-badge"
-                        style={{ marginLeft: 8, background: "#ff003322", color: "#ff0033" }}
-                      >
-                        MERCH
-                      </span>
+                      <Badge variant="default" className="text-[10px]">
+                        <Shirt size={10} /> Merch
+                      </Badge>
                     )}
-                  </td>
-                  <td className="admin-table__mono">{item.qty}</td>
-                  <td className="admin-table__mono">
-                    £{Number(item.unit_price).toFixed(2)}
-                  </td>
-                  <td>{item.merch_size || "—"}</td>
-                  <td className="admin-table__mono admin-table__price">
-                    £{(Number(item.unit_price) * item.qty).toFixed(2)}
-                  </td>
-                </tr>
+                  </div>
+                  <span className="font-mono text-sm text-muted-foreground">
+                    {item.qty}
+                  </span>
+                  <span className="font-mono text-sm text-muted-foreground">
+                    {formatCurrency(Number(item.unit_price))}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {item.merch_size || "—"}
+                  </span>
+                  <span className="text-right font-mono text-sm font-semibold text-foreground">
+                    {formatCurrency(Number(item.unit_price) * item.qty)}
+                  </span>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Tickets */}
       {order.tickets && order.tickets.length > 0 && (
-        <div className="admin-section">
-          <h2 className="admin-section__title">Tickets</h2>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Status</th>
-                <th>Holder</th>
-                <th>Merch</th>
-                <th>Scanned</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Card className="mt-4 overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <ScanLine size={15} className="text-primary" />
+              Tickets ({order.tickets.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
               {order.tickets.map((ticket) => (
-                <tr key={ticket.id}>
-                  <td className="admin-table__mono" style={{ color: "#ff0033", fontWeight: 700 }}>
-                    {ticket.ticket_code}
-                  </td>
-                  <td>
-                    <span
-                      className="admin-badge"
-                      style={{
-                        background: `${STATUS_COLORS[ticket.status] || "#888"}22`,
-                        color: STATUS_COLORS[ticket.status] || "#888",
-                      }}
-                    >
-                      {ticket.status}
-                    </span>
-                  </td>
-                  <td>
-                    {ticket.holder_first_name} {ticket.holder_last_name}
-                  </td>
-                  <td>
-                    {ticket.merch_size ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontWeight: 700 }}>{ticket.merch_size}</span>
-                        {ticket.merch_collected ? (
-                          <span
-                            className="admin-badge"
-                            style={{ background: "#4ecb7122", color: "#4ecb71" }}
-                          >
-                            Collected
-                          </span>
-                        ) : (
-                          <span
-                            className="admin-badge"
-                            style={{ background: "#ffc10722", color: "#ffc107" }}
-                          >
-                            Pending
-                          </span>
-                        )}
+                <div
+                  key={ticket.id}
+                  className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10">
+                      <Ticket size={14} className="text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[13px] font-bold text-primary">
+                          {ticket.ticket_code}
+                        </span>
+                        <Badge
+                          variant={STATUS_VARIANT[ticket.status] || "secondary"}
+                          className="text-[10px]"
+                        >
+                          {ticket.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {ticket.holder_first_name} {ticket.holder_last_name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {ticket.merch_size && (
+                      <div className="flex items-center gap-1.5">
+                        <Shirt size={12} className="text-muted-foreground" />
+                        <span className="font-mono text-xs font-semibold">{ticket.merch_size}</span>
+                        <Badge
+                          variant={ticket.merch_collected ? "success" : "warning"}
+                          className="text-[10px]"
+                        >
+                          {ticket.merch_collected ? "Collected" : "Pending"}
+                        </Badge>
+                      </div>
+                    )}
+                    {ticket.scanned_at ? (
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 size={12} className="text-success" />
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          Scanned {formatDateTime(ticket.scanned_at)}
+                        </span>
                       </div>
                     ) : (
-                      "—"
+                      <span className="font-mono text-[11px] text-muted-foreground/40">
+                        Not scanned
+                      </span>
                     )}
-                  </td>
-                  <td className="admin-table__mono">
-                    {ticket.scanned_at
-                      ? new Date(ticket.scanned_at).toLocaleString("en-GB")
-                      : "—"}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Timeline */}
-      <div className="admin-section">
-        <h2 className="admin-section__title">Timeline</h2>
-        <div style={{ position: "relative", paddingLeft: 24 }}>
-          {/* Vertical line */}
-          <div style={{
-            position: "absolute",
-            left: 7,
-            top: 4,
-            bottom: 4,
-            width: 2,
-            background: "#2a2a2a",
-          }} />
+      {timeline.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Clock size={15} className="text-primary" />
+              Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
+            <div className="relative pl-6">
+              {/* Vertical line */}
+              <div className="absolute bottom-0 left-[11px] top-0 w-px bg-border" />
 
-          {buildTimeline(order).map((entry, i) => (
-            <div key={i} style={{
-              position: "relative",
-              paddingBottom: 20,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 12,
-            }}>
-              {/* Dot */}
-              <div style={{
-                position: "absolute",
-                left: -20,
-                top: 3,
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                background: entry.color,
-                border: "2px solid #0e0e0e",
-                boxShadow: `0 0 0 2px ${entry.color}33`,
-                flexShrink: 0,
-              }} />
-              <div>
-                <div style={{
-                  fontFamily: "'Space Mono', monospace",
-                  fontSize: "0.75rem",
-                  color: "#fff",
-                  marginBottom: 2,
-                }}>
-                  {entry.label}
-                </div>
-                {entry.detail && (
-                  <div style={{
-                    fontSize: "0.7rem",
-                    color: "#888",
-                    marginBottom: 2,
-                  }}>
-                    {entry.detail}
+              {timeline.map((entry, i) => {
+                const Icon = entry.icon;
+                return (
+                  <div
+                    key={i}
+                    className={`relative flex items-start gap-4 ${
+                      i < timeline.length - 1 ? "pb-6" : ""
+                    }`}
+                  >
+                    {/* Dot */}
+                    <div
+                      className={`absolute -left-6 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-background ring-2 ring-border ${entry.color}`}
+                    >
+                      <Icon size={11} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{entry.label}</p>
+                      {entry.detail && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">{entry.detail}</p>
+                      )}
+                      <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                        {entry.time}
+                      </p>
+                    </div>
                   </div>
-                )}
-                <div style={{
-                  fontFamily: "'Space Mono', monospace",
-                  fontSize: "0.6rem",
-                  color: "#555",
-                  letterSpacing: "0.5px",
-                }}>
-                  {entry.time}
-                </div>
-              </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,0 +1,179 @@
+import { NextResponse } from "next/server";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireRepAuth } from "@/lib/auth";
+import { getRepSettings } from "@/lib/rep-points";
+
+/**
+ * GET /api/rep-portal/dashboard — Dashboard data (protected)
+ *
+ * Returns aggregated stats, level info, active quests/rewards counts,
+ * leaderboard position, recent sales, and active events for the current rep.
+ */
+export async function GET() {
+  try {
+    const auth = await requireRepAuth();
+    if (auth.error) return auth.error;
+
+    const repId = auth.rep.id;
+
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Service unavailable" },
+        { status: 503 }
+      );
+    }
+
+    // Fetch rep, settings, and counts in parallel
+    const [
+      repResult,
+      settingsResult,
+      questsResult,
+      pendingRewardsResult,
+      leaderboardResult,
+      recentSalesResult,
+      activeEventsResult,
+    ] = await Promise.all([
+      // Full rep row
+      supabase
+        .from(TABLES.REPS)
+        .select("points_balance, total_sales, total_revenue, level")
+        .eq("id", repId)
+        .eq("org_id", ORG_ID)
+        .single(),
+
+      // Program settings
+      getRepSettings(ORG_ID),
+
+      // Active quests count (global or assigned to rep's events)
+      getActiveQuestsCount(supabase, repId),
+
+      // Pending reward claims count
+      supabase
+        .from(TABLES.REP_REWARD_CLAIMS)
+        .select("id", { count: "exact", head: true })
+        .eq("rep_id", repId)
+        .eq("org_id", ORG_ID)
+        .eq("status", "claimed"),
+
+      // Leaderboard: all active reps ordered by total_revenue
+      supabase
+        .from(TABLES.REPS)
+        .select("id, total_revenue")
+        .eq("org_id", ORG_ID)
+        .eq("status", "active")
+        .order("total_revenue", { ascending: false }),
+
+      // Recent sales: last 5 orders attributed to this rep
+      supabase
+        .from(TABLES.ORDERS)
+        .select("id, order_number, total, status, created_at, event:events(id, name, slug)")
+        .eq("org_id", ORG_ID)
+        .eq("metadata->>rep_id", repId)
+        .order("created_at", { ascending: false })
+        .limit(5),
+
+      // Active events assigned to this rep
+      supabase
+        .from(TABLES.REP_EVENTS)
+        .select("id, event_id, sales_count, revenue, assigned_at, event:events(id, name, slug, date_start, status, cover_image)")
+        .eq("rep_id", repId)
+        .eq("org_id", ORG_ID),
+    ]);
+
+    const rep = repResult.data;
+    if (!rep) {
+      return NextResponse.json(
+        { error: "Rep not found" },
+        { status: 404 }
+      );
+    }
+
+    const settings = settingsResult;
+
+    // Calculate level info
+    const levelIndex = rep.level - 1;
+    const levelName =
+      settings.level_names[levelIndex] || `Level ${rep.level}`;
+    const currentLevelPoints =
+      levelIndex > 0 ? settings.level_thresholds[levelIndex - 1] : 0;
+    const nextLevelPoints =
+      levelIndex < settings.level_thresholds.length
+        ? settings.level_thresholds[levelIndex]
+        : null;
+
+    // Calculate leaderboard position
+    let leaderboardPosition: number | null = null;
+    if (leaderboardResult.data) {
+      const idx = leaderboardResult.data.findIndex(
+        (r: { id: string }) => r.id === repId
+      );
+      leaderboardPosition = idx >= 0 ? idx + 1 : null;
+    }
+
+    return NextResponse.json({
+      data: {
+        points_balance: rep.points_balance,
+        total_sales: rep.total_sales,
+        total_revenue: rep.total_revenue,
+        level: rep.level,
+        level_name: levelName,
+        next_level_points: nextLevelPoints,
+        current_level_points: currentLevelPoints,
+        active_quests: questsResult,
+        pending_rewards: pendingRewardsResult.count || 0,
+        leaderboard_position: leaderboardPosition,
+        recent_sales: recentSalesResult.data || [],
+        active_events: activeEventsResult.data || [],
+      },
+    });
+  } catch (err) {
+    console.error("[rep-portal/dashboard] Error:", err);
+    return NextResponse.json(
+      { error: "Internal error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Count active quests available to a rep.
+ * Quests are available if they are global (event_id is null)
+ * or their event_id is in the rep's assigned events.
+ */
+async function getActiveQuestsCount(
+  supabase: Awaited<ReturnType<typeof getSupabaseServer>>,
+  repId: string
+): Promise<number> {
+  try {
+    if (!supabase) return 0;
+
+    // Get rep's assigned event IDs
+    const { data: repEvents } = await supabase
+      .from(TABLES.REP_EVENTS)
+      .select("event_id")
+      .eq("rep_id", repId)
+      .eq("org_id", ORG_ID);
+
+    const eventIds = (repEvents || []).map((re: { event_id: string }) => re.event_id);
+
+    // Count active quests: global OR assigned to rep's events
+    let query = supabase
+      .from(TABLES.REP_QUESTS)
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", ORG_ID)
+      .eq("status", "active");
+
+    if (eventIds.length > 0) {
+      query = query.or(`event_id.is.null,event_id.in.(${eventIds.join(",")})`);
+    } else {
+      query = query.is("event_id", null);
+    }
+
+    const { count } = await query;
+    return count || 0;
+  } catch {
+    return 0;
+  }
+}

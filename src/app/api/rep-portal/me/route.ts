@@ -1,0 +1,116 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireRepAuth } from "@/lib/auth";
+
+/**
+ * GET /api/rep-portal/me — Get current rep profile (protected)
+ *
+ * Returns the full rep row for the authenticated rep.
+ */
+export async function GET() {
+  try {
+    const auth = await requireRepAuth();
+    if (auth.error) return auth.error;
+
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Service unavailable" },
+        { status: 503 }
+      );
+    }
+
+    const { data: rep, error } = await supabase
+      .from(TABLES.REPS)
+      .select("*")
+      .eq("id", auth.rep.id)
+      .eq("org_id", ORG_ID)
+      .single();
+
+    if (error || !rep) {
+      return NextResponse.json(
+        { error: "Rep not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ data: rep });
+  } catch (err) {
+    console.error("[rep-portal/me] GET error:", err);
+    return NextResponse.json(
+      { error: "Internal error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/rep-portal/me — Update rep profile (protected)
+ *
+ * Accepts: display_name, phone, photo_url, instagram, tiktok, bio, onboarding_completed.
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const auth = await requireRepAuth();
+    if (auth.error) return auth.error;
+
+    const body = await request.json();
+    const {
+      display_name,
+      phone,
+      photo_url,
+      instagram,
+      tiktok,
+      bio,
+      onboarding_completed,
+    } = body;
+
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Service unavailable" },
+        { status: 503 }
+      );
+    }
+
+    // Build update payload — only include provided fields
+    const updatePayload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (display_name !== undefined) updatePayload.display_name = display_name;
+    if (phone !== undefined) updatePayload.phone = phone || null;
+    if (photo_url !== undefined) updatePayload.photo_url = photo_url || null;
+    if (instagram !== undefined) updatePayload.instagram = instagram || null;
+    if (tiktok !== undefined) updatePayload.tiktok = tiktok || null;
+    if (bio !== undefined) updatePayload.bio = bio || null;
+    if (onboarding_completed !== undefined) {
+      updatePayload.onboarding_completed = Boolean(onboarding_completed);
+    }
+
+    const { data: rep, error } = await supabase
+      .from(TABLES.REPS)
+      .update(updatePayload)
+      .eq("id", auth.rep.id)
+      .eq("org_id", ORG_ID)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("[rep-portal/me] Update error:", error);
+      return NextResponse.json(
+        { error: "Failed to update profile" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ data: rep });
+  } catch (err) {
+    console.error("[rep-portal/me] PUT error:", err);
+    return NextResponse.json(
+      { error: "Internal error" },
+      { status: 500 }
+    );
+  }
+}

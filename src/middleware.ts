@@ -24,6 +24,20 @@ function isProtectedAdminPage(pathname: string): boolean {
 }
 
 /**
+ * Rep portal page routes that require authentication.
+ * Public pages (login, join, invite) are excluded.
+ */
+const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite"];
+
+function isProtectedRepPage(pathname: string): boolean {
+  if (!pathname.startsWith("/rep")) return false;
+  for (const pub of REP_PUBLIC_PAGES) {
+    if (pathname.startsWith(pub)) return false;
+  }
+  return true;
+}
+
+/**
  * API routes that require admin authentication.
  * Public API routes (customer-facing checkout, webhooks, analytics) are excluded.
  */
@@ -39,6 +53,11 @@ const PUBLIC_API_PREFIXES = [
   "/api/health",
   "/api/media/",
   "/api/auth/",
+  "/api/rep-portal/signup",
+  "/api/rep-portal/login",
+  "/api/rep-portal/logout",
+  "/api/rep-portal/verify-email",
+  "/api/rep-portal/invite/",
 ];
 
 const PUBLIC_API_EXACT_GETS = [
@@ -126,6 +145,17 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Protect rep portal pages: redirect to rep login if not authenticated
+  if (isProtectedRepPage(pathname)) {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/rep/login";
+      loginUrl.searchParams.set("redirect", pathname);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      return applySecurityHeaders(redirectResponse);
+    }
+  }
+
   // Protect admin API routes: return 401 if not authenticated
   if (isProtectedApiRoute(pathname, method)) {
     if (!user) {
@@ -148,5 +178,6 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/api/:path*",
+    "/rep/:path*",
   ],
 };

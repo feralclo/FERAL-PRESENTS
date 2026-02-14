@@ -1,0 +1,216 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   ENTRY REPS — Gamified Portal Styles
+   Scoped to [data-rep] so it never leaks to admin or public pages.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Animated gradient background ── */
+[data-rep] {
+  --rep-bg: #06060a;
+  --rep-surface: #0d0d14;
+  --rep-card: #111118;
+  --rep-border: #1a1a28;
+  --rep-accent: #8B5CF6;
+  --rep-accent-glow: rgba(139, 92, 246, 0.15);
+  --rep-gold: #F59E0B;
+  --rep-silver: #94A3B8;
+  --rep-bronze: #D97706;
+  --rep-success: #34D399;
+  --rep-text: #f0f0f5;
+  --rep-text-muted: #71717a;
+}
+
+/* ── Subtle animated gradient on the body ── */
+[data-rep]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+    var(--rep-bg);
+  animation: rep-bg-shift 20s ease-in-out infinite alternate;
+}
+
+@keyframes rep-bg-shift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* ── Glow effect utility ── */
+.rep-glow {
+  box-shadow: 0 0 20px var(--rep-accent-glow), 0 0 60px rgba(139, 92, 246, 0.05);
+}
+
+.rep-glow-sm {
+  box-shadow: 0 0 10px var(--rep-accent-glow);
+}
+
+/* ── Level badge shimmer ── */
+.rep-badge-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.rep-badge-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ── Leaderboard animations ── */
+.rep-leaderboard-item {
+  animation: slideInUp 0.4s ease-out both;
+}
+.rep-leaderboard-item:nth-child(1) { animation-delay: 0ms; }
+.rep-leaderboard-item:nth-child(2) { animation-delay: 60ms; }
+.rep-leaderboard-item:nth-child(3) { animation-delay: 120ms; }
+.rep-leaderboard-item:nth-child(4) { animation-delay: 180ms; }
+.rep-leaderboard-item:nth-child(5) { animation-delay: 240ms; }
+.rep-leaderboard-item:nth-child(6) { animation-delay: 300ms; }
+.rep-leaderboard-item:nth-child(7) { animation-delay: 360ms; }
+.rep-leaderboard-item:nth-child(8) { animation-delay: 420ms; }
+.rep-leaderboard-item:nth-child(9) { animation-delay: 480ms; }
+.rep-leaderboard-item:nth-child(10) { animation-delay: 540ms; }
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Points counter animation ── */
+.rep-points-pop {
+  animation: pointsPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pointsPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ── Card hover effect ── */
+.rep-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rep-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.08);
+}
+
+/* ── Progress bar glow ── */
+.rep-progress-glow {
+  position: relative;
+}
+.rep-progress-glow::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  bottom: -2px;
+  left: -2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--rep-accent-glow), transparent);
+  opacity: 0.5;
+  animation: progressPulse 2s ease-in-out infinite;
+}
+@keyframes progressPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+/* ── Podium positions ── */
+.rep-podium-gold {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.rep-podium-silver {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.04));
+  border-color: rgba(148, 163, 184, 0.25);
+}
+.rep-podium-bronze {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(217, 119, 6, 0.04));
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+/* ── Quest card ── */
+.rep-quest-card {
+  background: var(--rep-card);
+  border: 1px solid var(--rep-border);
+  border-radius: 16px;
+  padding: 20px;
+  transition: border-color 0.2s ease;
+}
+.rep-quest-card:hover {
+  border-color: var(--rep-accent);
+}
+
+/* ── Reward card lock state ── */
+.rep-reward-locked {
+  filter: grayscale(0.6);
+  opacity: 0.5;
+}
+.rep-reward-unlocked {
+  animation: unlockPulse 0.6s ease-out;
+}
+@keyframes unlockPulse {
+  0% { transform: scale(0.95); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* ── Mobile bottom nav ── */
+.rep-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(6, 6, 10, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--rep-border);
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+}
+
+/* ── Signup wizard step transition ── */
+.rep-wizard-step {
+  animation: wizardFadeIn 0.3s ease-out;
+}
+@keyframes wizardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Mobile scrollbar hide ── */
+@media (max-width: 768px) {
+  [data-rep] ::-webkit-scrollbar {
+    display: none;
+  }
+  [data-rep] {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

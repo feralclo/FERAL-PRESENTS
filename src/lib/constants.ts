@@ -19,6 +19,14 @@ export const TABLES = {
   GUEST_LIST: "guest_list",
   PRODUCTS: "products",
   DISCOUNTS: "discounts",
+  REPS: "reps",
+  REP_EVENTS: "rep_events",
+  REP_REWARDS: "rep_rewards",
+  REP_MILESTONES: "rep_milestones",
+  REP_POINTS_LOG: "rep_points_log",
+  REP_QUESTS: "rep_quests",
+  REP_QUEST_SUBMISSIONS: "rep_quest_submissions",
+  REP_REWARD_CLAIMS: "rep_reward_claims",
 } as const;
 
 // Settings keys stored in site_settings table
@@ -29,6 +37,7 @@ export const SETTINGS_KEYS = {
   WALLET_PASSES: "feral_wallet_passes",
   BRANDING: "feral_branding",
   VAT: "feral_vat",
+  REPS: "feral_reps",
 } as const;
 
 /** Generate the branding settings key for a given org */
@@ -44,6 +53,11 @@ export function themesKey(orgId: string): string {
 /** Generate the VAT settings key for a given org */
 export function vatKey(orgId: string): string {
   return `${orgId}_vat`;
+}
+
+/** Generate the reps program settings key for a given org */
+export function repsKey(orgId: string): string {
+  return `${orgId}_reps`;
 }
 
 // Klaviyo

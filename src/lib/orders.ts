@@ -405,6 +405,23 @@ export async function createOrder(
   }
 
   // ------------------------------------------------------------------
+  // 7.5 Rep attribution (fire-and-forget)
+  //     If a discount code was used and belongs to a rep, award points.
+  // ------------------------------------------------------------------
+  if (payment.ref) {
+    import("@/lib/rep-attribution").then(({ attributeSaleToRep }) => {
+      attributeSaleToRep({
+        orderId: order.id,
+        orgId,
+        eventId: event.id,
+        discountCode: (order.metadata as Record<string, unknown>)?.discount_code as string | undefined,
+        orderTotal: total,
+        ticketCount: allTickets.length,
+      }).catch(() => {});
+    }).catch(() => {});
+  }
+
+  // ------------------------------------------------------------------
   // 8. Revalidate pages so sold counts + order lists are fresh
   // ------------------------------------------------------------------
   if (event.slug) {

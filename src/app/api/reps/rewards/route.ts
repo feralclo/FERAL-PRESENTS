@@ -1,0 +1,116 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { TABLES, ORG_ID } from "@/lib/constants";
+import { requireAuth } from "@/lib/auth";
+
+/**
+ * GET /api/reps/rewards — List all rewards
+ * Optional filter: ?status=active
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 503 }
+      );
+    }
+
+    const status = request.nextUrl.searchParams.get("status");
+
+    let query = supabase
+      .from(TABLES.REP_REWARDS)
+      .select("*")
+      .eq("org_id", ORG_ID)
+      .order("created_at", { ascending: false });
+
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data: data || [] });
+  } catch {
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/reps/rewards — Create a reward
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
+    const body = await request.json();
+    const {
+      name,
+      description,
+      image_url,
+      reward_type,
+      points_cost,
+      product_id,
+      custom_value,
+      total_available,
+      status = "active",
+    } = body;
+
+    if (!name) {
+      return NextResponse.json(
+        { error: "Missing required field: name" },
+        { status: 400 }
+      );
+    }
+
+    if (!reward_type || !["milestone", "points_shop", "manual"].includes(reward_type)) {
+      return NextResponse.json(
+        { error: "reward_type must be 'milestone', 'points_shop', or 'manual'" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await getSupabaseServer();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 503 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from(TABLES.REP_REWARDS)
+      .insert({
+        org_id: ORG_ID,
+        name: name.trim(),
+        description: description?.trim() || null,
+        image_url: image_url || null,
+        reward_type,
+        points_cost: points_cost != null ? Number(points_cost) : null,
+        product_id: product_id || null,
+        custom_value: custom_value?.trim() || null,
+        total_available: total_available != null ? Number(total_available) : null,
+        total_claimed: 0,
+        status,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}

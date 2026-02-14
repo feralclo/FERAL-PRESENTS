@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useBranding } from "@/hooks/useBranding";
+import { getCurrencySymbol } from "@/lib/stripe/config";
 import type { Order } from "@/types/orders";
 import "@/styles/checkout-page.css";
 
@@ -22,11 +24,14 @@ export function OrderConfirmation({
   walletPassEnabled,
 }: OrderConfirmationProps) {
   const { trackPurchase } = useMetaTracking();
+  const branding = useBranding();
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
   const [downloading, setDownloading] = useState(false);
   const [walletDownloading, setWalletDownloading] = useState<string | null>(null);
   const [googleWalletUrl, setGoogleWalletUrl] = useState<string | null>(null);
   const purchaseTracked = useRef(false);
+  const symbol = getCurrencySymbol(order.currency || "GBP");
+  const year = new Date().getFullYear();
 
   // Track Purchase event once when order confirmation mounts
   useEffect(() => {
@@ -144,8 +149,8 @@ export function OrderConfirmation({
         <a href={`/event/${slug}/`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/FERAL%20LOGO.svg"
-            alt="FERAL PRESENTS"
+            src={branding.logo_url || "/images/FERAL%20LOGO.svg"}
+            alt={branding.org_name || "FERAL PRESENTS"}
             className="checkout-header__logo"
           />
         </a>
@@ -179,8 +184,7 @@ export function OrderConfirmation({
             <div className="order-confirmation__info-row">
               <span className="order-confirmation__info-label">Total</span>
               <span className="order-confirmation__info-value order-confirmation__info-value--price">
-                {order.currency === "GBP" ? "£" : "€"}
-                {Number(order.total).toFixed(2)}
+                {symbol}{Number(order.total).toFixed(2)}
               </span>
             </div>
             <div className="order-confirmation__info-row">
@@ -286,7 +290,7 @@ export function OrderConfirmation({
         <div className="container">
           <div className="footer__inner">
             <span className="footer__copy">
-              &copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.
+              &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
             </span>
             <span className="footer__status">
               STATUS: <span className="text-red">ONLINE</span>

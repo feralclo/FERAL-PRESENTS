@@ -26,7 +26,7 @@ export async function GET(
     const { data, error } = await supabase
       .from(TABLES.ORDERS)
       .select(
-        "*, customer:customers(*), event:events(id, name, slug, date_start, venue_name, city), order_items:order_items(*, ticket_type:ticket_types(name, description)), tickets:tickets(*)"
+        "*, customer:customers(*), event:events(id, name, slug, date_start, venue_name, city), order_items:order_items(*, ticket_type:ticket_types(name, description)), tickets:tickets(*, ticket_type:ticket_types(name))"
       )
       .eq("id", id)
       .eq("org_id", ORG_ID)

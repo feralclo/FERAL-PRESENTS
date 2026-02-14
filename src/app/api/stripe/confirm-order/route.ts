@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         .select(`
           *,
           order_items (*, ticket_type:ticket_types(*)),
-          tickets (*),
+          tickets (*, ticket_type:ticket_types(name)),
           customer:customers(*)
         `)
         .eq("id", existingOrder.id)
@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         order_items (*, ticket_type:ticket_types(*)),
-        tickets (*),
+        tickets (*, ticket_type:ticket_types(name)),
         customer:customers(*)
       `)
       .eq("id", order.id)

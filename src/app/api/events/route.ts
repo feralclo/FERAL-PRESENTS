@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from(TABLES.EVENTS)
-      .select("*, ticket_types(id, name, price, capacity, sold, status)")
+      .select("*, ticket_types(*, product:products(*))")
       .eq("org_id", ORG_ID)
       .order("date_start", { ascending: false });
 

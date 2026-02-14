@@ -267,7 +267,6 @@ export async function POST(request: NextRequest) {
           automatic_payment_methods: {
             enabled: true,
           },
-          receipt_email: customer.email.toLowerCase(),
         },
         {
           stripeAccount: stripeAccountId,
@@ -299,7 +298,6 @@ export async function POST(request: NextRequest) {
       automatic_payment_methods: {
         enabled: true,
       },
-      receipt_email: customer.email.toLowerCase(),
     });
 
     // Increment discount used_count (fire-and-forget)

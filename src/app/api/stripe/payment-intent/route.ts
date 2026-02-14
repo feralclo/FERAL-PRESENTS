@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe/server";
+import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import {
@@ -103,6 +103,11 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // Validate the connected account is actually accessible from our platform key.
+    // If the account was deleted or access revoked, fall back to platform account
+    // so checkout still works (charges go directly to the platform).
+    stripeAccountId = await verifyConnectedAccount(stripeAccountId);
 
     // Verify ticket types and calculate total
     const ticketTypeIds = items.map(

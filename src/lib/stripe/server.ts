@@ -27,3 +27,26 @@ export function getStripe(): Stripe {
   }
   return stripe;
 }
+
+/**
+ * Verify a connected Stripe account is accessible from the platform key.
+ * Returns the account ID if valid, or null if the account doesn't exist /
+ * access was revoked. This prevents checkout failures when a stale or
+ * invalid account ID is stored in the database.
+ */
+export async function verifyConnectedAccount(
+  accountId: string | null
+): Promise<string | null> {
+  if (!accountId || !stripe) return null;
+  try {
+    await stripe.accounts.retrieve(accountId);
+    return accountId;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[stripe] Connected account ${accountId} is not accessible — ` +
+        `falling back to platform account. Error: ${msg}`
+    );
+    return null;
+  }
+}

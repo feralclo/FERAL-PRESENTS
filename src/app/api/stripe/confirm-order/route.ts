@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe/server";
+import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { createOrder, OrderCreationError } from "@/lib/orders";
@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // Validate the connected account is accessible before using it
+    stripeAccountId = await verifyConnectedAccount(stripeAccountId);
 
     // Retrieve the PaymentIntent from Stripe to verify it actually succeeded
     const paymentIntent = await stripe.paymentIntents.retrieve(

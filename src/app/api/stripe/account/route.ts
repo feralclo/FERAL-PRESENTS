@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
+import { verifyConnectedAccount } from "@/lib/stripe/server";
 
 /**
  * GET /api/stripe/account
@@ -22,8 +23,12 @@ export async function GET() {
       .eq("key", "feral_stripe_account")
       .single();
 
-    const accountId =
+    const rawAccountId =
       (data?.data as { account_id?: string })?.account_id || null;
+
+    // Validate the account is accessible before returning it to the client.
+    // A stale/revoked account ID would break Stripe.js initialization.
+    const accountId = await verifyConnectedAccount(rawAccountId);
 
     return NextResponse.json({ stripe_account_id: accountId });
   } catch {

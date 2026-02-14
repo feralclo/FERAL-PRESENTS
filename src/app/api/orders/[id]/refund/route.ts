@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe/server";
+import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
@@ -94,6 +94,9 @@ export async function POST(
           }
         }
       }
+
+      // Validate the connected account is accessible before refunding
+      stripeAccountId = await verifyConnectedAccount(stripeAccountId);
 
       try {
         // Full refund of the PaymentIntent

@@ -18,6 +18,7 @@ export const TABLES = {
   CUSTOMERS: "customers",
   GUEST_LIST: "guest_list",
   PRODUCTS: "products",
+  DISCOUNTS: "discounts",
 } as const;
 
 // Settings keys stored in site_settings table

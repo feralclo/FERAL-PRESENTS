@@ -323,7 +323,7 @@ function TicketStoreEditorPage() {
 
   const isActive = themeStore?.active_theme_id === currentTheme?.id;
   const previewUrl = selectedSlug
-    ? `/event/${selectedSlug}?editor=1`
+    ? `/event/${selectedSlug}?editor=1&template=${currentTheme?.template || "midnight"}`
     : "";
 
   return (

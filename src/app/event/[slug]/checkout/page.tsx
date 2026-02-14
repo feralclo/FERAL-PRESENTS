@@ -17,10 +17,18 @@ export const metadata: Metadata = {
 
 export default async function CheckoutRoute({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
+
+  // Editor preview: ?template= overrides which checkout component renders
+  const editorTemplate = sp.editor === "1" && typeof sp.template === "string"
+    ? sp.template
+    : undefined;
 
   // Check if event exists in events table and uses native (non-WeeZTix) payment
   let nativeEvent = null;
@@ -45,10 +53,10 @@ export default async function CheckoutRoute({
 
   // Use native checkout for test/stripe events
   if (nativeEvent) {
-    // Check active template for Aurora routing
     const activeTemplate = await getActiveTemplate();
+    const template = editorTemplate || activeTemplate;
 
-    if (activeTemplate === "aura") {
+    if (template === "aura") {
       return (
         <Suspense>
           <AuraCheckout slug={slug} event={nativeEvent} />

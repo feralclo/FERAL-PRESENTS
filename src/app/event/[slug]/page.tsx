@@ -127,10 +127,19 @@ export async function generateMetadata({
 
 export default async function EventPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
+
+  // In editor preview mode, the ?template= param tells us which theme to render.
+  // This lets the admin preview non-active themes (e.g. editing Aura while Midnight is live).
+  const editorTemplate = sp.editor === "1" && typeof sp.template === "string"
+    ? sp.template
+    : undefined;
 
   // Fetch event + active template in parallel
   const [event, activeTemplate] = await Promise.all([
@@ -138,10 +147,13 @@ export default async function EventPage({
     getActiveTemplate(),
   ]);
 
+  // Use editor override if present, otherwise use live active template
+  const template = editorTemplate || activeTemplate;
+
   // Stripe/test events: use dynamic page (DB-driven)
   if (event && event.payment_method !== "weeztix") {
     // Aura theme: render Aura component tree (shadcn/ui based)
-    if (activeTemplate === "aura") {
+    if (template === "aura") {
       return <AuraEventPage event={event} />;
     }
     return <DynamicEventPage event={event} />;

@@ -37,6 +37,19 @@ export function ThemeEditorBridge() {
     // Find the theme root wrapper (event layout sets data-theme-root on its wrapper div)
     const themeRoot = document.querySelector<HTMLElement>("[data-theme-root]");
 
+    // Set data-theme from URL param so the correct theme CSS applies in preview.
+    // The editor passes ?template=aura (or midnight) to signal which theme is being edited.
+    // Without this, the layout only sets data-theme for the LIVE active theme,
+    // so previewing a non-active theme would render with wrong CSS scoping.
+    const templateParam = params.get("template");
+    if (templateParam && themeRoot) {
+      if (templateParam === "midnight") {
+        themeRoot.removeAttribute("data-theme");
+      } else {
+        themeRoot.setAttribute("data-theme", templateParam);
+      }
+    }
+
     // Disable link clicks and navigation inside the preview
     function blockNav(e: MouseEvent) {
       const target = (e.target as HTMLElement).closest("a, button");

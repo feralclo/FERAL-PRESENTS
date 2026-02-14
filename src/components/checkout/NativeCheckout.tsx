@@ -23,6 +23,7 @@ import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
 import { useBranding } from "@/hooks/useBranding";
+import { useTraffic } from "@/hooks/useTraffic";
 import "@/styles/checkout-page.css";
 
 /* ================================================================
@@ -543,6 +544,7 @@ function SinglePageCheckoutForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const { trackEngagement } = useTraffic();
 
   // Form state
   const [email, setEmail] = useState("");
@@ -701,6 +703,7 @@ function SinglePageCheckoutForm({
       }
 
       setProcessing(true);
+      trackEngagement("payment_processing");
 
       try {
         // 1. Create PaymentIntent
@@ -725,6 +728,7 @@ function SinglePageCheckoutForm({
 
         const data = await res.json();
         if (!res.ok) {
+          trackEngagement("payment_failed");
           setError(data.error || "Failed to create payment.");
           setProcessing(false);
           return;
@@ -748,6 +752,7 @@ function SinglePageCheckoutForm({
           );
 
           if (result.error) {
+            trackEngagement("payment_failed");
             setError(result.error.message || "Payment failed. Please try again.");
             setProcessing(false);
             return;
@@ -787,6 +792,7 @@ function SinglePageCheckoutForm({
           );
 
           if (klarnaError) {
+            trackEngagement("payment_failed");
             setError(
               klarnaError.message || "Klarna payment failed. Please try again."
             );
@@ -810,8 +816,10 @@ function SinglePageCheckoutForm({
 
         const orderData = await orderRes.json();
         if (orderRes.ok && orderData.data) {
+          trackEngagement("payment_success");
           onComplete(orderData.data);
         } else {
+          trackEngagement("payment_success");
           onComplete({
             id: "",
             org_id: "feral",
@@ -830,6 +838,7 @@ function SinglePageCheckoutForm({
           } as Order);
         }
       } catch {
+        trackEngagement("payment_failed");
         setError("An error occurred. Please try again.");
         setProcessing(false);
       }
@@ -848,6 +857,7 @@ function SinglePageCheckoutForm({
       stripePromise,
       onComplete,
       discountCode,
+      trackEngagement,
     ]
   );
 
@@ -969,10 +979,10 @@ function SinglePageCheckoutForm({
               {/* Card option */}
               <div
                 className={`payment-option${paymentMethod === "card" ? " payment-option--active" : ""}`}
-                onClick={() => paymentMethod !== "card" && setPaymentMethod("card")}
+                onClick={() => { if (paymentMethod !== "card") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("card")}
+                onKeyDown={(e) => { if (e.key === "Enter") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
               >
                 <div className="payment-option__header">
                   <span className={`payment-option__radio${paymentMethod === "card" ? " payment-option__radio--checked" : ""}`} />
@@ -1042,10 +1052,10 @@ function SinglePageCheckoutForm({
               {/* Klarna option */}
               <div
                 className={`payment-option${paymentMethod === "klarna" ? " payment-option--active" : ""}`}
-                onClick={() => paymentMethod !== "klarna" && setPaymentMethod("klarna")}
+                onClick={() => { if (paymentMethod !== "klarna") { setPaymentMethod("klarna"); trackEngagement("payment_method_selected"); } }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && setPaymentMethod("klarna")}
+                onKeyDown={(e) => { if (e.key === "Enter") { setPaymentMethod("klarna"); trackEngagement("payment_method_selected"); } }}
               >
                 <div className="payment-option__header">
                   <span className={`payment-option__radio${paymentMethod === "klarna" ? " payment-option__radio--checked" : ""}`} />

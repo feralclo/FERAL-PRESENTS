@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useTraffic } from "@/hooks/useTraffic";
 import { useBranding } from "@/hooks/useBranding";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import type { Order } from "@/types/orders";
@@ -24,6 +25,7 @@ export function OrderConfirmation({
   walletPassEnabled,
 }: OrderConfirmationProps) {
   const { trackPurchase } = useMetaTracking();
+  const { trackEngagement } = useTraffic();
   const branding = useBranding();
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
   const [downloading, setDownloading] = useState(false);
@@ -95,6 +97,7 @@ export function OrderConfirmation({
 
   const handleAddToAppleWallet = async () => {
     setWalletDownloading("apple");
+    trackEngagement("wallet_apple");
     try {
       const res = await fetch(`/api/orders/${order.id}/wallet/apple`);
       if (!res.ok) throw new Error("Failed to generate wallet pass");
@@ -119,6 +122,7 @@ export function OrderConfirmation({
 
   const handleDownloadPDF = async () => {
     setDownloading(true);
+    trackEngagement("pdf_download");
     try {
       const res = await fetch(`/api/orders/${order.id}/pdf`);
       if (!res.ok) throw new Error("Failed to generate PDF");
@@ -269,6 +273,7 @@ export function OrderConfirmation({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="order-confirmation__btn order-confirmation__btn--wallet"
+                    onClick={() => trackEngagement("wallet_google")}
                   >
                     Save to Google Wallet
                   </a>

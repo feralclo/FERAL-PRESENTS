@@ -219,6 +219,12 @@
   animation: dialog-content-in 150ms ease-out;
 }
 
+/* ── Activity feed slide-in ── */
+@keyframes activity-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Collapsible animations ── */
 @keyframes collapsible-down {
   from { height: 0; }

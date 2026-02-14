@@ -1,24 +1,24 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { LiveStatCard } from "@/components/ui/live-stat-card";
+import { LiveIndicator } from "@/components/ui/live-indicator";
+import { ActivityFeed } from "@/components/admin/dashboard/ActivityFeed";
+import { FunnelChart } from "@/components/admin/dashboard/FunnelChart";
+import { TopEventsTable } from "@/components/admin/dashboard/TopEventsTable";
+import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 import {
   Ticket,
   DollarSign,
   ShoppingBag,
-  Shirt,
-  TrendingUp,
-  Globe,
+  ShoppingCart,
+  CreditCard,
+  Users as UsersIcon,
   MousePointerClick,
-  Activity,
   CalendarDays,
   ChevronRight,
   BarChart3,
-  Users,
   UserCheck,
 } from "lucide-react";
 
@@ -28,57 +28,6 @@ function Skeleton({ className }: { className?: string }) {
     <div
       className={`animate-pulse rounded-md bg-muted/60 ${className || ""}`}
     />
-  );
-}
-
-/* ── Types ── */
-type Period = "today" | "7d" | "30d" | "all";
-
-interface KPIStats {
-  revenue: number;
-  orders: number;
-  ticketsSold: number;
-  merchRevenue: number;
-}
-
-interface TrafficStats {
-  totalTraffic: number;
-  todayTraffic: number;
-  conversionRate: string;
-  activeEvents: number;
-}
-
-/* ── Period selector ── */
-const PERIODS: { key: Period; label: string }[] = [
-  { key: "today", label: "Today" },
-  { key: "7d", label: "7 Days" },
-  { key: "30d", label: "30 Days" },
-  { key: "all", label: "All Time" },
-];
-
-function PeriodSelector({
-  period,
-  onChange,
-}: {
-  period: Period;
-  onChange: (p: Period) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1 rounded-lg bg-secondary/80 p-1 ring-1 ring-border/50">
-      {PERIODS.map((p) => (
-        <button
-          key={p.key}
-          onClick={() => onChange(p.key)}
-          className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-200 ${
-            period === p.key
-              ? "bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {p.label}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -115,248 +64,132 @@ function QuickLink({
   );
 }
 
-/* ── Helpers ── */
-function getDateStart(period: Period): string | null {
-  const now = new Date();
-  switch (period) {
-    case "today":
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    case "7d":
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    case "30d":
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    case "all":
-      return null;
-  }
-}
-
-function periodLabel(period: Period): string {
-  switch (period) {
-    case "today": return "today";
-    case "7d": return "in the last 7 days";
-    case "30d": return "in the last 30 days";
-    case "all": return "all time";
-  }
-}
-
 /* ════════════════════════════════════════════════════════
-   DASHBOARD
+   LIVE DASHBOARD
    ════════════════════════════════════════════════════════ */
 export default function AdminDashboard() {
-  const [period, setPeriod] = useState<Period>("today");
-  const [loading, setLoading] = useState(true);
-  const [kpi, setKpi] = useState<KPIStats>({
-    revenue: 0,
-    orders: 0,
-    ticketsSold: 0,
-    merchRevenue: 0,
-  });
-  const [traffic, setTraffic] = useState<TrafficStats>({
-    totalTraffic: 0,
-    todayTraffic: 0,
-    conversionRate: "0%",
-    activeEvents: 0,
-  });
-
-  const loadKPIs = useCallback(async () => {
-    setLoading(true);
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
-    const dateStart = getDateStart(period);
-
-    // Fetch completed orders with items (for merch calculation)
-    let ordersQuery = supabase
-      .from(TABLES.ORDERS)
-      .select("id, total, status, created_at")
-      .eq("org_id", ORG_ID)
-      .eq("status", "completed");
-
-    if (dateStart) ordersQuery = ordersQuery.gte("created_at", dateStart);
-
-    const { data: orders } = await ordersQuery;
-
-    const revenue = (orders || []).reduce((s, o) => s + Number(o.total), 0);
-    const orderCount = (orders || []).length;
-
-    // Tickets sold in period
-    let ticketsQuery = supabase
-      .from(TABLES.TICKETS)
-      .select("*", { count: "exact", head: true })
-      .eq("org_id", ORG_ID);
-
-    if (dateStart) ticketsQuery = ticketsQuery.gte("created_at", dateStart);
-
-    const { count: ticketCount } = await ticketsQuery;
-
-    // Merch revenue — order items with merch_size not null
-    const orderIds = (orders || []).map((o) => o.id);
-    let merchRevenue = 0;
-
-    if (orderIds.length > 0) {
-      const { data: merchItems } = await supabase
-        .from(TABLES.ORDER_ITEMS)
-        .select("unit_price, qty")
-        .eq("org_id", ORG_ID)
-        .in("order_id", orderIds)
-        .not("merch_size", "is", null);
-
-      merchRevenue = (merchItems || []).reduce(
-        (s, item) => s + Number(item.unit_price) * item.qty,
-        0
-      );
-    }
-
-    setKpi({
-      revenue,
-      orders: orderCount,
-      ticketsSold: ticketCount || 0,
-      merchRevenue,
-    });
-    setLoading(false);
-  }, [period]);
-
-  const loadTraffic = useCallback(async () => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const [
-      { count: trafficCount },
-      { count: todayCount },
-      { count: checkoutCount },
-      { count: landingCount },
-      { count: eventCount },
-    ] = await Promise.all([
-      supabase
-        .from(TABLES.TRAFFIC_EVENTS)
-        .select("*", { count: "exact", head: true }),
-      supabase
-        .from(TABLES.TRAFFIC_EVENTS)
-        .select("*", { count: "exact", head: true })
-        .gte("timestamp", today),
-      supabase
-        .from(TABLES.TRAFFIC_EVENTS)
-        .select("*", { count: "exact", head: true })
-        .eq("event_type", "checkout"),
-      supabase
-        .from(TABLES.TRAFFIC_EVENTS)
-        .select("*", { count: "exact", head: true })
-        .eq("event_type", "landing"),
-      supabase
-        .from(TABLES.EVENTS)
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", ORG_ID)
-        .in("status", ["draft", "live"]),
-    ]);
-
-    const rate =
-      landingCount && checkoutCount
-        ? ((checkoutCount / landingCount) * 100).toFixed(1) + "%"
-        : "0%";
-
-    setTraffic({
-      totalTraffic: trafficCount || 0,
-      todayTraffic: todayCount || 0,
-      conversionRate: rate,
-      activeEvents: eventCount || 0,
-    });
-  }, []);
-
-  useEffect(() => {
-    loadKPIs();
-  }, [loadKPIs]);
-
-  useEffect(() => {
-    loadTraffic();
-  }, [loadTraffic]);
+  const {
+    activeVisitors,
+    activeCarts,
+    inCheckout,
+    today,
+    yesterday,
+    funnel,
+    activityFeed,
+    topEvents,
+    isLoading,
+  } = useDashboardRealtime();
 
   return (
     <div>
-      {/* Header with period selector */}
+      {/* Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
             Dashboard
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Performance overview {periodLabel(period)}
+          <p className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+            <LiveIndicator color="success" size="sm" />
+            Live performance overview
           </p>
         </div>
-        <PeriodSelector period={period} onChange={setPeriod} />
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Revenue"
-          value={loading ? "\u00A0" : `£${kpi.revenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={DollarSign}
-          detail={`Completed orders ${periodLabel(period)}`}
-
-        />
-        <StatCard
-          label="Orders"
-          value={loading ? "\u00A0" : kpi.orders.toLocaleString()}
-          icon={ShoppingBag}
-          detail={`Total completed ${periodLabel(period)}`}
-
-        />
-        <StatCard
-          label="Tickets Sold"
-          value={loading ? "\u00A0" : kpi.ticketsSold.toLocaleString()}
-          icon={Ticket}
-          detail={`Individual tickets issued`}
-
-        />
-        <StatCard
-          label="Merch Revenue"
-          value={loading ? "\u00A0" : `£${kpi.merchRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={Shirt}
-          detail={`From merchandise add-ons`}
-
-        />
-      </div>
-
-      {/* Traffic Section */}
-      <div className="mt-10">
+      {/* ── RIGHT NOW ── */}
+      <div className="mb-10">
         <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-          Traffic & Engagement
+          Right Now
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Total Traffic"
-            value={traffic.totalTraffic.toLocaleString()}
-            icon={Globe}
-            detail="All page views"
-
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <LiveStatCard
+            label="Active Visitors"
+            value={isLoading ? "\u00A0" : activeVisitors.toLocaleString()}
+            icon={UsersIcon}
+            detail="online now"
+            live
           />
-          <StatCard
-            label="Today's Traffic"
-            value={traffic.todayTraffic.toLocaleString()}
-            icon={TrendingUp}
-            detail="Page views today"
-
+          <LiveStatCard
+            label="Active Carts"
+            value={isLoading ? "\u00A0" : activeCarts.toLocaleString()}
+            icon={ShoppingCart}
+            detail="open carts"
+            live
           />
-          <StatCard
-            label="Conversion Rate"
-            value={traffic.conversionRate}
-            icon={MousePointerClick}
-            detail="Landing → Checkout"
-
-          />
-          <StatCard
-            label="Active Events"
-            value={traffic.activeEvents.toString()}
-            icon={Activity}
-            detail="Draft or live"
-
+          <LiveStatCard
+            label="In Checkout"
+            value={isLoading ? "\u00A0" : inCheckout.toLocaleString()}
+            icon={CreditCard}
+            detail="checking out"
+            live
           />
         </div>
       </div>
 
-      {/* Quick Links */}
+      {/* ── TODAY'S PERFORMANCE ── */}
+      <div className="mb-10">
+        <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+          Today&apos;s Performance
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <LiveStatCard
+            label="Revenue"
+            value={isLoading ? "\u00A0" : `£${today.revenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            icon={DollarSign}
+            detail="vs yesterday"
+            trend={{ value: today.revenue - yesterday.revenue, format: "currency", currencySymbol: "£" }}
+          />
+          <LiveStatCard
+            label="Orders"
+            value={isLoading ? "\u00A0" : today.orders.toLocaleString()}
+            icon={ShoppingBag}
+            detail="vs yesterday"
+            trend={{ value: today.orders - yesterday.orders, format: "number" }}
+          />
+          <LiveStatCard
+            label="Tickets Sold"
+            value={isLoading ? "\u00A0" : today.ticketsSold.toLocaleString()}
+            icon={Ticket}
+            detail="vs yesterday"
+            trend={{ value: today.ticketsSold - yesterday.ticketsSold, format: "number" }}
+          />
+          <LiveStatCard
+            label="Avg Order Value"
+            value={isLoading ? "\u00A0" : `£${today.avgOrderValue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            icon={DollarSign}
+            detail="vs yesterday"
+            trend={{ value: today.avgOrderValue - yesterday.avgOrderValue, format: "currency", currencySymbol: "£" }}
+          />
+          <LiveStatCard
+            label="Conversion"
+            value={isLoading ? "\u00A0" : `${today.conversionRate.toFixed(1)}%`}
+            icon={MousePointerClick}
+            detail="vs yesterday"
+            trend={{ value: today.conversionRate - yesterday.conversionRate, format: "percent" }}
+          />
+        </div>
+      </div>
+
+      {/* ── TWO-COLUMN: FUNNEL + ACTIVITY ── */}
+      <div className="mb-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Left Column: Funnel + Top Events */}
+        <div className="space-y-6">
+          <FunnelChart
+            stages={[
+              { label: "Landing", count: funnel.landing },
+              { label: "Tickets", count: funnel.tickets },
+              { label: "Add to Cart", count: funnel.add_to_cart },
+              { label: "Checkout", count: funnel.checkout },
+              { label: "Purchase", count: funnel.purchase },
+            ]}
+          />
+          <TopEventsTable events={topEvents} />
+        </div>
+
+        {/* Right Column: Activity Feed */}
+        <ActivityFeed items={activityFeed} />
+      </div>
+
+      {/* ── QUICK LINKS ── */}
       <div className="mt-10">
         <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
           Quick Links
@@ -376,7 +209,7 @@ export default function AdminDashboard() {
           />
           <QuickLink
             href="/admin/customers/"
-            icon={Users}
+            icon={UsersIcon}
             title="Customers"
             description="Customer profiles"
           />

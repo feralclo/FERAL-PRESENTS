@@ -8,8 +8,16 @@ import { TABLES, ORG_ID } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableHeader,
@@ -312,34 +320,35 @@ export default function EventsPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label>Date & Time *</Label>
-                  <Input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={newDate}
-                    onChange={(e) => setNewDate(e.target.value)}
+                    onChange={setNewDate}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Payment Method</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-                    value={newPayment}
-                    onChange={(e) => setNewPayment(e.target.value as typeof newPayment)}
-                  >
-                    <option value="test">Test (Simulated)</option>
-                    <option value="stripe">Stripe</option>
-                  </select>
+                  <Select value={newPayment} onValueChange={(v) => setNewPayment(v as typeof newPayment)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="test">Test (Simulated)</SelectItem>
+                      <SelectItem value="stripe">Stripe</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Visibility</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-                    value={newVisibility}
-                    onChange={(e) => setNewVisibility(e.target.value as typeof newVisibility)}
-                  >
-                    <option value="private">Private (Secret Link)</option>
-                    <option value="unlisted">Unlisted</option>
-                    <option value="public">Public</option>
-                  </select>
+                  <Select value={newVisibility} onValueChange={(v) => setNewVisibility(v as typeof newVisibility)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="private">Private (Secret Link)</SelectItem>
+                      <SelectItem value="unlisted">Unlisted</SelectItem>
+                      <SelectItem value="public">Public</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               {createError && (
@@ -384,19 +393,17 @@ export default function EventsPage() {
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <Label className="text-xs text-muted-foreground shrink-0">From</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  onChange={setDateFrom}
                   className="h-8 w-[140px] text-xs"
                 />
               </div>
               <div className="flex items-center gap-2">
                 <Label className="text-xs text-muted-foreground shrink-0">To</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
+                  onChange={setDateTo}
                   className="h-8 w-[140px] text-xs"
                 />
               </div>

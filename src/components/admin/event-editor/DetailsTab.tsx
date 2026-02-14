@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toDatetimeLocal, fromDatetimeLocal } from "@/lib/date-utils";
@@ -58,24 +59,22 @@ export function DetailsTab({ event, updateEvent }: TabProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Event Start *</Label>
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 value={toDatetimeLocal(event.date_start)}
-                onChange={(e) =>
+                onChange={(v) =>
                   updateEvent(
                     "date_start",
-                    fromDatetimeLocal(e.target.value) || event.date_start
+                    fromDatetimeLocal(v) || event.date_start
                   )
                 }
               />
             </div>
             <div className="space-y-2">
               <Label>Event End</Label>
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 value={toDatetimeLocal(event.date_end)}
-                onChange={(e) =>
-                  updateEvent("date_end", fromDatetimeLocal(e.target.value))
+                onChange={(v) =>
+                  updateEvent("date_end", fromDatetimeLocal(v))
                 }
               />
             </div>
@@ -83,11 +82,10 @@ export function DetailsTab({ event, updateEvent }: TabProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Doors Open</Label>
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 value={toDatetimeLocal(event.doors_open)}
-                onChange={(e) =>
-                  updateEvent("doors_open", fromDatetimeLocal(e.target.value))
+                onChange={(v) =>
+                  updateEvent("doors_open", fromDatetimeLocal(v))
                 }
               />
             </div>

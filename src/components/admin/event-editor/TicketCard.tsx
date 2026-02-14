@@ -4,8 +4,16 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -115,16 +123,17 @@ export function TicketCard({
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-                  value={ticket.status}
-                  onChange={(e) => onUpdate(index, "status", e.target.value)}
-                >
-                  <option value="active">Active</option>
-                  <option value="hidden">Hidden</option>
-                  <option value="sold_out">Sold Out</option>
-                  <option value="archived">Archived</option>
-                </select>
+                <Select value={ticket.status} onValueChange={(v) => onUpdate(index, "status", v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="hidden">Hidden</SelectItem>
+                    <SelectItem value="sold_out">Sold Out</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -149,18 +158,22 @@ export function TicketCard({
 
             <div className="space-y-2">
               <Label>Group</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-                value={groupMap[ticket.id] || ""}
-                onChange={(e) => onAssignGroup(ticket.id, e.target.value)}
+              <Select
+                value={groupMap[ticket.id] || "__none__"}
+                onValueChange={(v) => onAssignGroup(ticket.id, v === "__none__" ? "" : v)}
               >
-                <option value="">(No group)</option>
-                {groups.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">(No group)</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -222,28 +235,26 @@ export function TicketCard({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Sale Start</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={toDatetimeLocal(ticket.sale_start)}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     onUpdate(
                       index,
                       "sale_start",
-                      fromDatetimeLocal(e.target.value)
+                      fromDatetimeLocal(v)
                     )
                   }
                 />
               </div>
               <div className="space-y-2">
                 <Label>Sale End</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={toDatetimeLocal(ticket.sale_end)}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     onUpdate(
                       index,
                       "sale_end",
-                      fromDatetimeLocal(e.target.value)
+                      fromDatetimeLocal(v)
                     )
                   }
                 />
@@ -270,31 +281,35 @@ export function TicketCard({
                   {products.length > 0 && (
                     <div className="space-y-2">
                       <Label>Link Product</Label>
-                      <select
-                        className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-                        value={ticket.product_id || ""}
-                        onChange={(e) =>
+                      <Select
+                        value={ticket.product_id || "__none__"}
+                        onValueChange={(v) =>
                           onUpdate(
                             index,
                             "product_id",
-                            e.target.value || null
+                            v === "__none__" ? null : v
                           )
                         }
                       >
-                        <option value="">
-                          (Configure inline)
-                        </option>
-                        {products
-                          .filter((p) => p.status === "active")
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} — {p.type}
-                              {p.sizes.length > 0
-                                ? ` (${p.sizes.join(", ")})`
-                                : ""}
-                            </option>
-                          ))}
-                      </select>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">
+                            (Configure inline)
+                          </SelectItem>
+                          {products
+                            .filter((p) => p.status === "active")
+                            .map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} — {p.type}
+                                {p.sizes.length > 0
+                                  ? ` (${p.sizes.join(", ")})`
+                                  : ""}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                       <p className="text-[10px] text-muted-foreground/60">
                         Link a product from your catalog, or configure merch inline below.
                       </p>

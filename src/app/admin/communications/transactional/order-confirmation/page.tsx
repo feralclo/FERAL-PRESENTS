@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -469,17 +470,7 @@ export default function OrderConfirmationPage() {
                 <CardContent className="space-y-5">
                   <div className="space-y-2">
                     <Label>Accent Color</Label>
-                    <div className="flex items-center gap-2.5">
-                      <div className="relative h-9 w-9 shrink-0 rounded-lg border border-border cursor-pointer transition-all hover:ring-2 hover:ring-ring/30" style={{ backgroundColor: settings.accent_color }}>
-                        <input
-                          type="color"
-                          value={settings.accent_color}
-                          onChange={(e) => update("accent_color", e.target.value)}
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                        />
-                      </div>
-                      <Input value={settings.accent_color} onChange={(e) => update("accent_color", e.target.value)} className="w-28 font-mono" />
-                    </div>
+                    <ColorPicker value={settings.accent_color} onChange={(v) => update("accent_color", v)} />
                   </div>
 
                   <Separator />

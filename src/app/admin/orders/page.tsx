@@ -18,6 +18,13 @@ import {
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ShoppingBag,
   DollarSign,
   Ticket,
@@ -147,7 +154,7 @@ function OrdersContent() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
-  const [filterEvent, setFilterEvent] = useState("");
+  const [filterEvent, setFilterEvent] = useState("__all__");
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("");
   const [period, setPeriod] = useState<Period>("today");
   const [statsLoading, setStatsLoading] = useState(true);
@@ -159,9 +166,11 @@ function OrdersContent() {
   const [merchRevenue, setMerchRevenue] = useState(0);
   const [merchItems, setMerchItems] = useState(0);
 
+  const activeEventFilter = filterEvent === "__all__" ? "" : filterEvent;
+
   const loadOrders = useCallback(async () => {
     const params = new URLSearchParams();
-    if (filterEvent) params.set("event_id", filterEvent);
+    if (activeEventFilter) params.set("event_id", activeEventFilter);
     if (filterStatus) params.set("status", filterStatus);
     if (customerIdParam) params.set("customer_id", customerIdParam);
     params.set("limit", "100");
@@ -171,7 +180,7 @@ function OrdersContent() {
 
     if (json.data) setOrders(json.data);
     setLoading(false);
-  }, [filterEvent, filterStatus, customerIdParam]);
+  }, [activeEventFilter, filterStatus, customerIdParam]);
 
   const loadEvents = useCallback(async () => {
     const supabase = getSupabaseClient();
@@ -236,7 +245,7 @@ function OrdersContent() {
     setExporting(true);
     try {
       const params = new URLSearchParams();
-      if (filterEvent) params.set("event_id", filterEvent);
+      if (activeEventFilter) params.set("event_id", activeEventFilter);
       if (filterStatus) params.set("status", filterStatus);
 
       const res = await fetch(`/api/orders/export?${params}`);
@@ -259,7 +268,7 @@ function OrdersContent() {
       alert("Export failed. Please try again.");
     }
     setExporting(false);
-  }, [filterEvent, filterStatus]);
+  }, [activeEventFilter, filterStatus]);
 
   useEffect(() => {
     loadEvents();
@@ -370,18 +379,19 @@ function OrdersContent() {
         {/* Event filter */}
         <div className="flex items-center gap-3">
           <Filter size={14} className="text-muted-foreground" />
-          <select
-            value={filterEvent}
-            onChange={(e) => setFilterEvent(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-[color,box-shadow] focus:border-ring focus:ring-2 focus:ring-ring/50"
-          >
-            <option value="">All Events</option>
-            {events.map((evt) => (
-              <option key={evt.id} value={evt.id}>
-                {evt.name}
-              </option>
-            ))}
-          </select>
+          <Select value={filterEvent} onValueChange={setFilterEvent}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Events" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All Events</SelectItem>
+              {events.map((evt) => (
+                <SelectItem key={evt.id} value={evt.id}>
+                  {evt.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

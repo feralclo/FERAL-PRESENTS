@@ -5,8 +5,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableHeader,
@@ -409,14 +417,15 @@ export default function DiscountsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Type</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value as DiscountType)}
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount (£)</option>
-                </select>
+                <Select value={newType} onValueChange={(v) => setNewType(v as DiscountType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount (£)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Value *</Label>
@@ -457,18 +466,16 @@ export default function DiscountsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Starts At</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={newStartsAt}
-                  onChange={(e) => setNewStartsAt(e.target.value)}
+                  onChange={setNewStartsAt}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Expires At</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={newExpiresAt}
-                  onChange={(e) => setNewExpiresAt(e.target.value)}
+                  onChange={setNewExpiresAt}
                 />
               </div>
             </div>
@@ -526,14 +533,15 @@ export default function DiscountsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Type</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-                  value={editType}
-                  onChange={(e) => setEditType(e.target.value as DiscountType)}
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount (£)</option>
-                </select>
+                <Select value={editType} onValueChange={(v) => setEditType(v as DiscountType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount (£)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Value *</Label>
@@ -573,18 +581,16 @@ export default function DiscountsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Starts At</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={editStartsAt}
-                  onChange={(e) => setEditStartsAt(e.target.value)}
+                  onChange={setEditStartsAt}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Expires At</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={editExpiresAt}
-                  onChange={(e) => setEditExpiresAt(e.target.value)}
+                  onChange={setEditExpiresAt}
                 />
               </div>
             </div>

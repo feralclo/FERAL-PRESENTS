@@ -5,6 +5,13 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import type { TabProps } from "./types";
 
 interface StripeAccount {
@@ -14,9 +21,6 @@ interface StripeAccount {
   charges_enabled: boolean;
   details_submitted: boolean;
 }
-
-const selectClass =
-  "flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15";
 
 export function SettingsTab({ event, updateEvent }: TabProps) {
   const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
@@ -46,29 +50,31 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Status</Label>
-              <select
-                className={selectClass}
-                value={event.status}
-                onChange={(e) => updateEvent("status", e.target.value)}
-              >
-                <option value="draft">Draft</option>
-                <option value="live">Live</option>
-                <option value="past">Past</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="archived">Archived</option>
-              </select>
+              <Select value={event.status} onValueChange={(v) => updateEvent("status", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="live">Live</SelectItem>
+                  <SelectItem value="past">Past</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Visibility</Label>
-              <select
-                className={selectClass}
-                value={event.visibility}
-                onChange={(e) => updateEvent("visibility", e.target.value)}
-              >
-                <option value="public">Public</option>
-                <option value="private">Private (Secret Link)</option>
-                <option value="unlisted">Unlisted</option>
-              </select>
+              <Select value={event.visibility} onValueChange={(v) => updateEvent("visibility", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Private (Secret Link)</SelectItem>
+                  <SelectItem value="unlisted">Unlisted</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -82,26 +88,28 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Payment Method</Label>
-              <select
-                className={selectClass}
-                value={event.payment_method}
-                onChange={(e) => updateEvent("payment_method", e.target.value)}
-              >
-                <option value="test">Test (Simulated)</option>
-                <option value="stripe">Stripe</option>
-              </select>
+              <Select value={event.payment_method} onValueChange={(v) => updateEvent("payment_method", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="test">Test (Simulated)</SelectItem>
+                  <SelectItem value="stripe">Stripe</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Currency</Label>
-              <select
-                className={selectClass}
-                value={event.currency}
-                onChange={(e) => updateEvent("currency", e.target.value)}
-              >
-                <option value="GBP">GBP (£)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="USD">USD ($)</option>
-              </select>
+              <Select value={event.currency} onValueChange={(v) => updateEvent("currency", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GBP">GBP (£)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -113,29 +121,33 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
                   <p className="text-xs text-muted-foreground">Loading accounts...</p>
                 ) : stripeAccounts.length > 0 ? (
                   <>
-                    <select
-                      className={selectClass}
-                      value={event.stripe_account_id || ""}
-                      onChange={(e) =>
+                    <Select
+                      value={event.stripe_account_id || "__platform_default__"}
+                      onValueChange={(v) =>
                         updateEvent(
                           "stripe_account_id",
-                          e.target.value || null
+                          v === "__platform_default__" ? null : v
                         )
                       }
                     >
-                      <option value="">Platform Default</option>
-                      {stripeAccounts.map((acc) => (
-                        <option
-                          key={acc.account_id}
-                          value={acc.account_id}
-                          disabled={!acc.charges_enabled}
-                        >
-                          {acc.business_name || acc.email || acc.account_id}
-                          {!acc.charges_enabled && " (not ready)"}
-                          {acc.charges_enabled && " ✓"}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__platform_default__">Platform Default</SelectItem>
+                        {stripeAccounts.map((acc) => (
+                          <SelectItem
+                            key={acc.account_id}
+                            value={acc.account_id}
+                            disabled={!acc.charges_enabled}
+                          >
+                            {acc.business_name || acc.email || acc.account_id}
+                            {!acc.charges_enabled && " (not ready)"}
+                            {acc.charges_enabled && " ✓"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-[10px] text-muted-foreground/60">
                       Select which Stripe Connect account receives payments for
                       this event. &quot;Platform Default&quot; uses the global

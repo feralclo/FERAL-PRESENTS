@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -580,10 +581,26 @@ export default function WalletPassesPage() {
 
                       {/* Colours */}
                       <div className="grid grid-cols-2 gap-4">
-                        <ColorPicker label="Accent / Label" value={settings.accent_color} onChange={(v) => update("accent_color", v)} hint="Field labels, ticket code" />
-                        <ColorPicker label="Background" value={settings.bg_color} onChange={(v) => update("bg_color", v)} hint="Pass background" />
-                        <ColorPicker label="Text" value={settings.text_color} onChange={(v) => update("text_color", v)} hint="Primary text" />
-                        <ColorPicker label="Label Color" value={settings.label_color} onChange={(v) => update("label_color", v)} hint="Section headers" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Accent / Label</Label>
+                          <ColorPicker value={settings.accent_color} onChange={(v) => update("accent_color", v)} />
+                          <p className="text-[10px] text-muted-foreground">Field labels, ticket code</p>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Background</Label>
+                          <ColorPicker value={settings.bg_color} onChange={(v) => update("bg_color", v)} />
+                          <p className="text-[10px] text-muted-foreground">Pass background</p>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Text</Label>
+                          <ColorPicker value={settings.text_color} onChange={(v) => update("text_color", v)} />
+                          <p className="text-[10px] text-muted-foreground">Primary text</p>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Label Color</Label>
+                          <ColorPicker value={settings.label_color} onChange={(v) => update("label_color", v)} />
+                          <p className="text-[10px] text-muted-foreground">Section headers</p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -762,39 +779,6 @@ export default function WalletPassesPage() {
 }
 
 /* ── Reusable inline components ── */
-
-function ColorPicker({ label, value, onChange, hint }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  hint?: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      <div className="flex items-center gap-2.5">
-        <button
-          type="button"
-          onClick={() => ref.current?.click()}
-          className="relative h-8 w-8 shrink-0 rounded-md border border-border cursor-pointer transition-all hover:ring-2 hover:ring-ring/30"
-          style={{ backgroundColor: value }}
-        >
-          <input
-            ref={ref}
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-            tabIndex={-1}
-          />
-        </button>
-        <Input value={value} onChange={(e) => onChange(e.target.value)} className="w-24 font-mono text-xs" />
-      </div>
-      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
 
 function ToggleRow({ label, description, checked, onChange }: {
   label: string;

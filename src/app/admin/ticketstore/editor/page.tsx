@@ -13,7 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import { ColorPicker } from "@/components/ui/color-picker";
 import {
   ArrowLeft,
   Monitor,
@@ -735,36 +743,11 @@ function EditorSection({
   );
 }
 
-function ColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="relative">
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="absolute inset-0 h-7 w-7 cursor-pointer opacity-0"
-        />
-        <div
-          className="h-7 w-7 rounded border border-border/60 cursor-pointer"
-          style={{ backgroundColor: value }}
-        />
-      </div>
+      <ColorPicker value={value} onChange={onChange} className="h-7 px-2 text-[10px]" />
       <span className="flex-1 text-[11px] text-muted-foreground">{label}</span>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-7 w-[80px] font-mono text-[10px] uppercase"
-        maxLength={7}
-      />
     </div>
   );
 }
@@ -777,17 +760,18 @@ function FontSelect({
   onChange: (v: string) => void;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="flex h-8 w-full rounded-md border border-input bg-background/50 px-2 text-xs text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none"
-    >
-      {FONT_OPTIONS.map((f) => (
-        <option key={f} value={f}>
-          {f}
-        </option>
-      ))}
-    </select>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-8 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {FONT_OPTIONS.map((f) => (
+          <SelectItem key={f} value={f}>
+            {f}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

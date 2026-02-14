@@ -4,6 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PaymentStatus {
   connected: boolean;
@@ -333,20 +340,21 @@ export default function PaymentSettingsPage() {
 
               <div className="admin-form__field" style={{ marginBottom: 24 }}>
                 <label className="admin-form__label">Country</label>
-                <select
-                  className="admin-form__input"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                >
-                  <option value="GB">United Kingdom</option>
-                  <option value="IE">Ireland</option>
-                  <option value="NL">Netherlands</option>
-                  <option value="BE">Belgium</option>
-                  <option value="DE">Germany</option>
-                  <option value="FR">France</option>
-                  <option value="ES">Spain</option>
-                  <option value="US">United States</option>
-                </select>
+                <Select value={country} onValueChange={setCountry}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GB">United Kingdom</SelectItem>
+                    <SelectItem value="IE">Ireland</SelectItem>
+                    <SelectItem value="NL">Netherlands</SelectItem>
+                    <SelectItem value="BE">Belgium</SelectItem>
+                    <SelectItem value="DE">Germany</SelectItem>
+                    <SelectItem value="FR">France</SelectItem>
+                    <SelectItem value="ES">Spain</SelectItem>
+                    <SelectItem value="US">United States</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <button

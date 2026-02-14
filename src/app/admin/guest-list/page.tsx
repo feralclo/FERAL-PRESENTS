@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableHeader,
   TableBody,
@@ -216,18 +223,19 @@ export default function GuestListPage() {
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <Label className="shrink-0 text-muted-foreground">Event</Label>
-            <select
-              className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-              value={selectedEvent}
-              onChange={(e) => setSelectedEvent(e.target.value)}
-            >
-              <option value="">Select Event</option>
-              {events.map((evt) => (
-                <option key={evt.id} value={evt.id}>
-                  {evt.name}
-                </option>
-              ))}
-            </select>
+            <Select value={selectedEvent || "__none__"} onValueChange={(v) => setSelectedEvent(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="max-w-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Select Event</SelectItem>
+                {events.map((evt) => (
+                  <SelectItem key={evt.id} value={evt.id}>
+                    {evt.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

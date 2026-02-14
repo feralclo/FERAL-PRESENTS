@@ -3,6 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import type { TabWithSettingsProps } from "./types";
 
@@ -57,16 +64,15 @@ export function DesignTab({
         <CardContent className="px-6 pb-6 space-y-4">
           <div className="space-y-2">
             <Label>Page Theme</Label>
-            <select
-              className="flex h-9 w-full max-w-xs rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-              value={event.theme || "default"}
-              onChange={(e) => {
-                updateEvent("theme", e.target.value);
-              }}
-            >
-              <option value="default">Default</option>
-              <option value="minimal">Minimal</option>
-            </select>
+            <Select value={event.theme || "default"} onValueChange={(v) => updateEvent("theme", v)}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default</SelectItem>
+                <SelectItem value="minimal">Minimal</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {isMinimal && (

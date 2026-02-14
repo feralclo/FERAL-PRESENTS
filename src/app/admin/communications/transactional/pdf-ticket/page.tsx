@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -463,10 +464,26 @@ export default function PdfTicketPage() {
 
                   {/* Color grid */}
                   <div className="grid grid-cols-2 gap-4">
-                    <ColorPicker label="Accent Color" value={settings.accent_color} onChange={(v) => update("accent_color", v)} hint="Bars, ticket codes" />
-                    <ColorPicker label="Background" value={settings.bg_color} onChange={(v) => update("bg_color", v)} hint="Ticket background" />
-                    <ColorPicker label="Primary Text" value={settings.text_color} onChange={(v) => update("text_color", v)} hint="Brand, event name" />
-                    <ColorPicker label="Secondary Text" value={settings.secondary_color} onChange={(v) => update("secondary_color", v)} hint="Venue, date" />
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Accent Color</Label>
+                      <ColorPicker value={settings.accent_color} onChange={(v) => update("accent_color", v)} />
+                      <p className="text-[10px] text-muted-foreground">Bars, ticket codes</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Background</Label>
+                      <ColorPicker value={settings.bg_color} onChange={(v) => update("bg_color", v)} />
+                      <p className="text-[10px] text-muted-foreground">Ticket background</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Primary Text</Label>
+                      <ColorPicker value={settings.text_color} onChange={(v) => update("text_color", v)} />
+                      <p className="text-[10px] text-muted-foreground">Brand, event name</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Secondary Text</Label>
+                      <ColorPicker value={settings.secondary_color} onChange={(v) => update("secondary_color", v)} />
+                      <p className="text-[10px] text-muted-foreground">Venue, date</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -563,39 +580,6 @@ export default function PdfTicketPage() {
 }
 
 /* ── Reusable inline components ── */
-
-function ColorPicker({ label, value, onChange, hint }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  hint?: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      <div className="flex items-center gap-2.5">
-        <button
-          type="button"
-          onClick={() => ref.current?.click()}
-          className="relative h-8 w-8 shrink-0 rounded-md border border-border cursor-pointer transition-all hover:ring-2 hover:ring-ring/30"
-          style={{ backgroundColor: value }}
-        >
-          <input
-            ref={ref}
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-            tabIndex={-1}
-          />
-        </button>
-        <Input value={value} onChange={(e) => onChange(e.target.value)} className="w-24 font-mono text-xs" />
-      </div>
-      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
 
 function ToggleRow({ label, description, checked, onChange }: {
   label: string;

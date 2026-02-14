@@ -482,20 +482,58 @@ export function DynamicTicketWidget({
               {/* Cart Summary */}
               {cartItems.length > 0 && (
                 <div className="cart-summary">
-                  <div className="cart-summary__label">Your Cart</div>
-                  <div className="cart-summary__items">
-                    {cartItems.map((item, i) => (
-                      <div className="cart-summary__item" key={i}>
-                        <span>
-                          {item.qty}x {item.name}
-                          {item.size && (
-                            <span className="cart-summary__size">
-                              {item.size}
+                  <div className="cart-summary__header">
+                    <span className="cart-summary__title">Your Order</span>
+                    <span className="cart-summary__count">
+                      {totalQty} {totalQty === 1 ? "item" : "items"}
+                    </span>
+                  </div>
+                  <div className="cart-summary__lines">
+                    {cartItems.map((item, i) => {
+                      const tt = activeTypes.find((t) => t.name === item.name);
+                      const unitPrice = tt ? Number(tt.price) : 0;
+                      const linePrice = unitPrice * item.qty;
+                      const hasMerch = tt?.includes_merch && item.size;
+                      const merchLabel =
+                        (tt?.product?.name) ||
+                        tt?.merch_name ||
+                        (tt?.merch_type === "hoodie" ? "Hoodie" : "T-Shirt");
+
+                      return (
+                        <div className="cart-summary__line" key={i}>
+                          <div className="cart-summary__line-main">
+                            <span className="cart-summary__line-qty">
+                              {item.qty}&times;
                             </span>
+                            <span className="cart-summary__line-name">
+                              {item.name}
+                            </span>
+                            <span className="cart-summary__line-price">
+                              {currSymbol}
+                              {linePrice % 1 === 0
+                                ? linePrice
+                                : linePrice.toFixed(2)}
+                            </span>
+                          </div>
+                          {hasMerch && (
+                            <div className="cart-summary__line-merch">
+                              <span className="cart-summary__merch-badge">
+                                + {merchLabel}
+                              </span>
+                              <span className="cart-summary__merch-size">
+                                Size: <strong>{item.size}</strong>
+                              </span>
+                            </div>
                           )}
-                        </span>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="cart-summary__footer">
+                    <span className="cart-summary__total-label">Total</span>
+                    <span className="cart-summary__total-value">
+                      {currSymbol}{totalPrice.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               )}

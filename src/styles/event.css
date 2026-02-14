@@ -516,76 +516,143 @@
 
 /* Cart Summary (below checkout button) */
 .cart-summary {
-  margin-top: 12px;
-  padding: 14px 16px;
+  margin-top: 16px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
+  overflow: hidden;
 }
 
-.cart-summary__label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.cart-summary__items {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.cart-summary__item {
+.cart-summary__header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.cart-summary__title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  opacity: 0.7;
+}
+
+.cart-summary__count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cart-summary__lines {
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-summary__line {
+  padding: 12px 16px;
+}
+
+.cart-summary__line + .cart-summary__line {
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.cart-summary__line-main {
+  display: flex;
+  align-items: baseline;
   gap: 8px;
+}
+
+.cart-summary__line-qty {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.cart-summary__qty {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: #fff;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 10px;
-  min-width: 20px;
-  text-align: center;
+  color: var(--red);
+  flex-shrink: 0;
+  min-width: 22px;
 }
 
-.cart-summary__name {
+.cart-summary__line-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   color: var(--text-primary);
-  opacity: 0.85;
+  opacity: 0.9;
   flex: 1;
 }
 
-.cart-summary__size {
-  color: var(--red);
-  font-weight: 600;
-}
-
-.cart-summary__remove {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 3px;
-  transition: color 0.2s, border-color 0.2s;
+.cart-summary__line-price {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
   flex-shrink: 0;
+  letter-spacing: 0.5px;
 }
 
-.cart-summary__remove:hover {
+.cart-summary__line-merch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  margin-left: 30px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.cart-summary__merch-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.cart-summary__merch-size {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.cart-summary__merch-size strong {
   color: var(--red);
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  font-weight: 700;
+}
+
+.cart-summary__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.cart-summary__total-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  opacity: 0.6;
+}
+
+.cart-summary__total-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
 }
 
 /* --- Unified Ticket Widget: Tiers + Progress + Selector --- */
@@ -2047,8 +2114,26 @@
     font-size: 0.8rem;
   }
 
-  .cart-summary__item {
-    font-size: 10px;
+  .cart-summary__header {
+    padding: 10px 12px;
+  }
+
+  .cart-summary__line {
+    padding: 10px 12px;
+  }
+
+  .cart-summary__line-name {
+    font-size: 11px;
+  }
+
+  .cart-summary__line-merch {
+    margin-left: 22px;
+    gap: 6px;
+    padding: 5px 8px;
+  }
+
+  .cart-summary__footer {
+    padding: 10px 12px;
   }
 
   .ticket-group__header {

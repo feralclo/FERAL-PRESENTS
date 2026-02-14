@@ -36,10 +36,10 @@ export function BottomBar({
             <span className="bottom-bar__subtitle bottom-bar__cart-list">
               {cartItems.map((item, i) => (
                 <span key={i} className="bottom-bar__cart-item">
-                  {item.qty}x {item.name}
+                  {item.qty}&times; {item.name}
                   {item.size && (
                     <span className="bottom-bar__cart-size">
-                      {item.size}
+                      Size: {item.size}
                     </span>
                   )}
                 </span>

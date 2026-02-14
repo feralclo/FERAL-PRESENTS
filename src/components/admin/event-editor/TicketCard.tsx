@@ -116,7 +116,7 @@ export function TicketCard({
               <div className="space-y-2">
                 <Label>Status</Label>
                 <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+                  className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
                   value={ticket.status}
                   onChange={(e) => onUpdate(index, "status", e.target.value)}
                 >
@@ -150,7 +150,7 @@ export function TicketCard({
             <div className="space-y-2">
               <Label>Group</Label>
               <select
-                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
                 value={groupMap[ticket.id] || ""}
                 onChange={(e) => onAssignGroup(ticket.id, e.target.value)}
               >
@@ -271,7 +271,7 @@ export function TicketCard({
                     <div className="space-y-2">
                       <Label>Link Product</Label>
                       <select
-                        className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+                        className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
                         value={ticket.product_id || ""}
                         onChange={(e) =>
                           onUpdate(

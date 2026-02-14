@@ -143,6 +143,15 @@
 [data-admin] ::-webkit-scrollbar-thumb { background: #1e1e2a; border-radius: 4px; }
 [data-admin] ::-webkit-scrollbar-thumb:hover { background: #2a2a3a; }
 
+/* Dark-themed native selects and dropdowns */
+[data-admin] select {
+  color-scheme: dark;
+}
+[data-admin] select option {
+  background-color: #111117;
+  color: #f0f0f5;
+}
+
 /* Prevent browser autofill from turning inputs white */
 [data-admin] input:-webkit-autofill,
 [data-admin] input:-webkit-autofill:hover,

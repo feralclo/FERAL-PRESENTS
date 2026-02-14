@@ -780,7 +780,7 @@ function FontSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="flex h-8 w-full rounded-md border border-input bg-background/50 px-2 text-xs transition-colors focus-visible:border-primary/50 focus-visible:outline-none"
+      className="flex h-8 w-full rounded-md border border-input bg-background/50 px-2 text-xs text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none"
     >
       {FONT_OPTIONS.map((f) => (
         <option key={f} value={f}>

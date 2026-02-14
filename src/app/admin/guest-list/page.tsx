@@ -217,7 +217,7 @@ export default function GuestListPage() {
           <div className="flex items-center gap-3">
             <Label className="shrink-0 text-muted-foreground">Event</Label>
             <select
-              className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+              className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
               value={selectedEvent}
               onChange={(e) => setSelectedEvent(e.target.value)}
             >

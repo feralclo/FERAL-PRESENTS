@@ -301,7 +301,7 @@ export default function MerchEditorPage() {
                 <div className="space-y-2">
                   <Label>Type</Label>
                   <select
-                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm text-foreground transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
                     value={product.type}
                     onChange={(e) => update("type", e.target.value)}
                   >

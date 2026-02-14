@@ -198,11 +198,16 @@ body:has(.admin-login) > .noise {
   border: 1px solid #1e1e2a;
   border-radius: 6px;
   color: #f0f0f5;
+  color-scheme: dark;
   font-family: 'Inter', sans-serif;
   font-size: 0.85rem;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
+}
+select.admin-form__input option {
+  background-color: #111117;
+  color: #f0f0f5;
 }
 
 .admin-form__input:focus {

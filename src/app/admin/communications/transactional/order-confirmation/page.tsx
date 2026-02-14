@@ -446,15 +446,15 @@ export default function OrderConfirmationPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>From Name</Label>
-                    <Input value={settings.from_name} onChange={(e) => update("from_name", e.target.value)} placeholder="FERAL PRESENTS" className="max-w-sm" />
+                    <Input value={settings.from_name} onChange={(e) => update("from_name", e.target.value)} placeholder="Your Brand Name" className="max-w-sm" />
                   </div>
                   <div className="space-y-2">
                     <Label>From Email</Label>
-                    <Input type="email" value={settings.from_email} onChange={(e) => update("from_email", e.target.value)} placeholder="tickets@feralpresents.com" className="max-w-sm" />
+                    <Input type="email" value={settings.from_email} onChange={(e) => update("from_email", e.target.value)} placeholder="tickets@nocturne.events" className="max-w-sm" />
                   </div>
                   <div className="space-y-2">
                     <Label>Reply-To Email</Label>
-                    <Input type="email" value={settings.reply_to || ""} onChange={(e) => update("reply_to", e.target.value || undefined)} placeholder="support@feralpresents.com" className="max-w-sm" />
+                    <Input type="email" value={settings.reply_to || ""} onChange={(e) => update("reply_to", e.target.value || undefined)} placeholder="support@nocturne.events" className="max-w-sm" />
                     <p className="text-[11px] text-muted-foreground">Where customer replies go</p>
                   </div>
                 </CardContent>
@@ -562,7 +562,7 @@ export default function OrderConfirmationPage() {
 
                   <div className="space-y-2">
                     <Label>Footer Text</Label>
-                    <Input value={settings.footer_text} onChange={(e) => update("footer_text", e.target.value)} placeholder="FERAL PRESENTS" className="max-w-sm" />
+                    <Input value={settings.footer_text} onChange={(e) => update("footer_text", e.target.value)} placeholder="Your Brand Name" className="max-w-sm" />
                   </div>
                 </CardContent>
               </Card>

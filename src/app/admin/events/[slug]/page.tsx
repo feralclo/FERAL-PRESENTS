@@ -878,7 +878,7 @@ export default function EventEditorPage() {
               <span
                 style={{ fontSize: "0.7rem", color: "#55557a", marginTop: 2 }}
               >
-                feralpresents.com/event/{event.slug}/
+                nocturne.events/event/{event.slug}/
               </span>
             </div>
           </div>

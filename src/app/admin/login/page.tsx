@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 
 /**
@@ -65,15 +66,26 @@ function LoginForm() {
 
   if (checkingSession) {
     return (
-      <div className="admin-login">
-        <div className="admin-login__box">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/FERAL LOGO.svg"
-            alt="FERAL"
-            style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }}
-          />
-          <p style={{ color: "#8888a0", textAlign: "center", fontFamily: "'Space Mono', monospace" }}>
+      <div data-admin className="flex min-h-screen items-center justify-center bg-background">
+        {/* Ambient glow */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
+        </div>
+        <div className="relative w-full max-w-[380px] px-5">
+          <div className="mb-10 text-center">
+            <span
+              className="font-mono text-[18px] font-bold uppercase tracking-[6px] select-none"
+              style={{
+                background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Nocturne
+            </span>
+          </div>
+          <p className="text-center font-mono text-xs text-muted-foreground tracking-wider">
             Checking session...
           </p>
         </div>
@@ -82,43 +94,85 @@ function LoginForm() {
   }
 
   return (
-    <div className="admin-login">
-      <div className="admin-login__box">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/FERAL LOGO.svg"
-          alt="FERAL"
-          style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }}
-        />
-        <h1 className="admin-login__title">Admin Access</h1>
-        <form onSubmit={handleLogin} action="/admin/login/" method="POST">
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="Email"
-            className="admin-login__input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username email"
-            required
-          />
-          <input
-            type="password"
-            id="password"
-            name="password"
-            placeholder="Password"
-            className="admin-login__input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-          {error && <p className="admin-login__error">{error}</p>}
-          <button type="submit" className="admin-login__btn" disabled={loading}>
-            {loading ? "SIGNING IN..." : "LOGIN"}
-          </button>
-        </form>
+    <div data-admin className="flex min-h-screen items-center justify-center bg-background">
+      {/* Ambient glow */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
+      </div>
+
+      <div className="relative w-full max-w-[380px] px-5">
+        {/* Brand */}
+        <div className="mb-10 text-center">
+          <span
+            className="font-mono text-[18px] font-bold uppercase tracking-[6px] select-none"
+            style={{
+              background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Nocturne
+          </span>
+          <p className="mt-3 text-[13px] text-muted-foreground">
+            Sign in to your dashboard
+          </p>
+        </div>
+
+        {/* Form card */}
+        <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-xl shadow-black/20">
+          <form onSubmit={handleLogin} action="/admin/login/" method="POST">
+            <div className="mb-4">
+              <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="you@example.com"
+                className="w-full rounded-lg border border-input bg-background/50 px-4 py-2.5 text-[14px] text-foreground outline-none transition-all duration-200 placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-[3px] focus:ring-primary/15 focus:bg-background"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username email"
+                required
+              />
+            </div>
+            <div className="mb-6">
+              <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                className="w-full rounded-lg border border-input bg-background/50 px-4 py-2.5 text-[14px] text-foreground outline-none transition-all duration-200 placeholder:text-muted-foreground/40 focus:border-primary/50 focus:ring-[3px] focus:ring-primary/15 focus:bg-background"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            {error && (
+              <div className="mb-4 rounded-lg bg-destructive/8 border border-destructive/15 px-4 py-2.5 text-[13px] text-destructive">
+                {error}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-primary py-2.5 font-mono text-[12px] font-bold uppercase tracking-[2px] text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/85 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <p className="mt-8 text-center font-mono text-[10px] text-muted-foreground/40 tracking-wider">
+          Powered by Nocturne
+        </p>
       </div>
     </div>
   );
@@ -126,26 +180,28 @@ function LoginForm() {
 
 /**
  * Admin login page using Supabase Auth (email + password).
- *
- * Replaces the old client-side credential check with real
- * server-verified authentication via Supabase Auth.
- *
- * After login, the session cookie is set automatically by Supabase SSR,
- * and the middleware will allow access to /admin/* routes.
  */
 export default function AdminLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="admin-login">
-          <div className="admin-login__box">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/FERAL LOGO.svg"
-              alt="FERAL"
-              style={{ display: "block", width: 120, margin: "0 auto 32px", opacity: 0.9 }}
-            />
-            <p style={{ color: "#8888a0", textAlign: "center", fontFamily: "'Space Mono', monospace" }}>
+        <div data-admin className="flex min-h-screen items-center justify-center bg-background">
+          <div className="pointer-events-none fixed inset-0 overflow-hidden">
+            <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
+          </div>
+          <div className="relative text-center">
+            <span
+              className="font-mono text-[18px] font-bold uppercase tracking-[6px] select-none"
+              style={{
+                background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Nocturne
+            </span>
+            <p className="mt-4 font-mono text-xs text-muted-foreground tracking-wider">
               Loading...
             </p>
           </div>

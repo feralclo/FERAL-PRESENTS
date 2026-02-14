@@ -22,6 +22,15 @@ import {
   UserCheck,
 } from "lucide-react";
 
+/* ── Skeleton pulse ── */
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-md bg-muted/60 ${className || ""}`}
+    />
+  );
+}
+
 /* ── Types ── */
 type Period = "today" | "7d" | "30d" | "all";
 
@@ -271,7 +280,7 @@ export default function AdminDashboard() {
           <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
             Dashboard
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm text-muted-foreground">
             Performance overview {periodLabel(period)}
           </p>
         </div>
@@ -282,28 +291,28 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Revenue"
-          value={loading ? "..." : `£${kpi.revenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={loading ? "\u00A0" : `£${kpi.revenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
           detail={`Completed orders ${periodLabel(period)}`}
 
         />
         <StatCard
           label="Orders"
-          value={loading ? "..." : kpi.orders.toLocaleString()}
+          value={loading ? "\u00A0" : kpi.orders.toLocaleString()}
           icon={ShoppingBag}
           detail={`Total completed ${periodLabel(period)}`}
 
         />
         <StatCard
           label="Tickets Sold"
-          value={loading ? "..." : kpi.ticketsSold.toLocaleString()}
+          value={loading ? "\u00A0" : kpi.ticketsSold.toLocaleString()}
           icon={Ticket}
           detail={`Individual tickets issued`}
 
         />
         <StatCard
           label="Merch Revenue"
-          value={loading ? "..." : `£${kpi.merchRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={loading ? "\u00A0" : `£${kpi.merchRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={Shirt}
           detail={`From merchandise add-ons`}
 

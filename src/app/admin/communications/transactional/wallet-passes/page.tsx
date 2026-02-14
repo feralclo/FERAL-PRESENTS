@@ -462,7 +462,7 @@ export default function WalletPassesPage() {
                         <Input
                           value={settings.organization_name}
                           onChange={(e) => update("organization_name", e.target.value)}
-                          placeholder="FERAL PRESENTS"
+                          placeholder="Your Brand Name"
                           className="max-w-sm font-mono uppercase"
                         />
                         <p className="text-[11px] text-muted-foreground">Shown on the pass header and in Wallet app listings.</p>

@@ -29,6 +29,7 @@ import {
   ChevronsUpDown,
   User as UserIcon,
   Receipt,
+  Search,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -83,6 +84,26 @@ function matchRoute(pathname: string, href: string): boolean {
 
 function getPageTitle(pathname: string): string {
   return ALL_ITEMS.find((item) => matchRoute(pathname, item.href))?.label || "Admin";
+}
+
+/* ── NOCTURNE wordmark ── */
+function NocturneWordmark({ size = "default" }: { size?: "default" | "sm" }) {
+  return (
+    <span
+      className={cn(
+        "font-mono font-bold uppercase tracking-[4px] text-gradient select-none",
+        size === "default" ? "text-[13px]" : "text-[10px] tracking-[3px]"
+      )}
+      style={{
+        background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        backgroundClip: "text",
+      }}
+    >
+      Nocturne
+    </span>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -151,14 +172,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           open ? "translate-x-0" : "max-lg:-translate-x-full"
         )}
       >
-        {/* Logo bar */}
+        {/* Platform brand */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-5">
-          <Link href="/admin/" className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/FERAL LOGO.svg" alt="FERAL" className="h-5 opacity-90" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-primary">
-              Admin
-            </span>
+          <Link href="/admin/" className="flex items-center gap-2">
+            <NocturneWordmark />
           </Link>
           <Button
             variant="ghost"
@@ -170,8 +187,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </Button>
         </div>
 
+        {/* Search hint */}
+        <div className="px-3 pt-3 pb-1">
+          <button className="flex w-full items-center gap-2.5 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/30 px-3 py-2 text-[12px] text-sidebar-foreground/40 transition-colors hover:border-sidebar-border hover:text-sidebar-foreground/60">
+            <Search size={13} strokeWidth={1.5} />
+            <span>Search...</span>
+            <kbd className="ml-auto rounded border border-sidebar-border/60 bg-sidebar px-1.5 py-0.5 font-mono text-[10px] leading-none text-sidebar-foreground/30">
+              /
+            </kbd>
+          </button>
+        </div>
+
         {/* Scrollable navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-3 py-3">
           {NAV_SECTIONS.map((section) => (
             <div key={section.label} className="mb-5">
               <div className="mb-2 px-3 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-sidebar-foreground/40">
@@ -253,7 +281,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
           )}
 
-          {/* User info button */}
+          {/* Tenant info button — shows the org (FERAL), not the platform */}
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex w-full items-center gap-3 p-3 transition-colors hover:bg-sidebar-accent/30"
@@ -262,7 +290,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/60 to-primary/25 text-[11px] font-bold text-white ring-1 ring-primary/20">
               {initials}
             </div>
-            {/* Name + email */}
+            {/* Org name + email */}
             <div className="flex-1 text-left overflow-hidden">
               <p className="truncate text-[13px] font-medium text-foreground/90">FERAL</p>
               <p className="truncate text-[11px] text-sidebar-foreground/50">{userEmail || "admin"}</p>
@@ -286,13 +314,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             >
               <PanelLeft size={18} />
             </Button>
-            {/* Mobile logo */}
-            <Link href="/admin/" className="flex items-center gap-2 lg:hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/FERAL LOGO.svg" alt="FERAL" className="h-4 opacity-90" />
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-primary">
-                Admin
-              </span>
+            {/* Mobile brand */}
+            <Link href="/admin/" className="lg:hidden">
+              <NocturneWordmark size="sm" />
             </Link>
             {/* Desktop breadcrumb */}
             <Separator orientation="vertical" className="hidden h-5 lg:block" />

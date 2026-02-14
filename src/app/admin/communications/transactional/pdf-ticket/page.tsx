@@ -451,7 +451,7 @@ export default function PdfTicketPage() {
                     <Input
                       value={settings.brand_name}
                       onChange={(e) => update("brand_name", e.target.value)}
-                      placeholder="FERAL PRESENTS"
+                      placeholder="Your Brand Name"
                       className="max-w-sm font-mono uppercase"
                     />
                     <p className="text-[11px] text-muted-foreground">

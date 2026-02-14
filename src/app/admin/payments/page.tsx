@@ -327,7 +327,7 @@ export default function PaymentSettingsPage() {
                   className="admin-form__input"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
-                  placeholder="e.g. FERAL Events Ltd"
+                  placeholder="e.g. Acme Events Ltd"
                 />
               </div>
 

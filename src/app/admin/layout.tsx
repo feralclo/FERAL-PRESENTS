@@ -31,6 +31,7 @@ import {
   Receipt,
   Search,
   Package,
+  Palette,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -62,6 +63,7 @@ const NAV_SECTIONS = [
   {
     label: "Platform",
     items: [
+      { href: "/admin/branding/", label: "Branding", icon: Palette },
       { href: "/admin/payments/", label: "Payments", icon: CreditCard },
       { href: "/admin/connect/", label: "Stripe Connect", icon: Zap },
       { href: "/admin/marketing/", label: "Marketing", icon: Megaphone },

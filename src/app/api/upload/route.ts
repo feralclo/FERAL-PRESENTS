@@ -35,6 +35,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Enforce 5MB max file size (base64 is ~33% larger than raw, so 5MB raw ≈ 6.7MB base64)
+    const MAX_SIZE = 7 * 1024 * 1024; // 7MB base64 ≈ 5MB raw image
+    if (imageData.length > MAX_SIZE) {
+      return NextResponse.json(
+        { error: "Image too large. Maximum size is 5MB." },
+        { status: 413 }
+      );
+    }
+
+    // Validate content type is a safe image format
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/avif"];
+    const detectedType = imageData.match(/^data:(image\/[\w+.-]+);/)?.[1];
+    if (!detectedType || !allowedTypes.includes(detectedType)) {
+      return NextResponse.json(
+        { error: "Unsupported image format" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return NextResponse.json(

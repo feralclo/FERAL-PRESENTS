@@ -1,8 +1,46 @@
 import type { NextConfig } from "next";
 
+/**
+ * Content Security Policy.
+ *
+ * Controls which external resources the browser is allowed to load.
+ * This is the single most important header for preventing XSS attacks.
+ *
+ * Each directive whitelist is built from actual usage in the codebase:
+ * - GTM, Meta Pixel, Stripe.js, WeeZTix (scripts)
+ * - Google Fonts (styles + fonts)
+ * - Stripe Connect, WeeZTix, GTM (iframes)
+ * - Supabase, Stripe, Meta CAPI, Klaviyo (API calls)
+ */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const cspDirectives = [
+  "default-src 'self'",
+  // Scripts: GTM, Meta Pixel, Stripe.js, WeeZTix widget
+  // 'unsafe-inline' required for GTM consent defaults in layout.tsx
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://v1.widget.shop.eventix.io https://js.stripe.com",
+  // Styles: Google Fonts + inline styles (Tailwind, branding CSS vars)
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  // Fonts: Google Fonts CDN
+  "font-src 'self' https://fonts.gstatic.com",
+  // Images: self + data URIs (QR codes, base64 logos)
+  `img-src 'self' data: blob:`,
+  // Iframes: GTM noscript, WeeZTix checkout, Stripe Connect onboarding, Stripe.js
+  "frame-src 'self' https://www.googletagmanager.com https://shop.weeztix.com https://connect.stripe.com https://js.stripe.com",
+  // API calls: Supabase REST/Realtime, Stripe, Meta, Klaviyo, GTM
+  `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace("https://", "")} https://api.stripe.com https://www.googletagmanager.com https://connect.facebook.net https://graph.facebook.com https://manage.kmail-lists.com`,
+  // Forms only submit to same origin
+  "form-action 'self'",
+  // Prevent <base> tag hijacking
+  "base-uri 'self'",
+];
+const contentSecurityPolicy = cspDirectives.join("; ");
+
 const nextConfig: NextConfig = {
   // Keep trailing slashes to match existing URL structure (/event/liverpool-27-march/)
   trailingSlash: true,
+
+  // Never serve source maps to browsers in production
+  productionBrowserSourceMaps: false,
 
   // Image optimization for event banners and assets
   images: {
@@ -27,6 +65,10 @@ const nextConfig: NextConfig = {
           {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy,
           },
         ],
       },

@@ -1,0 +1,27 @@
+# Nocturn Platform — robots.txt
+# Allow public pages, block admin and API endpoints
+
+User-agent: *
+
+# Public pages (allowed)
+Allow: /
+Allow: /event/
+
+# Block admin dashboard
+Disallow: /admin/
+Disallow: /admin
+
+# Block API endpoints
+Disallow: /api/
+
+# Block legacy static files
+Disallow: /static/
+Disallow: /js/
+Disallow: /css/
+
+# Block legacy root-level HTML
+Disallow: /agencyferal/
+Disallow: /artist/
+Disallow: /artist-invite/
+Disallow: /artist-login/
+Disallow: /contract/

@@ -5,13 +5,39 @@ import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
+ * Keys that can be read without authentication (public GET).
+ * Only event configs, branding, and marketing settings are public.
+ * Everything else (stripe accounts, email config, wallet config, media) requires auth.
+ */
+function isPublicSettingsKey(key: string): boolean {
+  // Event-specific settings (e.g., feral_event_liverpool, feral_event_kompass)
+  if (key.match(/^[a-z0-9_]+_event_[a-z0-9_-]+$/)) return true;
+  // Org branding (e.g., feral_branding)
+  if (key.match(/^[a-z0-9_]+_branding$/)) return true;
+  // Marketing/pixel settings (e.g., feral_marketing)
+  if (key.match(/^[a-z0-9_]+_marketing$/)) return true;
+  return false;
+}
+
+/**
  * GET /api/settings?key=feral_event_liverpool
  * Server-side settings fetch — avoids exposing anon key in client requests.
+ * Only whitelisted keys are accessible without auth — prevents probing of
+ * internal config like Stripe account IDs, email settings, or wallet config.
  */
 export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get("key");
   if (!key) {
     return NextResponse.json({ error: "Missing key parameter" }, { status: 400 });
+  }
+
+  // Block access to non-public settings keys for unauthenticated requests
+  if (!isPublicSettingsKey(key)) {
+    // Check if user is authenticated — admin can read any key
+    const auth = await requireAuth();
+    if (auth.error) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 
   try {

@@ -7,11 +7,19 @@ import {
   toSmallestUnit,
   DEFAULT_PLATFORM_FEE_PERCENT,
 } from "@/lib/stripe/config";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+// 10 payment intents per minute per IP — prevents abuse / cost attacks
+const paymentLimiter = createRateLimiter("payment-intent", {
+  limit: 10,
+  windowSeconds: 60,
+});
 
 /**
  * POST /api/stripe/payment-intent
  *
  * Creates a Stripe PaymentIntent for a ticket purchase.
+ * Rate limited: 10 requests per minute per IP.
  *
  * Connected account is auto-detected from site_settings (saved by Payment Settings page).
  * Platform fee uses the config default (DEFAULT_PLATFORM_FEE_PERCENT).
@@ -26,6 +34,9 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
+    const blocked = paymentLimiter(request);
+    if (blocked) return blocked;
+
     const stripe = getStripe();
     const body = await request.json();
     const { event_id, items, customer } = body;

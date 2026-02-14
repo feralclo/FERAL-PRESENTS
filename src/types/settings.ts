@@ -122,6 +122,37 @@ export interface EventThemeOverrides {
   custom_class?: string;
 }
 
+/**
+ * StoreTheme — a saved theme configuration.
+ * Each org can have multiple themes; one is active at a time.
+ * Stored in site_settings under key `{org_id}_themes`.
+ */
+export interface StoreTheme {
+  /** Unique theme ID (UUID) */
+  id: string;
+  /** Display name (e.g. "Midnight", "Daylight", "My Custom Theme") */
+  name: string;
+  /** Base template this theme was created from */
+  template: "midnight" | "daylight" | "neon" | "custom";
+  /** Full branding configuration for this theme */
+  branding: BrandingSettings;
+  /** ISO timestamp when theme was created */
+  created_at: string;
+  /** ISO timestamp when theme was last modified */
+  updated_at: string;
+}
+
+/**
+ * ThemeStore — the complete themes state for an org.
+ * Stored as the `data` field in site_settings under key `{org_id}_themes`.
+ */
+export interface ThemeStore {
+  /** ID of the currently active theme */
+  active_theme_id: string;
+  /** All saved themes for this org */
+  themes: StoreTheme[];
+}
+
 /** Row shape from site_settings table */
 export interface SiteSettingsRow {
   key: string;

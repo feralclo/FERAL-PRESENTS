@@ -117,7 +117,7 @@
 }
 
 .dp-btn--primary {
-  background: #ff0033;
+  background: var(--red);
   color: #fff;
 }
 .dp-btn--primary:hover { background: #e6002e; }
@@ -166,7 +166,7 @@
   font-family: 'Space Mono', monospace;
   font-size: 22px;
   font-weight: 700;
-  color: #ff0033;
+  color: var(--red);
   letter-spacing: 3px;
 }
 
@@ -184,7 +184,7 @@
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 4px;
-  color: #ff0033;
+  color: var(--red);
 }
 
 .dp-note {
@@ -216,7 +216,7 @@
   font-family: 'Space Mono', monospace;
   font-size: 20px;
   font-weight: 700;
-  color: #ff0033;
+  color: var(--red);
   letter-spacing: 2px;
 }
 
@@ -231,7 +231,7 @@
 
 /* Error state */
 .dp-error {
-  color: #ff0033;
+  color: var(--red);
   font-family: 'Space Mono', monospace;
   font-size: 10px;
   letter-spacing: 1px;

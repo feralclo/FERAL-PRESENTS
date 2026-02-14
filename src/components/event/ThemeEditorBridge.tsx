@@ -21,6 +21,10 @@ export function isEditorPreview(): boolean {
  * Sets `data-editor-preview` on <html> so CSS can hide distracting UI
  * (cookie banner, discount popup, social proof toast) and components
  * can skip analytics tracking.
+ *
+ * IMPORTANT: CSS variables must be applied to BOTH the [data-theme-root]
+ * wrapper div (which has server-injected inline styles that would otherwise
+ * shadow updates) AND document.documentElement (for :root vars in base.css).
  */
 export function ThemeEditorBridge() {
   useEffect(() => {
@@ -29,6 +33,9 @@ export function ThemeEditorBridge() {
 
     // Mark the document so CSS + other components can detect editor mode
     document.documentElement.setAttribute("data-editor-preview", "");
+
+    // Find the theme root wrapper (event layout sets data-theme-root on its wrapper div)
+    const themeRoot = document.querySelector<HTMLElement>("[data-theme-root]");
 
     // Disable link clicks and navigation inside the preview
     function blockNav(e: MouseEvent) {
@@ -42,11 +49,13 @@ export function ThemeEditorBridge() {
     function handleMessage(e: MessageEvent) {
       if (!e.data || typeof e.data !== "object") return;
 
-      // CSS variable updates (colors, fonts)
+      // CSS variable updates (colors)
       if (e.data.type === "theme-variables" && e.data.variables) {
-        const root = document.documentElement;
         for (const [key, value] of Object.entries(e.data.variables)) {
-          root.style.setProperty(key, value as string);
+          // Apply to :root for base.css aliases (--red: var(--accent), etc.)
+          document.documentElement.style.setProperty(key, value as string);
+          // Apply to theme root wrapper to override server-injected inline styles
+          themeRoot?.style.setProperty(key, value as string);
         }
       }
 
@@ -65,10 +74,9 @@ export function ThemeEditorBridge() {
           document.head.appendChild(link);
         }
         const suffix = variable === "--font-mono" ? ", monospace" : ", sans-serif";
-        document.documentElement.style.setProperty(
-          variable,
-          `'${fontFamily}'${suffix}`
-        );
+        const val = `'${fontFamily}'${suffix}`;
+        document.documentElement.style.setProperty(variable, val);
+        themeRoot?.style.setProperty(variable, val);
       }
 
       // Logo update

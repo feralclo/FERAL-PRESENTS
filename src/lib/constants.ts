@@ -36,6 +36,11 @@ export function brandingKey(orgId: string): string {
   return `${orgId}_branding`;
 }
 
+/** Generate the themes settings key for a given org */
+export function themesKey(orgId: string): string {
+  return `${orgId}_themes`;
+}
+
 // Default ticket IDs (fallbacks if settings not loaded)
 export const DEFAULT_TICKETS = {
   GENERAL: "6b45169f-cf51-4600-8682-d6f79dcb59ae",

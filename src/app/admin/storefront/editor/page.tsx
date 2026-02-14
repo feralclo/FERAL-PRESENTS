@@ -5,9 +5,10 @@ import {
   useEffect,
   useCallback,
   useRef,
+  Suspense,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +30,7 @@ import {
   User,
   Undo2,
 } from "lucide-react";
-import type { BrandingSettings } from "@/types/settings";
+import type { BrandingSettings, ThemeStore, StoreTheme } from "@/types/settings";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 
@@ -84,13 +85,36 @@ type SectionId = "colors" | "typography" | "logo" | "identity" | "social";
 
 /* ═══════════════════════════════════════════════════════
    STOREFRONT EDITOR — Full-screen, Shopify-style
+   Works with the multi-theme system. Reads ?theme=<id>
+   from the URL to determine which theme to edit.
    ═══════════════════════════════════════════════════════ */
 
-export default function StorefrontEditorPage() {
+export default function StorefrontEditorPageWrapper() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          data-admin
+          className="flex h-screen items-center justify-center bg-background"
+        >
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <StorefrontEditorPage />
+    </Suspense>
+  );
+}
+
+function StorefrontEditorPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const themeId = searchParams.get("theme");
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  /* ── Branding state ── */
+  /* ── Theme + branding state ── */
+  const [themeStore, setThemeStore] = useState<ThemeStore | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<StoreTheme | null>(null);
   const [branding, setBranding] = useState<BrandingSettings>(DEFAULT_BRANDING);
   const [savedBranding, setSavedBranding] =
     useState<BrandingSettings>(DEFAULT_BRANDING);
@@ -112,15 +136,24 @@ export default function StorefrontEditorPage() {
   /* ── Initial data fetch ── */
   useEffect(() => {
     Promise.all([
-      fetch("/api/branding").then((r) => r.json()),
+      fetch("/api/themes").then((r) => r.json()),
       fetch("/api/events").then((r) => r.json()),
     ])
-      .then(([brandingRes, eventsRes]) => {
-        if (brandingRes.data) {
-          const data = { ...DEFAULT_BRANDING, ...brandingRes.data };
+      .then(([themesRes, eventsRes]) => {
+        const store = themesRes.data as ThemeStore;
+        setThemeStore(store);
+
+        // Find the theme to edit
+        const targetId = themeId || store.active_theme_id;
+        const theme = store.themes.find((t) => t.id === targetId) || store.themes[0];
+
+        if (theme) {
+          setCurrentTheme(theme);
+          const data = { ...DEFAULT_BRANDING, ...theme.branding };
           setBranding(data);
           setSavedBranding(data);
         }
+
         const list: EventOption[] = (eventsRes.data || [])
           .filter((e: { status: string }) => e.status !== "archived")
           .map((e: { slug: string; name: string }) => ({
@@ -132,14 +165,13 @@ export default function StorefrontEditorPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [themeId]);
 
   /* ── Listen for bridge ready ── */
   useEffect(() => {
     function onMsg(e: MessageEvent) {
       if (e.data?.type === "editor-bridge-ready") {
         setBridgeReady(true);
-        // Push current branding state to newly loaded iframe
         pushAllToIframe();
       }
     }
@@ -225,16 +257,23 @@ export default function StorefrontEditorPage() {
 
   /* ── Save / Discard ── */
   const handleSave = async () => {
+    if (!currentTheme) return;
     setSaving(true);
     setSaved(false);
     try {
-      const res = await fetch("/api/branding", {
+      const res = await fetch("/api/themes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(branding),
+        body: JSON.stringify({
+          action: "update",
+          id: currentTheme.id,
+          branding,
+        }),
       });
       if (res.ok) {
+        const json = await res.json();
         setSavedBranding({ ...branding });
+        if (json.store) setThemeStore(json.store);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       }
@@ -282,6 +321,7 @@ export default function StorefrontEditorPage() {
     );
   }
 
+  const isActive = themeStore?.active_theme_id === currentTheme?.id;
   const previewUrl = selectedSlug
     ? `/event/${selectedSlug}?editor=1`
     : "";
@@ -290,7 +330,7 @@ export default function StorefrontEditorPage() {
     <div data-admin className="flex h-screen flex-col bg-background text-foreground">
       {/* ═══ Top bar ═══ */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/50 bg-background px-3">
-        {/* Left: back + event selector */}
+        {/* Left: back + theme name + event selector */}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -302,8 +342,14 @@ export default function StorefrontEditorPage() {
           </Button>
           <Separator orientation="vertical" className="h-5" />
           <span className="font-mono text-[11px] font-semibold uppercase tracking-[1.5px] text-foreground/70">
-            Midnight
+            {currentTheme?.name || "Theme"}
           </span>
+          {isActive && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+              <Check size={8} />
+              Live
+            </span>
+          )}
           {events.length > 0 && (
             <>
               <Separator orientation="vertical" className="h-5" />

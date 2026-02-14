@@ -11,14 +11,31 @@
 }
 
 :root {
+  /* ── Theme-configurable variables ──
+     These are overridden by tenant branding (injected server-side via event layout).
+     The editor's ThemeEditorBridge also sets these via postMessage for live preview.
+     All existing CSS consumes them through the palette aliases below. */
+  --accent: #ff0033;
+  --bg-dark: #0e0e0e;
+  --card-bg: #1a1a1a;
+  --card-border: #2a2a2a;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+  --font-mono: 'Space Mono', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* ── Palette aliases (derive from theme variables) ──
+     Existing CSS uses these names; they automatically pick up theme changes. */
   --black: #000000;
   --white: #ffffff;
-  --red: #ff0033;
-  --red-dark: #cc0029;
-  --red-glow: rgba(255, 0, 51, 0.4);
-  --gray: #1a1a1a;
-  --gray-light: #2a2a2a;
-  --gray-text: #888888;
+  --red: var(--accent);
+  --red-dark: color-mix(in srgb, var(--accent) 80%, black);
+  --red-glow: color-mix(in srgb, var(--accent) 40%, transparent);
+  --gray: var(--card-bg);
+  --gray-light: var(--card-border);
+  --gray-text: var(--text-secondary);
+
   /* Platinum metallic palette */
   --platinum: #e5e4e2;
   --platinum-light: #f5f5f5;
@@ -36,8 +53,7 @@
   --valentine-dark: #b91d47;
   --valentine-pink: #ff7eb3;
   --valentine-glow: rgba(232, 54, 93, 0.4);
-  --font-mono: 'Space Mono', monospace;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
   --banner-height: 30px;
   --header-height: 80px;
   --container-max: 1200px;
@@ -53,8 +69,8 @@ html {
 }
 
 body {
-  background-color: var(--black);
-  color: var(--white);
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   line-height: 1.6;
   overflow-x: hidden;

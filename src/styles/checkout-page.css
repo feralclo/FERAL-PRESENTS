@@ -308,21 +308,21 @@ html.checkout-active .noise {
 .order-summary-mobile__cart-icon {
   width: 18px;
   height: 18px;
-  color: #ff0033;
+  color: var(--red);
   flex-shrink: 0;
 }
 
 .order-summary-mobile__toggle-label {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  color: #ff0033;
+  color: var(--red);
   letter-spacing: 0.2px;
 }
 
 .order-summary-mobile__chevron {
   width: 14px;
   height: 14px;
-  color: #ff0033;
+  color: var(--red);
   transition: transform 0.2s ease;
   flex-shrink: 0;
 }
@@ -927,7 +927,7 @@ html.checkout-active .noise {
 }
 
 .dp-btn--primary {
-  background: #ff0033;
+  background: var(--red);
   color: #fff;
 }
 .dp-btn--primary:hover { background: #e6002e; }
@@ -957,7 +957,7 @@ html.checkout-active .noise {
 .dp-input:focus { border-color: rgba(255, 0, 51, 0.5); }
 
 .dp-error {
-  color: #ff0033;
+  color: var(--red);
   font-size: 11px;
   margin-bottom: 10px;
   display: none;
@@ -988,7 +988,7 @@ html.checkout-active .noise {
   font-family: 'Space Mono', monospace;
   font-size: 22px;
   font-weight: 700;
-  color: #ff0033;
+  color: var(--red);
   letter-spacing: 3px;
 }
 
@@ -1006,7 +1006,7 @@ html.checkout-active .noise {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 4px;
-  color: #ff0033;
+  color: var(--red);
 }
 
 .dp-note {
@@ -1038,7 +1038,7 @@ html.checkout-active .noise {
   font-family: 'Space Mono', monospace;
   font-size: 20px;
   font-weight: 700;
-  color: #ff0033;
+  color: var(--red);
   letter-spacing: 2px;
 }
 
@@ -1151,7 +1151,7 @@ html.checkout-active .noise {
 }
 
 .payment-option__radio--checked {
-  border-color: #ff0033;
+  border-color: var(--red);
 }
 
 .payment-option__radio--checked::after {
@@ -1163,7 +1163,7 @@ html.checkout-active .noise {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #ff0033;
+  background: var(--red);
 }
 
 .payment-option__title {
@@ -1454,7 +1454,7 @@ html.checkout-active .noise {
   font-family: 'Space Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.5px;
-  color: #ff0033;
+  color: var(--red);
   text-align: center;
   padding: 8px;
   background: rgba(255, 0, 51, 0.06);
@@ -1579,7 +1579,7 @@ html.checkout-active .noise {
 .native-checkout__error {
   background: rgba(255, 0, 51, 0.08);
   border: 1px solid rgba(255, 0, 51, 0.2);
-  color: #ff0033;
+  color: var(--red);
   font-family: 'Space Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
@@ -1614,7 +1614,7 @@ html.checkout-active .noise {
 
 .native-checkout__submit {
   width: 100%;
-  background: #ff0033;
+  background: var(--red);
   color: #fff;
   font-family: 'Space Mono', monospace;
   font-size: 13px;
@@ -1736,7 +1736,7 @@ html.checkout-active .noise {
   width: 24px;
   height: 24px;
   border: 2px solid rgba(255, 255, 255, 0.08);
-  border-top-color: #ff0033;
+  border-top-color: var(--red);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -1839,7 +1839,7 @@ html.checkout-active .noise {
 }
 
 .order-confirmation__info-value--price {
-  color: #ff0033;
+  color: var(--red);
   font-weight: 700;
   font-size: 16px;
 }
@@ -1885,7 +1885,7 @@ html.checkout-active .noise {
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #ff0033;
+  color: var(--red);
   margin-bottom: 4px;
 }
 
@@ -1948,7 +1948,7 @@ html.checkout-active .noise {
 }
 
 .order-confirmation__btn--primary {
-  background: #ff0033;
+  background: var(--red);
   color: #fff;
 }
 

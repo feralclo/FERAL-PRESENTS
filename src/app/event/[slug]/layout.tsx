@@ -139,7 +139,7 @@ export default async function EventLayout({
   if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
 
   return (
-    <div className={themeClasses || undefined} style={cssVars as React.CSSProperties}>
+    <div data-theme-root className={themeClasses || undefined} style={cssVars as React.CSSProperties}>
       <ThemeEditorBridge />
       <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
         {children}

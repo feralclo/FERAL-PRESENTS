@@ -32,6 +32,7 @@ import {
   Search,
   Package,
   Store,
+  Tags,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -48,6 +49,7 @@ const NAV_SECTIONS = [
     label: "Commerce",
     items: [
       { href: "/admin/orders/", label: "Orders", icon: FileText },
+      { href: "/admin/discounts/", label: "Discounts", icon: Tags },
       { href: "/admin/merch/", label: "Merch", icon: Package },
       { href: "/admin/customers/", label: "Customers", icon: Users },
       { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },

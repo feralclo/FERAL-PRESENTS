@@ -33,6 +33,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/stripe/webhook",
   "/api/stripe/apple-pay-verify",
   "/api/stripe/account",
+  "/api/discounts/validate",
   "/api/track",
   "/api/meta/capi",
   "/api/health",

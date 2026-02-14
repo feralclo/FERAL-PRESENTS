@@ -56,6 +56,14 @@ interface CardFieldsHandle {
   }>;
 }
 
+interface DiscountInfo {
+  code: string;
+  type: string;
+  value: number;
+  /** The calculated discount amount in major currency units. */
+  amount: number;
+}
+
 /* ================================================================
    COUNTRIES LIST — for billing country dropdown
    ================================================================ */
@@ -245,6 +253,129 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
 }
 
 /* ================================================================
+   DISCOUNT CODE INPUT — shared between mobile and desktop summaries
+   ================================================================ */
+
+function DiscountCodeInput({
+  eventId,
+  subtotal,
+  discount,
+  onApply,
+  onRemove,
+}: {
+  eventId: string;
+  subtotal: number;
+  discount: DiscountInfo | null;
+  onApply: (d: DiscountInfo) => void;
+  onRemove: () => void;
+}) {
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState(false);
+
+  const handleApply = async () => {
+    if (!code.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: code.trim(),
+          event_id: eventId,
+          subtotal,
+        }),
+      });
+      const data = await res.json();
+      if (data.valid && data.discount) {
+        const d = data.discount;
+        const amount =
+          d.type === "percentage"
+            ? Math.round((subtotal * d.value) / 100 * 100) / 100
+            : Math.min(d.value, subtotal);
+        onApply({ code: d.code, type: d.type, value: d.value, amount });
+        setCode("");
+        setExpanded(false);
+      } else {
+        setError(data.error || "Invalid discount code");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  if (discount) {
+    return (
+      <div className="discount-code discount-code--applied">
+        <div className="discount-code__applied">
+          <div className="discount-code__applied-info">
+            <svg className="discount-code__tag-icon" viewBox="0 0 24 24" fill="none">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="7" cy="7" r="1" fill="currentColor"/>
+            </svg>
+            <span className="discount-code__applied-code">{discount.code}</span>
+          </div>
+          <button
+            className="discount-code__remove"
+            onClick={onRemove}
+            type="button"
+            aria-label="Remove discount"
+          >
+            &times;
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!expanded) {
+    return (
+      <div className="discount-code">
+        <button
+          className="discount-code__toggle"
+          onClick={() => setExpanded(true)}
+          type="button"
+        >
+          <svg className="discount-code__tag-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="7" cy="7" r="1" fill="currentColor"/>
+          </svg>
+          Add discount code
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="discount-code">
+      <div className="discount-code__form">
+        <input
+          type="text"
+          className="discount-code__input"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="Discount code"
+          autoFocus
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleApply())}
+        />
+        <button
+          className="discount-code__apply-btn"
+          onClick={handleApply}
+          disabled={loading || !code.trim()}
+          type="button"
+        >
+          {loading ? "..." : "Apply"}
+        </button>
+      </div>
+      {error && <div className="discount-code__error">{error}</div>}
+    </div>
+  );
+}
+
+/* ================================================================
    STRIPE CHECKOUT PAGE
    Two-column on desktop (form left, order summary right).
    Collapsible order summary on mobile.
@@ -269,6 +400,7 @@ function StripeCheckoutPage({
 }) {
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
 
   // Load Stripe.js + fetch account config in parallel for speed
   useEffect(() => {
@@ -302,12 +434,14 @@ function StripeCheckoutPage({
     );
   }
 
-  const amountInSmallest = toSmallestUnit(subtotal);
+  const discountAmount = appliedDiscount?.amount || 0;
+  const total = Math.max(subtotal - discountAmount, 0);
+  const amountInSmallest = toSmallestUnit(total);
 
   // Shared Elements options — single context for Express + Card elements
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",
-    amount: amountInSmallest,
+    amount: amountInSmallest || 100, // Stripe requires > 0; server enforces the real amount
     currency: event.currency.toLowerCase(),
     appearance: {
       theme: "night",
@@ -336,11 +470,14 @@ function StripeCheckoutPage({
         symbol={symbol}
         subtotal={subtotal}
         event={event}
+        discount={appliedDiscount}
+        onApplyDiscount={setAppliedDiscount}
+        onRemoveDiscount={() => setAppliedDiscount(null)}
       />
 
       <div className="checkout-layout">
         <div className="checkout-layout__main">
-          <Elements stripe={stripePromise} options={elementsOptions}>
+          <Elements key={`stripe-${amountInSmallest}`} stripe={stripePromise} options={elementsOptions}>
             <SinglePageCheckoutForm
               slug={slug}
               event={event}
@@ -350,6 +487,8 @@ function StripeCheckoutPage({
               symbol={symbol}
               onComplete={onComplete}
               stripePromise={stripePromise}
+              discountCode={appliedDiscount?.code || null}
+              totalAmount={total}
             />
           </Elements>
         </div>
@@ -361,6 +500,9 @@ function StripeCheckoutPage({
             symbol={symbol}
             subtotal={subtotal}
             event={event}
+            discount={appliedDiscount}
+            onApplyDiscount={setAppliedDiscount}
+            onRemoveDiscount={() => setAppliedDiscount(null)}
           />
         </aside>
       </div>
@@ -385,6 +527,8 @@ function SinglePageCheckoutForm({
   symbol,
   onComplete,
   stripePromise,
+  discountCode,
+  totalAmount,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -394,6 +538,8 @@ function SinglePageCheckoutForm({
   symbol: string;
   onComplete: (order: Order) => void;
   stripePromise: Promise<Stripe | null>;
+  discountCode: string | null;
+  totalAmount: number;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -462,6 +608,7 @@ function SinglePageCheckoutForm({
               email: walletEmail.toLowerCase(),
               phone: walletPhone || undefined,
             },
+            discount_code: discountCode || undefined,
           }),
         });
 
@@ -525,7 +672,7 @@ function SinglePageCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode]
   );
 
   // Handle form submission (card or Klarna)
@@ -572,6 +719,7 @@ function SinglePageCheckoutForm({
               last_name: lastName.trim(),
               email: email.trim().toLowerCase(),
             },
+            discount_code: discountCode || undefined,
           }),
         });
 
@@ -699,6 +847,7 @@ function SinglePageCheckoutForm({
       paymentMethod,
       stripePromise,
       onComplete,
+      discountCode,
     ]
   );
 
@@ -1354,13 +1503,21 @@ function OrderSummaryMobile({
   symbol,
   subtotal,
   event,
+  discount,
+  onApplyDiscount,
+  onRemoveDiscount,
 }: {
   cartLines: CartLine[];
   symbol: string;
   subtotal: number;
   event?: Event & { ticket_types: TicketTypeRow[] };
+  discount?: DiscountInfo | null;
+  onApplyDiscount?: (d: DiscountInfo) => void;
+  onRemoveDiscount?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const discountAmt = discount?.amount || 0;
+  const total = Math.max(subtotal - discountAmt, 0);
 
   return (
     <div className="order-summary-mobile">
@@ -1419,7 +1576,7 @@ function OrderSummaryMobile({
           </svg>
         </div>
         <span className="order-summary-mobile__toggle-total">
-          {symbol}{subtotal.toFixed(2)}
+          {symbol}{total.toFixed(2)}
         </span>
       </button>
 
@@ -1427,16 +1584,31 @@ function OrderSummaryMobile({
         <div className="order-summary-mobile__content">
           <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
           <div className="order-summary__divider" />
+          {event && onApplyDiscount && onRemoveDiscount && (
+            <DiscountCodeInput
+              eventId={event.id}
+              subtotal={subtotal}
+              discount={discount || null}
+              onApply={onApplyDiscount}
+              onRemove={onRemoveDiscount}
+            />
+          )}
           <div className="order-summary__totals">
             <div className="order-summary__row">
               <span>Subtotal</span>
               <span>{symbol}{subtotal.toFixed(2)}</span>
             </div>
+            {discount && (
+              <div className="order-summary__row order-summary__row--discount">
+                <span>Discount ({discount.code})</span>
+                <span>-{symbol}{discountAmt.toFixed(2)}</span>
+              </div>
+            )}
             <div className="order-summary__row order-summary__row--total">
               <span>Total</span>
               <span>
                 <span className="order-summary__currency">{event?.currency || "GBP"}</span>
-                {" "}{symbol}{subtotal.toFixed(2)}
+                {" "}{symbol}{total.toFixed(2)}
               </span>
             </div>
           </div>
@@ -1456,26 +1628,50 @@ function OrderSummaryDesktop({
   symbol,
   subtotal,
   event,
+  discount,
+  onApplyDiscount,
+  onRemoveDiscount,
 }: {
   cartLines: CartLine[];
   symbol: string;
   subtotal: number;
   event?: Event & { ticket_types: TicketTypeRow[] };
+  discount?: DiscountInfo | null;
+  onApplyDiscount?: (d: DiscountInfo) => void;
+  onRemoveDiscount?: () => void;
 }) {
+  const discountAmt = discount?.amount || 0;
+  const total = Math.max(subtotal - discountAmt, 0);
+
   return (
     <div className="order-summary-desktop">
       <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
       <div className="order-summary__divider" />
+      {event && onApplyDiscount && onRemoveDiscount && (
+        <DiscountCodeInput
+          eventId={event.id}
+          subtotal={subtotal}
+          discount={discount || null}
+          onApply={onApplyDiscount}
+          onRemove={onRemoveDiscount}
+        />
+      )}
       <div className="order-summary__totals">
         <div className="order-summary__row">
           <span>Subtotal</span>
           <span>{symbol}{subtotal.toFixed(2)}</span>
         </div>
+        {discount && (
+          <div className="order-summary__row order-summary__row--discount">
+            <span>Discount ({discount.code})</span>
+            <span>-{symbol}{discountAmt.toFixed(2)}</span>
+          </div>
+        )}
         <div className="order-summary__row order-summary__row--total">
           <span>Total</span>
           <span>
             <span className="order-summary__currency">{event?.currency || "GBP"}</span>
-            {" "}{symbol}{subtotal.toFixed(2)}
+            {" "}{symbol}{total.toFixed(2)}
           </span>
         </div>
       </div>

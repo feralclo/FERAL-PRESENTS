@@ -330,7 +330,7 @@ function StorefrontEditorPage() {
     <div data-admin className="flex h-screen flex-col bg-background text-foreground">
       {/* ═══ Top bar ═══ */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/50 bg-background px-3">
-        {/* Left: back + theme name + event selector */}
+        {/* Left: back + theme name */}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -349,25 +349,6 @@ function StorefrontEditorPage() {
               <Check size={8} />
               Live
             </span>
-          )}
-          {events.length > 0 && (
-            <>
-              <Separator orientation="vertical" className="h-5" />
-              <select
-                className="h-7 rounded border border-border/60 bg-background px-2 text-[11px] text-muted-foreground focus:outline-none focus:border-primary/40"
-                value={selectedSlug}
-                onChange={(e) => {
-                  setSelectedSlug(e.target.value);
-                  setBridgeReady(false);
-                }}
-              >
-                {events.map((ev) => (
-                  <option key={ev.slug} value={ev.slug}>
-                    {ev.name}
-                  </option>
-                ))}
-              </select>
-            </>
           )}
         </div>
 

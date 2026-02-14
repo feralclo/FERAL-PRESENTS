@@ -33,12 +33,12 @@ export function BottomBar({
             {hasCart ? cartTotal : `From ${fromPrice}`}
           </span>
           {hasCart && cartItems && cartItems.length > 0 ? (
-            <span className="bottom-bar__subtitle" style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <span className="bottom-bar__subtitle bottom-bar__cart-list">
               {cartItems.map((item, i) => (
-                <span key={i} style={{ fontSize: "0.6rem", color: "#aaa", lineHeight: 1.3 }}>
+                <span key={i} className="bottom-bar__cart-item">
                   {item.qty}x {item.name}
                   {item.size && (
-                    <span style={{ color: "#ff0033", marginLeft: 4, fontWeight: 600 }}>
+                    <span className="bottom-bar__cart-size">
                       {item.size}
                     </span>
                   )}
@@ -52,15 +52,7 @@ export function BottomBar({
           )}
         </div>
         {hasCart && (
-          <span
-            style={{
-              color: "#ff0033",
-              fontSize: "0.75rem",
-              fontFamily: "'Space Mono', monospace",
-              whiteSpace: "nowrap",
-              letterSpacing: "0.5px",
-            }}
-          >
+          <span className="bottom-bar__ticket-count">
             {cartQty} ticket{cartQty !== 1 ? "s" : ""}
           </span>
         )}

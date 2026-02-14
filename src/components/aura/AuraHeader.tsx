@@ -22,17 +22,28 @@ export function AuraHeader({ eventName }: AuraHeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-        {/* Logo */}
-        <a href="/" className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={branding?.logo_url || "/images/FERAL%20LOGO.svg"}
-            alt={branding?.org_name || "FERAL PRESENTS"}
-            className="h-5"
-            data-branding="logo"
-            style={branding?.logo_width ? { width: branding.logo_width, height: "auto" } : undefined}
-          />
-        </a>
+        {/* Logo + Event Name */}
+        <div className="flex items-center gap-3 min-w-0">
+          <a href="/" className="flex items-center gap-2 shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={branding?.logo_url || "/images/FERAL%20LOGO.svg"}
+              alt={branding?.org_name || "FERAL PRESENTS"}
+              className="h-5"
+              data-branding="logo"
+              style={branding?.logo_width ? { width: branding.logo_width, height: "auto" } : undefined}
+            />
+          </a>
+
+          {eventName && (
+            <>
+              <Separator orientation="vertical" className="h-5 hidden lg:block" />
+              <span className="hidden lg:inline text-sm font-medium text-muted-foreground truncate max-w-[200px]">
+                {eventName}
+              </span>
+            </>
+          )}
+        </div>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
@@ -64,21 +75,23 @@ export function AuraHeader({ eventName }: AuraHeaderProps) {
       </div>
 
       {/* Mobile nav */}
-      {menuOpen && (
-        <div className="border-t border-border bg-background md:hidden">
-          <nav className="mx-auto max-w-5xl flex flex-col px-4 py-2">
-            <Button variant="ghost" size="sm" className="justify-start" onClick={() => scrollTo("tickets")}>
-              Tickets
-            </Button>
-            <Button variant="ghost" size="sm" className="justify-start" onClick={() => scrollTo("about")}>
-              About
-            </Button>
-            <Button variant="ghost" size="sm" className="justify-start" onClick={() => scrollTo("lineup")}>
-              Lineup
-            </Button>
-          </nav>
-        </div>
-      )}
+      <div
+        className={`border-t border-border bg-background md:hidden overflow-hidden transition-all duration-200 ${
+          menuOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <nav className="mx-auto max-w-5xl flex flex-col px-4 py-2">
+          <Button variant="ghost" size="sm" className="justify-start" onClick={() => scrollTo("tickets")}>
+            Tickets
+          </Button>
+          <Button variant="ghost" size="sm" className="justify-start" onClick={() => scrollTo("about")}>
+            About
+          </Button>
+          <Button variant="ghost" size="sm" className="justify-start" onClick={() => scrollTo("lineup")}>
+            Lineup
+          </Button>
+        </nav>
+      </div>
     </header>
   );
 }

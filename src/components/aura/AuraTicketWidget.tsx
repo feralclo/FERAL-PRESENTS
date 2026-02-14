@@ -17,12 +17,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
   ShoppingCart,
   Ticket,
-  ChevronRight,
+  ArrowRight,
+  Lock,
 } from "lucide-react";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
@@ -378,21 +380,16 @@ export function AuraTicketWidget({
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div id="tickets" className="space-y-4 scroll-mt-6">
-      {/* Section header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold tracking-tight">
-          Get Tickets
-        </h2>
-        {totalSold > 0 && (
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              {Math.max(12, Math.floor(totalSold * 0.08))} viewing
-            </span>
-            <span>{totalSold} sold</span>
-          </div>
-        )}
-      </div>
+      {/* Social proof stats */}
+      {totalSold > 0 && (
+        <div className="flex items-center gap-2 mb-4">
+          <Badge variant="default" className="gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground animate-pulse" />
+            {Math.max(12, Math.floor(totalSold * 0.08))} viewing now
+          </Badge>
+          <Badge variant="secondary">{totalSold} sold</Badge>
+        </div>
+      )}
 
       {/* Default group -- each ticket in its own Card */}
       {defaultGroup.length > 0 && (
@@ -449,18 +446,12 @@ export function AuraTicketWidget({
       {totalQty > 0 && (
         <Card className="border-primary/30 py-0 gap-0">
           <CardHeader className="px-5 pt-5 pb-0">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <ShoppingCart size={14} className="text-primary" />
-                {totalQty} {totalQty === 1 ? "ticket" : "tickets"}
-              </CardTitle>
-              <span className="text-lg font-bold tabular-nums">
-                {currSymbol}
-                {totalPrice.toFixed(2)}
-              </span>
-            </div>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <ShoppingCart size={14} className="text-primary" />
+              {totalQty} {totalQty === 1 ? "ticket" : "tickets"}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="px-5 py-3">
+          <CardContent className="px-5 py-3 space-y-3">
             <div className="space-y-1">
               {cartItems.map((item, i) => (
                 <div
@@ -481,23 +472,35 @@ export function AuraTicketWidget({
                 </div>
               ))}
             </div>
+            <Separator className="opacity-30" />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total</span>
+              <span className="text-2xl font-bold tabular-nums">
+                {currSymbol}
+                {totalPrice.toFixed(2)}
+              </span>
+            </div>
           </CardContent>
-          <Separator className="opacity-30" />
-          <CardFooter className="flex-col gap-3 px-5 py-4">
+          <CardFooter className="flex-col gap-2 px-5 pb-5 pt-0">
             <Button
               size="lg"
-              className="w-full font-semibold"
+              className="w-full text-base font-semibold"
               onClick={handleCheckout}
             >
-              Checkout <ChevronRight size={16} />
+              Checkout
+              <ArrowRight size={18} />
             </Button>
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+              <Lock size={11} />
+              <span>Secure checkout</span>
+            </div>
 
             {/* Express checkout */}
             {isStripe && totalQty > 0 && (
-              <div className="w-full">
-                <div className="flex items-center gap-2 py-2">
+              <div className="w-full pt-1">
+                <div className="flex items-center gap-3 py-2">
                   <Separator className="flex-1 opacity-30" />
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-widest font-medium">
                     or
                   </span>
                   <Separator className="flex-1 opacity-30" />
@@ -531,12 +534,30 @@ export function AuraTicketWidget({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Select Size</DialogTitle>
+            {sizePopupTicket && (
+              <DialogDescription>
+                {sizePopupTicket.name}
+                {sizePopupTicket.merch_name && (
+                  <> &mdash; includes {sizePopupTicket.merch_name}</>
+                )}
+              </DialogDescription>
+            )}
           </DialogHeader>
           {sizePopupTicket && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {sizePopupTicket.name}
-              </p>
+              <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                <div className="text-sm">
+                  <span className="font-medium">{sizePopupTicket.name}</span>
+                  {sizePopupTicket.merch_description && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {sizePopupTicket.merch_description}
+                    </p>
+                  )}
+                </div>
+                <span className="text-sm font-semibold tabular-nums">
+                  {currSymbol}{sizePopupTicket.price.toFixed(2)}
+                </span>
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 {sizePopupSizes.map((size) => (
                   <Button
@@ -560,7 +581,7 @@ export function AuraTicketWidget({
           <DialogFooter>
             <Button
               size="lg"
-              className="w-full"
+              className="w-full font-semibold"
               onClick={handleSizeConfirm}
             >
               Add to Cart

@@ -9,7 +9,7 @@ import { AuraCheckoutHeader } from "./AuraCheckoutHeader";
 import { AuraFooter } from "./AuraFooter";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { getCurrencySymbol } from "@/lib/stripe/config";
-import { CheckCircle2, Download, Wallet, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Download, Wallet, ArrowLeft, Mail } from "lucide-react";
 import type { Order } from "@/types/orders";
 
 interface AuraOrderConfirmationProps {
@@ -122,16 +122,26 @@ export function AuraOrderConfirmation({
       <div className="mx-auto max-w-2xl px-5 py-10 space-y-8">
         {/* Success header */}
         <div className="text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
-            <CheckCircle2 size={32} className="text-emerald-500" />
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
+            <CheckCircle2 size={40} className="text-emerald-500" />
           </div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-3xl font-bold">
             You&apos;re going to {eventName}!
           </h1>
           <p className="text-sm text-muted-foreground">
-            Order {order.order_number} confirmed. Check your email for details.
+            Congratulations! Order {order.order_number} has been confirmed.
           </p>
         </div>
+
+        {/* Email delivery notice */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="flex items-center gap-3 py-3">
+            <Mail size={16} className="text-primary shrink-0" />
+            <p className="text-sm">
+              We&apos;ve sent your tickets to your email. Check your inbox!
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Order summary */}
         <Card>
@@ -185,22 +195,22 @@ export function AuraOrderConfirmation({
                         <img
                           src={qrCodes[ticket.ticket_code]}
                           alt={`QR code for ${ticket.ticket_code}`}
-                          className="h-32 w-32 rounded-xl"
+                          className="h-36 w-36 rounded-xl border border-border"
                         />
                       ) : (
-                        <div className="h-32 w-32 rounded-xl bg-muted animate-pulse" />
+                        <div className="h-36 w-36 rounded-xl bg-muted animate-pulse" />
                       )}
                     </div>
 
                     {/* Ticket info */}
-                    <div className="flex-1 text-center sm:text-left space-y-1">
-                      <p className="font-mono text-xs text-muted-foreground tracking-wider">
-                        {ticket.ticket_code}
-                      </p>
+                    <div className="flex-1 text-center sm:text-left space-y-1.5">
                       <p className="text-base font-semibold">
                         {ticket.ticket_type?.name || "Ticket"}
                       </p>
                       <p className="text-sm text-muted-foreground">{eventName}</p>
+                      <p className="text-sm font-mono text-muted-foreground tracking-wider">
+                        {ticket.ticket_code}
+                      </p>
                       {ticket.merch_size && (
                         <Badge variant="secondary" className="text-xs">
                           Merch: Size {ticket.merch_size}
@@ -218,7 +228,7 @@ export function AuraOrderConfirmation({
         <div className="space-y-3">
           {order.id && (
             <Button
-              variant="outline"
+              variant="default"
               size="lg"
               className="w-full"
               onClick={handleDownloadPdf}

@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert } from "@/components/ui/alert";
 import { AuraCheckoutHeader } from "./AuraCheckoutHeader";
 import { AuraOrderConfirmation } from "./AuraOrderConfirmation";
 import { AuraFooter } from "./AuraFooter";
@@ -82,10 +84,10 @@ const COUNTRIES = [
 const CARD_ELEMENT_STYLE = {
   base: {
     fontSize: "14px",
-    color: "#fafaf9",
+    color: "#fafafa",
     fontFamily: "'Inter', sans-serif",
     fontSmoothing: "antialiased",
-    "::placeholder": { color: "#78716c" },
+    "::placeholder": { color: "#a1a1aa" },
   },
   invalid: { color: "#ef4444" },
 };
@@ -222,6 +224,7 @@ function AuraOrderSummary({
   cartLines,
   symbol,
   subtotal,
+  event,
 }: {
   cartLines: CartLine[];
   symbol: string;
@@ -236,6 +239,8 @@ function AuraOrderSummary({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-base font-semibold">{event.name}</p>
+        <Separator />
         <div className="space-y-3">
           {cartLines.map((line, i) => (
             <div key={i} className="flex items-start justify-between gap-3">
@@ -324,8 +329,8 @@ function AuraStripeCheckout({
       theme: "night",
       variables: {
         colorPrimary: "#f59e0b",
-        colorBackground: "#1c1917",
-        colorText: "#fafaf9",
+        colorBackground: "#09090b",
+        colorText: "#fafafa",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       },
     },
@@ -335,7 +340,7 @@ function AuraStripeCheckout({
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground scroll-mt-0">
       <AuraCheckoutHeader slug={slug} />
       <div className="mx-auto max-w-5xl px-5 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -536,9 +541,9 @@ function AuraCheckoutForm({
       {expressAvailable && (
         <Card>
           <CardContent className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Express Checkout
-            </p>
+            </Label>
             <ExpressCheckoutElement
               onClick={handleExpressClick}
               onConfirm={handleExpressConfirm}
@@ -634,28 +639,17 @@ function AuraCheckoutForm({
               autoComplete="cc-name"
             />
 
-            <div className="relative">
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.name}</option>
-                ))}
-              </select>
-              <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+            <NativeSelect value={country} onChange={(e) => setCountry(e.target.value)}>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </NativeSelect>
           </CardContent>
         </Card>
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
-          </div>
+          <Alert variant="destructive">{error}</Alert>
         )}
 
         {/* Pay button */}
@@ -671,7 +665,10 @@ function AuraCheckoutForm({
               Processing...
             </>
           ) : (
-            `Pay ${symbol}${subtotal.toFixed(2)}`
+            <>
+              <Lock size={14} />
+              Pay {symbol}{subtotal.toFixed(2)}
+            </>
           )}
         </Button>
 
@@ -802,7 +799,7 @@ function AuraTestCheckout({
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground scroll-mt-0">
       <AuraCheckoutHeader slug={slug} />
       <div className="mx-auto max-w-5xl px-5 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -822,9 +819,7 @@ function AuraTestCheckout({
               </Card>
 
               {error && (
-                <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                  {error}
-                </div>
+                <Alert variant="destructive">{error}</Alert>
               )}
 
               <Button type="submit" size="lg" className="w-full font-semibold" disabled={submitting}>
@@ -835,9 +830,9 @@ function AuraTestCheckout({
                 )}
               </Button>
 
-              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-center text-xs text-yellow-500">
+              <Alert variant="warning" className="text-center text-xs">
                 TEST MODE — No real payment will be processed
-              </div>
+              </Alert>
             </form>
           </div>
           <div className="lg:col-span-2">

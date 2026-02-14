@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Ticket } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Ticket, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export function AuraSocialProof() {
   const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [minutesAgo, setMinutesAgo] = useState(0);
 
+  const dismiss = useCallback(() => {
+    setVisible(false);
+    setDismissed(true);
+  }, []);
+
   useEffect(() => {
+    if (dismissed) return;
+
     // Weighted random distribution
     const rand = Math.random();
     let mins: number;
@@ -19,18 +28,20 @@ export function AuraSocialProof() {
     else mins = 15 + Math.floor(Math.random() * 15);                 // 15-30 min (5%)
     setMinutesAgo(mins);
 
-    const showTimer = setTimeout(() => setVisible(true), 5000);
-    const hideTimer = setTimeout(() => setVisible(false), 12000);
+    const showTimer = setTimeout(() => setVisible(true), 6000);
+    const hideTimer = setTimeout(() => setVisible(false), 14000);
 
     return () => {
       clearTimeout(showTimer);
       clearTimeout(hideTimer);
     };
-  }, []);
+  }, [dismissed]);
+
+  if (dismissed) return null;
 
   return (
     <div
-      className={`fixed bottom-20 right-4 z-30 md:bottom-6 transition-all duration-300 ease-in-out ${
+      className={`fixed bottom-24 md:bottom-6 right-4 z-30 transition-all duration-300 ${
         visible
           ? "translate-x-0 opacity-100"
           : "translate-x-full opacity-0 pointer-events-none"
@@ -50,6 +61,14 @@ export function AuraSocialProof() {
               Selling fast
             </Badge>
           </div>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={dismiss}
+            className="ml-1 shrink-0 text-muted-foreground"
+          >
+            <X size={12} />
+          </Button>
         </CardContent>
       </Card>
     </div>

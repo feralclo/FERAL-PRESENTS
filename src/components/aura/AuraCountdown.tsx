@@ -16,10 +16,10 @@ interface TimeRemaining {
 
 function Unit({ value, label }: { value: number; label: string }) {
   return (
-    <Badge variant="outline" className="tabular-nums font-medium text-sm px-2 py-1">
-      <span>{value}</span>
-      <span className="text-muted-foreground text-xs ml-0.5">{label}</span>
-    </Badge>
+    <div className="text-center">
+      <p className="text-lg font-bold tabular-nums leading-none">{String(value).padStart(2, "0")}</p>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">{label}</p>
+    </div>
   );
 }
 
@@ -56,11 +56,14 @@ export function AuraCountdown({ targetDate }: AuraCountdownProps) {
   if (!remaining) return null;
 
   return (
-    <div className="flex items-center gap-1.5">
-      <Unit value={remaining.days} label="d" />
-      <Unit value={remaining.hours} label="h" />
-      <Unit value={remaining.mins} label="m" />
-      <Unit value={remaining.secs} label="s" />
+    <div className="inline-flex items-center gap-3 rounded-lg border border-border/60 bg-card px-4 py-2.5">
+      <Unit value={remaining.days} label="days" />
+      <span className="text-muted-foreground/40">:</span>
+      <Unit value={remaining.hours} label="hrs" />
+      <span className="text-muted-foreground/40">:</span>
+      <Unit value={remaining.mins} label="min" />
+      <span className="text-muted-foreground/40">:</span>
+      <Unit value={remaining.secs} label="sec" />
     </div>
   );
 }

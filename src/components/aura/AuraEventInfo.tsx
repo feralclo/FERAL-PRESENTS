@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import { MapPin, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -39,10 +39,10 @@ function TextBlock({ text }: { text: string }) {
       .map((l) => l.replace(/^[-*]\s*/, "").replace(/^\d+[.)]\s*/, ""));
 
     return (
-      <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+      <ul className="space-y-2 text-sm leading-7 text-muted-foreground">
         {items.map((item, i) => (
           <li key={i} className="flex gap-2">
-            <span className="mt-2 block h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
+            <span className="mt-2.5 block h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
             <span>{item}</span>
           </li>
         ))}
@@ -65,6 +65,11 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
+function buildMapsUrl(venue: string, address?: string): string {
+  const query = address ? `${venue}, ${address}` : venue;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 export function AuraEventInfo({
   aboutText,
   detailsText,
@@ -82,7 +87,6 @@ export function AuraEventInfo({
   if (showAbout && aboutContent) {
     sections.push(
       <div key="about">
-        <SectionHeading>About</SectionHeading>
         <TextBlock text={aboutContent} />
       </div>
     );
@@ -113,6 +117,17 @@ export function AuraEventInfo({
               <p className="text-sm text-muted-foreground mt-0.5">
                 {venueAddress}
               </p>
+            )}
+            {venueAddress && (
+              <a
+                href={buildMapsUrl(venue, venueAddress)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary mt-1.5"
+              >
+                <ExternalLink size={10} />
+                View on map
+              </a>
             )}
           </div>
         </div>

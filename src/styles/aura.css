@@ -92,6 +92,14 @@
   }
 }
 
+/* ── Button shadow fix: shared Button hardcodes purple glow, override to match amber primary ── */
+[data-theme="aura"] [data-slot="button"][data-variant="default"] {
+  box-shadow: 0 1px 12px rgba(245, 158, 11, 0.2);
+}
+[data-theme="aura"] [data-slot="button"][data-variant="default"]:hover {
+  box-shadow: 0 1px 20px rgba(245, 158, 11, 0.3);
+}
+
 /* ── Autofill fix for dark backgrounds ── */
 [data-theme="aura"] input:-webkit-autofill,
 [data-theme="aura"] input:-webkit-autofill:hover,

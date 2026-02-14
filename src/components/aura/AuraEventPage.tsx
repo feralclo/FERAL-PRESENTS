@@ -145,13 +145,13 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
           age={event.age_restriction || "18+"}
           bannerImage={heroImage}
           tagLine={event.tag_line}
+          fromPrice={activeTypes.length > 0 ? `${currSymbol}${minPrice.toFixed(2)}` : undefined}
         />
 
-        <Separator className="my-8" />
+        <Separator className="my-10" />
 
-        {/* Tickets */}
-        <section id="tickets">
-          <h2 className="text-xl font-semibold tracking-tight mb-6">Tickets</h2>
+        {/* Tickets — widget provides its own heading */}
+        <section id="tickets" className="scroll-mt-20">
           <AuraTicketWidget
             eventSlug={event.slug}
             eventId={event.id}
@@ -167,11 +167,11 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
           />
         </section>
 
-        <Separator className="my-8" />
+        <Separator className="my-10" />
 
         {/* About */}
-        <section id="about">
-          <h2 className="text-xl font-semibold tracking-tight mb-6">About</h2>
+        <section id="about" className="scroll-mt-20">
+          <h2 className="text-lg font-semibold tracking-tight mb-5">About</h2>
           <AuraEventInfo
             aboutText={event.about_text}
             detailsText={event.details_text}
@@ -184,15 +184,15 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
         {/* Lineup */}
         {event.lineup && event.lineup.length > 0 && (
           <>
-            <Separator className="my-8" />
-            <section id="lineup">
-              <h2 className="text-xl font-semibold tracking-tight mb-6">Lineup</h2>
+            <Separator className="my-10" />
+            <section id="lineup" className="scroll-mt-20">
+              <h2 className="text-lg font-semibold tracking-tight mb-5">Lineup</h2>
               <AuraLineup artists={event.lineup} />
             </section>
           </>
         )}
 
-        <Separator className="my-8" />
+        <Separator className="my-10" />
 
         <AuraTrustBar />
       </main>

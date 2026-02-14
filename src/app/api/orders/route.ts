@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
-import {
-  generateOrderNumber,
-  generateTicketCode,
-} from "@/lib/ticket-utils";
 import { requireAuth } from "@/lib/auth";
+import { createOrder, OrderCreationError } from "@/lib/orders";
 
 /**
  * GET /api/orders — List orders with optional filters
@@ -97,7 +93,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/orders — Create a new order with simulated payment
+ * POST /api/orders — Create a new order with simulated payment (admin/test)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -135,7 +131,7 @@ export async function POST(request: NextRequest) {
     // Verify event exists
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, payment_method, currency")
+      .select("id, name, slug, payment_method, currency, venue_name, date_start, doors_time")
       .eq("id", event_id)
       .eq("org_id", ORG_ID)
       .single();
@@ -147,13 +143,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify ticket availability and get prices
+    // Verify ticket availability
     const ticketTypeIds = items.map(
       (item: { ticket_type_id: string }) => item.ticket_type_id
     );
     const { data: ticketTypes, error: ttErr } = await supabase
       .from(TABLES.TICKET_TYPES)
-      .select("*")
+      .select("id, name, capacity, sold")
       .eq("org_id", ORG_ID)
       .in("id", ticketTypeIds);
 
@@ -164,14 +160,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ttMap = new Map(ticketTypes.map((tt) => [tt.id, tt]));
+    const ttCheck = new Map(ticketTypes.map((tt: { id: string; name: string; capacity: number | null; sold: number }) => [tt.id, tt]));
 
-    // Check availability
     for (const item of items as {
       ticket_type_id: string;
       qty: number;
     }[]) {
-      const tt = ttMap.get(item.ticket_type_id);
+      const tt = ttCheck.get(item.ticket_type_id);
       if (!tt) {
         return NextResponse.json(
           { error: `Ticket type ${item.ticket_type_id} not found` },
@@ -188,221 +183,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upsert customer
-    const { data: existingCustomer } = await supabase
-      .from(TABLES.CUSTOMERS)
-      .select("id")
-      .eq("org_id", ORG_ID)
-      .eq("email", customer.email.toLowerCase())
-      .single();
-
-    let customerId: string;
-
-    if (existingCustomer) {
-      customerId = existingCustomer.id;
-      // Update name/phone if provided
-      await supabase
-        .from(TABLES.CUSTOMERS)
-        .update({
-          first_name: customer.first_name,
-          last_name: customer.last_name,
-          phone: customer.phone || undefined,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", customerId);
-    } else {
-      const { data: newCustomer, error: custErr } = await supabase
-        .from(TABLES.CUSTOMERS)
-        .insert({
-          org_id: ORG_ID,
-          email: customer.email.toLowerCase(),
-          first_name: customer.first_name,
-          last_name: customer.last_name,
-          phone: customer.phone,
-          first_order_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
-      if (custErr || !newCustomer) {
-        return NextResponse.json(
-          { error: "Failed to create customer" },
-          { status: 500 }
-        );
-      }
-      customerId = newCustomer.id;
-    }
-
-    // Calculate totals
-    let subtotal = 0;
-    for (const item of items as {
-      ticket_type_id: string;
-      qty: number;
-    }[]) {
-      const tt = ttMap.get(item.ticket_type_id)!;
-      subtotal += Number(tt.price) * item.qty;
-    }
-    const fees = 0; // No fees in test mode
-    const total = subtotal + fees;
-
-    // Simulate payment — always succeeds in test mode
-    const paymentRef = `TEST-${Date.now()}`;
-
-    // Generate order number and create order with retry on collision
-    let order = null;
-    let orderErr = null;
-    const MAX_RETRIES = 3;
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const orderNumber = await generateOrderNumber(supabase, ORG_ID);
-
-      const result = await supabase
-        .from(TABLES.ORDERS)
-        .insert({
-          org_id: ORG_ID,
-          order_number: orderNumber,
-          event_id,
-          customer_id: customerId,
-          status: "completed",
-          subtotal,
-          fees,
-          total,
-          currency: event.currency || "GBP",
-          payment_method: event.payment_method || "test",
-          payment_ref: paymentRef,
-        })
-        .select()
-        .single();
-
-      if (result.data) {
-        order = result.data;
-        orderErr = null;
-        break;
-      }
-
-      // If it's a unique constraint violation on order_number, retry
-      const errMsg = result.error?.message || "";
-      if (errMsg.includes("duplicate") || errMsg.includes("unique")) {
-        orderErr = result.error;
-        continue;
-      }
-
-      // For other errors, break immediately
-      orderErr = result.error;
-      break;
-    }
-
-    if (orderErr || !order) {
-      return NextResponse.json(
-        { error: "Failed to create order" },
-        { status: 500 }
-      );
-    }
-
-    // Create order items and individual tickets
-    const allTickets: {
-      org_id: string;
-      order_item_id: string;
-      order_id: string;
-      event_id: string;
-      ticket_type_id: string;
-      customer_id: string;
-      ticket_code: string;
-      holder_first_name: string;
-      holder_last_name: string;
-      holder_email: string;
-      merch_size?: string;
-    }[] = [];
-
-    for (const item of items as {
-      ticket_type_id: string;
-      qty: number;
-      merch_size?: string;
-    }[]) {
-      const tt = ttMap.get(item.ticket_type_id)!;
-
-      // Create order item
-      const { data: orderItem, error: oiErr } = await supabase
-        .from(TABLES.ORDER_ITEMS)
-        .insert({
-          org_id: ORG_ID,
-          order_id: order.id,
-          ticket_type_id: item.ticket_type_id,
-          qty: item.qty,
-          unit_price: tt.price,
-          merch_size: item.merch_size,
-        })
-        .select("id")
-        .single();
-
-      if (oiErr || !orderItem) {
-        continue;
-      }
-
-      // Create individual tickets (one per qty)
-      for (let i = 0; i < item.qty; i++) {
-        allTickets.push({
-          org_id: ORG_ID,
-          order_item_id: orderItem.id,
-          order_id: order.id,
-          event_id,
-          ticket_type_id: item.ticket_type_id,
-          customer_id: customerId,
-          ticket_code: generateTicketCode(),
-          holder_first_name: customer.first_name,
-          holder_last_name: customer.last_name,
-          holder_email: customer.email.toLowerCase(),
-          merch_size: item.merch_size,
-        });
-      }
-
-      // Update sold count
-      await supabase
-        .from(TABLES.TICKET_TYPES)
-        .update({
-          sold: tt.sold + item.qty,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", item.ticket_type_id);
-    }
-
-    // Insert all tickets
-    if (allTickets.length > 0) {
-      await supabase.from(TABLES.TICKETS).insert(allTickets);
-    }
-
-    // Update customer stats
-    await supabase
-      .from(TABLES.CUSTOMERS)
-      .update({
-        total_orders: (existingCustomer ? 1 : 0) + 1, // Will be corrected by reading actual count
-        total_spent: total,
-        last_order_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", customerId);
-
-    // Fetch fresh customer stats (correct aggregation)
-    const { data: custOrders } = await supabase
-      .from(TABLES.ORDERS)
-      .select("total")
-      .eq("customer_id", customerId)
-      .eq("org_id", ORG_ID)
-      .eq("status", "completed");
-
-    if (custOrders) {
-      const totalSpent = custOrders.reduce(
-        (sum: number, o: { total: number }) => sum + Number(o.total),
-        0
-      );
-      await supabase
-        .from(TABLES.CUSTOMERS)
-        .update({
-          total_orders: custOrders.length,
-          total_spent: totalSpent,
-        })
-        .eq("id", customerId);
-    }
+    // Create order via shared function (test mode — no Stripe, no fees)
+    const result = await createOrder({
+      supabase,
+      orgId: ORG_ID,
+      event: {
+        id: event.id,
+        name: event.name,
+        slug: event.slug,
+        currency: event.currency,
+        venue_name: event.venue_name,
+        date_start: event.date_start,
+        doors_time: event.doors_time,
+      },
+      items: items as { ticket_type_id: string; qty: number; merch_size?: string }[],
+      customer: {
+        email: customer.email,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        phone: customer.phone,
+      },
+      payment: {
+        method: event.payment_method || "test",
+        ref: `TEST-${Date.now()}`,
+      },
+      sendEmail: false,
+    });
 
     // Return full order with tickets
     const { data: fullOrder } = await supabase
@@ -410,18 +216,17 @@ export async function POST(request: NextRequest) {
       .select(
         "*, customer:customers(*), event:events(id, name, slug, date_start, venue_name), order_items:order_items(*, ticket_type:ticket_types(name, description)), tickets:tickets(*)"
       )
-      .eq("id", order.id)
+      .eq("id", result.order.id)
       .single();
-
-    // Revalidate the event page so sold counts update
-    if (event.slug) {
-      revalidatePath(`/event/${event.slug}`);
-    }
-    revalidatePath("/admin/orders");
-    revalidatePath("/admin/events");
 
     return NextResponse.json({ data: fullOrder }, { status: 201 });
   } catch (err) {
+    if (err instanceof OrderCreationError) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.statusCode }
+      );
+    }
     console.error("Order creation error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

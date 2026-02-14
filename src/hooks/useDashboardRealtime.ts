@@ -82,7 +82,7 @@ export function useDashboardRealtime(): DashboardState {
   // Mutable maps for real-time presence tracking
   const visitorMap = useRef<Map<string, number>>(new Map());
   const cartSessions = useRef<Map<string, number>>(new Map());
-  const purchaseSessions = useRef<Set<string>>(new Set());
+  const purchaseSessions = useRef<Map<string, number>>(new Map());
   const checkoutSessions = useRef<Map<string, number>>(new Map());
   const feedIdCounter = useRef(0);
 
@@ -103,6 +103,13 @@ export function useDashboardRealtime(): DashboardState {
       }
     }
     setActiveVisitors(visitorCount);
+
+    // Prune old purchase sessions (keep 15 min to cover cart window)
+    for (const [sid, ts] of purchaseSessions.current) {
+      if (now - ts > fifteenMin) {
+        purchaseSessions.current.delete(sid);
+      }
+    }
 
     // Active carts — sessions with add_to_cart in last 15 min but no purchase
     let cartCount = 0;
@@ -245,13 +252,16 @@ export function useDashboardRealtime(): DashboardState {
       setActiveVisitors(uniqueSessions.size);
 
       // Active carts
-      const purchasedSessions = new Set((recentPurchasesRes.data || []).map((r) => r.session_id));
-      purchaseSessions.current = purchasedSessions;
+      const purchasedMap = new Map<string, number>();
+      for (const r of recentPurchasesRes.data || []) {
+        purchasedMap.set(r.session_id, now);
+      }
+      purchaseSessions.current = purchasedMap;
       let carts = 0;
       for (const row of recentCartsRes.data || []) {
         const ts = new Date(row.timestamp).getTime();
         cartSessions.current.set(row.session_id, ts);
-        if (!purchasedSessions.has(row.session_id)) carts++;
+        if (!purchasedMap.has(row.session_id)) carts++;
       }
       setActiveCarts(carts);
 
@@ -260,7 +270,7 @@ export function useDashboardRealtime(): DashboardState {
       for (const row of recentCheckoutsRes.data || []) {
         const ts = new Date(row.timestamp).getTime();
         checkoutSessions.current.set(row.session_id, ts);
-        if (!purchasedSessions.has(row.session_id)) chk++;
+        if (!purchasedMap.has(row.session_id)) chk++;
       }
       setInCheckout(chk);
 
@@ -430,23 +440,13 @@ export function useDashboardRealtime(): DashboardState {
             visitorMap.current.set(sessionId, now);
           }
 
-          // Update funnel
-          if (eventType in { landing: 1, tickets: 1, add_to_cart: 1, checkout: 1, purchase: 1 }) {
+          // Update funnel (checkout_start counts toward checkout stage)
+          const funnelKey = eventType === "checkout_start" ? "checkout" : eventType;
+          if (funnelKey in { landing: 1, tickets: 1, add_to_cart: 1, checkout: 1, purchase: 1 }) {
             setFunnel((prev) => ({
               ...prev,
-              [eventType]: prev[eventType as keyof FunnelStats] + 1,
+              [funnelKey]: prev[funnelKey as keyof FunnelStats] + 1,
             }));
-          }
-
-          // Update today's conversion rate
-          if (eventType === "landing" || eventType === "purchase") {
-            setFunnel((prev) => {
-              const newFunnel = { ...prev };
-              if (eventType === "landing") newFunnel.landing = prev.landing + 1;
-              if (eventType === "purchase") newFunnel.purchase = prev.purchase + 1;
-              // Conversion rate will be derived in render
-              return newFunnel;
-            });
           }
 
           // Track active carts
@@ -461,7 +461,7 @@ export function useDashboardRealtime(): DashboardState {
 
           // Track purchases — remove from cart/checkout
           if (eventType === "purchase" && sessionId) {
-            purchaseSessions.current.add(sessionId);
+            purchaseSessions.current.set(sessionId, now);
           }
 
           // Recalculate presence immediately for cart/checkout/purchase events

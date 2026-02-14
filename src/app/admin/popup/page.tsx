@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,8 @@ interface PopupStats {
   conversions: number;
 }
 
+const POPUP_TYPES = ["impressions", "engaged", "dismissed", "conversions"] as const;
+
 export default function PopupPerformance() {
   const [stats, setStats] = useState<PopupStats>({
     impressions: 0,
@@ -35,51 +37,61 @@ export default function PopupPerformance() {
     conversions: 0,
   });
 
-  useEffect(() => {
+  // Data loader — runs queries in parallel, used for initial load + polling
+  const loadStats = useCallback(async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    const loadStats = async () => {
-      const types = ["impressions", "engaged", "dismissed", "conversions"] as const;
-      const results: PopupStats = {
-        impressions: 0,
-        engaged: 0,
-        dismissed: 0,
-        conversions: 0,
-      };
+    const queries = POPUP_TYPES.map((type) =>
+      supabase
+        .from(TABLES.POPUP_EVENTS)
+        .select("*", { count: "exact", head: true })
+        .eq("event_type", type)
+    );
 
-      for (const type of types) {
-        const { count } = await supabase
-          .from(TABLES.POPUP_EVENTS)
-          .select("*", { count: "exact", head: true })
-          .eq("event_type", type);
-        results[type] = count || 0;
-      }
+    const results = await Promise.all(queries);
+    const data: PopupStats = { impressions: 0, engaged: 0, dismissed: 0, conversions: 0 };
+    POPUP_TYPES.forEach((type, i) => {
+      data[type] = results[i].count || 0;
+    });
+    setStats(data);
+  }, []);
 
-      setStats(results);
-    };
-
+  useEffect(() => {
     loadStats();
 
-    // Realtime subscription
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    // Polling every 15 seconds — guarantees live data regardless of WebSocket state
+    const pollInterval = setInterval(loadStats, 15_000);
+
+    // Realtime — instant incremental updates between polls
     const channel = supabase
       .channel("popup-realtime")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: TABLES.POPUP_EVENTS },
         (payload) => {
-          const type = payload.new.event_type as keyof PopupStats;
-          if (type in stats) {
-            setStats((prev) => ({ ...prev, [type]: prev[type] + 1 }));
+          const type = payload.new.event_type as string;
+          if (POPUP_TYPES.includes(type as typeof POPUP_TYPES[number])) {
+            setStats((prev) => ({ ...prev, [type]: prev[type as keyof PopupStats] + 1 }));
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log("[Entry] Popup realtime connected");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[Entry] Popup realtime issue:", status);
+        }
+      });
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [loadStats]);
 
   const engagementRate =
     stats.impressions > 0

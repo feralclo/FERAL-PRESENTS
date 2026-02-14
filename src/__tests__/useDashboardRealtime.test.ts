@@ -290,8 +290,8 @@ describe("useDashboardRealtime", () => {
       const clearSpy = vi.spyOn(globalThis, "clearInterval");
       unmount();
 
-      // Should clear both presenceInterval and topEventsInterval
-      expect(clearSpy).toHaveBeenCalledTimes(2);
+      // Should clear presenceInterval, topEventsInterval, and dataRefreshInterval
+      expect(clearSpy).toHaveBeenCalledTimes(3);
       clearSpy.mockRestore();
     });
   });

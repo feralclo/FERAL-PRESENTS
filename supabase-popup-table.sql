@@ -28,5 +28,8 @@ CREATE INDEX IF NOT EXISTS idx_popup_events_type ON popup_events(event_type);
 ALTER TABLE popup_events ADD COLUMN IF NOT EXISTS org_id TEXT DEFAULT 'feral';
 CREATE INDEX IF NOT EXISTS idx_popup_events_org ON popup_events(org_id);
 
+-- Enable full row data in WAL for Realtime (ensures payload.new has all columns)
+ALTER TABLE popup_events REPLICA IDENTITY FULL;
+
 -- Enable Realtime for live admin dashboard updates
 ALTER PUBLICATION supabase_realtime ADD TABLE popup_events;

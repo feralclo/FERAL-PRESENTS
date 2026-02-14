@@ -408,7 +408,7 @@ export function useDashboardRealtime(): DashboardState {
     }
   }, []);
 
-  /* ── Setup effect: initial load + realtime + intervals ── */
+  /* ── Setup effect: initial load + realtime + polling ── */
   useEffect(() => {
     loadInitialData();
     loadTopEvents();
@@ -422,7 +422,12 @@ export function useDashboardRealtime(): DashboardState {
     // Top events polling every 60 seconds
     const topEventsInterval = setInterval(loadTopEvents, 60_000);
 
-    // Realtime channel: traffic_events
+    // Data polling every 15 seconds — safety net for when Realtime misses events
+    // This is the Shopify-style live dashboard pattern: WebSocket for instant,
+    // polling to guarantee data freshness regardless of connection state
+    const dataRefreshInterval = setInterval(loadInitialData, 15_000);
+
+    // Realtime channel: traffic_events (instant updates between polls)
     const trafficChannel = supabase
       .channel("dashboard-traffic")
       .on(
@@ -507,9 +512,15 @@ export function useDashboardRealtime(): DashboardState {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log("[Entry] Dashboard traffic realtime connected");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[Entry] Dashboard traffic realtime issue:", status);
+        }
+      });
 
-    // Realtime channel: orders
+    // Realtime channel: orders (instant updates between polls)
     const ordersChannel = supabase
       .channel("dashboard-orders")
       .on(
@@ -542,9 +553,15 @@ export function useDashboardRealtime(): DashboardState {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log("[Entry] Dashboard orders realtime connected");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[Entry] Dashboard orders realtime issue:", status);
+        }
+      });
 
-    // Realtime channel: tickets
+    // Realtime channel: tickets (instant updates between polls)
     const ticketsChannel = supabase
       .channel("dashboard-tickets")
       .on(
@@ -560,11 +577,18 @@ export function useDashboardRealtime(): DashboardState {
           }));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log("[Entry] Dashboard tickets realtime connected");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[Entry] Dashboard tickets realtime issue:", status);
+        }
+      });
 
     return () => {
       clearInterval(presenceInterval);
       clearInterval(topEventsInterval);
+      clearInterval(dataRefreshInterval);
       supabase.removeChannel(trafficChannel);
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(ticketsChannel);

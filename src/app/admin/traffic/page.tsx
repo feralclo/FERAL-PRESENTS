@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,8 @@ interface FunnelStats {
   add_to_cart: number;
 }
 
+const FUNNEL_TYPES = ["landing", "tickets", "checkout", "purchase", "add_to_cart"] as const;
+
 export default function TrafficAnalytics() {
   const [funnel, setFunnel] = useState<FunnelStats>({
     landing: 0,
@@ -39,58 +41,61 @@ export default function TrafficAnalytics() {
     add_to_cart: 0,
   });
 
-  useEffect(() => {
+  // Data loader — runs queries in parallel, used for initial load + polling
+  const loadFunnel = useCallback(async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    const loadFunnel = async () => {
-      const types = [
-        "landing",
-        "tickets",
-        "checkout",
-        "purchase",
-        "add_to_cart",
-      ] as const;
-      const results: FunnelStats = {
-        landing: 0,
-        tickets: 0,
-        checkout: 0,
-        purchase: 0,
-        add_to_cart: 0,
-      };
+    const queries = FUNNEL_TYPES.map((type) =>
+      supabase
+        .from(TABLES.TRAFFIC_EVENTS)
+        .select("*", { count: "exact", head: true })
+        .eq("event_type", type)
+    );
 
-      for (const type of types) {
-        const { count } = await supabase
-          .from(TABLES.TRAFFIC_EVENTS)
-          .select("*", { count: "exact", head: true })
-          .eq("event_type", type);
-        results[type] = count || 0;
-      }
+    const results = await Promise.all(queries);
+    const data: FunnelStats = { landing: 0, tickets: 0, checkout: 0, purchase: 0, add_to_cart: 0 };
+    FUNNEL_TYPES.forEach((type, i) => {
+      data[type] = results[i].count || 0;
+    });
+    setFunnel(data);
+  }, []);
 
-      setFunnel(results);
-    };
-
+  useEffect(() => {
     loadFunnel();
 
-    // Realtime
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    // Polling every 15 seconds — guarantees live data regardless of WebSocket state
+    const pollInterval = setInterval(loadFunnel, 15_000);
+
+    // Realtime — instant incremental updates between polls
     const channel = supabase
       .channel("traffic-realtime")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: TABLES.TRAFFIC_EVENTS },
         (payload) => {
-          const type = payload.new.event_type as keyof FunnelStats;
-          if (type in funnel) {
-            setFunnel((prev) => ({ ...prev, [type]: prev[type] + 1 }));
+          const type = payload.new.event_type as string;
+          if (FUNNEL_TYPES.includes(type as typeof FUNNEL_TYPES[number])) {
+            setFunnel((prev) => ({ ...prev, [type]: prev[type as keyof FunnelStats] + 1 }));
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log("[Entry] Traffic realtime connected");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[Entry] Traffic realtime issue:", status);
+        }
+      });
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [loadFunnel]);
 
   const dropoff = (from: number, to: number) =>
     from > 0 ? (((from - to) / from) * 100).toFixed(1) + "%" : "—";

@@ -50,6 +50,9 @@ CREATE INDEX IF NOT EXISTS idx_traffic_events_org ON traffic_events(org_id);
 -- Partial index for cart product aggregation (only indexes add_to_cart rows)
 CREATE INDEX IF NOT EXISTS idx_traffic_events_product ON traffic_events(product_name) WHERE event_type = 'add_to_cart';
 
+-- Enable full row data in WAL for Realtime (ensures payload.new has all columns)
+ALTER TABLE traffic_events REPLICA IDENTITY FULL;
+
 -- Enable Realtime for live admin dashboard updates
 -- Run this to enable real-time subscriptions on the traffic_events table:
 ALTER PUBLICATION supabase_realtime ADD TABLE traffic_events;

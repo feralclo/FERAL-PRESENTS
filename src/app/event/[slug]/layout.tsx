@@ -2,6 +2,7 @@ import { fetchSettings } from "@/lib/settings";
 import { SETTINGS_KEYS, TABLES, ORG_ID, brandingKey } from "@/lib/constants";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { SettingsProvider } from "@/hooks/useSettings";
+import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
 import type { BrandingSettings } from "@/types/settings";
 import type { ReactNode } from "react";
 import "@/styles/event.css";
@@ -139,6 +140,7 @@ export default async function EventLayout({
 
   return (
     <div className={themeClasses || undefined} style={cssVars as React.CSSProperties}>
+      <ThemeEditorBridge />
       <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
         {children}
       </SettingsProvider>

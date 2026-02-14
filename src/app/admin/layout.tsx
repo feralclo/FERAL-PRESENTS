@@ -31,7 +31,7 @@ import {
   Receipt,
   Search,
   Package,
-  Palette,
+  Store,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -63,7 +63,7 @@ const NAV_SECTIONS = [
   {
     label: "Platform",
     items: [
-      { href: "/admin/branding/", label: "Branding", icon: Palette },
+      { href: "/admin/storefront/", label: "Storefront", icon: Store },
       { href: "/admin/payments/", label: "Payments", icon: CreditCard },
       { href: "/admin/connect/", label: "Stripe Connect", icon: Zap },
       { href: "/admin/marketing/", label: "Marketing", icon: Megaphone },
@@ -123,6 +123,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   if (pathname.startsWith("/admin/login")) return <>{children}</>;
+
+  // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
+  if (pathname.startsWith("/admin/storefront/editor"))
+    return <>{children}</>;
 
   // Fetch user email on mount
   useEffect(() => {

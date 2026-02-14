@@ -13,10 +13,16 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   ShoppingCart,
   Ticket,
   ChevronRight,
-  X,
 } from "lucide-react";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
@@ -344,14 +350,22 @@ export function AuraTicketWidget({
     }))
     .filter((g) => g.tickets.length > 0);
 
+  // ── Size popup helpers ─────────────────────────────────────────────────────
+  const sizePopupTicket = sizePopup
+    ? activeTypes.find((t) => t.id === sizePopup.ticketTypeId)
+    : null;
+  const sizePopupSizes = sizePopupTicket?.merch_sizes?.length
+    ? sizePopupTicket.merch_sizes
+    : ["XS", "S", "M", "L", "XL", "XXL"];
+
   // ── Empty state ────────────────────────────────────────────────────────────
   if (activeTypes.length === 0) {
     return (
-      <Card className="border-border/40">
+      <Card>
         <CardContent className="py-12 text-center">
           <Ticket
             size={32}
-            className="mx-auto mb-3 text-muted-foreground/40"
+            className="mx-auto mb-3 text-muted-foreground"
           />
           <p className="text-sm text-muted-foreground">
             Tickets not yet available
@@ -366,13 +380,13 @@ export function AuraTicketWidget({
     <div id="tickets" className="space-y-4 scroll-mt-6">
       {/* Section header */}
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl font-bold tracking-tight">
+        <h2 className="text-xl font-bold tracking-tight">
           Get Tickets
         </h2>
         {totalSold > 0 && (
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-aura-success aura-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               {Math.max(12, Math.floor(totalSold * 0.08))} viewing
             </span>
             <span>{totalSold} sold</span>
@@ -431,16 +445,16 @@ export function AuraTicketWidget({
         </div>
       ))}
 
-      {/* Cart summary -- Card with accent border */}
+      {/* Cart summary */}
       {totalQty > 0 && (
-        <Card className="border-primary/30 aura-fade-in py-0 gap-0">
+        <Card className="border-primary/30 py-0 gap-0">
           <CardHeader className="px-5 pt-5 pb-0">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <ShoppingCart size={14} className="text-primary" />
                 {totalQty} {totalQty === 1 ? "ticket" : "tickets"}
               </CardTitle>
-              <span className="font-display text-lg font-bold tabular-nums">
+              <span className="text-lg font-bold tabular-nums">
                 {currSymbol}
                 {totalPrice.toFixed(2)}
               </span>
@@ -471,7 +485,8 @@ export function AuraTicketWidget({
           <Separator className="opacity-30" />
           <CardFooter className="flex-col gap-3 px-5 py-4">
             <Button
-              className="w-full aura-glow aura-press rounded-lg font-semibold"
+              size="lg"
+              className="w-full font-semibold"
               onClick={handleCheckout}
             >
               Checkout <ChevronRight size={16} />
@@ -506,65 +521,53 @@ export function AuraTicketWidget({
         </Card>
       )}
 
-      {/* Size selection popup -- using Dialog-style overlay */}
-      {sizePopup && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setSizePopup(null)}
-        >
-          <Card
-            className="w-full max-w-sm mx-4 aura-fade-in py-0 gap-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CardHeader className="px-5 pt-5 pb-0">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Select Size</CardTitle>
-                <button
-                  onClick={() => setSizePopup(null)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="px-5 py-4 space-y-4">
+      {/* Size selection dialog */}
+      <Dialog
+        open={sizePopup !== null}
+        onOpenChange={(open) => {
+          if (!open) setSizePopup(null);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Select Size</DialogTitle>
+          </DialogHeader>
+          {sizePopupTicket && (
+            <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                {activeTypes.find((t) => t.id === sizePopup.ticketTypeId)?.name}
+                {sizePopupTicket.name}
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {(
-                  activeTypes.find((t) => t.id === sizePopup.ticketTypeId)
-                    ?.merch_sizes || ["XS", "S", "M", "L", "XL", "XXL"]
-                ).map((size) => (
-                  <button
+                {sizePopupSizes.map((size) => (
+                  <Button
                     key={size}
+                    variant={
+                      sizePopup?.selectedSize === size ? "default" : "outline"
+                    }
                     onClick={() =>
                       setSizePopup((prev) =>
                         prev ? { ...prev, selectedSize: size } : null
                       )
                     }
-                    className={`rounded-lg border py-2.5 text-sm font-medium transition-all ${
-                      sizePopup.selectedSize === size
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
-                    }`}
+                    className="w-full"
                   >
                     {size}
-                  </button>
+                  </Button>
                 ))}
               </div>
-            </CardContent>
-            <CardFooter className="px-5 pb-5">
-              <Button
-                className="w-full aura-press rounded-lg"
-                onClick={handleSizeConfirm}
-              >
-                Add to Cart
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={handleSizeConfirm}
+            >
+              Add to Cart
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

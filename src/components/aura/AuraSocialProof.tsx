@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Ticket } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export function AuraSocialProof() {
   const [visible, setVisible] = useState(false);
@@ -26,22 +28,30 @@ export function AuraSocialProof() {
     };
   }, []);
 
-  if (!visible) return null;
-
   return (
-    <div className={`fixed bottom-20 right-4 z-30 md:bottom-6 ${visible ? "aura-slide-in" : "aura-slide-out"}`}>
-      <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-card/90 backdrop-blur-md px-4 py-3 shadow-lg aura-elevation-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-          <Ticket size={14} className="text-primary" />
-        </div>
-        <div>
-          <p className="text-xs font-medium text-foreground">
-            Last ticket booked{" "}
-            <span className="text-primary">{minutesAgo} min ago</span>
-          </p>
-          <p className="text-[10px] text-muted-foreground">Selling fast</p>
-        </div>
-      </div>
+    <div
+      className={`fixed bottom-20 right-4 z-30 md:bottom-6 transition-all duration-300 ease-in-out ${
+        visible
+          ? "translate-x-0 opacity-100"
+          : "translate-x-full opacity-0 pointer-events-none"
+      }`}
+    >
+      <Card className="py-3">
+        <CardContent className="flex items-center gap-3 px-4 py-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+            <Ticket size={14} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-foreground">
+              Last ticket booked{" "}
+              <span className="text-primary">{minutesAgo} min ago</span>
+            </p>
+            <Badge variant="default" className="mt-1 text-[10px]">
+              Selling fast
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

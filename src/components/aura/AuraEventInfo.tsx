@@ -1,6 +1,9 @@
 "use client";
 
 import { MapPin } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 interface AuraEventInfoProps {
   aboutText?: string;
@@ -36,10 +39,10 @@ function TextBlock({ text }: { text: string }) {
       .map((l) => l.replace(/^[-*]\s*/, "").replace(/^\d+[.)]\s*/, ""));
 
     return (
-      <ul className="space-y-2 text-[15px] leading-relaxed text-muted-foreground">
+      <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
         {items.map((item, i) => (
           <li key={i} className="flex gap-2">
-            <span className="mt-[7px] block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+            <span className="mt-2 block h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
             <span>{item}</span>
           </li>
         ))}
@@ -48,7 +51,7 @@ function TextBlock({ text }: { text: string }) {
   }
 
   return (
-    <p className="text-[15px] leading-[1.75] text-muted-foreground whitespace-pre-line">
+    <p className="text-sm leading-7 text-muted-foreground whitespace-pre-line">
       {text}
     </p>
   );
@@ -56,7 +59,7 @@ function TextBlock({ text }: { text: string }) {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs uppercase tracking-wider font-medium text-muted-foreground mb-3">
+    <h3 className="text-xs uppercase tracking-widest font-medium text-muted-foreground mb-3">
       {children}
     </h3>
   );
@@ -74,43 +77,59 @@ export function AuraEventInfo({
 
   if (!showAbout && !detailsText && !venue) return null;
 
-  return (
-    <div className="max-w-prose space-y-10">
-      {/* About */}
-      {showAbout && aboutContent && (
-        <section>
-          <SectionHeading>About</SectionHeading>
-          <TextBlock text={aboutContent} />
-        </section>
-      )}
+  const sections: React.ReactNode[] = [];
 
-      {/* Details */}
-      {detailsText && (
-        <section>
-          <SectionHeading>Details</SectionHeading>
-          <TextBlock text={detailsText} />
-        </section>
-      )}
+  if (showAbout && aboutContent) {
+    sections.push(
+      <div key="about">
+        <SectionHeading>About</SectionHeading>
+        <TextBlock text={aboutContent} />
+      </div>
+    );
+  }
 
-      {/* Venue */}
-      {venue && (
-        <section>
-          <SectionHeading>Venue</SectionHeading>
-          <div className="flex items-start gap-2">
-            <MapPin size={15} className="mt-[3px] shrink-0 text-muted-foreground" />
-            <div>
-              <p className="text-[15px] font-semibold text-foreground">
-                {venue}
+  if (detailsText) {
+    sections.push(
+      <div key="details">
+        <SectionHeading>Details</SectionHeading>
+        <TextBlock text={detailsText} />
+      </div>
+    );
+  }
+
+  if (venue) {
+    sections.push(
+      <div key="venue">
+        <SectionHeading>Venue</SectionHeading>
+        <div className="flex items-start gap-3">
+          <Badge variant="outline" className="gap-1.5 shrink-0 mt-0.5">
+            <MapPin size={12} />
+          </Badge>
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {venue}
+            </p>
+            {venueAddress && (
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {venueAddress}
               </p>
-              {venueAddress && (
-                <p className="text-sm leading-relaxed text-muted-foreground mt-0.5">
-                  {venueAddress}
-                </p>
-              )}
-            </div>
+            )}
           </div>
-        </section>
-      )}
-    </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="max-w-prose">
+      <CardContent className="space-y-6">
+        {sections.map((section, i) => (
+          <div key={i}>
+            {i > 0 && <Separator className="mb-6" />}
+            {section}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }

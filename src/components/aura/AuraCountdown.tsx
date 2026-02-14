@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 
 interface AuraCountdownProps {
@@ -15,22 +15,9 @@ interface TimeRemaining {
 }
 
 function Unit({ value, label }: { value: number; label: string }) {
-  const displayed = String(value);
-  const prev = useRef(displayed);
-  const [animating, setAnimating] = useState(false);
-
-  useEffect(() => {
-    if (displayed !== prev.current) {
-      setAnimating(true);
-      prev.current = displayed;
-      const t = setTimeout(() => setAnimating(false), 350);
-      return () => clearTimeout(t);
-    }
-  }, [displayed]);
-
   return (
-    <Badge variant="secondary" className="tabular-nums font-medium text-sm px-2 py-1">
-      <span className={animating ? "aura-digit-change" : ""}>{value}</span>
+    <Badge variant="outline" className="tabular-nums font-medium text-sm px-2 py-1">
+      <span>{value}</span>
       <span className="text-muted-foreground text-xs ml-0.5">{label}</span>
     </Badge>
   );
@@ -63,9 +50,7 @@ export function AuraCountdown({ targetDate }: AuraCountdownProps) {
   }, [targetDate]);
 
   if (passed) {
-    return (
-      <Badge variant="secondary">Event started</Badge>
-    );
+    return <Badge variant="secondary">Event started</Badge>;
   }
 
   if (!remaining) return null;

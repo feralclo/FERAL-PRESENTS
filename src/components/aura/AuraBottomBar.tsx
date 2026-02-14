@@ -23,16 +23,16 @@ export function AuraBottomBar({
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
-      <div className="border-t border-border bg-card px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+      <div className="border-t border-border bg-background px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             {hasCart ? (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="gap-1.5 text-xs">
+                <Badge variant="secondary" className="gap-1.5">
                   <ShoppingCart size={12} />
                   {cartQty}
                 </Badge>
-                <span className="font-display font-bold tabular-nums text-sm">
+                <span className="font-semibold tabular-nums text-sm text-foreground">
                   {cartTotal}
                 </span>
               </div>
@@ -47,17 +47,11 @@ export function AuraBottomBar({
           </div>
 
           {hasCart ? (
-            <Button
-              onClick={onCheckout}
-              className="aura-glow aura-press rounded-lg px-6 shrink-0 font-semibold"
-            >
+            <Button onClick={onCheckout} className="shrink-0">
               Checkout
             </Button>
           ) : (
-            <Button
-              onClick={onBuyNow}
-              className="aura-glow aura-press rounded-lg px-6 shrink-0 font-semibold"
-            >
+            <Button onClick={onBuyNow} className="shrink-0">
               Get Tickets
             </Button>
           )}

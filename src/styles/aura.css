@@ -1,105 +1,64 @@
 /*
- * Aura Theme — Premium DARK theme with warm amber accents
+ * Aura Theme — Clean shadcn/ui dark theme with amber accent
  *
- * Design Language: "Warm Premium"
- * A dark theme built on warm stone tones (not cold blacks) with amber/gold
- * accents. Uses shadcn/ui semantic tokens so all primitives (Button, Card,
- * Badge, Dialog, Tabs, Progress, etc.) automatically adopt the palette.
+ * Standard shadcn dark palette (zinc grays) with amber-500 as primary.
+ * No custom effects, no glows, no animations beyond Tailwind defaults.
+ * All styling comes from shadcn component variants + Tailwind utilities.
  *
- * Scoping: [data-theme="aura"] + @layer aura-reset + unlayered utilities.
+ * Branding overrides: The event layout injects --accent, --bg-dark,
+ * --card-bg, --text-primary, --font-mono, --font-sans as CSS variables.
+ * Theme tokens consume these via var() so admin branding changes work.
  */
 
 @layer theme, aura-reset;
 @import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/utilities";
 
-/*
- * Aura Design Tokens — "Warm Premium" (DARK THEME)
- *
- * Color architecture:
- *   Background: Stone-950 (#0c0a09) — deep warm black, not cold
- *   Card:       Stone-900 (#1c1917) — warm elevated surface
- *   Border:     Stone-800 (#292524) — subtle warm dividers
- *   Text:       Stone-50 (#fafaf9) — warm white
- *   Secondary:  Stone-400 (#a8a29e) — comfortable secondary text
- *   Accent:     Amber-500 (#f59e0b) — warm gold, premium feel
- */
 @theme inline {
-  /* ── Core Aura palette ── */
-  --color-aura-bg: var(--bg-dark, #0c0a09);
-  --color-aura-surface: color-mix(in srgb, var(--bg-dark, #0c0a09) 70%, #292524);
-  --color-aura-card: var(--card-bg, #1c1917);
-  --color-aura-border: color-mix(in srgb, var(--card-bg, #1c1917) 50%, #44403c);
-  --color-aura-accent: var(--accent, #f59e0b);
-  --color-aura-accent-soft: color-mix(in srgb, var(--accent, #f59e0b) 12%, transparent);
-  --color-aura-text: var(--text-primary, #fafaf9);
-  --color-aura-text-secondary: color-mix(in srgb, var(--text-primary, #fafaf9) 55%, #78716c);
-  --color-aura-text-muted: color-mix(in srgb, var(--text-primary, #fafaf9) 35%, #78716c);
-  --color-aura-success: #22c55e;
-  --color-aura-warning: #f59e0b;
-  --color-aura-danger: #ef4444;
-
-  /* ── Semantic aliases (shadcn/ui consumes these) ── */
-  --color-background: var(--color-aura-bg);
-  --color-foreground: var(--color-aura-text);
-  --color-card: var(--color-aura-card);
-  --color-card-foreground: var(--color-aura-text);
-  --color-primary: var(--color-aura-accent);
-  --color-primary-foreground: #0c0a09;
-  --color-secondary: var(--color-aura-surface);
-  --color-secondary-foreground: var(--color-aura-text);
-  --color-muted: var(--color-aura-surface);
-  --color-muted-foreground: var(--color-aura-text-secondary);
-  --color-accent: var(--color-aura-surface);
-  --color-accent-foreground: var(--color-aura-text);
-  --color-border: var(--color-aura-border);
-  --color-input: var(--color-aura-border);
-  --color-ring: var(--color-aura-accent);
+  /* ── shadcn semantic tokens (dark theme + amber accent) ── */
+  --color-background: var(--bg-dark, #09090b);
+  --color-foreground: var(--text-primary, #fafafa);
+  --color-card: var(--card-bg, #09090b);
+  --color-card-foreground: var(--text-primary, #fafafa);
+  --color-primary: var(--accent, #f59e0b);
+  --color-primary-foreground: #09090b;
+  --color-secondary: #27272a;
+  --color-secondary-foreground: var(--text-primary, #fafafa);
+  --color-muted: #27272a;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #27272a;
+  --color-accent-foreground: var(--text-primary, #fafafa);
+  --color-border: #27272a;
+  --color-input: #27272a;
+  --color-ring: var(--accent, #f59e0b);
   --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
-  --color-success: var(--color-aura-success);
-  --color-warning: var(--color-aura-warning);
+  --color-destructive-foreground: #fafafa;
 
-  /* ── Radii — modern, rounded ── */
+  /* ── Radii ── */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
 
   /* ── Typography ── */
-  --font-display: var(--font-mono, 'Outfit', 'DM Sans', sans-serif);
+  --font-display: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
   --font-body: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
 }
 
-/*
- * Aura-scoped Preflight
- */
+/* ── Scoped reset so public site CSS doesn't leak in ── */
 @layer aura-reset {
   [data-theme="aura"] {
     font-family: var(--font-body);
-    color: var(--color-aura-text);
-    background-color: var(--color-aura-bg);
+    color: var(--color-foreground);
+    background-color: var(--color-background);
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     line-height: 1.6;
   }
 
   [data-theme="aura"] *,
   [data-theme="aura"] *::before,
   [data-theme="aura"] *::after {
-    border-color: var(--color-aura-border);
-  }
-
-  [data-theme="aura"] h1,
-  [data-theme="aura"] h2,
-  [data-theme="aura"] h3,
-  [data-theme="aura"] h4,
-  [data-theme="aura"] h5,
-  [data-theme="aura"] h6 {
-    font-family: var(--font-display);
-    font-size: inherit;
-    font-weight: inherit;
+    border-color: var(--color-border);
   }
 
   [data-theme="aura"] a {
@@ -133,22 +92,12 @@
   }
 }
 
-/* ── Scrollbar (dark warm) ── */
-[data-theme="aura"] {
-  scrollbar-width: thin;
-  scrollbar-color: #44403c transparent;
-}
-[data-theme="aura"] ::-webkit-scrollbar { width: 6px; height: 6px; }
-[data-theme="aura"] ::-webkit-scrollbar-track { background: transparent; }
-[data-theme="aura"] ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 4px; }
-[data-theme="aura"] ::-webkit-scrollbar-thumb:hover { background: #57534e; }
-
-/* ── Autofill (dark) ── */
+/* ── Autofill fix for dark backgrounds ── */
 [data-theme="aura"] input:-webkit-autofill,
 [data-theme="aura"] input:-webkit-autofill:hover,
 [data-theme="aura"] input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 40px var(--color-aura-card) inset !important;
-  -webkit-text-fill-color: var(--color-aura-text) !important;
-  caret-color: var(--color-aura-text) !important;
+  -webkit-box-shadow: 0 0 0 40px var(--color-card) inset !important;
+  -webkit-text-fill-color: var(--color-foreground) !important;
+  caret-color: var(--color-foreground) !important;
   transition: background-color 5000s ease-in-out 0s;
 }

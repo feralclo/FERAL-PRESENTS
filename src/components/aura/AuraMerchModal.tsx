@@ -87,18 +87,22 @@ export function AuraMerchModal({
             {/* Nav arrows */}
             {images.length > 1 && (
               <>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => navImage(-1)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/60 backdrop-blur-sm p-1.5 text-foreground/70 hover:text-foreground transition-colors"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
                 >
                   <ChevronLeft size={16} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => navImage(1)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/60 backdrop-blur-sm p-1.5 text-foreground/70 hover:text-foreground transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
                 >
                   <ChevronRight size={16} />
-                </button>
+                </Button>
               </>
             )}
             {/* Dots */}
@@ -108,8 +112,10 @@ export function AuraMerchModal({
                   <button
                     key={img.key}
                     onClick={() => setActiveImage(img.key as "front" | "back")}
-                    className={`h-1.5 w-1.5 rounded-full transition-all ${
-                      img.key === activeImage ? "bg-primary w-4" : "bg-foreground/30"
+                    className={`h-1.5 rounded-full transition-all ${
+                      img.key === activeImage
+                        ? "w-4 bg-primary"
+                        : "w-1.5 bg-muted-foreground/30"
                     }`}
                   />
                 ))}
@@ -123,13 +129,13 @@ export function AuraMerchModal({
           <DialogHeader className="text-left">
             <div className="flex items-center gap-2 mb-1">
               {vipBadge && (
-                <Badge className="bg-primary/15 text-primary border-primary/25 text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   <Sparkles size={10} />
                   {vipBadge}
                 </Badge>
               )}
             </div>
-            <DialogTitle className="font-display text-lg tracking-tight">
+            <DialogTitle className="text-lg tracking-tight">
               {merchName}
             </DialogTitle>
             {merchDescription && (
@@ -140,35 +146,33 @@ export function AuraMerchModal({
           </DialogHeader>
 
           {/* Price */}
-          <p className="font-display text-2xl font-bold tabular-nums">
+          <p className="text-2xl font-bold tabular-nums">
             {currencySymbol}{merchPrice.toFixed(2)}
           </p>
 
-          <Separator className="opacity-30" />
+          <Separator />
 
           {/* Size selector */}
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Size</p>
             <div className="grid grid-cols-3 gap-2">
               {availableSizes.map((size) => (
-                <button
+                <Button
                   key={size}
+                  variant={selectedSize === size ? "default" : "outline"}
+                  size="sm"
                   onClick={() => setSelectedSize(size)}
-                  className={`rounded-lg border py-2 text-sm font-medium transition-all ${
-                    selectedSize === size
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
-                  }`}
+                  className="w-full"
                 >
                   {size}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
           {/* Add to cart */}
           <Button
-            className="w-full aura-press rounded-full font-semibold"
+            className="w-full font-semibold"
             onClick={handleAdd}
           >
             <ShoppingCart size={14} />

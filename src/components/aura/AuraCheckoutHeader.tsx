@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useBranding } from "@/hooks/useBranding";
 import { ArrowLeft, Lock } from "lucide-react";
@@ -12,15 +13,14 @@ export function AuraCheckoutHeader({ slug }: AuraCheckoutHeaderProps) {
   const branding = useBranding();
 
   return (
-    <header className="border-b border-border/40 bg-background/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div className="mx-auto max-w-5xl px-5 py-4 flex items-center justify-between">
-        <a
-          href={`/event/${slug}/`}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft size={16} />
-          Back
-        </a>
+        <Button variant="ghost" size="sm" asChild>
+          <a href={`/event/${slug}/`} className="gap-2">
+            <ArrowLeft size={16} />
+            Back
+          </a>
+        </Button>
 
         <a href={`/event/${slug}/`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -33,7 +33,7 @@ export function AuraCheckoutHeader({ slug }: AuraCheckoutHeaderProps) {
           />
         </a>
 
-        <Badge variant="outline" className="gap-1 text-[10px] text-aura-success border-aura-success/30">
+        <Badge variant="outline" className="gap-1 text-xs">
           <Lock size={10} />
           Secure
         </Badge>

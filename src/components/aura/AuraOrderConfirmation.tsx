@@ -12,9 +12,6 @@ import { getCurrencySymbol } from "@/lib/stripe/config";
 import { CheckCircle2, Download, Wallet, ArrowLeft } from "lucide-react";
 import type { Order } from "@/types/orders";
 
-import "@/styles/aura.css";
-import "@/styles/aura-effects.css";
-
 interface AuraOrderConfirmationProps {
   order: Order;
   slug: string;
@@ -124,41 +121,41 @@ export function AuraOrderConfirmation({
 
       <div className="mx-auto max-w-2xl px-5 py-10 space-y-8">
         {/* Success header */}
-        <div className="text-center space-y-4 aura-fade-in-up">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-aura-success/15">
-            <CheckCircle2 size={32} className="text-aura-success" />
+        <div className="text-center space-y-4">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+            <CheckCircle2 size={32} className="text-emerald-500" />
           </div>
-          <h1 className="font-display text-2xl font-bold">
+          <h1 className="text-2xl font-bold">
             You&apos;re going to {eventName}!
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Order {order.order_number} confirmed. Check your email for details.
           </p>
         </div>
 
         {/* Order summary */}
-        <Card className="border-border/40 py-0 gap-0">
-          <CardContent className="p-5 space-y-4">
+        <Card>
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Order Number</span>
               <span className="text-sm font-medium font-mono">{order.order_number}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Total</span>
-              <span className="font-display text-lg font-bold tabular-nums">
+              <span className="text-lg font-bold tabular-nums">
                 {symbol}{Number(order.total).toFixed(2)}
               </span>
             </div>
             {order.items && order.items.length > 0 && (
               <>
-                <Separator className="opacity-30" />
+                <Separator />
                 <div className="space-y-2">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
                         {item.qty}&times; {item.ticket_type?.name || "Ticket"}
                         {item.merch_size && (
-                          <Badge variant="secondary" className="ml-1.5 text-[9px] py-0 px-1.5">
+                          <Badge variant="secondary" className="ml-1.5 text-xs">
                             {item.merch_size}
                           </Badge>
                         )}
@@ -177,10 +174,10 @@ export function AuraOrderConfirmation({
         {/* Tickets with QR Codes */}
         {order.tickets && order.tickets.length > 0 && (
           <div className="space-y-4">
-            <h2 className="font-display text-lg font-semibold">Your Tickets</h2>
+            <h2 className="text-lg font-semibold">Your Tickets</h2>
             {order.tickets.map((ticket) => (
-              <Card key={ticket.id} className="aura-gradient-border border-transparent overflow-hidden py-0 gap-0">
-                <CardContent className="p-5">
+              <Card key={ticket.id}>
+                <CardContent>
                   <div className="flex flex-col sm:flex-row items-center gap-5">
                     {/* QR Code */}
                     <div className="shrink-0">
@@ -200,12 +197,12 @@ export function AuraOrderConfirmation({
                       <p className="font-mono text-xs text-muted-foreground tracking-wider">
                         {ticket.ticket_code}
                       </p>
-                      <p className="font-display text-base font-semibold">
+                      <p className="text-base font-semibold">
                         {ticket.ticket_type?.name || "Ticket"}
                       </p>
                       <p className="text-sm text-muted-foreground">{eventName}</p>
                       {ticket.merch_size && (
-                        <Badge className="bg-primary/15 text-primary border-primary/25 text-[10px]">
+                        <Badge variant="secondary" className="text-xs">
                           Merch: Size {ticket.merch_size}
                         </Badge>
                       )}
@@ -254,12 +251,12 @@ export function AuraOrderConfirmation({
             </a>
           )}
 
-          <a href={`/event/${slug}/`}>
-            <Button variant="ghost" size="lg" className="w-full mt-2">
+          <Button variant="ghost" size="lg" className="w-full mt-2" asChild>
+            <a href={`/event/${slug}/`}>
               <ArrowLeft size={16} />
               Back to Event
-            </Button>
-          </a>
+            </a>
+          </Button>
         </div>
       </div>
 

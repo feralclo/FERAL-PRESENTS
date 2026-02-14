@@ -32,9 +32,6 @@ import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
 
-import "@/styles/aura.css";
-import "@/styles/aura-effects.css";
-
 interface AuraCheckoutProps {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -174,7 +171,7 @@ export function AuraCheckout({ slug, event }: AuraCheckoutProps) {
         <AuraCheckoutHeader slug={slug} />
         <div className="flex flex-col items-center justify-center gap-4 py-32">
           <Loader2 size={32} className="animate-spin text-muted-foreground" />
-          <p className="text-muted-foreground">Confirming your order...</p>
+          <p className="text-sm text-muted-foreground">Confirming your order...</p>
         </div>
       </div>
     );
@@ -232,13 +229,13 @@ function AuraOrderSummary({
   event: Event & { ticket_types: TicketTypeRow[] };
 }) {
   return (
-    <Card className="border-border/40 py-0 gap-0">
-      <CardHeader className="px-5 pt-5 pb-0">
+    <Card>
+      <CardHeader>
         <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Order Summary
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-5 space-y-4">
+      <CardContent className="space-y-4">
         <div className="space-y-3">
           {cartLines.map((line, i) => (
             <div key={i} className="flex items-start justify-between gap-3">
@@ -247,7 +244,7 @@ function AuraOrderSummary({
                   {line.qty}&times; {line.name}
                 </p>
                 {line.merch_size && (
-                  <Badge variant="secondary" className="text-[9px] py-0 px-1.5 mt-0.5">
+                  <Badge variant="secondary" className="mt-0.5 text-xs">
                     Size: {line.merch_size}
                   </Badge>
                 )}
@@ -258,10 +255,10 @@ function AuraOrderSummary({
             </div>
           ))}
         </div>
-        <Separator className="opacity-30" />
+        <Separator />
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Total</span>
-          <span className="font-display text-xl font-bold tabular-nums">
+          <span className="text-xl font-bold tabular-nums">
             {symbol}{subtotal.toFixed(2)}
           </span>
         </div>
@@ -313,7 +310,7 @@ function AuraStripeCheckout({
         <AuraCheckoutHeader slug={slug} />
         <div className="flex flex-col items-center justify-center gap-4 py-32">
           <Loader2 size={32} className="animate-spin text-muted-foreground" />
-          <p className="text-muted-foreground">Securing checkout...</p>
+          <p className="text-sm text-muted-foreground">Securing checkout...</p>
         </div>
       </div>
     );
@@ -537,11 +534,11 @@ function AuraCheckoutForm({
     <div className="space-y-6">
       {/* Express Checkout */}
       {expressAvailable && (
-        <Card className="border-border/40 py-0 gap-0">
-          <CardContent className="p-5 space-y-3">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <Card>
+          <CardContent className="space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Express Checkout
-            </h2>
+            </p>
             <ExpressCheckoutElement
               onClick={handleExpressClick}
               onConfirm={handleExpressConfirm}
@@ -561,17 +558,17 @@ function AuraCheckoutForm({
 
       {expressAvailable && (
         <div className="flex items-center gap-3">
-          <Separator className="flex-1 opacity-30" />
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">or pay with card</span>
-          <Separator className="flex-1 opacity-30" />
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">or pay with card</span>
+          <Separator className="flex-1" />
         </div>
       )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Contact */}
-        <Card className="border-border/40 py-0 gap-0">
-          <CardContent className="p-5 space-y-3">
+        <Card>
+          <CardContent className="space-y-3">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Mail size={12} />
               Contact
@@ -583,15 +580,14 @@ function AuraCheckoutForm({
               placeholder="Email address"
               required
               autoComplete="email"
-              className="bg-card/50"
             />
-            <p className="text-[11px] text-muted-foreground">Your tickets will be sent to this email</p>
+            <p className="text-xs text-muted-foreground">Your tickets will be sent to this email</p>
           </CardContent>
         </Card>
 
         {/* Details */}
-        <Card className="border-border/40 py-0 gap-0">
-          <CardContent className="p-5 space-y-3">
+        <Card>
+          <CardContent className="space-y-3">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Your Details
             </Label>
@@ -603,7 +599,6 @@ function AuraCheckoutForm({
                 placeholder="First name"
                 required
                 autoComplete="given-name"
-                className="bg-card/50"
               />
               <Input
                 type="text"
@@ -612,21 +607,20 @@ function AuraCheckoutForm({
                 placeholder="Last name"
                 required
                 autoComplete="family-name"
-                className="bg-card/50"
               />
             </div>
           </CardContent>
         </Card>
 
         {/* Payment */}
-        <Card className="border-border/40 py-0 gap-0">
-          <CardContent className="p-5 space-y-4">
+        <Card>
+          <CardContent className="space-y-4">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
               <CreditCard size={12} />
               Payment
             </Label>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <Lock size={11} className="text-aura-success" />
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Lock size={11} className="text-emerald-500" />
               All transactions are secure and encrypted
             </p>
 
@@ -638,12 +632,11 @@ function AuraCheckoutForm({
               onChange={(e) => setNameOnCard(e.target.value)}
               placeholder="Name on card"
               autoComplete="cc-name"
-              className="bg-card/50"
             />
 
             <div className="relative">
               <select
-                className="flex h-9 w-full rounded-md border border-input bg-card/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none appearance-none"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
               >
@@ -660,7 +653,7 @@ function AuraCheckoutForm({
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -669,7 +662,7 @@ function AuraCheckoutForm({
         <Button
           type="submit"
           size="lg"
-          className="w-full aura-glow-accent aura-press rounded-full font-semibold text-base"
+          className="w-full font-semibold text-base"
           disabled={processing || !cardReady || !stripe}
         >
           {processing ? (
@@ -683,7 +676,7 @@ function AuraCheckoutForm({
         </Button>
 
         {/* Trust */}
-        <p className="text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
+        <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
           <Lock size={11} />
           Secured by Stripe
         </p>
@@ -724,7 +717,7 @@ const AuraCardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
 
     return (
       <div className="space-y-3">
-        <div className="relative flex h-9 items-center rounded-md border border-input bg-card/50 px-3">
+        <div className="flex h-9 items-center rounded-md border border-input bg-transparent px-3">
           <CardNumberElement
             onReady={() => setNumberReady(true)}
             options={{ style: CARD_ELEMENT_STYLE, placeholder: "Card number", showIcon: false, disableLink: true }}
@@ -732,14 +725,14 @@ const AuraCardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex h-9 items-center rounded-md border border-input bg-card/50 px-3">
+          <div className="flex h-9 items-center rounded-md border border-input bg-transparent px-3">
             <CardExpiryElement
               onReady={() => setExpiryReady(true)}
               options={{ style: CARD_ELEMENT_STYLE, placeholder: "MM / YY" }}
               className="w-full"
             />
           </div>
-          <div className="flex h-9 items-center rounded-md border border-input bg-card/50 px-3">
+          <div className="flex h-9 items-center rounded-md border border-input bg-transparent px-3">
             <CardCvcElement
               onReady={() => setCvcReady(true)}
               options={{ style: CARD_ELEMENT_STYLE, placeholder: "CVC" }}
@@ -815,26 +808,26 @@ function AuraTestCheckout({
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           <div className="lg:col-span-3">
             <form onSubmit={handleSubmit} className="space-y-5">
-              <Card className="border-border/40 py-0 gap-0">
-                <CardContent className="p-5 space-y-3">
+              <Card>
+                <CardContent className="space-y-3">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Your Details
                   </Label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required autoComplete="email" className="bg-card/50" />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required autoComplete="email" />
                   <div className="grid grid-cols-2 gap-3">
-                    <Input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" required autoComplete="given-name" className="bg-card/50" />
-                    <Input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" required autoComplete="family-name" className="bg-card/50" />
+                    <Input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" required autoComplete="given-name" />
+                    <Input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" required autoComplete="family-name" />
                   </div>
                 </CardContent>
               </Card>
 
               {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   {error}
                 </div>
               )}
 
-              <Button type="submit" size="lg" className="w-full aura-press rounded-full font-semibold" disabled={submitting}>
+              <Button type="submit" size="lg" className="w-full font-semibold" disabled={submitting}>
                 {submitting ? (
                   <><Loader2 size={16} className="animate-spin" /> Processing...</>
                 ) : (
@@ -842,7 +835,7 @@ function AuraTestCheckout({
                 )}
               </Button>
 
-              <div className="rounded-lg border border-aura-warning/30 bg-aura-warning/10 px-4 py-3 text-center text-xs text-aura-warning">
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-center text-xs text-yellow-500">
                 TEST MODE — No real payment will be processed
               </div>
             </form>

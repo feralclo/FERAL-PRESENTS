@@ -7,6 +7,8 @@ import { useBranding } from "@/hooks/useBranding";
 import { isEditorPreview } from "@/components/event/ThemeEditorBridge";
 import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
+import { Separator } from "@/components/ui/separator";
+import { AuraHeader } from "./AuraHeader";
 import { AuraHero } from "./AuraHero";
 import { AuraTrustBar } from "./AuraTrustBar";
 import { AuraLineup } from "./AuraLineup";
@@ -16,7 +18,6 @@ import { AuraBottomBar } from "./AuraBottomBar";
 import { AuraMerchModal } from "./AuraMerchModal";
 import { AuraFooter } from "./AuraFooter";
 import { AuraSocialProof } from "./AuraSocialProof";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 import "@/styles/aura.css";
@@ -38,17 +39,17 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   const { settings } = useSettings();
   const branding = useBranding();
 
-  // ── Cart state ──
+  // Cart state
   const [cartTotal, setCartTotal] = useState(0);
   const [cartQty, setCartQty] = useState(0);
   const [cartItems, setCartItems] = useState<{ name: string; qty: number; size?: string }[]>([]);
   const [checkoutFn, setCheckoutFn] = useState<(() => void) | null>(null);
 
-  // ── Merch modal state ──
+  // Merch modal state
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
   const addMerchRef = useRef<((ticketTypeId: string, size: string, qty: number) => void) | null>(null);
 
-  // ── Computed event data ──
+  // Computed event data
   const activeTypes = useMemo(
     () => (event.ticket_types || []).filter((tt) => tt.status === "active"),
     [event.ticket_types]
@@ -60,24 +61,18 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
     [activeTypes]
   );
 
-  // Format date
   const dateDisplay = useMemo(() => {
     if (!event.date_start) return "";
     const d = new Date(event.date_start);
     return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   }, [event.date_start]);
 
-  // Hero image
   const heroImage = event.hero_image || event.cover_image || (event.id ? `/api/media/event_${event.id}_banner` : undefined);
-
-  // Location
   const location = [event.venue_name, event.city].filter(Boolean).join(", ");
-
-  // Ticket groups from settings
   const ticketGroups = (settings?.ticket_groups as string[]) || undefined;
   const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null>) || undefined;
 
-  // ── Meta tracking on mount ──
+  // Meta tracking on mount
   useEffect(() => {
     if (isEditorPreview()) return;
     if (activeTypes.length === 0) return;
@@ -90,7 +85,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
     });
   }, [event.name, activeTypes, minPrice, event.currency, trackViewContent]);
 
-  // ── Callbacks ──
+  // Callbacks
   const handleCartChange = useCallback(
     (total: number, qty: number, items: { name: string; qty: number; size?: string }[]) => {
       setCartTotal(total);
@@ -117,11 +112,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
     [teeModalTicketType]
   );
 
-  const scrollToTickets = useCallback(() => {
-    document.getElementById("tickets")?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  // ── Merch modal data ──
+  // Merch modal data
   const merchData = useMemo(() => {
     if (!teeModalTicketType) return null;
     const product = teeModalTicketType.product;
@@ -141,67 +132,71 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Hero */}
-      <AuraHero
-        title={event.name}
-        date={dateDisplay}
-        dateRaw={event.date_start}
-        doors={event.doors_time || "TBA"}
-        location={location || "TBA"}
-        age={event.age_restriction || "18+"}
-        bannerImage={heroImage}
-        tagLine={event.tag_line}
-      />
+      <AuraHeader eventName={event.name} />
 
-      {/* Trust bar */}
-      <AuraTrustBar />
+      <main className="mx-auto max-w-3xl px-4 sm:px-6 pb-24 md:pb-12">
+        {/* Hero */}
+        <AuraHero
+          title={event.name}
+          date={dateDisplay}
+          dateRaw={event.date_start}
+          doors={event.doors_time || "TBA"}
+          location={location || "TBA"}
+          age={event.age_restriction || "18+"}
+          bannerImage={heroImage}
+          tagLine={event.tag_line}
+        />
 
-      {/* Main content — tab-based single-column layout */}
-      <div className="mx-auto max-w-2xl px-5 sm:px-8 pb-24 md:pb-12">
-        <Tabs defaultValue="tickets" className="mt-8">
-          <TabsList variant="line" className="w-full justify-start">
-            <TabsTrigger value="tickets">Tickets</TabsTrigger>
-            <TabsTrigger value="about">About</TabsTrigger>
-            {event.lineup && event.lineup.length > 0 && (
-              <TabsTrigger value="lineup">Lineup</TabsTrigger>
-            )}
-          </TabsList>
+        <Separator className="my-8" />
 
-          <TabsContent value="tickets" className="mt-6">
-            <AuraTicketWidget
-              eventSlug={event.slug}
-              eventId={event.id}
-              paymentMethod={event.payment_method}
-              ticketTypes={event.ticket_types || []}
-              currency={event.currency || "GBP"}
-              onCartChange={handleCartChange}
-              onCheckoutReady={handleCheckoutReady}
-              ticketGroups={ticketGroups}
-              ticketGroupMap={ticketGroupMap}
-              onViewMerch={handleViewMerch}
-              addMerchRef={addMerchRef}
-            />
-          </TabsContent>
+        {/* Tickets */}
+        <section id="tickets">
+          <h2 className="text-xl font-semibold tracking-tight mb-6">Tickets</h2>
+          <AuraTicketWidget
+            eventSlug={event.slug}
+            eventId={event.id}
+            paymentMethod={event.payment_method}
+            ticketTypes={event.ticket_types || []}
+            currency={event.currency || "GBP"}
+            onCartChange={handleCartChange}
+            onCheckoutReady={handleCheckoutReady}
+            ticketGroups={ticketGroups}
+            ticketGroupMap={ticketGroupMap}
+            onViewMerch={handleViewMerch}
+            addMerchRef={addMerchRef}
+          />
+        </section>
 
-          <TabsContent value="about" className="mt-6">
-            <AuraEventInfo
-              aboutText={event.about_text}
-              detailsText={event.details_text}
-              description={event.description}
-              venue={event.venue_name}
-              venueAddress={event.venue_address}
-            />
-          </TabsContent>
+        <Separator className="my-8" />
 
-          {event.lineup && event.lineup.length > 0 && (
-            <TabsContent value="lineup" className="mt-6">
+        {/* About */}
+        <section id="about">
+          <h2 className="text-xl font-semibold tracking-tight mb-6">About</h2>
+          <AuraEventInfo
+            aboutText={event.about_text}
+            detailsText={event.details_text}
+            description={event.description}
+            venue={event.venue_name}
+            venueAddress={event.venue_address}
+          />
+        </section>
+
+        {/* Lineup */}
+        {event.lineup && event.lineup.length > 0 && (
+          <>
+            <Separator className="my-8" />
+            <section id="lineup">
+              <h2 className="text-xl font-semibold tracking-tight mb-6">Lineup</h2>
               <AuraLineup artists={event.lineup} />
-            </TabsContent>
-          )}
-        </Tabs>
-      </div>
+            </section>
+          </>
+        )}
 
-      {/* Footer */}
+        <Separator className="my-8" />
+
+        <AuraTrustBar />
+      </main>
+
       <AuraFooter />
 
       {/* Mobile bottom bar */}
@@ -209,7 +204,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
         fromPrice={`${currSymbol}${minPrice.toFixed(2)}`}
         cartTotal={cartQty > 0 ? `${currSymbol}${cartTotal.toFixed(2)}` : undefined}
         cartQty={cartQty}
-        onBuyNow={scrollToTickets}
+        onBuyNow={() => document.getElementById("tickets")?.scrollIntoView({ behavior: "smooth" })}
         onCheckout={checkoutFn || undefined}
       />
 
@@ -229,7 +224,6 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
         />
       )}
 
-      {/* Engagement features */}
       <DiscountPopup />
       <EngagementTracker />
       <AuraSocialProof />

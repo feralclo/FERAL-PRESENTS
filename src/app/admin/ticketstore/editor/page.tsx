@@ -624,12 +624,20 @@ function TicketStoreEditorPage() {
               }}
             >
               <div
-                className={`relative h-full rounded-lg overflow-hidden ${
-                  device !== "desktop"
-                    ? "border border-border/30 shadow-2xl shadow-black/40"
-                    : ""
+                className={`relative h-full overflow-hidden ${
+                  device === "mobile"
+                    ? "rounded-[2rem] border-[3px] border-zinc-700/60 shadow-2xl shadow-black/50"
+                    : device === "tablet"
+                      ? "rounded-2xl border-2 border-border/30 shadow-2xl shadow-black/40"
+                      : "rounded-lg"
                 }`}
               >
+                {/* Dynamic Island indicator for mobile preview */}
+                {device === "mobile" && (
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                    <div className="w-[90px] h-[26px] bg-black rounded-full" />
+                  </div>
+                )}
                 {/* Loading shimmer until bridge signals ready */}
                 {!bridgeReady && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0e0e0e]">
@@ -650,6 +658,12 @@ function TicketStoreEditorPage() {
                   className="h-full w-full border-0 bg-[#0e0e0e]"
                   title="Live preview"
                 />
+                {/* Home indicator bar for mobile preview */}
+                {device === "mobile" && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                    <div className="w-[120px] h-[4px] bg-white/20 rounded-full" />
+                  </div>
+                )}
               </div>
             </div>
           ) : (

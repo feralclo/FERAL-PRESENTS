@@ -52,7 +52,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(255, 0, 51, 0.03) 0%, transparent 50%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 3%, transparent) 0%, transparent 50%);
   z-index: 1;
 }
 
@@ -76,7 +76,7 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.6), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 60%, transparent), transparent);
   z-index: 3;
   opacity: 0;
   animation: scanMove 4s ease-in-out infinite;
@@ -186,10 +186,10 @@
 
 .event-hero__detail-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .event-hero__detail-value {
@@ -250,8 +250,9 @@
 }
 
 .event-info__text {
+  font-family: var(--font-sans);
   font-size: 15px;
-  line-height: 1.85;
+  line-height: 1.9;
   color: var(--gray-text);
   letter-spacing: 0.01em;
 }
@@ -269,6 +270,10 @@
   padding: 14px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transition: padding-left var(--transition-base), background var(--transition-base);
+}
+
+.event-info__artist:last-child {
+  border-bottom: none;
 }
 
 .event-info__artist:hover {
@@ -312,9 +317,9 @@
 
 .event-tickets__heading {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
   text-transform: uppercase;
   margin-bottom: 8px;
 }
@@ -323,8 +328,8 @@
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 1px;
-  color: var(--gray-text);
-  margin-bottom: 24px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
 }
 
 
@@ -418,20 +423,20 @@
 .feral-tickets__btn:hover {
   border-color: var(--red);
   color: var(--red);
-  background: rgba(255, 0, 51, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .feral-tickets__btn:active {
-  background: rgba(255, 0, 51, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .feral-tickets__total {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 0 16px;
-  border-top: 2px solid var(--red);
-  margin-top: 8px;
+  padding: 16px 0 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 12px;
 }
 
 .feral-tickets__total-label {
@@ -451,25 +456,25 @@
 
 /* Ticket Groups — named sections (e.g. "VIP Experiences") */
 .ticket-group {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .ticket-group__header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--card-border);
+  margin-bottom: 8px;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .ticket-group__name {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .feral-tickets__checkout {
@@ -502,16 +507,17 @@
 }
 
 .feral-tickets__checkout:disabled {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--gray-text);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Cart Summary (below checkout button) */
 .cart-summary {
   margin-top: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
@@ -543,7 +549,7 @@
 }
 
 .cart-summary__qty {
-  background: rgba(246, 4, 52, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: #fff;
   font-weight: 700;
   padding: 2px 6px;
@@ -579,7 +585,7 @@
 
 .cart-summary__remove:hover {
   color: var(--red);
-  border-color: rgba(255, 0, 51, 0.3);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 /* --- Unified Ticket Widget: Tiers + Progress + Selector --- */
@@ -619,8 +625,8 @@
 }
 
 .feral-tickets__tier--active {
-  background: rgba(255, 0, 51, 0.08);
-  border-color: rgba(255, 0, 51, 0.3);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   position: relative;
 }
 
@@ -944,7 +950,7 @@
 }
 
 .ticket-scarcity--desktop .ticket-scarcity__tier--active {
-  background: rgba(255, 0, 51, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .ticket-scarcity__header {
@@ -1067,8 +1073,8 @@
 }
 
 .ticket-scarcity__tier--active {
-  background: rgba(255, 0, 51, 0.08);
-  border-color: rgba(255, 0, 51, 0.3);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   position: relative;
 }
 
@@ -1303,7 +1309,7 @@
   padding: 12px 16px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(0, 0, 0, 0.98) 0%, rgba(0, 0, 0, 0.95) 100%);
-  border-top: 1px solid rgba(255, 0, 51, 0.3);
+  border-top: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .mobile-cta__btn {
@@ -1316,6 +1322,8 @@
   color: var(--white);
   text-decoration: none;
   transition: all var(--transition-base);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px var(--red-glow);
 }
 
 .mobile-cta__btn:active {
@@ -1403,8 +1411,8 @@
 
 /* Active tier */
 .tier-progression__tier--active {
-  background: rgba(255, 0, 51, 0.08);
-  border-color: rgba(255, 0, 51, 0.4);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .tier-progression__tier--active .tier-progression__name {
@@ -1441,6 +1449,17 @@
   background: rgba(255, 255, 255, 0.05);
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Active state — ticket is in the cart */
+.ticket-option--active {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ticket-option--active .ticket-option__qty {
+  color: var(--red);
 }
 
 .ticket-option--vip {
@@ -1968,6 +1987,78 @@
 
 .ticket-option__tier .tier-highlight {
   color: var(--red);
+}
+
+/* --- Ticket Options: Responsive (≤480px) --- */
+@media (max-width: 480px) {
+  .feral-tickets {
+    padding: 0 16px 16px;
+  }
+
+  .ticket-option {
+    padding: 14px;
+  }
+
+  .ticket-option__row {
+    margin-bottom: 10px;
+  }
+
+  .ticket-option__name {
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  .ticket-option__perks {
+    font-size: 10px;
+  }
+
+  .ticket-option__price {
+    font-size: 13px;
+  }
+
+  .ticket-option__bottom {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .ticket-option__controls {
+    gap: 10px;
+  }
+
+  .ticket-option__btn {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  .ticket-option__qty {
+    font-size: 1rem;
+    min-width: 24px;
+  }
+
+  .ticket-option__view-tee {
+    font-size: 9px;
+    padding: 6px 10px;
+    letter-spacing: 1px;
+  }
+
+  .feral-tickets__checkout {
+    padding: 16px 20px;
+    font-size: 0.8rem;
+  }
+
+  .cart-summary__item {
+    font-size: 10px;
+  }
+
+  .ticket-group__header {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .ticket-group__name {
+    font-size: 0.65rem;
+  }
 }
 
 /* --- Enhanced Tee Modal --- */
@@ -2760,9 +2851,9 @@
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--platinum);
-  margin: 16px 0 10px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(229, 228, 226, 0.15);
+  margin: 12px 0 8px;
+  padding-top: 0;
+  border-top: none;
 }
 
 
@@ -2826,7 +2917,8 @@
   background: var(--red);
   color: var(--white);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px var(--red-glow);
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
@@ -3315,6 +3407,10 @@ body:has(.bottom-bar) .footer {
     margin-left: -16px;
     margin-right: -16px;
     overflow-x: hidden;
+  }
+
+  .feral-tickets {
+    padding: 0 16px 16px;
   }
 
   /* On mobile: Lineup above About (HTML order is About → Lineup for desktop) */

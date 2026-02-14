@@ -369,7 +369,7 @@ export function DynamicTicketWidget({
                   return (
                     <div
                       key={tt.id}
-                      className={`ticket-option ${tierClass}`}
+                      className={`ticket-option ${tierClass}${qty > 0 ? " ticket-option--active" : ""}`}
                       data-ticket-id={tt.id}
                     >
                       {tt.tier === "valentine" && (

@@ -112,6 +112,8 @@ function ExpressCheckoutInner({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             payment_intent_id: data.payment_intent_id,
+            event_id: eventId,
+            stripe_account_id: data.stripe_account_id,
           }),
         });
 

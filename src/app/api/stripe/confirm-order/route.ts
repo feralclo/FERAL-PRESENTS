@@ -39,18 +39,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-detect connected account from site_settings
-    let stripeAccountId: string | null = null;
-    const { data: settingsRow } = await supabase
-      .from(TABLES.SITE_SETTINGS)
-      .select("data")
-      .eq("key", "feral_stripe_account")
-      .single();
+    // Determine connected account for PaymentIntent retrieval.
+    // Priority: 1) event-level stripe_account_id  2) global setting  3) platform account
+    // The client can pass stripe_account_id or event_id to help route correctly.
+    let stripeAccountId: string | null = body.stripe_account_id || null;
 
-    if (settingsRow?.data && typeof settingsRow.data === "object") {
-      const settingsData = settingsRow.data as { account_id?: string };
-      if (settingsData.account_id) {
-        stripeAccountId = settingsData.account_id;
+    // If client passed event_id (or we can infer it), look up event-level Stripe account
+    if (!stripeAccountId && body.event_id) {
+      const { data: eventRow } = await supabase
+        .from(TABLES.EVENTS)
+        .select("stripe_account_id")
+        .eq("id", body.event_id)
+        .eq("org_id", ORG_ID)
+        .single();
+      if (eventRow?.stripe_account_id) {
+        stripeAccountId = eventRow.stripe_account_id;
+      }
+    }
+
+    // Fall back to global setting
+    if (!stripeAccountId) {
+      const { data: settingsRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", "feral_stripe_account")
+        .single();
+
+      if (settingsRow?.data && typeof settingsRow.data === "object") {
+        const settingsData = settingsRow.data as { account_id?: string };
+        if (settingsData.account_id) {
+          stripeAccountId = settingsData.account_id;
+        }
       }
     }
 

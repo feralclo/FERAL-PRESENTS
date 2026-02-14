@@ -28,7 +28,13 @@ export const SETTINGS_KEYS = {
   MARKETING: "feral_marketing",
   EMAIL: "feral_email",
   WALLET_PASSES: "feral_wallet_passes",
+  BRANDING: "feral_branding",
 } as const;
+
+/** Generate the branding settings key for a given org */
+export function brandingKey(orgId: string): string {
+  return `${orgId}_branding`;
+}
 
 // Default ticket IDs (fallbacks if settings not loaded)
 export const DEFAULT_TICKETS = {

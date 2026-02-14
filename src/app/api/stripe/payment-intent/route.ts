@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch event
+    // Fetch event (include stripe_account_id and platform_fee_percent for per-event Connect)
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, payment_method, currency")
+      .select("id, name, slug, payment_method, currency, stripe_account_id, platform_fee_percent")
       .eq("id", event_id)
       .eq("org_id", ORG_ID)
       .single();
@@ -73,18 +73,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-detect connected account from site_settings
-    let stripeAccountId: string | null = null;
-    const { data: settingsRow } = await supabase
-      .from(TABLES.SITE_SETTINGS)
-      .select("data")
-      .eq("key", "feral_stripe_account")
-      .single();
+    // Determine connected account: event-level stripe_account_id takes priority,
+    // then fall back to global setting in site_settings.
+    // This enables multi-tenant payments: each event/promoter can use their own Stripe account.
+    let stripeAccountId: string | null = event.stripe_account_id || null;
 
-    if (settingsRow?.data && typeof settingsRow.data === "object") {
-      const settingsData = settingsRow.data as { account_id?: string };
-      if (settingsData.account_id) {
-        stripeAccountId = settingsData.account_id;
+    if (!stripeAccountId) {
+      const { data: settingsRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", "feral_stripe_account")
+        .single();
+
+      if (settingsRow?.data && typeof settingsRow.data === "object") {
+        const settingsData = settingsRow.data as { account_id?: string };
+        if (settingsData.account_id) {
+          stripeAccountId = settingsData.account_id;
+        }
       }
     }
 
@@ -131,8 +136,9 @@ export async function POST(request: NextRequest) {
     const amountInSmallestUnit = toSmallestUnit(subtotal);
     const currency = (event.currency || "GBP").toLowerCase();
 
-    // Build PaymentIntent parameters
-    const applicationFee = calculateApplicationFee(amountInSmallestUnit, DEFAULT_PLATFORM_FEE_PERCENT);
+    // Build PaymentIntent parameters — use event-level fee override if set, else global default
+    const feePercent = event.platform_fee_percent ?? DEFAULT_PLATFORM_FEE_PERCENT;
+    const applicationFee = calculateApplicationFee(amountInSmallestUnit, feePercent);
 
     // Build line items description
     const description = items

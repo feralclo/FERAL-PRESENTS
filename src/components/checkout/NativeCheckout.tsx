@@ -22,6 +22,7 @@ import { getStripeClient } from "@/lib/stripe/client";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
+import { useBranding } from "@/hooks/useBranding";
 import "@/styles/checkout-page.css";
 
 /* ================================================================
@@ -174,7 +175,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
           const res = await fetch("/api/stripe/confirm-order", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ payment_intent_id: piParam }),
+            body: JSON.stringify({ payment_intent_id: piParam, event_id: event.id }),
           });
           const data = await res.json();
           if (res.ok && data.data) {
@@ -491,7 +492,11 @@ function SinglePageCheckoutForm({
         const orderRes = await fetch("/api/stripe/confirm-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ payment_intent_id: data.payment_intent_id }),
+          body: JSON.stringify({
+            payment_intent_id: data.payment_intent_id,
+            event_id: event.id,
+            stripe_account_id: data.stripe_account_id,
+          }),
         });
 
         const orderData = await orderRes.json();
@@ -648,7 +653,11 @@ function SinglePageCheckoutForm({
         const orderRes = await fetch("/api/stripe/confirm-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ payment_intent_id: data.payment_intent_id }),
+          body: JSON.stringify({
+            payment_intent_id: data.payment_intent_id,
+            event_id: event.id,
+            stripe_account_id: data.stripe_account_id,
+          }),
         });
 
         const orderData = await orderRes.json();
@@ -1289,6 +1298,8 @@ function TestModeCheckout({
    ================================================================ */
 
 function CheckoutHeader({ slug }: { slug: string }) {
+  const branding = useBranding();
+
   return (
     <div className="checkout-header">
       <a href={`/event/${slug}/`} className="checkout-header__back">
@@ -1298,9 +1309,10 @@ function CheckoutHeader({ slug }: { slug: string }) {
       <a href={`/event/${slug}/`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/FERAL%20LOGO.svg"
-          alt="FERAL PRESENTS"
+          src={branding.logo_url || "/images/FERAL%20LOGO.svg"}
+          alt={branding.org_name || "FERAL PRESENTS"}
           className="checkout-header__logo"
+          style={branding.logo_width ? { width: branding.logo_width } : undefined}
         />
       </a>
       <div className="checkout-header__secure">
@@ -1575,12 +1587,15 @@ function OrderItems({
 }
 
 function CheckoutFooter() {
+  const branding = useBranding();
+  const year = new Date().getFullYear();
+
   return (
     <footer className="footer">
       <div className="container">
         <div className="footer__inner">
           <span className="footer__copy">
-            &copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.
+            &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
           </span>
           <span className="footer__status">
             STATUS: <span className="text-red">ONLINE</span>

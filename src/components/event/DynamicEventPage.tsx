@@ -12,6 +12,7 @@ import { SocialProofToast } from "./SocialProofToast";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useSettings } from "@/hooks/useSettings";
+import { useBranding } from "@/hooks/useBranding";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -22,6 +23,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const headerHidden = useHeaderScroll();
   const { trackViewContent } = useMetaTracking();
   const { settings } = useSettings();
+  const branding = useBranding();
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -174,7 +176,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
             </svg>
           </span>
           <span className="announcement-banner__verified">
-            Official FERAL ticket store
+            Official {branding.org_name || "FERAL"} ticket store
           </span>
         </div>
         <Header />
@@ -278,7 +280,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
         <div className="container">
           <div className="footer__inner">
             <span className="footer__copy">
-              &copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.
+              &copy; {new Date().getFullYear()} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
             </span>
             <span className="footer__status">
               STATUS: <span className="text-red">ONLINE</span>

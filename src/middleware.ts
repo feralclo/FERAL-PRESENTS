@@ -44,6 +44,7 @@ const PUBLIC_API_EXACT_GETS = [
   "/api/events",
   "/api/settings",
   "/api/products",
+  "/api/branding",
 ];
 
 function isPublicApiRoute(pathname: string, method: string): boolean {

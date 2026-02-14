@@ -1,7 +1,8 @@
 import { fetchSettings } from "@/lib/settings";
-import { SETTINGS_KEYS, TABLES, ORG_ID } from "@/lib/constants";
+import { SETTINGS_KEYS, TABLES, ORG_ID, brandingKey } from "@/lib/constants";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { SettingsProvider } from "@/hooks/useSettings";
+import type { BrandingSettings } from "@/types/settings";
 import type { ReactNode } from "react";
 import "@/styles/event.css";
 
@@ -62,7 +63,7 @@ export default async function EventLayout({
     }
   }
 
-  // STEP 2: Run settings fetch + media check IN PARALLEL (not sequential)
+  // STEP 2: Run settings fetch + media check + branding fetch IN PARALLEL
   const settingsPromise = fetchSettings(settingsKey);
 
   const mediaPromise =
@@ -82,8 +83,21 @@ export default async function EventLayout({
           .catch(() => {})
       : Promise.resolve();
 
-  // Wait for both in parallel
-  const [settings] = await Promise.all([settingsPromise, mediaPromise]);
+  // Fetch org branding for CSS variable injection (server-side, no FOUC)
+  const brandingPromise: Promise<BrandingSettings | null> = supabase
+    ? Promise.resolve(
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(ORG_ID))
+          .single()
+      )
+        .then(({ data }) => (data?.data as BrandingSettings) || null)
+        .catch(() => null)
+    : Promise.resolve(null);
+
+  // Wait for all in parallel
+  const [settings, , branding] = await Promise.all([settingsPromise, mediaPromise, brandingPromise]);
 
   // Determine theme:
   // - WeeZTix events: site_settings is the authority (legacy system)
@@ -113,6 +127,15 @@ export default async function EventLayout({
     cssVars["--cover-blur"] = `${settings?.minimalBlurStrength ?? 4}px`;
     cssVars["--static-opacity"] = `${(settings?.minimalStaticStrength ?? 5) / 100}`;
   }
+
+  // Inject org branding as CSS variables — enables white-labeling per tenant.
+  // These override the defaults in base.css :root, so every component picks them up.
+  if (branding?.accent_color) cssVars["--accent"] = branding.accent_color;
+  if (branding?.background_color) cssVars["--bg-dark"] = branding.background_color;
+  if (branding?.card_color) cssVars["--card-bg"] = branding.card_color;
+  if (branding?.text_color) cssVars["--text-primary"] = branding.text_color;
+  if (branding?.heading_font) cssVars["--font-mono"] = `'${branding.heading_font}', monospace`;
+  if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
 
   return (
     <div className={themeClasses || undefined} style={cssVars as React.CSSProperties}>

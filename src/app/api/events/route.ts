@@ -69,6 +69,13 @@ export async function POST(request: NextRequest) {
       hero_image,
       theme,
       currency = "GBP",
+      about_text,
+      lineup,
+      details_text,
+      tag_line,
+      doors_time,
+      stripe_account_id,
+      platform_fee_percent,
       ticket_types,
     } = body;
 
@@ -111,6 +118,13 @@ export async function POST(request: NextRequest) {
         hero_image,
         theme,
         currency,
+        about_text,
+        lineup,
+        details_text,
+        tag_line,
+        doors_time,
+        stripe_account_id,
+        platform_fee_percent,
       })
       .select()
       .single();
@@ -134,9 +148,14 @@ export async function POST(request: NextRequest) {
             includes_merch?: boolean;
             merch_type?: string;
             merch_sizes?: string[];
+            merch_name?: string;
+            merch_description?: string;
+            merch_images?: Record<string, string>;
             sort_order?: number;
             min_per_order?: number;
             max_per_order?: number;
+            tier?: string;
+            product_id?: string;
           },
           i: number
         ) => ({
@@ -149,9 +168,14 @@ export async function POST(request: NextRequest) {
           includes_merch: tt.includes_merch || false,
           merch_type: tt.merch_type,
           merch_sizes: tt.merch_sizes,
+          merch_name: tt.merch_name,
+          merch_description: tt.merch_description,
+          merch_images: tt.merch_images,
           sort_order: tt.sort_order ?? i,
           min_per_order: tt.min_per_order ?? 1,
           max_per_order: tt.max_per_order ?? 10,
+          tier: tt.tier || "standard",
+          product_id: tt.product_id,
         })
       );
 

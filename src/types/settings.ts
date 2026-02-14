@@ -69,6 +69,59 @@ export interface EventSettings {
   [key: string]: unknown;
 }
 
+/**
+ * Org-level branding settings — stored in site_settings under key `{org_id}_branding`.
+ * Controls white-label appearance: checkout header, emails, PDF tickets, event pages.
+ * Each tenant (org) can customize these independently.
+ */
+export interface BrandingSettings {
+  /** Display name of the org/promoter (shown in header, footer, emails) */
+  org_name?: string;
+  /** Logo URL or base64 (used in checkout header, emails, PDF tickets) */
+  logo_url?: string;
+  /** Logo width in pixels for checkout header (default: auto) */
+  logo_width?: number;
+  /** Primary accent color (hex) — used for buttons, links, highlights */
+  accent_color?: string;
+  /** Background color (hex) — defaults to #0e0e0e */
+  background_color?: string;
+  /** Card/section background color (hex) — defaults to #1a1a1a */
+  card_color?: string;
+  /** Primary text color (hex) — defaults to #ffffff */
+  text_color?: string;
+  /** Heading font family — defaults to Space Mono */
+  heading_font?: string;
+  /** Body font family — defaults to Inter */
+  body_font?: string;
+  /** Copyright text — e.g. "© 2026 ACME EVENTS" */
+  copyright_text?: string;
+  /** Support email for the org */
+  support_email?: string;
+  /** Social links */
+  social_links?: {
+    instagram?: string;
+    twitter?: string;
+    tiktok?: string;
+    website?: string;
+  };
+}
+
+/**
+ * Event-level theme overrides — stored in site_settings under key `{event_settings_key}_theme`
+ * or directly in the events table `theme` column as a JSON string.
+ * These override org-level branding for a specific event.
+ */
+export interface EventThemeOverrides {
+  /** Accent color override for this event */
+  accent_color?: string;
+  /** Background color override */
+  background_color?: string;
+  /** Hero overlay opacity (0-1) */
+  hero_overlay_opacity?: number;
+  /** Custom CSS class to apply to event page */
+  custom_class?: string;
+}
+
 /** Row shape from site_settings table */
 export interface SiteSettingsRow {
   key: string;

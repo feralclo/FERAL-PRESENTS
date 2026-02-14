@@ -124,14 +124,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
-  if (pathname.startsWith("/admin/login")) return <>{children}</>;
-
-  // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
-  if (pathname.startsWith("/admin/ticketstore/editor"))
-    return <>{children}</>;
+  const isLoginPage = pathname.startsWith("/admin/login");
+  const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
+  const isBypassRoute = isLoginPage || isEditorPage;
 
   // Fetch user email on mount
   useEffect(() => {
+    if (isBypassRoute) return;
     (async () => {
       try {
         const supabase = getSupabaseClient();
@@ -142,10 +141,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         // Auth call can fail during navigation — ignore gracefully
       }
     })();
-  }, []);
+  }, [isBypassRoute]);
 
   // Close menu on outside click
   useEffect(() => {
+    if (isBypassRoute) return;
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
@@ -153,7 +153,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
     if (userMenuOpen) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [userMenuOpen]);
+  }, [userMenuOpen, isBypassRoute]);
+
+  if (isLoginPage) return <>{children}</>;
+
+  // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
+  if (isEditorPage) return <>{children}</>;
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();

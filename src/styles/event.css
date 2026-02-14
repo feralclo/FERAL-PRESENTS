@@ -456,25 +456,33 @@
 
 /* Ticket Groups — named sections (e.g. "VIP Experiences") */
 .ticket-group {
-  margin-top: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ticket-group__header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding-bottom: 0;
-  border-bottom: none;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ticket-group__header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), transparent);
 }
 
 .ticket-group__name {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .feral-tickets__checkout {
@@ -1414,10 +1422,10 @@
 }
 
 
-/* --- Tier Progression Display --- */
+/* --- Tier Progression Display (Release Ladder) --- */
 .tier-progression {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -1425,79 +1433,85 @@
 
 .tier-progression__tier {
   flex: 1;
-  padding: 10px 8px;
+  padding: 10px 6px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   text-align: center;
   transition: all 0.2s ease;
   border-radius: 6px;
+  min-width: 0;
 }
 
 .tier-progression__name {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--gray-text);
+  color: var(--text-muted);
   display: block;
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tier-progression__price {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   display: block;
   margin-bottom: 4px;
 }
 
 .tier-progression__status {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 1.5px;
+  text-transform: uppercase;
   display: block;
 }
 
 /* Sold out tier */
 .tier-progression__tier--sold {
-  opacity: 0.5;
+  opacity: 0.45;
   background: rgba(255, 255, 255, 0.01);
 }
 
 .tier-progression__tier--sold .tier-progression__price {
   text-decoration: line-through;
-  color: var(--gray-text);
+  color: var(--text-muted);
 }
 
 .tier-progression__tier--sold .tier-progression__status {
-  color: var(--gray-text);
+  color: var(--text-muted);
 }
 
-/* Active tier */
+/* Active tier — on sale now */
 .tier-progression__tier--active {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .tier-progression__tier--active .tier-progression__name {
-  color: #fff;
+  color: var(--text-primary);
+  opacity: 0.9;
 }
 
 .tier-progression__tier--active .tier-progression__status {
   color: var(--red);
 }
 
-/* Next tier */
+/* Next tier — upcoming */
 .tier-progression__tier--next {
   border-style: dashed;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .tier-progression__tier--next .tier-progression__status {
-  color: var(--gray-text);
+  color: var(--text-muted);
 }
 
 /* --- Unified Ticket Options --- */
@@ -1527,6 +1541,42 @@
 
 .ticket-option--active .ticket-option__qty {
   color: var(--red);
+}
+
+/* Platinum active — silver glow intensifies */
+.ticket-option--vip.ticket-option--active {
+  border-color: rgba(229, 228, 226, 0.7);
+  background: rgba(229, 228, 226, 0.06);
+  box-shadow: 0 0 20px rgba(229, 228, 226, 0.15);
+}
+
+.ticket-option--vip.ticket-option--active .ticket-option__qty {
+  color: var(--platinum);
+}
+
+/* Black active — white border brightens, accent glow */
+.ticket-option--vip-black.ticket-option--active {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 0 40px rgba(0, 0, 0, 0.8),
+    0 0 3px rgba(255, 255, 255, 0.5),
+    0 0 24px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.ticket-option--vip-black.ticket-option--active .ticket-option__qty {
+  color: var(--red);
+}
+
+/* Valentine active — pink glow intensifies */
+.ticket-option--valentine.ticket-option--active {
+  border-color: var(--valentine-light);
+  box-shadow:
+    0 0 30px rgba(232, 54, 93, 0.2),
+    0 0 3px rgba(255, 126, 179, 0.35);
+}
+
+.ticket-option--valentine.ticket-option--active .ticket-option__qty {
+  color: var(--valentine-pink);
 }
 
 .ticket-option--vip {
@@ -1626,11 +1676,11 @@
   box-shadow:
     0 0 50px rgba(0, 0, 0, 0.9),
     0 0 3px rgba(255, 255, 255, 0.5),
-    0 0 20px rgba(255, 0, 51, 0.15),
+    0 0 20px color-mix(in srgb, var(--accent) 15%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Red FERAL accent bar - left edge */
+/* Accent bar - left edge */
 .ticket-option--vip-black::before {
   content: '';
   position: absolute;
@@ -1639,10 +1689,10 @@
   bottom: 0;
   width: 4px;
   background: linear-gradient(180deg,
-    rgba(255, 0, 51, 1) 0%,
-    rgba(255, 0, 51, 0.8) 50%,
-    rgba(255, 0, 51, 0.5) 100%);
-  box-shadow: 0 0 15px rgba(255, 0, 51, 0.6);
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 80%, transparent) 50%,
+    color-mix(in srgb, var(--accent) 50%, transparent) 100%);
+  box-shadow: 0 0 15px color-mix(in srgb, var(--accent) 60%, transparent);
   z-index: 3;
 }
 
@@ -1679,7 +1729,7 @@
   color: #fff;
   text-shadow:
     0 0 20px rgba(255, 255, 255, 0.4),
-    0 0 40px rgba(255, 0, 51, 0.2);
+    0 0 40px color-mix(in srgb, var(--accent) 20%, transparent);
   position: relative;
   z-index: 2;
 }
@@ -2136,13 +2186,42 @@
     padding: 10px 12px;
   }
 
+  .tier-progression {
+    gap: 4px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .tier-progression__tier {
+    padding: 8px 4px;
+  }
+
+  .tier-progression__name {
+    font-size: 8px;
+    letter-spacing: 0.3px;
+  }
+
+  .tier-progression__price {
+    font-size: 11px;
+  }
+
+  .tier-progression__status {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+
+  .ticket-group {
+    margin-top: 16px;
+    padding-top: 12px;
+  }
+
   .ticket-group__header {
     gap: 8px;
     margin-bottom: 8px;
   }
 
   .ticket-group__name {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
   }
 }
 

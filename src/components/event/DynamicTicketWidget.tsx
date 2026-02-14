@@ -358,6 +358,18 @@ export function DynamicTicketWidget({
                   ),
                 })).filter((g) => g.tickets.length > 0);
 
+                // Tier progression: standard-tier ungrouped tickets sorted by release order
+                // Shows demand signal when multiple releases exist (sold out → on sale → upcoming)
+                const progressionTickets = ticketTypes
+                  .filter(
+                    (tt) =>
+                      (tt.tier || "standard") === "standard" &&
+                      !groupMap[tt.id] &&
+                      tt.status !== "archived"
+                  )
+                  .sort((a, b) => a.sort_order - b.sort_order);
+                const showProgression = progressionTickets.length >= 2;
+
                 const renderTicket = (tt: TicketTypeRow) => {
                   const tierClass = TIER_CLASS[tt.tier || "standard"] || "";
                   const qty = getQty(tt.id);
@@ -435,6 +447,46 @@ export function DynamicTicketWidget({
 
                 return (
                   <>
+                    {/* Release progression bar — shows demand signal */}
+                    {showProgression && (
+                      <div className="tier-progression">
+                        {progressionTickets.map((tt) => {
+                          const statusClass =
+                            tt.status === "sold_out"
+                              ? "tier-progression__tier--sold"
+                              : tt.status === "active"
+                                ? "tier-progression__tier--active"
+                                : "tier-progression__tier--next";
+                          const statusLabel =
+                            tt.status === "sold_out"
+                              ? "SOLD OUT"
+                              : tt.status === "active"
+                                ? "ON SALE"
+                                : "UPCOMING";
+                          const priceDisplay =
+                            Number(tt.price) % 1 === 0
+                              ? Number(tt.price)
+                              : Number(tt.price).toFixed(2);
+                          return (
+                            <div
+                              key={tt.id}
+                              className={`tier-progression__tier ${statusClass}`}
+                            >
+                              <span className="tier-progression__name">
+                                {tt.name}
+                              </span>
+                              <span className="tier-progression__price">
+                                {currSymbol}{priceDisplay}
+                              </span>
+                              <span className="tier-progression__status">
+                                {statusLabel}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {/* Default (ungrouped) tickets */}
                     {defaultGroup.map(renderTicket)}
 

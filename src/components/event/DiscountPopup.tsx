@@ -70,7 +70,11 @@ export function DiscountPopup({
 
   // Show popup after delay (if not dismissed)
   useEffect(() => {
-    if (isDismissed()) return;
+    if (isDismissed()) {
+      // Popup won't show — notify toast it doesn't need to wait
+      window.dispatchEvent(new CustomEvent("feral_popup_dismissed"));
+      return;
+    }
 
     const isMobile = window.innerWidth < 768;
     const delay = isMobile ? mobileDelay : desktopDelay;
@@ -122,6 +126,8 @@ export function DiscountPopup({
     setIsOpen(false);
     markDismissed();
     trackPopupEvent("dismissed", page);
+    // Signal other components that the popup has been dismissed
+    window.dispatchEvent(new CustomEvent("feral_popup_dismissed"));
   }, [page]);
 
   const handleCommit = useCallback(() => {

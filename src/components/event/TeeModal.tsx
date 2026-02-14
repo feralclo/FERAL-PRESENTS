@@ -131,6 +131,16 @@ export function TeeModal({
     [images]
   );
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen && !fullscreenOpen) return null;
 
   return (
@@ -144,7 +154,8 @@ export function TeeModal({
           }}
         >
           <div className="tee-modal">
-            <button className="tee-modal__close" onClick={onClose}>
+            <div className="tee-modal__drag-handle" />
+            <button className="tee-modal__close" onClick={onClose} aria-label="Close">
               &times;
             </button>
 

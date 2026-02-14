@@ -10,7 +10,6 @@ import { DiscountPopup } from "./DiscountPopup";
 import { EngagementTracker } from "./EngagementTracker";
 import { SocialProofToast } from "./SocialProofToast";
 import { isEditorPreview } from "./ThemeEditorBridge";
-import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import { useDataLayer } from "@/hooks/useDataLayer";
@@ -23,7 +22,6 @@ interface DynamicEventPageProps {
 }
 
 export function DynamicEventPage({ event }: DynamicEventPageProps) {
-  const headerHidden = useHeaderScroll();
   const { trackPageView, trackViewContent } = useMetaTracking();
   const { trackEngagement } = useTraffic();
   const { trackViewContent: gtmTrackViewContent } = useDataLayer();
@@ -138,10 +136,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   return (
     <>
       {/* Navigation */}
-      <header
-        className={`header${headerHidden ? " header--hidden" : ""}`}
-        id="header"
-      >
+      <header className="header" id="header">
         <div className="announcement-banner">
           <span className="announcement-banner__shield">
             <svg

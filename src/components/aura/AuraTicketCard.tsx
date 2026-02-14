@@ -1,10 +1,11 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Minus, Plus, Eye, Sparkles } from "lucide-react";
+import { Minus, Plus, Eye } from "lucide-react";
 import type { TicketTypeRow } from "@/types/events";
 
 interface AuraTicketCardProps {
@@ -16,22 +17,11 @@ interface AuraTicketCardProps {
   onViewMerch?: () => void;
 }
 
-const TIER_STYLES: Record<string, { border: string; badge: string; label: string }> = {
-  platinum: {
-    border: "border-[#c0b283]/40",
-    badge: "bg-[#c0b283]/15 text-[#c0b283] border-[#c0b283]/25",
-    label: "Platinum",
-  },
-  black: {
-    border: "border-foreground/20",
-    badge: "bg-foreground/10 text-foreground border-foreground/20",
-    label: "Black",
-  },
-  valentine: {
-    border: "border-[#e8365d]/30",
-    badge: "bg-[#e8365d]/15 text-[#e8365d] border-[#e8365d]/25",
-    label: "Special",
-  },
+const TIER_BADGES: Record<string, { variant: "warning" | "default" | "destructive" | "secondary"; label: string }> = {
+  platinum: { variant: "warning", label: "VIP" },
+  black: { variant: "default", label: "VIP Black" },
+  valentine: { variant: "destructive", label: "Special" },
+  standard: { variant: "secondary", label: "Standard" },
 };
 
 export function AuraTicketCard({
@@ -46,117 +36,101 @@ export function AuraTicketCard({
   const soldOut = cap > 0 && ticket.sold >= cap;
   const sellPct = cap > 0 ? (ticket.sold / cap) * 100 : 0;
   const lowStock = sellPct > 85 && !soldOut;
-  const tier = TIER_STYLES[ticket.tier || ""];
   const hasMerch = ticket.includes_merch && ticket.product;
   const isSelected = qty > 0;
+  const tierKey = ticket.tier || "standard";
+  const tierBadge = TIER_BADGES[tierKey] || TIER_BADGES.standard;
 
   return (
     <Card
-      className={`group relative overflow-hidden transition-all duration-300 py-0 gap-0 ${
-        isSelected
-          ? "aura-gradient-border aura-glow-accent border-transparent"
-          : tier
-            ? tier.border
-            : "border-border/40 hover:border-border/70"
-      } ${isSelected ? "aura-cart-flash" : ""} aura-hover-lift`}
+      className={cn(
+        "transition-all duration-200 aura-card",
+        isSelected && "ring-1 ring-primary/40 aura-selected",
+        soldOut && "opacity-50 pointer-events-none"
+      )}
     >
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          {/* Left: info */}
-          <div className="flex-1 min-w-0 space-y-2">
-            {/* Name + badges */}
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-display text-base font-semibold tracking-tight">
-                {ticket.name}
-              </h3>
-              {tier && (
-                <Badge className={`text-[10px] ${tier.badge}`}>
-                  <Sparkles size={10} />
-                  {tier.label}
-                </Badge>
-              )}
-              {lowStock && (
-                <Badge className="aura-pulse bg-aura-warning/15 text-aura-warning border-aura-warning/25 text-[10px]">
-                  Low Stock
-                </Badge>
-              )}
-              {soldOut && (
-                <Badge variant="secondary" className="text-[10px]">
-                  Sold Out
-                </Badge>
-              )}
-            </div>
+      <CardContent className="p-4">
+        {/* Top: tier badge + name */}
+        <div className="flex items-center gap-2 mb-1">
+          <Badge variant={tierBadge.variant}>{tierBadge.label}</Badge>
+          <h3 className="text-sm font-semibold text-foreground truncate flex-1">
+            {ticket.name}
+          </h3>
+          {soldOut && (
+            <Badge variant="destructive" className="text-[10px]">
+              Sold Out
+            </Badge>
+          )}
+        </div>
 
-            {/* Description */}
-            {ticket.description && (
-              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                {ticket.description}
-              </p>
+        {/* Description */}
+        {ticket.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+            {ticket.description}
+          </p>
+        )}
+
+        {/* Bottom row: price + indicators + controls */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="font-display text-lg font-bold tabular-nums">
+              {currSymbol}
+              {ticket.price.toFixed(2)}
+            </span>
+            {lowStock && (
+              <Badge variant="warning" className="text-[10px] aura-pulse">
+                Low Stock
+              </Badge>
             )}
-
-            {/* Capacity bar */}
-            {cap > 0 && !soldOut && (
-              <div className="pt-1">
-                <Progress
-                  value={sellPct}
-                  className="h-1 bg-card"
-                  indicatorClassName="aura-capacity-bar"
-                />
-              </div>
-            )}
-
-            {/* Merch link */}
             {hasMerch && onViewMerch && (
               <button
                 onClick={onViewMerch}
-                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors pt-0.5"
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 transition-colors"
               >
-                <Eye size={12} />
-                View Merch
+                <Eye size={11} /> Includes merch
               </button>
             )}
           </div>
 
-          {/* Right: price + counter */}
-          <div className="flex flex-col items-end gap-3 shrink-0">
-            {/* Price */}
-            <div className="text-right">
-              <span className="font-display text-xl font-bold tabular-nums">
-                {currSymbol}
-                {ticket.price.toFixed(2)}
+          {!soldOut && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon-xs"
+                onClick={onRemove}
+                disabled={qty === 0}
+                className="rounded-full"
+                aria-label={`Remove ${ticket.name}`}
+              >
+                <Minus size={12} />
+              </Button>
+              <span className="w-7 text-center text-sm font-semibold tabular-nums">
+                {qty}
               </span>
+              <Button
+                variant="outline"
+                size="icon-xs"
+                onClick={onAdd}
+                disabled={qty >= (ticket.max_per_order || 10)}
+                className="rounded-full"
+                aria-label={`Add ${ticket.name}`}
+              >
+                <Plus size={12} />
+              </Button>
             </div>
-
-            {/* Counter */}
-            {!soldOut && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon-xs"
-                  onClick={onRemove}
-                  disabled={qty === 0}
-                  className="rounded-full"
-                  aria-label={`Remove ${ticket.name}`}
-                >
-                  <Minus size={12} />
-                </Button>
-                <span className="w-8 text-center text-sm font-semibold tabular-nums">
-                  {qty}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon-xs"
-                  onClick={onAdd}
-                  disabled={qty >= (ticket.max_per_order || 10)}
-                  className="rounded-full"
-                  aria-label={`Add ${ticket.name}`}
-                >
-                  <Plus size={12} />
-                </Button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
+
+        {/* Capacity bar */}
+        {cap > 0 && !soldOut && (
+          <Progress
+            value={sellPct}
+            className="mt-3 h-1 bg-border/30"
+            indicatorClassName={
+              lowStock ? "bg-aura-warning/60" : "bg-muted-foreground/25"
+            }
+          />
+        )}
       </CardContent>
     </Card>
   );

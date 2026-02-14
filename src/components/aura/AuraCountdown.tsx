@@ -1,65 +1,59 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Badge } from "@/components/ui/badge";
 
 interface AuraCountdownProps {
-  targetDate: string; // ISO date string
+  targetDate: string;
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
+interface TimeRemaining {
+  days: number;
+  hours: number;
+  mins: number;
+  secs: number;
 }
 
-function Digit({ value, label }: { value: string; label: string }) {
-  const prev = useRef(value);
-  const [flip, setFlip] = useState(false);
+function Unit({ value, label }: { value: number; label: string }) {
+  const displayed = String(value);
+  const prev = useRef(displayed);
+  const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
-    if (value !== prev.current) {
-      setFlip(true);
-      prev.current = value;
-      const t = setTimeout(() => setFlip(false), 350);
+    if (displayed !== prev.current) {
+      setAnimating(true);
+      prev.current = displayed;
+      const t = setTimeout(() => setAnimating(false), 350);
       return () => clearTimeout(t);
     }
-  }, [value]);
+  }, [displayed]);
 
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative flex h-12 w-12 items-center justify-center rounded-lg bg-card/80 border border-border/50">
-        <span
-          className={`font-display text-lg font-bold tabular-nums text-foreground ${flip ? "aura-digit-change" : ""}`}
-        >
-          {value}
-        </span>
-      </div>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-    </div>
+    <Badge variant="secondary" className="tabular-nums font-medium text-sm px-2 py-1">
+      <span className={animating ? "aura-digit-change" : ""}>{value}</span>
+      <span className="text-muted-foreground text-xs ml-0.5">{label}</span>
+    </Badge>
   );
 }
 
 export function AuraCountdown({ targetDate }: AuraCountdownProps) {
-  const [remaining, setRemaining] = useState<{
-    days: number;
-    hours: number;
-    mins: number;
-    secs: number;
-  } | null>(null);
+  const [remaining, setRemaining] = useState<TimeRemaining | null>(null);
+  const [passed, setPassed] = useState(false);
 
   useEffect(() => {
     function calc() {
       const diff = new Date(targetDate).getTime() - Date.now();
       if (diff <= 0) {
         setRemaining(null);
+        setPassed(true);
         return;
       }
-      const secs = Math.floor(diff / 1000);
+      const totalSecs = Math.floor(diff / 1000);
       setRemaining({
-        days: Math.floor(secs / 86400),
-        hours: Math.floor((secs % 86400) / 3600),
-        mins: Math.floor((secs % 3600) / 60),
-        secs: secs % 60,
+        days: Math.floor(totalSecs / 86400),
+        hours: Math.floor((totalSecs % 86400) / 3600),
+        mins: Math.floor((totalSecs % 3600) / 60),
+        secs: totalSecs % 60,
       });
     }
 
@@ -68,17 +62,20 @@ export function AuraCountdown({ targetDate }: AuraCountdownProps) {
     return () => clearInterval(iv);
   }, [targetDate]);
 
+  if (passed) {
+    return (
+      <Badge variant="secondary">Event started</Badge>
+    );
+  }
+
   if (!remaining) return null;
 
   return (
-    <div className="flex items-center gap-2">
-      <Digit value={pad(remaining.days)} label="Days" />
-      <span className="text-muted-foreground/50 text-lg font-light pb-5">:</span>
-      <Digit value={pad(remaining.hours)} label="Hrs" />
-      <span className="text-muted-foreground/50 text-lg font-light pb-5">:</span>
-      <Digit value={pad(remaining.mins)} label="Min" />
-      <span className="text-muted-foreground/50 text-lg font-light pb-5">:</span>
-      <Digit value={pad(remaining.secs)} label="Sec" />
+    <div className="flex items-center gap-1.5">
+      <Unit value={remaining.days} label="d" />
+      <Unit value={remaining.hours} label="h" />
+      <Unit value={remaining.mins} label="m" />
+      <Unit value={remaining.secs} label="s" />
     </div>
   );
 }

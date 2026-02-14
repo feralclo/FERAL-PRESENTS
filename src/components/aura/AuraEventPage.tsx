@@ -16,6 +16,7 @@ import { AuraBottomBar } from "./AuraBottomBar";
 import { AuraMerchModal } from "./AuraMerchModal";
 import { AuraFooter } from "./AuraFooter";
 import { AuraSocialProof } from "./AuraSocialProof";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 import "@/styles/aura.css";
@@ -25,7 +26,7 @@ interface AuraEventPageProps {
   event: Event & { ticket_types: TicketTypeRow[] };
 }
 
-const CURR_SYMBOL: Record<string, string> = { GBP: "£", EUR: "€", USD: "$" };
+const CURR_SYMBOL: Record<string, string> = { GBP: "\u00A3", EUR: "\u20AC", USD: "$" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -155,26 +156,18 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
       {/* Trust bar */}
       <AuraTrustBar />
 
-      {/* Main content */}
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 pb-24 md:pb-12">
-        <div className="grid gap-8 lg:grid-cols-5">
-          {/* Left column — event info */}
-          <div className="lg:col-span-3 space-y-8">
-            {/* Lineup */}
-            <AuraLineup artists={event.lineup || []} />
+      {/* Main content — tab-based single-column layout */}
+      <div className="mx-auto max-w-2xl px-5 sm:px-8 pb-24 md:pb-12">
+        <Tabs defaultValue="tickets" className="mt-8">
+          <TabsList variant="line" className="w-full justify-start">
+            <TabsTrigger value="tickets">Tickets</TabsTrigger>
+            <TabsTrigger value="about">About</TabsTrigger>
+            {event.lineup && event.lineup.length > 0 && (
+              <TabsTrigger value="lineup">Lineup</TabsTrigger>
+            )}
+          </TabsList>
 
-            {/* Event info */}
-            <AuraEventInfo
-              aboutText={event.about_text}
-              detailsText={event.details_text}
-              description={event.description}
-              venue={event.venue_name}
-              venueAddress={event.venue_address}
-            />
-          </div>
-
-          {/* Right column — tickets (sticky) */}
-          <div className="lg:col-span-2 lg:sticky lg:top-6 lg:self-start">
+          <TabsContent value="tickets" className="mt-6">
             <AuraTicketWidget
               eventSlug={event.slug}
               eventId={event.id}
@@ -188,8 +181,24 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
               onViewMerch={handleViewMerch}
               addMerchRef={addMerchRef}
             />
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="about" className="mt-6">
+            <AuraEventInfo
+              aboutText={event.about_text}
+              detailsText={event.details_text}
+              description={event.description}
+              venue={event.venue_name}
+              venueAddress={event.venue_address}
+            />
+          </TabsContent>
+
+          {event.lineup && event.lineup.length > 0 && (
+            <TabsContent value="lineup" className="mt-6">
+              <AuraLineup artists={event.lineup} />
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
 
       {/* Footer */}

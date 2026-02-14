@@ -1,249 +1,176 @@
 /*
- * Aura Effects — animations, warm glow, gradient mesh, transitions
+ * Aura Effects — warm amber glow, smooth transitions, subtle animations
  *
- * Design philosophy: Smooth, warm, premium. No glitch/CRT/spring.
- * Everything is gentle ease-out transitions with warm amber glows.
- *
- * All selectors scoped to [data-theme="aura"] for CSS isolation.
+ * Design: Premium dark with warm amber accent glow.
+ * Clean and refined — no CRT scanlines, no noise textures.
+ * Soft amber shadows on hover, warm transitions, smooth reveals.
  */
 
-/* ── Warm Gradient Mesh Hero ── */
-@property --aura-hue {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes aura-mesh {
-  0% { --aura-hue: 0deg; }
-  100% { --aura-hue: 360deg; }
-}
-
-[data-theme="aura"] .aura-mesh {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    radial-gradient(ellipse 70% 50% at 25% 35%, color-mix(in srgb, var(--color-aura-accent) 10%, transparent), transparent 65%),
-    radial-gradient(ellipse 50% 70% at 75% 25%, color-mix(in srgb, var(--color-aura-accent-warm) 7%, transparent), transparent 65%),
-    radial-gradient(ellipse 60% 40% at 50% 75%, color-mix(in srgb, var(--color-aura-accent) 5%, transparent), transparent 55%);
-  animation: aura-mesh 25s linear infinite;
-  pointer-events: none;
-  mix-blend-mode: screen;
-}
-
-/* ── Warm Glow Effects ── */
-[data-theme="aura"] .aura-glow {
-  box-shadow:
-    0 0 20px var(--color-aura-glow),
-    0 0 60px color-mix(in srgb, var(--color-aura-accent) 4%, transparent);
-}
-
-[data-theme="aura"] .aura-glow-accent {
-  box-shadow:
-    0 0 12px color-mix(in srgb, var(--color-aura-accent) 20%, transparent),
-    0 0 36px color-mix(in srgb, var(--color-aura-accent) 8%, transparent);
-}
-
-[data-theme="aura"] .aura-glow-warm {
-  box-shadow:
-    0 0 12px color-mix(in srgb, var(--color-aura-accent-warm) 20%, transparent),
-    0 0 36px color-mix(in srgb, var(--color-aura-accent-warm) 8%, transparent);
-}
-
-/* ── Soft Elevation (warm shadow system) ── */
-[data-theme="aura"] .aura-elevation-1 {
+/* ── Card with warm amber glow on hover ── */
+[data-theme="aura"] .aura-card {
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.3),
     0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-
-[data-theme="aura"] .aura-elevation-2 {
+[data-theme="aura"] .aura-card:hover {
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    0 2px 4px rgba(0, 0, 0, 0.2);
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(245, 158, 11, 0.06);
 }
 
-[data-theme="aura"] .aura-elevation-3 {
+/* ── Selected state (amber left accent + warm background) ── */
+[data-theme="aura"] .aura-selected {
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.35),
-    0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* ── Gradient Accent Border ── */
-[data-theme="aura"] .aura-gradient-border {
-  position: relative;
-}
-[data-theme="aura"] .aura-gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-aura-accent) 50%, transparent),
-    color-mix(in srgb, var(--color-aura-accent-warm) 30%, transparent),
-    color-mix(in srgb, var(--color-aura-accent) 15%, transparent)
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
+    inset 3px 0 0 var(--color-aura-accent),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  background-color: var(--color-aura-accent-soft);
 }
 
 /* ── Fade In Up (section reveal) ── */
 @keyframes aura-fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
 [data-theme="aura"] .aura-fade-in-up {
   animation: aura-fade-in-up 0.6s ease-out forwards;
 }
 
-/* ── Fade In (general) ── */
+/* ── Fade In ── */
 @keyframes aura-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 [data-theme="aura"] .aura-fade-in {
   animation: aura-fade-in 0.4s ease-out forwards;
 }
 
-/* ── Gentle Scale on Hover ── */
-[data-theme="aura"] .aura-hover-lift {
-  transition: transform 0.25s ease-out, box-shadow 0.25s ease-out;
-}
-[data-theme="aura"] .aura-hover-lift:hover {
-  transform: translateY(-2px);
+/* ── Button press ── */
+[data-theme="aura"] .aura-press:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
 }
 
-/* ── Cart Flash (subtle warm glow on add) ── */
-@keyframes aura-cart-flash {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-aura-accent) 35%, transparent); }
-  70% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-aura-accent) 0%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-aura-accent) 0%, transparent); }
-}
-
-[data-theme="aura"] .aura-cart-flash {
-  animation: aura-cart-flash 0.5s ease-out;
-}
-
-/* ── Pulse (low stock / live indicator) ── */
+/* ── Pulse (urgency / low stock) ── */
 @keyframes aura-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-
 [data-theme="aura"] .aura-pulse {
   animation: aura-pulse 2s ease-in-out infinite;
 }
 
-/* ── Capacity Bar Gradient ── */
+/* ── Capacity bar gradient ── */
 [data-theme="aura"] .aura-capacity-bar {
   background: linear-gradient(
     90deg,
     var(--color-aura-success) 0%,
-    var(--color-aura-success) 55%,
-    var(--color-aura-warning) 75%,
-    var(--color-aura-accent-warm) 95%
+    var(--color-aura-success) 60%,
+    var(--color-aura-warning) 85%,
+    var(--color-aura-danger) 100%
   );
   transition: width 0.5s ease-out;
 }
 
-/* ── Shimmer Loading ── */
-@keyframes aura-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-[data-theme="aura"] .aura-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-aura-surface) 25%,
-    color-mix(in srgb, var(--color-aura-surface) 50%, var(--color-aura-border)) 50%,
-    var(--color-aura-surface) 75%
-  );
-  background-size: 200% 100%;
-  animation: aura-shimmer 1.5s ease-in-out infinite;
-}
-
-/* ── Gradient Text ── */
-[data-theme="aura"] .aura-text-gradient {
-  background: linear-gradient(
-    135deg,
-    var(--color-aura-accent),
-    var(--color-aura-accent-warm)
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ── Button press ── */
-[data-theme="aura"] .aura-press:active {
-  transform: scale(0.98);
-  transition: transform 0.1s ease;
-}
-
-/* ── Number tick (counter transitions) ── */
-[data-theme="aura"] .aura-number-tick {
-  transition: transform 0.25s ease-out;
-  display: inline-block;
-}
-
-/* ── Dialog / Sheet Animations ── */
-@keyframes aura-dialog-in {
-  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-@keyframes aura-sheet-in {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-@keyframes aura-overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* ── Countdown digit ── */
+/* ── Countdown digit flip ── */
 @keyframes aura-digit-change {
   0% { transform: translateY(0); opacity: 1; }
   50% { transform: translateY(-100%); opacity: 0; }
   50.01% { transform: translateY(100%); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
-
 [data-theme="aura"] .aura-digit-change {
   animation: aura-digit-change 0.35s ease-in-out;
 }
 
-/* ── Social proof slide in ── */
+/* ── Social proof toast slide ── */
 @keyframes aura-slide-in-right {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
-
 @keyframes aura-slide-out-right {
   from { transform: translateX(0); opacity: 1; }
   to { transform: translateX(100%); opacity: 0; }
 }
-
 [data-theme="aura"] .aura-slide-in {
   animation: aura-slide-in-right 0.4s ease-out forwards;
 }
-
 [data-theme="aura"] .aura-slide-out {
   animation: aura-slide-out-right 0.3s ease-in forwards;
+}
+
+/* ── Warm divider ── */
+[data-theme="aura"] .aura-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-aura-border),
+    transparent
+  );
+}
+
+/* ── Amber accent glow (for hero CTA, etc.) ── */
+[data-theme="aura"] .aura-glow {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15),
+              0 0 40px rgba(245, 158, 11, 0.05);
+}
+[data-theme="aura"] .aura-glow:hover {
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.25),
+              0 0 50px rgba(245, 158, 11, 0.08);
+}
+
+/* ── Accent glow variant (checkout CTA) ── */
+[data-theme="aura"] .aura-glow-accent {
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.2),
+              0 0 48px rgba(245, 158, 11, 0.08);
+}
+[data-theme="aura"] .aura-glow-accent:hover {
+  box-shadow: 0 0 32px rgba(245, 158, 11, 0.3),
+              0 0 60px rgba(245, 158, 11, 0.12);
+}
+
+/* ── Elevation levels ── */
+[data-theme="aura"] .aura-elevation-2 {
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Shimmer loading placeholder ── */
+@keyframes aura-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+[data-theme="aura"] .aura-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-aura-surface) 25%,
+    var(--color-aura-border) 50%,
+    var(--color-aura-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: aura-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Gradient border (ticket cards on confirmation) ── */
+[data-theme="aura"] .aura-gradient-border {
+  position: relative;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+[data-theme="aura"] .aura-gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    var(--color-aura-accent) 0%,
+    var(--color-aura-border) 50%,
+    var(--color-aura-accent) 100%
+  );
+  z-index: -1;
+  opacity: 0.4;
+  border-radius: inherit;
 }

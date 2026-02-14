@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { LiverpoolEventPage } from "@/components/event/LiverpoolEventPage";
 import { KompassEventPage } from "@/components/event/KompassEventPage";
 import { DynamicEventPage } from "@/components/event/DynamicEventPage";
-import { AuroraEventPage } from "@/components/aurora/AuroraEventPage";
 import { AuraEventPage } from "@/components/aura/AuraEventPage";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getActiveTemplate } from "@/lib/themes";
@@ -141,10 +140,6 @@ export default async function EventPage({
 
   // Stripe/test events: use dynamic page (DB-driven)
   if (event && event.payment_method !== "weeztix") {
-    // Aurora theme: render parallel Aurora component tree
-    if (activeTemplate === "aurora") {
-      return <AuroraEventPage event={event} />;
-    }
     // Aura theme: render Aura component tree (shadcn/ui based)
     if (activeTemplate === "aura") {
       return <AuraEventPage event={event} />;

@@ -1,24 +1,25 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Lock, Zap, BadgeCheck } from "lucide-react";
 
 export function AuraTrustBar() {
   return (
-    <div className="mx-auto max-w-6xl px-5 sm:px-8 py-6">
-      <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-sm text-muted-foreground">
-        <TrustItem icon={<Lock size={15} />} text="256-bit Encryption" />
-        <TrustItem icon={<Zap size={15} />} text="Instant Delivery" />
-        <TrustItem icon={<BadgeCheck size={15} />} text="100% Authentic" />
+    <div className="mx-auto max-w-2xl px-5 sm:px-8 py-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+        <Badge variant="secondary" className="gap-1.5 text-[11px] font-normal">
+          <Lock size={11} />
+          256-bit encrypted
+        </Badge>
+        <Badge variant="secondary" className="gap-1.5 text-[11px] font-normal">
+          <Zap size={11} />
+          Instant delivery
+        </Badge>
+        <Badge variant="secondary" className="gap-1.5 text-[11px] font-normal">
+          <BadgeCheck size={11} />
+          Verified authentic
+        </Badge>
       </div>
-    </div>
-  );
-}
-
-function TrustItem({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-aura-success">{icon}</span>
-      <span>{text}</span>
     </div>
   );
 }

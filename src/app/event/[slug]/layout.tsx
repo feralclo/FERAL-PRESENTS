@@ -142,10 +142,9 @@ export default async function EventLayout({
   if (branding?.heading_font) cssVars["--font-mono"] = `'${branding.heading_font}', monospace`;
   if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
 
-  const isAurora = activeTemplate === "aurora";
   const isAura = activeTemplate === "aura";
 
-  const dataThemeAttr = isAurora ? "aurora" : isAura ? "aura" : undefined;
+  const dataThemeAttr = isAura ? "aura" : undefined;
 
   return (
     <div

@@ -22,33 +22,6 @@ const TEMPLATE_PRESETS: Record<string, BrandingSettings> = {
   midnight: {
     ...DEFAULT_BRANDING,
   },
-  daylight: {
-    ...DEFAULT_BRANDING,
-    accent_color: "#2563eb",
-    background_color: "#f5f5f0",
-    card_color: "#ffffff",
-    text_color: "#1a1a1a",
-    heading_font: "DM Sans",
-    body_font: "Inter",
-  },
-  neon: {
-    ...DEFAULT_BRANDING,
-    accent_color: "#a855f7",
-    background_color: "#0a0014",
-    card_color: "#1a0030",
-    text_color: "#e0e0ff",
-    heading_font: "Sora",
-    body_font: "Inter",
-  },
-  aurora: {
-    ...DEFAULT_BRANDING,
-    accent_color: "#6366f1",
-    background_color: "#070b14",
-    card_color: "#111b2e",
-    text_color: "#e8ecf4",
-    heading_font: "Satoshi",
-    body_font: "Inter",
-  },
   aura: {
     ...DEFAULT_BRANDING,
     accent_color: "#f59e0b",

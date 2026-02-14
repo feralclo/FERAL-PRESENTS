@@ -1,55 +1,43 @@
 /*
- * Aura Theme — Tailwind CSS entry point for public event pages
+ * Aura Theme — Premium DARK theme with warm amber accents
  *
- * Design Language: "Warm Luminance"
- * A premium, editorial theme with warm amber/gold tones, generous
- * whitespace, and sophisticated typography. The antithesis of both
- * Midnight (dark/edgy/CRT) and Aurora (space/glass/indigo).
+ * Design Language: "Warm Premium"
+ * A dark theme built on warm stone tones (not cold blacks) with amber/gold
+ * accents. Uses shadcn/ui semantic tokens so all primitives (Button, Card,
+ * Badge, Dialog, Tabs, Progress, etc.) automatically adopt the palette.
  *
- * Aura uses shadcn/ui components directly. These semantic tokens
- * ensure all shadcn primitives (Button, Card, Badge, Dialog, etc.)
- * automatically adopt the warm Aura palette.
- *
- * CRITICAL: Same scoping pattern as aurora.css / tailwind.css.
- * Preflight reset scoped to [data-theme="aura"] in @layer aura-reset.
- * Utilities imported UNLAYERED so they beat base.css's * { margin: 0 }
- * (class selectors > universal selector on specificity).
+ * Scoping: [data-theme="aura"] + @layer aura-reset + unlayered utilities.
  */
 
-/* Layer order — aura-reset is BELOW unlayered utilities */
 @layer theme, aura-reset;
 @import "tailwindcss/theme" layer(theme);
-
-/* Utilities are UNLAYERED — intentional, see tailwind.css */
 @import "tailwindcss/utilities";
 
 /*
- * Aura Design Tokens — "Warm Luminance"
+ * Aura Design Tokens — "Warm Premium" (DARK THEME)
  *
  * Color architecture:
- *   Background: Warm near-black with stone undertone
- *   Surface:    Warm elevated, subtle depth via stone tones
- *   Card:       Warm card with gentle elevation
- *   Border:     Warm stone borders, understated
- *   Accent:     Amber-gold — warmth, luxury, conversion
- *   Warm:       Rose-500 — urgency, secondary accent
- *
- * All tokens derive from branding CSS vars so the live editor works.
+ *   Background: Stone-950 (#0c0a09) — deep warm black, not cold
+ *   Card:       Stone-900 (#1c1917) — warm elevated surface
+ *   Border:     Stone-800 (#292524) — subtle warm dividers
+ *   Text:       Stone-50 (#fafaf9) — warm white
+ *   Secondary:  Stone-400 (#a8a29e) — comfortable secondary text
+ *   Accent:     Amber-500 (#f59e0b) — warm gold, premium feel
  */
 @theme inline {
-  /* ── Core Aura palette (branding CSS vars where possible) ── */
+  /* ── Core Aura palette ── */
   --color-aura-bg: var(--bg-dark, #0c0a09);
-  --color-aura-surface: color-mix(in srgb, var(--bg-dark, #0c0a09) 82%, #44403c);
-  --color-aura-card: color-mix(in srgb, var(--card-bg, #1c1917) 92%, #57534e);
-  --color-aura-border: color-mix(in srgb, var(--card-bg, #1c1917) 55%, #78716c);
+  --color-aura-surface: color-mix(in srgb, var(--bg-dark, #0c0a09) 70%, #292524);
+  --color-aura-card: var(--card-bg, #1c1917);
+  --color-aura-border: color-mix(in srgb, var(--card-bg, #1c1917) 50%, #44403c);
   --color-aura-accent: var(--accent, #f59e0b);
-  --color-aura-accent-warm: #f43f5e;
+  --color-aura-accent-soft: color-mix(in srgb, var(--accent, #f59e0b) 12%, transparent);
   --color-aura-text: var(--text-primary, #fafaf9);
-  --color-aura-text-secondary: color-mix(in srgb, var(--text-primary, #fafaf9) 50%, #78716c);
+  --color-aura-text-secondary: color-mix(in srgb, var(--text-primary, #fafaf9) 55%, #78716c);
   --color-aura-text-muted: color-mix(in srgb, var(--text-primary, #fafaf9) 35%, #78716c);
   --color-aura-success: #22c55e;
   --color-aura-warning: #f59e0b;
-  --color-aura-glow: color-mix(in srgb, var(--accent, #f59e0b) 12%, transparent);
+  --color-aura-danger: #ef4444;
 
   /* ── Semantic aliases (shadcn/ui consumes these) ── */
   --color-background: var(--color-aura-bg);
@@ -57,7 +45,7 @@
   --color-card: var(--color-aura-card);
   --color-card-foreground: var(--color-aura-text);
   --color-primary: var(--color-aura-accent);
-  --color-primary-foreground: #1c1917;
+  --color-primary-foreground: #0c0a09;
   --color-secondary: var(--color-aura-surface);
   --color-secondary-foreground: var(--color-aura-text);
   --color-muted: var(--color-aura-surface);
@@ -72,23 +60,20 @@
   --color-success: var(--color-aura-success);
   --color-warning: var(--color-aura-warning);
 
-  /* ── Radii ── */
+  /* ── Radii — modern, rounded ── */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
+  --radius-2xl: 1.5rem;
 
   /* ── Typography ── */
-  --font-display: var(--font-mono, 'Outfit', 'DM Sans', 'Inter', sans-serif);
+  --font-display: var(--font-mono, 'Outfit', 'DM Sans', sans-serif);
   --font-body: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
 }
 
 /*
- * Aura-scoped Preflight — base reset inside [data-theme="aura"].
- *
- * CRITICAL: In @layer aura-reset so unlayered Tailwind utilities
- * always override it (same pattern as admin + aurora).
+ * Aura-scoped Preflight
  */
 @layer aura-reset {
   [data-theme="aura"] {
@@ -148,17 +133,17 @@
   }
 }
 
-/* ── Scrollbar ── */
+/* ── Scrollbar (dark warm) ── */
 [data-theme="aura"] {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-aura-border) transparent;
+  scrollbar-color: #44403c transparent;
 }
-[data-theme="aura"] ::-webkit-scrollbar { width: 5px; height: 5px; }
+[data-theme="aura"] ::-webkit-scrollbar { width: 6px; height: 6px; }
 [data-theme="aura"] ::-webkit-scrollbar-track { background: transparent; }
-[data-theme="aura"] ::-webkit-scrollbar-thumb { background: var(--color-aura-border); border-radius: 4px; }
-[data-theme="aura"] ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-aura-border) 80%, white); }
+[data-theme="aura"] ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 4px; }
+[data-theme="aura"] ::-webkit-scrollbar-thumb:hover { background: #57534e; }
 
-/* ── Autofill ── */
+/* ── Autofill (dark) ── */
 [data-theme="aura"] input:-webkit-autofill,
 [data-theme="aura"] input:-webkit-autofill:hover,
 [data-theme="aura"] input:-webkit-autofill:focus {

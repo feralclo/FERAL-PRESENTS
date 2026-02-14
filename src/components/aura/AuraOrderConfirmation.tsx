@@ -191,7 +191,7 @@ export function AuraOrderConfirmation({
                           className="h-32 w-32 rounded-xl"
                         />
                       ) : (
-                        <div className="h-32 w-32 rounded-xl aura-shimmer" />
+                        <div className="h-32 w-32 rounded-xl bg-muted animate-pulse" />
                       )}
                     </div>
 

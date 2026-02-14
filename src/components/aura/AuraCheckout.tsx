@@ -86,16 +86,16 @@ const CARD_ELEMENT_STYLE = {
   base: {
     fontSize: "14px",
     color: "#fafaf9",
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    fontFamily: "'Inter', sans-serif",
     fontSmoothing: "antialiased",
     "::placeholder": { color: "#78716c" },
   },
   invalid: { color: "#ef4444" },
 };
 
-/* ═══════════════════════════════════════════
+/* ===============================================
    Main Checkout Entry Point
-   ═══════════════════════════════════════════ */
+   =============================================== */
 export function AuraCheckout({ slug, event }: AuraCheckoutProps) {
   const searchParams = useSearchParams();
   const cartParam = searchParams.get("cart");
@@ -218,9 +218,9 @@ export function AuraCheckout({ slug, event }: AuraCheckoutProps) {
   );
 }
 
-/* ═══════════════════════════════════════════
+/* ===============================================
    Order Summary Sidebar
-   ═══════════════════════════════════════════ */
+   =============================================== */
 function AuraOrderSummary({
   cartLines,
   symbol,
@@ -270,9 +270,9 @@ function AuraOrderSummary({
   );
 }
 
-/* ═══════════════════════════════════════════
+/* ===============================================
    Stripe Checkout
-   ═══════════════════════════════════════════ */
+   =============================================== */
 function AuraStripeCheckout({
   slug,
   event,
@@ -368,9 +368,9 @@ function AuraStripeCheckout({
   );
 }
 
-/* ═══════════════════════════════════════════
+/* ===============================================
    Checkout Form (inside Stripe Elements)
-   ═══════════════════════════════════════════ */
+   =============================================== */
 function AuraCheckoutForm({
   slug,
   event,
@@ -692,9 +692,9 @@ function AuraCheckoutForm({
   );
 }
 
-/* ═══════════════════════════════════════════
+/* ===============================================
    Card Fields (Stripe Elements)
-   ═══════════════════════════════════════════ */
+   =============================================== */
 const AuraCardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
   function AuraCardFields({ onReady }, ref) {
     const stripe = useStripe();
@@ -752,9 +752,9 @@ const AuraCardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
   }
 );
 
-/* ═══════════════════════════════════════════
+/* ===============================================
    Test Mode Checkout
-   ═══════════════════════════════════════════ */
+   =============================================== */
 function AuraTestCheckout({
   slug,
   event,

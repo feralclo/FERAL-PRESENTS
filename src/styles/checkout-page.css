@@ -599,6 +599,15 @@ html.checkout-active .noise {
   border-color: rgba(255, 0, 51, 0.5);
 }
 
+.discount-code__input:-webkit-autofill,
+.discount-code__input:-webkit-autofill:hover,
+.discount-code__input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset;
+  -webkit-text-fill-color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .discount-code__apply-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1667,6 +1676,16 @@ html.checkout-active .noise {
 
 .native-checkout__input:focus {
   border-color: rgba(255, 0, 51, 0.5);
+}
+
+/* Override browser autofill styles (Chrome yellow, Safari blue) to match dark theme */
+.native-checkout__input:-webkit-autofill,
+.native-checkout__input:-webkit-autofill:hover,
+.native-checkout__input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset;
+  -webkit-text-fill-color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Email delivery hint — reassurance below email field */

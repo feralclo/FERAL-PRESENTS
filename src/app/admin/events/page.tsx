@@ -5,6 +5,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  CalendarDays,
+  Plus,
+  Archive,
+  RotateCcw,
+  Trash2,
+  Loader2,
+  ArrowUpDown,
+  X,
+} from "lucide-react";
 import type { Event } from "@/types/events";
 
 function slugify(text: string): string {
@@ -14,12 +37,12 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: "#FBBF24",
-  live: "#34D399",
-  past: "#888",
-  cancelled: "#8B5CF6",
-  archived: "#555",
+const STATUS_VARIANT: Record<string, "warning" | "success" | "secondary" | "default" | "destructive"> = {
+  draft: "warning",
+  live: "success",
+  past: "secondary",
+  cancelled: "destructive",
+  archived: "secondary",
 };
 
 const STATUS_TABS = [
@@ -84,24 +107,21 @@ export default function EventsPage() {
   const filteredEvents = useMemo(() => {
     let result = events;
 
-    // Status filter (default "all" hides archived)
     if (statusFilter === "all") {
       result = result.filter((e) => e.status !== "archived");
     } else {
       result = result.filter((e) => e.status === statusFilter);
     }
 
-    // Date range filter
     if (dateFrom) {
       const from = new Date(dateFrom).getTime();
       result = result.filter((e) => new Date(e.date_start).getTime() >= from);
     }
     if (dateTo) {
-      const to = new Date(dateTo).getTime() + 86400000; // include end date
+      const to = new Date(dateTo).getTime() + 86400000;
       result = result.filter((e) => new Date(e.date_start).getTime() <= to);
     }
 
-    // Sort
     result = [...result].sort((a, b) => {
       const diff = new Date(a.date_start).getTime() - new Date(b.date_start).getTime();
       return dateOrder === "asc" ? diff : -diff;
@@ -217,383 +237,370 @@ export default function EventsPage() {
     return { sold, capacity: hasCapacity ? capacity : null, revenue };
   };
 
+  const hasDateFilters = dateFrom || dateTo;
+
   return (
-    <div>
-      <div className="admin-page-header">
-        <h1 className="admin-title">Events</h1>
-        <button
-          className="admin-btn admin-btn--primary"
-          onClick={() => setShowCreate(!showCreate)}
-        >
-          {showCreate ? "Cancel" : "+ Create Event"}
-        </button>
+    <div className="space-y-6 p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Events</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Create and manage your events</p>
+        </div>
+        <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? (
+            <>
+              <X size={14} />
+              Cancel
+            </>
+          ) : (
+            <>
+              <Plus size={14} />
+              Create Event
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Create Event Form */}
       {showCreate && (
-        <div className="admin-section admin-create-form">
-          <h2 className="admin-section__title">New Event</h2>
-          <form onSubmit={handleCreate} className="admin-form">
-            <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label className="admin-form__label">Event Name *</label>
-                <input
-                  type="text"
-                  className="admin-form__input"
-                  value={newName}
-                  onChange={(e) => {
-                    setNewName(e.target.value);
-                    if (!newSlug) setNewSlug(slugify(e.target.value));
-                  }}
-                  placeholder="e.g. FERAL Liverpool June"
-                />
+        <Card className="py-0 gap-0 border-primary/20">
+          <CardHeader className="pb-0 pt-5 px-6">
+            <CardTitle className="text-sm">New Event</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 pt-4">
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Event Name *</Label>
+                  <Input
+                    value={newName}
+                    onChange={(e) => {
+                      setNewName(e.target.value);
+                      if (!newSlug) setNewSlug(slugify(e.target.value));
+                    }}
+                    placeholder="e.g. Summer Launch Party"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>URL Slug</Label>
+                  <Input
+                    value={newSlug}
+                    onChange={(e) => setNewSlug(e.target.value)}
+                    placeholder="auto-generated"
+                  />
+                </div>
               </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">URL Slug</label>
-                <input
-                  type="text"
-                  className="admin-form__input"
-                  value={newSlug}
-                  onChange={(e) => setNewSlug(e.target.value)}
-                  placeholder="auto-generated"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Venue</Label>
+                  <Input
+                    value={newVenue}
+                    onChange={(e) => setNewVenue(e.target.value)}
+                    placeholder="e.g. Invisible Wind Factory"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                    placeholder="e.g. Liverpool"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label className="admin-form__label">Venue</label>
-                <input
-                  type="text"
-                  className="admin-form__input"
-                  value={newVenue}
-                  onChange={(e) => setNewVenue(e.target.value)}
-                  placeholder="e.g. Invisible Wind Factory"
-                />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Date & Time *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+                    value={newPayment}
+                    onChange={(e) => setNewPayment(e.target.value as typeof newPayment)}
+                  >
+                    <option value="test">Test (Simulated)</option>
+                    <option value="weeztix">WeeZTix</option>
+                    <option value="stripe">Stripe</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Visibility</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+                    value={newVisibility}
+                    onChange={(e) => setNewVisibility(e.target.value as typeof newVisibility)}
+                  >
+                    <option value="private">Private (Secret Link)</option>
+                    <option value="unlisted">Unlisted</option>
+                    <option value="public">Public</option>
+                  </select>
+                </div>
               </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">City</label>
-                <input
-                  type="text"
-                  className="admin-form__input"
-                  value={newCity}
-                  onChange={(e) => setNewCity(e.target.value)}
-                  placeholder="e.g. Liverpool"
-                />
-              </div>
-            </div>
-            <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label className="admin-form__label">Date & Time *</label>
-                <input
-                  type="datetime-local"
-                  className="admin-form__input"
-                  value={newDate}
-                  onChange={(e) => setNewDate(e.target.value)}
-                />
-              </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">Payment Method</label>
-                <select
-                  className="admin-form__input"
-                  value={newPayment}
-                  onChange={(e) =>
-                    setNewPayment(e.target.value as typeof newPayment)
-                  }
-                >
-                  <option value="test">Test (Simulated)</option>
-                  <option value="weeztix">WeeZTix</option>
-                  <option value="stripe">Stripe</option>
-                </select>
-              </div>
-            </div>
-            <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label className="admin-form__label">Visibility</label>
-                <select
-                  className="admin-form__input"
-                  value={newVisibility}
-                  onChange={(e) =>
-                    setNewVisibility(e.target.value as typeof newVisibility)
-                  }
-                >
-                  <option value="private">Private (Secret Link)</option>
-                  <option value="unlisted">Unlisted</option>
-                  <option value="public">Public</option>
-                </select>
-              </div>
-            </div>
-            {createError && (
-              <div className="admin-form__error">{createError}</div>
-            )}
-            <button
-              type="submit"
-              className="admin-btn admin-btn--primary"
-              disabled={creating}
-            >
-              {creating ? "Creating..." : "Create Event"}
-            </button>
-          </form>
-        </div>
+              {createError && (
+                <p className="text-sm text-destructive">{createError}</p>
+              )}
+              <Button type="submit" size="sm" disabled={creating}>
+                {creating && <Loader2 size={14} className="animate-spin" />}
+                {creating ? "Creating..." : "Create Event"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       {/* Filter Bar */}
       {!loading && events.length > 0 && (
-        <div className="admin-section" style={{ padding: "12px 16px" }}>
-          {/* Status tabs */}
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 12 }}>
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
-                style={{
-                  padding: "5px 12px",
-                  fontSize: "0.72rem",
-                  background: statusFilter === tab.key ? "#8B5CF622" : "transparent",
-                  color: statusFilter === tab.key ? "#8B5CF6" : "#888",
-                  border: `1px solid ${statusFilter === tab.key ? "#8B5CF644" : "#333"}`,
-                  cursor: "pointer",
-                  fontFamily: "'Space Mono', monospace",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                {tab.label}
-                {statusCounts[tab.key] ? ` (${statusCounts[tab.key]})` : ""}
-              </button>
-            ))}
-          </div>
+        <Card className="py-0 gap-0">
+          <CardContent className="p-4 space-y-3">
+            {/* Status tabs */}
+            <div className="flex gap-1 flex-wrap">
+              {STATUS_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={`rounded-md px-3 py-1.5 font-mono text-[11px] font-medium tracking-wide transition-all duration-200 ${
+                    statusFilter === tab.key
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                  {statusCounts[tab.key] ? (
+                    <span className="ml-1.5 text-[10px] opacity-60">
+                      {statusCounts[tab.key]}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
 
-          {/* Date filters row */}
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <label style={{ fontSize: "0.7rem", color: "#8888a0" }}>From</label>
-              <input
-                type="date"
-                className="admin-form__input"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                style={{ width: 140, padding: "4px 8px", fontSize: "0.72rem" }}
-              />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <label style={{ fontSize: "0.7rem", color: "#8888a0" }}>To</label>
-              <input
-                type="date"
-                className="admin-form__input"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                style={{ width: 140, padding: "4px 8px", fontSize: "0.72rem" }}
-              />
-            </div>
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => { setDateFrom(""); setDateTo(""); }}
-                style={{
-                  fontSize: "0.68rem",
-                  color: "#8B5CF6",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
+            {/* Date filters */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground shrink-0">From</Label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-8 w-[140px] text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground shrink-0">To</Label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-8 w-[140px] text-xs"
+                />
+              </div>
+              {hasDateFilters && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => { setDateFrom(""); setDateTo(""); }}
+                  className="text-primary"
+                >
+                  Clear
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => setDateOrder(dateOrder === "desc" ? "asc" : "desc")}
+                className="ml-auto"
               >
-                Clear dates
-              </button>
-            )}
-            <button
-              onClick={() => setDateOrder(dateOrder === "desc" ? "asc" : "desc")}
-              style={{
-                marginLeft: "auto",
-                padding: "5px 10px",
-                fontSize: "0.7rem",
-                background: "transparent",
-                color: "#8888a0",
-                border: "1px solid #1e1e2a",
-                cursor: "pointer",
-                fontFamily: "'Space Mono', monospace",
-              }}
-            >
-              Date {dateOrder === "desc" ? "Newest first" : "Oldest first"}
-            </button>
-          </div>
-        </div>
+                <ArrowUpDown size={12} />
+                {dateOrder === "desc" ? "Newest" : "Oldest"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Events Table */}
       {loading ? (
-        <div className="admin-loading">Loading events...</div>
+        <Card className="py-0 gap-0">
+          <CardContent className="flex items-center justify-center py-16">
+            <Loader2 size={20} className="animate-spin text-primary/60" />
+            <span className="ml-3 text-sm text-muted-foreground">Loading events...</span>
+          </CardContent>
+        </Card>
       ) : events.length === 0 ? (
-        <div className="admin-empty">
-          <p>No events yet. Create your first event to get started.</p>
-        </div>
+        <Card className="py-0 gap-0">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+              <CalendarDays size={20} className="text-primary/60" />
+            </div>
+            <p className="mt-4 text-sm font-medium text-foreground">No events yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">Create your first event to get started</p>
+            <Button size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
+              <Plus size={14} />
+              Create Event
+            </Button>
+          </CardContent>
+        </Card>
       ) : filteredEvents.length === 0 ? (
-        <div className="admin-empty">
-          <p>No events match the current filters.</p>
-        </div>
+        <Card className="py-0 gap-0">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-sm text-muted-foreground">No events match the current filters</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 text-primary"
+              onClick={() => { setStatusFilter("all"); setDateFrom(""); setDateTo(""); }}
+            >
+              Clear filters
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="admin-section">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Event</th>
-                <th>Date</th>
-                <th>Venue</th>
-                <th>Tickets</th>
-                <th>Revenue</th>
-                <th>Payment</th>
-                <th style={{ width: 90 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Card className="py-0 gap-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Status</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Venue</TableHead>
+                <TableHead className="text-right">Tickets</TableHead>
+                <TableHead className="text-right">Revenue</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead className="w-[100px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredEvents.map((evt) => {
                 const stats = getTicketStats(evt);
                 const isArchived = evt.status === "archived";
                 return (
-                  <tr key={evt.id} style={isArchived ? { opacity: 0.6 } : undefined}>
-                    <td>
-                      <span
-                        className="admin-badge"
-                        style={{
-                          background: `${STATUS_COLORS[evt.status] || "#888"}22`,
-                          color: STATUS_COLORS[evt.status] || "#888",
-                        }}
-                      >
+                  <TableRow
+                    key={evt.id}
+                    className={isArchived ? "opacity-50" : "cursor-pointer"}
+                    onClick={() => !isArchived && router.push(`/admin/events/${evt.slug}/`)}
+                  >
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[evt.status] || "secondary"}>
                         {evt.status}
-                      </span>
-                    </td>
-                    <td>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <Link
                         href={`/admin/events/${evt.slug}/`}
-                        className="admin-link"
+                        className="font-medium text-foreground hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {evt.name}
                       </Link>
-                    </td>
-                    <td className="admin-table__mono">
+                    </TableCell>
+                    <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
                       {new Date(evt.date_start).toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
                       })}
-                    </td>
-                    <td>{evt.venue_name || "—"}</td>
-                    <td className="admin-table__mono">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {evt.venue_name || "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {stats.sold}
-                      {stats.capacity !== null ? ` / ${stats.capacity}` : ""}
-                    </td>
-                    <td className="admin-table__mono admin-table__price">
+                      {stats.capacity !== null ? (
+                        <span className="text-muted-foreground"> / {stats.capacity}</span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs tabular-nums text-success">
                       £{stats.revenue.toFixed(2)}
-                    </td>
-                    <td>
-                      <span
-                        className="admin-badge"
-                        style={{
-                          background:
-                            evt.payment_method === "test"
-                              ? "#FBBF2422"
-                              : evt.payment_method === "stripe"
-                                ? "#635bff22"
-                                : "#88888822",
-                          color:
-                            evt.payment_method === "test"
-                              ? "#FBBF24"
-                              : evt.payment_method === "stripe"
-                                ? "#635bff"
-                                : "#888",
-                        }}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          evt.payment_method === "test"
+                            ? "warning"
+                            : evt.payment_method === "stripe"
+                              ? "default"
+                              : "secondary"
+                        }
                       >
                         {evt.payment_method}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: 4 }}>
+                      </Badge>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
                         {isArchived ? (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="xs"
                             onClick={() => handleUnarchive(evt)}
                             disabled={actionLoading === evt.id}
-                            title="Restore to Draft"
-                            style={{
-                              padding: "3px 8px",
-                              fontSize: "0.62rem",
-                              background: "#34D39922",
-                              color: "#34D399",
-                              border: "1px solid #34D39944",
-                              cursor: "pointer",
-                            }}
+                            className="text-success hover:text-success"
                           >
-                            {actionLoading === evt.id ? "..." : "Restore"}
-                          </button>
+                            {actionLoading === evt.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <RotateCcw size={12} />
+                            )}
+                          </Button>
                         ) : (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
                             onClick={() => handleArchive(evt)}
                             disabled={actionLoading === evt.id}
-                            title="Archive event"
-                            style={{
-                              padding: "3px 8px",
-                              fontSize: "0.62rem",
-                              background: "transparent",
-                              color: "#8888a0",
-                              border: "1px solid #1e1e2a",
-                              cursor: "pointer",
-                            }}
+                            title="Archive"
+                            className="text-muted-foreground"
                           >
-                            {actionLoading === evt.id ? "..." : "Archive"}
-                          </button>
+                            {actionLoading === evt.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <Archive size={12} />
+                            )}
+                          </Button>
                         )}
                         {confirmDelete === evt.id ? (
-                          <>
-                            <button
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="destructive"
+                              size="xs"
                               onClick={() => handleDelete(evt)}
                               disabled={actionLoading === evt.id}
-                              style={{
-                                padding: "3px 8px",
-                                fontSize: "0.62rem",
-                                background: "#8B5CF622",
-                                color: "#8B5CF6",
-                                border: "1px solid #8B5CF644",
-                                cursor: "pointer",
-                              }}
                             >
-                              {actionLoading === evt.id ? "..." : "Confirm"}
-                            </button>
-                            <button
+                              {actionLoading === evt.id ? "..." : "Yes"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
                               onClick={() => setConfirmDelete(null)}
-                              style={{
-                                padding: "3px 6px",
-                                fontSize: "0.62rem",
-                                background: "transparent",
-                                color: "#8888a0",
-                                border: "1px solid #1e1e2a",
-                                cursor: "pointer",
-                              }}
                             >
                               No
-                            </button>
-                          </>
+                            </Button>
+                          </div>
                         ) : (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
                             onClick={() => setConfirmDelete(evt.id)}
-                            title="Permanently delete"
-                            style={{
-                              padding: "3px 8px",
-                              fontSize: "0.62rem",
-                              background: "transparent",
-                              color: "#8B5CF688",
-                              border: "1px solid #8B5CF633",
-                              cursor: "pointer",
-                            }}
+                            title="Delete"
+                            className="text-muted-foreground hover:text-destructive"
                           >
-                            Delete
-                          </button>
+                            <Trash2 size={12} />
+                          </Button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </div>
   );

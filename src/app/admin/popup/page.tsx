@@ -3,6 +3,22 @@
 import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Eye,
+  MousePointerClick,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
 interface PopupStats {
   impressions: number;
@@ -73,107 +89,117 @@ export default function PopupPerformance() {
     stats.impressions > 0
       ? ((stats.conversions / stats.impressions) * 100).toFixed(1)
       : "0";
+  const dismissRate =
+    stats.impressions > 0
+      ? ((stats.dismissed / stats.impressions) * 100).toFixed(1)
+      : "0";
+
+  const FUNNEL_STAGES = [
+    { label: "Impressions", count: stats.impressions },
+    { label: "Engaged", count: stats.engaged },
+    { label: "Converted", count: stats.conversions },
+  ];
 
   return (
-    <div>
-      <h1 className="admin-section__title" style={{ marginBottom: "24px" }}>
-        POPUP PERFORMANCE
-      </h1>
-
-      <div className="admin-stats">
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">IMPRESSIONS</span>
-          <span className="admin-stat-card__value">{stats.impressions}</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">ENGAGED</span>
-          <span className="admin-stat-card__value">{stats.engaged}</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">CONVERSIONS</span>
-          <span className="admin-stat-card__value admin-stat-card__value--red">
-            {stats.conversions}
-          </span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">DISMISSED</span>
-          <span className="admin-stat-card__value">{stats.dismissed}</span>
-        </div>
+    <div className="space-y-6 p-6 lg:p-8">
+      {/* Header */}
+      <div>
+        <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Popup Performance</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Real-time popup engagement analytics
+        </p>
       </div>
 
-      <div className="admin-section">
-        <h2 className="admin-section__title">FUNNEL</h2>
-        <div className="admin-funnel">
-          <FunnelBar
-            label="IMPRESSIONS"
-            count={stats.impressions}
-            maxCount={stats.impressions}
-          />
-          <FunnelBar
-            label="ENGAGED"
-            count={stats.engaged}
-            maxCount={stats.impressions}
-          />
-          <FunnelBar
-            label="CONVERTED"
-            count={stats.conversions}
-            maxCount={stats.impressions}
-          />
-        </div>
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Impressions"
+          value={String(stats.impressions)}
+          icon={Eye}
+        />
+        <StatCard
+          label="Engaged"
+          value={String(stats.engaged)}
+          icon={MousePointerClick}
+          detail={`${engagementRate}% engagement rate`}
+        />
+        <StatCard
+          label="Conversions"
+          value={String(stats.conversions)}
+          icon={CheckCircle2}
+          detail={`${conversionRate}% conversion rate`}
+        />
+        <StatCard
+          label="Dismissed"
+          value={String(stats.dismissed)}
+          icon={XCircle}
+          detail={`${dismissRate}% dismiss rate`}
+        />
       </div>
 
-      <div className="admin-section">
-        <h2 className="admin-section__title">RATES</h2>
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>METRIC</th>
-              <th>VALUE</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Engagement Rate</td>
-              <td>{engagementRate}%</td>
-            </tr>
-            <tr>
-              <td>Conversion Rate</td>
-              <td>{conversionRate}%</td>
-            </tr>
-            <tr>
-              <td>Dismiss Rate</td>
-              <td>
-                {stats.impressions > 0
-                  ? ((stats.dismissed / stats.impressions) * 100).toFixed(1)
-                  : "0"}
-                %
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+      {/* Funnel */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-4">
+          <CardTitle className="text-sm">Popup Funnel</CardTitle>
+        </CardHeader>
+        <CardContent className="px-6 pb-6">
+          <div className="flex items-end gap-4 h-[200px]">
+            {FUNNEL_STAGES.map((stage, i) => {
+              const pct = stats.impressions > 0 ? (stage.count / stats.impressions) * 100 : 0;
+              return (
+                <div key={stage.label} className="flex flex-1 flex-col items-center gap-2">
+                  <span className="font-mono text-xs tabular-nums text-foreground font-medium">
+                    {stage.count}
+                  </span>
+                  <div className="w-full flex flex-col justify-end h-[140px]">
+                    <div
+                      className="w-full rounded-t-md bg-gradient-to-t from-primary/80 to-primary/40 transition-all duration-700 ease-out"
+                      style={{ height: `${Math.max(pct, 2)}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[10px] tracking-wide text-muted-foreground text-center uppercase">
+                    {stage.label}
+                  </span>
+                  {i > 0 && (
+                    <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                      {pct.toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
-function FunnelBar({
-  label,
-  count,
-  maxCount,
-}: {
-  label: string;
-  count: number;
-  maxCount: number;
-}) {
-  const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
-  return (
-    <div className="admin-funnel__bar">
-      <div className="admin-funnel__count">{count}</div>
-      <div
-        className="admin-funnel__fill"
-        style={{ height: `${Math.max(height, 2)}%` }}
-      />
-      <div className="admin-funnel__label">{label}</div>
+      {/* Rates */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-0">
+          <CardTitle className="text-sm">Performance Rates</CardTitle>
+        </CardHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Metric</TableHead>
+              <TableHead className="text-right">Value</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="font-medium">Engagement Rate</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">{engagementRate}%</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">Conversion Rate</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">{conversionRate}%</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">Dismiss Rate</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">{dismissRate}%</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }

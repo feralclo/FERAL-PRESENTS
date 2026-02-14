@@ -3,6 +3,24 @@
 import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Eye,
+  Ticket,
+  ShoppingCart,
+  CreditCard,
+  CheckCircle2,
+} from "lucide-react";
 
 interface FunnelStats {
   landing: number;
@@ -74,136 +92,134 @@ export default function TrafficAnalytics() {
     };
   }, []);
 
+  const dropoff = (from: number, to: number) =>
+    from > 0 ? (((from - to) / from) * 100).toFixed(1) + "%" : "—";
+
+  const dropoffValue = (from: number, to: number) =>
+    from > 0 ? ((from - to) / from) * 100 : 0;
+
+  const conversionRate =
+    funnel.landing > 0
+      ? ((funnel.purchase / funnel.landing) * 100).toFixed(1)
+      : "0";
+
+  const FUNNEL_STAGES = [
+    { label: "Landing", count: funnel.landing },
+    { label: "Tickets", count: funnel.tickets },
+    { label: "Add to Cart", count: funnel.add_to_cart },
+    { label: "Checkout", count: funnel.checkout },
+    { label: "Purchase", count: funnel.purchase },
+  ];
+
   return (
-    <div>
-      <h1 className="admin-section__title" style={{ marginBottom: "24px" }}>
-        TRAFFIC ANALYTICS
-      </h1>
-
-      <div className="admin-stats">
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">LANDING VIEWS</span>
-          <span className="admin-stat-card__value">{funnel.landing}</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">TICKET VIEWS</span>
-          <span className="admin-stat-card__value">{funnel.tickets}</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">CHECKOUTS</span>
-          <span className="admin-stat-card__value admin-stat-card__value--red">
-            {funnel.checkout}
-          </span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-card__label">ADD TO CART</span>
-          <span className="admin-stat-card__value">{funnel.add_to_cart}</span>
-        </div>
+    <div className="space-y-6 p-6 lg:p-8">
+      {/* Header */}
+      <div>
+        <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Traffic Analytics</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Real-time conversion funnel &middot; {conversionRate}% overall conversion
+        </p>
       </div>
 
-      <div className="admin-section">
-        <h2 className="admin-section__title">CONVERSION FUNNEL</h2>
-        <div className="admin-funnel">
-          <FunnelBar
-            label="LANDING"
-            count={funnel.landing}
-            max={funnel.landing}
-          />
-          <FunnelBar
-            label="TICKETS"
-            count={funnel.tickets}
-            max={funnel.landing}
-          />
-          <FunnelBar
-            label="ADD TO CART"
-            count={funnel.add_to_cart}
-            max={funnel.landing}
-          />
-          <FunnelBar
-            label="CHECKOUT"
-            count={funnel.checkout}
-            max={funnel.landing}
-          />
-          <FunnelBar
-            label="PURCHASE"
-            count={funnel.purchase}
-            max={funnel.landing}
-          />
-        </div>
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard label="Landing Views" value={String(funnel.landing)} icon={Eye} size="compact" />
+        <StatCard label="Ticket Views" value={String(funnel.tickets)} icon={Ticket} size="compact" />
+        <StatCard label="Add to Cart" value={String(funnel.add_to_cart)} icon={ShoppingCart} size="compact" />
+        <StatCard label="Checkouts" value={String(funnel.checkout)} icon={CreditCard} size="compact" />
+        <StatCard label="Purchases" value={String(funnel.purchase)} icon={CheckCircle2} size="compact" />
       </div>
 
-      <div className="admin-section">
-        <h2 className="admin-section__title">DROP-OFF RATES</h2>
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>STAGE</th>
-              <th>COUNT</th>
-              <th>DROP-OFF</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Landing → Tickets</td>
-              <td>{funnel.tickets}</td>
-              <td>
-                {funnel.landing > 0
-                  ? (
-                      ((funnel.landing - funnel.tickets) / funnel.landing) *
-                      100
-                    ).toFixed(1) + "%"
-                  : "—"}
-              </td>
-            </tr>
-            <tr>
-              <td>Tickets → Checkout</td>
-              <td>{funnel.checkout}</td>
-              <td>
-                {funnel.tickets > 0
-                  ? (
-                      ((funnel.tickets - funnel.checkout) / funnel.tickets) *
-                      100
-                    ).toFixed(1) + "%"
-                  : "—"}
-              </td>
-            </tr>
-            <tr>
-              <td>Checkout → Purchase</td>
-              <td>{funnel.purchase}</td>
-              <td>
-                {funnel.checkout > 0
-                  ? (
-                      ((funnel.checkout - funnel.purchase) / funnel.checkout) *
-                      100
-                    ).toFixed(1) + "%"
-                  : "—"}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      {/* Conversion Funnel */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-4">
+          <CardTitle className="text-sm">Conversion Funnel</CardTitle>
+        </CardHeader>
+        <CardContent className="px-6 pb-6">
+          <div className="flex items-end gap-3 h-[200px]">
+            {FUNNEL_STAGES.map((stage, i) => {
+              const pct = funnel.landing > 0 ? (stage.count / funnel.landing) * 100 : 0;
+              return (
+                <div key={stage.label} className="flex flex-1 flex-col items-center gap-2">
+                  <span className="font-mono text-xs tabular-nums text-foreground font-medium">
+                    {stage.count}
+                  </span>
+                  <div className="w-full flex flex-col justify-end h-[140px]">
+                    <div
+                      className="w-full rounded-t-md bg-gradient-to-t from-primary/80 to-primary/40 transition-all duration-700 ease-out"
+                      style={{ height: `${Math.max(pct, 2)}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[10px] tracking-wide text-muted-foreground text-center uppercase">
+                    {stage.label}
+                  </span>
+                  {i > 0 && (
+                    <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                      {pct.toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Drop-off Rates */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-0">
+          <CardTitle className="text-sm">Drop-off Rates</CardTitle>
+        </CardHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Stage</TableHead>
+              <TableHead className="text-right">Count</TableHead>
+              <TableHead className="text-right">Drop-off</TableHead>
+              <TableHead className="text-right">Severity</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="font-medium">Landing → Tickets</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">{funnel.tickets}</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">
+                {dropoff(funnel.landing, funnel.tickets)}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropoffBadge value={dropoffValue(funnel.landing, funnel.tickets)} />
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">Tickets → Checkout</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">{funnel.checkout}</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">
+                {dropoff(funnel.tickets, funnel.checkout)}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropoffBadge value={dropoffValue(funnel.tickets, funnel.checkout)} />
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">Checkout → Purchase</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">{funnel.purchase}</TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">
+                {dropoff(funnel.checkout, funnel.purchase)}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropoffBadge value={dropoffValue(funnel.checkout, funnel.purchase)} />
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
 
-function FunnelBar({
-  label,
-  count,
-  max,
-}: {
-  label: string;
-  count: number;
-  max: number;
-}) {
-  const height = max > 0 ? (count / max) * 100 : 0;
-  return (
-    <div className="admin-funnel__bar">
-      <div className="admin-funnel__count">{count}</div>
-      <div
-        className="admin-funnel__fill"
-        style={{ height: `${Math.max(height, 2)}%` }}
-      />
-      <div className="admin-funnel__label">{label}</div>
-    </div>
-  );
+function DropoffBadge({ value }: { value: number }) {
+  if (value === 0) return <Badge variant="secondary">—</Badge>;
+  if (value < 20) return <Badge variant="success">Low</Badge>;
+  if (value < 50) return <Badge variant="warning">Medium</Badge>;
+  return <Badge variant="destructive">High</Badge>;
 }

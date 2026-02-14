@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import { RefreshCw, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 
 interface HealthCheck {
   name: string;
@@ -16,9 +28,9 @@ interface HealthResponse {
 }
 
 const STATUS_CONFIG = {
-  ok: { label: "OPERATIONAL", color: "#00c853", bg: "rgba(0, 200, 83, 0.08)" },
-  degraded: { label: "DEGRADED", color: "#ffa726", bg: "rgba(255, 167, 38, 0.08)" },
-  down: { label: "DOWN", color: "#8B5CF6", bg: "rgba(139, 92, 246, 0.08)" },
+  ok: { label: "Operational", icon: CheckCircle2, variant: "success" as const },
+  degraded: { label: "Degraded", icon: AlertTriangle, variant: "warning" as const },
+  down: { label: "Down", icon: XCircle, variant: "destructive" as const },
 } as const;
 
 export default function SystemHealth() {
@@ -45,7 +57,6 @@ export default function SystemHealth() {
 
   useEffect(() => {
     fetchHealth();
-    // Auto-refresh every 30 seconds
     const interval = setInterval(fetchHealth, 30_000);
     return () => clearInterval(interval);
   }, [fetchHealth]);
@@ -53,224 +64,139 @@ export default function SystemHealth() {
   const overallConfig = health ? STATUS_CONFIG[health.status] : null;
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <h1 className="admin-section__title" style={{ marginBottom: 0 }}>
-          SYSTEM HEALTH
-        </h1>
-        <button
-          onClick={fetchHealth}
-          disabled={loading}
-          style={{
-            padding: "8px 16px",
-            background: "transparent",
-            border: "1px solid #1e1e2a",
-            borderRadius: 4,
-            color: "#8888a0",
-            fontFamily: "'Space Mono', monospace",
-            fontSize: "0.7rem",
-            letterSpacing: "1px",
-            cursor: loading ? "wait" : "pointer",
-            transition: "border-color 0.2s",
-          }}
-        >
-          {loading ? "CHECKING..." : "REFRESH"}
-        </button>
+    <div className="space-y-6 p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">System Health</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Service status and latency monitoring
+            {lastRefresh && (
+              <span className="ml-2 text-muted-foreground/60">
+                &middot; Updated {lastRefresh.toLocaleTimeString()}
+              </span>
+            )}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          {loading ? "Checking..." : "Refresh"}
+        </Button>
       </div>
 
       {/* Overall status banner */}
       {overallConfig && (
-        <div
-          style={{
-            background: overallConfig.bg,
-            border: `1px solid ${overallConfig.color}33`,
-            borderRadius: 8,
-            padding: "20px 24px",
-            marginBottom: 24,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <span
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: "50%",
-              background: overallConfig.color,
-              display: "inline-block",
-              boxShadow: `0 0 8px ${overallConfig.color}66`,
-              animation: health?.status === "ok" ? "none" : "pulse 2s infinite",
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'Space Mono', monospace",
-              fontSize: "0.85rem",
-              color: overallConfig.color,
-              letterSpacing: "2px",
-              fontWeight: 700,
-            }}
-          >
-            ALL SYSTEMS {overallConfig.label}
-          </span>
-          {lastRefresh && (
-            <span
-              style={{
-                marginLeft: "auto",
-                color: "#55557a",
-                fontSize: "0.7rem",
-                fontFamily: "'Space Mono', monospace",
-              }}
-            >
-              {lastRefresh.toLocaleTimeString()}
+        <Card className="py-0 gap-0">
+          <CardContent className="flex items-center gap-3 p-5">
+            <div className="relative flex h-3 w-3">
+              {health?.status !== "ok" && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
+              )}
+              <Badge variant={overallConfig.variant} className="h-3 w-3 rounded-full p-0" />
+            </div>
+            <span className="font-mono text-sm font-semibold tracking-wide text-foreground">
+              All Systems {overallConfig.label}
             </span>
-          )}
-        </div>
+            <overallConfig.icon size={16} className={
+              health?.status === "ok"
+                ? "text-success"
+                : health?.status === "degraded"
+                  ? "text-warning"
+                  : "text-destructive"
+            } />
+          </CardContent>
+        </Card>
       )}
 
       {error && (
-        <div className="admin-section" style={{ borderColor: "#8B5CF644" }}>
-          <p style={{ color: "#8B5CF6", fontFamily: "'Space Mono', monospace", fontSize: "0.8rem" }}>
-            Error: {error}
-          </p>
-        </div>
+        <Card className="py-0 gap-0 border-destructive/30">
+          <CardContent className="p-5">
+            <p className="text-sm text-destructive">Error: {error}</p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Service status cards */}
       {health && (
-        <div className="admin-stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {health.checks.map((check) => {
             const config = STATUS_CONFIG[check.status];
+            const StatusIcon = config.icon;
             return (
-              <div
-                key={check.name}
-                className="admin-stat-card"
-                style={{ position: "relative" }}
-              >
-                {/* Status indicator */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 16,
-                    right: 16,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: config.color,
-                      display: "inline-block",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: "0.6rem",
-                      color: config.color,
-                      letterSpacing: "1px",
-                    }}
-                  >
-                    {config.label}
-                  </span>
-                </div>
+              <Card key={check.name} className="py-0 gap-0 group hover:border-primary/20 transition-all duration-300">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {check.name}
+                    </span>
+                    <Badge variant={config.variant} className="gap-1">
+                      <StatusIcon size={11} />
+                      {config.label}
+                    </Badge>
+                  </div>
 
-                {/* Service name */}
-                <span className="admin-stat-card__label">
-                  {check.name.toUpperCase()}
-                </span>
+                  {check.latency !== undefined && (
+                    <div className="mb-2">
+                      <span className="font-mono text-2xl font-bold tabular-nums text-foreground">
+                        {check.latency}
+                      </span>
+                      <span className="ml-1 font-mono text-sm text-muted-foreground">ms</span>
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            check.latency < 100
+                              ? "bg-success"
+                              : check.latency < 300
+                                ? "bg-warning"
+                                : "bg-destructive"
+                          }`}
+                          style={{ width: `${Math.min((check.latency / 500) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                {/* Latency */}
-                <span
-                  className="admin-stat-card__value"
-                  style={{
-                    fontSize: check.latency !== undefined ? "1.8rem" : "1rem",
-                    color: config.color,
-                  }}
-                >
-                  {check.latency !== undefined ? `${check.latency}ms` : config.label}
-                </span>
-
-                {/* Detail */}
-                {check.detail && (
-                  <span
-                    style={{
-                      display: "block",
-                      marginTop: 8,
-                      color: "#6666a0",
-                      fontSize: "0.7rem",
-                      fontFamily: "'Inter', sans-serif",
-                      lineHeight: 1.4,
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {check.detail}
-                  </span>
-                )}
-              </div>
+                  {check.detail && (
+                    <p className="text-[11px] text-muted-foreground/70 break-all leading-relaxed">
+                      {check.detail}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             );
           })}
         </div>
       )}
 
-      {/* System info section */}
+      {/* Platform info */}
       {health && (
-        <div className="admin-section" style={{ marginTop: 8 }}>
-          <h2 className="admin-section__title">PLATFORM INFO</h2>
-          <table className="admin-table">
-            <tbody>
+        <Card className="py-0 gap-0">
+          <CardHeader className="px-6 pt-5 pb-0">
+            <CardTitle className="text-sm">Platform Info</CardTitle>
+          </CardHeader>
+          <Table>
+            <TableBody>
               <InfoRow label="Framework" value="Next.js 16 (App Router)" />
               <InfoRow label="Database" value="Supabase (PostgreSQL)" />
               <InfoRow label="Payments" value="Stripe" />
               <InfoRow label="Hosting" value="Vercel" />
               <InfoRow label="Test Framework" value="Vitest + Testing Library" />
-              <InfoRow label="Test Coverage" value="40 tests (3 suites)" />
               <InfoRow label="Last Health Check" value={health.timestamp} />
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
     </div>
   );
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <tr>
-      <td
-        style={{
-          color: "#8888a0",
-          fontFamily: "'Space Mono', monospace",
-          fontSize: "0.7rem",
-          letterSpacing: "1px",
-          padding: "10px 16px",
-          width: "40%",
-        }}
-      >
-        {label.toUpperCase()}
-      </td>
-      <td
-        style={{
-          color: "#fff",
-          fontFamily: "'Inter', sans-serif",
-          fontSize: "0.8rem",
-          padding: "10px 16px",
-        }}
-      >
-        {value}
-      </td>
-    </tr>
+    <TableRow>
+      <TableCell className="w-[40%] font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </TableCell>
+      <TableCell className="text-sm text-foreground">{value}</TableCell>
+    </TableRow>
   );
 }

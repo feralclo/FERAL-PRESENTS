@@ -3,6 +3,31 @@
 import { useState, useEffect, useCallback } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  ClipboardCheck,
+  Users,
+  UserCheck,
+  Download,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Circle,
+  Loader2,
+} from "lucide-react";
 import type { GuestListEntry } from "@/types/orders";
 
 export default function GuestListPage() {
@@ -23,6 +48,7 @@ export default function GuestListPage() {
   const [addQty, setAddQty] = useState("1");
   const [addNotes, setAddNotes] = useState("");
   const [adding, setAdding] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const loadEvents = useCallback(async () => {
     const supabase = getSupabaseClient();
@@ -88,6 +114,7 @@ export default function GuestListPage() {
         setAddPhone("");
         setAddQty("1");
         setAddNotes("");
+        setShowForm(false);
         loadGuestList();
       }
     } catch {
@@ -113,15 +140,16 @@ export default function GuestListPage() {
     }
   };
 
-  const handleDelete = async (entryId: string) => {
-    if (!confirm("Remove this guest list entry?")) return;
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  const handleDelete = async (entryId: string) => {
     try {
       await fetch(`/api/guest-list/${selectedEvent}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: entryId }),
       });
+      setConfirmDeleteId(null);
       loadGuestList();
     } catch {
       // Network error
@@ -154,178 +182,256 @@ export default function GuestListPage() {
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div>
-      <h1 className="admin-title">Guest List</h1>
+  const checkInRate =
+    summary.total_guests > 0
+      ? ((summary.checked_in / summary.total_guests) * 100).toFixed(0)
+      : "0";
 
-      {/* Event Selector */}
-      <div className="admin-filters">
-        <select
-          className="admin-form__input admin-filter__select"
-          value={selectedEvent}
-          onChange={(e) => setSelectedEvent(e.target.value)}
-        >
-          <option value="">Select Event</option>
-          {events.map((evt) => (
-            <option key={evt.id} value={evt.id}>
-              {evt.name}
-            </option>
-          ))}
-        </select>
-        {entries.length > 0 && (
-          <button className="admin-btn admin-btn--secondary" onClick={handleExportCSV}>
-            Export CSV
-          </button>
-        )}
+  return (
+    <div className="space-y-6 p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">Guest List</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage guest lists and check-ins for your events</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {entries.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download size={14} />
+              Export CSV
+            </Button>
+          )}
+          {selectedEvent && (
+            <Button size="sm" onClick={() => setShowForm(!showForm)}>
+              <Plus size={14} />
+              {showForm ? "Cancel" : "Add Guest"}
+            </Button>
+          )}
+        </div>
       </div>
 
+      {/* Event Selector */}
+      <Card className="py-0 gap-0">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <Label className="shrink-0 text-muted-foreground">Event</Label>
+            <select
+              className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+              value={selectedEvent}
+              onChange={(e) => setSelectedEvent(e.target.value)}
+            >
+              <option value="">Select Event</option>
+              {events.map((evt) => (
+                <option key={evt.id} value={evt.id}>
+                  {evt.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
       {!selectedEvent ? (
-        <div className="admin-empty">
-          <p>Select an event to manage its guest list.</p>
-        </div>
+        <Card className="py-0 gap-0">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
+              <ClipboardCheck size={20} className="text-primary/60" />
+            </div>
+            <p className="mt-4 text-sm font-medium text-foreground">Select an event</p>
+            <p className="mt-1 text-xs text-muted-foreground">Choose an event above to manage its guest list</p>
+          </CardContent>
+        </Card>
       ) : (
         <>
           {/* Stats */}
-          <div className="admin-stats">
-            <div className="admin-stat-card">
-              <div className="admin-stat-card__value">
-                {summary.total_entries}
-              </div>
-              <div className="admin-stat-card__label">Entries</div>
-            </div>
-            <div className="admin-stat-card">
-              <div className="admin-stat-card__value">
-                {summary.total_guests}
-              </div>
-              <div className="admin-stat-card__label">Total Guests</div>
-            </div>
-            <div className="admin-stat-card">
-              <div className="admin-stat-card__value">
-                {summary.checked_in}
-              </div>
-              <div className="admin-stat-card__label">Checked In</div>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Entries"
+              value={String(summary.total_entries)}
+              icon={ClipboardCheck}
+            />
+            <StatCard
+              label="Total Guests"
+              value={String(summary.total_guests)}
+              icon={Users}
+            />
+            <StatCard
+              label="Checked In"
+              value={String(summary.checked_in)}
+              icon={UserCheck}
+              detail={`${checkInRate}% check-in rate`}
+            />
+            <StatCard
+              label="Remaining"
+              value={String(Math.max(0, summary.total_guests - summary.checked_in))}
+              icon={Circle}
+              detail="Still expected"
+            />
           </div>
 
           {/* Add Form */}
-          <div className="admin-section admin-create-form">
-            <h2 className="admin-section__title">Add to Guest List</h2>
-            <form onSubmit={handleAdd} className="admin-form">
-              <div className="admin-form__row">
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Name *</label>
-                  <input
-                    type="text"
-                    className="admin-form__input"
-                    value={addName}
-                    onChange={(e) => setAddName(e.target.value)}
-                    placeholder="Full name"
-                    required
-                  />
-                </div>
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Email</label>
-                  <input
-                    type="email"
-                    className="admin-form__input"
-                    value={addEmail}
-                    onChange={(e) => setAddEmail(e.target.value)}
-                    placeholder="email@example.com"
-                  />
-                </div>
-              </div>
-              <div className="admin-form__row">
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Phone</label>
-                  <input
-                    type="tel"
-                    className="admin-form__input"
-                    value={addPhone}
-                    onChange={(e) => setAddPhone(e.target.value)}
-                    placeholder="+44 7700 000000"
-                  />
-                </div>
-                <div className="admin-form__field">
-                  <label className="admin-form__label">Qty</label>
-                  <input
-                    type="number"
-                    className="admin-form__input"
-                    value={addQty}
-                    onChange={(e) => setAddQty(e.target.value)}
-                    min="1"
-                    max="10"
-                  />
-                </div>
-              </div>
-              <div className="admin-form__field">
-                <label className="admin-form__label">Notes</label>
-                <input
-                  type="text"
-                  className="admin-form__input"
-                  value={addNotes}
-                  onChange={(e) => setAddNotes(e.target.value)}
-                  placeholder="VIP, plus one, artist, etc."
-                />
-              </div>
-              <button
-                type="submit"
-                className="admin-btn admin-btn--primary"
-                disabled={adding}
-              >
-                {adding ? "Adding..." : "Add to Guest List"}
-              </button>
-            </form>
-          </div>
+          {showForm && (
+            <Card className="py-0 gap-0 border-primary/20">
+              <CardHeader className="pb-0 pt-5 px-6">
+                <CardTitle className="text-sm">Add to Guest List</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 pt-4">
+                <form onSubmit={handleAdd} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Name *</Label>
+                      <Input
+                        value={addName}
+                        onChange={(e) => setAddName(e.target.value)}
+                        placeholder="Full name"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={addEmail}
+                        onChange={(e) => setAddEmail(e.target.value)}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <Input
+                        type="tel"
+                        value={addPhone}
+                        onChange={(e) => setAddPhone(e.target.value)}
+                        placeholder="+44 7700 000000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Qty</Label>
+                      <Input
+                        type="number"
+                        value={addQty}
+                        onChange={(e) => setAddQty(e.target.value)}
+                        min="1"
+                        max="10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Notes</Label>
+                      <Input
+                        value={addNotes}
+                        onChange={(e) => setAddNotes(e.target.value)}
+                        placeholder="VIP, plus one, artist..."
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" size="sm" disabled={adding}>
+                    {adding && <Loader2 size={14} className="animate-spin" />}
+                    {adding ? "Adding..." : "Add to Guest List"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Guest List Table */}
           {loading ? (
-            <div className="admin-loading">Loading guest list...</div>
+            <Card className="py-0 gap-0">
+              <CardContent className="flex items-center justify-center py-16">
+                <Loader2 size={20} className="animate-spin text-primary/60" />
+                <span className="ml-3 text-sm text-muted-foreground">Loading guest list...</span>
+              </CardContent>
+            </Card>
           ) : entries.length === 0 ? (
-            <div className="admin-empty">
-              <p>No guest list entries for this event yet.</p>
-            </div>
+            <Card className="py-0 gap-0">
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/50">
+                  <Users size={20} className="text-muted-foreground" />
+                </div>
+                <p className="mt-4 text-sm font-medium text-foreground">No guests yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">Add your first guest to get started</p>
+                <Button size="sm" className="mt-4" onClick={() => setShowForm(true)}>
+                  <Plus size={14} />
+                  Add Guest
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="admin-section">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Qty</th>
-                    <th>Notes</th>
-                    <th>Checked In</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <Card className="py-0 gap-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-center">Qty</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="w-[80px]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {entries.map((entry) => (
-                    <tr key={entry.id}>
-                      <td>{entry.name}</td>
-                      <td>{entry.email || "—"}</td>
-                      <td className="admin-table__mono">{entry.qty}</td>
-                      <td>{entry.notes || "—"}</td>
-                      <td>
+                    <TableRow key={entry.id}>
+                      <TableCell className="font-medium">{entry.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{entry.email || "—"}</TableCell>
+                      <TableCell className="text-center font-mono tabular-nums">{entry.qty}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-muted-foreground text-xs">
+                        {entry.notes || "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
                         <button
-                          className={`admin-checkin-btn ${entry.checked_in ? "admin-checkin-btn--checked" : ""}`}
                           onClick={() => handleCheckIn(entry)}
+                          className="inline-flex items-center gap-1.5 transition-colors duration-200"
                         >
-                          {entry.checked_in ? "✓ Checked In" : "Check In"}
+                          {entry.checked_in ? (
+                            <Badge variant="success" className="gap-1 cursor-pointer">
+                              <CheckCircle2 size={11} />
+                              Checked In
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 cursor-pointer hover:border-success/40 hover:text-success">
+                              <Circle size={11} />
+                              Check In
+                            </Badge>
+                          )}
                         </button>
-                      </td>
-                      <td>
-                        <button
-                          className="admin-btn-icon admin-btn-icon--danger"
-                          onClick={() => handleDelete(entry.id)}
-                          title="Remove"
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                      <TableCell>
+                        {confirmDeleteId === entry.id ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="destructive"
+                              size="xs"
+                              onClick={() => handleDelete(entry.id)}
+                            >
+                              Yes
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => setConfirmDeleteId(null)}
+                            >
+                              No
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => setConfirmDeleteId(entry.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            </Card>
           )}
         </>
       )}

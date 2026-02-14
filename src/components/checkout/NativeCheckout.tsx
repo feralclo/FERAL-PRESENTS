@@ -24,6 +24,9 @@ import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
 import { useBranding } from "@/hooks/useBranding";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
+import type { VatSettings } from "@/types/settings";
+import { SETTINGS_KEYS } from "@/lib/constants";
 import "@/styles/checkout-page.css";
 
 /* ================================================================
@@ -124,13 +127,14 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
+  const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
 
   // Track PageView on checkout page load
   useEffect(() => {
     trackPageView();
   }, [trackPageView]);
 
-  // Fetch wallet pass settings (lightweight — just checks if enabled)
+  // Fetch wallet pass + VAT settings in parallel
   useEffect(() => {
     fetch("/api/settings?key=feral_wallet_passes")
       .then((r) => r.json())
@@ -140,6 +144,15 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
             apple: json.data.apple_wallet_enabled || false,
             google: json.data.google_wallet_enabled || false,
           });
+        }
+      })
+      .catch(() => {});
+
+    fetch(`/api/settings?key=${SETTINGS_KEYS.VAT}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data) {
+          setVatSettings({ ...DEFAULT_VAT_SETTINGS, ...json.data });
         }
       })
       .catch(() => {});
@@ -240,6 +253,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
         subtotal={subtotal}
         totalQty={totalQty}
         symbol={symbol}
+        vatSettings={vatSettings}
         onComplete={setCompletedOrder}
       />
     );
@@ -254,6 +268,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
       subtotal={subtotal}
       totalQty={totalQty}
       symbol={symbol}
+      vatSettings={vatSettings}
       onComplete={setCompletedOrder}
     />
   );
@@ -395,6 +410,7 @@ function StripeCheckoutPage({
   subtotal,
   totalQty,
   symbol,
+  vatSettings,
   onComplete,
 }: {
   slug: string;
@@ -403,6 +419,7 @@ function StripeCheckoutPage({
   subtotal: number;
   totalQty: number;
   symbol: string;
+  vatSettings: VatSettings | null;
   onComplete: (order: Order) => void;
 }) {
   const [stripeReady, setStripeReady] = useState(false);
@@ -442,7 +459,12 @@ function StripeCheckoutPage({
   }
 
   const discountAmount = appliedDiscount?.amount || 0;
-  const total = Math.max(subtotal - discountAmount, 0);
+  const afterDiscount = Math.max(subtotal - discountAmount, 0);
+  const vatBreakdown = calculateCheckoutVat(afterDiscount, vatSettings);
+  // VAT-exclusive: add VAT on top. VAT-inclusive: total unchanged.
+  const total = vatBreakdown && !vatSettings?.prices_include_vat
+    ? vatBreakdown.gross
+    : afterDiscount;
   const amountInSmallest = toSmallestUnit(total);
 
   // Shared Elements options — single context for Express + Card elements
@@ -480,6 +502,7 @@ function StripeCheckoutPage({
         discount={appliedDiscount}
         onApplyDiscount={setAppliedDiscount}
         onRemoveDiscount={() => setAppliedDiscount(null)}
+        vatSettings={vatSettings}
       />
 
       <div className="checkout-layout">
@@ -510,6 +533,7 @@ function StripeCheckoutPage({
             discount={appliedDiscount}
             onApplyDiscount={setAppliedDiscount}
             onRemoveDiscount={() => setAppliedDiscount(null)}
+            vatSettings={vatSettings}
           />
         </aside>
       </div>
@@ -1299,6 +1323,7 @@ function TestModeCheckout({
   subtotal,
   totalQty,
   symbol,
+  vatSettings,
   onComplete,
 }: {
   slug: string;
@@ -1307,6 +1332,7 @@ function TestModeCheckout({
   subtotal: number;
   totalQty: number;
   symbol: string;
+  vatSettings: VatSettings | null;
   onComplete: (order: Order) => void;
 }) {
   const [firstName, setFirstName] = useState("");
@@ -1380,6 +1406,7 @@ function TestModeCheckout({
         symbol={symbol}
         subtotal={subtotal}
         event={event}
+        vatSettings={vatSettings}
       />
 
       <div className="checkout-layout">
@@ -1453,6 +1480,7 @@ function TestModeCheckout({
             symbol={symbol}
             subtotal={subtotal}
             event={event}
+            vatSettings={vatSettings}
           />
         </aside>
       </div>
@@ -1526,6 +1554,7 @@ function OrderSummaryMobile({
   discount,
   onApplyDiscount,
   onRemoveDiscount,
+  vatSettings,
 }: {
   cartLines: CartLine[];
   symbol: string;
@@ -1534,10 +1563,15 @@ function OrderSummaryMobile({
   discount?: DiscountInfo | null;
   onApplyDiscount?: (d: DiscountInfo) => void;
   onRemoveDiscount?: () => void;
+  vatSettings?: VatSettings | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const discountAmt = discount?.amount || 0;
-  const total = Math.max(subtotal - discountAmt, 0);
+  const afterDiscount = Math.max(subtotal - discountAmt, 0);
+  const vatBreakdown = calculateCheckoutVat(afterDiscount, vatSettings ?? null);
+  const total = vatBreakdown && vatSettings && !vatSettings.prices_include_vat
+    ? vatBreakdown.gross
+    : afterDiscount;
 
   return (
     <div className="order-summary-mobile">
@@ -1624,6 +1658,18 @@ function OrderSummaryMobile({
                 <span>-{symbol}{discountAmt.toFixed(2)}</span>
               </div>
             )}
+            {vatBreakdown && vatSettings?.prices_include_vat && (
+              <div className="order-summary__row order-summary__row--vat">
+                <span>Includes VAT ({vatSettings.vat_rate}%)</span>
+                <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
+              </div>
+            )}
+            {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
+              <div className="order-summary__row">
+                <span>VAT ({vatSettings.vat_rate}%)</span>
+                <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
+              </div>
+            )}
             <div className="order-summary__row order-summary__row--total">
               <span>Total</span>
               <span>
@@ -1651,6 +1697,7 @@ function OrderSummaryDesktop({
   discount,
   onApplyDiscount,
   onRemoveDiscount,
+  vatSettings,
 }: {
   cartLines: CartLine[];
   symbol: string;
@@ -1659,9 +1706,14 @@ function OrderSummaryDesktop({
   discount?: DiscountInfo | null;
   onApplyDiscount?: (d: DiscountInfo) => void;
   onRemoveDiscount?: () => void;
+  vatSettings?: VatSettings | null;
 }) {
   const discountAmt = discount?.amount || 0;
-  const total = Math.max(subtotal - discountAmt, 0);
+  const afterDiscount = Math.max(subtotal - discountAmt, 0);
+  const vatBreakdown = calculateCheckoutVat(afterDiscount, vatSettings ?? null);
+  const total = vatBreakdown && vatSettings && !vatSettings.prices_include_vat
+    ? vatBreakdown.gross
+    : afterDiscount;
 
   return (
     <div className="order-summary-desktop">
@@ -1685,6 +1737,18 @@ function OrderSummaryDesktop({
           <div className="order-summary__row order-summary__row--discount">
             <span>Discount ({discount.code})</span>
             <span>-{symbol}{discountAmt.toFixed(2)}</span>
+          </div>
+        )}
+        {vatBreakdown && vatSettings?.prices_include_vat && (
+          <div className="order-summary__row order-summary__row--vat">
+            <span>Includes VAT ({vatSettings.vat_rate}%)</span>
+            <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
+          </div>
+        )}
+        {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
+          <div className="order-summary__row">
+            <span>VAT ({vatSettings.vat_rate}%)</span>
+            <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
           </div>
         )}
         <div className="order-summary__row order-summary__row--total">

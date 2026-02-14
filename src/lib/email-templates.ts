@@ -280,7 +280,20 @@ export function buildOrderConfirmationEmail(
                         <td style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; color: #111; text-align: right; padding: 4px 0; border-top: 1px solid #eee; padding-top: 8px;">
                           ${escapeHtml(order.currency_symbol)}${escapeHtml(order.total)}
                         </td>
-                      </tr>
+                      </tr>${order.vat ? `
+                      <tr>
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #999; padding: 2px 0;">
+                          ${order.vat.inclusive ? `Includes VAT (${order.vat.rate}%)` : `VAT (${order.vat.rate}%)`}
+                        </td>
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #999; text-align: right; padding: 2px 0;">
+                          ${escapeHtml(order.currency_symbol)}${escapeHtml(order.vat.amount)}
+                        </td>
+                      </tr>${order.vat.vat_number ? `
+                      <tr>
+                        <td colspan="2" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #bbb; padding: 2px 0;">
+                          VAT No: ${escapeHtml(order.vat.vat_number)}
+                        </td>
+                      </tr>` : ""}` : ""}
                     </table>
                   </td>
                 </tr>
@@ -431,7 +444,7 @@ ${eventDetails}${doorsLine ? `\n${doorsLine}` : ""}
 ORDER DETAILS
 Order: ${order.order_number}
 Tickets: ${order.tickets.length}
-Total: ${order.currency_symbol}${order.total}
+Total: ${order.currency_symbol}${order.total}${order.vat ? `\n${order.vat.inclusive ? `Includes VAT (${order.vat.rate}%)` : `VAT (${order.vat.rate}%)`}: ${order.currency_symbol}${order.vat.amount}${order.vat.vat_number ? `\nVAT No: ${order.vat.vat_number}` : ""}` : ""}
 
 YOUR TICKETS
 ${ticketCodesText}

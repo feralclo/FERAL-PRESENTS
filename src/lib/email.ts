@@ -168,6 +168,12 @@ export async function sendOrderConfirmationEmail(params: {
     merch_size?: string;
     merch_name?: string;
   }[];
+  vat?: {
+    amount: number;
+    rate: number;
+    inclusive: boolean;
+    vat_number?: string;
+  };
 }): Promise<void> {
   try {
     const resend = getResendClient();
@@ -204,6 +210,16 @@ export async function sendOrderConfirmationEmail(params: {
         merch_size: t.merch_size,
         merch_name: t.merch_name,
       })),
+      ...(params.vat && params.vat.amount > 0
+        ? {
+            vat: {
+              amount: params.vat.amount.toFixed(2),
+              rate: params.vat.rate,
+              inclusive: params.vat.inclusive,
+              vat_number: params.vat.vat_number,
+            },
+          }
+        : {}),
     };
 
     let emailLogoBase64: string | null = null;

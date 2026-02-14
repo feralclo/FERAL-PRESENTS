@@ -56,6 +56,13 @@ export interface OrderEmailData {
     merch_size?: string;
     merch_name?: string;
   }[];
+  /** VAT info (only present when org is VAT-registered) */
+  vat?: {
+    amount: string;
+    rate: number;
+    inclusive: boolean;
+    vat_number?: string;
+  };
 }
 
 /**

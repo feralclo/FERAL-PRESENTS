@@ -66,7 +66,7 @@ const NAV_SECTIONS = [
     label: "Platform",
     items: [
       { href: "/admin/ticketstore/", label: "Ticket Store", icon: Store },
-      { href: "/admin/payments/", label: "Payments", icon: CreditCard },
+      { href: "/admin/finance/", label: "Finance", icon: CreditCard },
       { href: "/admin/connect/", label: "Stripe Connect", icon: Zap },
       { href: "/admin/marketing/", label: "Marketing", icon: Megaphone },
       { href: "/admin/communications/", label: "Communications", icon: Mail },

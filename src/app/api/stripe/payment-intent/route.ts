@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES, ORG_ID, SETTINGS_KEYS } from "@/lib/constants";
 import {
   calculateApplicationFee,
   toSmallestUnit,
   DEFAULT_PLATFORM_FEE_PERCENT,
 } from "@/lib/stripe/config";
+import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
+import type { VatSettings } from "@/types/settings";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 // 10 payment intents per minute per IP — prevents abuse / cost attacks
@@ -220,7 +222,32 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const chargeAmount = Math.max(subtotal - discountAmount, 0);
+    const afterDiscount = Math.max(subtotal - discountAmount, 0);
+
+    // Fetch VAT settings to determine if VAT should be added on top
+    let vatAmount = 0;
+    let vatRate = 0;
+    let vatInclusive = true;
+    const { data: vatRow } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", SETTINGS_KEYS.VAT)
+      .single();
+
+    if (vatRow?.data) {
+      const vat: VatSettings = { ...DEFAULT_VAT_SETTINGS, ...(vatRow.data as Partial<VatSettings>) };
+      if (vat.vat_registered && vat.vat_rate > 0) {
+        vatRate = vat.vat_rate;
+        vatInclusive = vat.prices_include_vat;
+        const breakdown = calculateCheckoutVat(afterDiscount, vat);
+        if (breakdown) {
+          vatAmount = breakdown.vat;
+        }
+      }
+    }
+
+    // VAT-exclusive: add VAT on top. VAT-inclusive: total unchanged.
+    const chargeAmount = vatInclusive ? afterDiscount : afterDiscount + vatAmount;
     const amountInSmallestUnit = toSmallestUnit(chargeAmount);
     const currency = (event.currency || "GBP").toLowerCase();
 
@@ -255,6 +282,12 @@ export async function POST(request: NextRequest) {
       metadata.discount_amount = String(discountMeta.amount);
     }
 
+    if (vatAmount > 0) {
+      metadata.vat_amount = String(vatAmount);
+      metadata.vat_rate = String(vatRate);
+      metadata.vat_inclusive = vatInclusive ? "true" : "false";
+    }
+
     if (stripeAccountId) {
       // Direct charge on connected account
       const paymentIntent = await stripe.paymentIntents.create(
@@ -286,6 +319,7 @@ export async function POST(request: NextRequest) {
         currency,
         application_fee: applicationFee,
         discount: discountMeta,
+        vat: vatAmount > 0 ? { amount: vatAmount, rate: vatRate, inclusive: vatInclusive } : null,
       });
     }
 

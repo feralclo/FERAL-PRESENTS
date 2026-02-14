@@ -16,6 +16,8 @@ function isPublicSettingsKey(key: string): boolean {
   if (key.match(/^[a-z0-9_]+_branding$/)) return true;
   // Marketing/pixel settings (e.g., feral_marketing)
   if (key.match(/^[a-z0-9_]+_marketing$/)) return true;
+  // VAT settings (e.g., feral_vat) — needed by checkout + event pages
+  if (key.match(/^[a-z0-9_]+_vat$/)) return true;
   return false;
 }
 

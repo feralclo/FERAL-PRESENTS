@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
-import { createOrder, OrderCreationError } from "@/lib/orders";
+import { createOrder, OrderCreationError, type OrderVat } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import type { MetaEventPayload } from "@/types/marketing";
 
@@ -145,6 +145,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Extract VAT info from PaymentIntent metadata (set by payment-intent route)
+    let vatInfo: OrderVat | undefined;
+    if (metadata.vat_amount && Number(metadata.vat_amount) > 0) {
+      vatInfo = {
+        amount: Number(metadata.vat_amount),
+        rate: Number(metadata.vat_rate || 0),
+        inclusive: metadata.vat_inclusive === "true",
+      };
+    }
+
     // Create order via shared function
     const result = await createOrder({
       supabase,
@@ -170,6 +180,7 @@ export async function POST(request: NextRequest) {
         ref: payment_intent_id,
         totalCharged: paymentIntent.amount / 100,
       },
+      vat: vatInfo,
     });
 
     // Fetch the full order with relations to return

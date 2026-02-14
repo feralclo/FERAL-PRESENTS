@@ -687,6 +687,12 @@ html.checkout-active .noise {
   color: #4ecb71;
 }
 
+/* VAT row — subtle, informational (smaller text, muted) */
+.order-summary__row--vat {
+  font-size: 12px;
+  color: #888;
+}
+
 /* Divider */
 .order-summary__divider {
   height: 1px;

@@ -88,8 +88,8 @@ function getPageTitle(pathname: string): string {
   return ALL_ITEMS.find((item) => matchRoute(pathname, item.href))?.label || "Admin";
 }
 
-/* ── NOCTURNE wordmark ── */
-function NocturneWordmark({ size = "default" }: { size?: "default" | "sm" }) {
+/* ── NOCTURN wordmark ── */
+function NocturnWordmark({ size = "default" }: { size?: "default" | "sm" }) {
   return (
     <span
       className={cn(
@@ -103,7 +103,7 @@ function NocturneWordmark({ size = "default" }: { size?: "default" | "sm" }) {
         backgroundClip: "text",
       }}
     >
-      Nocturne
+      Nocturn
     </span>
   );
 }
@@ -177,7 +177,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Platform brand */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-5">
           <Link href="/admin/" className="flex items-center gap-2">
-            <NocturneWordmark />
+            <NocturnWordmark />
           </Link>
           <Button
             variant="ghost"
@@ -318,7 +318,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Button>
             {/* Mobile brand */}
             <Link href="/admin/" className="lg:hidden">
-              <NocturneWordmark size="sm" />
+              <NocturnWordmark size="sm" />
             </Link>
             {/* Desktop breadcrumb */}
             <Separator orientation="vertical" className="hidden h-5 lg:block" />

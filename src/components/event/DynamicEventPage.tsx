@@ -14,6 +14,9 @@ import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
+import { DEFAULT_VAT_SETTINGS } from "@/lib/vat";
+import type { VatSettings } from "@/types/settings";
+import { SETTINGS_KEYS } from "@/lib/constants";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -71,6 +74,22 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
 
   // Ref for adding merch from TeeModal into the ticket widget cart
   const addMerchRef = useRef<((ticketTypeId: string, size: string, qty: number) => void) | null>(null);
+
+  // Fetch VAT settings for price labels
+  const [vatLabel, setVatLabel] = useState<string | undefined>();
+  useEffect(() => {
+    fetch(`/api/settings?key=${SETTINGS_KEYS.VAT}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data) {
+          const vat: VatSettings = { ...DEFAULT_VAT_SETTINGS, ...json.data };
+          if (vat.vat_registered && vat.vat_rate > 0) {
+            setVatLabel(vat.prices_include_vat ? "incl. VAT" : "+ VAT");
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleTeeAdd = useCallback(
     (size: string, qty: number) => {
@@ -236,6 +255,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 ticketGroupMap={ticketGroupMap}
                 onViewMerch={handleViewMerch}
                 addMerchRef={addMerchRef}
+                vatLabel={vatLabel}
               />
             </div>
           </div>

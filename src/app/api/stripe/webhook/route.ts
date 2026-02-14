@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
-import { createOrder } from "@/lib/orders";
+import { createOrder, type OrderVat } from "@/lib/orders";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -142,6 +142,16 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
     return;
   }
 
+  // Extract VAT info from PaymentIntent metadata
+  let vatInfo: OrderVat | undefined;
+  if (metadata.vat_amount && Number(metadata.vat_amount) > 0) {
+    vatInfo = {
+      amount: Number(metadata.vat_amount),
+      rate: Number(metadata.vat_rate || 0),
+      inclusive: metadata.vat_inclusive === "true",
+    };
+  }
+
   try {
     const result = await createOrder({
       supabase,
@@ -167,6 +177,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
         ref: paymentIntent.id,
         totalCharged: paymentIntent.amount / 100,
       },
+      vat: vatInfo,
     });
 
     console.log(

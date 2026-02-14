@@ -110,6 +110,27 @@ export interface ThemeStore {
   themes: StoreTheme[];
 }
 
+/**
+ * VAT / Tax settings — stored in site_settings under key `{org_id}_vat`.
+ * Controls whether the org charges VAT on tickets and merch.
+ */
+export interface VatSettings {
+  /** Whether the org is VAT-registered */
+  vat_registered: boolean;
+  /** VAT registration number (e.g. "GB123456789") */
+  vat_number: string;
+  /** VAT rate as a percentage (e.g. 20 = 20%) */
+  vat_rate: number;
+  /**
+   * When true, listed prices already include VAT (standard UK B2C).
+   * Checkout shows "Includes £X.XX VAT" — total unchanged.
+   *
+   * When false, VAT is added on top of the listed price.
+   * Checkout shows "VAT (20%): £X.XX" — total increases.
+   */
+  prices_include_vat: boolean;
+}
+
 /** Row shape from site_settings table */
 export interface SiteSettingsRow {
   key: string;

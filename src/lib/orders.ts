@@ -47,6 +47,18 @@ export interface OrderEvent {
   doors_time?: string;
 }
 
+/** VAT details attached to the order. */
+export interface OrderVat {
+  /** VAT amount in major currency units */
+  amount: number;
+  /** VAT rate (e.g. 20) */
+  rate: number;
+  /** Whether prices already included VAT */
+  inclusive: boolean;
+  /** VAT registration number */
+  vat_number?: string;
+}
+
 /** Full set of parameters for createOrder(). */
 export interface CreateOrderParams {
   /** Supabase server client (already initialized by the caller). */
@@ -57,6 +69,8 @@ export interface CreateOrderParams {
   items: OrderLineItem[];
   customer: OrderCustomer;
   payment: OrderPayment;
+  /** VAT details (when org is VAT-registered). */
+  vat?: OrderVat;
   /** When true, fires the order confirmation email (fire-and-forget). Default true. */
   sendEmail?: boolean;
 }
@@ -132,6 +146,7 @@ export async function createOrder(
     items,
     customer,
     payment,
+    vat,
     sendEmail = true,
   } = params;
 
@@ -224,6 +239,15 @@ export async function createOrder(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const orderNumber = await generateOrderNumber(supabase, orgId);
 
+    // Build metadata with VAT details if applicable
+    const orderMetadata: Record<string, unknown> = {};
+    if (vat && vat.amount > 0) {
+      orderMetadata.vat_amount = vat.amount;
+      orderMetadata.vat_rate = vat.rate;
+      orderMetadata.vat_inclusive = vat.inclusive;
+      if (vat.vat_number) orderMetadata.vat_number = vat.vat_number;
+    }
+
     const { data, error } = await supabase
       .from(TABLES.ORDERS)
       .insert({
@@ -238,6 +262,7 @@ export async function createOrder(
         currency: (event.currency || "GBP").toUpperCase(),
         payment_method: payment.method,
         payment_ref: payment.ref,
+        ...(Object.keys(orderMetadata).length > 0 ? { metadata: orderMetadata } : {}),
       })
       .select()
       .single();
@@ -373,6 +398,7 @@ export async function createOrder(
             : undefined,
         };
       }),
+      vat: vat && vat.amount > 0 ? vat : undefined,
     }).catch(() => {
       // Silently catch — email failure must never affect the order response
     });

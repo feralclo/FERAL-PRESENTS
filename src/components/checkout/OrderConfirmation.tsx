@@ -93,6 +93,16 @@ export function OrderConfirmation({
       .catch(() => {});
   }, [order.id, walletPassEnabled?.google]);
 
+  // Extract VAT metadata from order (stored by createOrder)
+  const meta = (order.metadata || {}) as Record<string, unknown>;
+  const vatMeta = meta.vat_amount && Number(meta.vat_amount) > 0
+    ? {
+        amount: Number(meta.vat_amount),
+        rate: Number(meta.vat_rate || 0),
+        inclusive: meta.vat_inclusive === true,
+      }
+    : null;
+
   const handleAddToAppleWallet = async () => {
     setWalletDownloading("apple");
     try {
@@ -187,6 +197,16 @@ export function OrderConfirmation({
                 {symbol}{Number(order.total).toFixed(2)}
               </span>
             </div>
+            {vatMeta && (
+              <div className="order-confirmation__info-row">
+                <span className="order-confirmation__info-label">
+                  {vatMeta.inclusive ? `Includes VAT (${vatMeta.rate}%)` : `VAT (${vatMeta.rate}%)`}
+                </span>
+                <span className="order-confirmation__info-value">
+                  {symbol}{vatMeta.amount.toFixed(2)}
+                </span>
+              </div>
+            )}
             <div className="order-confirmation__info-row">
               <span className="order-confirmation__info-label">
                 Payment Reference

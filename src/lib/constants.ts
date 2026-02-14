@@ -28,6 +28,7 @@ export const SETTINGS_KEYS = {
   EMAIL: "feral_email",
   WALLET_PASSES: "feral_wallet_passes",
   BRANDING: "feral_branding",
+  VAT: "feral_vat",
 } as const;
 
 /** Generate the branding settings key for a given org */
@@ -38,6 +39,11 @@ export function brandingKey(orgId: string): string {
 /** Generate the themes settings key for a given org */
 export function themesKey(orgId: string): string {
   return `${orgId}_themes`;
+}
+
+/** Generate the VAT settings key for a given org */
+export function vatKey(orgId: string): string {
+  return `${orgId}_vat`;
 }
 
 // Klaviyo

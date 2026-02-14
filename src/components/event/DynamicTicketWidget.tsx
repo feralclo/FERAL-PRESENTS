@@ -489,7 +489,7 @@ export function DynamicTicketWidget({
                         <span>
                           {item.qty}x {item.name}
                           {item.size && (
-                            <span style={{ color: "#ff0033", marginLeft: 6, fontWeight: 700 }}>
+                            <span className="cart-summary__size">
                               {item.size}
                             </span>
                           )}

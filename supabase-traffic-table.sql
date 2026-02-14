@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS traffic_events (
   theme TEXT,                -- 'default' or 'minimal' product theme
   product_name TEXT,         -- for add_to_cart events
   product_price NUMERIC,     -- for add_to_cart events
-  product_qty INTEGER        -- for add_to_cart events
+  product_qty INTEGER,       -- for add_to_cart events
+  org_id TEXT DEFAULT 'feral' -- multi-tenancy: every table must have org_id
 );
 
 -- Enable Row Level Security (RLS)
@@ -41,6 +42,10 @@ ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS theme TEXT;
 ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_name TEXT;
 ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_price NUMERIC;
 ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS product_qty INTEGER;
+ALTER TABLE traffic_events ADD COLUMN IF NOT EXISTS org_id TEXT DEFAULT 'feral';
+
+-- Index for org_id filtering (multi-tenancy)
+CREATE INDEX IF NOT EXISTS idx_traffic_events_org ON traffic_events(org_id);
 
 -- Partial index for cart product aggregation (only indexes add_to_cart rows)
 CREATE INDEX IF NOT EXISTS idx_traffic_events_product ON traffic_events(product_name) WHERE event_type = 'add_to_cart';

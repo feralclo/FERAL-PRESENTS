@@ -27,6 +27,7 @@ export function Header() {
           src="/images/FERAL LOGO.svg"
           alt="FERAL PRESENTS"
           className="nav__logo-img"
+          data-branding="logo"
         />
       </Link>
 

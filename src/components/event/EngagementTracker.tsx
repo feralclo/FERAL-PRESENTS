@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { useTraffic } from "@/hooks/useTraffic";
+import { isEditorPreview } from "./ThemeEditorBridge";
 
 /**
  * Invisible component that tracks scroll depth and time on page.
  * Matches existing feral-traffic.js engagement tracking.
+ * Disabled in editor preview mode to avoid polluting analytics.
  */
 export function EngagementTracker() {
   const { trackEngagement } = useTraffic();
@@ -13,6 +15,9 @@ export function EngagementTracker() {
   const timeFired = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
+    // Don't track in editor preview mode
+    if (isEditorPreview()) return;
+
     // Scroll depth tracking
     function handleScroll() {
       const scrollTop = window.scrollY;

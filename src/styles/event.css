@@ -3342,3 +3342,14 @@ body:has(.bottom-bar) .footer {
     white-space: nowrap;
   }
 }
+
+/* ============================================
+   Theme Editor Preview Mode
+   Hide distracting UI when page is loaded as
+   an iframe preview inside the admin editor.
+   ============================================ */
+[data-editor-preview] .cookie-banner,
+[data-editor-preview] .dp-overlay,
+[data-editor-preview] .social-proof {
+  display: none !important;
+}

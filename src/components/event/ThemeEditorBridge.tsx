@@ -3,16 +3,32 @@
 import { useEffect } from "react";
 
 /**
+ * Check if this page is loaded as a theme editor preview.
+ * Used by event components to suppress popups, analytics, etc.
+ */
+export function isEditorPreview(): boolean {
+  if (typeof window === "undefined") return false;
+  return document.documentElement.hasAttribute("data-editor-preview");
+}
+
+/**
  * ThemeEditorBridge — receives postMessage from the admin theme editor
  * and applies CSS variable / logo / font overrides to the live preview.
  *
  * Rendered in the event layout. No-op in production (only activates when
  * the page is loaded inside the editor iframe with ?editor=1).
+ *
+ * Sets `data-editor-preview` on <html> so CSS can hide distracting UI
+ * (cookie banner, discount popup, social proof toast) and components
+ * can skip analytics tracking.
  */
 export function ThemeEditorBridge() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("editor") !== "1") return;
+
+    // Mark the document so CSS + other components can detect editor mode
+    document.documentElement.setAttribute("data-editor-preview", "");
 
     // Disable link clicks and navigation inside the preview
     function blockNav(e: MouseEvent) {
@@ -58,7 +74,7 @@ export function ThemeEditorBridge() {
       // Logo update
       if (e.data.type === "theme-logo") {
         const imgs = document.querySelectorAll<HTMLImageElement>(
-          '[data-branding="logo"], .header__logo img'
+          '[data-branding="logo"]'
         );
         imgs.forEach((img) => {
           img.src = e.data.logoUrl || "";
@@ -76,6 +92,7 @@ export function ThemeEditorBridge() {
     window.parent.postMessage({ type: "editor-bridge-ready" }, "*");
 
     return () => {
+      document.documentElement.removeAttribute("data-editor-preview");
       document.removeEventListener("click", blockNav, true);
       window.removeEventListener("message", handleMessage);
     };

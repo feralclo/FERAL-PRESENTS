@@ -9,6 +9,7 @@ import { BottomBar } from "./BottomBar";
 import { DiscountPopup } from "./DiscountPopup";
 import { EngagementTracker } from "./EngagementTracker";
 import { SocialProofToast } from "./SocialProofToast";
+import { isEditorPreview } from "./ThemeEditorBridge";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useSettings } from "@/hooks/useSettings";
@@ -25,8 +26,9 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const { settings } = useSettings();
   const branding = useBranding();
 
-  // Track ViewContent on mount
+  // Track ViewContent on mount (skip in editor preview)
   useEffect(() => {
+    if (isEditorPreview()) return;
     const ids = (event.ticket_types || [])
       .filter((tt) => tt.status === "active")
       .map((tt) => tt.id);
@@ -279,7 +281,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
       <footer className="footer">
         <div className="container">
           <div className="footer__inner">
-            <span className="footer__copy">
+            <span className="footer__copy" data-branding="copyright">
               &copy; {new Date().getFullYear()} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
             </span>
             <span className="footer__status">

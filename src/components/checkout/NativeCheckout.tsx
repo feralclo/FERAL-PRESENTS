@@ -877,7 +877,7 @@ function SinglePageCheckoutForm({
                   applePay: "buy",
                   googlePay: "buy",
                 },
-                buttonHeight: 54,
+                buttonHeight: 44,
                 layout: {
                   maxColumns: 1,
                   maxRows: 1,

@@ -1176,7 +1176,7 @@ html.checkout-active .noise {
 }
 
 .express-checkout {
-  min-height: 48px;
+  min-height: 44px;
   width: 100%;
 }
 
@@ -1681,11 +1681,29 @@ html.checkout-active .noise {
 /* Override browser autofill styles (Chrome yellow, Safari blue) to match dark theme */
 .native-checkout__input:-webkit-autofill,
 .native-checkout__input:-webkit-autofill:hover,
-.native-checkout__input:-webkit-autofill:focus {
+.native-checkout__input:-webkit-autofill:focus,
+.native-checkout select:-webkit-autofill,
+.native-checkout select:-webkit-autofill:hover,
+.native-checkout select:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset;
   -webkit-text-fill-color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: background-color 5000s ease-in-out 0s;
+  caret-color: #fff;
+}
+
+/* Catch-all: any autofilled element inside the checkout form */
+.native-checkout__form input:-webkit-autofill,
+.native-checkout__form input:-webkit-autofill:hover,
+.native-checkout__form input:-webkit-autofill:focus,
+.native-checkout__form select:-webkit-autofill,
+.native-checkout__form select:-webkit-autofill:hover,
+.native-checkout__form select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset;
+  -webkit-text-fill-color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #fff;
 }
 
 /* Email delivery hint — reassurance below email field */

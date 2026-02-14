@@ -163,7 +163,7 @@ function ExpressCheckoutInner({
             applePay: "buy",
             googlePay: "buy",
           },
-          buttonHeight: 48,
+          buttonHeight: 44,
           layout: {
             maxColumns: 1,
             maxRows: 1,

@@ -311,14 +311,11 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Update sold count
-      await supabase
-        .from(TABLES.TICKET_TYPES)
-        .update({
-          sold: tt.sold + item.qty,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", item.ticket_type_id);
+      // Atomically increment sold count (prevents overselling under concurrency)
+      await supabase.rpc("increment_sold", {
+        p_ticket_type_id: item.ticket_type_id,
+        p_qty: item.qty,
+      });
     }
 
     if (allTickets.length > 0) {

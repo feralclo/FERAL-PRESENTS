@@ -40,15 +40,25 @@ export function OrderConfirmation({
 
     const ticketTypeIds = order.items?.map((i) => i.ticket_type_id) || [];
     const numItems = order.tickets?.length || order.items?.reduce((sum, i) => sum + i.qty, 0) || 0;
+    const customer = order.customer;
 
-    trackPurchase({
-      content_ids: ticketTypeIds,
-      content_type: "product",
-      value: Number(order.total),
-      currency: order.currency || "GBP",
-      num_items: numItems,
-      order_id: order.order_number,
-    });
+    trackPurchase(
+      {
+        content_ids: ticketTypeIds,
+        content_type: "product",
+        value: Number(order.total),
+        currency: order.currency || "GBP",
+        num_items: numItems,
+        order_id: order.order_number,
+      },
+      // Send customer PII for CAPI advanced matching (hashed server-side)
+      customer ? {
+        em: customer.email || undefined,
+        fn: customer.first_name || undefined,
+        ln: customer.last_name || undefined,
+        external_id: order.customer_id || undefined,
+      } : undefined
+    );
   }, [order, trackPurchase]);
 
   // Generate QR codes client-side for instant display.

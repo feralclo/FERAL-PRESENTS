@@ -35,7 +35,7 @@ const MONTHS = [
 ];
 
 export function AuraEventPage({ event }: AuraEventPageProps) {
-  const { trackViewContent } = useMetaTracking();
+  const { trackPageView, trackViewContent } = useMetaTracking();
   const { settings } = useSettings();
   const branding = useBranding();
 
@@ -72,9 +72,10 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   const ticketGroups = (settings?.ticket_groups as string[]) || undefined;
   const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null>) || undefined;
 
-  // Meta tracking on mount
+  // Meta tracking on mount — PageView + ViewContent
   useEffect(() => {
     if (isEditorPreview()) return;
+    trackPageView();
     if (activeTypes.length === 0) return;
     trackViewContent({
       content_name: event.name,
@@ -83,7 +84,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
       value: minPrice,
       currency: event.currency || "GBP",
     });
-  }, [event.name, activeTypes, minPrice, event.currency, trackViewContent]);
+  }, [event.name, activeTypes, minPrice, event.currency, trackPageView, trackViewContent]);
 
   // Callbacks
   const handleCartChange = useCallback(

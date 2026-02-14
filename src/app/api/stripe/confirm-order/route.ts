@@ -3,6 +3,8 @@ import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { createOrder, OrderCreationError } from "@/lib/orders";
+import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
+import type { MetaEventPayload } from "@/types/marketing";
 
 /**
  * POST /api/stripe/confirm-order
@@ -182,6 +184,24 @@ export async function POST(request: NextRequest) {
       .eq("id", result.order.id)
       .single();
 
+    // ── Server-side CAPI Purchase event ──
+    // Fire in the background — don't block the response.
+    // Uses deterministic event_id (`purchase-{order_number}`) so Meta
+    // deduplicates with the client-side pixel Purchase event.
+    fireServerPurchaseEvent(request, {
+      orderNumber: result.order.order_number,
+      total: paymentIntent.amount / 100,
+      currency: event.currency || "GBP",
+      ticketTypeIds: items.map((i) => i.ticket_type_id),
+      numItems: items.reduce((sum, i) => sum + i.qty, 0),
+      customerEmail,
+      customerFirstName,
+      customerLastName,
+      customerPhone,
+      customerId: result.order.customer_id,
+      eventSourceUrl: request.headers.get("referer") || `${process.env.NEXT_PUBLIC_SITE_URL || ""}/event/${event.slug}/checkout/`,
+    }).catch((err) => console.error("[Meta CAPI] Server Purchase error:", err));
+
     return NextResponse.json({ data: fullOrder });
   } catch (err) {
     if (err instanceof OrderCreationError) {
@@ -194,5 +214,78 @@ export async function POST(request: NextRequest) {
     const message =
       err instanceof Error ? err.message : "Failed to confirm order";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * Fire a server-side CAPI Purchase event with full customer PII.
+ * Uses deterministic event_id for deduplication with client pixel.
+ */
+async function fireServerPurchaseEvent(
+  request: NextRequest,
+  data: {
+    orderNumber: string;
+    total: number;
+    currency: string;
+    ticketTypeIds: string[];
+    numItems: number;
+    customerEmail?: string;
+    customerFirstName?: string;
+    customerLastName?: string;
+    customerPhone?: string;
+    customerId?: string;
+    eventSourceUrl: string;
+  }
+) {
+  const settings = await fetchMarketingSettings();
+  if (!settings?.meta_tracking_enabled || !settings.meta_pixel_id || !settings.meta_capi_token) {
+    return;
+  }
+
+  // Server-side signals
+  const forwarded = request.headers.get("x-forwarded-for");
+  const clientIp = forwarded ? forwarded.split(",")[0].trim() : request.headers.get("x-real-ip") || undefined;
+  const clientUa = request.headers.get("user-agent") || undefined;
+
+  // Deterministic event_id — matches client-side pixel Purchase event
+  const eventId = `purchase-${data.orderNumber}`;
+
+  const event: MetaEventPayload = {
+    event_name: "Purchase",
+    event_id: eventId,
+    event_time: Math.floor(Date.now() / 1000),
+    event_source_url: data.eventSourceUrl,
+    action_source: "website",
+    user_data: {
+      client_ip_address: clientIp,
+      client_user_agent: clientUa,
+      ...(data.customerEmail && { em: hashSHA256(data.customerEmail) }),
+      ...(data.customerFirstName && { fn: hashSHA256(data.customerFirstName) }),
+      ...(data.customerLastName && { ln: hashSHA256(data.customerLastName) }),
+      ...(data.customerPhone && { ph: hashSHA256(data.customerPhone) }),
+      ...(data.customerId && { external_id: hashSHA256(data.customerId) }),
+    },
+    custom_data: {
+      content_ids: data.ticketTypeIds,
+      content_type: "product",
+      content_category: "Events",
+      value: data.total,
+      currency: data.currency,
+      num_items: data.numItems,
+      order_id: data.orderNumber,
+    },
+  };
+
+  const result = await sendMetaEvents(
+    settings.meta_pixel_id,
+    settings.meta_capi_token,
+    [event],
+    settings.meta_test_event_code || undefined
+  );
+
+  if (result?.error) {
+    console.error("[Meta CAPI] Server Purchase failed:", result.error);
+  } else {
+    console.log("[Meta CAPI] Server Purchase sent:", eventId, "events_received:", result?.events_received);
   }
 }

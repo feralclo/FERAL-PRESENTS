@@ -18,6 +18,7 @@ export interface MetaEventPayload {
     client_user_agent?: string;
     fbp?: string;
     fbc?: string;
+    external_id?: string;
     em?: string;   // hashed email
     ph?: string;   // hashed phone
     fn?: string;   // hashed first name
@@ -34,6 +35,7 @@ export interface MetaCAPIRequest {
   user_data?: {
     fbp?: string;
     fbc?: string;
+    external_id?: string;
     em?: string;
     ph?: string;
     fn?: string;

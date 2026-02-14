@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
         client_user_agent: clientUa,
         fbp: user_data?.fbp || undefined,
         fbc: user_data?.fbc || undefined,
+        external_id: user_data?.external_id ? hashSHA256(user_data.external_id) : undefined,
         // Hash PII if provided
         em: user_data?.em ? hashSHA256(user_data.em) : undefined,
         ph: user_data?.ph ? hashSHA256(user_data.ph) : undefined,

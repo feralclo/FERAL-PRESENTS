@@ -70,6 +70,13 @@ describe("useMetaTracking", () => {
       rerender();
       expect(result.current.trackPurchase).toBe(fn);
     });
+
+    it("returns stable trackAddPaymentInfo across re-renders", () => {
+      const { result, rerender } = renderHook(() => useMetaTracking());
+      const fn = result.current.trackAddPaymentInfo;
+      rerender();
+      expect(result.current.trackAddPaymentInfo).toBe(fn);
+    });
   });
 
   // ─── Consent gating ────────────────────────────────────────────
@@ -116,6 +123,7 @@ describe("useMetaTracking", () => {
       expect(typeof result.current.trackViewContent).toBe("function");
       expect(typeof result.current.trackAddToCart).toBe("function");
       expect(typeof result.current.trackInitiateCheckout).toBe("function");
+      expect(typeof result.current.trackAddPaymentInfo).toBe("function");
       expect(typeof result.current.trackPurchase).toBe("function");
     });
   });

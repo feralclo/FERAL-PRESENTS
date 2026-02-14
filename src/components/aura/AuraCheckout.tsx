@@ -29,6 +29,7 @@ import { AuraCheckoutHeader } from "./AuraCheckoutHeader";
 import { AuraOrderConfirmation } from "./AuraOrderConfirmation";
 import { AuraFooter } from "./AuraFooter";
 import { getStripeClient } from "@/lib/stripe/client";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { Lock, Mail, CreditCard, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
@@ -99,9 +100,15 @@ export function AuraCheckout({ slug, event }: AuraCheckoutProps) {
   const searchParams = useSearchParams();
   const cartParam = searchParams.get("cart");
   const piParam = searchParams.get("pi");
+  const { trackPageView } = useMetaTracking();
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
+
+  // Track PageView on checkout page load
+  useEffect(() => {
+    trackPageView();
+  }, [trackPageView]);
 
   useEffect(() => {
     fetch("/api/settings?key=feral_wallet_passes")
@@ -393,6 +400,7 @@ function AuraCheckoutForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const { trackAddPaymentInfo } = useMetaTracking();
 
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -483,6 +491,18 @@ function AuraCheckoutForm({
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Please enter a valid email address."); return; }
       if (!firstName.trim() || !lastName.trim()) { setError("First name and last name are required."); return; }
       if (cartLines.length === 0) { setError("Your cart is empty."); return; }
+
+      // Track AddPaymentInfo — user submitted the checkout form with payment details
+      trackAddPaymentInfo(
+        {
+          content_ids: cartLines.map((l) => l.ticket_type_id),
+          content_type: "product",
+          value: subtotal,
+          currency: event.currency || "GBP",
+          num_items: totalQty,
+        },
+        { em: email.trim().toLowerCase(), fn: firstName.trim(), ln: lastName.trim() }
+      );
 
       setProcessing(true);
 

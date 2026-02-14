@@ -4,6 +4,8 @@ import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { createOrder } from "@/lib/orders";
+import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
+import type { MetaEventPayload } from "@/types/marketing";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -172,7 +174,86 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
     console.log(
       `Order ${result.order.order_number} created for PI ${paymentIntent.id} (${result.tickets.length} tickets)`
     );
+
+    // Fire server-side CAPI Purchase event as backup
+    // Uses deterministic event_id for dedup with client pixel + confirm-order CAPI
+    fireWebhookPurchaseEvent({
+      orderNumber: result.order.order_number,
+      total: paymentIntent.amount / 100,
+      currency: event.currency || "GBP",
+      ticketTypeIds: items.map((i) => i.ticket_type_id),
+      numItems: items.reduce((sum, i) => sum + i.qty, 0),
+      customerEmail,
+      customerFirstName,
+      customerLastName,
+      customerPhone,
+      customerId: result.order.customer_id,
+      eventSlug: event.slug,
+    }).catch((err) => console.error("[Meta CAPI] Webhook Purchase error:", err));
   } catch (err) {
     console.error("Failed to create order for PI:", paymentIntent.id, err);
+  }
+}
+
+/**
+ * Fire server-side CAPI Purchase from webhook (backup path).
+ * Uses same deterministic event_id as confirm-order and client pixel.
+ */
+async function fireWebhookPurchaseEvent(data: {
+  orderNumber: string;
+  total: number;
+  currency: string;
+  ticketTypeIds: string[];
+  numItems: number;
+  customerEmail?: string;
+  customerFirstName?: string;
+  customerLastName?: string;
+  customerPhone?: string;
+  customerId?: string;
+  eventSlug: string;
+}) {
+  const settings = await fetchMarketingSettings();
+  if (!settings?.meta_tracking_enabled || !settings.meta_pixel_id || !settings.meta_capi_token) {
+    return;
+  }
+
+  const eventId = `purchase-${data.orderNumber}`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+
+  const event: MetaEventPayload = {
+    event_name: "Purchase",
+    event_id: eventId,
+    event_time: Math.floor(Date.now() / 1000),
+    event_source_url: `${siteUrl}/event/${data.eventSlug}/checkout/`,
+    action_source: "website",
+    user_data: {
+      ...(data.customerEmail && { em: hashSHA256(data.customerEmail) }),
+      ...(data.customerFirstName && { fn: hashSHA256(data.customerFirstName) }),
+      ...(data.customerLastName && { ln: hashSHA256(data.customerLastName) }),
+      ...(data.customerPhone && { ph: hashSHA256(data.customerPhone) }),
+      ...(data.customerId && { external_id: hashSHA256(data.customerId) }),
+    },
+    custom_data: {
+      content_ids: data.ticketTypeIds,
+      content_type: "product",
+      content_category: "Events",
+      value: data.total,
+      currency: data.currency,
+      num_items: data.numItems,
+      order_id: data.orderNumber,
+    },
+  };
+
+  const result = await sendMetaEvents(
+    settings.meta_pixel_id,
+    settings.meta_capi_token,
+    [event],
+    settings.meta_test_event_code || undefined
+  );
+
+  if (result?.error) {
+    console.error("[Meta CAPI] Webhook Purchase failed:", result.error);
+  } else {
+    console.log("[Meta CAPI] Webhook Purchase sent:", eventId);
   }
 }

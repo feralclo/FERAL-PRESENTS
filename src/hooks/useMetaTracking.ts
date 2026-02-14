@@ -146,20 +146,37 @@ function firePixelEvent(
   window.fbq("track", eventName, params, { eventID: eventId });
 }
 
+/** Optional PII to send along with CAPI events for better matching */
+interface CAPIUserData {
+  fbp?: string;
+  fbc?: string;
+  external_id?: string;
+  em?: string;  // raw email — will be hashed server-side
+  fn?: string;  // raw first name — will be hashed server-side
+  ln?: string;  // raw last name — will be hashed server-side
+  ph?: string;  // raw phone — will be hashed server-side
+}
+
 /** Send a CAPI event via our server route (fire-and-forget) */
 function sendCAPI(
   eventName: string,
   eventId: string,
-  customData?: Record<string, unknown>
+  customData?: Record<string, unknown>,
+  userData?: CAPIUserData
 ) {
+  const browserUserData: CAPIUserData = {
+    fbp: getCookie("_fbp"),
+    fbc: getCookie("_fbc"),
+  };
+
+  // Merge browser cookies with any explicit PII
+  const mergedUserData = { ...browserUserData, ...userData };
+
   const payload: MetaCAPIRequest = {
     event_name: eventName,
     event_id: eventId,
     event_source_url: window.location.href,
-    user_data: {
-      fbp: getCookie("_fbp"),
-      fbc: getCookie("_fbc"),
-    },
+    user_data: mergedUserData,
     custom_data: customData,
   };
 
@@ -176,6 +193,9 @@ function sendCAPI(
  * Loads the pixel once, then provides functions that fire both
  * client-side pixel events and server-side CAPI events with
  * matching event_id for deduplication.
+ *
+ * Full funnel coverage:
+ *   PageView → ViewContent → AddToCart → InitiateCheckout → AddPaymentInfo → Purchase
  *
  * IMPORTANT: Returns a referentially-stable object so it can safely
  * be used in useEffect / useCallback dependency arrays without
@@ -227,14 +247,16 @@ export function useMetaTracking() {
       content_name?: string;
       content_ids?: string[];
       content_type?: string;
+      content_category?: string;
       value?: number;
       currency?: string;
     }) => {
       getSettings().then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         const eventId = crypto.randomUUID();
-        firePixelEvent("ViewContent", params, eventId);
-        sendCAPI("ViewContent", eventId, params);
+        const enriched = { content_category: "Events", ...params };
+        firePixelEvent("ViewContent", enriched, eventId);
+        sendCAPI("ViewContent", eventId, enriched);
         console.debug("[Meta] ViewContent fired:", params.content_name, eventId);
       });
     },
@@ -246,6 +268,7 @@ export function useMetaTracking() {
       content_name?: string;
       content_ids?: string[];
       content_type?: string;
+      content_category?: string;
       value?: number;
       currency?: string;
       num_items?: number;
@@ -253,8 +276,9 @@ export function useMetaTracking() {
       getSettings().then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         const eventId = crypto.randomUUID();
-        firePixelEvent("AddToCart", params, eventId);
-        sendCAPI("AddToCart", eventId, params);
+        const enriched = { content_category: "Events", ...params };
+        firePixelEvent("AddToCart", enriched, eventId);
+        sendCAPI("AddToCart", eventId, enriched);
         console.debug("[Meta] AddToCart fired:", params.value, params.currency, eventId);
       });
     },
@@ -265,6 +289,7 @@ export function useMetaTracking() {
     (params: {
       content_ids?: string[];
       content_type?: string;
+      content_category?: string;
       value?: number;
       currency?: string;
       num_items?: number;
@@ -272,9 +297,31 @@ export function useMetaTracking() {
       getSettings().then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         const eventId = crypto.randomUUID();
-        firePixelEvent("InitiateCheckout", params, eventId);
-        sendCAPI("InitiateCheckout", eventId, params);
+        const enriched = { content_category: "Events", ...params };
+        firePixelEvent("InitiateCheckout", enriched, eventId);
+        sendCAPI("InitiateCheckout", eventId, enriched);
         console.debug("[Meta] InitiateCheckout fired:", eventId);
+      });
+    },
+    []
+  );
+
+  const trackAddPaymentInfo = useCallback(
+    (params: {
+      content_ids?: string[];
+      content_type?: string;
+      content_category?: string;
+      value?: number;
+      currency?: string;
+      num_items?: number;
+    }, userData?: { em?: string; fn?: string; ln?: string }) => {
+      getSettings().then((s) => {
+        if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
+        const eventId = crypto.randomUUID();
+        const enriched = { content_category: "Events", ...params };
+        firePixelEvent("AddPaymentInfo", enriched, eventId);
+        sendCAPI("AddPaymentInfo", eventId, enriched, userData);
+        console.debug("[Meta] AddPaymentInfo fired:", eventId);
       });
     },
     []
@@ -284,16 +331,22 @@ export function useMetaTracking() {
     (params: {
       content_ids?: string[];
       content_type?: string;
+      content_category?: string;
       value?: number;
       currency?: string;
       num_items?: number;
       order_id?: string;
-    }) => {
+    }, userData?: { em?: string; fn?: string; ln?: string; ph?: string; external_id?: string }) => {
       getSettings().then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
-        const eventId = crypto.randomUUID();
-        firePixelEvent("Purchase", params, eventId);
-        sendCAPI("Purchase", eventId, params);
+        // Use deterministic event_id based on order_id so server-side CAPI
+        // and client-side pixel fire the same ID for deduplication.
+        const eventId = params.order_id
+          ? `purchase-${params.order_id}`
+          : crypto.randomUUID();
+        const enriched = { content_category: "Events", ...params };
+        firePixelEvent("Purchase", enriched, eventId);
+        sendCAPI("Purchase", eventId, enriched, userData);
         console.debug("[Meta] Purchase fired:", params.order_id, eventId);
       });
     },
@@ -308,8 +361,9 @@ export function useMetaTracking() {
       trackViewContent,
       trackAddToCart,
       trackInitiateCheckout,
+      trackAddPaymentInfo,
       trackPurchase,
     }),
-    [trackPageView, trackViewContent, trackAddToCart, trackInitiateCheckout, trackPurchase]
+    [trackPageView, trackViewContent, trackAddToCart, trackInitiateCheckout, trackAddPaymentInfo, trackPurchase]
   );
 }

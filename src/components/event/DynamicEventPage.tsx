@@ -22,13 +22,14 @@ interface DynamicEventPageProps {
 
 export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const headerHidden = useHeaderScroll();
-  const { trackViewContent } = useMetaTracking();
+  const { trackPageView, trackViewContent } = useMetaTracking();
   const { settings } = useSettings();
   const branding = useBranding();
 
-  // Track ViewContent on mount (skip in editor preview)
+  // Track PageView + ViewContent on mount (skip in editor preview)
   useEffect(() => {
     if (isEditorPreview()) return;
+    trackPageView();
     const ids = (event.ticket_types || [])
       .filter((tt) => tt.status === "active")
       .map((tt) => tt.id);
@@ -42,7 +43,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
       value: minPrice,
       currency: event.currency || "GBP",
     });
-  }, [event, trackViewContent]);
+  }, [event, trackPageView, trackViewContent]);
 
   // Track cart state from ticket widget for bottom bar
   const [cartTotal, setCartTotal] = useState(0);

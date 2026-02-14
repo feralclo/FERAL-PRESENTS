@@ -143,11 +143,14 @@ export default async function EventLayout({
   if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
 
   const isAurora = activeTemplate === "aurora";
+  const isAura = activeTemplate === "aura";
+
+  const dataThemeAttr = isAurora ? "aurora" : isAura ? "aura" : undefined;
 
   return (
     <div
       data-theme-root
-      {...(isAurora ? { "data-theme": "aurora" } : {})}
+      {...(dataThemeAttr ? { "data-theme": dataThemeAttr } : {})}
       className={themeClasses || undefined}
       style={cssVars as React.CSSProperties}
     >

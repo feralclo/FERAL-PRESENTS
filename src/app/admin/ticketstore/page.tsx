@@ -58,6 +58,14 @@ const TEMPLATES = [
     gradient: "from-[#070b14] via-[#111b2e] to-[#070b14]",
     accent: "#6366f1",
   },
+  {
+    id: "aura" as const,
+    name: "Aura",
+    description: "Warm editorial theme with amber tones, soft glow, and modern typography.",
+    tags: ["Warm", "Editorial", "Premium"],
+    gradient: "from-[#0c0a09] via-[#1c1917] to-[#0c0a09]",
+    accent: "#f59e0b",
+  },
 ];
 
 function getTemplateGradient(template: string): string {

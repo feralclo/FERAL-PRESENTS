@@ -3,6 +3,7 @@ import { LiverpoolEventPage } from "@/components/event/LiverpoolEventPage";
 import { KompassEventPage } from "@/components/event/KompassEventPage";
 import { DynamicEventPage } from "@/components/event/DynamicEventPage";
 import { AuroraEventPage } from "@/components/aurora/AuroraEventPage";
+import { AuraEventPage } from "@/components/aura/AuraEventPage";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, ORG_ID } from "@/lib/constants";
@@ -143,6 +144,10 @@ export default async function EventPage({
     // Aurora theme: render parallel Aurora component tree
     if (activeTemplate === "aurora") {
       return <AuroraEventPage event={event} />;
+    }
+    // Aura theme: render Aura component tree (shadcn/ui based)
+    if (activeTemplate === "aura") {
+      return <AuraEventPage event={event} />;
     }
     return <DynamicEventPage event={event} />;
   }

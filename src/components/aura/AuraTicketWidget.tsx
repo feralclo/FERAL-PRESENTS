@@ -1,0 +1,420 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { ShoppingCart, Ticket, ChevronRight, Eye, Users, X } from "lucide-react";
+import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
+import { AuraTicketCard } from "./AuraTicketCard";
+import type { TicketTypeRow } from "@/types/events";
+
+interface AuraTicketWidgetProps {
+  eventSlug: string;
+  eventId: string;
+  paymentMethod: string;
+  ticketTypes: TicketTypeRow[];
+  currency: string;
+  onCartChange?: (totalPrice: number, totalQty: number, items: { name: string; qty: number; size?: string }[]) => void;
+  onCheckoutReady?: (fn: () => void) => void;
+  ticketGroups?: string[];
+  ticketGroupMap?: Record<string, string | null>;
+  onViewMerch?: (ticketType: TicketTypeRow) => void;
+  addMerchRef?: React.MutableRefObject<((ticketTypeId: string, size: string, qty: number) => void) | null>;
+}
+
+const CURR_SYMBOL: Record<string, string> = { GBP: "£", EUR: "€", USD: "$" };
+
+export function AuraTicketWidget({
+  eventSlug,
+  eventId,
+  paymentMethod,
+  ticketTypes,
+  currency,
+  onCartChange,
+  onCheckoutReady,
+  ticketGroups,
+  ticketGroupMap,
+  onViewMerch,
+  addMerchRef,
+}: AuraTicketWidgetProps) {
+  const router = useRouter();
+  const { trackAddToCart, trackInitiateCheckout } = useMetaTracking();
+  const currSymbol = CURR_SYMBOL[currency] || "$";
+  const isStripe = paymentMethod === "stripe";
+
+  // ── State ──
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [merchSizes, setMerchSizes] = useState<Record<string, Record<string, number>>>({});
+  const [sizePopup, setSizePopup] = useState<{ ticketTypeId: string; selectedSize: string } | null>(null);
+  const [expressError, setExpressError] = useState("");
+
+  // ── Computed ──
+  const activeTypes = useMemo(
+    () => ticketTypes.filter((tt) => tt.status === "active").sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+    [ticketTypes]
+  );
+
+  const totalQty = useMemo(() => Object.values(quantities).reduce((s, q) => s + q, 0), [quantities]);
+  const totalPrice = useMemo(() => {
+    let sum = 0;
+    for (const tt of activeTypes) {
+      const q = quantities[tt.id] || 0;
+      sum += q * tt.price;
+    }
+    return sum;
+  }, [quantities, activeTypes]);
+
+  const totalSold = useMemo(() => activeTypes.reduce((s, tt) => s + (tt.sold || 0), 0), [activeTypes]);
+
+  const cartItems = useMemo(() => {
+    const items: { name: string; qty: number; size?: string }[] = [];
+    for (const tt of activeTypes) {
+      const q = quantities[tt.id] || 0;
+      if (q === 0) continue;
+      if (tt.includes_merch && merchSizes[tt.id]) {
+        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
+          if (sQty > 0) items.push({ name: tt.name, qty: sQty, size });
+        }
+      } else {
+        items.push({ name: tt.name, qty: q });
+      }
+    }
+    return items;
+  }, [quantities, merchSizes, activeTypes]);
+
+  // ── Notify parent ──
+  useEffect(() => {
+    onCartChange?.(totalPrice, totalQty, cartItems);
+  }, [totalPrice, totalQty, cartItems, onCartChange]);
+
+  // ── Checkout URL ──
+  const getCheckoutUrl = useCallback(() => {
+    const parts: string[] = [];
+    for (const tt of activeTypes) {
+      const q = quantities[tt.id] || 0;
+      if (q === 0) continue;
+      if (tt.includes_merch && merchSizes[tt.id]) {
+        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
+          if (sQty > 0) parts.push(`${tt.id}:${sQty}:${size}`);
+        }
+      } else {
+        parts.push(`${tt.id}:${q}`);
+      }
+    }
+    if (parts.length === 0) return null;
+    return `/event/${eventSlug}/checkout/?cart=${encodeURIComponent(parts.join(","))}`;
+  }, [activeTypes, quantities, merchSizes, eventSlug]);
+
+  const handleCheckout = useCallback(() => {
+    const url = getCheckoutUrl();
+    if (!url) return;
+    trackInitiateCheckout({
+      content_ids: activeTypes.filter((tt) => (quantities[tt.id] || 0) > 0).map((tt) => tt.id),
+      content_type: "product",
+      value: totalPrice,
+      currency,
+      num_items: totalQty,
+    });
+    router.push(url);
+  }, [getCheckoutUrl, trackInitiateCheckout, activeTypes, quantities, totalPrice, currency, totalQty, router]);
+
+  useEffect(() => {
+    if (totalQty > 0) onCheckoutReady?.(handleCheckout);
+    else onCheckoutReady?.(undefined as unknown as () => void);
+  }, [totalQty, handleCheckout, onCheckoutReady]);
+
+  // ── Cart operations ──
+  const addTicket = useCallback((tt: TicketTypeRow) => {
+    if (tt.includes_merch) {
+      const sizes = tt.merch_sizes?.length ? tt.merch_sizes : ["XS", "S", "M", "L", "XL", "XXL"];
+      setSizePopup({ ticketTypeId: tt.id, selectedSize: sizes.includes("M") ? "M" : sizes[0] });
+      return;
+    }
+    setQuantities((prev) => {
+      const max = tt.max_per_order || 10;
+      const cur = prev[tt.id] || 0;
+      if (cur >= max) return prev;
+      const next = { ...prev, [tt.id]: cur + 1 };
+      trackAddToCart({
+        content_name: tt.name,
+        content_ids: [tt.id],
+        content_type: "product",
+        value: tt.price,
+        currency,
+        num_items: 1,
+      });
+      return next;
+    });
+  }, [currency, trackAddToCart]);
+
+  const removeTicket = useCallback((tt: TicketTypeRow) => {
+    if (tt.includes_merch && merchSizes[tt.id]) {
+      const sizeEntries = Object.entries(merchSizes[tt.id]).filter(([, q]) => q > 0);
+      if (sizeEntries.length === 0) return;
+      const [lastSize] = sizeEntries[sizeEntries.length - 1];
+      setMerchSizes((prev) => {
+        const updated = { ...prev[tt.id], [lastSize]: (prev[tt.id][lastSize] || 1) - 1 };
+        if (updated[lastSize] <= 0) delete updated[lastSize];
+        const result = { ...prev, [tt.id]: updated };
+        const newTotal = Object.values(result[tt.id] || {}).reduce((s, q) => s + q, 0);
+        setQuantities((qPrev) => ({ ...qPrev, [tt.id]: newTotal }));
+        return result;
+      });
+      return;
+    }
+    setQuantities((prev) => {
+      const cur = prev[tt.id] || 0;
+      if (cur <= 0) return prev;
+      return { ...prev, [tt.id]: cur - 1 };
+    });
+  }, [merchSizes]);
+
+  const handleSizeConfirm = useCallback(() => {
+    if (!sizePopup) return;
+    const { ticketTypeId, selectedSize } = sizePopup;
+    const tt = activeTypes.find((t) => t.id === ticketTypeId);
+    if (!tt) return;
+
+    setMerchSizes((prev) => {
+      const existing = prev[ticketTypeId] || {};
+      return { ...prev, [ticketTypeId]: { ...existing, [selectedSize]: (existing[selectedSize] || 0) + 1 } };
+    });
+    setQuantities((prev) => ({ ...prev, [ticketTypeId]: (prev[ticketTypeId] || 0) + 1 }));
+    trackAddToCart({
+      content_name: tt.name,
+      content_ids: [tt.id],
+      content_type: "product",
+      value: tt.price,
+      currency,
+      num_items: 1,
+    });
+    setSizePopup(null);
+  }, [sizePopup, activeTypes, currency, trackAddToCart]);
+
+  // ── External merch add (from modal) ──
+  useEffect(() => {
+    if (!addMerchRef) return;
+    addMerchRef.current = (ticketTypeId: string, size: string, qty: number) => {
+      const tt = activeTypes.find((t) => t.id === ticketTypeId);
+      if (!tt) return;
+      setMerchSizes((prev) => {
+        const existing = prev[ticketTypeId] || {};
+        return { ...prev, [ticketTypeId]: { ...existing, [size]: (existing[size] || 0) + qty } };
+      });
+      setQuantities((prev) => ({ ...prev, [ticketTypeId]: (prev[ticketTypeId] || 0) + qty }));
+      trackAddToCart({
+        content_name: tt.name,
+        content_ids: [tt.id],
+        content_type: "product",
+        value: tt.price * qty,
+        currency,
+        num_items: qty,
+      });
+    };
+  }, [addMerchRef, activeTypes, currency, trackAddToCart]);
+
+  // ── Express checkout success ──
+  const handleExpressSuccess = useCallback(
+    (order: { payment_ref?: string }) => {
+      if (order.payment_ref) {
+        router.push(`/event/${eventSlug}/checkout/?pi=${order.payment_ref}`);
+      }
+    },
+    [router, eventSlug]
+  );
+
+  // ── Grouping ──
+  const groups = ticketGroups || [];
+  const groupMap = ticketGroupMap || {};
+  const defaultGroup = activeTypes.filter((tt) => !groupMap[tt.id]);
+  const namedGroups = groups.map((name) => ({
+    name,
+    tickets: activeTypes.filter((tt) => groupMap[tt.id] === name),
+  })).filter((g) => g.tickets.length > 0);
+
+  // Express checkout items
+  const expressItems = useMemo(() => {
+    const items: { ticket_type_id: string; qty: number; merch_size?: string }[] = [];
+    for (const tt of activeTypes) {
+      const q = quantities[tt.id] || 0;
+      if (q === 0) continue;
+      if (tt.includes_merch && merchSizes[tt.id]) {
+        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
+          if (sQty > 0) items.push({ ticket_type_id: tt.id, qty: sQty, merch_size: size });
+        }
+      } else {
+        items.push({ ticket_type_id: tt.id, qty: q });
+      }
+    }
+    return items;
+  }, [activeTypes, quantities, merchSizes]);
+
+  if (activeTypes.length === 0) {
+    return (
+      <Card className="border-border/40">
+        <CardContent className="py-12 text-center">
+          <Ticket size={32} className="mx-auto mb-3 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">Tickets not yet available</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div id="tickets" className="space-y-4 scroll-mt-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-xl font-bold tracking-tight">Get Tickets</h2>
+        {totalSold > 0 && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-aura-success aura-pulse" />
+              {Math.max(12, Math.floor(totalSold * 0.08))} viewing
+            </span>
+            <span>{totalSold} sold</span>
+          </div>
+        )}
+      </div>
+
+      {/* Default group */}
+      {defaultGroup.length > 0 && (
+        <div className="space-y-3">
+          {defaultGroup.map((tt) => (
+            <AuraTicketCard
+              key={tt.id}
+              ticket={tt}
+              qty={quantities[tt.id] || 0}
+              currSymbol={currSymbol}
+              onAdd={() => addTicket(tt)}
+              onRemove={() => removeTicket(tt)}
+              onViewMerch={tt.includes_merch && onViewMerch ? () => onViewMerch(tt) : undefined}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Named groups */}
+      {namedGroups.map((group) => (
+        <div key={group.name} className="space-y-3">
+          <h3 className="font-display text-sm font-semibold text-muted-foreground uppercase tracking-wider pt-2">
+            {group.name}
+          </h3>
+          {group.tickets.map((tt) => (
+            <AuraTicketCard
+              key={tt.id}
+              ticket={tt}
+              qty={quantities[tt.id] || 0}
+              currSymbol={currSymbol}
+              onAdd={() => addTicket(tt)}
+              onRemove={() => removeTicket(tt)}
+              onViewMerch={tt.includes_merch && onViewMerch ? () => onViewMerch(tt) : undefined}
+            />
+          ))}
+        </div>
+      ))}
+
+      {/* Cart summary */}
+      {totalQty > 0 && (
+        <Card className="border-primary/20 bg-primary/[0.04] aura-fade-in py-0 gap-0">
+          <CardHeader className="px-5 pt-5 pb-0">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <ShoppingCart size={14} className="text-primary" />
+                {totalQty} {totalQty === 1 ? "ticket" : "tickets"}
+              </CardTitle>
+              <span className="font-display text-lg font-bold tabular-nums">
+                {currSymbol}{totalPrice.toFixed(2)}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 py-3">
+            <div className="space-y-1">
+              {cartItems.map((item, i) => (
+                <div key={i} className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {item.qty}&times; {item.name}
+                    {item.size && <Badge variant="secondary" className="ml-1.5 text-[9px] py-0 px-1.5">{item.size}</Badge>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+          <Separator className="opacity-50" />
+          <CardFooter className="flex-col gap-3 px-5 py-4">
+            <Button
+              className="w-full aura-glow-accent aura-press rounded-full font-semibold"
+              onClick={handleCheckout}
+            >
+              Checkout
+              <ChevronRight size={16} />
+            </Button>
+
+            {/* Express checkout */}
+            {isStripe && totalQty > 0 && (
+              <div className="w-full">
+                <div className="flex items-center gap-2 py-2">
+                  <Separator className="flex-1 opacity-30" />
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">or</span>
+                  <Separator className="flex-1 opacity-30" />
+                </div>
+                <ExpressCheckout
+                  eventId={eventId}
+                  amount={totalPrice}
+                  items={expressItems}
+                  currency={currency}
+                  onSuccess={handleExpressSuccess}
+                  onError={(msg) => setExpressError(msg)}
+                />
+                {expressError && (
+                  <p className="mt-2 text-xs text-destructive text-center">{expressError}</p>
+                )}
+              </div>
+            )}
+          </CardFooter>
+        </Card>
+      )}
+
+      {/* Size selection popup */}
+      {sizePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSizePopup(null)}>
+          <div
+            className="w-full max-w-sm mx-4 rounded-xl border border-border bg-card p-6 shadow-xl aura-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-base font-semibold">Select Size</h3>
+              <button onClick={() => setSizePopup(null)} className="text-muted-foreground hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              {activeTypes.find((t) => t.id === sizePopup.ticketTypeId)?.name}
+            </p>
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {(activeTypes.find((t) => t.id === sizePopup.ticketTypeId)?.merch_sizes || ["XS", "S", "M", "L", "XL", "XXL"]).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => setSizePopup((prev) => prev ? { ...prev, selectedSize: size } : null)}
+                  className={`rounded-lg border py-2.5 text-sm font-medium transition-all ${
+                    sizePopup.selectedSize === size
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            <Button className="w-full aura-press rounded-full" onClick={handleSizeConfirm}>
+              Add to Cart
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -25,7 +25,7 @@ export async function GET() {
 
     const { data: discounts, error } = await supabase
       .from(TABLES.DISCOUNTS)
-      .select("id, code, discount_type, discount_value, status, usage_count, usage_limit, event_id, event:events(id, name, slug), created_at")
+      .select("id, code, type, value, status, used_count, max_uses, applicable_event_ids, created_at")
       .eq("rep_id", repId)
       .eq("org_id", ORG_ID)
       .order("created_at", { ascending: false });

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { TABLES } from "@/lib/constants";
 
 /**
  * Auth helper for API routes.
@@ -98,7 +99,7 @@ export async function requireRepAuth(): Promise<
 
     // Look up the rep row linked to this auth user
     const { data: rep, error: repErr } = await supabase
-      .from("reps")
+      .from(TABLES.REPS)
       .select("id, auth_user_id, email, org_id, status")
       .eq("auth_user_id", user.id)
       .single();

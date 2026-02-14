@@ -181,6 +181,7 @@ export async function POST(request: NextRequest) {
         totalCharged: paymentIntent.amount / 100,
       },
       vat: vatInfo,
+      discountCode: metadata.discount_code || undefined,
     });
 
     // Fetch the full order with relations to return

@@ -89,7 +89,8 @@ export async function attributeSaleToRep(params: {
           sales_count: (repEvent.sales_count || 0) + params.ticketCount,
           revenue: Number(repEvent.revenue || 0) + params.orderTotal,
         })
-        .eq("id", repEvent.id);
+        .eq("id", repEvent.id)
+        .eq("org_id", orgId);
     }
 
     // 4. Store rep_id in order metadata for easy lookups
@@ -105,7 +106,8 @@ export async function attributeSaleToRep(params: {
       .update({
         metadata: { ...currentMeta, rep_id: repId, rep_points_awarded: pointsEarned },
       })
-      .eq("id", params.orderId);
+      .eq("id", params.orderId)
+      .eq("org_id", orgId);
 
     // 5. Check milestones (fire-and-forget)
     checkMilestones(repId, orgId, params.eventId).catch(() => {});
@@ -198,7 +200,8 @@ async function checkMilestones(
         await supabase
           .from(TABLES.REP_REWARDS)
           .update({ total_claimed: (reward.total_claimed || 0) + 1 })
-          .eq("id", reward.id);
+          .eq("id", reward.id)
+          .eq("org_id", orgId);
       }
 
       console.log(

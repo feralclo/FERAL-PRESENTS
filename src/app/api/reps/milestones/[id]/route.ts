@@ -41,7 +41,9 @@ export async function PUT(
       }
     }
 
-    if (Object.keys(updates).length === 0) {
+    updates.updated_at = new Date().toISOString();
+
+    if (Object.keys(updates).length <= 1) {
       return NextResponse.json(
         { error: "No valid fields to update" },
         { status: 400 }

@@ -180,6 +180,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
         totalCharged: paymentIntent.amount / 100,
       },
       vat: vatInfo,
+      discountCode: metadata.discount_code || undefined,
     });
 
     console.log(

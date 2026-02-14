@@ -73,6 +73,8 @@ export interface CreateOrderParams {
   vat?: OrderVat;
   /** When true, fires the order confirmation email (fire-and-forget). Default true. */
   sendEmail?: boolean;
+  /** Discount code used in this order (for rep attribution). */
+  discountCode?: string;
 }
 
 /** A ticket row as created by createOrder(). */
@@ -148,6 +150,7 @@ export async function createOrder(
     payment,
     vat,
     sendEmail = true,
+    discountCode,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -239,13 +242,16 @@ export async function createOrder(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const orderNumber = await generateOrderNumber(supabase, orgId);
 
-    // Build metadata with VAT details if applicable
+    // Build metadata with VAT + discount details
     const orderMetadata: Record<string, unknown> = {};
     if (vat && vat.amount > 0) {
       orderMetadata.vat_amount = vat.amount;
       orderMetadata.vat_rate = vat.rate;
       orderMetadata.vat_inclusive = vat.inclusive;
       if (vat.vat_number) orderMetadata.vat_number = vat.vat_number;
+    }
+    if (discountCode) {
+      orderMetadata.discount_code = discountCode;
     }
 
     const { data, error } = await supabase
@@ -414,7 +420,7 @@ export async function createOrder(
         orderId: order.id,
         orgId,
         eventId: event.id,
-        discountCode: (order.metadata as Record<string, unknown>)?.discount_code as string | undefined,
+        discountCode: discountCode || ((order.metadata as Record<string, unknown>)?.discount_code as string | undefined),
         orderTotal: total,
         ticketCount: allTickets.length,
       }).catch(() => {});

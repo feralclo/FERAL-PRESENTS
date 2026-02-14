@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { LiverpoolEventPage } from "@/components/event/LiverpoolEventPage";
 import { KompassEventPage } from "@/components/event/KompassEventPage";
 import { DynamicEventPage } from "@/components/event/DynamicEventPage";
+import { AuroraEventPage } from "@/components/aurora/AuroraEventPage";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
 /** Force dynamic rendering — every request fetches fresh data from Supabase.
@@ -130,11 +132,18 @@ export default async function EventPage({
 }) {
   const { slug } = await params;
 
-  // Fetch event from DB (admin-editable content)
-  const event = await getEventFromDB(slug);
+  // Fetch event + active template in parallel
+  const [event, activeTemplate] = await Promise.all([
+    getEventFromDB(slug),
+    getActiveTemplate(),
+  ]);
 
   // Stripe/test events: use dynamic page (DB-driven)
   if (event && event.payment_method !== "weeztix") {
+    // Aurora theme: render parallel Aurora component tree
+    if (activeTemplate === "aurora") {
+      return <AuroraEventPage event={event} />;
+    }
     return <DynamicEventPage event={event} />;
   }
 

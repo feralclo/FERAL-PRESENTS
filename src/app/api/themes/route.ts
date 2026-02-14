@@ -40,6 +40,15 @@ const TEMPLATE_PRESETS: Record<string, BrandingSettings> = {
     heading_font: "Sora",
     body_font: "Inter",
   },
+  aurora: {
+    ...DEFAULT_BRANDING,
+    accent_color: "#6366f1",
+    background_color: "#070b14",
+    card_color: "#111b2e",
+    text_color: "#e8ecf4",
+    heading_font: "Satoshi",
+    body_font: "Inter",
+  },
 };
 
 function generateId(): string {

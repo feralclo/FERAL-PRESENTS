@@ -1,6 +1,7 @@
 import { fetchSettings } from "@/lib/settings";
 import { SETTINGS_KEYS, TABLES, ORG_ID, brandingKey } from "@/lib/constants";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { getActiveTemplate } from "@/lib/themes";
 import { SettingsProvider } from "@/hooks/useSettings";
 import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
 import type { BrandingSettings } from "@/types/settings";
@@ -97,8 +98,11 @@ export default async function EventLayout({
         .catch(() => null)
     : Promise.resolve(null);
 
+  // Fetch active template in parallel (for Aurora detection)
+  const templatePromise = getActiveTemplate();
+
   // Wait for all in parallel
-  const [settings, , branding] = await Promise.all([settingsPromise, mediaPromise, brandingPromise]);
+  const [settings, , branding, activeTemplate] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise]);
 
   // Determine theme:
   // - WeeZTix events: site_settings is the authority (legacy system)
@@ -138,8 +142,15 @@ export default async function EventLayout({
   if (branding?.heading_font) cssVars["--font-mono"] = `'${branding.heading_font}', monospace`;
   if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
 
+  const isAurora = activeTemplate === "aurora";
+
   return (
-    <div data-theme-root className={themeClasses || undefined} style={cssVars as React.CSSProperties}>
+    <div
+      data-theme-root
+      {...(isAurora ? { "data-theme": "aurora" } : {})}
+      className={themeClasses || undefined}
+      style={cssVars as React.CSSProperties}
+    >
       <ThemeEditorBridge />
       <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
         {children}

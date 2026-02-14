@@ -133,7 +133,7 @@ export interface StoreTheme {
   /** Display name (e.g. "Midnight", "Daylight", "My Custom Theme") */
   name: string;
   /** Base template this theme was created from */
-  template: "midnight" | "daylight" | "neon" | "custom";
+  template: "midnight" | "daylight" | "neon" | "aurora" | "custom";
   /** Full branding configuration for this theme */
   branding: BrandingSettings;
   /** ISO timestamp when theme was created */

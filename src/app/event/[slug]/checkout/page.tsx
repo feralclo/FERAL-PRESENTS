@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CheckoutPage } from "@/components/checkout/CheckoutPage";
 import { NativeCheckout } from "@/components/checkout/NativeCheckout";
+import { AuroraCheckout } from "@/components/aurora/AuroraCheckout";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
 /** Always fetch fresh data — admin changes must appear immediately */
@@ -43,6 +45,17 @@ export default async function CheckoutRoute({
 
   // Use native checkout for test/stripe events
   if (nativeEvent) {
+    // Check active template for Aurora routing
+    const activeTemplate = await getActiveTemplate();
+
+    if (activeTemplate === "aurora") {
+      return (
+        <Suspense>
+          <AuroraCheckout slug={slug} event={nativeEvent} />
+        </Suspense>
+      );
+    }
+
     return (
       <Suspense>
         <NativeCheckout slug={slug} event={nativeEvent} />

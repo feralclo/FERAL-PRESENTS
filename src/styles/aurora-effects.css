@@ -1,0 +1,235 @@
+/*
+ * Aurora Effects — animations, glass-morphism, glow, gradient mesh
+ *
+ * All selectors scoped to [data-theme="aurora"] for CSS isolation.
+ */
+
+/* ── Gradient Mesh Hero ── */
+@property --aurora-hue {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes aurora-mesh {
+  0% { --aurora-hue: 0deg; }
+  100% { --aurora-hue: 360deg; }
+}
+
+[data-theme="aurora"] .aurora-mesh {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, color-mix(in srgb, var(--color-aurora-accent) 12%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 80% at 80% 30%, color-mix(in srgb, var(--color-aurora-accent-warm) 8%, transparent), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 50% 80%, color-mix(in srgb, var(--color-aurora-accent) 6%, transparent), transparent 60%);
+  animation: aurora-mesh 20s linear infinite;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* ── Glass-morphism ── */
+[data-theme="aurora"] .aurora-glass {
+  background: color-mix(in srgb, var(--color-aurora-card) 75%, transparent);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid color-mix(in srgb, var(--color-aurora-border) 50%, transparent);
+}
+
+[data-theme="aurora"] .aurora-glass-strong {
+  background: color-mix(in srgb, var(--color-aurora-card) 90%, transparent);
+  backdrop-filter: blur(30px) saturate(1.3);
+  -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  border: 1px solid color-mix(in srgb, var(--color-aurora-border) 70%, transparent);
+}
+
+/* ── Glow Effects ── */
+[data-theme="aurora"] .aurora-glow {
+  box-shadow:
+    0 0 20px var(--color-aurora-glow),
+    0 0 60px color-mix(in srgb, var(--color-aurora-accent) 5%, transparent);
+}
+
+[data-theme="aurora"] .aurora-glow-accent {
+  box-shadow:
+    0 0 15px color-mix(in srgb, var(--color-aurora-accent) 25%, transparent),
+    0 0 45px color-mix(in srgb, var(--color-aurora-accent) 10%, transparent);
+}
+
+[data-theme="aurora"] .aurora-glow-warm {
+  box-shadow:
+    0 0 15px color-mix(in srgb, var(--color-aurora-accent-warm) 25%, transparent),
+    0 0 45px color-mix(in srgb, var(--color-aurora-accent-warm) 10%, transparent);
+}
+
+/* ── Gradient Borders ── */
+[data-theme="aurora"] .aurora-gradient-border {
+  position: relative;
+}
+[data-theme="aurora"] .aurora-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-aurora-accent) 40%, transparent),
+    color-mix(in srgb, var(--color-aurora-accent-warm) 20%, transparent),
+    color-mix(in srgb, var(--color-aurora-accent) 10%, transparent)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── Spring Animation (for counters, cart updates) ── */
+@keyframes aurora-spring {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.15); }
+  60% { transform: scale(0.95); }
+  80% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+[data-theme="aurora"] .aurora-spring {
+  animation: aurora-spring 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Pulse (for low stock badges) ── */
+@keyframes aurora-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+[data-theme="aurora"] .aurora-pulse {
+  animation: aurora-pulse 2s ease-in-out infinite;
+}
+
+/* ── Capacity Bar Gradient ── */
+[data-theme="aurora"] .aurora-capacity-bar {
+  background: linear-gradient(
+    90deg,
+    var(--color-aurora-success) 0%,
+    var(--color-aurora-success) 60%,
+    var(--color-aurora-warning) 80%,
+    var(--color-aurora-accent-warm) 95%
+  );
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Shimmer Loading ── */
+@keyframes aurora-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+[data-theme="aurora"] .aurora-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-aurora-surface) 25%,
+    color-mix(in srgb, var(--color-aurora-surface) 50%, var(--color-aurora-border)) 50%,
+    var(--color-aurora-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: aurora-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Fade In Up (for sections) ── */
+@keyframes aurora-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-theme="aurora"] .aurora-fade-in-up {
+  animation: aurora-fade-in-up 0.5s ease-out forwards;
+}
+
+/* ── Cart Flash (brief glow on add to cart) ── */
+@keyframes aurora-cart-flash {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-aurora-accent) 40%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-aurora-accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-aurora-accent) 0%, transparent); }
+}
+
+[data-theme="aurora"] .aurora-cart-flash {
+  animation: aurora-cart-flash 0.6s ease-out;
+}
+
+/* ── Parallax Hero ── */
+[data-theme="aurora"] .aurora-parallax {
+  will-change: transform;
+}
+
+/* ── Number Tick Animation ── */
+[data-theme="aurora"] .aurora-number-tick {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-block;
+}
+
+/* ── Dialog / Bottom Sheet ── */
+@keyframes aurora-dialog-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes aurora-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes aurora-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+[data-theme="aurora"] .aurora-dialog-overlay[data-state="open"] {
+  animation: aurora-overlay-in 200ms ease-out;
+}
+
+[data-theme="aurora"] .aurora-dialog-content[data-state="open"] {
+  animation: aurora-dialog-in 200ms ease-out;
+}
+
+[data-theme="aurora"] .aurora-sheet-content[data-state="open"] {
+  animation: aurora-sheet-in 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Countdown Digit Flip ── */
+@keyframes aurora-digit-flip {
+  0% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(-100%); opacity: 0; }
+  50.01% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+[data-theme="aurora"] .aurora-digit-flip {
+  animation: aurora-digit-flip 0.4s ease-in-out;
+}
+
+/* ── Gradient Text ── */
+[data-theme="aurora"] .aurora-text-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--color-aurora-accent),
+    var(--color-aurora-accent-warm)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Button press effect ── */
+[data-theme="aurora"] .aurora-press:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}

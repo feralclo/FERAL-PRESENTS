@@ -50,6 +50,14 @@ const TEMPLATES = [
     gradient: "from-[#0a0014] via-[#1a0030] to-[#0a0014]",
     accent: "#a855f7",
   },
+  {
+    id: "aurora" as const,
+    name: "Aurora",
+    description: "Premium deep-space indigo theme with glass-morphism and glow effects.",
+    tags: ["Premium", "Concerts", "Festivals"],
+    gradient: "from-[#070b14] via-[#111b2e] to-[#070b14]",
+    accent: "#6366f1",
+  },
 ];
 
 function getTemplateGradient(template: string): string {

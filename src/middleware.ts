@@ -43,7 +43,7 @@ const PUBLIC_API_PREFIXES = [
 const PUBLIC_API_EXACT_GETS = [
   "/api/events",
   "/api/settings",
-  "/api/products",
+  "/api/merch",
   "/api/branding",
   "/api/themes",
 ];

@@ -4,7 +4,7 @@ import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
- * GET /api/products — List all products for the org (public for frontend resolution)
+ * GET /api/merch — List all merch for the org (public for frontend resolution)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/products — Create a new product (auth required)
+ * POST /api/merch — Create a new merch item (auth required)
  */
 export async function POST(request: NextRequest) {
   try {

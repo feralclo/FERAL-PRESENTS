@@ -61,7 +61,7 @@ function getAccentFromTheme(theme: StoreTheme): string {
   return theme.branding.accent_color || TEMPLATES.find((t) => t.id === theme.template)?.accent || "#ff0033";
 }
 
-export default function StorefrontPage() {
+export default function TicketStorePage() {
   const router = useRouter();
   const [store, setStore] = useState<ThemeStore | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,9 +138,9 @@ export default function StorefrontPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Storefront</h2>
+          <h2 className="text-lg font-semibold">Ticket Store</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your event store&apos;s themes. Changes apply to all event
+            Manage your ticket store&apos;s themes. Changes apply to all event
             pages, checkout, and emails.
           </p>
         </div>
@@ -208,7 +208,7 @@ export default function StorefrontPage() {
               <div className="flex items-center gap-3 mt-6">
                 <Button
                   onClick={() =>
-                    router.push(`/admin/storefront/editor/?theme=${activeTheme.id}`)
+                    router.push(`/admin/ticketstore/editor/?theme=${activeTheme.id}`)
                   }
                 >
                   <Paintbrush size={14} className="mr-1.5" />
@@ -268,7 +268,7 @@ export default function StorefrontPage() {
                       variant="outline"
                       className="h-7 text-[11px]"
                       onClick={() =>
-                        router.push(`/admin/storefront/editor/?theme=${theme.id}`)
+                        router.push(`/admin/ticketstore/editor/?theme=${theme.id}`)
                       }
                     >
                       <Paintbrush size={10} className="mr-1" />

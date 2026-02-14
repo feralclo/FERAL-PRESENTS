@@ -4,7 +4,7 @@ import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
- * GET /api/products/[id] — Get a single product (public)
+ * GET /api/merch/[id] — Get a single merch item (public)
  */
 export async function GET(
   _request: NextRequest,
@@ -41,7 +41,7 @@ export async function GET(
 }
 
 /**
- * PUT /api/products/[id] — Update a product (auth required)
+ * PUT /api/merch/[id] — Update a merch item (auth required)
  */
 export async function PUT(
   request: NextRequest,
@@ -113,7 +113,7 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/products/[id] — Delete a product (auth required)
+ * DELETE /api/merch/[id] — Delete a merch item (auth required)
  * Prevents deletion if linked to active ticket types.
  */
 export async function DELETE(

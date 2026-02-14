@@ -3,7 +3,7 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
 /**
- * GET /api/products/[id]/linked-tickets — List ticket types linked to this product
+ * GET /api/merch/[id]/linked-tickets — List ticket types linked to this merch item
  */
 export async function GET(
   _request: NextRequest,

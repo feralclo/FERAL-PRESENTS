@@ -1,4 +1,4 @@
-# Nocturn Platform — robots.txt
+# Entry Platform — robots.txt
 # Allow public pages, block admin and API endpoints
 
 User-agent: *

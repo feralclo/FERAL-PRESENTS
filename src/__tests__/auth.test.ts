@@ -24,7 +24,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/",
 ];
 
-const PUBLIC_API_EXACT_GETS = ["/api/events", "/api/settings", "/api/products"];
+const PUBLIC_API_EXACT_GETS = ["/api/events", "/api/settings", "/api/merch"];
 
 function isPublicApiRoute(pathname: string, method: string): boolean {
   for (const prefix of PUBLIC_API_PREFIXES) {
@@ -95,8 +95,8 @@ describe("Route classification", () => {
     });
 
     it("allows products GET without auth (ticket pages resolve linked products)", () => {
-      expect(isPublicApiRoute("/api/products", "GET")).toBe(true);
-      expect(isPublicApiRoute("/api/products/some-id", "GET")).toBe(true);
+      expect(isPublicApiRoute("/api/merch", "GET")).toBe(true);
+      expect(isPublicApiRoute("/api/merch/some-id", "GET")).toBe(true);
     });
   });
 
@@ -170,15 +170,15 @@ describe("Route classification", () => {
     });
 
     it("requires auth for products POST (create)", () => {
-      expect(isPublicApiRoute("/api/products", "POST")).toBe(false);
+      expect(isPublicApiRoute("/api/merch", "POST")).toBe(false);
     });
 
     it("requires auth for products PUT (update)", () => {
-      expect(isPublicApiRoute("/api/products/some-id", "PUT")).toBe(false);
+      expect(isPublicApiRoute("/api/merch/some-id", "PUT")).toBe(false);
     });
 
     it("requires auth for products DELETE", () => {
-      expect(isPublicApiRoute("/api/products/some-id", "DELETE")).toBe(false);
+      expect(isPublicApiRoute("/api/merch/some-id", "DELETE")).toBe(false);
     });
   });
 });
@@ -196,8 +196,8 @@ describe("Admin page protection", () => {
     expect(isProtectedAdminPage("/admin/settings/")).toBe(true);
     expect(isProtectedAdminPage("/admin/connect/")).toBe(true);
     expect(isProtectedAdminPage("/admin/health/")).toBe(true);
-    expect(isProtectedAdminPage("/admin/products/")).toBe(true);
-    expect(isProtectedAdminPage("/admin/products/some-id")).toBe(true);
+    expect(isProtectedAdminPage("/admin/merch/")).toBe(true);
+    expect(isProtectedAdminPage("/admin/merch/some-id")).toBe(true);
   });
 
   it("does NOT protect /admin/login (must be accessible)", () => {

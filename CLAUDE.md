@@ -1,7 +1,7 @@
-# Nocturn — Platform Context
+# Entry — Platform Context
 
 ## Mission
-Nocturn is a white-label events and ticketing platform. Today it powers FERAL's own events (Liverpool, Kompass Klub). The goal is to become a **"Shopify for Events"** — any promoter or artist can sell tickets, merch, and manage events under their own brand, with the platform taking a fee.
+Entry is a white-label events and ticketing platform. Today it powers FERAL's own events (Liverpool, Kompass Klub). The goal is to become a **"Shopify for Events"** — any promoter or artist can sell tickets, merch, and manage events under their own brand, with the platform taking a fee.
 
 Everything built must serve that multi-tenant future. Every database query filters by `org_id`. Every feature must work for promoters who aren't FERAL.
 
@@ -42,7 +42,7 @@ src/
 │   │   ├── error.tsx                       # Error boundary
 │   │   └── loading.tsx                     # Loading skeleton (logo + progress bar)
 │   ├── admin/
-│   │   ├── layout.tsx                      # Sidebar nav + logout (Nocturn-branded admin shell)
+│   │   ├── layout.tsx                      # Sidebar nav + logout (Entry-branded admin shell)
 │   │   ├── error.tsx                       # Admin error boundary
 │   │   ├── login/page.tsx                  # Supabase Auth login page (email/password)
 │   │   ├── page.tsx                        # Dashboard (KPIs, quick links)
@@ -53,8 +53,8 @@ src/
 │   │   ├── customers/page.tsx              # Customer search + stats
 │   │   ├── customers/[id]/page.tsx         # Customer detail (order history, spend)
 │   │   ├── guest-list/page.tsx             # Per-event guest list + check-in
-│   │   ├── products/page.tsx               # Product catalog (standalone merch)
-│   │   ├── products/[id]/page.tsx          # Product editor (images, sizes, pricing)
+│   │   ├── merch/page.tsx                   # Merch catalog (standalone merchandise)
+│   │   ├── merch/[id]/page.tsx             # Merch editor (images, sizes, pricing)
 │   │   ├── traffic/page.tsx                # Funnel analytics (realtime)
 │   │   ├── popup/page.tsx                  # Popup performance (realtime)
 │   │   ├── payments/page.tsx               # Stripe Connect setup (promoter-facing)
@@ -81,9 +81,9 @@ src/
 │       ├── customers/route.ts              # GET customer list with search
 │       ├── events/route.ts                 # GET/POST events (full field support)
 │       ├── events/[id]/route.ts            # GET/PUT/DELETE single event + ticket types
-│       ├── products/route.ts               # GET/POST product catalog
-│       ├── products/[id]/route.ts          # GET/PUT/DELETE single product
-│       ├── products/[id]/linked-tickets/route.ts  # GET tickets linked to a product
+│       ├── merch/route.ts                  # GET/POST merch catalog
+│       ├── merch/[id]/route.ts             # GET/PUT/DELETE single merch item
+│       ├── merch/[id]/linked-tickets/route.ts  # GET tickets linked to a merch item
 │       ├── guest-list/route.ts             # POST add guest entry
 │       ├── guest-list/[eventId]/route.ts   # GET/PUT/DELETE guest list per event
 │       ├── orders/route.ts                 # GET/POST orders
@@ -364,7 +364,7 @@ The platform uses Supabase Auth for admin authentication with defense-in-depth:
 - `GET /api/events`, `GET /api/events/[id]` — public event data
 - `GET /api/settings` — public settings for event pages
 - `GET /api/branding` — org branding for checkout/event pages
-- `GET /api/products` — public product catalog
+- `GET /api/merch` — public merch catalog
 - `GET /api/media/[key]` — public media serving
 - `POST /api/track` — analytics tracking
 - `POST /api/meta/capi` — Meta CAPI
@@ -375,7 +375,7 @@ The platform uses Supabase Auth for admin authentication with defense-in-depth:
 - All `POST/PUT/DELETE` on `/api/settings`, `/api/events`, `/api/orders`
 - `POST /api/branding` — save branding settings
 - All `/api/customers`, `/api/guest-list`, `/api/upload`
-- All `/api/products` mutations (POST/PUT/DELETE)
+- All `/api/merch` mutations (POST/PUT/DELETE)
 - All `/api/stripe/connect/*`, `/api/stripe/apple-pay-domain`
 - All `/api/tickets/[code]/*` (scanner endpoints)
 - All `/api/orders/*` (list, detail, refund, export, PDF)
@@ -466,14 +466,14 @@ There is no self-registration — admin access is invitation-only.
 | GET/POST | `/api/stripe/apple-pay-domain` | List / register domains |
 | GET | `/api/stripe/apple-pay-verify` | Serve Apple Pay verification file |
 
-### Events, Products & Content
+### Events, Merch & Content
 | Method | Route | Purpose |
 |--------|-------|---------|
 | GET/POST | `/api/events` | List / create events (all fields including content + Stripe account) |
 | GET/PUT/DELETE | `/api/events/[id]` | Get / update / delete event + ticket types |
-| GET/POST | `/api/products` | List / create standalone merch products |
-| GET/PUT/DELETE | `/api/products/[id]` | Get / update / delete product |
-| GET | `/api/products/[id]/linked-tickets` | Get ticket types linked to a product |
+| GET/POST | `/api/merch` | List / create standalone merch items |
+| GET/PUT/DELETE | `/api/merch/[id]` | Get / update / delete merch item |
+| GET | `/api/merch/[id]/linked-tickets` | Get ticket types linked to a merch item |
 | GET/POST | `/api/settings` | Get / save settings by key |
 | GET/POST | `/api/branding` | Get / save org branding (logo, colors, fonts) |
 | POST | `/api/upload` | Upload image (base64 → media key) |
@@ -615,7 +615,8 @@ When building a new feature, write tests for:
 - Meta Pixel + CAPI (client-side pixel, server-side conversion API)
 - Order management (create, list, detail, refund, CSV export)
 - Event CRUD (create events with full content, configure ticket types, set themes)
-- Product catalog (standalone merch with sizes, images, SKUs, linkable to ticket types)
+- Merch catalog (standalone merch with sizes, images, SKUs, linkable to ticket types)
+- Ticket store theme editor (multi-theme system with live preview, Shopify-style editor)
 - Customer management (profiles, order history, spend tracking, detail view)
 - Guest list management (add guests, check-in, export)
 - Traffic analytics (funnel tracking, realtime updates)
@@ -627,7 +628,7 @@ When building a new feature, write tests for:
 
 ### Still To Build
 1. **Scanner PWA** — mobile web app for door staff. API endpoints exist (`/api/tickets/[code]` and `/api/tickets/[code]/scan`) but no frontend app.
-2. **Admin branding editor** — the `/api/branding` endpoint and `useBranding` hook are built, but there's no admin UI page to edit branding settings yet.
+2. **Ticket Store — additional themes** — the multi-theme editor is built (`/admin/ticketstore/`), with Midnight theme complete. Daylight and Neon themes need full CSS implementations.
 3. **Google Ads + TikTok tracking** — placeholders exist in marketing page but no implementation.
 4. **Multi-tenant promoter dashboard** — Stripe Connect is built, but the actual promoter-facing dashboard (separate from platform admin) doesn't exist yet.
 5. **Rate limiting** — API routes have no request rate limiting. Consider adding for payment and auth endpoints.
@@ -636,8 +637,17 @@ When building a new feature, write tests for:
 ---
 
 ## Design System
-- **Background**: `#0e0e0e` (overridable via branding `--bg-dark`)
-- **Accent**: `#ff0033` red (overridable via branding `--accent`)
+
+### Platform Brand (Entry)
+- **Primary**: `#8B5CF6` (Electric Violet)
+- **Gradient**: `linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)`
+- **Glow**: `rgba(139, 92, 246, 0.15)` / `rgba(139, 92, 246, 0.25)`
+- The Entry wordmark, login page, admin buttons, and active states all use the Electric Violet palette
+- See Admin Design Tokens below for full token list
+
+### Public Event Pages (Tenant-Configurable)
+- **Background**: `#0e0e0e` default (overridable via branding `--bg-dark`)
+- **Accent**: `#ff0033` default (overridable via branding `--accent`)
 - **Card/Section background**: `#1a1a1a` with `#2a2a2a` border (overridable via branding `--card-bg`)
 - **Text**: `#fff` (primary), `#888` (secondary), `#555` (muted)
 - **Heading font**: `Space Mono` (monospace, uppercase, letter-spacing) (overridable via branding `--font-mono`)
@@ -698,7 +708,7 @@ These variables are **overridable per-tenant** via the branding system. The even
 
 ## Admin UI Stack (Tailwind + shadcn/ui)
 
-The admin dashboard (`/admin/*`) uses a completely separate UI stack from the public site: **Tailwind CSS v4 + shadcn/ui** (built on Radix UI primitives). The admin shell is branded **Nocturn** (the platform's internal name).
+The admin dashboard (`/admin/*`) uses a completely separate UI stack from the public site: **Tailwind CSS v4 + shadcn/ui** (built on Radix UI primitives). The admin shell is branded **Entry** (the platform's name).
 
 ### Two Separate CSS Worlds (CRITICAL)
 The platform has two CSS systems that must not interfere:
@@ -765,16 +775,16 @@ Design tokens are defined in `tailwind.css` via `@theme inline {}`. All shadcn c
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--color-background` | `#0e0e0e` | Page background |
-| `--color-foreground` | `#ffffff` | Primary text |
-| `--color-primary` | `#ff0033` | Accent / brand color |
-| `--color-card` | `#111111` | Card backgrounds |
+| `--color-background` | `#08080c` | Page background |
+| `--color-foreground` | `#f0f0f5` | Primary text |
+| `--color-primary` | `#8B5CF6` | Electric Violet — accent / brand color |
+| `--color-card` | `#111117` | Card backgrounds |
 | `--color-muted-foreground` | `#71717a` | Secondary text |
-| `--color-border` | `#1e1e1e` | Borders |
-| `--color-sidebar` | `#080808` | Sidebar background |
-| `--color-sidebar-foreground` | `#a1a1aa` | Sidebar text |
-| `--color-sidebar-accent` | `#111111` | Sidebar active item |
-| `--color-sidebar-border` | `#151515` | Sidebar borders |
+| `--color-border` | `#1e1e2a` | Borders (purple-tinted) |
+| `--color-sidebar` | `#0a0a10` | Sidebar background |
+| `--color-sidebar-foreground` | `#8888a0` | Sidebar text |
+| `--color-sidebar-accent` | `#141420` | Sidebar active item |
+| `--color-sidebar-border` | `#161624` | Sidebar borders |
 
 **Always use these tokens** via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values in admin components.
 

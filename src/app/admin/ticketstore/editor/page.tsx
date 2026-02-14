@@ -84,12 +84,12 @@ interface EventOption {
 type SectionId = "colors" | "typography" | "logo" | "identity" | "social";
 
 /* ═══════════════════════════════════════════════════════
-   STOREFRONT EDITOR — Full-screen, Shopify-style
+   TICKET STORE EDITOR — Full-screen, Shopify-style
    Works with the multi-theme system. Reads ?theme=<id>
    from the URL to determine which theme to edit.
    ═══════════════════════════════════════════════════════ */
 
-export default function StorefrontEditorPageWrapper() {
+export default function TicketStoreEditorPageWrapper() {
   return (
     <Suspense
       fallback={
@@ -101,12 +101,12 @@ export default function StorefrontEditorPageWrapper() {
         </div>
       }
     >
-      <StorefrontEditorPage />
+      <TicketStoreEditorPage />
     </Suspense>
   );
 }
 
-function StorefrontEditorPage() {
+function TicketStoreEditorPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const themeId = searchParams.get("theme");
@@ -335,7 +335,7 @@ function StorefrontEditorPage() {
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => router.push("/admin/storefront/")}
+            onClick={() => router.push("/admin/ticketstore/")}
             className="text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft size={16} />

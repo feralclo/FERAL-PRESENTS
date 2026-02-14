@@ -48,7 +48,7 @@ const NAV_SECTIONS = [
     label: "Commerce",
     items: [
       { href: "/admin/orders/", label: "Orders", icon: FileText },
-      { href: "/admin/products/", label: "Products", icon: Package },
+      { href: "/admin/merch/", label: "Merch", icon: Package },
       { href: "/admin/customers/", label: "Customers", icon: Users },
       { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
     ],
@@ -63,7 +63,7 @@ const NAV_SECTIONS = [
   {
     label: "Platform",
     items: [
-      { href: "/admin/storefront/", label: "Storefront", icon: Store },
+      { href: "/admin/ticketstore/", label: "Ticket Store", icon: Store },
       { href: "/admin/payments/", label: "Payments", icon: CreditCard },
       { href: "/admin/connect/", label: "Stripe Connect", icon: Zap },
       { href: "/admin/marketing/", label: "Marketing", icon: Megaphone },
@@ -90,8 +90,8 @@ function getPageTitle(pathname: string): string {
   return ALL_ITEMS.find((item) => matchRoute(pathname, item.href))?.label || "Admin";
 }
 
-/* ── NOCTURN wordmark ── */
-function NocturnWordmark({ size = "default" }: { size?: "default" | "sm" }) {
+/* ── ENTRY wordmark ── */
+function EntryWordmark({ size = "default" }: { size?: "default" | "sm" }) {
   return (
     <span
       className={cn(
@@ -105,7 +105,7 @@ function NocturnWordmark({ size = "default" }: { size?: "default" | "sm" }) {
         backgroundClip: "text",
       }}
     >
-      Nocturn
+      Entry
     </span>
   );
 }
@@ -125,7 +125,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (pathname.startsWith("/admin/login")) return <>{children}</>;
 
   // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
-  if (pathname.startsWith("/admin/storefront/editor"))
+  if (pathname.startsWith("/admin/ticketstore/editor"))
     return <>{children}</>;
 
   // Fetch user email on mount
@@ -183,7 +183,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Platform brand */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-5">
           <Link href="/admin/" className="flex items-center gap-2">
-            <NocturnWordmark />
+            <EntryWordmark />
           </Link>
           <Button
             variant="ghost"
@@ -324,7 +324,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Button>
             {/* Mobile brand */}
             <Link href="/admin/" className="lg:hidden">
-              <NocturnWordmark size="sm" />
+              <EntryWordmark size="sm" />
             </Link>
             {/* Desktop breadcrumb */}
             <Separator orientation="vertical" className="hidden h-5 lg:block" />

@@ -51,7 +51,7 @@ const DEFAULT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
 type FilterTab = "all" | ProductStatus;
 
-export default function ProductsPage() {
+export default function MerchPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export default function ProductsPage() {
   const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/merch");
       const json = await res.json();
       if (json.data) setProducts(json.data);
     } catch {
@@ -85,7 +85,7 @@ export default function ProductsPage() {
     if (!newName.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch("/api/products", {
+      const res = await fetch("/api/merch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -102,7 +102,7 @@ export default function ProductsPage() {
         setNewType("T-Shirt");
         setNewSizes([...DEFAULT_SIZES]);
         setNewPrice("");
-        router.push(`/admin/products/${json.data.id}/`);
+        router.push(`/admin/merch/${json.data.id}/`);
       }
     } catch {
       // Network error
@@ -134,15 +134,15 @@ export default function ProductsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
-            Products
+            Merch
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage merchandise and products for your events
+            Manage merchandise for your events
           </p>
         </div>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus size={14} />
-          Create Product
+          Create Merch
         </Button>
       </div>
 
@@ -172,7 +172,7 @@ export default function ProductsPage() {
           <CardContent className="flex items-center justify-center py-16">
             <Loader2 size={20} className="animate-spin text-primary/60" />
             <span className="ml-3 text-sm text-muted-foreground">
-              Loading products...
+              Loading merch...
             </span>
           </CardContent>
         </Card>
@@ -184,13 +184,13 @@ export default function ProductsPage() {
             </div>
             <p className="mt-4 text-sm font-medium text-foreground">
               {filter === "all"
-                ? "No products yet"
-                : `No ${filter} products`}
+                ? "No merch yet"
+                : `No ${filter} merch`}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {filter === "all"
-                ? "Create your first product to start selling merchandise"
-                : "Products with this status will appear here"}
+                ? "Create your first merch item to start selling merchandise"
+                : "Merch with this status will appear here"}
             </p>
             {filter === "all" && (
               <Button
@@ -199,7 +199,7 @@ export default function ProductsPage() {
                 onClick={() => setShowCreate(true)}
               >
                 <Plus size={14} />
-                Create Product
+                Create Merch
               </Button>
             )}
           </CardContent>
@@ -222,7 +222,7 @@ export default function ProductsPage() {
                   key={product.id}
                   className="cursor-pointer"
                   onClick={() =>
-                    router.push(`/admin/products/${product.id}/`)
+                    router.push(`/admin/merch/${product.id}/`)
                   }
                 >
                   <TableCell>
@@ -298,15 +298,15 @@ export default function ProductsPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Product</DialogTitle>
+            <DialogTitle>Create Merch</DialogTitle>
             <DialogDescription>
-              Add a new merchandise product. You can configure details after
+              Add a new merchandise item. You can configure details after
               creation.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Product Name *</Label>
+              <Label>Name *</Label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -370,7 +370,7 @@ export default function ProductsPage() {
             </Button>
             <Button onClick={handleCreate} disabled={creating || !newName.trim()}>
               {creating && <Loader2 size={14} className="animate-spin" />}
-              {creating ? "Creating..." : "Create Product"}
+              {creating ? "Creating..." : "Create Merch"}
             </Button>
           </DialogFooter>
         </DialogContent>

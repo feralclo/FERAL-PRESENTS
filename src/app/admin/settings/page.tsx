@@ -102,7 +102,7 @@ export default function AdminSettings() {
           <tbody>
             <tr>
               <td style={{ color: "#8888a0" }}>Platform</td>
-              <td>Nocturn</td>
+              <td>Entry</td>
             </tr>
             <tr>
               <td style={{ color: "#8888a0" }}>Framework</td>

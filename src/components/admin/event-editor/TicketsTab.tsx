@@ -28,7 +28,7 @@ export function TicketsTab({
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/merch");
         const json = await res.json();
         if (json.data) setProducts(json.data);
       } catch {

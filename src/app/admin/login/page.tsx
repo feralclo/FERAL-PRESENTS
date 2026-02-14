@@ -82,7 +82,7 @@ function LoginForm() {
                 backgroundClip: "text",
               }}
             >
-              Nocturn
+              Entry
             </span>
           </div>
           <p className="text-center font-mono text-xs text-muted-foreground tracking-wider">
@@ -112,7 +112,7 @@ function LoginForm() {
               backgroundClip: "text",
             }}
           >
-            Nocturn
+            Entry
           </span>
           <p className="mt-3 text-[13px] text-muted-foreground">
             Sign in to your dashboard
@@ -171,7 +171,7 @@ function LoginForm() {
 
         {/* Footer */}
         <p className="mt-8 text-center font-mono text-[10px] text-muted-foreground/40 tracking-wider">
-          Powered by Nocturn
+          Powered by Entry
         </p>
       </div>
     </div>
@@ -199,7 +199,7 @@ export default function AdminLoginPage() {
                 backgroundClip: "text",
               }}
             >
-              Nocturn
+              Entry
             </span>
             <p className="mt-4 font-mono text-xs text-muted-foreground tracking-wider">
               Loading...

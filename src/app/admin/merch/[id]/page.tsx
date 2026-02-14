@@ -59,7 +59,7 @@ const STATUS_VARIANT: Record<ProductStatus, "success" | "warning" | "secondary">
   archived: "secondary",
 };
 
-export default function ProductEditorPage() {
+export default function MerchEditorPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -77,7 +77,7 @@ export default function ProductEditorPage() {
 
   const loadProduct = useCallback(async () => {
     try {
-      const res = await fetch(`/api/products/${id}`);
+      const res = await fetch(`/api/merch/${id}`);
       if (!res.ok) {
         setNotFound(true);
         setLoading(false);
@@ -100,7 +100,7 @@ export default function ProductEditorPage() {
     // Load ticket types linked to this product
     (async () => {
       try {
-        const res = await fetch(`/api/products/${id}/linked-tickets`);
+        const res = await fetch(`/api/merch/${id}/linked-tickets`);
         if (res.ok) {
           const json = await res.json();
           if (json.data) setLinkedTickets(json.data);
@@ -121,7 +121,7 @@ export default function ProductEditorPage() {
     setSaveMsg("");
 
     try {
-      const res = await fetch(`/api/products/${id}`, {
+      const res = await fetch(`/api/merch/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -155,9 +155,9 @@ export default function ProductEditorPage() {
     setDeleting(true);
     setDeleteError("");
     try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/merch/${id}`, { method: "DELETE" });
       if (res.ok) {
-        router.push("/admin/products/");
+        router.push("/admin/merch/");
       } else {
         const json = await res.json();
         setDeleteError(json.error || "Delete failed");
@@ -189,7 +189,7 @@ export default function ProductEditorPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 size={20} className="animate-spin text-primary/60" />
-        <span className="ml-3 text-sm text-muted-foreground">Loading product...</span>
+        <span className="ml-3 text-sm text-muted-foreground">Loading merch...</span>
       </div>
     );
   }
@@ -198,17 +198,17 @@ export default function ProductEditorPage() {
     return (
       <div className="p-6 lg:p-8">
         <Link
-          href="/admin/products/"
+          href="/admin/merch/"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ArrowLeft size={14} />
-          Back to Products
+          Back to Merch
         </Link>
         <Card className="py-0 gap-0">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-sm font-medium text-foreground">Product not found</p>
+            <p className="text-sm font-medium text-foreground">Merch not found</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              This product may have been deleted
+              This item may have been deleted
             </p>
           </CardContent>
         </Card>
@@ -222,15 +222,15 @@ export default function ProductEditorPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link
-            href="/admin/products/"
+            href="/admin/merch/"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
           >
             <ArrowLeft size={14} />
-            Products
+            Merch
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
-              {product.name || "Untitled Product"}
+              {product.name || "Untitled Merch"}
             </h1>
             <Badge variant={STATUS_VARIANT[product.status]}>
               {product.status}
@@ -281,7 +281,7 @@ export default function ProductEditorPage() {
             </CardHeader>
             <CardContent className="px-6 pb-6 space-y-4">
               <div className="space-y-2">
-                <Label>Product Name *</Label>
+                <Label>Name *</Label>
                 <Input
                   value={product.name}
                   onChange={(e) => update("name", e.target.value)}
@@ -507,7 +507,7 @@ export default function ProductEditorPage() {
       <Dialog open={showDelete} onOpenChange={setShowDelete}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Product</DialogTitle>
+            <DialogTitle>Delete Merch</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete &ldquo;{product.name}&rdquo;? This
               cannot be undone.
@@ -526,7 +526,7 @@ export default function ProductEditorPage() {
               disabled={deleting}
             >
               {deleting && <Loader2 size={14} className="animate-spin" />}
-              {deleting ? "Deleting..." : "Delete Product"}
+              {deleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

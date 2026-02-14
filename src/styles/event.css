@@ -1994,14 +1994,6 @@
   flex-shrink: 0;
 }
 
-.ticket-option__vat-label {
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: 0.5px;
-  color: var(--text-secondary);
-  text-transform: none;
-}
-
 .ticket-option__bottom {
   display: flex;
   justify-content: space-between;

@@ -24,8 +24,6 @@ interface DynamicTicketWidgetProps {
   onViewMerch?: (ticketType: TicketTypeRow) => void;
   /** Ref that receives a function to add merch from an external source (e.g. TeeModal) */
   addMerchRef?: React.MutableRefObject<((ticketTypeId: string, size: string, qty: number) => void) | null>;
-  /** VAT label to show next to prices (e.g. "incl. VAT" or "+ VAT") */
-  vatLabel?: string;
 }
 
 /** Tier → CSS class mapping for visual styling */
@@ -48,7 +46,6 @@ export function DynamicTicketWidget({
   ticketGroupMap,
   onViewMerch,
   addMerchRef,
-  vatLabel,
 }: DynamicTicketWidgetProps) {
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
@@ -379,9 +376,6 @@ export function DynamicTicketWidget({
                         </div>
                         <span className="ticket-option__price">
                           {currSymbol}{priceDisplay}
-                          {vatLabel && (
-                            <span className="ticket-option__vat-label"> {vatLabel}</span>
-                          )}
                         </span>
                       </div>
                       <div className="ticket-option__bottom">
@@ -459,9 +453,6 @@ export function DynamicTicketWidget({
                               </span>
                               <span className="tier-progression__price">
                                 {currSymbol}{priceDisplay}
-                                {vatLabel && (
-                                  <span className="ticket-option__vat-label"> {vatLabel}</span>
-                                )}
                               </span>
                               <span className="tier-progression__status">
                                 {statusLabel}

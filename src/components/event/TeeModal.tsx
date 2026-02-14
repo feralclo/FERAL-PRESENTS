@@ -8,35 +8,21 @@ interface TeeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (size: TeeSize, qty: number) => void;
-  /** Merch product name (default: "Liverpool March 2026 Tee") */
+  /** Merch product name */
   merchName?: string;
-  /** Merch description copy (default: Liverpool hardcoded copy) */
+  /** Merch description copy */
   merchDescription?: string;
-  /** Front/back image URLs (default: Liverpool images) */
+  /** Front/back image URLs */
   merchImages?: { front?: string; back?: string };
-  /** Price per item for the "Add to Cart" button (default: 65) */
+  /** Price per item for the "Add to Cart" button */
   merchPrice?: number;
   /** Currency symbol (default: "£") */
   currencySymbol?: string;
   /** Available sizes (default: TEE_SIZES) */
   availableSizes?: string[];
-  /** VIP badge text (default: "Includes VIP Tickets — Liverpool March 2026") */
+  /** VIP badge text */
   vipBadge?: string;
 }
-
-// Hardcoded Liverpool fallbacks
-const LIVERPOOL_IMAGES = [
-  {
-    view: "back",
-    src: "/images/LIVERPOOL MARCH BACK.png",
-    alt: "FERAL Liverpool Tee Back",
-  },
-  {
-    view: "front",
-    src: "/images/LIVERPOOL MARCH FRONT.png",
-    alt: "FERAL Liverpool Tee Front",
-  },
-];
 
 export function TeeModal({
   isOpen,
@@ -50,36 +36,33 @@ export function TeeModal({
   availableSizes,
   vipBadge,
 }: TeeModalProps) {
-  // Build image array from props or use Liverpool defaults
+  // Build image array from props
   const images = useMemo(() => {
-    if (merchImages?.front || merchImages?.back) {
-      const imgs: { view: string; src: string; alt: string }[] = [];
-      if (merchImages.back) {
-        imgs.push({
-          view: "back",
-          src: merchImages.back,
-          alt: `${merchName || "Merch"} Back`,
-        });
-      }
-      if (merchImages.front) {
-        imgs.push({
-          view: "front",
-          src: merchImages.front,
-          alt: `${merchName || "Merch"} Front`,
-        });
-      }
-      return imgs;
+    const imgs: { view: string; src: string; alt: string }[] = [];
+    if (merchImages?.back) {
+      imgs.push({
+        view: "back",
+        src: merchImages.back,
+        alt: `${merchName || "Merch"} Back`,
+      });
     }
-    return LIVERPOOL_IMAGES;
+    if (merchImages?.front) {
+      imgs.push({
+        view: "front",
+        src: merchImages.front,
+        alt: `${merchName || "Merch"} Front`,
+      });
+    }
+    return imgs;
   }, [merchImages, merchName]);
 
-  const title = merchName || "Liverpool March 2026 Tee";
+  const title = merchName || "Event Merch";
   const description =
     merchDescription ||
-    "This design exists only for Liverpool March 2026. Once they\u2019re gone, they\u2019re gone forever.";
-  const price = merchPrice ?? 65;
+    "Exclusive event merchandise. Once they\u2019re gone, they\u2019re gone forever.";
+  const price = merchPrice ?? 0;
   const vipText =
-    vipBadge || "Includes VIP Tickets \u2014 Liverpool March 2026";
+    vipBadge || "Includes VIP Tickets";
   const sizes = (availableSizes || TEE_SIZES) as TeeSize[];
 
   const [activeView, setActiveView] = useState("back");

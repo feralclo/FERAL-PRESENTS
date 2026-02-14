@@ -7,25 +7,25 @@ import type { NextConfig } from "next";
  * This is the single most important header for preventing XSS attacks.
  *
  * Each directive whitelist is built from actual usage in the codebase:
- * - GTM, Meta Pixel, Stripe.js, WeeZTix (scripts)
+ * - GTM, Meta Pixel, Stripe.js (scripts)
  * - Google Fonts (styles + fonts)
- * - Stripe Connect, WeeZTix, GTM (iframes)
+ * - Stripe Connect, GTM (iframes)
  * - Supabase, Stripe, Meta CAPI, Klaviyo (API calls)
  */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const cspDirectives = [
   "default-src 'self'",
-  // Scripts: GTM, Meta Pixel, Stripe.js, WeeZTix widget
+  // Scripts: GTM, Meta Pixel, Stripe.js
   // 'unsafe-inline' required for GTM consent defaults in layout.tsx
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://v1.widget.shop.eventix.io https://js.stripe.com",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://js.stripe.com",
   // Styles: Google Fonts + inline styles (Tailwind, branding CSS vars)
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Fonts: Google Fonts CDN
   "font-src 'self' https://fonts.gstatic.com",
   // Images: self + data URIs (QR codes, base64 logos)
   `img-src 'self' data: blob:`,
-  // Iframes: GTM noscript, WeeZTix checkout, Stripe Connect onboarding, Stripe.js
-  "frame-src 'self' https://www.googletagmanager.com https://shop.weeztix.com https://connect.stripe.com https://js.stripe.com",
+  // Iframes: GTM noscript, Stripe Connect onboarding, Stripe.js
+  "frame-src 'self' https://www.googletagmanager.com https://connect.stripe.com https://js.stripe.com",
   // API calls: Supabase REST/Realtime, Stripe, Meta, Klaviyo, GTM
   `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace("https://", "")} https://api.stripe.com https://www.googletagmanager.com https://connect.facebook.net https://graph.facebook.com https://manage.kmail-lists.com`,
   // Forms only submit to same origin

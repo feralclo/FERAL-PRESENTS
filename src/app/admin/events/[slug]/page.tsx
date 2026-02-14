@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, ORG_ID, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, ORG_ID } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -23,14 +23,9 @@ import { ContentTab } from "@/components/admin/event-editor/ContentTab";
 import { DesignTab } from "@/components/admin/event-editor/DesignTab";
 import { TicketsTab } from "@/components/admin/event-editor/TicketsTab";
 import { SettingsTab } from "@/components/admin/event-editor/SettingsTab";
-import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { EventSettings } from "@/types/settings";
-
-const SLUG_TO_KEY: Record<string, string> = {
-  "liverpool-27-march": SETTINGS_KEYS.LIVERPOOL,
-  "kompass-klub-7-march": SETTINGS_KEYS.KOMPASS,
-};
 
 export default function EventEditorPage() {
   const params = useParams();
@@ -73,7 +68,7 @@ export default function EventEditorPage() {
 
       // Load site_settings
       const key =
-        SLUG_TO_KEY[slug] || data.settings_key || `feral_event_${slug}`;
+        data.settings_key || `feral_event_${slug}`;
       const { data: sd } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
@@ -82,11 +77,6 @@ export default function EventEditorPage() {
       if (sd?.data) {
         const s = sd.data as EventSettings;
         setSettings(s);
-        if (data.payment_method === "weeztix" && s.theme) {
-          setEvent((prev) =>
-            prev ? { ...prev, theme: s.theme as string } : prev
-          );
-        }
       }
 
       setLoading(false);
@@ -113,7 +103,6 @@ export default function EventEditorPage() {
         const supabase = getSupabaseClient();
         if (supabase) {
           const key =
-            SLUG_TO_KEY[slug] ||
             event.settings_key ||
             `feral_event_${event.slug}`;
 
@@ -122,16 +111,13 @@ export default function EventEditorPage() {
             ticket_group_map: settings.ticket_group_map || {},
           };
 
-          const dataToSave =
-            event.payment_method === "weeztix"
-              ? { ...settings, ...groupData }
-              : {
-                  theme: event.theme || "default",
-                  minimalBlurStrength: settings.minimalBlurStrength ?? 4,
-                  minimalStaticStrength: settings.minimalStaticStrength ?? 5,
-                  minimalBgEnabled: !!(event.hero_image || event.cover_image),
-                  ...groupData,
-                };
+          const dataToSave = {
+            theme: event.theme || "default",
+            minimalBlurStrength: settings.minimalBlurStrength ?? 4,
+            minimalStaticStrength: settings.minimalStaticStrength ?? 5,
+            minimalBgEnabled: !!(event.hero_image || event.cover_image),
+            ...groupData,
+          };
 
           await supabase.from(TABLES.SITE_SETTINGS).upsert(
             {
@@ -281,8 +267,6 @@ export default function EventEditorPage() {
     );
   }
 
-  const isWeeZTix = event.payment_method === "weeztix";
-
   return (
     <div className="space-y-6 p-6 lg:p-8">
       {/* Header */}
@@ -304,24 +288,6 @@ export default function EventEditorPage() {
         >
           {saveMsg}
         </div>
-      )}
-
-      {/* WeeZTix read-only banner */}
-      {isWeeZTix && (
-        <Card className="py-0 gap-0 border-warning/20">
-          <CardContent className="flex items-start gap-3 p-5">
-            <AlertTriangle size={16} className="text-warning shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Legacy WeeZTix Event
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                This event uses WeeZTix for payments. Design and content can be
-                edited, but ticket management is handled externally.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       {/* Tab Navigation */}

@@ -686,35 +686,6 @@ html.checkout-active .noise {
 }
 
 /* ========================================
-   EMBED CONTAINER (WeeZTix)
-   ======================================== */
-#eventix-shop-container {
-  background: #1c1c1c;
-  width: 100%;
-  min-height: calc(100vh - 120px);
-  overflow: visible;
-}
-
-#eventix-shop-container > div,
-#eventix-shop-container > div > div {
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-#eventix-shop-container iframe {
-  width: 100% !important;
-  max-width: none !important;
-  min-width: 100% !important;
-  height: 2400px;
-  min-height: 2400px;
-  border: none !important;
-  display: block;
-  background: #1c1c1c;
-}
-
-/* ========================================
    COOKIE BANNER (inlined for checkout)
    ======================================== */
 .cookie-banner {

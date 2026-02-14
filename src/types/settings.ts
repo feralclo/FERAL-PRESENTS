@@ -1,43 +1,5 @@
 /** Shape of event settings stored in site_settings table (JSONB `data` column) */
 export interface EventSettings {
-  // Ticket IDs (WeeZTix/Eventix UUIDs)
-  ticketId1?: string; // General Release
-  ticketId2?: string; // VIP Ticket
-  ticketId3?: string; // VIP Black + Tee
-  ticketId4?: string; // Valentine's Special
-
-  // Size-specific ticket IDs for VIP+Tee
-  sizeIdXS?: string;
-  sizeIdS?: string;
-  sizeIdM?: string;
-  sizeIdL?: string;
-  sizeIdXL?: string;
-  sizeIdXXL?: string;
-
-  // Ticket display names
-  ticketName1?: string;
-  ticketName2?: string;
-  ticketName3?: string;
-  ticketName4?: string;
-
-  // Ticket subtitles/descriptions
-  ticketSubtitle1?: string;
-  ticketSubtitle2?: string;
-  ticketSubtitle3?: string;
-  ticketSubtitle4?: string;
-
-  // Ticket prices (WeeZTix — display prices, actual price from WeeZTix)
-  ticketPrice1?: number;
-  ticketPrice2?: number;
-  ticketPrice3?: number;
-  ticketPrice4?: number;
-
-  // Ticket design tiers (WeeZTix — override the default tier per slot)
-  ticketTier1?: string;
-  ticketTier2?: string;
-  ticketTier3?: string;
-  ticketTier4?: string;
-
   // Theme
   theme?: "minimal" | "default" | null;
   minimalBgEnabled?: boolean;
@@ -58,12 +20,7 @@ export interface EventSettings {
   // Stored as array of group names; null/undefined group = default ungrouped section
   ticket_groups?: string[];
   // Map ticket_type ID → group name (null = default ungrouped section)
-  // For WeeZTix events, keys are TicketKey strings (e.g. "general", "vip", "valentine")
   ticket_group_map?: Record<string, string | null>;
-
-  // WeeZTix ticket display order — array of TicketKey strings
-  // Controls the render order on the event page (e.g. ["general", "valentine", "vip", "vip-tee"])
-  weeztixTicketOrder?: string[];
 
   // Any additional dynamic fields
   [key: string]: unknown;

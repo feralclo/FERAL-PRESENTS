@@ -1,6 +1,6 @@
 export type EventStatus = "draft" | "live" | "past" | "cancelled" | "archived";
 export type EventVisibility = "public" | "private" | "unlisted";
-export type PaymentMethod = "weeztix" | "test" | "stripe";
+export type PaymentMethod = "test" | "stripe";
 
 export interface Event {
   id: string;

@@ -12,10 +12,7 @@ export function DesignTab({
   settings,
   updateSetting,
 }: TabWithSettingsProps) {
-  const isMinimal =
-    event.payment_method === "weeztix"
-      ? (settings.theme as string) === "minimal"
-      : event.theme === "minimal";
+  const isMinimal = event.theme === "minimal";
 
   return (
     <div className="space-y-6">
@@ -62,15 +59,8 @@ export function DesignTab({
             <Label>Page Theme</Label>
             <select
               className="flex h-9 w-full max-w-xs rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
-              value={
-                event.payment_method === "weeztix"
-                  ? (settings.theme as string) || "default"
-                  : event.theme || "default"
-              }
+              value={event.theme || "default"}
               onChange={(e) => {
-                if (event.payment_method === "weeztix") {
-                  updateSetting("theme", e.target.value);
-                }
                 updateEvent("theme", e.target.value);
               }}
             >

@@ -1,5 +1,5 @@
 import { fetchSettings } from "@/lib/settings";
-import { SETTINGS_KEYS, TABLES, ORG_ID, brandingKey } from "@/lib/constants";
+import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getActiveTemplate } from "@/lib/themes";
 import { SettingsProvider } from "@/hooks/useSettings";
@@ -11,17 +11,9 @@ import "@/styles/event.css";
 /** Always fetch fresh data — admin changes must appear immediately */
 export const dynamic = "force-dynamic";
 
-/** Map URL slugs to settings keys (fallback for events not in DB) */
-const SLUG_TO_SETTINGS_KEY: Record<string, string> = {
-  "liverpool-27-march": SETTINGS_KEYS.LIVERPOOL,
-  "kompass-klub-7-march": SETTINGS_KEYS.KOMPASS,
-};
-
 /**
  * Event layout — Server Component that fetches settings before render.
- * Reads theme/image data from BOTH the events table and site_settings.
- * - WeeZTix events: theme + image config from site_settings (JSONB)
- * - Native events: theme + image data from events table columns
+ * Reads theme/image data from the events table.
  * This eliminates FOUC by providing settings data in the initial HTML.
  */
 export default async function EventLayout({
@@ -34,11 +26,10 @@ export default async function EventLayout({
   const { slug } = await params;
 
   // Determine initial values
-  let settingsKey = SLUG_TO_SETTINGS_KEY[slug] || `feral_event_${slug}`;
+  let settingsKey = `feral_event_${slug}`;
   let eventTheme: string | null = null;
   let eventHasImage = false;
   let eventId: string | null = null;
-  let isWeeZTix = slug in SLUG_TO_SETTINGS_KEY;
 
   // Single Supabase client, reused across all queries
   const supabase = await getSupabaseServer();
@@ -48,7 +39,7 @@ export default async function EventLayout({
     try {
       const { data: event } = await supabase
         .from(TABLES.EVENTS)
-        .select("id, settings_key, theme, cover_image, hero_image, payment_method")
+        .select("id, settings_key, theme, cover_image, hero_image")
         .eq("slug", slug)
         .eq("org_id", ORG_ID)
         .single();
@@ -57,11 +48,10 @@ export default async function EventLayout({
       if (event) {
         eventId = event.id;
         eventTheme = event.theme || null;
-        if (event.payment_method === "weeztix") isWeeZTix = true;
         eventHasImage = !!(event.hero_image || event.cover_image);
       }
     } catch {
-      // Fall through to hardcoded map
+      // Fall through — event may not exist in DB (e.g. Kompass)
     }
   }
 
@@ -104,20 +94,12 @@ export default async function EventLayout({
   // Wait for all in parallel
   const [settings, , branding, activeTemplate] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise]);
 
-  // Determine theme:
-  // - WeeZTix events: site_settings is the authority (legacy system)
-  // - Native events: events table is the authority (admin saves theme there)
-  const theme = isWeeZTix
-    ? (settings?.theme as string) || eventTheme || "default"
-    : eventTheme || "default";
+  // Theme is always from the events table
+  const theme = eventTheme || "default";
   const isMinimal = theme === "minimal";
 
-  // Determine if cover image exists:
-  // - WeeZTix events: use minimalBgEnabled flag from site_settings
-  // - Native events: check if hero/cover image exists in DB or media store
-  const hasCoverImage = isMinimal && (
-    isWeeZTix ? !!(settings?.minimalBgEnabled) : eventHasImage
-  );
+  // Check if cover image exists in DB or media store
+  const hasCoverImage = isMinimal && eventHasImage;
 
   const themeClasses = [
     isMinimal ? "theme-minimal" : "",

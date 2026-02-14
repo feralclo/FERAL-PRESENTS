@@ -20,10 +20,6 @@ interface DynamicTicketWidgetProps {
   ticketGroups?: string[];
   /** Map ticket type ID → group name (null = default ungrouped) */
   ticketGroupMap?: Record<string, string | null>;
-  /** WeeZTix ticket IDs by sort_order for checkout URL generation */
-  weeztixIds?: Record<number, string>;
-  /** WeeZTix size-specific ticket IDs (e.g. { XS: "uuid", S: "uuid", ... }) */
-  weeztixSizeIds?: Record<string, string>;
   /** Called when user clicks "View Merch" on a ticket type with merch images */
   onViewMerch?: (ticketType: TicketTypeRow) => void;
   /** Ref that receives a function to add merch from an external source (e.g. TeeModal) */
@@ -48,8 +44,6 @@ export function DynamicTicketWidget({
   onCheckoutReady,
   ticketGroups,
   ticketGroupMap,
-  weeztixIds,
-  weeztixSizeIds,
   onViewMerch,
   addMerchRef,
 }: DynamicTicketWidgetProps) {
@@ -198,41 +192,23 @@ export function DynamicTicketWidget({
     [quantities, activeTypes]
   );
 
-  const isWeeZTix = paymentMethod === "weeztix";
-
   const getCheckoutUrl = useCallback(() => {
     const items: string[] = [];
     for (const tt of activeTypes) {
       const qty = quantities[tt.id] || 0;
       if (qty <= 0) continue;
 
-      if (isWeeZTix) {
-        // WeeZTix checkout: use WeeZTix ticket IDs from settings
-        if (tt.includes_merch && merchSizes[tt.id] && weeztixSizeIds) {
-          // Size-specific WeeZTix IDs for merch tickets
-          for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-            const sizeId = weeztixSizeIds[size];
-            if (sQty > 0 && sizeId) items.push(`${sizeId}:${sQty}:${size}`);
-          }
-        } else {
-          // Map by sort_order: ticket at sort_order N → weeztixIds[N]
-          const wId = weeztixIds?.[tt.sort_order];
-          if (wId) items.push(`${wId}:${qty}`);
+      if (tt.includes_merch && merchSizes[tt.id]) {
+        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
+          if (sQty > 0) items.push(`${tt.id}:${sQty}:${size}`);
         }
       } else {
-        // Native checkout: use our DB ticket type IDs
-        if (tt.includes_merch && merchSizes[tt.id]) {
-          for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-            if (sQty > 0) items.push(`${tt.id}:${sQty}:${size}`);
-          }
-        } else {
-          items.push(`${tt.id}:${qty}`);
-        }
+        items.push(`${tt.id}:${qty}`);
       }
     }
     if (items.length === 0) return null;
     return `/event/${eventSlug}/checkout/?cart=${encodeURIComponent(items.join(","))}`;
-  }, [activeTypes, quantities, merchSizes, eventSlug, isWeeZTix, weeztixIds, weeztixSizeIds]);
+  }, [activeTypes, quantities, merchSizes, eventSlug]);
 
   const handleCheckout = useCallback(() => {
     const url = getCheckoutUrl();

@@ -80,7 +80,7 @@ export default function EventsPage() {
   const [newVenue, setNewVenue] = useState("");
   const [newCity, setNewCity] = useState("");
   const [newDate, setNewDate] = useState("");
-  const [newPayment, setNewPayment] = useState<"test" | "weeztix" | "stripe">("test");
+  const [newPayment, setNewPayment] = useState<"test" | "stripe">("test");
   const [newVisibility, setNewVisibility] = useState<"public" | "private" | "unlisted">("private");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -326,7 +326,6 @@ export default function EventsPage() {
                     onChange={(e) => setNewPayment(e.target.value as typeof newPayment)}
                   >
                     <option value="test">Test (Simulated)</option>
-                    <option value="weeztix">WeeZTix</option>
                     <option value="stripe">Stripe</option>
                   </select>
                 </div>

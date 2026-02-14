@@ -174,6 +174,6 @@ async function checkTests(): Promise<HealthCheck> {
   return {
     name: "Test Suite",
     status: "ok",
-    detail: "40 tests (Vitest) — useTicketCart, useMetaTracking, useDataLayer",
+    detail: "Vitest — useMetaTracking, useDataLayer, auth, wallet-passes, products",
   };
 }

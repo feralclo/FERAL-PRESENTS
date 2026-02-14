@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { CheckoutPage } from "@/components/checkout/CheckoutPage";
 import { NativeCheckout } from "@/components/checkout/NativeCheckout";
 import { AuraCheckout } from "@/components/aura/AuraCheckout";
 import { getSupabaseServer } from "@/lib/supabase/server";
@@ -30,8 +29,8 @@ export default async function CheckoutRoute({
     ? sp.template
     : undefined;
 
-  // Check if event exists in events table and uses native (non-WeeZTix) payment
-  let nativeEvent = null;
+  // Fetch event from DB
+  let event = null;
   try {
     const supabase = await getSupabaseServer();
     if (supabase) {
@@ -42,39 +41,36 @@ export default async function CheckoutRoute({
         .eq("org_id", ORG_ID)
         .single();
 
-      // WeeZTix events still use the WeeZTix checkout embed (CheckoutPage)
-      if (data && data.payment_method !== "weeztix") {
-        nativeEvent = data;
+      if (data) {
+        event = data;
       }
     }
   } catch {
-    // Fall through to WeeZTix
+    // Fall through to error state
   }
 
-  // Use native checkout for test/stripe events
-  if (nativeEvent) {
-    const activeTemplate = await getActiveTemplate();
-    const template = editorTemplate || activeTemplate;
+  if (!event) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center", color: "#fff" }}>
+        <p>Event not found.</p>
+      </div>
+    );
+  }
 
-    if (template === "aura") {
-      return (
-        <Suspense>
-          <AuraCheckout slug={slug} event={nativeEvent} />
-        </Suspense>
-      );
-    }
+  const activeTemplate = await getActiveTemplate();
+  const template = editorTemplate || activeTemplate;
 
+  if (template === "aura") {
     return (
       <Suspense>
-        <NativeCheckout slug={slug} event={nativeEvent} />
+        <AuraCheckout slug={slug} event={event} />
       </Suspense>
     );
   }
 
-  // Default: WeeZTix checkout for existing events
   return (
     <Suspense>
-      <CheckoutPage slug={slug} />
+      <NativeCheckout slug={slug} event={event} />
     </Suspense>
   );
 }

@@ -823,23 +823,6 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-#eventix-shop-container {
-  height: 0;
-  overflow: hidden;
-  padding: 0 24px;
-}
-
-#eventix-shop-container.active {
-  height: auto;
-  overflow: visible;
-  padding: 0 24px 24px;
-}
-
-#eventix-shop-container iframe {
-  width: 100% !important;
-  border: none !important;
-}
-
 .event-tickets__cta {
   display: block;
   width: 100%;

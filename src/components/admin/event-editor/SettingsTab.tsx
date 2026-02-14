@@ -89,7 +89,6 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
               >
                 <option value="test">Test (Simulated)</option>
                 <option value="stripe">Stripe</option>
-                <option value="weeztix">WeeZTix (External)</option>
               </select>
             </div>
             <div className="space-y-2">

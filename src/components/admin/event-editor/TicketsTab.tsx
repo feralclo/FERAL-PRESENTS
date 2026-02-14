@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Ticket, AlertTriangle } from "lucide-react";
+import { Plus, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
 import { GroupManager, GroupHeader } from "./GroupManager";
 import { ORG_ID } from "@/lib/constants";
@@ -37,7 +37,6 @@ export function TicketsTab({
     })();
   }, []);
 
-  const isNative = event.payment_method !== "weeztix";
   const groups = (settings.ticket_groups as string[]) || [];
   const groupMap =
     (settings.ticket_group_map as Record<string, string | null>) || {};
@@ -132,29 +131,6 @@ export function TicketsTab({
     },
     [groups, updateSetting]
   );
-
-  if (!isNative) {
-    // WeeZTix events — read-only
-    return (
-      <div className="space-y-4">
-        <Card className="py-0 gap-0 border-warning/20">
-          <CardContent className="flex items-start gap-3 p-5">
-            <AlertTriangle size={16} className="text-warning shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Legacy WeeZTix Event
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Tickets for WeeZTix events are managed externally. Ticket layout
-                configuration is read-only. Use the WeeZTix dashboard to manage
-                ticket types and availability.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   // Group tickets
   const ungrouped = ticketTypes.filter((tt) => !groupMap[tt.id]);

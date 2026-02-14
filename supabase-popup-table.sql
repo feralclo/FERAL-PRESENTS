@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS popup_events (
   event_type TEXT NOT NULL,
   page TEXT,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
-  user_agent TEXT
+  user_agent TEXT,
+  org_id TEXT DEFAULT 'feral' -- multi-tenancy: every table must have org_id
 );
 
 -- Enable Row Level Security (RLS)
@@ -22,6 +23,13 @@ CREATE POLICY "auth_all" ON popup_events
 
 -- Create index for faster queries by event_type
 CREATE INDEX IF NOT EXISTS idx_popup_events_type ON popup_events(event_type);
+
+-- Migration: Add org_id to existing table
+ALTER TABLE popup_events ADD COLUMN IF NOT EXISTS org_id TEXT DEFAULT 'feral';
+CREATE INDEX IF NOT EXISTS idx_popup_events_org ON popup_events(org_id);
+
+-- Enable full row data in WAL for Realtime (ensures payload.new has all columns)
+ALTER TABLE popup_events REPLICA IDENTITY FULL;
 
 -- Enable Realtime for live admin dashboard updates
 ALTER PUBLICATION supabase_realtime ADD TABLE popup_events;

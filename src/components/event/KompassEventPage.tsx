@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { useTraffic } from "@/hooks/useTraffic";
 
 // Countdown target: Thursday 29 January 2026, 6PM CET (UTC+1)
 const TARGET = new Date("2026-01-29T17:00:00Z").getTime();
@@ -15,6 +16,7 @@ export function KompassEventPage() {
   const [timeLeft, setTimeLeft] = useState(() => calculateTimeLeft(TARGET));
   const [expired, setExpired] = useState(() => Date.now() >= TARGET);
   const headerHidden = useHeaderScroll();
+  useTraffic();
 
   useEffect(() => {
     const interval = setInterval(() => {

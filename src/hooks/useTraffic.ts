@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import type { TrafficEventType } from "@/types/analytics";
 
@@ -82,8 +82,6 @@ function extractEventName(path: string): string | undefined {
  * Matches the behavior of feral-traffic.js exactly.
  */
 export function useTraffic(pagePath?: string) {
-  const addToCartFired = useRef(false);
-
   // Track page view on mount
   useEffect(() => {
     if (isDevMode()) return;
@@ -117,8 +115,7 @@ export function useTraffic(pagePath?: string) {
 
   const trackAddToCart = useCallback(
     (productName: string, price: number, qty: number) => {
-      if (isDevMode() || addToCartFired.current) return;
-      addToCartFired.current = true;
+      if (isDevMode()) return;
       sendTrafficEvent({
         event_type: "add_to_cart",
         page_path: window.location.pathname,

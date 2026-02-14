@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useTraffic } from "@/hooks/useTraffic";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import "@/styles/landing.css";
@@ -16,6 +17,7 @@ import "@/styles/landing.css";
 export function LandingPage() {
   const { push } = useDataLayer();
   const { trackPageView } = useMetaTracking();
+  useTraffic();
 
   // Activate scroll reveal for [data-reveal] elements (Events, Contact sections)
   useScrollReveal();

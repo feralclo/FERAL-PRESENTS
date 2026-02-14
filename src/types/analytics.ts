@@ -16,7 +16,15 @@ export type TrafficEventType =
   | "time_60s"
   | "time_120s"
   | "click_lineup"
-  | "interact_tickets";
+  | "interact_tickets"
+  | "checkout_start"
+  | "payment_processing"
+  | "payment_success"
+  | "payment_failed"
+  | "payment_method_selected"
+  | "pdf_download"
+  | "wallet_apple"
+  | "wallet_google";
 
 /** Shape of a traffic event row */
 export interface TrafficEvent {

@@ -12,6 +12,8 @@ import { SocialProofToast } from "./SocialProofToast";
 import { isEditorPreview } from "./ThemeEditorBridge";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useTraffic } from "@/hooks/useTraffic";
+import { useDataLayer } from "@/hooks/useDataLayer";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
 import type { Event, TicketTypeRow } from "@/types/events";
@@ -23,6 +25,8 @@ interface DynamicEventPageProps {
 export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const headerHidden = useHeaderScroll();
   const { trackPageView, trackViewContent } = useMetaTracking();
+  const { trackEngagement } = useTraffic();
+  const { trackViewContent: gtmTrackViewContent } = useDataLayer();
   const { settings } = useSettings();
   const branding = useBranding();
 
@@ -43,7 +47,8 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
       value: minPrice,
       currency: event.currency || "GBP",
     });
-  }, [event, trackPageView, trackViewContent]);
+    gtmTrackViewContent(`${event.name} — Event Page`, ids, minPrice);
+  }, [event, trackPageView, trackViewContent, gtmTrackViewContent]);
 
   // Track cart state from ticket widget for bottom bar
   const [cartTotal, setCartTotal] = useState(0);
@@ -195,7 +200,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                     </h2>
                     <div className="event-info__lineup">
                       {lineup.map((artist) => (
-                        <div className="event-info__artist" key={artist}>
+                        <div className="event-info__artist" key={artist} onClick={() => trackEngagement("click_lineup")}>
                           <span className="event-info__artist-name">
                             {artist}
                           </span>

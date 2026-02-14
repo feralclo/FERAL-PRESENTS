@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useTraffic } from "@/hooks/useTraffic";
+import { useDataLayer } from "@/hooks/useDataLayer";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 
@@ -50,6 +52,9 @@ export function DynamicTicketWidget({
   const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
   const { trackAddToCart: metaTrackAddToCart, trackInitiateCheckout: metaTrackInitiateCheckout } = useMetaTracking();
+  const { trackAddToCart: supaTrackAddToCart, trackEngagement } = useTraffic();
+  const { trackAddToCart: gtmTrackAddToCart, trackRemoveFromCart: gtmTrackRemoveFromCart, trackInitiateCheckout: gtmTrackInitiateCheckout } = useDataLayer();
+  const interactFired = useRef(false);
   const [expressError, setExpressError] = useState("");
 
   // Only show active ticket types, sorted by sort_order
@@ -79,6 +84,11 @@ export function DynamicTicketWidget({
 
   const addTicket = useCallback(
     (tt: TicketTypeRow) => {
+      // Fire interact_tickets once per page load
+      if (!interactFired.current) {
+        interactFired.current = true;
+        trackEngagement("interact_tickets");
+      }
       if (tt.includes_merch) {
         // Show size popup
         setSizePopup({ ticketTypeId: tt.id, selectedSize: "M" });
@@ -96,8 +106,10 @@ export function DynamicTicketWidget({
         currency,
         num_items: 1,
       });
+      supaTrackAddToCart(tt.name, Number(tt.price), 1);
+      gtmTrackAddToCart(tt.name, [tt.id], Number(tt.price), 1);
     },
-    [metaTrackAddToCart, currency]
+    [metaTrackAddToCart, supaTrackAddToCart, gtmTrackAddToCart, trackEngagement, currency]
   );
 
   const removeTicket = useCallback(
@@ -114,14 +126,18 @@ export function DynamicTicketWidget({
           setQuantities((qPrev) => ({ ...qPrev, [tt.id]: newTotal }));
           return { ...prev, [tt.id]: sizes };
         });
+        trackEngagement("remove_from_cart");
+        gtmTrackRemoveFromCart(tt.name, [tt.id]);
         return;
       }
       setQuantities((prev) => ({
         ...prev,
         [tt.id]: Math.max((prev[tt.id] || 0) - 1, 0),
       }));
+      trackEngagement("remove_from_cart");
+      gtmTrackRemoveFromCart(tt.name, [tt.id]);
     },
-    []
+    [trackEngagement, gtmTrackRemoveFromCart]
   );
 
   const handleSizeConfirm = useCallback(() => {
@@ -144,9 +160,11 @@ export function DynamicTicketWidget({
         currency,
         num_items: 1,
       });
+      supaTrackAddToCart(tt.name, Number(tt.price), 1);
+      gtmTrackAddToCart(tt.name, [tt.id], Number(tt.price), 1);
     }
     setSizePopup(null);
-  }, [sizePopup, activeTypes, metaTrackAddToCart, currency]);
+  }, [sizePopup, activeTypes, metaTrackAddToCart, supaTrackAddToCart, gtmTrackAddToCart, currency]);
 
   // Expose addMerch function for external callers (TeeModal)
   const addMerchExternal = useCallback(
@@ -168,9 +186,11 @@ export function DynamicTicketWidget({
           currency,
           num_items: qty,
         });
+        supaTrackAddToCart(tt.name, Number(tt.price) * qty, qty);
+        gtmTrackAddToCart(tt.name, [tt.id], Number(tt.price) * qty, qty);
       }
     },
-    [activeTypes, metaTrackAddToCart, currency]
+    [activeTypes, metaTrackAddToCart, supaTrackAddToCart, gtmTrackAddToCart, currency]
   );
 
   useEffect(() => {
@@ -225,9 +245,11 @@ export function DynamicTicketWidget({
       currency,
       num_items: totalQty,
     });
+    trackEngagement("checkout_start");
+    gtmTrackInitiateCheckout(ids, totalPrice, totalQty);
 
     window.location.assign(url);
-  }, [getCheckoutUrl, activeTypes, quantities, totalPrice, currency, totalQty, metaTrackInitiateCheckout]);
+  }, [getCheckoutUrl, activeTypes, quantities, totalPrice, currency, totalQty, metaTrackInitiateCheckout, trackEngagement, gtmTrackInitiateCheckout]);
 
   // Expose checkout handler to parent (for bottom bar)
   useEffect(() => {

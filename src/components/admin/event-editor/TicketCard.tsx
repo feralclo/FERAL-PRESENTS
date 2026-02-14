@@ -31,6 +31,9 @@ interface TicketCardProps {
   onUpdate: (index: number, field: string, value: unknown) => void;
   onRemove: (index: number) => void;
   onAssignGroup: (ticketId: string, groupName: string) => void;
+  onDragStart?: (index: number) => void;
+  onDragOver?: (e: React.DragEvent, index: number) => void;
+  onDragEnd?: () => void;
 }
 
 export function TicketCard({
@@ -43,6 +46,9 @@ export function TicketCard({
   onUpdate,
   onRemove,
   onAssignGroup,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
 }: TicketCardProps) {
   const [open, setOpen] = useState(false);
   const currSym = CURRENCY_SYMBOLS[currency] || currency;
@@ -55,7 +61,13 @@ export function TicketCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-md border border-border bg-card overflow-hidden transition-colors hover:border-primary/15">
+      <div
+        className="rounded-md border border-border bg-card overflow-hidden transition-colors hover:border-primary/15"
+        draggable
+        onDragStart={() => onDragStart?.(index)}
+        onDragOver={(e) => onDragOver?.(e, index)}
+        onDragEnd={() => onDragEnd?.()}
+      >
         <CollapsibleTrigger asChild>
           <button
             type="button"
@@ -290,14 +302,27 @@ export function TicketCard({
                   )}
 
                   {linkedProduct && (
-                    <div className="rounded-md border border-primary/15 bg-primary/5 p-3">
-                      <p className="text-xs text-foreground font-medium">
-                        Linked: {linkedProduct.name}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {linkedProduct.type} — Sizes:{" "}
-                        {linkedProduct.sizes.join(", ") || "None"}
-                      </p>
+                    <div className="flex items-center gap-3 rounded-md border border-primary/15 bg-primary/5 p-3">
+                      {linkedProduct.images?.front && (
+                        <img
+                          src={
+                            linkedProduct.images.front.startsWith("data:")
+                              ? linkedProduct.images.front
+                              : `/api/media/${linkedProduct.images.front}`
+                          }
+                          alt={linkedProduct.name}
+                          className="h-10 w-10 rounded object-cover shrink-0 bg-background/50"
+                        />
+                      )}
+                      <div>
+                        <p className="text-xs text-foreground font-medium">
+                          Linked: {linkedProduct.name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {linkedProduct.type} — Sizes:{" "}
+                          {linkedProduct.sizes.join(", ") || "None"}
+                        </p>
+                      </div>
                     </div>
                   )}
 

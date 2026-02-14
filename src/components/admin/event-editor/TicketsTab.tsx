@@ -22,6 +22,7 @@ export function TicketsTab({
   setDeletedTypeIds,
 }: TicketsTabProps) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // Load products for linking
   useEffect(() => {
@@ -95,6 +96,29 @@ export function TicketsTab({
     },
     [groupMap, updateSetting]
   );
+
+  const handleDragStart = useCallback((index: number) => {
+    setDragIndex(index);
+  }, []);
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, overIndex: number) => {
+      e.preventDefault();
+      if (dragIndex === null || dragIndex === overIndex) return;
+      setTicketTypes((prev) => {
+        const updated = [...prev];
+        const [moved] = updated.splice(dragIndex, 1);
+        updated.splice(overIndex, 0, moved);
+        return updated.map((tt, i) => ({ ...tt, sort_order: i }));
+      });
+      setDragIndex(overIndex);
+    },
+    [dragIndex, setTicketTypes]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setDragIndex(null);
+  }, []);
 
   const moveGroup = useCallback(
     (groupName: string, direction: "up" | "down") => {
@@ -187,6 +211,9 @@ export function TicketsTab({
                       onUpdate={updateTicketType}
                       onRemove={removeTicketType}
                       onAssignGroup={assignToGroup}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragEnd={handleDragEnd}
                     />
                   );
                 })}
@@ -227,6 +254,9 @@ export function TicketsTab({
                           onUpdate={updateTicketType}
                           onRemove={removeTicketType}
                           onAssignGroup={assignToGroup}
+                          onDragStart={handleDragStart}
+                          onDragOver={handleDragOver}
+                          onDragEnd={handleDragEnd}
                         />
                       );
                     })

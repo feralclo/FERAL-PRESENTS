@@ -22,10 +22,19 @@ import {
   ArrowLeft,
   Loader2,
   Save,
+  Ticket,
   Trash2,
   X,
 } from "lucide-react";
 import type { Product, ProductType, ProductStatus } from "@/types/products";
+
+interface LinkedTicketType {
+  id: string;
+  name: string;
+  event_name: string;
+  event_slug: string;
+  price: number;
+}
 
 const PRODUCT_TYPES: ProductType[] = [
   "T-Shirt",
@@ -64,6 +73,7 @@ export default function ProductEditorPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [customSize, setCustomSize] = useState("");
+  const [linkedTickets, setLinkedTickets] = useState<LinkedTicketType[]>([]);
 
   const loadProduct = useCallback(async () => {
     try {
@@ -87,7 +97,19 @@ export default function ProductEditorPage() {
 
   useEffect(() => {
     loadProduct();
-  }, [loadProduct]);
+    // Load ticket types linked to this product
+    (async () => {
+      try {
+        const res = await fetch(`/api/products/${id}/linked-tickets`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data) setLinkedTickets(json.data);
+        }
+      } catch {
+        // ignore — non-critical
+      }
+    })();
+  }, [loadProduct, id]);
 
   const update = useCallback((field: keyof Product, value: unknown) => {
     setProduct((prev) => (prev ? { ...prev, [field]: value } : prev));
@@ -442,6 +464,40 @@ export default function ProductEditorPage() {
                 For future standalone sales. Ticket-bundled products use the
                 ticket price.
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Linked Events */}
+          <Card className="py-0 gap-0">
+            <CardHeader className="px-6 pt-5 pb-4">
+              <CardTitle className="text-sm">Linked Events</CardTitle>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              {linkedTickets.length > 0 ? (
+                <div className="space-y-2">
+                  {linkedTickets.map((lt) => (
+                    <Link
+                      key={lt.id}
+                      href={`/admin/events/${lt.event_slug}/`}
+                      className="flex items-center gap-2.5 rounded-md border border-border px-3 py-2 text-sm hover:border-primary/20 transition-colors"
+                    >
+                      <Ticket size={13} className="text-muted-foreground/50 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {lt.name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {lt.event_name} &middot; £{Number(lt.price).toFixed(2)}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground/60 text-center py-2">
+                  Not linked to any ticket types yet
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

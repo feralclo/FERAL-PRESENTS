@@ -392,7 +392,7 @@ export function DynamicTicketWidget({
                       </div>
                       <div className="ticket-option__bottom">
                         {tt.includes_merch ? (
-                          tt.merch_images?.front || tt.merch_images?.back ? (
+                          (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.front || (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.back ? (
                             <span
                               className="ticket-option__view-tee"
                               onClick={() => onViewMerch?.(tt)}

@@ -23,7 +23,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from(TABLES.EVENTS)
-      .select("*, ticket_types(*)")
+      .select("*, ticket_types(*, product:products(*))")
       .eq("id", id)
       .eq("org_id", ORG_ID)
       .single();
@@ -121,7 +121,7 @@ export async function PUT(
     // Return updated event
     const { data } = await supabase
       .from(TABLES.EVENTS)
-      .select("*, ticket_types(*)")
+      .select("*, ticket_types(*, product:products(*))")
       .eq("id", id)
       .single();
 

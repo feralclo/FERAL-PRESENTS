@@ -192,3 +192,37 @@
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
+
+/* ── Dialog animations ── */
+@keyframes dialog-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-content-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+[data-admin] .dialog-overlay[data-state="open"] {
+  animation: dialog-overlay-in 150ms ease-out;
+}
+[data-admin] .dialog-content[data-state="open"] {
+  animation: dialog-content-in 150ms ease-out;
+}
+
+/* ── Collapsible animations ── */
+@keyframes collapsible-down {
+  from { height: 0; }
+  to { height: var(--radix-collapsible-content-height); }
+}
+@keyframes collapsible-up {
+  from { height: var(--radix-collapsible-content-height); }
+  to { height: 0; }
+}
+
+[data-admin] .collapsible-content[data-state="open"] {
+  animation: collapsible-down 200ms ease-out;
+}
+[data-admin] .collapsible-content[data-state="closed"] {
+  animation: collapsible-up 200ms ease-out;
+}

@@ -294,16 +294,30 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
           onClose={() => setTeeModalOpen(false)}
           onAddToCart={handleTeeAdd}
           merchName={
-            teeModalTicketType.merch_name
+            (teeModalTicketType.product_id && teeModalTicketType.product
+              ? teeModalTicketType.product.name
+              : teeModalTicketType.merch_name)
               || (teeModalTicketType.merch_type
                 ? `${event.name} ${teeModalTicketType.merch_type}`
                 : `${event.name} Merch`)
           }
-          merchDescription={teeModalTicketType.merch_description}
-          merchImages={teeModalTicketType.merch_images}
+          merchDescription={
+            teeModalTicketType.product_id && teeModalTicketType.product
+              ? teeModalTicketType.product.description
+              : teeModalTicketType.merch_description
+          }
+          merchImages={
+            teeModalTicketType.product_id && teeModalTicketType.product
+              ? teeModalTicketType.product.images
+              : teeModalTicketType.merch_images
+          }
           merchPrice={Number(teeModalTicketType.price)}
           currencySymbol={currSymbol}
-          availableSizes={teeModalTicketType.merch_sizes}
+          availableSizes={
+            teeModalTicketType.product_id && teeModalTicketType.product
+              ? teeModalTicketType.product.sizes
+              : teeModalTicketType.merch_sizes
+          }
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
         />
       )}

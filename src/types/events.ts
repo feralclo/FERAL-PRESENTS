@@ -60,6 +60,10 @@ export interface TicketTypeRow {
   min_per_order: number;
   max_per_order: number;
   tier?: "standard" | "platinum" | "black" | "valentine";
+  /** Linked product ID (nullable — backward compatible with inline merch) */
+  product_id?: string;
+  /** Joined product data (populated when fetched with join) */
+  product?: import("./products").Product;
   created_at: string;
   updated_at: string;
 }

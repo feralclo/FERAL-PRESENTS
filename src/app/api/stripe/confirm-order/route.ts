@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     const ticketTypeIds = items.map((i) => i.ticket_type_id);
     const { data: ticketTypes } = await supabase
       .from(TABLES.TICKET_TYPES)
-      .select("*")
+      .select("*, product:products(*)")
       .eq("org_id", orgId)
       .in("id", ticketTypeIds);
 
@@ -358,7 +358,7 @@ export async function POST(request: NextRequest) {
           ticket_code: t.ticket_code,
           ticket_type_name: tt?.name || "Ticket",
           merch_size: t.merch_size,
-          merch_name: t.merch_size ? (tt?.merch_name || undefined) : undefined,
+          merch_name: t.merch_size ? (tt?.product?.name || tt?.merch_name || undefined) : undefined,
         };
       }),
     }).catch(() => {

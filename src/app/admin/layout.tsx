@@ -30,6 +30,7 @@ import {
   User as UserIcon,
   Receipt,
   Search,
+  Package,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -46,6 +47,7 @@ const NAV_SECTIONS = [
     label: "Commerce",
     items: [
       { href: "/admin/orders/", label: "Orders", icon: FileText },
+      { href: "/admin/products/", label: "Products", icon: Package },
       { href: "/admin/customers/", label: "Customers", icon: Users },
       { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
     ],

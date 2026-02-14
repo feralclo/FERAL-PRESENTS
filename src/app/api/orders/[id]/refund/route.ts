@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
- * POST /api/orders/[id]/refund — Mark order as refunded
+ * POST /api/orders/[id]/refund — Refund an order via Stripe + update database.
+ *
+ * Flow:
+ * 1. Verify admin auth
+ * 2. Fetch order + determine which Stripe account the charge was on
+ * 3. Issue full refund via Stripe API
+ * 4. Mark order as refunded, cancel tickets, decrement sold counts
+ * 5. Update customer stats
+ *
+ * If the order has no payment_ref (e.g., test/manual order), the database
+ * is updated without calling Stripe.
  */
 export async function POST(
   request: NextRequest,
@@ -26,7 +37,7 @@ export async function POST(
       );
     }
 
-    // Fetch order with items
+    // Fetch order with items and event (need event for Stripe account lookup)
     const { data: order, error: orderErr } = await supabase
       .from(TABLES.ORDERS)
       .select("*, order_items:order_items(ticket_type_id, qty)")
@@ -46,6 +57,65 @@ export async function POST(
         { error: "Order already refunded" },
         { status: 400 }
       );
+    }
+
+    // Issue Stripe refund if this is a Stripe payment
+    if (order.payment_ref && order.payment_method === "stripe") {
+      const stripe = getStripe();
+
+      // Determine which Stripe account the charge was made on.
+      // Priority: event-level stripe_account_id → global setting → platform account
+      let stripeAccountId: string | null = null;
+
+      if (order.event_id) {
+        const { data: eventRow } = await supabase
+          .from(TABLES.EVENTS)
+          .select("stripe_account_id")
+          .eq("id", order.event_id)
+          .eq("org_id", ORG_ID)
+          .single();
+
+        if (eventRow?.stripe_account_id) {
+          stripeAccountId = eventRow.stripe_account_id;
+        }
+      }
+
+      if (!stripeAccountId) {
+        const { data: settingsRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", "feral_stripe_account")
+          .single();
+
+        if (settingsRow?.data && typeof settingsRow.data === "object") {
+          const settingsData = settingsRow.data as { account_id?: string };
+          if (settingsData.account_id) {
+            stripeAccountId = settingsData.account_id;
+          }
+        }
+      }
+
+      try {
+        // Full refund of the PaymentIntent
+        await stripe.refunds.create(
+          {
+            payment_intent: order.payment_ref,
+            reason: "requested_by_customer",
+          },
+          stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+        );
+      } catch (stripeErr) {
+        // If Stripe says it's already refunded, continue with DB update.
+        // Otherwise, stop and report the error.
+        const msg = stripeErr instanceof Error ? stripeErr.message : String(stripeErr);
+        if (!msg.includes("already been refunded")) {
+          console.error("Stripe refund failed:", msg);
+          return NextResponse.json(
+            { error: `Stripe refund failed: ${msg}` },
+            { status: 502 }
+          );
+        }
+      }
     }
 
     const now = new Date().toISOString();

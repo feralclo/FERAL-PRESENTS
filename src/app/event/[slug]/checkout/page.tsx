@@ -60,19 +60,23 @@ export default async function CheckoutRoute({
   const activeTemplate = await getActiveTemplate();
   const template = editorTemplate || activeTemplate;
 
-  /* Stripe preconnect hints — browser starts TCP/TLS handshake before
-     any JS loads, shaving ~100-300ms off Express Checkout readiness. */
-  const stripePreconnect = (
+  /* Preconnect hints — browser starts DNS + TCP/TLS handshake before
+     any JS loads, shaving ~100-300ms off Express Checkout readiness.
+     Stripe domains for payment processing, Google domains for Google Pay. */
+  const preconnectHints = (
     <>
       <link rel="preconnect" href="https://js.stripe.com" />
       <link rel="preconnect" href="https://api.stripe.com" />
+      <link rel="preconnect" href="https://pay.google.com" />
+      <link rel="dns-prefetch" href="https://pay.google.com" />
+      <link rel="dns-prefetch" href="https://www.googleapis.com" />
     </>
   );
 
   if (template === "aura") {
     return (
       <>
-        {stripePreconnect}
+        {preconnectHints}
         <Suspense>
           <AuraCheckout slug={slug} event={event} />
         </Suspense>
@@ -82,7 +86,7 @@ export default async function CheckoutRoute({
 
   return (
     <>
-      {stripePreconnect}
+      {preconnectHints}
       <Suspense>
         <NativeCheckout slug={slug} event={event} />
       </Suspense>

@@ -4,11 +4,21 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-let stripePromise: Promise<Stripe | null> | null = null;
+/** Cache: platform-level Stripe instance (no connected account). */
+let platformPromise: Promise<Stripe | null> | null = null;
+
+/** Cache: connected account Stripe instances keyed by account ID.
+ *  Avoids re-calling loadStripe on every checkout mount — saves ~100-200ms. */
+const accountCache = new Map<string, Promise<Stripe | null>>();
 
 /**
- * Get or create the Stripe.js instance for the platform.
- * For Connect direct charges, pass stripeAccount to load with connected account context.
+ * Get or create the Stripe.js instance.
+ *
+ * - No args → platform instance (cached as singleton).
+ * - With stripeAccount → connected account instance (cached per account ID).
+ *
+ * Calling with no args first "pre-warms" the Stripe.js script download
+ * so subsequent calls with a connected account resolve faster.
  */
 export function getStripeClient(stripeAccount?: string): Promise<Stripe | null> {
   if (!publishableKey) {
@@ -16,15 +26,17 @@ export function getStripeClient(stripeAccount?: string): Promise<Stripe | null> 
     return Promise.resolve(null);
   }
 
-  // If a connected account is specified, create a new instance (not cached globally)
   if (stripeAccount) {
-    return loadStripe(publishableKey, { stripeAccount });
+    const cached = accountCache.get(stripeAccount);
+    if (cached) return cached;
+    const promise = loadStripe(publishableKey, { stripeAccount });
+    accountCache.set(stripeAccount, promise);
+    return promise;
   }
 
-  // Cache the platform-level instance
-  if (!stripePromise) {
-    stripePromise = loadStripe(publishableKey);
+  if (!platformPromise) {
+    platformPromise = loadStripe(publishableKey);
   }
 
-  return stripePromise;
+  return platformPromise;
 }

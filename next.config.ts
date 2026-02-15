@@ -7,17 +7,18 @@ import type { NextConfig } from "next";
  * This is the single most important header for preventing XSS attacks.
  *
  * Each directive whitelist is built from actual usage in the codebase:
- * - GTM, Meta Pixel, Stripe.js (scripts)
+ * - GTM, Meta Pixel, Stripe.js, Google Pay (scripts)
  * - Google Fonts (styles + fonts)
  * - Stripe Connect, GTM, Google Pay (iframes)
  * - Supabase, Stripe, Google Pay, Meta CAPI, Klaviyo (API calls)
+ * - Payment Request API explicitly allowed via Permissions-Policy
  */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const cspDirectives = [
   "default-src 'self'",
-  // Scripts: GTM, Meta Pixel, Stripe.js
+  // Scripts: GTM, Meta Pixel, Stripe.js, Google Pay
   // 'unsafe-inline' required for GTM consent defaults in layout.tsx
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://js.stripe.com",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://js.stripe.com https://pay.google.com",
   // Styles: Google Fonts + inline styles (Tailwind, branding CSS vars)
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Fonts: Google Fonts CDN
@@ -60,7 +61,7 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+            value: "camera=(), microphone=(), geolocation=(), payment=*, interest-cohort=()",
           },
           {
             key: "Strict-Transport-Security",

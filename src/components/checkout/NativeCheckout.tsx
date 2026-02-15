@@ -290,6 +290,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
         event={event}
         cartLines={cartLines}
         subtotal={subtotal}
+        totalQty={totalQty}
         symbol={symbol}
         vatSettings={vatSettings}
         onContinue={(email) => {
@@ -1678,6 +1679,7 @@ function EmailCapture({
   event,
   cartLines,
   subtotal,
+  totalQty,
   symbol,
   vatSettings,
   onContinue,
@@ -1686,12 +1688,14 @@ function EmailCapture({
   event: Event & { ticket_types: TicketTypeRow[] };
   cartLines: CartLine[];
   subtotal: number;
+  totalQty: number;
   symbol: string;
   vatSettings: VatSettings | null;
   onContinue: (email: string) => void;
 }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const { trackEngagement } = useTraffic();
 
   // Suppress scanlines on this page too
@@ -1727,19 +1731,44 @@ function EmailCapture({
       {/* Reservation timer */}
       <CheckoutTimer active={true} />
 
-      {/* Compact order summary */}
-      <OrderSummaryMobile
-        cartLines={cartLines}
-        symbol={symbol}
-        subtotal={subtotal}
-        event={event}
-        vatSettings={vatSettings}
-      />
+      {/* Collapsible order summary — keeps CTA visible */}
+      <div className="email-capture__summary">
+        <button
+          type="button"
+          className="email-capture__summary-toggle"
+          onClick={() => setSummaryOpen((o) => !o)}
+        >
+          <span className="email-capture__summary-toggle-left">
+            <svg className="email-capture__summary-toggle-icon" viewBox="0 0 24 24" fill="none">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
+            <span className="email-capture__summary-toggle-label">
+              Order summary ({cartLines.length} {cartLines.length === 1 ? "item" : "items"})
+            </span>
+          </span>
+          <span className="email-capture__summary-toggle-right">
+            <span className="email-capture__summary-toggle-total">{symbol}{subtotal.toFixed(2)}</span>
+            <svg
+              className={`email-capture__summary-toggle-chevron${summaryOpen ? " email-capture__summary-toggle-chevron--open" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
+        </button>
+        <div className={`email-capture__summary-content${summaryOpen ? " email-capture__summary-content--open" : ""}`}>
+          <div className="email-capture__summary-inner">
+            <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+          </div>
+        </div>
+      </div>
 
       <div className="email-capture">
         <div className="email-capture__inner">
           <div className="email-capture__icon">
-            <svg viewBox="0 0 66 66" fill="none">
+            <svg viewBox="0 0 66 66" fill="none" className="email-capture__icon-svg">
               <defs>
                 <linearGradient id="entry-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#A78BFA" />
@@ -1750,6 +1779,13 @@ function EmailCapture({
               <path fill="url(#entry-grad)" d="M 33.011719 8.5625 C 33.160156 8.5625 33.269531 8.558594 33.335938 8.550781 C 35.378906 8.324219 36.777344 7.265625 37.535156 5.371094 C 37.636719 5.117188 37.726562 4.65625 37.808594 3.984375 C 37.878906 3.40625 37.992188 2.996094 38.152344 2.757812 C 38.542969 2.15625 39.164062 1.855469 40.015625 1.855469 C 43.054688 1.847656 46.144531 1.84375 49.285156 1.847656 C 50.269531 1.851562 50.957031 2.207031 51.355469 2.914062 C 51.527344 3.222656 51.613281 3.683594 51.613281 4.289062 C 51.609375 22.871094 51.605469 35.164062 51.605469 41.167969 C 51.605469 41.25 51.535156 41.320312 51.453125 41.320312 C 39.59375 41.3125 33.445312 41.3125 33.011719 41.3125 C 32.578125 41.3125 26.429688 41.3125 14.570312 41.316406 C 14.484375 41.316406 14.414062 41.246094 14.414062 41.164062 L 14.414062 4.285156 C 14.414062 3.679688 14.5 3.222656 14.675781 2.910156 C 15.070312 2.203125 15.761719 1.847656 16.742188 1.84375 C 19.886719 1.84375 22.972656 1.84375 26.011719 1.851562 C 26.863281 1.855469 27.484375 2.15625 27.878906 2.753906 C 28.035156 2.996094 28.148438 3.402344 28.21875 3.980469 C 28.300781 4.65625 28.390625 5.117188 28.492188 5.371094 C 29.25 7.265625 30.652344 8.324219 32.691406 8.550781 C 32.757812 8.558594 32.867188 8.5625 33.011719 8.5625 Z" />
               <path fill="url(#entry-grad)" d="M 33.007812 45.449219 C 38.574219 45.449219 44.351562 45.445312 50.34375 45.4375 C 50.734375 45.4375 51.113281 45.449219 51.480469 45.476562 C 51.550781 45.480469 51.601562 45.539062 51.601562 45.609375 L 51.601562 62.242188 C 51.601562 62.277344 51.601562 62.3125 51.589844 62.347656 C 51.304688 63.355469 50.566406 63.863281 49.378906 63.875 C 49.359375 63.875 46.253906 63.875 40.058594 63.871094 C 39.121094 63.871094 38.195312 63.394531 37.886719 62.449219 C 37.78125 62.121094 37.792969 61.496094 37.710938 61.105469 C 37.257812 58.996094 35.960938 57.707031 33.816406 57.238281 C 33.546875 57.179688 33.277344 57.152344 33.007812 57.152344 C 32.738281 57.152344 32.46875 57.179688 32.199219 57.242188 C 30.054688 57.707031 28.757812 58.996094 28.304688 61.105469 C 28.222656 61.496094 28.238281 62.121094 28.128906 62.449219 C 27.820312 63.394531 26.898438 63.871094 25.957031 63.871094 C 19.765625 63.875 16.65625 63.878906 16.636719 63.878906 C 15.449219 63.867188 14.710938 63.359375 14.425781 62.351562 C 14.417969 62.316406 14.414062 62.28125 14.414062 62.246094 L 14.410156 45.613281 C 14.410156 45.542969 14.460938 45.484375 14.53125 45.480469 C 14.902344 45.453125 15.28125 45.4375 15.671875 45.4375 C 21.660156 45.445312 27.4375 45.449219 33.007812 45.449219 Z" />
             </svg>
+            {/* Ticket count overlay — positioned on the upper body of the ticket */}
+            <span
+              className="email-capture__icon-qty"
+              style={totalQty >= 100 ? { fontSize: "9px" } : totalQty >= 10 ? { fontSize: "11px" } : undefined}
+            >
+              {totalQty}
+            </span>
           </div>
 
           <h1 className="email-capture__heading">

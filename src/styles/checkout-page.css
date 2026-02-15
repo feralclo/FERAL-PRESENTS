@@ -1158,6 +1158,89 @@ html.checkout-active .noise {
 }
 
 /* ========================================
+   EMAIL CAPTURE — COLLAPSIBLE ORDER SUMMARY
+   Dropdown that shows/hides order items so
+   the CTA stays visible above the fold.
+   ======================================== */
+.email-capture__summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(20, 20, 20, 0.4);
+}
+
+.email-capture__summary-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.email-capture__summary-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.email-capture__summary-toggle-icon {
+  width: 16px;
+  height: 16px;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.email-capture__summary-toggle-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #888;
+}
+
+.email-capture__summary-toggle-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.email-capture__summary-toggle-total {
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.email-capture__summary-toggle-chevron {
+  width: 16px;
+  height: 16px;
+  color: #888;
+  transition: transform 0.25s ease;
+}
+
+.email-capture__summary-toggle-chevron--open {
+  transform: rotate(180deg);
+}
+
+.email-capture__summary-content {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+}
+
+.email-capture__summary-content--open {
+  max-height: 600px;
+  opacity: 1;
+}
+
+.email-capture__summary-inner {
+  padding: 0 24px 16px;
+}
+
+/* ========================================
    EMAIL CAPTURE PAGE
    Pre-checkout email collection step.
    Matches checkout branding; centered layout.
@@ -1177,15 +1260,58 @@ html.checkout-active .noise {
 }
 
 .email-capture__icon {
-  width: 52px;
-  height: 52px;
+  position: relative;
+  width: 64px;
+  height: 64px;
   margin: 0 auto 28px;
-  filter: drop-shadow(0 2px 12px rgba(139, 92, 246, 0.25));
+  filter: drop-shadow(0 2px 16px rgba(139, 92, 246, 0.3));
 }
 
-.email-capture__icon svg {
+.email-capture__icon-svg {
   width: 100%;
   height: 100%;
+}
+
+/* Shimmer animation — a subtle highlight sweep across the icon */
+.email-capture__icon::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(167, 139, 250, 0.25) 45%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(167, 139, 250, 0.25) 55%,
+    transparent 65%,
+    transparent 100%
+  );
+  animation: iconShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: 4px;
+  will-change: transform;
+}
+
+@keyframes iconShimmer {
+  0% { transform: translateX(-120%); }
+  40% { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+
+/* Ticket count badge — centered on upper body of ticket */
+.email-capture__icon-qty {
+  position: absolute;
+  top: 33%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
 
 .email-capture__heading {
@@ -2360,6 +2486,15 @@ html.checkout-active .noise {
     padding-top: 24px;
   }
 
+  .email-capture__icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .email-capture__icon-qty {
+    font-size: 12px;
+  }
+
   .email-capture__heading {
     font-size: 20px;
   }
@@ -2367,6 +2502,14 @@ html.checkout-active .noise {
   .email-capture__subtext {
     font-size: 13px;
     margin-bottom: 28px;
+  }
+
+  .email-capture__summary-toggle {
+    padding: 12px 16px;
+  }
+
+  .email-capture__summary-inner {
+    padding: 0 16px 14px;
   }
 
   .checkout-header {

@@ -82,6 +82,8 @@ export interface Ticket {
   };
 }
 
+export type CustomerSegment = "vip" | "returning" | "new" | "lead";
+
 export interface Customer {
   id: string;
   org_id: string;
@@ -89,6 +91,7 @@ export interface Customer {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  nickname?: string;
   total_orders: number;
   total_spent: number;
   first_order_at?: string;

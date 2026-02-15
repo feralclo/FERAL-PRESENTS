@@ -580,39 +580,41 @@ function StripeCheckoutPage({
         vatSettings={vatSettings}
       />
 
-      <div className="checkout-layout">
-        <div className="checkout-layout__main">
-          <Elements stripe={stripePromise} options={elementsOptions}>
-            <SinglePageCheckoutForm
-              slug={slug}
-              event={event}
-              cartLines={cartLines}
-              subtotal={subtotal}
-              totalQty={totalQty}
-              symbol={symbol}
-              onComplete={onComplete}
-              stripePromise={stripePromise}
-              discountCode={appliedDiscount?.code || null}
-              totalAmount={total}
-              capturedEmail={capturedEmail}
-              onChangeEmail={onChangeEmail}
-            />
-          </Elements>
-        </div>
+      <div className="checkout-layout-wrap">
+        <div className="checkout-layout">
+          <div className="checkout-layout__main">
+            <Elements stripe={stripePromise} options={elementsOptions}>
+              <SinglePageCheckoutForm
+                slug={slug}
+                event={event}
+                cartLines={cartLines}
+                subtotal={subtotal}
+                totalQty={totalQty}
+                symbol={symbol}
+                onComplete={onComplete}
+                stripePromise={stripePromise}
+                discountCode={appliedDiscount?.code || null}
+                totalAmount={total}
+                capturedEmail={capturedEmail}
+                onChangeEmail={onChangeEmail}
+              />
+            </Elements>
+          </div>
 
-        {/* Desktop: sidebar order summary */}
-        <aside className="checkout-layout__sidebar">
-          <OrderSummaryDesktop
-            cartLines={cartLines}
-            symbol={symbol}
-            subtotal={subtotal}
-            event={event}
-            discount={appliedDiscount}
-            onApplyDiscount={setAppliedDiscount}
-            onRemoveDiscount={() => setAppliedDiscount(null)}
-            vatSettings={vatSettings}
-          />
-        </aside>
+          {/* Desktop: sidebar order summary */}
+          <aside className="checkout-layout__sidebar">
+            <OrderSummaryDesktop
+              cartLines={cartLines}
+              symbol={symbol}
+              subtotal={subtotal}
+              event={event}
+              discount={appliedDiscount}
+              onApplyDiscount={setAppliedDiscount}
+              onRemoveDiscount={() => setAppliedDiscount(null)}
+              vatSettings={vatSettings}
+            />
+          </aside>
+        </div>
       </div>
 
       <CheckoutFooter />
@@ -1637,113 +1639,115 @@ function TestModeCheckout({
         vatSettings={vatSettings}
       />
 
-      <div className="checkout-layout">
-        <div className="checkout-layout__main">
-          <div className="native-checkout">
-            <div className="native-checkout__inner">
-              <form onSubmit={handleSubmit} className="native-checkout__form">
-                <div className="native-checkout__section">
-                  <h2 className="native-checkout__heading">Your Details</h2>
-                  {capturedEmail ? (
-                    <div className="native-checkout__email-display">
-                      <div className="native-checkout__email-display-info">
-                        <svg className="native-checkout__email-display-icon" viewBox="0 0 24 24" fill="none">
-                          <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                          <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="native-checkout__email-display-value">{email}</span>
+      <div className="checkout-layout-wrap">
+        <div className="checkout-layout">
+          <div className="checkout-layout__main">
+            <div className="native-checkout">
+              <div className="native-checkout__inner">
+                <form onSubmit={handleSubmit} className="native-checkout__form">
+                  <div className="native-checkout__section">
+                    <h2 className="native-checkout__heading">Your Details</h2>
+                    {capturedEmail ? (
+                      <div className="native-checkout__email-display">
+                        <div className="native-checkout__email-display-info">
+                          <svg className="native-checkout__email-display-icon" viewBox="0 0 24 24" fill="none">
+                            <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                            <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <span className="native-checkout__email-display-value">{email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="native-checkout__email-display-change"
+                          onClick={onChangeEmail}
+                        >
+                          Change
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="native-checkout__email-display-change"
-                        onClick={onChangeEmail}
-                      >
-                        Change
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <label htmlFor="test-email" className="sr-only">Email</label>
-                      <input
-                        id="test-email"
-                        type="email"
-                        className="native-checkout__input"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email"
-                        required
-                        autoComplete="email"
-                        autoFocus
-                      />
-                      <p className="native-checkout__email-hint">
-                        <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                          <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Your tickets will be sent to this email
-                      </p>
-                    </>
-                  )}
-                  <div className="native-checkout__row">
-                    <div>
-                      <label htmlFor="test-first-name" className="sr-only">First name</label>
-                      <input
-                        id="test-first-name"
-                        type="text"
-                        className="native-checkout__input"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        onBlur={captureNameOnBlur}
-                        placeholder="First name"
-                        required
-                        autoComplete="given-name"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="test-last-name" className="sr-only">Last name</label>
-                      <input
-                        id="test-last-name"
-                        type="text"
-                        className="native-checkout__input"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        onBlur={captureNameOnBlur}
-                        placeholder="Last name"
-                        required
-                        autoComplete="family-name"
-                      />
+                    ) : (
+                      <>
+                        <label htmlFor="test-email" className="sr-only">Email</label>
+                        <input
+                          id="test-email"
+                          type="email"
+                          className="native-checkout__input"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="Email"
+                          required
+                          autoComplete="email"
+                          autoFocus
+                        />
+                        <p className="native-checkout__email-hint">
+                          <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                            <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Your tickets will be sent to this email
+                        </p>
+                      </>
+                    )}
+                    <div className="native-checkout__row">
+                      <div>
+                        <label htmlFor="test-first-name" className="sr-only">First name</label>
+                        <input
+                          id="test-first-name"
+                          type="text"
+                          className="native-checkout__input"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          onBlur={captureNameOnBlur}
+                          placeholder="First name"
+                          required
+                          autoComplete="given-name"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="test-last-name" className="sr-only">Last name</label>
+                        <input
+                          id="test-last-name"
+                          type="text"
+                          className="native-checkout__input"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          onBlur={captureNameOnBlur}
+                          placeholder="Last name"
+                          required
+                          autoComplete="family-name"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {error && <div className="native-checkout__error">{error}</div>}
+                  {error && <div className="native-checkout__error">{error}</div>}
 
-                <button
-                  type="submit"
-                  className="native-checkout__submit"
-                  disabled={submitting}
-                >
-                  {submitting ? "Processing..." : "PAY NOW"}
-                </button>
+                  <button
+                    type="submit"
+                    className="native-checkout__submit"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Processing..." : "PAY NOW"}
+                  </button>
 
-                <div className="native-checkout__test-badge">
-                  TEST MODE — No real payment will be processed
-                </div>
-              </form>
+                  <div className="native-checkout__test-badge">
+                    TEST MODE — No real payment will be processed
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Desktop: sidebar order summary */}
-        <aside className="checkout-layout__sidebar">
-          <OrderSummaryDesktop
-            cartLines={cartLines}
-            symbol={symbol}
-            subtotal={subtotal}
-            event={event}
-            vatSettings={vatSettings}
-          />
-        </aside>
+          {/* Desktop: sidebar order summary */}
+          <aside className="checkout-layout__sidebar">
+            <OrderSummaryDesktop
+              cartLines={cartLines}
+              symbol={symbol}
+              subtotal={subtotal}
+              event={event}
+              vatSettings={vatSettings}
+            />
+          </aside>
+        </div>
       </div>
 
       <CheckoutFooter />

@@ -66,26 +66,29 @@ export function CheckoutTimer({ active, onExpire }: CheckoutTimerProps) {
   return (
     <div className={cls}>
       <div className="checkout-timer__inner">
-        <div className="checkout-timer__row">
-          <svg className="checkout-timer__icon" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M12 9v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M12 5V3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M16.5 6.5l1-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <span className="checkout-timer__label">
-            {isExpired ? "Time\u2019s up \u2014 tickets released" : "Tickets held for"}
-          </span>
-          {!isExpired && (
-            <span className="checkout-timer__time">{time}</span>
-          )}
+        <div className="checkout-timer__content">
+          <div className="checkout-timer__row">
+            <svg className="checkout-timer__icon" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M12 9v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M12 5V3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M16.5 6.5l1-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span className="checkout-timer__label">
+              {isExpired ? "Time\u2019s up \u2014 tickets released" : "Tickets held for"}
+            </span>
+            {!isExpired && (
+              <span className="checkout-timer__time">{time}</span>
+            )}
+          </div>
         </div>
-        <div className="checkout-timer__track">
-          <div
-            className="checkout-timer__progress"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+      </div>
+      {/* Full-bleed track line — stretches edge-to-edge */}
+      <div className="checkout-timer__track checkout-timer__track--bleed">
+        <div
+          className="checkout-timer__progress"
+          style={{ width: `${progress}%` }}
+        />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,9 @@ import {
   Repeat,
   Search,
   TrendingUp,
+  Target,
 } from "lucide-react";
+import { generateNickname } from "@/lib/nicknames";
 import type { Customer } from "@/types/orders";
 
 /* ── Helpers ── */
@@ -56,6 +59,7 @@ function getCustomerTier(totalSpent: number, totalOrders: number): {
    CUSTOMERS PAGE
    ════════════════════════════════════════════════════════ */
 export default function CustomersPage() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -180,17 +184,35 @@ export default function CustomersPage() {
                     Number(cust.total_spent),
                     cust.total_orders
                   );
+                  const isLead = cust.total_orders === 0;
+                  const hasName = cust.first_name || cust.last_name;
+                  const displayName = hasName
+                    ? `${cust.first_name || ""} ${cust.last_name || ""}`.trim()
+                    : (cust.nickname || generateNickname(cust.email));
+
                   return (
-                    <TableRow key={cust.id} className="cursor-pointer">
+                    <TableRow
+                      key={cust.id}
+                      className="cursor-pointer transition-colors hover:bg-muted/30"
+                      onClick={() => router.push(`/admin/customers/${cust.id}/`)}
+                    >
                       <TableCell>
-                        <Link
-                          href={`/admin/customers/${cust.id}/`}
-                          className="text-sm font-medium text-foreground transition-colors hover:text-primary"
-                        >
-                          {cust.first_name || cust.last_name
-                            ? `${cust.first_name || ""} ${cust.last_name || ""}`.trim()
-                            : "—"}
-                        </Link>
+                        <div className="flex items-center gap-2.5">
+                          {isLead && (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/10">
+                              <Target size={10} className="text-purple-400" />
+                            </span>
+                          )}
+                          <Link
+                            href={`/admin/customers/${cust.id}/`}
+                            className={`text-sm font-medium transition-colors hover:text-primary ${
+                              isLead ? "text-purple-400" : "text-foreground"
+                            }`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {displayName}
+                          </Link>
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
                         {cust.email}

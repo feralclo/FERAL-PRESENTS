@@ -181,14 +181,17 @@ html.checkout-active .noise {
    Thin progress track underneath.
    ======================================== */
 .checkout-timer {
-  padding: 16px 24px 0;
-  max-width: 1200px;
-  margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
 }
 
 .checkout-timer__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px 0;
+}
+
+.checkout-timer__content {
   max-width: 580px;
 }
 
@@ -222,11 +225,16 @@ html.checkout-active .noise {
 }
 
 .checkout-timer__track {
-  height: 2px;
+  height: 1px;
   background: rgba(255, 255, 255, 0.06);
-  border-radius: 1px;
   margin-top: 14px;
   overflow: hidden;
+  position: relative;
+}
+
+/* Full-bleed track — stretches edge-to-edge on desktop */
+.checkout-timer__track--bleed {
+  width: 100%;
 }
 
 .checkout-timer__progress {
@@ -274,7 +282,14 @@ html.checkout-active .noise {
 
 /* ========================================
    CHECKOUT LAYOUT (two-column desktop)
+   Full-bleed wrapper so lines stretch edge-to-edge.
+   Inner content constrained to 1200px.
    ======================================== */
+.checkout-layout-wrap {
+  flex: 1;
+  position: relative;
+}
+
 .checkout-layout {
   flex: 1;
   display: flex;
@@ -294,6 +309,16 @@ html.checkout-active .noise {
 }
 
 @media (min-width: 960px) {
+  /* Full-bleed vertical divider line */
+  .checkout-layout-wrap {
+    background: linear-gradient(to right,
+      transparent calc(50% + 220px),
+      rgba(255, 255, 255, 0.06) calc(50% + 220px),
+      rgba(255, 255, 255, 0.06) calc(50% + 221px),
+      transparent calc(50% + 221px)
+    );
+  }
+
   .checkout-layout {
     flex-direction: row;
     gap: 0;
@@ -301,7 +326,6 @@ html.checkout-active .noise {
 
   .checkout-layout__main {
     flex: 1;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
     padding-right: 32px;
   }
 
@@ -327,7 +351,10 @@ html.checkout-active .noise {
 }
 
 .order-summary-mobile__content {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 16px 24px 20px;
+  box-sizing: border-box;
 }
 
 /* Hide mobile summary on desktop */
@@ -1165,8 +1192,6 @@ html.checkout-active .noise {
 .email-capture__summary {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(20, 20, 20, 0.4);
-  max-width: 1200px;
-  margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1176,11 +1201,14 @@ html.checkout-active .noise {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 14px 24px;
   background: none;
   border: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 .email-capture__summary-toggle-left {
@@ -1241,7 +1269,10 @@ html.checkout-active .noise {
 }
 
 .email-capture__summary-inner {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 0 24px 16px;
+  box-sizing: border-box;
 }
 
 /* ========================================
@@ -2510,9 +2541,8 @@ html.checkout-active .noise {
     height: 14px;
   }
 
-  .checkout-timer {
-    padding: 10px 16px;
-    gap: 8px;
+  .checkout-timer__inner {
+    padding: 10px 16px 0;
   }
 
   .checkout-timer__label {

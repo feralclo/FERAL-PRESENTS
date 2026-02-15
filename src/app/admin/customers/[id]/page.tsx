@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
-import type { Customer } from "@/types/orders";
+import { generateNickname } from "@/lib/nicknames";
+import type { Customer, AbandonedCart, CustomerSegment } from "@/types/orders";
 import {
   ArrowLeft,
   User,
@@ -30,6 +31,12 @@ import {
   Send,
   AlertCircle,
   UserPlus,
+  ShoppingCart,
+  Zap,
+  Target,
+  Crown,
+  Sparkles,
+  MailWarning,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -68,6 +75,27 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "se
   failed: "destructive",
 };
 
+/* ── Segment config ── */
+const SEGMENT_CONFIG: Record<CustomerSegment, {
+  label: string;
+  variant: "warning" | "success" | "secondary" | "info";
+  icon: typeof Crown;
+  color: string;
+}> = {
+  vip: { label: "VIP", variant: "warning", icon: Crown, color: "text-amber-400" },
+  returning: { label: "Returning", variant: "success", icon: Repeat, color: "text-emerald-400" },
+  new: { label: "New", variant: "secondary", icon: Sparkles, color: "text-blue-400" },
+  lead: { label: "Lead", variant: "info", icon: Target, color: "text-purple-400" },
+};
+
+/* ── Journey stage definitions ── */
+const JOURNEY_STAGES = [
+  { key: "lead" as const, label: "Lead", icon: Target },
+  { key: "new" as const, label: "New Customer", icon: Sparkles },
+  { key: "returning" as const, label: "Returning", icon: Repeat },
+  { key: "vip" as const, label: "VIP", icon: Crown },
+];
+
 /* ── Helpers ── */
 function formatCurrency(amount: number) {
   return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -91,8 +119,36 @@ function formatDateTime(d: string) {
   });
 }
 
-function getInitials(first?: string, last?: string): string {
-  return `${(first?.[0] || "").toUpperCase()}${(last?.[0] || "").toUpperCase()}`;
+function timeAgo(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+function getInitials(first?: string, last?: string, nickname?: string): string {
+  if (first || last) {
+    return `${(first?.[0] || "").toUpperCase()}${(last?.[0] || "").toUpperCase()}`;
+  }
+  if (nickname) {
+    const parts = nickname.split(" ");
+    return parts.map((p) => p[0]?.toUpperCase() || "").join("").slice(0, 2);
+  }
+  return "?";
+}
+
+function getSegment(totalSpent: number, totalOrders: number): CustomerSegment {
+  if (totalSpent >= 200 || totalOrders >= 5) return "vip";
+  if (totalOrders > 1) return "returning";
+  if (totalOrders === 0) return "lead";
+  return "new";
 }
 
 function memberSince(dateStr?: string): string {
@@ -112,24 +168,54 @@ interface TimelineEntry {
   time: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   sortDate: Date;
+  color?: string;
 }
 
 function buildCustomerTimeline(
   customer: Customer,
   orders: CustomerOrder[],
-  tickets: CustomerTicket[]
+  tickets: CustomerTicket[],
+  abandonedCarts: AbandonedCart[]
 ): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   const fmt = (d: string) => formatDateTime(d);
 
   // Customer created
+  const isLead = customer.total_orders === 0;
   entries.push({
-    label: "Customer created",
-    detail: `${customer.first_name} ${customer.last_name} added to the platform`,
+    label: isLead ? "Lead captured" : "Customer created",
+    detail: isLead
+      ? `${customer.nickname || customer.email} entered the funnel`
+      : `${customer.first_name || ""} ${customer.last_name || ""} added to the platform`.trim(),
     time: fmt(customer.created_at),
-    icon: UserPlus,
+    icon: isLead ? Target : UserPlus,
     sortDate: new Date(customer.created_at),
+    color: isLead ? "text-purple-400" : undefined,
   });
+
+  // Abandoned carts
+  for (const cart of abandonedCarts) {
+    const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
+    entries.push({
+      label: "Cart abandoned",
+      detail: `${itemCount} item${itemCount !== 1 ? "s" : ""} — ${formatCurrency(cart.subtotal)}${cart.event?.name ? ` for ${cart.event.name}` : ""}`,
+      time: fmt(cart.created_at),
+      icon: ShoppingCart,
+      sortDate: new Date(cart.created_at),
+      color: "text-amber-400",
+    });
+
+    if (cart.status === "recovered" && cart.recovered_at) {
+      entries.push({
+        label: "Cart recovered",
+        detail: `Converted to order${cart.event?.name ? ` for ${cart.event.name}` : ""}`,
+        time: fmt(cart.recovered_at),
+        icon: Zap,
+        sortDate: new Date(cart.recovered_at),
+        color: "text-emerald-400",
+      });
+    }
+  }
 
   // Each order
   for (const order of orders) {
@@ -149,6 +235,7 @@ function buildCustomerTimeline(
         time: fmt(order.created_at),
         icon: CreditCard,
         sortDate: new Date(new Date(order.created_at).getTime() + 1000),
+        color: "text-emerald-400",
       });
     }
 
@@ -169,6 +256,7 @@ function buildCustomerTimeline(
         time: fmt(meta.email_attempted_at as string),
         icon: AlertCircle,
         sortDate: new Date(meta.email_attempted_at as string),
+        color: "text-red-400",
       });
     }
 
@@ -180,6 +268,7 @@ function buildCustomerTimeline(
         time: fmt(order.created_at),
         icon: DollarSign,
         sortDate: new Date(new Date(order.created_at).getTime() + 2000),
+        color: "text-red-400",
       });
     }
   }
@@ -193,6 +282,7 @@ function buildCustomerTimeline(
         time: fmt(ticket.scanned_at),
         icon: ScanLine,
         sortDate: new Date(ticket.scanned_at),
+        color: "text-emerald-400",
       });
     }
   }
@@ -201,9 +291,180 @@ function buildCustomerTimeline(
   return entries;
 }
 
-/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════
+   JOURNEY PROGRESS — visual stage indicator with animated bar
+   ════════════════════════════════════════════════════════════ */
+function JourneyProgress({ segment }: { segment: CustomerSegment }) {
+  const stageIndex = JOURNEY_STAGES.findIndex((s) => s.key === segment);
+  const progressPercent = ((stageIndex + 1) / JOURNEY_STAGES.length) * 100;
+
+  return (
+    <Card>
+      <CardHeader className="border-b border-border pb-4">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Zap size={15} className="text-primary" />
+          Customer Journey
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-5">
+        {/* Stage indicators */}
+        <div className="relative">
+          {/* Background track */}
+          <div className="absolute left-0 right-0 top-5 h-0.5 bg-border" />
+          {/* Active track */}
+          <div
+            className="absolute left-0 top-5 h-0.5 bg-primary transition-all duration-700 ease-out"
+            style={{ width: `${progressPercent - (100 / JOURNEY_STAGES.length / 2)}%` }}
+          />
+
+          <div className="relative flex justify-between">
+            {JOURNEY_STAGES.map((stage, i) => {
+              const isActive = i <= stageIndex;
+              const isCurrent = stage.key === segment;
+              const StageIcon = stage.icon;
+
+              return (
+                <div key={stage.key} className="flex flex-col items-center gap-2">
+                  <div
+                    className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-500 ${
+                      isCurrent
+                        ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_rgba(139,92,246,0.3)]"
+                        : isActive
+                          ? "border-primary/50 bg-primary/10 text-primary/70"
+                          : "border-border bg-card text-muted-foreground/40"
+                    }`}
+                  >
+                    <StageIcon size={16} />
+                    {isCurrent && (
+                      <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`text-[10px] font-medium tracking-wider ${
+                      isCurrent
+                        ? "text-primary font-semibold"
+                        : isActive
+                          ? "text-foreground/70"
+                          : "text-muted-foreground/40"
+                    }`}
+                  >
+                    {stage.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   ABANDONED CARTS — shows active abandoned carts with status
+   ════════════════════════════════════════════════════════════ */
+function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
+  if (carts.length === 0) return null;
+
+  const activeCarts = carts.filter((c) => c.status === "abandoned");
+  const recoveredCarts = carts.filter((c) => c.status === "recovered");
+
+  return (
+    <Card>
+      <CardHeader className="border-b border-border pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <ShoppingCart size={15} className="text-amber-400" />
+            Abandoned Carts
+            {activeCarts.length > 0 && (
+              <Badge variant="warning" className="text-[10px]">
+                {activeCarts.length} active
+              </Badge>
+            )}
+          </CardTitle>
+          {recoveredCarts.length > 0 && (
+            <span className="text-[11px] text-emerald-400">
+              {recoveredCarts.length} recovered
+            </span>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {carts.map((cart) => {
+          const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
+          const isAbandoned = cart.status === "abandoned";
+
+          return (
+            <div
+              key={cart.id}
+              className={`flex items-center gap-4 border-b border-border/50 px-5 py-4 last:border-b-0 ${
+                isAbandoned ? "bg-amber-500/[0.02]" : ""
+              }`}
+            >
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                  isAbandoned
+                    ? "bg-amber-500/10 text-amber-400"
+                    : "bg-emerald-500/10 text-emerald-400"
+                }`}
+              >
+                {isAbandoned ? (
+                  <ShoppingCart size={15} />
+                ) : (
+                  <Zap size={15} />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">
+                    {itemCount} item{itemCount !== 1 ? "s" : ""}
+                  </span>
+                  <Badge
+                    variant={isAbandoned ? "warning" : "success"}
+                    className="text-[9px]"
+                  >
+                    {cart.status}
+                  </Badge>
+                </div>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                  {cart.event?.name && (
+                    <span>{cart.event.name}</span>
+                  )}
+                  <span>{timeAgo(cart.created_at)}</span>
+                </div>
+                {isAbandoned && cart.notification_count === 0 && (
+                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-400/70">
+                    <MailWarning size={11} />
+                    <span>Awaiting recovery email</span>
+                  </div>
+                )}
+                {isAbandoned && cart.notification_count > 0 && (
+                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <Send size={11} />
+                    <span>
+                      {cart.notification_count} email{cart.notification_count !== 1 ? "s" : ""} sent
+                      {cart.notified_at && ` — last ${timeAgo(cart.notified_at)}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <span className="shrink-0 font-mono text-sm font-semibold text-foreground">
+                {formatCurrency(cart.subtotal)}
+              </span>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
    CUSTOMER PROFILE PAGE
-   ════════════════════════════════════════════════════════ */
+   ════════════════════════════════════════════════════════════ */
 export default function CustomerProfilePage() {
   const params = useParams();
   const customerId = params.id as string;
@@ -211,13 +472,14 @@ export default function CustomerProfilePage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [tickets, setTickets] = useState<CustomerTicket[]>([]);
+  const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCart[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadCustomer = useCallback(async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    const [customerResult, ordersResult, ticketsResult] = await Promise.all([
+    const [customerResult, ordersResult, ticketsResult, cartsResult] = await Promise.all([
       supabase
         .from(TABLES.CUSTOMERS)
         .select("*")
@@ -236,11 +498,18 @@ export default function CustomerProfilePage() {
         .eq("customer_id", customerId)
         .eq("org_id", ORG_ID)
         .order("created_at", { ascending: false }),
+      supabase
+        .from(TABLES.ABANDONED_CARTS)
+        .select("*, event:events(name, slug, date_start)")
+        .eq("customer_id", customerId)
+        .eq("org_id", ORG_ID)
+        .order("created_at", { ascending: false }),
     ]);
 
     if (customerResult.data) setCustomer(customerResult.data);
     if (ordersResult.data) setOrders(ordersResult.data as unknown as CustomerOrder[]);
     if (ticketsResult.data) setTickets(ticketsResult.data as unknown as CustomerTicket[]);
+    if (cartsResult.data) setAbandonedCarts(cartsResult.data as unknown as AbandonedCart[]);
 
     setLoading(false);
   }, [customerId]);
@@ -293,8 +562,22 @@ export default function CustomerProfilePage() {
     ? (latestOrder.items || []).reduce((s, i) => s + i.qty, 0)
     : 0;
 
+  // Segment
+  const segment = getSegment(totalSpent, customer.total_orders);
+  const segmentConfig = SEGMENT_CONFIG[segment];
+  const SegmentIcon = segmentConfig.icon;
+
+  // Display name — nickname for leads, real name for customers
+  const isLead = segment === "lead";
+  const displayName = isLead
+    ? (customer.nickname || generateNickname(customer.email))
+    : `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || customer.nickname || customer.email;
+
+  // Abandoned carts stats
+  const activeAbandonedCarts = abandonedCarts.filter((c) => c.status === "abandoned");
+
   // Timeline
-  const timeline = buildCustomerTimeline(customer, orders, tickets);
+  const timeline = buildCustomerTimeline(customer, orders, tickets, abandonedCarts);
 
   return (
     <div>
@@ -311,27 +594,51 @@ export default function CustomerProfilePage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
-                <span className="font-mono text-lg font-bold text-muted-foreground">
-                  {getInitials(customer.first_name, customer.last_name)}
+              {/* Avatar */}
+              <div
+                className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full ring-1 ${
+                  isLead
+                    ? "bg-purple-500/10 ring-purple-500/30"
+                    : "bg-muted ring-border"
+                }`}
+              >
+                <span
+                  className={`font-mono text-lg font-bold ${
+                    isLead ? "text-purple-400" : "text-muted-foreground"
+                  }`}
+                >
+                  {getInitials(customer.first_name, customer.last_name, customer.nickname)}
                 </span>
+                {isLead && (
+                  <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-purple-500 text-[8px] text-white">
+                    <Target size={9} />
+                  </span>
+                )}
               </div>
+
               <div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <h1 className="font-mono text-xl font-bold tracking-wider text-foreground">
-                    {customer.first_name} {customer.last_name}
+                    {displayName}
                   </h1>
+                  <Badge variant={segmentConfig.variant} className="text-[10px] font-semibold uppercase">
+                    <SegmentIcon size={10} />
+                    {segmentConfig.label}
+                  </Badge>
                   {customer.total_orders > 2 && (
                     <Badge variant="secondary" className="text-[10px] font-semibold">
                       <Repeat size={10} /> Loyal
                     </Badge>
                   )}
-                  {totalSpent >= 200 && (
-                    <Badge variant="secondary" className="text-[10px] font-semibold">
-                      VIP
-                    </Badge>
-                  )}
                 </div>
+
+                {/* Lead: show real name as subtitle if available */}
+                {isLead && (customer.first_name || customer.last_name) && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    aka {customer.first_name} {customer.last_name}
+                  </p>
+                )}
+
                 <div className="mt-2 flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Mail size={13} className="text-muted-foreground/50" />
@@ -345,14 +652,25 @@ export default function CustomerProfilePage() {
                   )}
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <CalendarDays size={13} className="text-muted-foreground/50" />
-                    Member since {memberSince(customer.first_order_at)}
+                    {isLead ? "First seen" : "Member since"} {memberSince(customer.first_order_at || customer.created_at)}
                   </div>
+                  {activeAbandonedCarts.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-sm text-amber-400">
+                      <ShoppingCart size={13} />
+                      {activeAbandonedCarts.length} abandoned cart{activeAbandonedCarts.length !== 1 ? "s" : ""}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Journey Progress */}
+      <div className="mb-6">
+        <JourneyProgress segment={segment} />
+      </div>
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
@@ -389,11 +707,18 @@ export default function CustomerProfilePage() {
         />
         <StatCard
           size="compact"
-          label="Merch Spend"
-          value={formatCurrency(merchSpend)}
-          icon={Shirt}
+          label={activeAbandonedCarts.length > 0 ? "Abandoned Carts" : "Merch Spend"}
+          value={activeAbandonedCarts.length > 0 ? activeAbandonedCarts.length.toString() : formatCurrency(merchSpend)}
+          icon={activeAbandonedCarts.length > 0 ? ShoppingCart : Shirt}
         />
       </div>
+
+      {/* Abandoned Carts (if any) */}
+      {abandonedCarts.length > 0 && (
+        <div className="mt-6">
+          <AbandonedCartsSection carts={abandonedCarts} />
+        </div>
+      )}
 
       {/* Latest Order */}
       <div className="mt-6">
@@ -405,7 +730,7 @@ export default function CustomerProfilePage() {
                 Latest Order
               </CardTitle>
               {orders.length > 1 && (
-                <Link href={`/admin/orders/?customer_id=${customerId}&customer_name=${encodeURIComponent(`${customer.first_name} ${customer.last_name}`)}`}>
+                <Link href={`/admin/orders/?customer_id=${customerId}&customer_name=${encodeURIComponent(displayName)}`}>
                   <Button variant="outline" size="sm">
                     View All Orders ({orders.length})
                     <ChevronRight size={14} />
@@ -508,7 +833,9 @@ export default function CustomerProfilePage() {
             ) : (
               <div className="flex flex-col items-center justify-center py-10">
                 <Package size={24} className="text-muted-foreground/20" />
-                <p className="mt-2 text-xs text-muted-foreground">No orders yet</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {isLead ? "No purchases yet — still a lead" : "No orders yet"}
+                </p>
               </div>
             )}
           </CardContent>
@@ -530,7 +857,7 @@ export default function CustomerProfilePage() {
         </Card>
       )}
 
-      {/* Timeline */}
+      {/* Activity Timeline */}
       {timeline.length > 0 && (
         <Card className="mt-4">
           <CardHeader className="border-b border-border pb-4">
@@ -553,7 +880,13 @@ export default function CustomerProfilePage() {
                       i < timeline.length - 1 ? "pb-6" : ""
                     }`}
                   >
-                    <div className="absolute -left-6 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-background ring-2 ring-border text-muted-foreground">
+                    <div
+                      className={`absolute -left-6 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-background ring-2 ${
+                        entry.color
+                          ? `ring-current ${entry.color}`
+                          : "ring-border text-muted-foreground"
+                      }`}
+                    >
                       <Icon size={11} />
                     </div>
                     <div className="min-w-0 flex-1">

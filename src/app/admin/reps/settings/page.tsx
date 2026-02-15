@@ -25,13 +25,23 @@ export default function RepSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   const loadSettings = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/reps/settings");
+      if (!res.ok) {
+        setError("Failed to load settings");
+        setLoading(false);
+        return;
+      }
       const json = await res.json();
       if (json.data) setSettings({ ...DEFAULT_REP_PROGRAM_SETTINGS, ...json.data });
-    } catch { /* network */ }
+    } catch {
+      setError("Network error loading settings");
+    }
     setLoading(false);
   }, []);
 
@@ -39,6 +49,7 @@ export default function RepSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch("/api/reps/settings", {
         method: "POST",
@@ -48,8 +59,12 @@ export default function RepSettingsPage() {
       if (res.ok) {
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+      } else {
+        setError("Failed to save settings");
       }
-    } catch { /* network */ }
+    } catch {
+      setError("Network error saving settings");
+    }
     setSaving(false);
   };
 
@@ -91,6 +106,12 @@ export default function RepSettingsPage() {
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* General */}

@@ -78,7 +78,6 @@ export async function POST(
     const { token } = await params;
     const body = await request.json();
     const {
-      email,
       password,
       first_name,
       last_name,
@@ -135,8 +134,16 @@ export async function POST(
       );
     }
 
-    // Determine which email to use (prefer email from body over placeholder in DB)
-    const finalEmail = (email || rep.email).trim().toLowerCase();
+    // Prevent suspended or deactivated reps from reactivating via invite
+    if (rep.status === "suspended" || rep.status === "deactivated") {
+      return NextResponse.json(
+        { error: "This account has been suspended or deactivated" },
+        { status: 403 }
+      );
+    }
+
+    // Always use the email from the database — never accept an override from the client
+    const finalEmail = rep.email.trim().toLowerCase();
 
     // Create auth user — use admin API if service role key available (auto-confirms email)
     let authUserId: string | null = null;

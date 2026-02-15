@@ -91,10 +91,10 @@ export async function PUT(
       );
     }
 
-    // Validate status enum if provided
-    if (updates.status && !["active", "inactive", "suspended", "invited"].includes(updates.status as string)) {
+    // Validate status enum if provided (must match RepStatus type)
+    if (updates.status && !["pending", "active", "suspended", "deactivated"].includes(updates.status as string)) {
       return NextResponse.json(
-        { error: "status must be 'active', 'inactive', 'suspended', or 'invited'" },
+        { error: "status must be 'pending', 'active', 'suspended', or 'deactivated'" },
         { status: 400 }
       );
     }
@@ -165,7 +165,7 @@ export async function DELETE(
 
     // Clean up discount codes associated with this rep
     await supabase
-      .from("discounts")
+      .from(TABLES.DISCOUNTS)
       .delete()
       .eq("rep_id", id)
       .eq("org_id", ORG_ID);

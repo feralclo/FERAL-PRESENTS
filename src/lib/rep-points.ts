@@ -78,8 +78,8 @@ export async function awardPoints(params: {
 
     const newBalance = rep.points_balance + params.points;
 
-    // Insert ledger entry
-    await supabase.from(TABLES.REP_POINTS_LOG).insert({
+    // Insert ledger entry — bail if this fails to prevent balance/ledger drift
+    const { error: ledgerError } = await supabase.from(TABLES.REP_POINTS_LOG).insert({
       org_id: orgId,
       rep_id: params.repId,
       points: params.points,
@@ -89,6 +89,11 @@ export async function awardPoints(params: {
       description: params.description,
       created_by: params.createdBy || null,
     });
+
+    if (ledgerError) {
+      console.error("[rep-points] Ledger insert failed:", ledgerError);
+      return null;
+    }
 
     // Update denormalized balance + recalculate level
     const settings = await getRepSettings(orgId);

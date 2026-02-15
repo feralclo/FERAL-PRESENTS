@@ -169,7 +169,7 @@ function ExpressCheckoutInner({
           },
           buttonHeight: 44,
           layout: {
-            maxColumns: 1,
+            maxColumns: 2,
             maxRows: 1,
           },
           paymentMethods: {

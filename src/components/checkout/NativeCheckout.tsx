@@ -939,50 +939,52 @@ function SinglePageCheckoutForm({
           className="express-checkout-section"
           style={{ display: expressAvailable ? "block" : "none" }}
         >
-          {expressLoaded && (
-            <div className="express-checkout__label">Express checkout</div>
-          )}
-          <div className="express-checkout">
-            {!expressLoaded && (
-              <div className="express-checkout__skeleton" />
+          <div className="express-checkout-container">
+            {expressLoaded && (
+              <div className="express-checkout__label">Express checkout</div>
             )}
-            <div
-              className="express-checkout__element"
-              style={{ opacity: expressLoaded ? 1 : 0 }}
-            >
-              <ExpressCheckoutElement
-                onClick={handleExpressClick}
-                onConfirm={handleExpressConfirm}
-                onReady={({ availablePaymentMethods }) => {
-                  setExpressLoaded(true);
-                  if (!availablePaymentMethods) {
-                    setExpressAvailable(false);
-                  }
-                }}
-                options={{
-                  buttonType: {
-                    applePay: "plain",
-                    googlePay: "plain",
-                  },
-                  buttonTheme: {
-                    applePay: "white-outline",
-                    googlePay: "white",
-                  },
-                  buttonHeight: 44,
-                  layout: {
-                    maxColumns: 1,
-                    maxRows: 1,
-                  },
-                  paymentMethods: {
-                    applePay: "auto",
-                    googlePay: "auto",
-                    link: "never",
-                    klarna: "never",
-                    amazonPay: "never",
-                    paypal: "never",
-                  },
-                }}
-              />
+            <div className="express-checkout">
+              {!expressLoaded && (
+                <div className="express-checkout__skeleton" />
+              )}
+              <div
+                className="express-checkout__element"
+                style={{ opacity: expressLoaded ? 1 : 0 }}
+              >
+                <ExpressCheckoutElement
+                  onClick={handleExpressClick}
+                  onConfirm={handleExpressConfirm}
+                  onReady={({ availablePaymentMethods }) => {
+                    setExpressLoaded(true);
+                    if (!availablePaymentMethods) {
+                      setExpressAvailable(false);
+                    }
+                  }}
+                  options={{
+                    buttonType: {
+                      applePay: "plain",
+                      googlePay: "plain",
+                    },
+                    buttonTheme: {
+                      applePay: "white-outline",
+                      googlePay: "white",
+                    },
+                    buttonHeight: 44,
+                    layout: {
+                      maxColumns: 2,
+                      maxRows: 1,
+                    },
+                    paymentMethods: {
+                      applePay: "auto",
+                      googlePay: "auto",
+                      link: "never",
+                      klarna: "never",
+                      amazonPay: "never",
+                      paypal: "never",
+                    },
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

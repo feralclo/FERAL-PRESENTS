@@ -1159,33 +1159,43 @@ html.checkout-active .noise {
 
 /* ========================================
    EXPRESS CHECKOUT SECTION
+   Centered, rounded container with label.
+   Stripe renders buttons inside __element.
    ======================================== */
 .express-checkout-section {
   margin-bottom: 4px;
+}
+
+/* Rounded container — wraps label + buttons */
+.express-checkout-container {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px 20px 20px;
+  text-align: center;
 }
 
 .express-checkout__label {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 12px;
   font-weight: 500;
-  color: #888;
+  color: #666;
   letter-spacing: 0.1px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .express-checkout {
   min-height: 44px;
   width: 100%;
-  max-width: 320px;
   position: relative;
 }
 
 /* Skeleton shimmer shown while Express Checkout loads */
 .express-checkout__skeleton {
   width: 100%;
-  max-width: 320px;
   height: 44px;
-  border-radius: 6px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
   overflow: hidden;
   position: relative;

@@ -115,7 +115,7 @@ export async function requireRepAuth(): Promise<
       return {
         rep: null,
         error: NextResponse.json(
-          { error: "Rep account not found" },
+          { error: "Rep account not found", code: "rep_not_found" },
           { status: 403 }
         ),
       };
@@ -125,7 +125,7 @@ export async function requireRepAuth(): Promise<
       return {
         rep: null,
         error: NextResponse.json(
-          { error: "Your account is not active. Please contact support." },
+          { error: "Your account is not active. Please contact support.", code: `rep_${rep.status}` },
           { status: 403 }
         ),
       };

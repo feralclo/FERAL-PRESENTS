@@ -70,9 +70,19 @@ function LoginForm() {
     try {
       const res = await fetch("/api/rep-portal/me");
       if (!res.ok) {
-        // Not a rep — sign out and show error
+        const errJson = await res.json().catch(() => null);
+        const code = errJson?.code || "";
         await supabase.auth.signOut();
-        setError("No active rep account found for this email");
+
+        if (code === "rep_pending") {
+          setError("Your application is being reviewed. You'll receive an email once approved.");
+        } else if (code === "rep_suspended" || code === "rep_deactivated") {
+          setError("Your account has been deactivated. Please contact support.");
+        } else if (code === "rep_not_found") {
+          setError("No rep account found for this email. Did you use an invite link to sign up?");
+        } else {
+          setError("No active rep account found for this email");
+        }
         setLoading(false);
         return;
       }

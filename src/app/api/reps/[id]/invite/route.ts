@@ -3,6 +3,7 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { createRepDiscountCode } from "@/lib/discount-codes";
+import { sendRepInviteEmail } from "@/lib/rep-emails";
 
 /**
  * POST /api/reps/[id]/invite — Generate/regenerate invite link + discount code
@@ -89,6 +90,15 @@ export async function POST(
         ? `${proto}://${host}`
         : "";
     const invite_url = `${siteUrl}/rep/invite/${invite_token}`;
+
+    // Send invite email (fire-and-forget — don't block the response)
+    sendRepInviteEmail({
+      email: rep.email,
+      firstName: rep.first_name,
+      orgId: ORG_ID,
+      inviteToken: invite_token,
+      discountCode: discount.code,
+    }).catch(() => {});
 
     return NextResponse.json({
       data: {

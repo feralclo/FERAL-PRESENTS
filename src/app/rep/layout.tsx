@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import "@/styles/tailwind.css";
 import "@/styles/rep-portal.css";
@@ -46,8 +46,47 @@ interface OrgBranding {
 
 export default function RepLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const showNav = !isPublic(pathname);
+  const router = useRouter();
+  const isPublicPage = isPublic(pathname);
+  const showNav = !isPublicPage;
   const [branding, setBranding] = useState<OrgBranding | null>(null);
+
+  // Auth state for protected pages
+  const [authChecked, setAuthChecked] = useState(isPublicPage);
+  const [authValid, setAuthValid] = useState(isPublicPage);
+
+  /* Verify the user is an active rep before showing protected pages */
+  useEffect(() => {
+    if (isPublicPage) {
+      setAuthChecked(true);
+      setAuthValid(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/rep-portal/me");
+        if (cancelled) return;
+        if (res.ok) {
+          setAuthValid(true);
+        } else {
+          // Not a rep or not active — redirect to login
+          router.replace(`/rep/login?redirect=${encodeURIComponent(pathname)}`);
+          return;
+        }
+      } catch {
+        if (!cancelled) {
+          router.replace("/rep/login");
+          return;
+        }
+      }
+      setAuthChecked(true);
+    })();
+
+    return () => { cancelled = true; };
+  }, [isPublicPage, pathname, router]);
 
   /* Fetch org branding for tenant name/logo */
   useEffect(() => {
@@ -63,6 +102,17 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   const brandName = branding?.org_name
     ? `${branding.org_name} Reps`
     : "Entry Reps";
+
+  // Show loading spinner while checking auth for protected pages
+  if (!authChecked || (!authValid && !isPublicPage)) {
+    return (
+      <div data-admin data-rep className="min-h-screen bg-[var(--rep-bg)] text-[var(--rep-text)]">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div data-admin data-rep className="min-h-screen bg-[var(--rep-bg)] text-[var(--rep-text)]">

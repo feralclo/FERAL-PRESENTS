@@ -433,16 +433,16 @@ function TierCard({
     : isUnlocked
       ? { color: raw.color }
       : hovered
-        ? { color: "rgba(255,255,255,0.3)" }
-        : { color: "rgba(255,255,255,0.15)" };
+        ? { color: "rgba(255,255,255,0.45)" }
+        : { color: "rgba(255,255,255,0.25)" };
 
   const labelStyle: React.CSSProperties = isCurrent || (isUnlocked && hovered)
     ? { color: raw.color }
     : isUnlocked
       ? { color: "rgba(255,255,255,0.6)" }
       : hovered
-        ? { color: "rgba(255,255,255,0.3)" }
-        : { color: "rgba(255,255,255,0.15)" };
+        ? { color: "rgba(255,255,255,0.5)" }
+        : { color: "rgba(255,255,255,0.3)" };
 
   return (
     <Tooltip>
@@ -457,8 +457,8 @@ function TierCard({
               : isUnlocked
                 ? "border-border/60 bg-card"
                 : hovered
-                  ? "border-border/50 bg-card/50"
-                  : "border-border/30 bg-card/30"
+                  ? "border-border/60 bg-card/60"
+                  : "border-border/40 bg-card/40"
           }`}
           style={cardStyle}
         >
@@ -469,7 +469,7 @@ function TierCard({
               ? iconStyle
               : isUnlocked
                 ? { ...iconStyle, backgroundColor: "rgba(255,255,255,0.05)" }
-                : { ...iconStyle, backgroundColor: "rgba(255,255,255,0.03)" }
+                : { ...iconStyle, backgroundColor: "rgba(255,255,255,0.06)" }
             }
           >
             {isUnlocked && !isCurrent ? (
@@ -923,31 +923,34 @@ export default function CustomerProfilePage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              {/* Avatar */}
+              {/* Avatar — colored by segment */}
               <div
-                className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full ring-1 ${
-                  isDiscoverer
-                    ? "bg-purple-500/10 ring-purple-500/30"
-                    : "bg-muted ring-border"
-                }`}
+                className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
+                style={{
+                  backgroundColor: segmentConfig.raw.bg,
+                  boxShadow: `inset 0 0 0 1px ${segmentConfig.raw.border}`,
+                }}
               >
                 <span
-                  className={`font-mono text-lg font-bold ${
-                    isDiscoverer ? "text-purple-400" : "text-muted-foreground"
-                  }`}
+                  className="font-mono text-lg font-bold"
+                  style={{ color: segmentConfig.raw.color }}
                 >
                   {getInitials(customer.first_name, customer.last_name, customer.nickname)}
                 </span>
-                {isDiscoverer && (
-                  <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-purple-500 text-[8px] text-white">
-                    <Target size={9} />
-                  </span>
-                )}
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[8px] text-white"
+                  style={{ backgroundColor: segmentConfig.raw.color }}
+                >
+                  <SegmentIcon size={9} />
+                </span>
               </div>
 
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="font-mono text-xl font-bold tracking-wider text-foreground">
+                  <h1
+                    className="font-mono text-xl font-bold tracking-wider"
+                    style={{ color: segmentConfig.raw.color }}
+                  >
                     {displayName}
                   </h1>
                   <Badge variant={segmentConfig.variant} className="text-[10px] font-semibold uppercase">

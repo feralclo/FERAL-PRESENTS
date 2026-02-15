@@ -22,6 +22,9 @@ import {
   Search,
   TrendingUp,
   Target,
+  Crown,
+  Music,
+  Sparkles,
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
 import type { Customer } from "@/types/orders";
@@ -42,17 +45,19 @@ function formatDate(d: string) {
 function getCustomerTier(totalSpent: number, totalOrders: number): {
   label: string;
   variant: "warning" | "success" | "secondary" | "info";
+  color: string;
+  icon: typeof Crown;
 } {
   if (totalSpent >= 200 || totalOrders >= 5) {
-    return { label: "Superfan", variant: "warning" };
+    return { label: "Superfan", variant: "warning", color: "#fbbf24", icon: Crown };
   }
   if (totalOrders > 1) {
-    return { label: "Fan", variant: "success" };
+    return { label: "Fan", variant: "success", color: "#34d399", icon: Music };
   }
   if (totalOrders === 0) {
-    return { label: "Discoverer", variant: "info" };
+    return { label: "Discoverer", variant: "info", color: "#a855f7", icon: Target };
   }
-  return { label: "New Fan", variant: "secondary" };
+  return { label: "New Fan", variant: "secondary", color: "#60a5fa", icon: Sparkles };
 }
 
 /* ════════════════════════════════════════════════════════
@@ -180,11 +185,10 @@ export default function CustomersPage() {
               </TableHeader>
               <TableBody>
                 {customers.map((cust) => {
-                  const { label, variant } = getCustomerTier(
+                  const { label, variant, color, icon: TierIcon } = getCustomerTier(
                     Number(cust.total_spent),
                     cust.total_orders
                   );
-                  const isLead = cust.total_orders === 0;
                   const hasName = cust.first_name || cust.last_name;
                   const displayName = hasName
                     ? `${cust.first_name || ""} ${cust.last_name || ""}`.trim()
@@ -198,16 +202,16 @@ export default function CustomersPage() {
                     >
                       <TableCell>
                         <div className="flex items-center gap-2.5">
-                          {isLead && (
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/10">
-                              <Target size={10} className="text-purple-400" />
-                            </span>
-                          )}
+                          <span
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                            style={{ backgroundColor: `${color}15` }}
+                          >
+                            <TierIcon size={10} style={{ color }} />
+                          </span>
                           <Link
                             href={`/admin/customers/${cust.id}/`}
-                            className={`text-sm font-medium transition-colors hover:text-primary ${
-                              isLead ? "text-purple-400" : "text-foreground"
-                            }`}
+                            className="text-sm font-medium transition-opacity hover:opacity-80"
+                            style={{ color }}
                             onClick={(e) => e.stopPropagation()}
                           >
                             {displayName}

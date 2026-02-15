@@ -77,9 +77,6 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Create new customer — just email initially, name added later
-      // Generate a fun rave/techno nickname for the lead profile
-      const nickname = generateNickname(normalizedEmail);
-
       const { data: newCustomer, error: custErr } = await supabase
         .from(TABLES.CUSTOMERS)
         .insert({
@@ -87,7 +84,6 @@ export async function POST(request: NextRequest) {
           email: normalizedEmail,
           first_name: first_name || null,
           last_name: last_name || null,
-          nickname,
           total_orders: 0,
           total_spent: 0,
         })
@@ -102,6 +98,18 @@ export async function POST(request: NextRequest) {
         );
       }
       customerId = newCustomer.id;
+
+      // Best-effort: set a fun rave nickname for the discoverer profile
+      // (column may not exist yet in older database schemas)
+      try {
+        const nickname = generateNickname(normalizedEmail);
+        await supabase
+          .from(TABLES.CUSTOMERS)
+          .update({ nickname })
+          .eq("id", customerId);
+      } catch {
+        // Ignore — nickname column may not exist yet
+      }
     }
 
     // ── 2. Upsert abandoned cart (if event/items provided) ──

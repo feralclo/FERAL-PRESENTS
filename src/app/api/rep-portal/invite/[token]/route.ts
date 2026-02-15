@@ -165,6 +165,7 @@ export async function POST(
       auth_user_id: authData.user.id,
       status: "active",
       onboarding_completed: true,
+      invite_token: null,
       updated_at: new Date().toISOString(),
     };
 

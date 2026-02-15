@@ -22,6 +22,11 @@ const NAV_ITEMS = [
   { href: "/rep/rewards", label: "Rewards", icon: Gift },
 ];
 
+const MOBILE_NAV_ITEMS = [
+  ...NAV_ITEMS,
+  { href: "/rep/profile", label: "Me", icon: User },
+];
+
 const PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite"];
 
 function isPublic(pathname: string) {
@@ -116,7 +121,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       {/* Mobile bottom nav */}
       {showNav && (
         <nav className="rep-bottom-nav flex md:hidden items-center justify-around">
-          {NAV_ITEMS.map((item) => {
+          {MOBILE_NAV_ITEMS.map((item) => {
             const active = matchRoute(pathname, item.href);
             const Icon = item.icon;
             return (

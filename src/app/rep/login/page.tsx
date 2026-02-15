@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 function LoginForm() {
@@ -13,6 +14,21 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) { setCheckingSession(false); return; }
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        router.replace(redirect);
+      } else {
+        setCheckingSession(false);
+      }
+    });
+  }, [router, redirect]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,26 +36,52 @@ function LoginForm() {
     setError("");
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/rep-portal/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.toLowerCase(), password }),
-      });
-      const json = await res.json();
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      setError("Service unavailable");
+      setLoading(false);
+      return;
+    }
 
+    // Sign in via browser-side Supabase client (sets session cookies automatically)
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
+    });
+
+    if (authError) {
+      setError("Invalid email or password");
+      setLoading(false);
+      return;
+    }
+
+    // Verify user has an active rep account
+    try {
+      const res = await fetch("/api/rep-portal/me");
       if (!res.ok) {
-        setError(json.error || "Login failed");
+        // Not a rep — sign out and show error
+        await supabase.auth.signOut();
+        setError("No active rep account found for this email");
         setLoading(false);
         return;
       }
-
-      router.push(redirect);
     } catch {
-      setError("Network error. Please try again.");
+      await supabase.auth.signOut();
+      setError("Failed to verify rep account");
       setLoading(false);
+      return;
     }
+
+    router.push(redirect);
   };
+
+  if (checkingSession) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">

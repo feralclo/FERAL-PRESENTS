@@ -22,7 +22,8 @@ interface Reward {
     achieved: boolean;
   }[];
   // User claim status
-  claimed: boolean;
+  my_claims?: { id: string }[];
+  can_purchase?: boolean;
 }
 
 export default function RepRewardsPage() {
@@ -74,6 +75,8 @@ export default function RepRewardsPage() {
     } catch { setError("Failed to claim reward — check your connection"); }
     setClaimingId(null);
   };
+
+  const hasClaimed = (r: Reward) => (r.my_claims?.length ?? 0) > 0;
 
   const milestoneRewards = rewards.filter((r) => r.reward_type === "milestone");
   const shopRewards = rewards.filter((r) => r.reward_type === "points_shop");
@@ -135,21 +138,21 @@ export default function RepRewardsPage() {
               <div
                 key={reward.id}
                 className={`rounded-2xl border p-4 transition-all ${
-                  reward.claimed
+                  hasClaimed(reward)
                     ? "border-[var(--rep-success)]/30 bg-[var(--rep-success)]/5"
                     : "border-[var(--rep-border)] bg-[var(--rep-card)]"
                 }`}
               >
                 <div className="flex items-start gap-4">
                   {reward.image_url ? (
-                    <div className={`h-14 w-14 shrink-0 rounded-xl overflow-hidden ${!reward.claimed ? "rep-reward-locked" : ""}`}>
+                    <div className={`h-14 w-14 shrink-0 rounded-xl overflow-hidden ${!hasClaimed(reward) ? "rep-reward-locked" : ""}`}>
                       <img src={reward.image_url} alt="" className="h-full w-full object-contain" />
                     </div>
                   ) : (
                     <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${
-                      reward.claimed ? "bg-[var(--rep-success)]/10" : "bg-[var(--rep-surface)]"
+                      hasClaimed(reward) ? "bg-[var(--rep-success)]/10" : "bg-[var(--rep-surface)]"
                     }`}>
-                      {reward.claimed ? <Check size={20} className="text-[var(--rep-success)]" /> : <Lock size={20} className="text-[var(--rep-text-muted)]" />}
+                      {hasClaimed(reward) ? <Check size={20} className="text-[var(--rep-success)]" /> : <Lock size={20} className="text-[var(--rep-text-muted)]" />}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -170,7 +173,7 @@ export default function RepRewardsPage() {
                       </div>
                     )}
                   </div>
-                  {reward.claimed && (
+                  {hasClaimed(reward) && (
                     <span className="shrink-0 text-[10px] font-semibold text-[var(--rep-success)] uppercase tracking-wider">
                       Unlocked
                     </span>
@@ -198,7 +201,7 @@ export default function RepRewardsPage() {
                 <div
                   key={reward.id}
                   className={`rounded-2xl border bg-[var(--rep-card)] overflow-hidden transition-all rep-card-hover ${
-                    reward.claimed ? "border-[var(--rep-success)]/30" : "border-[var(--rep-border)]"
+                    hasClaimed(reward) ? "border-[var(--rep-success)]/30" : "border-[var(--rep-border)]"
                   }`}
                 >
                   {reward.image_url && (
@@ -211,7 +214,7 @@ export default function RepRewardsPage() {
                     <p className="text-lg font-bold font-mono text-[var(--rep-accent)] tabular-nums mb-2">
                       {reward.points_cost} <span className="text-[10px] font-normal">pts</span>
                     </p>
-                    {reward.claimed ? (
+                    {hasClaimed(reward) ? (
                       <div className="flex items-center gap-1 text-[10px] text-[var(--rep-success)]">
                         <Check size={10} /> Claimed
                       </div>

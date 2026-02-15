@@ -37,7 +37,7 @@ export default function RepLeaderboardPage() {
         const json = await res.json();
         if (json.data) {
           setEntries(json.data.leaderboard || []);
-          setMyPosition(json.data.my_position);
+          setMyPosition(json.data.current_position);
         }
       } catch { setError("Failed to load leaderboard — check your connection"); }
       setLoading(false);

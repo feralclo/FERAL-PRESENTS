@@ -18,18 +18,27 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
-  // If already authenticated, redirect to dashboard
+  // If already authenticated as a rep, redirect to dashboard
   useEffect(() => {
     const supabase = getSupabaseClient();
     if (!supabase) { setCheckingSession(false); return; }
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        router.replace(redirect);
-      } else {
-        setCheckingSession(false);
-      }
-    });
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setCheckingSession(false); return; }
+
+      // Verify the user actually has an active rep account before redirecting
+      try {
+        const res = await fetch("/api/rep-portal/me");
+        if (res.ok) {
+          router.replace(redirect);
+          return;
+        }
+      } catch { /* network error — fall through to show login */ }
+
+      // Not a rep or account not active — show login form
+      setCheckingSession(false);
+    })();
   }, [router, redirect]);
 
   const handleSubmit = async (e: React.FormEvent) => {

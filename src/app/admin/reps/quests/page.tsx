@@ -51,10 +51,11 @@ const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   custom: "Custom",
 };
 
-const STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary"> = {
+const STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary" | "outline"> = {
   active: "success",
   paused: "warning",
   archived: "secondary",
+  draft: "outline",
 };
 
 export default function QuestsPage() {

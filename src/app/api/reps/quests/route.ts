@@ -106,9 +106,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["active", "paused", "archived"].includes(status)) {
+    if (!["active", "paused", "archived", "draft"].includes(status)) {
       return NextResponse.json(
-        { error: "status must be 'active', 'paused', or 'archived'" },
+        { error: "status must be 'active', 'paused', 'archived', or 'draft'" },
         { status: 400 }
       );
     }

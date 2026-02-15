@@ -116,7 +116,7 @@ export type QuestType =
   | "story_share"
   | "content_creation"
   | "custom";
-export type QuestStatus = "active" | "paused" | "archived";
+export type QuestStatus = "active" | "paused" | "archived" | "draft";
 
 export interface RepQuest {
   id: string;

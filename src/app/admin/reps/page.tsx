@@ -106,10 +106,11 @@ const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   custom: "Custom",
 };
 
-const QUEST_STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary"> = {
+const QUEST_STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary" | "outline"> = {
   active: "success",
   paused: "warning",
   archived: "secondary",
+  draft: "outline",
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -325,17 +326,21 @@ function TeamTab() {
     setDeletingRep(false);
   };
 
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch { /* clipboard not available */ }
   };
 
   const signupUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/rep/join`;
-  const copySignupLink = () => {
-    navigator.clipboard.writeText(signupUrl);
-    setCopiedSignup(true);
-    setTimeout(() => setCopiedSignup(false), 2000);
+  const copySignupLink = async () => {
+    try {
+      await navigator.clipboard.writeText(signupUrl);
+      setCopiedSignup(true);
+      setTimeout(() => setCopiedSignup(false), 2000);
+    } catch { /* clipboard not available */ }
   };
 
   const resetInviteDialog = () => {
@@ -797,7 +802,8 @@ function RewardsTab() {
   };
 
   // When selecting a product, auto-populate image
-  const handleProductSelect = (pid: string) => {
+  const handleProductSelect = (val: string) => {
+    const pid = val === "none" ? "" : val;
     setProductId(pid);
     if (pid) {
       const product = products.find((p) => p.id === pid);
@@ -896,10 +902,10 @@ function RewardsTab() {
             {products.length > 0 && (
               <div className="space-y-2">
                 <Label>Link to Merch Product</Label>
-                <Select value={productId} onValueChange={handleProductSelect}>
+                <Select value={productId || "none"} onValueChange={handleProductSelect}>
                   <SelectTrigger><SelectValue placeholder="None — create custom reward" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None — custom reward</SelectItem>
+                    <SelectItem value="none">None — custom reward</SelectItem>
                     {products.map((p) => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}

@@ -103,7 +103,7 @@ const COUNTRIES = [
 
 const CARD_ELEMENT_STYLE = {
   base: {
-    fontSize: "14px",
+    fontSize: "16px", // ≥16px prevents iOS Safari auto-zoom on focus
     color: "#ffffff",
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     fontSmoothing: "antialiased",
@@ -507,6 +507,7 @@ function StripeCheckoutPage({
         colorBackground: "#1a1a1a",
         colorText: "#ffffff",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontSizeBase: "16px", // ≥16px prevents iOS Safari auto-zoom on focus
       },
     },
     fonts: [

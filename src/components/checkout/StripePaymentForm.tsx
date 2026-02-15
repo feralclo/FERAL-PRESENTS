@@ -244,7 +244,7 @@ export function StripePaymentForm({
         colorDanger: "#ff0033",
         colorTextPlaceholder: "#555555",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        fontSizeBase: "14px",
+        fontSizeBase: "16px", // ≥16px prevents iOS Safari auto-zoom on focus
         borderRadius: "0px",
         spacingUnit: "4px",
         spacingGridRow: "16px",
@@ -256,7 +256,7 @@ export function StripePaymentForm({
           border: "1px solid rgba(255, 255, 255, 0.1)",
           padding: "13px 16px",
           transition: "border-color 0.15s ease",
-          fontSize: "14px",
+          fontSize: "16px", // ≥16px prevents iOS Safari auto-zoom on focus
           color: "#ffffff",
         },
         ".Input:focus": {

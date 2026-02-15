@@ -580,7 +580,7 @@ html.checkout-active .noise {
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
   font-family: 'Space Mono', monospace;
-  font-size: 13px;
+  font-size: 16px; /* ≥16px prevents iOS Safari auto-zoom on focus */
   letter-spacing: 1px;
   text-transform: uppercase;
   padding: 11px 14px;
@@ -1073,7 +1073,7 @@ html.checkout-active .noise {
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 16px; /* ≥16px prevents iOS Safari auto-zoom on focus */
   padding: 13px 16px;
   margin-bottom: 12px;
   outline: none;
@@ -1670,7 +1670,7 @@ html.checkout-active .noise {
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 16px; /* ≥16px prevents iOS Safari auto-zoom on focus */
   padding: 15px 16px;
   outline: none;
   transition: border-color 0.15s ease;

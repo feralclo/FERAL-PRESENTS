@@ -19,7 +19,10 @@ interface Reward {
     title: string;
     milestone_type: string;
     threshold_value: number;
+    current_value: number;
     achieved: boolean;
+    claimed: boolean;
+    progress_percent: number;
   }[];
   // User claim status
   my_claims?: { id: string }[];
@@ -166,13 +169,26 @@ export default function RepRewardsPage() {
                       <p className="text-[11px] text-[var(--rep-text-muted)] mt-0.5">{reward.description}</p>
                     )}
                     {reward.milestones && reward.milestones.length > 0 && (
-                      <div className="mt-2 space-y-1.5">
+                      <div className="mt-2 space-y-2">
                         {reward.milestones.map((m) => (
-                          <div key={m.id} className="flex items-center gap-2">
-                            <div className={`h-1.5 w-1.5 rounded-full ${m.achieved ? "bg-[var(--rep-success)]" : "bg-[var(--rep-border)]"}`} />
-                            <span className={`text-[11px] ${m.achieved ? "text-[var(--rep-success)]" : "text-[var(--rep-text-muted)]"}`}>
-                              {m.title}
-                            </span>
+                          <div key={m.id}>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <div className={`h-1.5 w-1.5 rounded-full ${m.achieved ? "bg-[var(--rep-success)]" : "bg-[var(--rep-border)]"}`} />
+                                <span className={`text-[11px] ${m.achieved ? "text-[var(--rep-success)]" : "text-[var(--rep-text-muted)]"}`}>
+                                  {m.title}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-mono text-[var(--rep-text-muted)] tabular-nums">
+                                {m.current_value}/{m.threshold_value}
+                              </span>
+                            </div>
+                            <div className="h-1 rounded-full bg-[var(--rep-border)] overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${m.achieved ? "bg-[var(--rep-success)]" : "bg-[var(--rep-accent)]"}`}
+                                style={{ width: `${m.progress_percent}%` }}
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>

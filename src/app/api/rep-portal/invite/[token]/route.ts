@@ -217,6 +217,7 @@ export async function POST(
           email: finalEmail,
           password,
           email_confirm: true,
+          app_metadata: { role: "rep" },
         });
       if (adminError) {
         if (
@@ -233,7 +234,7 @@ export async function POST(
             // Update the existing auth user's password so the new invite's password works
             const { error: updateErr } = await adminClient.auth.admin.updateUserById(
               existingUser.id,
-              { password, email_confirm: true }
+              { password, email_confirm: true, app_metadata: { role: "rep" } }
             );
             if (updateErr) {
               console.error("[rep-portal/invite] Failed to update existing auth user:", updateErr);

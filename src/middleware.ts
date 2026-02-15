@@ -13,8 +13,10 @@ const SECURITY_HEADERS: Record<string, string> = {
     "camera=(), microphone=(), geolocation=(), interest-cohort=()",
 };
 
+/* ── Route classification helpers ── */
+
 /**
- * Admin page routes that require authentication.
+ * Admin page routes that require admin authentication.
  * Login page is excluded so users can actually log in.
  */
 function isProtectedAdminPage(pathname: string): boolean {
@@ -24,7 +26,7 @@ function isProtectedAdminPage(pathname: string): boolean {
 }
 
 /**
- * Rep portal page routes that require authentication.
+ * Rep portal page routes that require rep authentication.
  * Public pages (login, join, invite) are excluded.
  */
 const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite"];
@@ -38,8 +40,8 @@ function isProtectedRepPage(pathname: string): boolean {
 }
 
 /**
- * API routes that require admin authentication.
- * Public API routes (customer-facing checkout, webhooks, analytics) are excluded.
+ * API routes that require NO authentication (fully public).
+ * Customer-facing checkout, webhooks, analytics, and rep public endpoints.
  */
 const PUBLIC_API_PREFIXES = [
   "/api/stripe/payment-intent",
@@ -90,8 +92,32 @@ function isPublicApiRoute(pathname: string, method: string): boolean {
   return false;
 }
 
-function isProtectedApiRoute(pathname: string, method: string): boolean {
-  return pathname.startsWith("/api/") && !isPublicApiRoute(pathname, method);
+/**
+ * Rep-portal API routes that require rep authentication (NOT admin auth).
+ * These are authenticated routes but are NOT admin routes — they use
+ * requireRepAuth() in the handler, not requireAuth().
+ */
+function isRepPortalApiRoute(pathname: string): boolean {
+  return pathname.startsWith("/api/rep-portal/");
+}
+
+/**
+ * Admin API routes that require admin authentication.
+ * Excludes public routes and rep-portal routes (which have their own auth).
+ */
+function isAdminApiRoute(pathname: string, method: string): boolean {
+  if (!pathname.startsWith("/api/")) return false;
+  if (isPublicApiRoute(pathname, method)) return false;
+  if (isRepPortalApiRoute(pathname)) return false;
+  return true;
+}
+
+/**
+ * Check if a user has the "rep" role in their app_metadata.
+ * Rep users must not access admin pages or admin API routes.
+ */
+function isRepUser(user: { app_metadata?: Record<string, unknown> }): boolean {
+  return user.app_metadata?.role === "rep";
 }
 
 /**
@@ -134,7 +160,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect admin pages: redirect to login if not authenticated
+  // ── Admin pages ──
+  // Require authentication AND block rep users from admin pages.
   if (isProtectedAdminPage(pathname)) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
@@ -143,9 +170,17 @@ export async function middleware(request: NextRequest) {
       const redirectResponse = NextResponse.redirect(loginUrl);
       return applySecurityHeaders(redirectResponse);
     }
+    // Block rep users from the admin dashboard — they belong in /rep/
+    if (isRepUser(user)) {
+      const repUrl = request.nextUrl.clone();
+      repUrl.pathname = "/rep/";
+      repUrl.search = "";
+      return applySecurityHeaders(NextResponse.redirect(repUrl));
+    }
   }
 
-  // Protect rep portal pages: redirect to rep login if not authenticated
+  // ── Rep portal pages ──
+  // Require authentication (any user — handler checks rep status).
   if (isProtectedRepPage(pathname)) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
@@ -156,8 +191,28 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Protect admin API routes: return 401 if not authenticated
-  if (isProtectedApiRoute(pathname, method)) {
+  // ── Admin API routes ──
+  // Require authentication AND block rep users.
+  if (isAdminApiRoute(pathname, method)) {
+    if (!user) {
+      const errorResponse = NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+      return applySecurityHeaders(errorResponse);
+    }
+    if (isRepUser(user)) {
+      const errorResponse = NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
+      return applySecurityHeaders(errorResponse);
+    }
+  }
+
+  // ── Rep-portal API routes (non-public) ──
+  // Require authentication (route handler does the rep-specific check).
+  if (isRepPortalApiRoute(pathname) && !isPublicApiRoute(pathname, method)) {
     if (!user) {
       const errorResponse = NextResponse.json(
         { error: "Authentication required" },
@@ -171,7 +226,7 @@ export async function middleware(request: NextRequest) {
 }
 
 /**
- * Matcher: run middleware on admin pages and API routes.
+ * Matcher: run middleware on admin pages, API routes, and rep portal.
  * Static assets, images, and public pages skip middleware entirely.
  */
 export const config = {

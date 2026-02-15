@@ -20,10 +20,11 @@ async function getRepDbClient() {
 }
 
 /**
- * Auth helper for API routes.
+ * Auth helper for admin API routes.
  *
- * Verifies the current request has a valid Supabase Auth session.
- * Returns the authenticated user or a 401 NextResponse.
+ * Verifies the current request has a valid Supabase Auth session
+ * AND that the user is NOT a rep (reps have their own auth via requireRepAuth).
+ * Returns the authenticated admin user or an error NextResponse.
  *
  * Usage in API routes:
  *   const auth = await requireAuth();
@@ -57,6 +58,19 @@ export async function requireAuth(): Promise<
         error: NextResponse.json(
           { error: "Authentication required" },
           { status: 401 }
+        ),
+      };
+    }
+
+    // Block rep users from admin API routes — they must use rep-portal routes.
+    // This is defense-in-depth: the middleware also blocks rep users from admin
+    // routes, but we check here too in case the middleware is bypassed.
+    if (user.app_metadata?.role === "rep") {
+      return {
+        user: null,
+        error: NextResponse.json(
+          { error: "Admin access required" },
+          { status: 403 }
         ),
       };
     }

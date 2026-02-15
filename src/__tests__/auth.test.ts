@@ -17,18 +17,27 @@ const PUBLIC_API_PREFIXES = [
   "/api/stripe/webhook",
   "/api/stripe/apple-pay-verify",
   "/api/stripe/account",
+  "/api/discounts/validate",
   "/api/track",
   "/api/meta/capi",
   "/api/health",
   "/api/media/",
   "/api/auth/",
+  "/api/rep-portal/signup",
+  "/api/rep-portal/login",
+  "/api/rep-portal/logout",
+  "/api/rep-portal/verify-email",
+  "/api/rep-portal/invite/",
 ];
 
-const PUBLIC_API_EXACT_GETS = ["/api/events", "/api/settings", "/api/merch"];
+const PUBLIC_API_EXACT_GETS = ["/api/events", "/api/settings", "/api/merch", "/api/branding", "/api/themes"];
 
 function isPublicApiRoute(pathname: string, method: string): boolean {
   for (const prefix of PUBLIC_API_PREFIXES) {
     if (pathname.startsWith(prefix)) return true;
+  }
+  if (method === "GET" && /^\/api\/orders\/[^/]+\/wallet\/(apple|google)$/.test(pathname)) {
+    return true;
   }
   if (method === "GET") {
     for (const route of PUBLIC_API_EXACT_GETS) {
@@ -38,8 +47,33 @@ function isPublicApiRoute(pathname: string, method: string): boolean {
   return false;
 }
 
+function isRepPortalApiRoute(pathname: string): boolean {
+  return pathname.startsWith("/api/rep-portal/");
+}
+
+function isAdminApiRoute(pathname: string, method: string): boolean {
+  if (!pathname.startsWith("/api/")) return false;
+  if (isPublicApiRoute(pathname, method)) return false;
+  if (isRepPortalApiRoute(pathname)) return false;
+  return true;
+}
+
 function isProtectedAdminPage(pathname: string): boolean {
   return pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
+}
+
+const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite"];
+
+function isProtectedRepPage(pathname: string): boolean {
+  if (!pathname.startsWith("/rep")) return false;
+  for (const pub of REP_PUBLIC_PAGES) {
+    if (pathname.startsWith(pub)) return false;
+  }
+  return true;
+}
+
+function isRepUser(user: { app_metadata?: Record<string, unknown> }): boolean {
+  return user.app_metadata?.role === "rep";
 }
 
 describe("Route classification", () => {
@@ -206,6 +240,78 @@ describe("Admin page protection", () => {
   });
 });
 
+describe("Rep portal route classification", () => {
+  it("identifies rep-portal API routes", () => {
+    expect(isRepPortalApiRoute("/api/rep-portal/dashboard")).toBe(true);
+    expect(isRepPortalApiRoute("/api/rep-portal/quests")).toBe(true);
+    expect(isRepPortalApiRoute("/api/rep-portal/me")).toBe(true);
+  });
+
+  it("does NOT classify admin rep-management routes as rep-portal", () => {
+    expect(isRepPortalApiRoute("/api/reps")).toBe(false);
+    expect(isRepPortalApiRoute("/api/reps/stats")).toBe(false);
+    expect(isRepPortalApiRoute("/api/reps/some-id")).toBe(false);
+  });
+
+  it("classifies rep public API routes as public", () => {
+    expect(isPublicApiRoute("/api/rep-portal/signup", "POST")).toBe(true);
+    expect(isPublicApiRoute("/api/rep-portal/login", "POST")).toBe(true);
+    expect(isPublicApiRoute("/api/rep-portal/logout", "POST")).toBe(true);
+    expect(isPublicApiRoute("/api/rep-portal/verify-email", "POST")).toBe(true);
+    expect(isPublicApiRoute("/api/rep-portal/invite/some-token", "GET")).toBe(true);
+  });
+
+  it("classifies authenticated rep-portal routes as NOT public and NOT admin", () => {
+    expect(isPublicApiRoute("/api/rep-portal/dashboard", "GET")).toBe(false);
+    expect(isPublicApiRoute("/api/rep-portal/quests", "GET")).toBe(false);
+    expect(isAdminApiRoute("/api/rep-portal/dashboard", "GET")).toBe(false);
+    expect(isAdminApiRoute("/api/rep-portal/quests", "GET")).toBe(false);
+  });
+
+  it("classifies admin rep-management routes as admin API routes", () => {
+    expect(isAdminApiRoute("/api/reps", "GET")).toBe(true);
+    expect(isAdminApiRoute("/api/reps", "POST")).toBe(true);
+    expect(isAdminApiRoute("/api/reps/stats", "GET")).toBe(true);
+    expect(isAdminApiRoute("/api/reps/some-id", "PUT")).toBe(true);
+  });
+});
+
+describe("Rep page protection", () => {
+  it("protects authenticated rep portal pages", () => {
+    expect(isProtectedRepPage("/rep/")).toBe(true);
+    expect(isProtectedRepPage("/rep")).toBe(true);
+    expect(isProtectedRepPage("/rep/quests")).toBe(true);
+    expect(isProtectedRepPage("/rep/rewards")).toBe(true);
+    expect(isProtectedRepPage("/rep/sales")).toBe(true);
+    expect(isProtectedRepPage("/rep/profile")).toBe(true);
+    expect(isProtectedRepPage("/rep/leaderboard")).toBe(true);
+  });
+
+  it("does NOT protect public rep pages", () => {
+    expect(isProtectedRepPage("/rep/login")).toBe(false);
+    expect(isProtectedRepPage("/rep/join")).toBe(false);
+    expect(isProtectedRepPage("/rep/invite/some-token")).toBe(false);
+  });
+
+  it("does NOT match non-rep routes", () => {
+    expect(isProtectedRepPage("/admin/")).toBe(false);
+    expect(isProtectedRepPage("/api/orders")).toBe(false);
+    expect(isProtectedRepPage("/event/test")).toBe(false);
+  });
+});
+
+describe("Rep user detection", () => {
+  it("identifies rep users by app_metadata.role", () => {
+    expect(isRepUser({ app_metadata: { role: "rep" } })).toBe(true);
+  });
+
+  it("does NOT flag admin users as rep users", () => {
+    expect(isRepUser({ app_metadata: { role: "admin" } })).toBe(false);
+    expect(isRepUser({ app_metadata: {} })).toBe(false);
+    expect(isRepUser({})).toBe(false);
+  });
+});
+
 // ─── requireAuth helper tests ───────────────────────────────────────────
 
 // Mock Supabase
@@ -255,6 +361,31 @@ describe("requireAuth", () => {
     expect(result.error).not.toBeNull();
     // Verify it's a 401 response
     expect(result.error!.status).toBe(401);
+  });
+
+  it("returns 403 when user is a rep (not admin)", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "rep-user-1",
+              email: "rep@feral.com",
+              app_metadata: { role: "rep" },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requireAuth } = await import("@/lib/auth");
+    const result = await requireAuth();
+
+    expect(result.user).toBeNull();
+    expect(result.error).not.toBeNull();
+    expect(result.error!.status).toBe(403);
   });
 
   it("returns 503 when Supabase is not configured", async () => {

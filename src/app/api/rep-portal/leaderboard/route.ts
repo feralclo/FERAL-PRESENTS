@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     // Global leaderboard from reps table
     const { data: reps, error } = await supabase
       .from(TABLES.REPS)
-      .select("id, display_name, first_name, photo_url, total_sales, total_revenue, level")
+      .select("id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level")
       .eq("org_id", ORG_ID)
       .eq("status", "active")
       .order("total_revenue", { ascending: false })
@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
       data: {
         leaderboard,
         current_position: currentPosition,
+        current_rep_id: repId,
       },
     });
   } catch (err) {
@@ -122,7 +123,7 @@ async function getEventLeaderboard(
   const { data: repEvents, error } = await supabase
     .from(TABLES.REP_EVENTS)
     .select(
-      "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, photo_url, total_sales, total_revenue, level)"
+      "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level)"
     )
     .eq("org_id", ORG_ID)
     .eq("event_id", eventId)
@@ -144,6 +145,7 @@ async function getEventLeaderboard(
         id: rep?.id || re.rep_id,
         display_name: rep?.display_name || null,
         first_name: rep?.first_name || null,
+        last_name: rep?.last_name || null,
         photo_url: rep?.photo_url || null,
         total_sales: re.sales_count,
         total_revenue: re.revenue,
@@ -164,6 +166,7 @@ async function getEventLeaderboard(
     data: {
       leaderboard,
       current_position: currentPosition,
+      current_rep_id: repId,
       event_id: eventId,
     },
   });

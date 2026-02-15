@@ -2,19 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
-
-/**
- * Generate a discount code for a rep.
- * Format: REP-{FIRSTNAME}{RANDOM4DIGITS} (uppercase, max 15 chars)
- */
-function generateDiscountCode(firstName: string): string {
-  const digits = Math.floor(1000 + Math.random() * 9000).toString();
-  const name = firstName.toUpperCase().replace(/[^A-Z]/g, "");
-  // REP- = 4 chars, digits = 4 chars, so name can be up to 7 chars
-  const maxNameLen = 15 - 4 - digits.length;
-  const truncatedName = name.slice(0, maxNameLen);
-  return `REP-${truncatedName}${digits}`;
-}
+import { createRepDiscountCode } from "@/lib/discount-codes";
 
 /**
  * POST /api/reps/[id]/invite — Generate/regenerate invite link + discount code
@@ -68,28 +56,18 @@ export async function POST(
       .eq("id", id)
       .eq("org_id", ORG_ID);
 
-    // Create a discount code for this rep
-    const discountCode = generateDiscountCode(rep.first_name);
+    // Create a discount code for this rep (with collision retry)
+    const discount = await createRepDiscountCode({
+      repId: id,
+      firstName: rep.first_name,
+      discountType: discount_type,
+      discountValue: discount_value,
+      applicableEventIds: applicable_event_ids || null,
+    });
 
-    const { data: discount, error: discountErr } = await supabase
-      .from(TABLES.DISCOUNTS)
-      .insert({
-        org_id: ORG_ID,
-        code: discountCode,
-        description: `Rep discount for ${rep.first_name}`,
-        type: discount_type,
-        value: Number(discount_value),
-        used_count: 0,
-        applicable_event_ids: applicable_event_ids || null,
-        status: "active",
-        rep_id: id,
-      })
-      .select()
-      .single();
-
-    if (discountErr) {
+    if (!discount) {
       return NextResponse.json(
-        { error: `Failed to create discount code: ${discountErr.message}` },
+        { error: "Failed to create discount code" },
         { status: 500 }
       );
     }

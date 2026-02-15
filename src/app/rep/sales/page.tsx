@@ -99,7 +99,7 @@ export default function RepSalesPage() {
               <div>
                 <p className="text-xs font-mono text-white">{sale.order_number}</p>
                 <p className="text-[10px] text-[var(--rep-text-muted)]">
-                  {sale.event?.name || "—"} · {new Date(sale.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  {sale.event?.name || "—"} · {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
               <p className="text-sm font-bold font-mono text-[var(--rep-success)] tabular-nums">

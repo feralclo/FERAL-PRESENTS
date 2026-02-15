@@ -12,7 +12,6 @@ interface LeaderboardEntry {
   total_sales: number;
   total_revenue: number;
   level: number;
-  is_current_user?: boolean;
 }
 
 const PODIUM_STYLES = [
@@ -28,6 +27,7 @@ export default function RepLeaderboardPage() {
   const [error, setError] = useState("");
   const [loadKey, setLoadKey] = useState(0);
   const [myPosition, setMyPosition] = useState<number | null>(null);
+  const [myRepId, setMyRepId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,6 +43,7 @@ export default function RepLeaderboardPage() {
         if (json.data) {
           setEntries(json.data.leaderboard || []);
           setMyPosition(json.data.current_position);
+          setMyRepId(json.data.current_rep_id || null);
         }
       } catch { setError("Failed to load leaderboard — check your connection"); }
       setLoading(false);
@@ -94,7 +95,7 @@ export default function RepLeaderboardPage() {
             className={`rep-leaderboard-item flex items-center gap-3 rounded-2xl p-4 transition-colors ${
               i < 3
                 ? PODIUM_STYLES[i]
-                : entry.is_current_user
+                : entry.id === myRepId
                   ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5"
                   : "border border-[var(--rep-border)] bg-[var(--rep-card)]"
             }`}
@@ -125,9 +126,9 @@ export default function RepLeaderboardPage() {
 
             {/* Name + Level */}
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium truncate ${entry.is_current_user ? "text-[var(--rep-accent)]" : "text-white"}`}>
+              <p className={`text-sm font-medium truncate ${entry.id === myRepId ? "text-[var(--rep-accent)]" : "text-white"}`}>
                 {entry.display_name || entry.first_name}
-                {entry.is_current_user && <span className="ml-1.5 text-[10px] text-[var(--rep-accent)]/60">(YOU)</span>}
+                {entry.id === myRepId && <span className="ml-1.5 text-[10px] text-[var(--rep-accent)]/60">(YOU)</span>}
               </p>
               <p className="text-[10px] text-[var(--rep-text-muted)]">
                 Lv.{entry.level} · {entry.total_sales} sales

@@ -2,18 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
-
-/**
- * Generate a discount code for a rep.
- * Format: REP-{FIRSTNAME}{RANDOM4DIGITS} (uppercase, max 15 chars)
- */
-function generateDiscountCode(firstName: string): string {
-  const digits = Math.floor(1000 + Math.random() * 9000).toString();
-  const name = firstName.toUpperCase().replace(/[^A-Z]/g, "");
-  const maxNameLen = 15 - 4 - digits.length;
-  const truncatedName = name.slice(0, maxNameLen);
-  return `REP-${truncatedName}${digits}`;
-}
+import { createRepDiscountCode } from "@/lib/discount-codes";
 
 /**
  * GET /api/reps/events — List rep-event assignments
@@ -144,25 +133,15 @@ export async function POST(request: NextRequest) {
     if (existingDiscount) {
       discountId = existingDiscount.id;
     } else {
-      // Create a discount code for this rep + event
-      const discountCode = generateDiscountCode(rep.first_name);
-      const { data: newDiscount, error: discountErr } = await supabase
-        .from(TABLES.DISCOUNTS)
-        .insert({
-          org_id: ORG_ID,
-          code: discountCode,
-          description: `Rep discount: ${rep.first_name} — ${event.name}`,
-          type: "percentage",
-          value: 10,
-          used_count: 0,
-          applicable_event_ids: [event_id],
-          status: "active",
-          rep_id: rep_id,
-        })
-        .select()
-        .single();
+      // Create a discount code for this rep + event (with collision retry)
+      const newDiscount = await createRepDiscountCode({
+        repId: rep_id,
+        firstName: rep.first_name,
+        applicableEventIds: [event_id],
+        description: `Rep discount: ${rep.first_name} — ${event.name}`,
+      });
 
-      if (!discountErr && newDiscount) {
+      if (newDiscount) {
         discountId = newDiscount.id;
       }
     }

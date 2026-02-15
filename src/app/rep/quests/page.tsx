@@ -13,7 +13,7 @@ interface Quest {
   video_url?: string;
   points_reward: number;
   expires_at?: string;
-  my_submissions: { total: number; approved: number; pending: number; rejected: number } | number;
+  my_submissions: { total: number; approved: number; pending: number; rejected: number };
   max_completions?: number;
 }
 
@@ -77,9 +77,7 @@ export default function RepQuestsPage() {
     setSubmitting(false);
   };
 
-  // my_submissions can be a number or an object { total, approved, pending, rejected }
   const getApprovedCount = (q: Quest): number => {
-    if (typeof q.my_submissions === "number") return q.my_submissions;
     return q.my_submissions?.approved ?? 0;
   };
 

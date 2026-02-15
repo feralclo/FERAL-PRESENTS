@@ -51,6 +51,7 @@ import {
   User,
   Globe,
 } from "lucide-react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type {
   Rep,
   RepStatus,
@@ -113,6 +114,10 @@ export default function RepDetailPage() {
   // Delete rep dialog
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  // Current admin user (for self-deletion guard)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Copy feedback
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -172,6 +177,14 @@ export default function RepDetailPage() {
   useEffect(() => {
     loadRep();
   }, [loadRep]);
+
+  useEffect(() => {
+    getSupabaseClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (data.user) setCurrentUserId(data.user.id);
+      });
+  }, []);
 
   useEffect(() => {
     if (tab === "points") loadPoints();
@@ -247,13 +260,17 @@ export default function RepDetailPage() {
 
   const handleDeleteRep = async () => {
     setDeleting(true);
+    setDeleteError("");
     try {
       const res = await fetch(`/api/reps/${repId}`, { method: "DELETE" });
       if (res.ok) {
         router.push("/admin/reps");
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setDeleteError(json.error || `Failed (${res.status})`);
       }
     } catch {
-      /* network error */
+      setDeleteError("Network error — check connection");
     }
     setDeleting(false);
   };
@@ -363,14 +380,17 @@ export default function RepDetailPage() {
             >
               <Send size={14} /> Generate Invite
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowDelete(true)}
-              className="text-muted-foreground hover:text-destructive hover:border-destructive/50"
-            >
-              <Trash2 size={14} />
-            </Button>
+            {/* Hide delete button if viewing your own rep record */}
+            {!(rep.auth_user_id && rep.auth_user_id === currentUserId) && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setShowDelete(true); setDeleteError(""); }}
+                className="text-muted-foreground hover:text-destructive hover:border-destructive/50"
+              >
+                <Trash2 size={14} />
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -1056,7 +1076,7 @@ export default function RepDetailPage() {
       </Dialog>
 
       {/* ── Delete Rep Dialog ───────────────────────────────────────── */}
-      <Dialog open={showDelete} onOpenChange={setShowDelete}>
+      <Dialog open={showDelete} onOpenChange={(open) => { if (!open) { setShowDelete(false); setDeleteError(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Rep</DialogTitle>
@@ -1066,10 +1086,15 @@ export default function RepDetailPage() {
               submissions, and discount codes. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
+              {deleteError}
+            </div>
+          )}
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowDelete(false)}
+              onClick={() => { setShowDelete(false); setDeleteError(""); }}
             >
               Cancel
             </Button>

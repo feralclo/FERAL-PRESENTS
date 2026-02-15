@@ -61,6 +61,7 @@ import {
   Link as LinkIcon,
   ExternalLink,
 } from "lucide-react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type {
   Rep,
   RepStatus,
@@ -201,6 +202,17 @@ function TeamTab() {
 
   // Signup link copy
   const [copiedSignup, setCopiedSignup] = useState(false);
+
+  // Current admin user (for self-deletion guard)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSupabaseClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (data.user) setCurrentUserId(data.user.id);
+      });
+  }, []);
 
   const loadReps = useCallback(async () => {
     setLoading(true);
@@ -494,15 +506,18 @@ function TeamTab() {
                           <Eye size={13} />
                         </Button>
                       </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setDeleteRepTarget(rep)}
-                        className="text-muted-foreground hover:text-destructive"
-                        title="Delete rep"
-                      >
-                        <Trash2 size={13} />
-                      </Button>
+                      {/* Hide delete button for your own rep record */}
+                      {!(rep.auth_user_id && rep.auth_user_id === currentUserId) && (
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => setDeleteRepTarget(rep)}
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Delete rep"
+                        >
+                          <Trash2 size={13} />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

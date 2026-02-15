@@ -182,30 +182,27 @@ export async function DELETE(
     // A rep might share an auth account with an admin (dual-role user).
     // Deleting that auth user would lock the admin out completely.
     let authUserIsAdmin = false;
-    if (rep.auth_user_id) {
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (serviceRoleKey && SUPABASE_URL) {
-        try {
-          const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
-          const { data: authUser } = await adminClient.auth.admin.getUserById(rep.auth_user_id);
-          if (authUser?.user?.app_metadata?.is_admin === true) {
-            authUserIsAdmin = true;
-          }
-        } catch (err) {
-          // If we can't verify, err on the side of caution — don't delete the auth user
-          console.warn("[DELETE /api/reps/[id]] Could not verify auth user admin status:", err);
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const hasServiceRole = !!(serviceRoleKey && SUPABASE_URL);
+
+    if (rep.auth_user_id && hasServiceRole) {
+      const adminClient = createClient(SUPABASE_URL!, serviceRoleKey!);
+
+      try {
+        const { data: authUser } = await adminClient.auth.admin.getUserById(rep.auth_user_id);
+        if (authUser?.user?.app_metadata?.is_admin === true) {
           authUserIsAdmin = true;
         }
+      } catch (err) {
+        // If we can't verify, err on the side of caution — don't delete the auth user
+        console.warn("[DELETE /api/reps/[id]] Could not verify auth user admin status:", err);
+        authUserIsAdmin = true;
       }
-    }
 
-    // Delete the Supabase Auth user ONLY if it's a rep-only account.
-    // Admin auth users are preserved — only the rep record is removed.
-    if (rep.auth_user_id && !authUserIsAdmin) {
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (serviceRoleKey && SUPABASE_URL) {
+      // Delete the Supabase Auth user ONLY if it's a rep-only account.
+      // Admin auth users are preserved — only the rep record is removed.
+      if (!authUserIsAdmin) {
         try {
-          const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
           const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(rep.auth_user_id);
           if (authDeleteError) {
             console.warn("[DELETE /api/reps/[id]] Auth user cleanup failed (non-blocking):", authDeleteError.message);
@@ -213,9 +210,9 @@ export async function DELETE(
         } catch (authErr) {
           console.warn("[DELETE /api/reps/[id]] Auth user cleanup error (non-blocking):", authErr);
         }
+      } else {
+        console.info("[DELETE /api/reps/[id]] Skipping auth user deletion — user is also an admin:", rep.auth_user_id);
       }
-    } else if (authUserIsAdmin) {
-      console.info("[DELETE /api/reps/[id]] Skipping auth user deletion — user is also an admin:", rep.auth_user_id);
     }
 
     // Clean up discount codes associated with this rep

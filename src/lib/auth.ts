@@ -1,6 +1,23 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
+
+/**
+ * Get a Supabase client for rep table lookups.
+ *
+ * Uses the service role key when available (bypasses RLS) so that rep
+ * portal reads/writes work even if RLS policies on the reps table don't
+ * grant access to the authenticated user's role. Falls back to the
+ * session-based server client.
+ */
+async function getRepDbClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey && SUPABASE_URL) {
+    return createClient(SUPABASE_URL, serviceRoleKey);
+  }
+  return getSupabaseServer();
+}
 
 /**
  * Auth helper for API routes.
@@ -97,8 +114,20 @@ export async function requireRepAuth(): Promise<
       };
     }
 
+    // Use admin client for rep table lookups (bypasses RLS)
+    const repDb = await getRepDbClient();
+    if (!repDb) {
+      return {
+        rep: null,
+        error: NextResponse.json(
+          { error: "Service unavailable" },
+          { status: 503 }
+        ),
+      };
+    }
+
     // Look up the rep row linked to this auth user
-    const { data: rep, error: repErr } = await supabase
+    const { data: rep, error: repErr } = await repDb
       .from(TABLES.REPS)
       .select("id, auth_user_id, email, org_id, status")
       .eq("auth_user_id", user.id)
@@ -111,7 +140,7 @@ export async function requireRepAuth(): Promise<
       // the rep row's auth_user_id wasn't saved (e.g., partial update failure).
       // Only links if the rep has NO existing auth_user_id (prevents account takeover).
       if (user.email) {
-        const { data: repByEmail } = await supabase
+        const { data: repByEmail } = await repDb
           .from(TABLES.REPS)
           .select("id, auth_user_id, email, org_id, status")
           .eq("email", user.email.toLowerCase())
@@ -126,7 +155,7 @@ export async function requireRepAuth(): Promise<
             authUserId: user.id,
             email: user.email,
           });
-          await supabase
+          await repDb
             .from(TABLES.REPS)
             .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
             .eq("id", repByEmail.id)

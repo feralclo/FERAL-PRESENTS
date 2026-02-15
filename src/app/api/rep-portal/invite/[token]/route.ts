@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { sendRepEmail } from "@/lib/rep-emails";
+
+/**
+ * Create a Supabase client suitable for public-facing invite routes.
+ *
+ * Uses the service role key (bypasses RLS) when available — required because
+ * the invite page is unauthenticated, so the anon key can't read the reps
+ * table if RLS is enabled. Falls back to anon key if service role key is
+ * not configured.
+ */
+function getInviteClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey && SUPABASE_URL) {
+    return createClient(SUPABASE_URL, serviceRoleKey);
+  }
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return null;
+}
 
 /**
  * GET /api/rep-portal/invite/[token] — Validate an invite token (public)
@@ -20,7 +38,7 @@ export async function GET(
       return NextResponse.json({ valid: false });
     }
 
-    const supabase = await getSupabaseServer();
+    const supabase = getInviteClient();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },
@@ -36,6 +54,10 @@ export async function GET(
       .single();
 
     if (error || !rep) {
+      console.warn("[rep-portal/invite] GET token lookup failed:", {
+        token: token.substring(0, 8) + "...",
+        error: error?.message,
+      });
       return NextResponse.json({ valid: false });
     }
 
@@ -138,7 +160,7 @@ export async function POST(
       );
     }
 
-    const supabase = await getSupabaseServer();
+    const supabase = getInviteClient();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },
@@ -155,6 +177,10 @@ export async function POST(
       .single();
 
     if (repError || !rep) {
+      console.error("[rep-portal/invite] POST token lookup failed:", {
+        token: token.substring(0, 8) + "...",
+        error: repError?.message,
+      });
       return NextResponse.json(
         { error: "Invalid or expired invite token" },
         { status: 404 }
@@ -238,8 +264,16 @@ export async function POST(
       }
     } else {
       // Fallback: regular signUp (may require email confirmation depending on Supabase settings)
+      // Use a fresh anon client (not cookie-based) to avoid session interference
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        return NextResponse.json(
+          { error: "Service unavailable" },
+          { status: 503 }
+        );
+      }
+      const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const { data: authData, error: authError } =
-        await supabase.auth.signUp({
+        await anonClient.auth.signUp({
           email: finalEmail,
           password,
         });
@@ -292,7 +326,7 @@ export async function POST(
     if (gender !== undefined) updatePayload.gender = gender || null;
     if (bio !== undefined) updatePayload.bio = bio || null;
 
-    // Update the rep row
+    // Update the rep row — use same client (bypasses RLS)
     const { error: updateError } = await supabase
       .from(TABLES.REPS)
       .update(updatePayload)

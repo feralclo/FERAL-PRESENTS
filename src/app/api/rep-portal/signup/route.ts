@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { getRepSettings } from "@/lib/rep-points";
 import { sendRepEmail } from "@/lib/rep-emails";
+
+/**
+ * Create a Supabase client for public-facing rep routes.
+ *
+ * Uses the service role key (bypasses RLS) when available — required because
+ * public signup is unauthenticated, so the anon key can't read/write the reps
+ * table if RLS is enabled. Falls back to anon key if service role key is
+ * not configured.
+ */
+function getPublicRepClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey && SUPABASE_URL) {
+    return createClient(SUPABASE_URL, serviceRoleKey);
+  }
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return null;
+}
 
 /**
  * POST /api/rep-portal/signup — Rep signup (public)
@@ -77,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await getSupabaseServer();
+    const supabase = getPublicRepClient();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },
@@ -133,8 +151,16 @@ export async function POST(request: NextRequest) {
       }
       authUserId = adminAuth.user?.id || null;
     } else {
+      // Fallback: regular signUp — use fresh anon client to avoid session interference
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        return NextResponse.json(
+          { error: "Service unavailable" },
+          { status: 503 }
+        );
+      }
+      const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const { data: authData, error: authError } =
-        await supabase.auth.signUp({
+        await anonClient.auth.signUp({
           email: finalEmail,
           password,
         });

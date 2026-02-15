@@ -524,12 +524,6 @@
   }
 }
 
-/* Small phone tweaks */
-@media (max-width: 380px) {
-  [data-rep] .tracking-\\[3px\\] {
-    letter-spacing: 1px;
-  }
-}
 
 [data-rep] input[type="date"] {
   color-scheme: dark;

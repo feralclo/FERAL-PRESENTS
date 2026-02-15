@@ -18,6 +18,7 @@ import type {
   StripeExpressCheckoutElementClickEvent,
 } from "@stripe/stripe-js";
 import { OrderConfirmation } from "./OrderConfirmation";
+import { CheckoutTimer } from "./CheckoutTimer";
 import { getStripeClient } from "@/lib/stripe/client";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
@@ -322,7 +323,6 @@ function DiscountCodeInput({
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [expanded, setExpanded] = useState(false);
 
   const handleApply = async () => {
     if (!code.trim()) return;
@@ -347,7 +347,6 @@ function DiscountCodeInput({
             : Math.min(d.value, subtotal);
         onApply({ code: d.code, type: d.type, value: d.value, amount });
         setCode("");
-        setExpanded(false);
       } else {
         setError(data.error || "Invalid discount code");
       }
@@ -381,24 +380,6 @@ function DiscountCodeInput({
     );
   }
 
-  if (!expanded) {
-    return (
-      <div className="discount-code">
-        <button
-          className="discount-code__toggle"
-          onClick={() => setExpanded(true)}
-          type="button"
-        >
-          <svg className="discount-code__tag-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="7" cy="7" r="1" fill="currentColor"/>
-          </svg>
-          Add discount code
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="discount-code">
       <div className="discount-code__form">
@@ -408,7 +389,6 @@ function DiscountCodeInput({
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="Discount code"
-          autoFocus
           enterKeyHint="send"
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleApply())}
         />
@@ -418,7 +398,7 @@ function DiscountCodeInput({
           disabled={loading || !code.trim()}
           type="button"
         >
-          {loading ? "..." : "Apply"}
+          {loading ? "\u2026" : "Apply"}
         </button>
       </div>
       {error && <div className="discount-code__error">{error}</div>}
@@ -525,7 +505,10 @@ function StripeCheckoutPage({
     <div className="checkout-page">
       <CheckoutHeader slug={slug} />
 
-      {/* Mobile: collapsible order summary */}
+      {/* Reservation timer */}
+      <CheckoutTimer active={true} />
+
+      {/* Mobile: always-visible order summary */}
       <OrderSummaryMobile
         cartLines={cartLines}
         symbol={symbol}
@@ -1473,7 +1456,10 @@ function TestModeCheckout({
     <div className="checkout-page">
       <CheckoutHeader slug={slug} />
 
-      {/* Mobile: collapsible order summary */}
+      {/* Reservation timer */}
+      <CheckoutTimer active={true} />
+
+      {/* Mobile: always-visible order summary */}
       <OrderSummaryMobile
         cartLines={cartLines}
         symbol={symbol}
@@ -1648,7 +1634,6 @@ function OrderSummaryMobile({
   onRemoveDiscount?: () => void;
   vatSettings?: VatSettings | null;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const discountAmt = discount?.amount || 0;
   const afterDiscount = Math.max(subtotal - discountAmt, 0);
   const vatBreakdown = calculateCheckoutVat(afterDiscount, vatSettings ?? null);
@@ -1658,111 +1643,50 @@ function OrderSummaryMobile({
 
   return (
     <div className="order-summary-mobile">
-      <button
-        className="order-summary-mobile__toggle"
-        onClick={() => setExpanded(!expanded)}
-        type="button"
-        aria-expanded={expanded}
-      >
-        <div className="order-summary-mobile__toggle-left">
-          <svg
-            className="order-summary-mobile__cart-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <line
-              x1="3"
-              y1="6"
-              x2="21"
-              y2="6"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M16 10a4 4 0 01-8 0"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="order-summary-mobile__toggle-label">
-            {expanded ? "Hide" : "Show"} order summary
-          </span>
-          <svg
-            className={`order-summary-mobile__chevron${expanded ? " order-summary-mobile__chevron--up" : ""}`}
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 9l6 6 6-6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <span className="order-summary-mobile__toggle-total">
-          {symbol}{total.toFixed(2)}
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="order-summary-mobile__content">
-          <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
-          <div className="order-summary__divider" />
-          {event && onApplyDiscount && onRemoveDiscount && (
-            <DiscountCodeInput
-              eventId={event.id}
-              subtotal={subtotal}
-              discount={discount || null}
-              onApply={onApplyDiscount}
-              onRemove={onRemoveDiscount}
-            />
+      <div className="order-summary-mobile__content">
+        <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+        <div className="order-summary__divider" />
+        {event && onApplyDiscount && onRemoveDiscount && (
+          <DiscountCodeInput
+            eventId={event.id}
+            subtotal={subtotal}
+            discount={discount || null}
+            onApply={onApplyDiscount}
+            onRemove={onRemoveDiscount}
+          />
+        )}
+        <div className="order-summary__totals">
+          <div className="order-summary__row">
+            <span>Subtotal</span>
+            <span>{symbol}{subtotal.toFixed(2)}</span>
+          </div>
+          {discount && (
+            <div className="order-summary__row order-summary__row--discount">
+              <span>Discount ({discount.code})</span>
+              <span>-{symbol}{discountAmt.toFixed(2)}</span>
+            </div>
           )}
-          <div className="order-summary__totals">
+          {vatBreakdown && vatSettings?.prices_include_vat && (
+            <div className="order-summary__row order-summary__row--vat">
+              <span>Includes VAT ({vatSettings.vat_rate}%)</span>
+              <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
+            </div>
+          )}
+          {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
             <div className="order-summary__row">
-              <span>Subtotal</span>
-              <span>{symbol}{subtotal.toFixed(2)}</span>
+              <span>VAT ({vatSettings.vat_rate}%)</span>
+              <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
             </div>
-            {discount && (
-              <div className="order-summary__row order-summary__row--discount">
-                <span>Discount ({discount.code})</span>
-                <span>-{symbol}{discountAmt.toFixed(2)}</span>
-              </div>
-            )}
-            {vatBreakdown && vatSettings?.prices_include_vat && (
-              <div className="order-summary__row order-summary__row--vat">
-                <span>Includes VAT ({vatSettings.vat_rate}%)</span>
-                <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
-              </div>
-            )}
-            {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
-              <div className="order-summary__row">
-                <span>VAT ({vatSettings.vat_rate}%)</span>
-                <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
-              </div>
-            )}
-            <div className="order-summary__row order-summary__row--total">
-              <span>Total</span>
-              <span>
-                <span className="order-summary__currency">{event?.currency || "GBP"}</span>
-                {" "}{symbol}{total.toFixed(2)}
-              </span>
-            </div>
+          )}
+          <div className="order-summary__row order-summary__row--total">
+            <span>Total</span>
+            <span>
+              <span className="order-summary__currency">{event?.currency || "GBP"}</span>
+              {" "}{symbol}{total.toFixed(2)}
+            </span>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1959,9 +1883,6 @@ function CheckoutFooter() {
         <div className="footer__inner">
           <span className="footer__copy">
             &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
-          </span>
-          <span className="footer__status">
-            STATUS: <span className="text-red">ONLINE</span>
           </span>
         </div>
       </div>

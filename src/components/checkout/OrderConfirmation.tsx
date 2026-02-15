@@ -327,9 +327,6 @@ export function OrderConfirmation({
             <span className="footer__copy">
               &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
             </span>
-            <span className="footer__status">
-              STATUS: <span className="text-red">ONLINE</span>
-            </span>
           </div>
         </div>
       </footer>

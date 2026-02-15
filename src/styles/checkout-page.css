@@ -175,85 +175,101 @@ html.checkout-active .noise {
 }
 
 /* ========================================
-   COUNTDOWN TIMER
+   RESERVATION TIMER
+   Sits between header and checkout content.
+   Inline row: clock icon + label + time
+   Thin progress track underneath.
    ======================================== */
 .checkout-timer {
-  background: #0e0e0e;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  padding: 12px 24px;
+  padding: 16px 24px 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.checkout-timer__inner {
+  max-width: 580px;
+}
+
+.checkout-timer__row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 7px;
+}
+
+.checkout-timer__icon {
+  width: 15px;
+  height: 15px;
+  color: #888;
+  flex-shrink: 0;
 }
 
 .checkout-timer__label {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #555;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  color: #888;
+  letter-spacing: 0.1px;
 }
 
 .checkout-timer__time {
   font-family: 'Space Mono', monospace;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 2px;
+  font-size: 13px;
+  font-weight: 600;
   color: #fff;
-  min-width: 56px;
+  letter-spacing: 0.5px;
+  min-width: 40px;
 }
 
-.checkout-timer__bar {
-  flex: 1;
-  max-width: 120px;
+.checkout-timer__track {
   height: 2px;
   background: rgba(255, 255, 255, 0.06);
-  position: relative;
+  border-radius: 1px;
+  margin-top: 14px;
   overflow: hidden;
 }
 
-.checkout-timer__fill {
-  position: absolute;
-  top: 0;
-  left: 0;
+.checkout-timer__progress {
   height: 100%;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 1px;
   transition: width 1s linear;
-  transform-origin: left;
 }
 
-/* Urgent state: under 2 minutes */
-.checkout-timer--urgent .checkout-timer__time {
+/* Urgent — under 2 minutes */
+.checkout-timer--urgent .checkout-timer__icon {
   color: #f59e0b;
-}
-
-.checkout-timer--urgent .checkout-timer__fill {
-  background: #f59e0b;
 }
 
 .checkout-timer--urgent .checkout-timer__label {
   color: #f59e0b;
-  animation: timerPulse 1s ease-in-out infinite;
+}
+
+.checkout-timer--urgent .checkout-timer__time {
+  color: #f59e0b;
+}
+
+.checkout-timer--urgent .checkout-timer__progress {
+  background: #f59e0b;
+}
+
+.checkout-timer--urgent .checkout-timer__icon {
+  animation: timerPulse 2s ease-in-out infinite;
 }
 
 @keyframes timerPulse {
-  0%, 100% { opacity: 0.7; }
+  0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
 
-/* Expired state */
-.checkout-timer--expired .checkout-timer__time {
-  color: #ef4444;
-}
-
-.checkout-timer--expired .checkout-timer__fill {
-  background: #ef4444;
-}
-
+/* Expired */
+.checkout-timer--expired .checkout-timer__icon,
 .checkout-timer--expired .checkout-timer__label {
   color: #ef4444;
+}
+
+.checkout-timer--expired .checkout-timer__progress {
+  background: #ef4444;
 }
 
 /* ========================================
@@ -302,69 +318,16 @@ html.checkout-active .noise {
 }
 
 /* ========================================
-   ORDER SUMMARY — MOBILE (collapsible)
-   Shopify-style toggle bar with chevron
+   ORDER SUMMARY — MOBILE (always visible)
+   Compact items, discount, and totals.
    ======================================== */
 .order-summary-mobile {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(20, 20, 20, 0.6);
-}
-
-.order-summary-mobile__toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: inherit;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.order-summary-mobile__toggle-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.order-summary-mobile__cart-icon {
-  width: 18px;
-  height: 18px;
-  color: rgba(255, 255, 255, 0.7);
-  flex-shrink: 0;
-}
-
-.order-summary-mobile__toggle-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.2px;
-}
-
-.order-summary-mobile__chevron {
-  width: 14px;
-  height: 14px;
-  color: rgba(255, 255, 255, 0.5);
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-}
-
-.order-summary-mobile__chevron--up {
-  transform: rotate(180deg);
-}
-
-.order-summary-mobile__toggle-total {
-  font-family: 'Space Mono', monospace;
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.5px;
+  background: rgba(20, 20, 20, 0.4);
 }
 
 .order-summary-mobile__content {
-  padding: 4px 24px 20px;
+  padding: 16px 24px 20px;
 }
 
 /* Hide mobile summary on desktop */
@@ -568,27 +531,6 @@ html.checkout-active .noise {
   margin-bottom: 16px;
 }
 
-.discount-code__toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: #888;
-  padding: 10px 4px;
-  min-height: 44px;
-  transition: color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.discount-code__toggle:hover,
-.discount-code__toggle:active {
-  color: #fff;
-}
-
 .discount-code__tag-icon {
   width: 14px;
   height: 14px;
@@ -602,6 +544,7 @@ html.checkout-active .noise {
 
 .discount-code__input {
   flex: 1;
+  min-width: 0;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -636,15 +579,14 @@ html.checkout-active .noise {
 }
 
 .discount-code__apply-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 8px;
-  color: #ccc;
-  font-family: 'Space Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 13px 18px;
+  color: #fff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 20px;
   min-height: 44px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -654,13 +596,12 @@ html.checkout-active .noise {
 
 .discount-code__apply-btn:hover,
 .discount-code__apply-btn:active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .discount-code__apply-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 

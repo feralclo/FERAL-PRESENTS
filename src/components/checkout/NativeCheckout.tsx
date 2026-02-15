@@ -409,6 +409,7 @@ function DiscountCodeInput({
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="Discount code"
           autoFocus
+          enterKeyHint="send"
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleApply())}
         />
         <button
@@ -999,7 +1000,9 @@ function SinglePageCheckoutForm({
           {/* Contact */}
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Contact</h2>
+            <label htmlFor="checkout-email" className="sr-only">Email</label>
             <input
+              id="checkout-email"
               type="email"
               className="native-checkout__input"
               value={email}
@@ -1022,24 +1025,32 @@ function SinglePageCheckoutForm({
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Details</h2>
             <div className="native-checkout__row">
-              <input
-                type="text"
-                className="native-checkout__input"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
-                required
-                autoComplete="given-name"
-              />
-              <input
-                type="text"
-                className="native-checkout__input"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Last name"
-                required
-                autoComplete="family-name"
-              />
+              <div>
+                <label htmlFor="checkout-first-name" className="sr-only">First name</label>
+                <input
+                  id="checkout-first-name"
+                  type="text"
+                  className="native-checkout__input"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="First name"
+                  required
+                  autoComplete="given-name"
+                />
+              </div>
+              <div>
+                <label htmlFor="checkout-last-name" className="sr-only">Last name</label>
+                <input
+                  id="checkout-last-name"
+                  type="text"
+                  className="native-checkout__input"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Last name"
+                  required
+                  autoComplete="family-name"
+                />
+              </div>
             </div>
           </div>
 
@@ -1100,7 +1111,9 @@ function SinglePageCheckoutForm({
                   />
 
                   {/* Name on card */}
+                  <label htmlFor="checkout-cc-name" className="sr-only">Name on card</label>
                   <input
+                    id="checkout-cc-name"
                     type="text"
                     className="native-checkout__input payment-option__name-input"
                     value={nameOnCard}
@@ -1111,10 +1124,13 @@ function SinglePageCheckoutForm({
 
                   {/* Country */}
                   <div className="payment-option__select-wrapper">
+                    <label htmlFor="checkout-country" className="sr-only">Country</label>
                     <select
+                      id="checkout-country"
                       className="native-checkout__input payment-option__country-select"
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
+                      autoComplete="country"
                     >
                       {COUNTRIES.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -1462,7 +1478,9 @@ function TestModeCheckout({
               <form onSubmit={handleSubmit} className="native-checkout__form">
                 <div className="native-checkout__section">
                   <h2 className="native-checkout__heading">Your Details</h2>
+                  <label htmlFor="test-email" className="sr-only">Email</label>
                   <input
+                    id="test-email"
                     type="email"
                     className="native-checkout__input"
                     value={email}
@@ -1480,24 +1498,32 @@ function TestModeCheckout({
                     Your tickets will be sent to this email
                   </p>
                   <div className="native-checkout__row">
-                    <input
-                      type="text"
-                      className="native-checkout__input"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="First name"
-                      required
-                      autoComplete="given-name"
-                    />
-                    <input
-                      type="text"
-                      className="native-checkout__input"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Last name"
-                      required
-                      autoComplete="family-name"
-                    />
+                    <div>
+                      <label htmlFor="test-first-name" className="sr-only">First name</label>
+                      <input
+                        id="test-first-name"
+                        type="text"
+                        className="native-checkout__input"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="First name"
+                        required
+                        autoComplete="given-name"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="test-last-name" className="sr-only">Last name</label>
+                      <input
+                        id="test-last-name"
+                        type="text"
+                        className="native-checkout__input"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Last name"
+                        required
+                        autoComplete="family-name"
+                      />
+                    </div>
                   </div>
                 </div>
 

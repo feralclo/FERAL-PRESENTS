@@ -234,9 +234,9 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
     appearance: {
       theme: "night",
       variables: {
-        colorPrimary: "#ff0033",
+        colorPrimary: "#ffffff",
         colorBackground: "#0e0e0e",
-        borderRadius: "0px",
+        borderRadius: "8px",
       },
     },
   };

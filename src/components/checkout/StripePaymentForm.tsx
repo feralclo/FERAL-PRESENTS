@@ -238,14 +238,14 @@ export function StripePaymentForm({
     appearance: {
       theme: "night",
       variables: {
-        colorPrimary: "#ff0033",
+        colorPrimary: "#ffffff",
         colorBackground: "#1a1a1a",
         colorText: "#ffffff",
-        colorDanger: "#ff0033",
+        colorDanger: "#ef4444",
         colorTextPlaceholder: "#555555",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         fontSizeBase: "16px", // ≥16px prevents iOS Safari auto-zoom on focus
-        borderRadius: "0px",
+        borderRadius: "8px",
         spacingUnit: "4px",
         spacingGridRow: "16px",
         spacingGridColumn: "12px",
@@ -260,11 +260,11 @@ export function StripePaymentForm({
           color: "#ffffff",
         },
         ".Input:focus": {
-          borderColor: "rgba(255, 0, 51, 0.5)",
+          borderColor: "rgba(255, 255, 255, 0.3)",
           boxShadow: "none",
         },
         ".Input--invalid": {
-          borderColor: "rgba(255, 0, 51, 0.5)",
+          borderColor: "rgba(239, 68, 68, 0.5)",
           color: "#ffffff",
         },
         ".Label": {
@@ -288,17 +288,17 @@ export function StripePaymentForm({
           color: "#ffffff",
         },
         ".Tab--selected": {
-          backgroundColor: "rgba(255, 0, 51, 0.08)",
-          borderColor: "rgba(255, 0, 51, 0.3)",
+          backgroundColor: "rgba(255, 255, 255, 0.06)",
+          borderColor: "rgba(255, 255, 255, 0.25)",
           color: "#ffffff",
         },
         ".TabIcon--selected": {
-          fill: "#ff0033",
+          fill: "#ffffff",
         },
         ".Error": {
           fontFamily: "'Space Mono', monospace",
           fontSize: "11px",
-          color: "#ff0033",
+          color: "#ef4444",
         },
       },
     },

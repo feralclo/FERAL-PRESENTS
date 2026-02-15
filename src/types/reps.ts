@@ -94,7 +94,8 @@ export type PointsSourceType =
   | "quest"
   | "manual"
   | "reward_spend"
-  | "revocation";
+  | "revocation"
+  | "refund";
 
 export interface RepPointsLog {
   id: string;

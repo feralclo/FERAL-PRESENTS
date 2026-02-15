@@ -12,6 +12,7 @@ interface LeaderboardEntry {
   total_sales: number;
   total_revenue: number;
   level: number;
+  position: number;
 }
 
 const PODIUM_STYLES = [

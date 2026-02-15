@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
         "*, rep:reps(id, first_name, last_name, display_name, email, photo_url, status), event:events(id, name, slug, date_start, status)"
       )
       .eq("org_id", ORG_ID)
-      .order("assigned_at", { ascending: false });
+      .order("assigned_at", { ascending: false })
+      .limit(200);
 
     if (repId) {
       query = query.eq("rep_id", repId);

@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
         "*, reward:rep_rewards(id, name, description, image_url, reward_type, points_cost), rep:reps(id, first_name, last_name, display_name, email, photo_url)"
       )
       .eq("org_id", ORG_ID)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (status) {
       query = query.eq("status", status);

@@ -99,7 +99,7 @@ export default function RepJoinPage() {
     switch (step) {
       case 0: return firstName.trim().length > 0;
       case 1: return lastName.trim().length > 0;
-      case 2: return email.trim().length > 0 && email.includes("@");
+      case 2: return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
       case 3: return password.length >= 6;
       case 4: return true; // instagram optional
       case 5: return true; // tiktok optional

@@ -4,6 +4,18 @@ import { TABLES } from "@/lib/constants";
 import { getRepSettings } from "@/lib/rep-points";
 
 /**
+ * Escape HTML special characters to prevent XSS in email templates.
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
  * Lazy Resend client.
  */
 function getResendClient(): Resend | null {
@@ -112,11 +124,11 @@ export async function sendRepInviteEmail(params: {
       .single();
 
     const branding = (brandingRow?.data as Record<string, string>) || {};
-    const orgName = branding.org_name || params.orgId.toUpperCase();
+    const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
     const accentColor = branding.accent_color || "#8B5CF6";
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
     const settings = await getRepSettings(params.orgId);
-    const inviteUrl = `${siteUrl}/rep/invite/${params.inviteToken}`;
+    const inviteUrl = `${siteUrl}/rep/invite/${encodeURIComponent(params.inviteToken)}`;
 
     const subject = `You've been selected as a ${orgName} Rep`;
     const html = wrapEmail(accentColor, orgName, `
@@ -124,14 +136,14 @@ export async function sendRepInviteEmail(params: {
         You've been selected.
       </h1>
       <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
-        Hey ${params.firstName}, the team at <strong style="color:#fff">${orgName}</strong> wants you on board as an official rep.
+        Hey ${escapeHtml(params.firstName)}, the team at <strong style="color:#fff">${escapeHtml(orgName)}</strong> wants you on board as an official rep.
       </p>
       <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
         <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: ${accentColor}; margin: 0 0 8px 0; font-weight: 600;">
           Your Discount Code
         </p>
         <p style="font-size: 20px; font-weight: 700; font-family: monospace; color: #ffffff; margin: 0; letter-spacing: 3px;">
-          ${params.discountCode || "Awaiting activation"}
+          ${escapeHtml(params.discountCode || "Awaiting activation")}
         </p>
       </div>
       <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
@@ -162,10 +174,10 @@ function buildEmail(
   ctx: Record<string, unknown>
 ): { subject: string; html: string } {
   const rep = ctx.rep as Record<string, unknown>;
-  const orgName = ctx.orgName as string;
+  const orgName = escapeHtml(ctx.orgName as string);
   const accent = ctx.accentColor as string;
   const siteUrl = ctx.siteUrl as string;
-  const firstName = (rep.first_name as string) || "there";
+  const firstName = escapeHtml((rep.first_name as string) || "there");
 
   switch (type) {
     case "welcome":
@@ -196,7 +208,7 @@ function buildEmail(
 
     case "quest_notification":
       return {
-        subject: `New Quest: ${ctx.quest_title || "Complete it for points!"}`,
+        subject: `New Quest: ${escapeHtml(String(ctx.quest_title || "Complete it for points!"))}`,
         html: wrapEmail(accent, orgName, `
           <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
             New Quest Available
@@ -206,9 +218,9 @@ function buildEmail(
           </p>
           <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
             <p style="font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
-              ${ctx.quest_title || "New Quest"}
+              ${escapeHtml(String(ctx.quest_title || "New Quest"))}
             </p>
-            ${ctx.quest_description ? `<p style="font-size: 14px; color: #a0a0b0; margin: 0 0 12px 0;">${ctx.quest_description}</p>` : ""}
+            ${ctx.quest_description ? `<p style="font-size: 14px; color: #a0a0b0; margin: 0 0 12px 0;">${escapeHtml(String(ctx.quest_description))}</p>` : ""}
             <div style="display: inline-block; background: ${accent}; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 6px;">
               +${ctx.points_reward || 0} PTS
             </div>
@@ -232,10 +244,10 @@ function buildEmail(
           </p>
           <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
             <p style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 4px 0;">
-              ${ctx.reward_name || "Reward"}
+              ${escapeHtml(String(ctx.reward_name || "Reward"))}
             </p>
             <p style="font-size: 14px; color: #a0a0b0; margin: 0;">
-              ${ctx.milestone_title || "Milestone achieved"}
+              ${escapeHtml(String(ctx.milestone_title || "Milestone achieved"))}
             </p>
           </div>
           <a href="${siteUrl}/rep/rewards" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">

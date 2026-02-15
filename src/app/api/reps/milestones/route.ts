@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
       .from(TABLES.REP_MILESTONES)
       .select("*, reward:rep_rewards(id, name), event:events(name)")
       .eq("org_id", ORG_ID)
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true })
+      .limit(200);
 
     if (rewardId) {
       query = query.eq("reward_id", rewardId);

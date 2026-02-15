@@ -103,9 +103,9 @@ export async function PUT(
         { status: 400 }
       );
     }
-    if (updates.status && !["active", "archived", "draft"].includes(updates.status as string)) {
+    if (updates.status && !["active", "paused", "archived", "draft"].includes(updates.status as string)) {
       return NextResponse.json(
-        { error: "status must be 'active', 'archived', or 'draft'" },
+        { error: "status must be 'active', 'paused', 'archived', or 'draft'" },
         { status: 400 }
       );
     }

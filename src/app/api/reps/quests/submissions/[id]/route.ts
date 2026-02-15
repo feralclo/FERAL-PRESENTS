@@ -77,8 +77,25 @@ export async function PUT(
     if (status === "approved") {
       const pointsReward = submission.quest?.points_reward || 0;
       updates.points_awarded = pointsReward;
+    }
 
-      // Award points to the rep
+    // Update the submission status first — if this fails, don't award points
+    const { data, error } = await supabase
+      .from(TABLES.REP_QUEST_SUBMISSIONS)
+      .update(updates)
+      .eq("id", id)
+      .eq("org_id", ORG_ID)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Award points and increment counter only after successful status update
+    if (status === "approved") {
+      const pointsReward = submission.quest?.points_reward || 0;
+
       if (pointsReward > 0) {
         await awardPoints({
           repId: submission.rep_id,
@@ -91,7 +108,7 @@ export async function PUT(
         });
       }
 
-      // Increment total_completed on the quest — re-fetch to avoid race condition
+      // Increment total_completed on the quest
       const { data: currentQuest } = await supabase
         .from(TABLES.REP_QUESTS)
         .select("total_completed")
@@ -107,19 +124,6 @@ export async function PUT(
         })
         .eq("id", submission.quest_id)
         .eq("org_id", ORG_ID);
-    }
-
-    // Update the submission
-    const { data, error } = await supabase
-      .from(TABLES.REP_QUEST_SUBMISSIONS)
-      .update(updates)
-      .eq("id", id)
-      .eq("org_id", ORG_ID)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ data });

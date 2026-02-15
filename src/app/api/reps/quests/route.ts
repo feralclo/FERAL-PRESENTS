@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       .from(TABLES.REP_QUESTS)
       .select("*, event:events(name, slug)")
       .eq("org_id", ORG_ID)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (status) {
       query = query.eq("status", status);

@@ -35,9 +35,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 6 || password.length > 72) {
       return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
+        { error: "Password must be 6-72 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (first_name.length > 50 || last_name.length > 50) {
+      return NextResponse.json(
+        { error: "Name fields must be under 50 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (phone && phone.length > 20) {
+      return NextResponse.json(
+        { error: "Phone must be under 20 characters" },
+        { status: 400 }
+      );
+    }
+
+    if ((instagram && instagram.length > 30) || (tiktok && tiktok.length > 30)) {
+      return NextResponse.json(
+        { error: "Social handles must be under 30 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (bio && bio.length > 500) {
+      return NextResponse.json(
+        { error: "Bio must be under 500 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (gender && !["male", "female", "non-binary", "prefer-not-to-say"].includes(gender)) {
+      return NextResponse.json(
+        { error: "Invalid gender value" },
         { status: 400 }
       );
     }

@@ -28,6 +28,22 @@ export async function createRepDiscountCode(params: {
     description,
   } = params;
 
+  // Validate discount type and value
+  if (!["percentage", "fixed"].includes(discountType)) {
+    console.error(`[discount-codes] Invalid discount type: ${discountType}`);
+    return null;
+  }
+
+  if (discountType === "percentage" && (discountValue < 0 || discountValue > 100)) {
+    console.error(`[discount-codes] Percentage must be 0-100, got: ${discountValue}`);
+    return null;
+  }
+
+  if (discountValue < 0 || discountValue > 10000) {
+    console.error(`[discount-codes] Value out of range: ${discountValue}`);
+    return null;
+  }
+
   const name = firstName.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6);
   const maxAttempts = 5;
 

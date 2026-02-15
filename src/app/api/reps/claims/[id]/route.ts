@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { awardPoints } from "@/lib/rep-points";
 
 /**
  * PUT /api/reps/claims/[id] — Fulfill or cancel a claim
@@ -65,9 +66,6 @@ export async function PUT(
       updates.fulfilled_by = auth.user!.id;
     }
 
-    // If cancelling a claim that spent points, refund could be handled here
-    // For now, we just update the status
-
     const { data, error } = await supabase
       .from(TABLES.REP_REWARD_CLAIMS)
       .update(updates)
@@ -80,8 +78,23 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // If cancelling, decrement total_claimed on the reward
+    // If cancelling, refund points and decrement total_claimed
     if (status === "cancelled") {
+      if (claim.points_spent && claim.points_spent > 0) {
+        const refundResult = await awardPoints({
+          repId: claim.rep_id,
+          orgId: ORG_ID,
+          points: claim.points_spent,
+          sourceType: "refund",
+          sourceId: claim.id,
+          description: "Points refunded — claim cancelled",
+          createdBy: auth.user!.id,
+        });
+        if (!refundResult) {
+          console.error(`[claims] CRITICAL: Failed to refund ${claim.points_spent} points to rep ${claim.rep_id} for claim ${claim.id}`);
+        }
+      }
+
       const { data: reward } = await supabase
         .from(TABLES.REP_REWARDS)
         .select("total_claimed")

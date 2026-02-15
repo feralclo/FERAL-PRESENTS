@@ -115,7 +115,7 @@ export default function RepInvitePage() {
 
   const canAdvance = (): boolean => {
     switch (step) {
-      case 0: return email.includes("@") && email.length > 3 && password.length >= 6;
+      case 0: return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && password.length >= 6;
       case 1: return true; // instagram optional
       case 2: return true; // tiktok optional
       case 3: return true; // dob optional

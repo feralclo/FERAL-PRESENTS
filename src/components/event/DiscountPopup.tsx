@@ -142,7 +142,7 @@ export function DiscountPopup({
   const handleEmailSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!email.includes("@") || !email.includes(".")) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
         setEmailError("Please enter a valid email");
         return;
       }

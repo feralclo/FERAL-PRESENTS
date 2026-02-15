@@ -22,6 +22,7 @@ export type TrafficEventType =
   | "payment_success"
   | "payment_failed"
   | "payment_method_selected"
+  | "email_captured"
   | "pdf_download"
   | "wallet_apple"
   | "wallet_google";

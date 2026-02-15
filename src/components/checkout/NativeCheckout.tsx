@@ -128,6 +128,16 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
   const { trackPageView } = useMetaTracking();
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [capturedEmail, setCapturedEmail] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return sessionStorage.getItem("feral_checkout_email") || "";
+      } catch {
+        return "";
+      }
+    }
+    return "";
+  });
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
   const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
 
@@ -272,6 +282,26 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
     );
   }
 
+  // Email capture gate — collect email before showing payment form
+  if (!capturedEmail && cartLines.length > 0) {
+    return (
+      <EmailCapture
+        slug={slug}
+        event={event}
+        cartLines={cartLines}
+        subtotal={subtotal}
+        symbol={symbol}
+        vatSettings={vatSettings}
+        onContinue={(email) => {
+          try {
+            sessionStorage.setItem("feral_checkout_email", email);
+          } catch {}
+          setCapturedEmail(email);
+        }}
+      />
+    );
+  }
+
   // Test mode checkout (no Stripe)
   if (!isStripe) {
     return (
@@ -284,6 +314,8 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
         symbol={symbol}
         vatSettings={vatSettings}
         onComplete={setCompletedOrder}
+        capturedEmail={capturedEmail}
+        onChangeEmail={() => setCapturedEmail("")}
       />
     );
   }
@@ -299,6 +331,8 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
       symbol={symbol}
       vatSettings={vatSettings}
       onComplete={setCompletedOrder}
+      capturedEmail={capturedEmail}
+      onChangeEmail={() => setCapturedEmail("")}
     />
   );
 }
@@ -421,6 +455,8 @@ function StripeCheckoutPage({
   symbol,
   vatSettings,
   onComplete,
+  capturedEmail,
+  onChangeEmail,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -430,6 +466,8 @@ function StripeCheckoutPage({
   symbol: string;
   vatSettings: VatSettings | null;
   onComplete: (order: Order) => void;
+  capturedEmail: string;
+  onChangeEmail: () => void;
 }) {
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
@@ -536,6 +574,8 @@ function StripeCheckoutPage({
               stripePromise={stripePromise}
               discountCode={appliedDiscount?.code || null}
               totalAmount={total}
+              capturedEmail={capturedEmail}
+              onChangeEmail={onChangeEmail}
             />
           </Elements>
         </div>
@@ -577,6 +617,8 @@ function SinglePageCheckoutForm({
   stripePromise,
   discountCode,
   totalAmount,
+  capturedEmail,
+  onChangeEmail,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -588,6 +630,8 @@ function SinglePageCheckoutForm({
   stripePromise: Promise<Stripe | null>;
   discountCode: string | null;
   totalAmount: number;
+  capturedEmail: string;
+  onChangeEmail: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -595,7 +639,7 @@ function SinglePageCheckoutForm({
   const { trackEngagement } = useTraffic();
 
   // Form state
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(capturedEmail);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [nameOnCard, setNameOnCard] = useState("");
@@ -1011,25 +1055,46 @@ function SinglePageCheckoutForm({
           {/* Contact */}
           <div className="native-checkout__section">
             <h2 className="native-checkout__heading">Contact</h2>
-            <label htmlFor="checkout-email" className="sr-only">Email</label>
-            <input
-              id="checkout-email"
-              type="email"
-              className="native-checkout__input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              required
-              autoComplete="email"
-              autoFocus
-            />
-            <p className="native-checkout__email-hint">
-              <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Your tickets will be sent to this email
-            </p>
+            {capturedEmail ? (
+              <div className="native-checkout__email-display">
+                <div className="native-checkout__email-display-info">
+                  <svg className="native-checkout__email-display-icon" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="native-checkout__email-display-value">{email}</span>
+                </div>
+                <button
+                  type="button"
+                  className="native-checkout__email-display-change"
+                  onClick={onChangeEmail}
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <>
+                <label htmlFor="checkout-email" className="sr-only">Email</label>
+                <input
+                  id="checkout-email"
+                  type="email"
+                  className="native-checkout__input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  required
+                  autoComplete="email"
+                  autoFocus
+                />
+                <p className="native-checkout__email-hint">
+                  <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Your tickets will be sent to this email
+                </p>
+              </>
+            )}
           </div>
 
           {/* Customer Details */}
@@ -1398,6 +1463,8 @@ function TestModeCheckout({
   symbol,
   vatSettings,
   onComplete,
+  capturedEmail,
+  onChangeEmail,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -1407,10 +1474,12 @@ function TestModeCheckout({
   symbol: string;
   vatSettings: VatSettings | null;
   onComplete: (order: Order) => void;
+  capturedEmail: string;
+  onChangeEmail: () => void;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(capturedEmail);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -1492,25 +1561,46 @@ function TestModeCheckout({
               <form onSubmit={handleSubmit} className="native-checkout__form">
                 <div className="native-checkout__section">
                   <h2 className="native-checkout__heading">Your Details</h2>
-                  <label htmlFor="test-email" className="sr-only">Email</label>
-                  <input
-                    id="test-email"
-                    type="email"
-                    className="native-checkout__input"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email"
-                    required
-                    autoComplete="email"
-                    autoFocus
-                  />
-                  <p className="native-checkout__email-hint">
-                    <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                      <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Your tickets will be sent to this email
-                  </p>
+                  {capturedEmail ? (
+                    <div className="native-checkout__email-display">
+                      <div className="native-checkout__email-display-info">
+                        <svg className="native-checkout__email-display-icon" viewBox="0 0 24 24" fill="none">
+                          <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                          <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span className="native-checkout__email-display-value">{email}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="native-checkout__email-display-change"
+                        onClick={onChangeEmail}
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <label htmlFor="test-email" className="sr-only">Email</label>
+                      <input
+                        id="test-email"
+                        type="email"
+                        className="native-checkout__input"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Email"
+                        required
+                        autoComplete="email"
+                        autoFocus
+                      />
+                      <p className="native-checkout__email-hint">
+                        <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                          <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Your tickets will be sent to this email
+                      </p>
+                    </>
+                  )}
                   <div className="native-checkout__row">
                     <div>
                       <label htmlFor="test-first-name" className="sr-only">First name</label>
@@ -1569,6 +1659,134 @@ function TestModeCheckout({
             vatSettings={vatSettings}
           />
         </aside>
+      </div>
+
+      <CheckoutFooter />
+    </div>
+  );
+}
+
+/* ================================================================
+   EMAIL CAPTURE PAGE
+   Shown before the payment form to capture the customer's email.
+   Matches checkout branding. No additional Meta tracking events fired
+   here — InitiateCheckout already fired from the ticket widget.
+   ================================================================ */
+
+function EmailCapture({
+  slug,
+  event,
+  cartLines,
+  subtotal,
+  symbol,
+  vatSettings,
+  onContinue,
+}: {
+  slug: string;
+  event: Event & { ticket_types: TicketTypeRow[] };
+  cartLines: CartLine[];
+  subtotal: number;
+  symbol: string;
+  vatSettings: VatSettings | null;
+  onContinue: (email: string) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const { trackEngagement } = useTraffic();
+
+  // Suppress scanlines on this page too
+  useEffect(() => {
+    document.documentElement.classList.add("checkout-active");
+    return () => document.documentElement.classList.remove("checkout-active");
+  }, []);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      setError("");
+
+      if (!email.trim()) {
+        setError("Please enter your email address.");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        setError("Please enter a valid email address.");
+        return;
+      }
+
+      trackEngagement("email_captured");
+      onContinue(email.trim().toLowerCase());
+    },
+    [email, trackEngagement, onContinue]
+  );
+
+  return (
+    <div className="checkout-page">
+      <CheckoutHeader slug={slug} />
+
+      {/* Reservation timer */}
+      <CheckoutTimer active={true} />
+
+      {/* Compact order summary */}
+      <OrderSummaryMobile
+        cartLines={cartLines}
+        symbol={symbol}
+        subtotal={subtotal}
+        event={event}
+        vatSettings={vatSettings}
+      />
+
+      <div className="email-capture">
+        <div className="email-capture__inner">
+          <div className="email-capture__icon">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+
+          <h1 className="email-capture__heading">
+            Where should we send your tickets?
+          </h1>
+
+          <p className="email-capture__subtext">
+            Enter your email to continue &mdash; your tickets and order confirmation will be delivered here.
+          </p>
+
+          <form onSubmit={handleSubmit} className="email-capture__form">
+            <label htmlFor="capture-email" className="sr-only">
+              Email address
+            </label>
+            <input
+              id="capture-email"
+              type="email"
+              className="native-checkout__input email-capture__input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email address"
+              required
+              autoComplete="email"
+              autoFocus
+            />
+
+            {error && <div className="native-checkout__error">{error}</div>}
+
+            <button
+              type="submit"
+              className="native-checkout__submit email-capture__submit"
+            >
+              CONTINUE TO PAYMENT
+            </button>
+          </form>
+
+          <p className="email-capture__trust">
+            <svg className="email-capture__trust-icon" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2"/>
+              <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Your information is secure and won&rsquo;t be shared
+          </p>
+        </div>
       </div>
 
       <CheckoutFooter />

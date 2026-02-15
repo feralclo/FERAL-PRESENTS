@@ -127,6 +127,10 @@ export async function PUT(
 /**
  * DELETE /api/reps/[id] — Hard delete rep and all related data
  *
+ * Safety checks (CRITICAL):
+ *   - Cannot delete a rep whose auth user is also an admin (prevents admin lockout)
+ *   - Cannot delete your own rep record (prevents self-lockout)
+ *
  * Cascade behavior (handled by DB foreign keys):
  *   rep_events, rep_points_log, rep_quest_submissions, rep_reward_claims → ON DELETE CASCADE
  *   discounts.rep_id → ON DELETE SET NULL (discount codes become orphaned)
@@ -164,9 +168,40 @@ export async function DELETE(
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
     }
 
-    // Delete the Supabase Auth user if one exists — this ensures the email
-    // can be re-used if the rep is re-invited later.
+    // ── Safety check 1: Prevent self-deletion ──
+    // If the admin's own auth user ID matches this rep's auth_user_id,
+    // they're trying to delete themselves — which would nuke their login.
+    if (rep.auth_user_id && rep.auth_user_id === auth.user!.id) {
+      return NextResponse.json(
+        { error: "Cannot delete your own account. Ask another admin to remove you." },
+        { status: 403 }
+      );
+    }
+
+    // ── Safety check 2: Never delete auth users that are also admins ──
+    // A rep might share an auth account with an admin (dual-role user).
+    // Deleting that auth user would lock the admin out completely.
+    let authUserIsAdmin = false;
     if (rep.auth_user_id) {
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceRoleKey && SUPABASE_URL) {
+        try {
+          const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
+          const { data: authUser } = await adminClient.auth.admin.getUserById(rep.auth_user_id);
+          if (authUser?.user?.app_metadata?.is_admin === true) {
+            authUserIsAdmin = true;
+          }
+        } catch (err) {
+          // If we can't verify, err on the side of caution — don't delete the auth user
+          console.warn("[DELETE /api/reps/[id]] Could not verify auth user admin status:", err);
+          authUserIsAdmin = true;
+        }
+      }
+    }
+
+    // Delete the Supabase Auth user ONLY if it's a rep-only account.
+    // Admin auth users are preserved — only the rep record is removed.
+    if (rep.auth_user_id && !authUserIsAdmin) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (serviceRoleKey && SUPABASE_URL) {
         try {
@@ -179,6 +214,8 @@ export async function DELETE(
           console.warn("[DELETE /api/reps/[id]] Auth user cleanup error (non-blocking):", authErr);
         }
       }
+    } else if (authUserIsAdmin) {
+      console.info("[DELETE /api/reps/[id]] Skipping auth user deletion — user is also an admin:", rep.auth_user_id);
     }
 
     // Clean up discount codes associated with this rep
@@ -188,7 +225,7 @@ export async function DELETE(
       .eq("rep_id", id)
       .eq("org_id", ORG_ID);
 
-    // Hard delete the rep (cascade handles points_log, events, submissions, claims)
+    // Hard delete the rep record (cascade handles points_log, events, submissions, claims)
     const { error: deleteError } = await supabase
       .from(TABLES.REPS)
       .delete()
@@ -200,7 +237,10 @@ export async function DELETE(
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ deleted: true });
+    return NextResponse.json({
+      deleted: true,
+      auth_user_preserved: authUserIsAdmin,
+    });
   } catch (err) {
     console.error("[DELETE /api/reps/[id]] Unexpected error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

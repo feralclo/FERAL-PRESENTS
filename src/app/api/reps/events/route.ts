@@ -80,16 +80,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify rep exists
+    // Verify rep exists and is active
     const { data: rep, error: repErr } = await supabase
       .from(TABLES.REPS)
-      .select("id, first_name")
+      .select("id, first_name, status")
       .eq("id", rep_id)
       .eq("org_id", ORG_ID)
       .single();
 
     if (repErr || !rep) {
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
+    }
+
+    if (rep.status !== "active") {
+      return NextResponse.json({ error: "Rep must be active to be assigned to events" }, { status: 400 });
     }
 
     // Verify event exists
@@ -111,7 +115,7 @@ export async function POST(request: NextRequest) {
       .eq("org_id", ORG_ID)
       .eq("rep_id", rep_id)
       .eq("event_id", event_id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return NextResponse.json(
@@ -128,7 +132,7 @@ export async function POST(request: NextRequest) {
       .eq("org_id", ORG_ID)
       .eq("rep_id", rep_id)
       .contains("applicable_event_ids", [event_id])
-      .single();
+      .maybeSingle();
 
     if (existingDiscount) {
       discountId = existingDiscount.id;

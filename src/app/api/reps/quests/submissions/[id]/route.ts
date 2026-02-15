@@ -41,10 +41,10 @@ export async function PUT(
       );
     }
 
-    // Fetch the submission with quest info
+    // Fetch the submission with quest and rep info
     const { data: submission, error: fetchErr } = await supabase
       .from(TABLES.REP_QUEST_SUBMISSIONS)
-      .select("*, quest:rep_quests(id, title, points_reward)")
+      .select("*, quest:rep_quests(id, title, points_reward, total_completed), rep:reps(id, first_name, last_name, display_name, email, photo_url)")
       .eq("id", id)
       .eq("org_id", ORG_ID)
       .single();

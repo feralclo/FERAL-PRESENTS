@@ -89,7 +89,7 @@ export async function PUT(request: NextRequest) {
     if (tiktok !== undefined && typeof tiktok === "string" && tiktok.length > 30) {
       return NextResponse.json({ error: "TikTok handle must be 30 characters or less" }, { status: 400 });
     }
-    if (gender !== undefined && gender !== null && !["male", "female", "non-binary", "other", "prefer-not-to-say"].includes(gender)) {
+    if (gender !== undefined && gender !== null && !["male", "female", "non-binary", "prefer-not-to-say"].includes(gender)) {
       return NextResponse.json({ error: "Invalid gender value" }, { status: 400 });
     }
     if (phone !== undefined && typeof phone === "string" && phone.length > 20) {

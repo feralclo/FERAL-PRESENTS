@@ -114,7 +114,7 @@ export default function RepProfilePage() {
     <div className="max-w-md mx-auto px-4 py-6 md:py-8 space-y-6">
       {/* Header */}
       <div className="text-center">
-        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[var(--rep-accent)]/20 to-[var(--rep-accent)]/5 rep-glow mb-3 overflow-hidden">
+        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/20 rep-glow mb-3 overflow-hidden">
           {profile.photo_url ? (
             <img src={profile.photo_url} alt="" className="h-full w-full object-cover" />
           ) : (

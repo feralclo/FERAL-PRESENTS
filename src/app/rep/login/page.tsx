@@ -46,15 +46,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <h1
-            className="font-mono text-2xl font-bold uppercase tracking-[6px] mb-2"
-            style={{
-              background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
+          <h1 className="font-mono text-2xl font-bold uppercase tracking-[6px] mb-2 text-[var(--rep-accent)]">
             Entry Reps
           </h1>
           <p className="text-sm text-[var(--rep-text-muted)]">

@@ -106,11 +106,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error("[POST /api/reps/rewards] Supabase error:", error.message, error.details, error.hint);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ data }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error("[POST /api/reps/rewards] Unexpected error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

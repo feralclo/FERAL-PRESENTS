@@ -91,7 +91,7 @@ export default function RepDashboardPage() {
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
       {/* ── Welcome + Level ── */}
       <div className="text-center rep-slide-up">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--rep-accent)]/20 to-[var(--rep-accent)]/5 rep-glow mb-3 overflow-hidden">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/20 rep-glow mb-3 overflow-hidden">
           {rep.photo_url ? (
             <img src={rep.photo_url} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -114,7 +114,7 @@ export default function RepDashboardPage() {
         <div className="mt-3 mx-auto max-w-xs">
           <div className="h-1.5 rounded-full bg-[var(--rep-border)] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#8B5CF6] transition-all duration-700 ease-out rep-xp-fill"
+              className="h-full rounded-full bg-[var(--rep-accent)] transition-all duration-700 ease-out rep-xp-fill"
               style={{ width: `${Math.min(100, Math.max(0, levelProgress))}%` }}
             />
           </div>

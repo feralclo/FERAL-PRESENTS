@@ -185,15 +185,7 @@ export default function RepJoinPage() {
         <div className="text-center max-w-sm rep-fade-in">
           {/* Logo mark */}
           <div className="mb-8">
-            <span
-              className="font-mono text-[11px] font-bold uppercase tracking-[4px]"
-              style={{
-                background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[4px] text-[var(--rep-accent)]">
               Entry Reps
             </span>
           </div>
@@ -259,7 +251,7 @@ export default function RepJoinPage() {
               <span className="text-[10px] text-[var(--rep-text-muted)] font-mono">READY</span>
             </div>
             <div className="h-1 rounded-full bg-[var(--rep-border)] overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#A78BFA] via-[#8B5CF6] to-[#7C3AED] rep-xp-fill" style={{ width: "100%" }} />
+              <div className="h-full rounded-full bg-[var(--rep-accent)] rep-xp-fill" style={{ width: "100%" }} />
             </div>
           </div>
 
@@ -507,7 +499,7 @@ export default function RepJoinPage() {
           </div>
           <div className="h-1 rounded-full bg-[var(--rep-border)] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#A78BFA] via-[#8B5CF6] to-[#7C3AED] transition-all duration-500 ease-out rep-xp-fill"
+              className="h-full rounded-full bg-[var(--rep-accent)] transition-all duration-500 ease-out rep-xp-fill"
               style={{ width: `${progress}%` }}
             />
           </div>

@@ -73,15 +73,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   className="h-6 w-auto"
                 />
               )}
-              <span
-                className="font-mono text-[12px] font-bold uppercase tracking-[3px] select-none"
-                style={{
-                  background: "linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
+              <span className="font-mono text-[12px] font-bold uppercase tracking-[3px] select-none text-[var(--rep-accent)]">
                 {brandName}
               </span>
             </Link>

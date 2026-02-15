@@ -116,7 +116,15 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/reps/[id] — Soft delete (set status to "deactivated")
+ * DELETE /api/reps/[id] — Hard delete rep and all related data
+ *
+ * Cascade behavior (handled by DB foreign keys):
+ *   rep_events, rep_points_log, rep_quest_submissions, rep_reward_claims → ON DELETE CASCADE
+ *   discounts.rep_id → ON DELETE SET NULL (discount codes become orphaned)
+ *   reps.invited_by → ON DELETE SET NULL (self-referencing)
+ *
+ * Manual cleanup:
+ *   - Delete associated discount codes so they can be re-issued on re-invite
  */
 export async function DELETE(
   _request: NextRequest,
@@ -135,27 +143,39 @@ export async function DELETE(
       );
     }
 
-    const { data, error } = await supabase
+    // Verify rep exists and belongs to this org
+    const { data: rep, error: fetchError } = await supabase
       .from(TABLES.REPS)
-      .update({
-        status: "deactivated",
-        updated_at: new Date().toISOString(),
-      })
+      .select("id, auth_user_id")
       .eq("id", id)
       .eq("org_id", ORG_ID)
-      .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (!data) {
+    if (fetchError || !rep) {
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ data });
-  } catch {
+    // Clean up discount codes associated with this rep
+    await supabase
+      .from("discounts")
+      .delete()
+      .eq("rep_id", id);
+
+    // Hard delete the rep (cascade handles points_log, events, submissions, claims)
+    const { error: deleteError } = await supabase
+      .from(TABLES.REPS)
+      .delete()
+      .eq("id", id)
+      .eq("org_id", ORG_ID);
+
+    if (deleteError) {
+      console.error("[DELETE /api/reps/[id]] Error:", deleteError.message);
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ deleted: true });
+  } catch (err) {
+    console.error("[DELETE /api/reps/[id]] Unexpected error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -400,7 +400,7 @@ export default function RepInvitePage() {
           </div>
           <div className="h-1 rounded-full bg-[var(--rep-border)] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#A78BFA] via-[#8B5CF6] to-[#7C3AED] transition-all duration-500 ease-out rep-xp-fill"
+              className="h-full rounded-full bg-[var(--rep-accent)] transition-all duration-500 ease-out rep-xp-fill"
               style={{ width: `${progress}%` }}
             />
           </div>

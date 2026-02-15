@@ -191,6 +191,10 @@ function TeamTab() {
   } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  // Delete rep
+  const [deleteRepTarget, setDeleteRepTarget] = useState<Rep | null>(null);
+  const [deletingRep, setDeletingRep] = useState(false);
+
   // Signup link copy
   const [copiedSignup, setCopiedSignup] = useState(false);
 
@@ -285,6 +289,20 @@ function TeamTab() {
       loadReps();
       loadStats();
     } catch { /* network */ }
+  };
+
+  const handleDeleteRep = async () => {
+    if (!deleteRepTarget) return;
+    setDeletingRep(true);
+    try {
+      const res = await fetch(`/api/reps/${deleteRepTarget.id}`, { method: "DELETE" });
+      if (res.ok) {
+        setDeleteRepTarget(null);
+        loadReps();
+        loadStats();
+      }
+    } catch { /* network */ }
+    setDeletingRep(false);
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -445,6 +463,15 @@ function TeamTab() {
                           <Eye size={13} />
                         </Button>
                       </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setDeleteRepTarget(rep)}
+                        className="text-muted-foreground hover:text-destructive"
+                        title="Delete rep"
+                      >
+                        <Trash2 size={13} />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -453,6 +480,26 @@ function TeamTab() {
           </Table>
         </Card>
       )}
+
+      {/* ── Delete Rep Confirmation ── */}
+      <Dialog open={!!deleteRepTarget} onOpenChange={(open) => !open && setDeleteRepTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Rep</DialogTitle>
+            <DialogDescription>
+              Permanently delete <strong>{deleteRepTarget?.display_name || `${deleteRepTarget?.first_name} ${deleteRepTarget?.last_name || ""}`.trim()}</strong>?
+              This removes all their data (points, sales, submissions, discount codes). They can be re-invited later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteRepTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteRep} disabled={deletingRep}>
+              {deletingRep && <Loader2 size={14} className="animate-spin" />}
+              {deletingRep ? "Deleting..." : "Delete Permanently"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Invite Rep Dialog (simplified: just first name) ── */}
       <Dialog open={showInvite} onOpenChange={(open) => !open && resetInviteDialog()}>
@@ -570,6 +617,9 @@ function RewardsTab() {
   const [mThreshold, setMThreshold] = useState("");
   const [savingMilestone, setSavingMilestone] = useState(false);
 
+  // Error feedback
+  const [saveError, setSaveError] = useState("");
+
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<RepReward | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -612,6 +662,7 @@ function RewardsTab() {
     setCustomValue("");
     setTotalAvailable("");
     setProductId("");
+    setSaveError("");
     setShowDialog(true);
   };
 
@@ -625,12 +676,14 @@ function RewardsTab() {
     setCustomValue(r.custom_value || "");
     setTotalAvailable(r.total_available != null ? String(r.total_available) : "");
     setProductId(r.product_id || "");
+    setSaveError("");
     setShowDialog(true);
   };
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
+    setSaveError("");
     const body = {
       name: name.trim(),
       description: description.trim() || null,
@@ -645,8 +698,17 @@ function RewardsTab() {
       const url = editId ? `/api/reps/rewards/${editId}` : "/api/reps/rewards";
       const method = editId ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) { setShowDialog(false); loadRewards(); }
-    } catch { /* network */ }
+      if (res.ok) {
+        setSaveError("");
+        setShowDialog(false);
+        loadRewards();
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setSaveError(json.error || `Failed (${res.status})`);
+      }
+    } catch {
+      setSaveError("Network error — check connection");
+    }
     setSaving(false);
   };
 
@@ -848,6 +910,11 @@ function RewardsTab() {
               </div>
             </div>
           </div>
+          {saveError && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
+              {saveError}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving || !name.trim()}>

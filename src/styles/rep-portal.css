@@ -19,22 +19,45 @@
   --rep-text-muted: #71717a;
 }
 
-/* ── Subtle animated gradient on the body ── */
+/* ── Animated dot-grid background ── */
 [data-rep]::before {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: -2;
+  background-color: var(--rep-bg);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(139, 92, 246, 0.12) 1px,
+    transparent 0
+  );
+  background-size: 32px 32px;
+  animation: rep-grid-drift 90s linear infinite;
+}
+
+/* ── Soft ambient purple glow overlay ── */
+[data-rep]::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
-    var(--rep-bg);
-  animation: rep-bg-shift 20s ease-in-out infinite alternate;
+    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(139, 92, 246, 0.06), transparent),
+    radial-gradient(ellipse 40% 50% at 80% 80%, rgba(139, 92, 246, 0.05), transparent);
+  animation: rep-ambient-shift 20s ease-in-out infinite alternate;
+  pointer-events: none;
 }
 
-@keyframes rep-bg-shift {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
+@keyframes rep-grid-drift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(32px, 32px); }
+}
+
+@keyframes rep-ambient-shift {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -468,6 +491,12 @@
    RESPONSIVE
    ══════════════════════════════════════════════════════════════════════ */
 
+/* Smooth scrolling + hide scrollbars on mobile */
+[data-rep] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 @media (max-width: 768px) {
   [data-rep] ::-webkit-scrollbar {
     display: none;
@@ -475,6 +504,30 @@
   [data-rep] {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Ensure inputs don't zoom on iOS (16px min) */
+  [data-rep] input,
+  [data-rep] textarea,
+  [data-rep] select {
+    font-size: 16px;
+  }
+
+  /* Better touch targets */
+  [data-rep] button {
+    min-height: 44px;
+  }
+
+  /* Prevent text overflow on discount codes */
+  [data-rep] .font-mono {
+    word-break: break-all;
+  }
+}
+
+/* Small phone tweaks */
+@media (max-width: 380px) {
+  [data-rep] .tracking-\\[3px\\] {
+    letter-spacing: 1px;
   }
 }
 

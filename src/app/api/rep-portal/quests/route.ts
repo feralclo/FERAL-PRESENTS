@@ -27,6 +27,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const statusFilter = searchParams.get("status") || "active";
 
+    if (!["active", "paused", "archived"].includes(statusFilter)) {
+      return NextResponse.json(
+        { error: "Invalid status filter" },
+        { status: 400 }
+      );
+    }
+
     // Get rep's assigned event IDs
     const { data: repEvents } = await supabase
       .from(TABLES.REP_EVENTS)
@@ -34,9 +41,10 @@ export async function GET(request: NextRequest) {
       .eq("rep_id", repId)
       .eq("org_id", ORG_ID);
 
-    const eventIds = (repEvents || []).map(
-      (re: { event_id: string }) => re.event_id
-    );
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const eventIds = (repEvents || [])
+      .map((re: { event_id: string }) => re.event_id)
+      .filter((id: string) => uuidRegex.test(id));
 
     // Fetch quests: global OR in rep's assigned events
     let query = supabase

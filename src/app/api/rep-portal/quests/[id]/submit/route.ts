@@ -53,6 +53,41 @@ export async function POST(
       );
     }
 
+    // Length limits
+    if (proof_url && (typeof proof_url !== "string" || proof_url.length > 2000)) {
+      return NextResponse.json(
+        { error: "proof_url must be under 2000 characters" },
+        { status: 400 }
+      );
+    }
+    if (proof_text && (typeof proof_text !== "string" || proof_text.length > 5000)) {
+      return NextResponse.json(
+        { error: "proof_text must be under 5000 characters" },
+        { status: 400 }
+      );
+    }
+
+    // URL format validation for url/screenshot types
+    if (proof_url && (proof_type === "url" || proof_type === "screenshot")) {
+      try {
+        const parsed = new URL(proof_url);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          return NextResponse.json(
+            { error: "proof_url must be an HTTP or HTTPS URL" },
+            { status: 400 }
+          );
+        }
+      } catch {
+        // Allow internal /api/media/ paths from our upload system
+        if (!proof_url.startsWith("/api/media/")) {
+          return NextResponse.json(
+            { error: "proof_url must be a valid URL" },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return NextResponse.json(

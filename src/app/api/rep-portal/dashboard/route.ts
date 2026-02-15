@@ -174,7 +174,10 @@ async function getActiveQuestsCount(
       .eq("rep_id", repId)
       .eq("org_id", ORG_ID);
 
-    const eventIds = (repEvents || []).map((re: { event_id: string }) => re.event_id);
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const eventIds = (repEvents || [])
+      .map((re: { event_id: string }) => re.event_id)
+      .filter((id: string) => uuidRegex.test(id));
 
     // Count active quests: global OR assigned to rep's events
     let query = supabase

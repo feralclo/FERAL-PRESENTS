@@ -1264,39 +1264,12 @@ html.checkout-active .noise {
   width: 64px;
   height: 64px;
   margin: 0 auto 28px;
-  filter: drop-shadow(0 2px 16px rgba(139, 92, 246, 0.3));
+  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.08));
 }
 
 .email-capture__icon-svg {
   width: 100%;
   height: 100%;
-}
-
-/* Shimmer animation — a subtle highlight sweep across the icon */
-.email-capture__icon::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  background: linear-gradient(
-    105deg,
-    transparent 0%,
-    transparent 35%,
-    rgba(167, 139, 250, 0.25) 45%,
-    rgba(255, 255, 255, 0.15) 50%,
-    rgba(167, 139, 250, 0.25) 55%,
-    transparent 65%,
-    transparent 100%
-  );
-  animation: iconShimmer 3s ease-in-out infinite;
-  pointer-events: none;
-  border-radius: 4px;
-  will-change: transform;
-}
-
-@keyframes iconShimmer {
-  0% { transform: translateX(-120%); }
-  40% { transform: translateX(120%); }
-  100% { transform: translateX(120%); }
 }
 
 /* Ticket count badge — centered on upper body of ticket */
@@ -1308,9 +1281,8 @@ html.checkout-active .noise {
   font-family: 'Space Mono', monospace;
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color: #111;
   line-height: 1;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 

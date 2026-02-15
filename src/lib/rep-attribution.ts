@@ -98,6 +98,7 @@ export async function attributeSaleToRep(params: {
       .from(TABLES.ORDERS)
       .select("metadata")
       .eq("id", params.orderId)
+      .eq("org_id", orgId)
       .single();
 
     const currentMeta = (order?.metadata as Record<string, unknown>) || {};

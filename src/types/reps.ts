@@ -1,6 +1,6 @@
 // ─── Rep Status ──────────────────────────────────────────────────────────────
 export type RepStatus = "pending" | "active" | "suspended" | "deactivated";
-export type RepGender = "male" | "female" | "non-binary" | "prefer-not-to-say";
+export type RepGender = "male" | "female" | "non-binary" | "other" | "prefer-not-to-say";
 
 // ─── Core Rep ────────────────────────────────────────────────────────────────
 export interface Rep {

@@ -424,12 +424,34 @@ There is no self-registration — admin access is invitation-only.
 - `products.product_id` on `ticket_types` — FK to `products` table (ON DELETE SET NULL)
 - All tables have `org_id` column
 
-### Database Schema Change Rule (CRITICAL)
-When writing code that references a **new table** or a **new column** on an existing table:
-1. **Always provide the exact SQL** the user needs to run in Supabase SQL Editor — copy-paste ready, no guessing
-2. **Provide the SQL immediately** in the same response where the code is written, not later
-3. **Never assume** a table or column exists unless it's already listed in the Tables section above
-4. The user does not manage migrations in code — all schema changes are applied manually via the Supabase dashboard
+### External Service Changes Rule (CRITICAL)
+The user manages Supabase, Vercel, Stripe, and other services manually via their dashboards. They do NOT use migration files, CLI tools, or infrastructure-as-code. Whenever code requires a change to an external service, you MUST:
+
+1. **Tell the user immediately** — in the same response where the code is written, not later
+2. **Make it copy-paste ready** — exact SQL, exact env var names and values, exact settings to toggle
+3. **Say exactly where to go** — "Supabase dashboard → SQL Editor", "Vercel dashboard → Settings → Environment Variables", etc.
+4. **Never assume it already exists** unless it's documented in this file
+
+This applies to ALL external services:
+
+**Supabase (database)**
+- New tables or columns → provide exact `CREATE TABLE` / `ALTER TABLE` SQL
+- New RLS policies → provide exact `CREATE POLICY` SQL
+- New indexes → provide exact `CREATE INDEX` SQL
+- Reference: only tables/columns listed in the Tables section above are confirmed to exist
+
+**Vercel (hosting)**
+- New environment variables → provide exact variable name + description of the value
+- Changed build settings, redirects, or rewrites → provide exact config
+- New domains or domain settings → provide exact steps
+
+**Stripe (payments)**
+- New webhook endpoints → provide exact event types to subscribe to
+- New products/prices → provide exact steps in Stripe dashboard
+- Changed Connect settings → provide exact steps
+
+**Any other service** (Resend, Klaviyo, GTM, etc.)
+- Same rule: exact steps, exact values, exact location in the dashboard
 
 ### Key Settings Keys
 | Key | Purpose |

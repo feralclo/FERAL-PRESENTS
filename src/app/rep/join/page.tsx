@@ -34,6 +34,7 @@ export default function RepJoinPage() {
   const [stepKey, setStepKey] = useState(0); // for re-triggering animations
   const [error, setError] = useState("");
   const [repStatus, setRepStatus] = useState<"active" | "pending" | "">("");
+  const [autoLoginFailed, setAutoLoginFailed] = useState(false);
 
   /* ── Boot ── */
   const [visibleLines, setVisibleLines] = useState(0);
@@ -149,17 +150,27 @@ export default function RepJoinPage() {
 
       // Only auto-login and redirect if the rep was auto-approved (active)
       if (status === "active") {
-        try {
+        const sessionTokens = json.data?.session;
+        let loggedIn = false;
+
+        if (sessionTokens?.access_token && sessionTokens?.refresh_token) {
           const supabase = getSupabaseClient();
           if (supabase) {
-            await supabase.auth.signInWithPassword({
-              email: email.toLowerCase().trim(),
-              password,
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: sessionTokens.access_token,
+              refresh_token: sessionTokens.refresh_token,
             });
+            if (!sessionError) {
+              loggedIn = true;
+            }
           }
-        } catch { /* login will happen manually if auto-login fails */ }
-        // Auto-redirect to dashboard
-        setTimeout(() => router.push("/rep"), 2500);
+        }
+
+        if (loggedIn) {
+          setTimeout(() => router.push("/rep"), 2500);
+        } else {
+          setAutoLoginFailed(true);
+        }
       }
       // If pending, don't auto-login or redirect — show the "application sent" screen
     } catch {
@@ -249,14 +260,30 @@ export default function RepJoinPage() {
               ? "Your account is live. Time to start earning."
               : "We\u2019ll review your application and get back to you. Check your email for updates."}
           </p>
-          <button
-            onClick={() => router.push(isActive ? "/rep" : "/rep/login")}
-            className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
-          >
-            {isActive ? "Go to Dashboard" : "Go to Login"}
-          </button>
-          {isActive && (
-            <p className="mt-4 text-xs text-[var(--rep-text-muted)]">Redirecting automatically...</p>
+          {isActive && autoLoginFailed ? (
+            <>
+              <button
+                onClick={() => router.push("/rep/login")}
+                className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+              >
+                Log In to Dashboard
+              </button>
+              <p className="mt-4 text-xs text-[var(--rep-text-muted)]">
+                Use the email and password you just created
+              </p>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => router.push(isActive ? "/rep" : "/rep/login")}
+                className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+              >
+                {isActive ? "Go to Dashboard" : "Go to Login"}
+              </button>
+              {isActive && (
+                <p className="mt-4 text-xs text-[var(--rep-text-muted)]">Redirecting automatically...</p>
+              )}
+            </>
           )}
         </div>
       </div>

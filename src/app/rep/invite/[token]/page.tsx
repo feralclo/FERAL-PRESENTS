@@ -131,6 +131,8 @@ export default function RepInvitePage() {
     }
   };
 
+  const [autoLoginFailed, setAutoLoginFailed] = useState(false);
+
   /* ── Submit ── */
   const handleSubmit = async () => {
     setPhase("submitting");
@@ -154,20 +156,31 @@ export default function RepInvitePage() {
         return;
       }
       setPhase("done");
-      // Auto-login with browser-side Supabase client
-      // Use the email returned by the server (the actual auth email) — NOT the form field
-      const loginEmail = json.data?.email || email.trim().toLowerCase();
-      try {
+
+      // Auto-login using session tokens returned by the server
+      const sessionTokens = json.data?.session;
+      let loggedIn = false;
+
+      if (sessionTokens?.access_token && sessionTokens?.refresh_token) {
         const supabase = getSupabaseClient();
         if (supabase) {
-          await supabase.auth.signInWithPassword({
-            email: loginEmail,
-            password,
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: sessionTokens.access_token,
+            refresh_token: sessionTokens.refresh_token,
           });
+          if (!sessionError) {
+            loggedIn = true;
+          }
         }
-      } catch { /* login will happen manually if auto-login fails */ }
-      // Auto-redirect to dashboard after celebration
-      setTimeout(() => router.push("/rep"), 2500);
+      }
+
+      if (loggedIn) {
+        // Auto-redirect to dashboard after celebration
+        setTimeout(() => router.push("/rep"), 2500);
+      } else {
+        // Session tokens missing or setSession failed — show manual login link
+        setAutoLoginFailed(true);
+      }
     } catch {
       setError("Connection lost. Try again.");
       setPhase("quiz");
@@ -267,13 +280,29 @@ export default function RepInvitePage() {
           <p className="text-sm text-[var(--rep-text-muted)] leading-relaxed mb-8 max-w-[280px] mx-auto">
             Your account is live and your discount code is ready. Time to start earning.
           </p>
-          <button
-            onClick={() => router.push("/rep")}
-            className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
-          >
-            Go to Dashboard
-          </button>
-          <p className="mt-4 text-xs text-[var(--rep-text-muted)]">Redirecting automatically...</p>
+          {autoLoginFailed ? (
+            <>
+              <Link
+                href="/rep/login"
+                className="inline-block rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+              >
+                Log In to Dashboard
+              </Link>
+              <p className="mt-4 text-xs text-[var(--rep-text-muted)]">
+                Use the email and password you just created
+              </p>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => router.push("/rep")}
+                className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+              >
+                Go to Dashboard
+              </button>
+              <p className="mt-4 text-xs text-[var(--rep-text-muted)]">Redirecting automatically...</p>
+            </>
+          )}
         </div>
       </div>
     );

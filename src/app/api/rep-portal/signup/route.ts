@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
+import { TABLES, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { getRepSettings } from "@/lib/rep-points";
 import { sendRepEmail } from "@/lib/rep-emails";
 
@@ -198,8 +198,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If auto-approved, send welcome email (fire-and-forget)
+    // If auto-approved, sign in to get session tokens and send welcome email
+    let session: { access_token: string; refresh_token: string } | null = null;
     if (status === "active") {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data: signInData } = await anonClient.auth.signInWithPassword({
+          email: finalEmail,
+          password,
+        });
+        if (signInData?.session) {
+          session = {
+            access_token: signInData.session.access_token,
+            refresh_token: signInData.session.refresh_token,
+          };
+        }
+      }
+
       sendRepEmail({
         type: "welcome",
         repId: rep.id,
@@ -208,7 +223,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { data: { rep_id: rep.id, status: rep.status } },
+      { data: { rep_id: rep.id, status: rep.status, session } },
       { status: 201 }
     );
   } catch (err) {

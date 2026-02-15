@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
+import { TABLES, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import { sendRepEmail } from "@/lib/rep-emails";
 
 /**
@@ -286,6 +286,22 @@ export async function POST(
       );
     }
 
+    // Sign in the newly created user to get session tokens for auto-login
+    let session: { access_token: string; refresh_token: string } | null = null;
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+      const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data: signInData } = await anonClient.auth.signInWithPassword({
+        email: finalEmail,
+        password,
+      });
+      if (signInData?.session) {
+        session = {
+          access_token: signInData.session.access_token,
+          refresh_token: signInData.session.refresh_token,
+        };
+      }
+    }
+
     // Send welcome email (fire-and-forget)
     sendRepEmail({
       type: "welcome",
@@ -294,7 +310,7 @@ export async function POST(
     }).catch(() => {});
 
     return NextResponse.json({
-      data: { rep_id: rep.id, status: "active", email: finalEmail },
+      data: { rep_id: rep.id, status: "active", email: finalEmail, session },
     });
   } catch (err) {
     console.error("[rep-portal/invite] POST error:", err);

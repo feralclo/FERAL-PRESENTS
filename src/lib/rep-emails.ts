@@ -200,7 +200,7 @@ function buildEmail(
             </p>
           </div>
           ` : ""}
-          <a href="${siteUrl}/rep/" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
+          <a href="${siteUrl}/rep/login" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
             Go to Dashboard
           </a>
         `),

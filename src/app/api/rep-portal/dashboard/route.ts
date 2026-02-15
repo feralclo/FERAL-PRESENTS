@@ -35,10 +35,10 @@ export async function GET() {
       recentSalesResult,
       activeEventsResult,
     ] = await Promise.all([
-      // Full rep row
+      // Full rep row (include name/photo for dashboard display)
       supabase
         .from(TABLES.REPS)
-        .select("points_balance, total_sales, total_revenue, level")
+        .select("first_name, display_name, photo_url, points_balance, total_sales, total_revenue, level")
         .eq("id", repId)
         .eq("org_id", ORG_ID)
         .single(),
@@ -112,12 +112,30 @@ export async function GET() {
       leaderboardPosition = idx >= 0 ? idx + 1 : null;
     }
 
+    // Flatten active_events to match frontend interface: { id, name, sales_count, revenue }
+    const flatEvents = (activeEventsResult.data || []).map(
+      (ae: Record<string, unknown>) => {
+        const evt = ae.event as Record<string, unknown> | null;
+        return {
+          id: ae.event_id || ae.id,
+          name: evt?.name || "Unknown Event",
+          sales_count: ae.sales_count || 0,
+          revenue: ae.revenue || 0,
+        };
+      }
+    );
+
     return NextResponse.json({
       data: {
-        points_balance: rep.points_balance,
-        total_sales: rep.total_sales,
-        total_revenue: rep.total_revenue,
-        level: rep.level,
+        rep: {
+          first_name: rep.first_name,
+          display_name: rep.display_name,
+          photo_url: rep.photo_url,
+          points_balance: rep.points_balance,
+          total_sales: rep.total_sales,
+          total_revenue: rep.total_revenue,
+          level: rep.level,
+        },
         level_name: levelName,
         next_level_points: nextLevelPoints,
         current_level_points: currentLevelPoints,
@@ -125,7 +143,7 @@ export async function GET() {
         pending_rewards: pendingRewardsResult.count || 0,
         leaderboard_position: leaderboardPosition,
         recent_sales: recentSalesResult.data || [],
-        active_events: activeEventsResult.data || [],
+        active_events: flatEvents,
       },
     });
   } catch (err) {

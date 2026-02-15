@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Check, LogOut, Save, Loader2 } from "lucide-react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 interface RepProfile {
   id: string;
@@ -95,7 +96,12 @@ export default function RepProfilePage() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/rep-portal/logout", { method: "POST" });
+      // Clear both server-side and client-side sessions
+      const supabase = getSupabaseClient();
+      await Promise.all([
+        fetch("/api/rep-portal/logout", { method: "POST" }),
+        supabase?.auth.signOut(),
+      ]);
     } catch { /* network */ }
     router.push("/rep/login");
   };

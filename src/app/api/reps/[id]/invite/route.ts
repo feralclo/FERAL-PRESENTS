@@ -94,9 +94,14 @@ export async function POST(
       );
     }
 
-    const siteUrl = (
-      process.env.NEXT_PUBLIC_SITE_URL || ""
-    ).replace(/\/$/, "");
+    // Build a full absolute URL for the invite link
+    const host = request.headers.get("host") || "";
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")
+      : host
+        ? `${proto}://${host}`
+        : "";
     const invite_url = `${siteUrl}/rep/invite/${invite_token}`;
 
     return NextResponse.json({

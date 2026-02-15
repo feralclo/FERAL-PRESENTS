@@ -411,10 +411,11 @@ There is no self-registration — admin access is invitation-only.
 | `orders` | Purchase records | order_number (FERAL-00001), event_id, customer_id, status, subtotal, fees, total, payment_ref |
 | `order_items` | Line items per order | order_id, ticket_type_id, qty, unit_price, merch_size |
 | `tickets` | Individual tickets with QR | ticket_code (FERAL-XXXXXXXX), order_id, status, holder_*, scanned_at, scanned_by |
-| `customers` | Customer profiles | email, first_name, last_name, total_orders, total_spent |
+| `customers` | Customer profiles | email, first_name, last_name, nickname, total_orders, total_spent |
 | `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in, checked_in_at |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
+| `abandoned_carts` | Checkout abandonment tracking | customer_id, event_id, items (jsonb), subtotal, status, notification_count, notified_at, recovered_at |
 
 ### Key Constraints
 - `orders.order_number` — unique, format `FERAL-XXXXX` (sequential, padded)
@@ -422,6 +423,13 @@ There is no self-registration — admin access is invitation-only.
 - `orders.payment_ref` — used for idempotency (Stripe PaymentIntent ID)
 - `products.product_id` on `ticket_types` — FK to `products` table (ON DELETE SET NULL)
 - All tables have `org_id` column
+
+### Database Schema Change Rule (CRITICAL)
+When writing code that references a **new table** or a **new column** on an existing table:
+1. **Always provide the exact SQL** the user needs to run in Supabase SQL Editor — copy-paste ready, no guessing
+2. **Provide the SQL immediately** in the same response where the code is written, not later
+3. **Never assume** a table or column exists unless it's already listed in the Tables section above
+4. The user does not manage migrations in code — all schema changes are applied manually via the Supabase dashboard
 
 ### Key Settings Keys
 | Key | Purpose |

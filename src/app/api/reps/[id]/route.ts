@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -161,6 +162,23 @@ export async function DELETE(
 
     if (fetchError || !rep) {
       return NextResponse.json({ error: "Rep not found" }, { status: 404 });
+    }
+
+    // Delete the Supabase Auth user if one exists — this ensures the email
+    // can be re-used if the rep is re-invited later.
+    if (rep.auth_user_id) {
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceRoleKey && SUPABASE_URL) {
+        try {
+          const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
+          const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(rep.auth_user_id);
+          if (authDeleteError) {
+            console.warn("[DELETE /api/reps/[id]] Auth user cleanup failed (non-blocking):", authDeleteError.message);
+          }
+        } catch (authErr) {
+          console.warn("[DELETE /api/reps/[id]] Auth user cleanup error (non-blocking):", authErr);
+        }
+      }
     }
 
     // Clean up discount codes associated with this rep

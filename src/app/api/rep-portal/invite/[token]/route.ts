@@ -197,24 +197,45 @@ export async function POST(
           adminError.message?.includes("already registered") ||
           adminError.message?.includes("already been registered")
         ) {
+          // Auth user already exists (e.g., rep was deleted and re-invited).
+          // Look up the existing user, update their password, and re-link.
+          const { data: userList } = await adminClient.auth.admin.listUsers();
+          const existingUser = userList?.users?.find(
+            (u) => u.email?.toLowerCase() === finalEmail
+          );
+          if (existingUser) {
+            // Update the existing auth user's password so the new invite's password works
+            const { error: updateErr } = await adminClient.auth.admin.updateUserById(
+              existingUser.id,
+              { password, email_confirm: true }
+            );
+            if (updateErr) {
+              console.error("[rep-portal/invite] Failed to update existing auth user:", updateErr);
+              return NextResponse.json(
+                { error: "Failed to set up your account. Please contact support." },
+                { status: 500 }
+              );
+            }
+            authUserId = existingUser.id;
+          } else {
+            return NextResponse.json(
+              { error: "Account setup failed. Please contact support." },
+              { status: 500 }
+            );
+          }
+        } else {
+          console.error(
+            "[rep-portal/invite] Admin createUser error:",
+            adminError
+          );
           return NextResponse.json(
-            {
-              error:
-                "An account with this email already exists. Please log in instead.",
-            },
-            { status: 409 }
+            { error: adminError.message },
+            { status: 400 }
           );
         }
-        console.error(
-          "[rep-portal/invite] Admin createUser error:",
-          adminError
-        );
-        return NextResponse.json(
-          { error: adminError.message },
-          { status: 400 }
-        );
+      } else {
+        authUserId = adminAuth.user?.id || null;
       }
-      authUserId = adminAuth.user?.id || null;
     } else {
       // Fallback: regular signUp (may require email confirmation depending on Supabase settings)
       const { data: authData, error: authError } =

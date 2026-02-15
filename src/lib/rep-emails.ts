@@ -78,6 +78,10 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
     const settings = await getRepSettings(params.orgId);
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 
+    if (!siteUrl) {
+      console.warn("[rep-email] NEXT_PUBLIC_SITE_URL is not set — email links will be broken");
+    }
+
     const { subject, html } = buildEmail(params.type, {
       rep,
       orgName,
@@ -127,6 +131,9 @@ export async function sendRepInviteEmail(params: {
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
     const accentColor = branding.accent_color || "#8B5CF6";
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    if (!siteUrl) {
+      console.warn("[rep-email] NEXT_PUBLIC_SITE_URL is not set — invite link will be broken");
+    }
     const settings = await getRepSettings(params.orgId);
     const inviteUrl = `${siteUrl}/rep/invite/${encodeURIComponent(params.inviteToken)}`;
 
@@ -200,7 +207,7 @@ function buildEmail(
             </p>
           </div>
           ` : ""}
-          <a href="${siteUrl}/rep/login" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
+          <a href="${siteUrl}/rep" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
             Go to Dashboard
           </a>
         `),

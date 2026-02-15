@@ -28,6 +28,8 @@ interface Reward {
 export default function RepRewardsPage() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loadKey, setLoadKey] = useState(0);
   const [myPoints, setMyPoints] = useState(0);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
@@ -38,14 +40,15 @@ export default function RepRewardsPage() {
           fetch("/api/rep-portal/rewards"),
           fetch("/api/rep-portal/me"),
         ]);
+        if (!rewardsRes.ok) { setError("Failed to load rewards"); setLoading(false); return; }
         const rewardsJson = await rewardsRes.json();
-        const meJson = await meRes.json();
+        const meJson = meRes.ok ? await meRes.json() : { data: null };
         if (rewardsJson.data) setRewards(rewardsJson.data);
         if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
-      } catch { /* network */ }
+      } catch { setError("Failed to load rewards — check your connection"); }
       setLoading(false);
     })();
-  }, []);
+  }, [loadKey]);
 
   const handleClaim = async (rewardId: string) => {
     setClaimingId(rewardId);
@@ -55,6 +58,7 @@ export default function RepRewardsPage() {
         headers: { "Content-Type": "application/json" },
       });
       if (res.ok) {
+        setError("");
         // Refresh
         const rewardsRes = await fetch("/api/rep-portal/rewards");
         const json = await rewardsRes.json();
@@ -63,8 +67,11 @@ export default function RepRewardsPage() {
         const meRes = await fetch("/api/rep-portal/me");
         const meJson = await meRes.json();
         if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setError(errJson.error || "Failed to claim reward");
       }
-    } catch { /* network */ }
+    } catch { setError("Failed to claim reward — check your connection"); }
     setClaimingId(null);
   };
 
@@ -75,6 +82,20 @@ export default function RepRewardsPage() {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (error && rewards.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
+        <p className="text-sm text-red-400 mb-3">{error}</p>
+        <button
+          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          className="text-xs text-[var(--rep-accent)] hover:underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -94,6 +115,13 @@ export default function RepRewardsPage() {
           <p className="text-lg font-bold font-mono text-[var(--rep-accent)] tabular-nums">{myPoints}</p>
         </div>
       </div>
+
+      {/* Inline error (e.g. claim failure) */}
+      {error && rewards.length > 0 && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <p className="text-xs text-red-400">{error}</p>
+        </div>
+      )}
 
       {/* Milestones */}
       {milestoneRewards.length > 0 && (

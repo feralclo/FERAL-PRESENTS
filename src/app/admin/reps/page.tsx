@@ -190,6 +190,7 @@ function TeamTab() {
     rep_id: string;
   } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState("");
 
   // Delete rep
   const [deleteRepTarget, setDeleteRepTarget] = useState<Rep | null>(null);
@@ -226,6 +227,7 @@ function TeamTab() {
   const handleInviteRep = async () => {
     if (!inviteFirstName.trim()) return;
     setInviting(true);
+    setInviteError("");
     try {
       // Step 1: Create the rep with just a first name + generated placeholder email
       const placeholder = `${inviteFirstName.trim().toLowerCase().replace(/\s+/g, "")}-${Date.now()}@pending.entry`;
@@ -241,6 +243,7 @@ function TeamTab() {
       });
       const createJson = await createRes.json();
       if (!createRes.ok || !createJson.data) {
+        setInviteError(createJson.error || "Failed to create rep");
         setInviting(false);
         return;
       }
@@ -253,6 +256,11 @@ function TeamTab() {
         body: JSON.stringify({}),
       });
       const inviteJson = await inviteRes.json();
+      if (!inviteRes.ok) {
+        setInviteError(inviteJson.error || "Failed to generate invite link");
+        setInviting(false);
+        return;
+      }
       if (inviteJson.data) {
         setInviteResult({
           invite_url: inviteJson.data.invite_url,
@@ -263,7 +271,9 @@ function TeamTab() {
         loadReps();
         loadStats();
       }
-    } catch { /* network */ }
+    } catch {
+      setInviteError("Network error — please try again");
+    }
     setInviting(false);
   };
 
@@ -323,6 +333,7 @@ function TeamTab() {
     setInviteStep("name");
     setInviteFirstName("");
     setInviteResult(null);
+    setInviteError("");
   };
 
   const counts = {
@@ -524,6 +535,11 @@ function TeamTab() {
                   />
                 </div>
               </div>
+              {inviteError && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
+                  {inviteError}
+                </div>
+              )}
               <DialogFooter>
                 <Button variant="outline" onClick={resetInviteDialog}>Cancel</Button>
                 <Button onClick={handleInviteRep} disabled={inviting || !inviteFirstName.trim()}>

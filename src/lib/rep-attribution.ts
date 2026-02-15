@@ -31,7 +31,7 @@ export async function attributeSaleToRep(params: {
       .from(TABLES.DISCOUNTS)
       .select("id, rep_id")
       .eq("org_id", orgId)
-      .eq("code", params.discountCode.toUpperCase())
+      .ilike("code", params.discountCode.trim())
       .single();
 
     if (!discount?.rep_id) return;

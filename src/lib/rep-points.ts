@@ -44,7 +44,7 @@ export function calculateLevel(
       break;
     }
   }
-  return level;
+  return Math.min(level, thresholds.length + 1);
 }
 
 /**

@@ -20,6 +20,8 @@ interface Quest {
 export default function RepQuestsPage() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loadKey, setLoadKey] = useState(0);
   const [tab, setTab] = useState<"active" | "completed">("active");
 
   // Submit proof
@@ -33,12 +35,13 @@ export default function RepQuestsPage() {
     (async () => {
       try {
         const res = await fetch("/api/rep-portal/quests");
+        if (!res.ok) { setError("Failed to load quests"); setLoading(false); return; }
         const json = await res.json();
         if (json.data) setQuests(json.data);
-      } catch { /* network */ }
+      } catch { setError("Failed to load quests — check your connection"); }
       setLoading(false);
     })();
-  }, []);
+  }, [loadKey]);
 
   const handleSubmit = async () => {
     if (!submitQuestId || !proofText.trim()) return;
@@ -55,13 +58,17 @@ export default function RepQuestsPage() {
       });
       if (res.ok) {
         setSubmitted(true);
+        setError("");
         setTimeout(() => {
           setSubmitQuestId(null);
           setSubmitted(false);
           setProofText("");
         }, 1500);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setError(errJson.error || "Failed to submit quest proof");
       }
-    } catch { /* network */ }
+    } catch { setError("Failed to submit quest proof — check your connection"); }
     setSubmitting(false);
   };
 
@@ -80,6 +87,20 @@ export default function RepQuestsPage() {
     );
   }
 
+  if (error && quests.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
+        <p className="text-sm text-red-400 mb-3">{error}</p>
+        <button
+          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          className="text-xs text-[var(--rep-accent)] hover:underline"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   const displayQuests = tab === "active" ? activeQuests : completedQuests;
 
   return (
@@ -91,6 +112,13 @@ export default function RepQuestsPage() {
           Complete tasks to earn bonus points
         </p>
       </div>
+
+      {/* Inline error (e.g. submission failure) */}
+      {error && quests.length > 0 && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <p className="text-xs text-red-400">{error}</p>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl bg-[var(--rep-surface)] p-1 w-fit">

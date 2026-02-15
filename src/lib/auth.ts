@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES } from "@/lib/constants";
+import { TABLES, ORG_ID } from "@/lib/constants";
 
 /**
  * Auth helper for API routes.
@@ -102,6 +102,7 @@ export async function requireRepAuth(): Promise<
       .from(TABLES.REPS)
       .select("id, auth_user_id, email, org_id, status")
       .eq("auth_user_id", user.id)
+      .eq("org_id", ORG_ID)
       .single();
 
     if (repErr || !rep) {

@@ -101,9 +101,9 @@ export async function POST(request: NextRequest) {
       status = "active",
     } = body;
 
-    if (!email || !first_name || !last_name) {
+    if (!email || !first_name) {
       return NextResponse.json(
-        { error: "Missing required fields: email, first_name, last_name" },
+        { error: "Missing required fields: email, first_name" },
         { status: 400 }
       );
     }
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         org_id: ORG_ID,
         email: email.trim().toLowerCase(),
         first_name: first_name.trim(),
-        last_name: last_name.trim(),
+        last_name: last_name?.trim() || "",
         display_name: display_name?.trim() || null,
         phone: phone?.trim() || null,
         gender: gender || null,

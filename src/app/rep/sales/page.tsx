@@ -15,17 +15,20 @@ interface Sale {
 export default function RepSalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loadKey, setLoadKey] = useState(0);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/rep-portal/sales");
+        if (!res.ok) { setError("Failed to load sales"); setLoading(false); return; }
         const json = await res.json();
         if (json.data) setSales(json.data);
-      } catch { /* network */ }
+      } catch { setError("Failed to load sales — check your connection"); }
       setLoading(false);
     })();
-  }, []);
+  }, [loadKey]);
 
   const totalRevenue = sales.reduce((sum, s) => sum + Number(s.total), 0);
 
@@ -33,6 +36,20 @@ export default function RepSalesPage() {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
+        <p className="text-sm text-red-400 mb-3">{error}</p>
+        <button
+          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          className="text-xs text-[var(--rep-accent)] hover:underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }

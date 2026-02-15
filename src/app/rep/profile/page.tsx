@@ -24,6 +24,8 @@ export default function RepProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<RepProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loadKey, setLoadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -45,8 +47,9 @@ export default function RepProfilePage() {
           fetch("/api/rep-portal/me"),
           fetch("/api/rep-portal/discount"),
         ]);
+        if (!meRes.ok) { setError("Failed to load profile"); setLoading(false); return; }
         const meJson = await meRes.json();
-        const discJson = await discRes.json();
+        const discJson = discRes.ok ? await discRes.json() : { data: [] };
 
         if (meJson.data) {
           const p = meJson.data;
@@ -60,10 +63,10 @@ export default function RepProfilePage() {
         if (discJson.data?.[0]) {
           setDiscountCode(discJson.data[0].code);
         }
-      } catch { /* network */ }
+      } catch { setError("Failed to load profile — check your connection"); }
       setLoading(false);
     })();
-  }, []);
+  }, [loadKey]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -81,9 +84,12 @@ export default function RepProfilePage() {
       });
       if (res.ok) {
         setSaved(true);
+        setError("");
         setTimeout(() => setSaved(false), 2000);
+      } else {
+        setError("Failed to save profile");
       }
-    } catch { /* network */ }
+    } catch { setError("Failed to save profile — check your connection"); }
     setSaving(false);
   };
 
@@ -104,6 +110,20 @@ export default function RepProfilePage() {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (error && !profile) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
+        <p className="text-sm text-red-400 mb-3">{error}</p>
+        <button
+          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          className="text-xs text-[var(--rep-accent)] hover:underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -205,6 +225,10 @@ export default function RepProfilePage() {
             rows={3}
           />
         </div>
+
+        {error && profile && (
+          <p className="text-xs text-red-400 text-center">{error}</p>
+        )}
 
         <button
           onClick={handleSave}

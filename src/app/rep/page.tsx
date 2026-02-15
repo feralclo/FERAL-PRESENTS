@@ -37,7 +37,9 @@ interface DashboardData {
 export default function RepDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
+  const [loadKey, setLoadKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -46,8 +48,9 @@ export default function RepDashboardPage() {
           fetch("/api/rep-portal/dashboard"),
           fetch("/api/rep-portal/discount"),
         ]);
+        if (!dashRes.ok) { setError("Failed to load dashboard"); setLoading(false); return; }
         const dashJson = await dashRes.json();
-        const discountJson = await discountRes.json();
+        const discountJson = discountRes.ok ? await discountRes.json() : { data: [] };
 
         if (dashJson.data) {
           setData({
@@ -55,10 +58,10 @@ export default function RepDashboardPage() {
             discount_codes: discountJson.data || [],
           });
         }
-      } catch { /* network */ }
+      } catch { setError("Failed to load dashboard — check your connection"); }
       setLoading(false);
     })();
-  }, []);
+  }, [loadKey]);
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -70,6 +73,20 @@ export default function RepDashboardPage() {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
+        <p className="text-sm text-red-400 mb-3">{error}</p>
+        <button
+          onClick={() => { setError(""); setLoading(true); setData(null); setLoadKey((k) => k + 1); }}
+          className="text-xs text-[var(--rep-accent)] hover:underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }

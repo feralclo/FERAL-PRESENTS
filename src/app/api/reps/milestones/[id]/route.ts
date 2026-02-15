@@ -43,7 +43,8 @@ export async function PUT(
 
     updates.updated_at = new Date().toISOString();
 
-    if (Object.keys(updates).length <= 1) {
+    // updated_at is always added, so check for >1 keys (i.e. at least one real field)
+    if (Object.keys(updates).length < 2) {
       return NextResponse.json(
         { error: "No valid fields to update" },
         { status: 400 }

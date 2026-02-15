@@ -25,26 +25,43 @@ const MEDAL_COLORS = ["var(--rep-gold)", "var(--rep-silver)", "var(--rep-bronze)
 export default function RepLeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [loadKey, setLoadKey] = useState(0);
   const [myPosition, setMyPosition] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/rep-portal/leaderboard");
+        if (!res.ok) { setError("Failed to load leaderboard"); setLoading(false); return; }
         const json = await res.json();
         if (json.data) {
           setEntries(json.data.leaderboard || []);
           setMyPosition(json.data.my_position);
         }
-      } catch { /* network */ }
+      } catch { setError("Failed to load leaderboard — check your connection"); }
       setLoading(false);
     })();
-  }, []);
+  }, [loadKey]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
+        <p className="text-sm text-red-400 mb-3">{error}</p>
+        <button
+          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          className="text-xs text-[var(--rep-accent)] hover:underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }

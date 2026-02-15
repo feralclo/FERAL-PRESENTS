@@ -71,6 +71,23 @@ export async function POST(
       );
     }
 
+    // Check if this rep already claimed this reward
+    const { data: existingClaim } = await supabase
+      .from(TABLES.REP_REWARD_CLAIMS)
+      .select("id")
+      .eq("rep_id", repId)
+      .eq("reward_id", rewardId)
+      .eq("org_id", ORG_ID)
+      .eq("claim_type", "points_shop")
+      .maybeSingle();
+
+    if (existingClaim) {
+      return NextResponse.json(
+        { error: "You have already claimed this reward" },
+        { status: 400 }
+      );
+    }
+
     const pointsCost = reward.points_cost || 0;
     if (pointsCost <= 0) {
       return NextResponse.json(

@@ -16,8 +16,8 @@ export async function GET(
 
     const { id } = await params;
     const { searchParams } = request.nextUrl;
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
-    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "50", 10)), 200);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const offset = (page - 1) * limit;
 
     const data = await getPointsHistory(id, ORG_ID, limit, offset);

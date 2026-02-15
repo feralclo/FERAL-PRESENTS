@@ -68,13 +68,16 @@ export default function RepRewardsPage() {
       });
       if (res.ok) {
         setError("");
-        // Refresh
-        const rewardsRes = await fetch("/api/rep-portal/rewards");
-        const json = await rewardsRes.json();
+        // Refresh rewards and balance in parallel
+        const [rewardsRes, meRes] = await Promise.all([
+          fetch("/api/rep-portal/rewards"),
+          fetch("/api/rep-portal/me"),
+        ]);
+        const [json, meJson] = await Promise.all([
+          rewardsRes.json(),
+          meRes.json(),
+        ]);
         if (json.data) setRewards(json.data);
-
-        const meRes = await fetch("/api/rep-portal/me");
-        const meJson = await meRes.json();
         if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
       } else {
         const errJson = await res.json().catch(() => ({}));

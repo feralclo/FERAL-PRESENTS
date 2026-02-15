@@ -12,6 +12,15 @@ interface Sale {
   event?: { name: string };
 }
 
+function getCurrencySymbol(currency?: string): string {
+  switch (currency?.toUpperCase()) {
+    case "USD": return "$";
+    case "EUR": return "\u20AC";
+    case "GBP": return "\u00A3";
+    default: return "\u00A3";
+  }
+}
+
 export default function RepSalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +87,7 @@ export default function RepSalesPage() {
         <div className="rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-card)] p-4">
           <p className="text-[10px] uppercase tracking-wider text-[var(--rep-text-muted)] mb-1">Total Revenue</p>
           <p className="text-2xl font-bold text-[var(--rep-success)] font-mono tabular-nums">
-            £{totalRevenue.toFixed(0)}
+            {getCurrencySymbol(sales[0]?.currency)}{totalRevenue.toFixed(0)}
           </p>
         </div>
       </div>
@@ -103,7 +112,7 @@ export default function RepSalesPage() {
                 </p>
               </div>
               <p className="text-sm font-bold font-mono text-[var(--rep-success)] tabular-nums">
-                £{Number(sale.total).toFixed(2)}
+                {getCurrencySymbol(sale.currency)}{Number(sale.total).toFixed(2)}
               </p>
             </div>
           ))}

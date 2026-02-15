@@ -93,6 +93,20 @@ export async function PUT(
       );
     }
 
+    // Validate enums if provided
+    if (updates.reward_type && !["milestone", "points_shop", "manual"].includes(updates.reward_type as string)) {
+      return NextResponse.json(
+        { error: "reward_type must be 'milestone', 'points_shop', or 'manual'" },
+        { status: 400 }
+      );
+    }
+    if (updates.status && !["active", "archived"].includes(updates.status as string)) {
+      return NextResponse.json(
+        { error: "status must be 'active' or 'archived'" },
+        { status: 400 }
+      );
+    }
+
     updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase

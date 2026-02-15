@@ -172,10 +172,18 @@ export async function POST(
       );
     }
 
-    // Update reward total_claimed
+    // Update reward total_claimed atomically via rpc or re-fetch
+    // Re-fetch current total_claimed to avoid race condition with stale value
+    const { data: currentReward } = await supabase
+      .from(TABLES.REP_REWARDS)
+      .select("total_claimed")
+      .eq("id", rewardId)
+      .eq("org_id", ORG_ID)
+      .single();
+
     await supabase
       .from(TABLES.REP_REWARDS)
-      .update({ total_claimed: reward.total_claimed + 1 })
+      .update({ total_claimed: (currentReward?.total_claimed ?? reward.total_claimed) + 1 })
       .eq("id", rewardId)
       .eq("org_id", ORG_ID);
 

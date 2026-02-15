@@ -91,6 +91,14 @@ export async function PUT(
       );
     }
 
+    // Validate status enum if provided
+    if (updates.status && !["active", "inactive", "suspended", "invited"].includes(updates.status as string)) {
+      return NextResponse.json(
+        { error: "status must be 'active', 'inactive', 'suspended', or 'invited'" },
+        { status: 400 }
+      );
+    }
+
     updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -159,7 +167,8 @@ export async function DELETE(
     await supabase
       .from("discounts")
       .delete()
-      .eq("rep_id", id);
+      .eq("rep_id", id)
+      .eq("org_id", ORG_ID);
 
     // Hard delete the rep (cascade handles points_log, events, submissions, claims)
     const { error: deleteError } = await supabase

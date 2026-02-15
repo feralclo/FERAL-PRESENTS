@@ -96,6 +96,20 @@ export async function PUT(
       );
     }
 
+    // Validate enums if provided
+    if (updates.quest_type && !["social_post", "story_share", "content_creation", "custom"].includes(updates.quest_type as string)) {
+      return NextResponse.json(
+        { error: "quest_type must be 'social_post', 'story_share', 'content_creation', or 'custom'" },
+        { status: 400 }
+      );
+    }
+    if (updates.status && !["active", "archived", "draft"].includes(updates.status as string)) {
+      return NextResponse.json(
+        { error: "status must be 'active', 'archived', or 'draft'" },
+        { status: 400 }
+      );
+    }
+
     updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase

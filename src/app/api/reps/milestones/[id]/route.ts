@@ -41,6 +41,14 @@ export async function PUT(
       }
     }
 
+    // Validate enums if provided
+    if (updates.milestone_type && !["sales_count", "revenue", "points"].includes(updates.milestone_type as string)) {
+      return NextResponse.json(
+        { error: "milestone_type must be 'sales_count', 'revenue', or 'points'" },
+        { status: 400 }
+      );
+    }
+
     updates.updated_at = new Date().toISOString();
 
     // updated_at is always added, so check for >1 keys (i.e. at least one real field)

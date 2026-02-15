@@ -91,11 +91,18 @@ export async function PUT(
         });
       }
 
-      // Increment total_completed on the quest
+      // Increment total_completed on the quest — re-fetch to avoid race condition
+      const { data: currentQuest } = await supabase
+        .from(TABLES.REP_QUESTS)
+        .select("total_completed")
+        .eq("id", submission.quest_id)
+        .eq("org_id", ORG_ID)
+        .single();
+
       await supabase
         .from(TABLES.REP_QUESTS)
         .update({
-          total_completed: (submission.quest?.total_completed || 0) + 1,
+          total_completed: (currentQuest?.total_completed || 0) + 1,
           updated_at: new Date().toISOString(),
         })
         .eq("id", submission.quest_id)

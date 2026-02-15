@@ -161,8 +161,8 @@ export async function POST(
       );
     }
 
-    // Check if invite already accepted
-    if (rep.auth_user_id && rep.status === "active") {
+    // Check if invite already accepted (auth_user_id set means auth user exists)
+    if (rep.auth_user_id) {
       return NextResponse.json(
         { error: "This invite has already been accepted" },
         { status: 409 }

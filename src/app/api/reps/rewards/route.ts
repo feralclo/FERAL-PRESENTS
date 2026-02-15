@@ -79,6 +79,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!["active", "archived"].includes(status)) {
+      return NextResponse.json(
+        { error: "status must be 'active' or 'archived'" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return NextResponse.json(

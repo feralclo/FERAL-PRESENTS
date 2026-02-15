@@ -280,25 +280,29 @@ function TeamTab() {
 
   const handleApprove = async (repId: string) => {
     try {
-      await fetch(`/api/reps/${repId}`, {
+      const res = await fetch(`/api/reps/${repId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "active" }),
       });
-      loadReps();
-      loadStats();
+      if (res.ok) {
+        loadReps();
+        loadStats();
+      }
     } catch { /* network */ }
   };
 
   const handleReject = async (repId: string) => {
     try {
-      await fetch(`/api/reps/${repId}`, {
+      const res = await fetch(`/api/reps/${repId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "deactivated" }),
       });
-      loadReps();
-      loadStats();
+      if (res.ok) {
+        loadReps();
+        loadStats();
+      }
     } catch { /* network */ }
   };
 

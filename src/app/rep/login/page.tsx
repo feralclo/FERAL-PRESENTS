@@ -8,7 +8,9 @@ import Link from "next/link";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/rep";
+  // Validate redirect is an internal path (prevent open redirect attacks)
+  const rawRedirect = searchParams.get("redirect") || "/rep";
+  const redirect = rawRedirect.startsWith("/rep") ? rawRedirect : "/rep";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

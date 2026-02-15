@@ -102,6 +102,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!["active", "paused", "archived"].includes(status)) {
+      return NextResponse.json(
+        { error: "status must be 'active', 'paused', or 'archived'" },
+        { status: 400 }
+      );
+    }
+
+    if (Number(points_reward) <= 0) {
+      return NextResponse.json(
+        { error: "points_reward must be a positive number" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return NextResponse.json(

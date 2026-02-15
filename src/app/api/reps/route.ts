@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
     const eventId = searchParams.get("event_id");
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "20", 10)), 200);
     const offset = (page - 1) * limit;
 
     let query = supabase
@@ -40,9 +40,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,display_name.ilike.%${search}%`
-      );
+      // Sanitize search to prevent Supabase filter syntax injection
+      const sanitized = search.replace(/[%_,().*]/g, "");
+      if (sanitized.length > 0) {
+        query = query.or(
+          `first_name.ilike.%${sanitized}%,last_name.ilike.%${sanitized}%,email.ilike.%${sanitized}%,display_name.ilike.%${sanitized}%`
+        );
+      }
     }
 
     if (eventId) {
@@ -104,6 +108,13 @@ export async function POST(request: NextRequest) {
     if (!email || !first_name) {
       return NextResponse.json(
         { error: "Missing required fields: email, first_name" },
+        { status: 400 }
+      );
+    }
+
+    if (!["pending", "active", "suspended", "deactivated"].includes(status)) {
+      return NextResponse.json(
+        { error: "status must be 'pending', 'active', 'suspended', or 'deactivated'" },
         { status: 400 }
       );
     }

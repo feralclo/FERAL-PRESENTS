@@ -140,7 +140,6 @@ export default function RepInvitePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: email.trim().toLowerCase(),
           password,
           instagram: instagram.trim() || undefined,
           tiktok: tiktok.trim() || undefined,

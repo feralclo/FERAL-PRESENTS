@@ -244,6 +244,33 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
     );
   }
 
+  // Guard: empty cart — show message instead of a broken £0.00 checkout
+  if (cartLines.length === 0) {
+    return (
+      <div className="checkout-page">
+        <CheckoutHeader slug={slug} />
+        <div className="native-checkout">
+          <div className="native-checkout__inner" style={{ textAlign: "center", paddingTop: "48px" }}>
+            <h2 className="native-checkout__heading" style={{ borderBottom: "none" }}>
+              Your cart is empty
+            </h2>
+            <p style={{ color: "#888", fontSize: "14px", marginTop: "12px", marginBottom: "24px" }}>
+              No tickets selected. Head back to pick your tickets.
+            </p>
+            <a
+              href={`/event/${slug}/#tickets`}
+              className="native-checkout__submit"
+              style={{ display: "block", textDecoration: "none", textAlign: "center", maxWidth: "320px", margin: "0 auto" }}
+            >
+              BROWSE TICKETS
+            </a>
+          </div>
+        </div>
+        <CheckoutFooter />
+      </div>
+    );
+  }
+
   // Test mode checkout (no Stripe)
   if (!isStripe) {
     return (
@@ -508,7 +535,7 @@ function StripeCheckoutPage({
 
       <div className="checkout-layout">
         <div className="checkout-layout__main">
-          <Elements key={`stripe-${amountInSmallest}`} stripe={stripePromise} options={elementsOptions}>
+          <Elements stripe={stripePromise} options={elementsOptions}>
             <SinglePageCheckoutForm
               slug={slug}
               event={event}
@@ -590,6 +617,14 @@ function SinglePageCheckoutForm({
   const [expressAvailable, setExpressAvailable] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "klarna">("card");
   const cardRef = useRef<CardFieldsHandle>(null);
+
+  // Sync Elements amount when total changes (e.g. discount code applied/removed)
+  // without remounting — preserves any card details the user already entered
+  useEffect(() => {
+    if (!elements) return;
+    const amountInSmallest = toSmallestUnit(totalAmount) || 100;
+    elements.update({ amount: amountInSmallest });
+  }, [elements, totalAmount]);
 
   // Handle Express Checkout click — configure wallet sheet
   const handleExpressClick = useCallback(

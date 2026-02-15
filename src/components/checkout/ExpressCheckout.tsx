@@ -160,8 +160,12 @@ function ExpressCheckoutInner({
         }}
         options={{
           buttonType: {
-            applePay: "buy",
-            googlePay: "buy",
+            applePay: "plain",
+            googlePay: "plain",
+          },
+          buttonTheme: {
+            applePay: "white-outline",
+            googlePay: "white",
           },
           buttonHeight: 44,
           layout: {

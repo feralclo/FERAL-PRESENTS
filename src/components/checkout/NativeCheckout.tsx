@@ -939,6 +939,9 @@ function SinglePageCheckoutForm({
           className="express-checkout-section"
           style={{ display: expressAvailable ? "block" : "none" }}
         >
+          {expressLoaded && (
+            <div className="express-checkout__label">Express checkout</div>
+          )}
           <div className="express-checkout">
             {!expressLoaded && (
               <div className="express-checkout__skeleton" />
@@ -958,10 +961,14 @@ function SinglePageCheckoutForm({
                 }}
                 options={{
                   buttonType: {
-                    applePay: "buy",
-                    googlePay: "buy",
+                    applePay: "plain",
+                    googlePay: "plain",
                   },
-                  buttonHeight: 48,
+                  buttonTheme: {
+                    applePay: "white-outline",
+                    googlePay: "white",
+                  },
+                  buttonHeight: 44,
                   layout: {
                     maxColumns: 1,
                     maxRows: 1,

@@ -50,6 +50,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/stripe/apple-pay-verify",
   "/api/stripe/account",
   "/api/discounts/validate",
+  "/api/checkout/capture",
   "/api/track",
   "/api/meta/capi",
   "/api/health",

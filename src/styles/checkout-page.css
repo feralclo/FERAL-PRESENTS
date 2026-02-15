@@ -1165,6 +1165,10 @@ html.checkout-active .noise {
 .email-capture__summary {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(20, 20, 20, 0.4);
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .email-capture__summary-toggle {

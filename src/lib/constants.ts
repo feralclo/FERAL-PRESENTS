@@ -27,6 +27,7 @@ export const TABLES = {
   REP_QUESTS: "rep_quests",
   REP_QUEST_SUBMISSIONS: "rep_quest_submissions",
   REP_REWARD_CLAIMS: "rep_reward_claims",
+  ABANDONED_CARTS: "abandoned_carts",
 } as const;
 
 // Settings keys stored in site_settings table

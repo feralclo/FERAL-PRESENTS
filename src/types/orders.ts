@@ -113,3 +113,28 @@ export interface GuestListEntry {
   checked_in_count: number;
   created_at: string;
 }
+
+export type AbandonedCartStatus = "abandoned" | "recovered" | "expired";
+
+export interface AbandonedCart {
+  id: string;
+  org_id: string;
+  customer_id: string;
+  event_id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  items: { ticket_type_id: string; qty: number; name: string; price: number; merch_size?: string }[];
+  subtotal: number;
+  currency: string;
+  status: AbandonedCartStatus;
+  recovered_at?: string;
+  recovered_order_id?: string;
+  notified_at?: string;
+  notification_count: number;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  customer?: Customer;
+  event?: { name: string; slug: string; date_start: string };
+}

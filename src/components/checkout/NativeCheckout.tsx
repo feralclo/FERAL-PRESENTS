@@ -298,6 +298,25 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
             sessionStorage.setItem("feral_checkout_email", email);
           } catch {}
           setCapturedEmail(email);
+
+          // Fire-and-forget: create customer + abandoned cart in backend
+          fetch("/api/checkout/capture", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              event_id: event.id,
+              items: cartLines.map((l) => ({
+                ticket_type_id: l.ticket_type_id,
+                qty: l.qty,
+                name: l.name,
+                price: l.price,
+                merch_size: l.merch_size,
+              })),
+              subtotal,
+              currency: event.currency || "GBP",
+            }),
+          }).catch(() => {});
         }}
       />
     );
@@ -652,6 +671,37 @@ function SinglePageCheckoutForm({
   const [expressLoaded, setExpressLoaded] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "klarna">("card");
   const cardRef = useRef<CardFieldsHandle>(null);
+  const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Capture customer name on blur — updates customer record + abandoned cart
+  // Debounced so rapid field switching doesn't fire multiple requests
+  const captureNameOnBlur = useCallback(() => {
+    if (nameCaptureTimer.current) clearTimeout(nameCaptureTimer.current);
+    nameCaptureTimer.current = setTimeout(() => {
+      const fn = firstName.trim();
+      const ln = lastName.trim();
+      if (!fn && !ln) return;
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: capturedEmail || email,
+          first_name: fn || undefined,
+          last_name: ln || undefined,
+          event_id: event.id,
+          items: cartLines.map((l) => ({
+            ticket_type_id: l.ticket_type_id,
+            qty: l.qty,
+            name: l.name,
+            price: l.price,
+            merch_size: l.merch_size,
+          })),
+          subtotal,
+          currency: event.currency || "GBP",
+        }),
+      }).catch(() => {});
+    }, 500);
+  }, [firstName, lastName, capturedEmail, email, event.id, event.currency, cartLines, subtotal]);
 
   // Sync Elements amount when total changes (e.g. discount code applied/removed)
   // without remounting — preserves any card details the user already entered
@@ -1110,6 +1160,7 @@ function SinglePageCheckoutForm({
                   className="native-checkout__input"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
+                  onBlur={captureNameOnBlur}
                   placeholder="First name"
                   required
                   autoComplete="given-name"
@@ -1123,6 +1174,7 @@ function SinglePageCheckoutForm({
                   className="native-checkout__input"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                  onBlur={captureNameOnBlur}
                   placeholder="Last name"
                   required
                   autoComplete="family-name"
@@ -1483,6 +1535,36 @@ function TestModeCheckout({
   const [email, setEmail] = useState(capturedEmail);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Capture customer name on blur — updates customer record + abandoned cart
+  const captureNameOnBlur = useCallback(() => {
+    if (nameCaptureTimer.current) clearTimeout(nameCaptureTimer.current);
+    nameCaptureTimer.current = setTimeout(() => {
+      const fn = firstName.trim();
+      const ln = lastName.trim();
+      if (!fn && !ln) return;
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: capturedEmail || email,
+          first_name: fn || undefined,
+          last_name: ln || undefined,
+          event_id: event.id,
+          items: cartLines.map((l) => ({
+            ticket_type_id: l.ticket_type_id,
+            qty: l.qty,
+            name: l.name,
+            price: l.price,
+            merch_size: l.merch_size,
+          })),
+          subtotal,
+          currency: event.currency || "GBP",
+        }),
+      }).catch(() => {});
+    }, 500);
+  }, [firstName, lastName, capturedEmail, email, event.id, event.currency, cartLines, subtotal]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -1611,6 +1693,7 @@ function TestModeCheckout({
                         className="native-checkout__input"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
+                        onBlur={captureNameOnBlur}
                         placeholder="First name"
                         required
                         autoComplete="given-name"
@@ -1624,6 +1707,7 @@ function TestModeCheckout({
                         className="native-checkout__input"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
+                        onBlur={captureNameOnBlur}
                         placeholder="Last name"
                         required
                         autoComplete="family-name"

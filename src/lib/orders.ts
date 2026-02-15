@@ -369,6 +369,22 @@ export async function createOrder(
   }
 
   // ------------------------------------------------------------------
+  // 6.5 Recover abandoned cart (if one exists for this customer + event)
+  // ------------------------------------------------------------------
+  await supabase
+    .from(TABLES.ABANDONED_CARTS)
+    .update({
+      status: "recovered",
+      recovered_at: new Date().toISOString(),
+      recovered_order_id: order.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("org_id", orgId)
+    .eq("customer_id", customerId)
+    .eq("event_id", event.id)
+    .eq("status", "abandoned");
+
+  // ------------------------------------------------------------------
   // 7. Send order confirmation email (fire-and-forget)
   // ------------------------------------------------------------------
   if (sendEmail) {

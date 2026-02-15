@@ -27,6 +27,7 @@ import {
   PanelLeft,
   X,
   ChevronsUpDown,
+  ChevronRight,
   User as UserIcon,
   Receipt,
   Search,
@@ -34,11 +35,24 @@ import {
   Store,
   Tags,
   UsersRound,
+  ShoppingCart,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
 
-const NAV_SECTIONS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  children?: { href: string; label: string }[];
+}
+
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
   {
     label: "Overview",
     items: [
@@ -49,7 +63,15 @@ const NAV_SECTIONS = [
   {
     label: "Commerce",
     items: [
-      { href: "/admin/orders/", label: "Orders", icon: FileText },
+      {
+        href: "/admin/orders/",
+        label: "Orders",
+        icon: FileText,
+        children: [
+          { href: "/admin/orders/", label: "All Orders" },
+          { href: "/admin/abandoned-carts/", label: "Abandoned Carts" },
+        ],
+      },
       { href: "/admin/discounts/", label: "Discounts", icon: Tags },
       { href: "/admin/merch/", label: "Merch", icon: Package },
       { href: "/admin/customers/", label: "Customers", icon: Users },
@@ -96,6 +118,13 @@ function matchRoute(pathname: string, href: string): boolean {
 }
 
 function getPageTitle(pathname: string): string {
+  // Check child items first (more specific routes)
+  for (const item of ALL_ITEMS) {
+    if (item.children) {
+      const child = item.children.find((c) => matchRoute(pathname, c.href));
+      if (child) return child.label;
+    }
+  }
   return ALL_ITEMS.find((item) => matchRoute(pathname, item.href))?.label || "Admin";
 }
 
@@ -127,9 +156,29 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Auto-expand nav items whose children match the current path
+  useEffect(() => {
+    for (const section of NAV_SECTIONS) {
+      for (const item of section.items) {
+        if (item.children) {
+          const childActive = item.children.some((c) => matchRoute(pathname, c.href));
+          if (childActive) {
+            setExpandedItems((prev) => {
+              if (prev.has(item.label)) return prev;
+              const next = new Set(prev);
+              next.add(item.label);
+              return next;
+            });
+          }
+        }
+      }
+    }
+  }, [pathname]);
 
   const isLoginPage = pathname.startsWith("/admin/login");
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
@@ -230,7 +279,87 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <div className="flex flex-col gap-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const active = matchRoute(pathname, item.href);
+                  const hasChildren = item.children && item.children.length > 0;
+                  const isExpanded = expandedItems.has(item.label);
+                  const childActive = hasChildren && item.children!.some((c) => matchRoute(pathname, c.href));
+                  const active = hasChildren ? childActive : matchRoute(pathname, item.href);
+
+                  if (hasChildren) {
+                    return (
+                      <div key={item.label}>
+                        {/* Parent item — toggles children */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedItems((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(item.label)) next.delete(item.label);
+                              else next.add(item.label);
+                              return next;
+                            });
+                          }}
+                          className={cn(
+                            "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
+                            active
+                              ? "bg-primary/10 text-foreground"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
+                          )}
+                        >
+                          <Icon
+                            size={16}
+                            strokeWidth={1.75}
+                            className={cn(
+                              "shrink-0 transition-colors duration-200",
+                              active
+                                ? "text-primary"
+                                : "text-sidebar-foreground/60 group-hover:text-foreground/80"
+                            )}
+                          />
+                          <span>{item.label}</span>
+                          <ChevronRight
+                            size={14}
+                            className={cn(
+                              "ml-auto shrink-0 text-sidebar-foreground/40 transition-transform duration-200",
+                              isExpanded && "rotate-90"
+                            )}
+                          />
+                        </button>
+
+                        {/* Children — animated collapse */}
+                        <div
+                          className={cn(
+                            "overflow-hidden transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                            isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                          )}
+                        >
+                          <div className="ml-[22px] flex flex-col gap-0.5 border-l border-sidebar-border/50 py-1">
+                            {item.children!.map((child) => {
+                              const childIsActive = matchRoute(pathname, child.href);
+                              return (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  onClick={() => setOpen(false)}
+                                  className={cn(
+                                    "flex items-center gap-2 rounded-r-lg py-1.5 pl-4 pr-3 text-[12px] font-medium transition-all duration-200",
+                                    childIsActive
+                                      ? "border-l-2 border-primary bg-primary/8 text-foreground -ml-px"
+                                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-foreground"
+                                  )}
+                                >
+                                  <span>{child.label}</span>
+                                  {childIsActive && (
+                                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
+                                  )}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <Link
                       key={item.href}

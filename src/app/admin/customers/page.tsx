@@ -38,13 +38,16 @@ function formatDate(d: string) {
 
 function getCustomerTier(totalSpent: number, totalOrders: number): {
   label: string;
-  variant: "warning" | "success" | "secondary";
+  variant: "warning" | "success" | "secondary" | "info";
 } {
   if (totalSpent >= 200 || totalOrders >= 5) {
     return { label: "VIP", variant: "warning" };
   }
   if (totalOrders > 1) {
     return { label: "Returning", variant: "success" };
+  }
+  if (totalOrders === 0) {
+    return { label: "Lead", variant: "info" };
   }
   return { label: "New", variant: "secondary" };
 }
@@ -184,7 +187,9 @@ export default function CustomersPage() {
                           href={`/admin/customers/${cust.id}/`}
                           className="text-sm font-medium text-foreground transition-colors hover:text-primary"
                         >
-                          {cust.first_name} {cust.last_name}
+                          {cust.first_name || cust.last_name
+                            ? `${cust.first_name || ""} ${cust.last_name || ""}`.trim()
+                            : "—"}
                         </Link>
                       </TableCell>
                       <TableCell className="text-sm text-foreground">

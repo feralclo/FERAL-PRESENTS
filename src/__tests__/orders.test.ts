@@ -143,13 +143,16 @@ function createMockSupabase(config: {
       };
     });
 
-    // update
-    chain.update = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        then: (resolve: (v: unknown) => void) => {
+    // update — supports arbitrary .eq() chaining
+    chain.update = vi.fn().mockImplementation(() => {
+      const updateChain: Record<string, unknown> = {};
+      updateChain.eq = vi.fn().mockReturnValue(updateChain);
+      Object.defineProperty(updateChain, "then", {
+        value: (resolve: (v: unknown) => void) => {
           resolve({ data: null, error: null });
         },
-      }),
+      });
+      return updateChain;
     });
 
     return chain;

@@ -89,6 +89,15 @@ export default function RepProfilePage() {
         }),
       });
       if (res.ok) {
+        const json = await res.json().catch(() => null);
+        if (json?.data) {
+          setProfile(json.data);
+          setDisplayName(json.data.display_name || "");
+          setPhone(json.data.phone || "");
+          setInstagram(json.data.instagram || "");
+          setTiktok(json.data.tiktok || "");
+          setBio(json.data.bio || "");
+        }
         setSaved(true);
         setError("");
         setTimeout(() => setSaved(false), 2000);
@@ -191,6 +200,7 @@ export default function RepProfilePage() {
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
+            maxLength={50}
             className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
             placeholder="How you appear on the leaderboard"
           />
@@ -203,6 +213,7 @@ export default function RepProfilePage() {
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            maxLength={20}
             className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
             placeholder="+44..."
           />
@@ -213,6 +224,7 @@ export default function RepProfilePage() {
             <input
               value={instagram}
               onChange={(e) => setInstagram(e.target.value.replace("@", ""))}
+              maxLength={30}
               className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
               placeholder="@handle"
             />
@@ -222,6 +234,7 @@ export default function RepProfilePage() {
             <input
               value={tiktok}
               onChange={(e) => setTiktok(e.target.value.replace("@", ""))}
+              maxLength={30}
               className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
               placeholder="@handle"
             />
@@ -232,6 +245,7 @@ export default function RepProfilePage() {
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
+            maxLength={300}
             className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors resize-none"
             placeholder="Tell everyone about yourself..."
             rows={3}

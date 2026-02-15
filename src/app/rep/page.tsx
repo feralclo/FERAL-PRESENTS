@@ -29,6 +29,7 @@ interface DashboardData {
   current_level_points: number;
   leaderboard_position: number | null;
   active_quests: number;
+  pending_rewards: number;
   active_events: { id: string; name: string; sales_count: number; revenue: number }[];
   recent_sales: { id: string; order_number: string; total: number; created_at: string }[];
   discount_codes: { code: string }[];
@@ -106,8 +107,9 @@ export default function RepDashboardPage() {
   }
 
   const rep = data.rep;
-  const levelProgress = data.next_level_points
-    ? ((rep.points_balance - data.current_level_points) / (data.next_level_points - data.current_level_points)) * 100
+  const levelRange = (data.next_level_points || 0) - data.current_level_points;
+  const levelProgress = data.next_level_points && levelRange > 0
+    ? ((rep.points_balance - data.current_level_points) / levelRange) * 100
     : 100;
 
   return (
@@ -260,7 +262,9 @@ export default function RepDashboardPage() {
           </div>
           <div>
             <p className="text-sm font-medium text-white">Rewards</p>
-            <p className="text-[11px] text-[var(--rep-text-muted)]">Shop & milestones</p>
+            <p className="text-[11px] text-[var(--rep-text-muted)]">
+              {data.pending_rewards > 0 ? `${data.pending_rewards} pending` : "Shop & milestones"}
+            </p>
           </div>
         </Link>
       </div>
@@ -275,7 +279,7 @@ export default function RepDashboardPage() {
                 <div>
                   <p className="text-xs font-mono text-white">{sale.order_number}</p>
                   <p className="text-[10px] text-[var(--rep-text-muted)]">
-                    {new Date(sale.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
                 <p className="text-sm font-bold font-mono text-[var(--rep-success)]">

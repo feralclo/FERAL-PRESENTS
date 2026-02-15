@@ -63,6 +63,8 @@ export async function PUT(request: NextRequest) {
       instagram,
       tiktok,
       bio,
+      date_of_birth,
+      gender,
       onboarding_completed,
     } = body;
 
@@ -72,6 +74,23 @@ export async function PUT(request: NextRequest) {
         { error: "Service unavailable" },
         { status: 503 }
       );
+    }
+
+    // Validate field lengths
+    if (display_name !== undefined && typeof display_name === "string" && display_name.length > 50) {
+      return NextResponse.json({ error: "Display name must be 50 characters or less" }, { status: 400 });
+    }
+    if (bio !== undefined && typeof bio === "string" && bio.length > 500) {
+      return NextResponse.json({ error: "Bio must be 500 characters or less" }, { status: 400 });
+    }
+    if (instagram !== undefined && typeof instagram === "string" && instagram.length > 30) {
+      return NextResponse.json({ error: "Instagram handle must be 30 characters or less" }, { status: 400 });
+    }
+    if (tiktok !== undefined && typeof tiktok === "string" && tiktok.length > 30) {
+      return NextResponse.json({ error: "TikTok handle must be 30 characters or less" }, { status: 400 });
+    }
+    if (gender !== undefined && gender !== null && !["male", "female", "non_binary", "other", "prefer_not_to_say"].includes(gender)) {
+      return NextResponse.json({ error: "Invalid gender value" }, { status: 400 });
     }
 
     // Build update payload — only include provided fields
@@ -85,6 +104,8 @@ export async function PUT(request: NextRequest) {
     if (instagram !== undefined) updatePayload.instagram = instagram || null;
     if (tiktok !== undefined) updatePayload.tiktok = tiktok || null;
     if (bio !== undefined) updatePayload.bio = bio || null;
+    if (date_of_birth !== undefined) updatePayload.date_of_birth = date_of_birth || null;
+    if (gender !== undefined) updatePayload.gender = gender || null;
     if (onboarding_completed !== undefined) {
       updatePayload.onboarding_completed = Boolean(onboarding_completed);
     }

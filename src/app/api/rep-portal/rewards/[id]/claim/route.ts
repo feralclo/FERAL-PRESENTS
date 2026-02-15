@@ -71,7 +71,7 @@ export async function POST(
       );
     }
 
-    // Check if this rep already claimed this reward
+    // Check if this rep already has an active claim for this reward (allow re-claim after cancellation)
     const { data: existingClaim } = await supabase
       .from(TABLES.REP_REWARD_CLAIMS)
       .select("id")
@@ -79,6 +79,7 @@ export async function POST(
       .eq("reward_id", rewardId)
       .eq("org_id", ORG_ID)
       .eq("claim_type", "points_shop")
+      .neq("status", "cancelled")
       .maybeSingle();
 
     if (existingClaim) {
@@ -158,14 +159,17 @@ export async function POST(
       console.error(
         `[rep-portal/rewards/claim] Claim insert failed, refunding ${pointsCost} points for rep=${repId} reward=${rewardId}`
       );
-      await awardPoints({
+      const refundResult = await awardPoints({
         repId,
         orgId: ORG_ID,
         points: pointsCost,
-        sourceType: "reward_spend",
+        sourceType: "refund",
         sourceId: rewardId,
         description: `Refund: claim failed for reward ${reward.name}`,
       });
+      if (!refundResult) {
+        console.error(`[rep-portal/rewards/claim] CRITICAL: Refund also failed for rep=${repId} reward=${rewardId} points=${pointsCost}`);
+      }
       return NextResponse.json(
         { error: "Failed to create claim. Your points have been refunded." },
         { status: 500 }

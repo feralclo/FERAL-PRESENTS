@@ -73,12 +73,14 @@ export default function RepRewardsPage() {
           fetch("/api/rep-portal/rewards"),
           fetch("/api/rep-portal/me"),
         ]);
-        const [json, meJson] = await Promise.all([
-          rewardsRes.json(),
-          meRes.json(),
-        ]);
-        if (json.data) setRewards(json.data);
-        if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
+        if (rewardsRes.ok) {
+          const json = await rewardsRes.json();
+          if (json.data) setRewards(json.data);
+        }
+        if (meRes.ok) {
+          const meJson = await meRes.json();
+          if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
+        }
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.error || "Failed to claim reward");

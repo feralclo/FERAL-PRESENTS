@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       // Sign out the auth session since the rep is not active
       await supabase.auth.signOut();
       return NextResponse.json(
-        { error: `Your rep account is ${rep.status}. Please contact support.` },
+        { error: "Your account is not active. Please contact support." },
         { status: 403 }
       );
     }

@@ -155,13 +155,14 @@ async function checkMilestones(
 
   if (!milestones) return;
 
-  // Get existing claims to avoid double-awarding
+  // Get existing non-cancelled claims to avoid double-awarding
   const { data: existingClaims } = await supabase
     .from(TABLES.REP_REWARD_CLAIMS)
     .select("milestone_id")
     .eq("rep_id", repId)
     .eq("org_id", orgId)
-    .eq("claim_type", "milestone");
+    .eq("claim_type", "milestone")
+    .neq("status", "cancelled");
 
   const claimedMilestoneIds = new Set(
     (existingClaims || []).map((c: { milestone_id: string }) => c.milestone_id)

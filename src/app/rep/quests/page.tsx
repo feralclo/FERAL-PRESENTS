@@ -66,6 +66,11 @@ export default function RepQuestsPage() {
       });
       if (res.ok) {
         const json = await res.json();
+        if (!json.key) {
+          setError("Upload succeeded but no media key returned");
+          setUploading(false);
+          return;
+        }
         const mediaUrl = `/api/media/${json.key}`;
         setUploadedUrl(mediaUrl);
         setProofText(mediaUrl);

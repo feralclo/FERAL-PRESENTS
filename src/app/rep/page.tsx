@@ -70,10 +70,14 @@ export default function RepDashboardPage() {
     })();
   }, [loadKey]);
 
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      /* clipboard not available */
+    }
   };
 
   if (loading) {

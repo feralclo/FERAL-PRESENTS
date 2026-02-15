@@ -121,10 +121,14 @@ export default function RepProfilePage() {
     router.push("/rep/login");
   };
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(discountCode);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(discountCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      /* clipboard not available */
+    }
   };
 
   if (loading) {

@@ -70,6 +70,12 @@ export default function RewardsPage() {
   const [pointsCost, setPointsCost] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [totalAvailable, setTotalAvailable] = useState("");
+  const [productId, setProductId] = useState("");
+  const [rewardStatus, setRewardStatus] = useState<"active" | "archived">("active");
+  const [saveError, setSaveError] = useState("");
+
+  // Products for linking
+  const [products, setProducts] = useState<{ id: string; name: string; images?: string[] }[]>([]);
 
   // Milestones
   const [showMilestone, setShowMilestone] = useState<string | null>(null);
@@ -95,6 +101,16 @@ export default function RewardsPage() {
 
   useEffect(() => { loadRewards(); }, [loadRewards]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/merch");
+        const json = await res.json();
+        if (json.data) setProducts(json.data);
+      } catch { /* network */ }
+    })();
+  }, []);
+
   const loadMilestones = useCallback(async (rewardId: string) => {
     try {
       const res = await fetch(`/api/reps/milestones?reward_id=${rewardId}`);
@@ -112,6 +128,9 @@ export default function RewardsPage() {
     setPointsCost("");
     setCustomValue("");
     setTotalAvailable("");
+    setProductId("");
+    setRewardStatus("active");
+    setSaveError("");
     setShowDialog(true);
   };
 
@@ -124,12 +143,16 @@ export default function RewardsPage() {
     setPointsCost(r.points_cost != null ? String(r.points_cost) : "");
     setCustomValue(r.custom_value || "");
     setTotalAvailable(r.total_available != null ? String(r.total_available) : "");
+    setProductId(r.product_id || "");
+    setRewardStatus(r.status === "archived" ? "archived" : "active");
+    setSaveError("");
     setShowDialog(true);
   };
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
+    setSaveError("");
     const body = {
       name: name.trim(),
       description: description.trim() || null,
@@ -138,6 +161,8 @@ export default function RewardsPage() {
       points_cost: pointsCost ? Number(pointsCost) : null,
       custom_value: customValue.trim() || null,
       total_available: totalAvailable ? Number(totalAvailable) : null,
+      product_id: productId || null,
+      ...(editId ? { status: rewardStatus } : {}),
     };
     try {
       const url = editId ? `/api/reps/rewards/${editId}` : "/api/reps/rewards";
@@ -149,9 +174,13 @@ export default function RewardsPage() {
       });
       if (res.ok) {
         setShowDialog(false);
+        setSaveError("");
         loadRewards();
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setSaveError(json.error || `Failed (${res.status})`);
       }
-    } catch { /* network */ }
+    } catch { setSaveError("Network error — check connection"); }
     setSaving(false);
   };
 
@@ -356,7 +385,48 @@ export default function RewardsPage() {
                 <Input type="number" value={totalAvailable} onChange={(e) => setTotalAvailable(e.target.value)} placeholder="Unlimited" min="1" />
               </div>
             </div>
+            {products.length > 0 && (
+              <div className="space-y-2">
+                <Label>Link to Product</Label>
+                <Select value={productId || "none"} onValueChange={(v) => {
+                  const pid = v === "none" ? "" : v;
+                  setProductId(pid);
+                  if (pid) {
+                    const product = products.find((p) => p.id === pid);
+                    if (product) {
+                      if (!name) setName(product.name);
+                      if (!imageUrl && product.images?.[0]) setImageUrl(product.images[0]);
+                    }
+                  }
+                }}>
+                  <SelectTrigger><SelectValue placeholder="No product" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No product</SelectItem>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {editId && (
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={rewardStatus} onValueChange={(v) => setRewardStatus(v as "active" | "archived")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
+          {saveError && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
+              {saveError}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving || !name.trim()}>

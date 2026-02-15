@@ -82,6 +82,10 @@ export default function QuestsPage() {
   const [submissions, setSubmissions] = useState<RepQuestSubmission[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [reviewError, setReviewError] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   const loadQuests = useCallback(async () => {
     setLoading(true);
@@ -152,15 +156,20 @@ export default function QuestsPage() {
       expires_at: expiresAt || null,
       notify_reps: notifyReps,
     };
+    setSaveError("");
     try {
       const url = editId ? `/api/reps/quests/${editId}` : "/api/reps/quests";
       const method = editId ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) {
         setShowDialog(false);
+        setSaveError("");
         loadQuests();
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setSaveError(json.error || `Failed (${res.status})`);
       }
-    } catch { /* network */ }
+    } catch { setSaveError("Network error — check connection"); }
     setSaving(false);
   };
 
@@ -173,14 +182,22 @@ export default function QuestsPage() {
 
   const handleReview = async (submissionId: string, status: "approved" | "rejected", reason?: string) => {
     setReviewingId(submissionId);
+    setReviewError("");
     try {
-      await fetch(`/api/reps/quests/submissions/${submissionId}`, {
+      const res = await fetch(`/api/reps/quests/submissions/${submissionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, rejection_reason: reason }),
       });
-      if (showSubmissions) loadSubmissions(showSubmissions);
-    } catch { /* network */ }
+      if (res.ok) {
+        setRejectingId(null);
+        setRejectReason("");
+        if (showSubmissions) loadSubmissions(showSubmissions);
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setReviewError(json.error || `Failed (${res.status})`);
+      }
+    } catch { setReviewError("Network error"); }
     setReviewingId(null);
   };
 
@@ -388,6 +405,11 @@ export default function QuestsPage() {
               <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
             </div>
           </div>
+          {saveError && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
+              {saveError}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving || !title.trim()}>
@@ -421,7 +443,7 @@ export default function QuestsPage() {
                         {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
-                        {new Date(sub.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(sub.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                     <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"}>
@@ -445,24 +467,53 @@ export default function QuestsPage() {
                   </div>
                   {/* Actions */}
                   {sub.status === "pending" && (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleReview(sub.id, "approved")}
-                        disabled={reviewingId === sub.id}
-                      >
-                        {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleReview(sub.id, "rejected")}
-                        disabled={reviewingId === sub.id}
-                      >
-                        <X size={12} />
-                        Reject
-                      </Button>
+                    <div className="space-y-2">
+                      {rejectingId === sub.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            placeholder="Reason for rejection..."
+                            rows={2}
+                            className="text-xs"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={!rejectReason.trim() || reviewingId === sub.id}
+                              onClick={() => handleReview(sub.id, "rejected", rejectReason.trim())}
+                            >
+                              {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                              Confirm Reject
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setRejectReason(""); }}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleReview(sub.id, "approved")}
+                            disabled={reviewingId === sub.id}
+                          >
+                            {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setRejectingId(sub.id); setRejectReason(""); }}
+                            disabled={reviewingId === sub.id}
+                          >
+                            <X size={12} />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                   {sub.rejection_reason && (
@@ -472,8 +523,13 @@ export default function QuestsPage() {
               ))}
             </div>
           )}
+          {reviewError && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
+              {reviewError}
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSubmissions(null)}>Close</Button>
+            <Button variant="outline" onClick={() => { setShowSubmissions(null); setReviewError(""); setRejectingId(null); }}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

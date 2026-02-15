@@ -196,6 +196,7 @@ function TeamTab() {
   // Delete rep
   const [deleteRepTarget, setDeleteRepTarget] = useState<Rep | null>(null);
   const [deletingRep, setDeletingRep] = useState(false);
+  const [deleteRepError, setDeleteRepError] = useState("");
 
   // Signup link copy
   const [copiedSignup, setCopiedSignup] = useState(false);
@@ -304,14 +305,19 @@ function TeamTab() {
   const handleDeleteRep = async () => {
     if (!deleteRepTarget) return;
     setDeletingRep(true);
+    setDeleteRepError("");
     try {
       const res = await fetch(`/api/reps/${deleteRepTarget.id}`, { method: "DELETE" });
       if (res.ok) {
         setDeleteRepTarget(null);
+        setDeleteRepError("");
         loadReps();
         loadStats();
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setDeleteRepError(json.error || `Failed (${res.status})`);
       }
-    } catch { /* network */ }
+    } catch { setDeleteRepError("Network error — check connection"); }
     setDeletingRep(false);
   };
 
@@ -505,8 +511,13 @@ function TeamTab() {
               This removes all their data (points, sales, submissions, discount codes). They can be re-invited later.
             </DialogDescription>
           </DialogHeader>
+          {deleteRepError && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
+              {deleteRepError}
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteRepTarget(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setDeleteRepTarget(null); setDeleteRepError(""); }}>Cancel</Button>
             <Button variant="destructive" onClick={handleDeleteRep} disabled={deletingRep}>
               {deletingRep && <Loader2 size={14} className="animate-spin" />}
               {deletingRep ? "Deleting..." : "Delete Permanently"}

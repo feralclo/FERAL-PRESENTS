@@ -230,12 +230,14 @@ export default function RepDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const json = await res.json();
-      if (json.data) {
-        setInviteResult({
-          invite_url: json.data.invite_url,
-          discount_code: json.data.discount_code,
-        });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setInviteResult({
+            invite_url: json.data.invite_url,
+            discount_code: json.data.discount_code,
+          });
+        }
       }
     } catch {
       /* network error */

@@ -123,6 +123,7 @@ export default function QuestsPage() {
     setMaxCompletions("");
     setExpiresAt("");
     setNotifyReps(true);
+    setSaveError("");
     setShowDialog(true);
   };
 
@@ -175,8 +176,8 @@ export default function QuestsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/reps/quests/${id}`, { method: "DELETE" });
-      loadQuests();
+      const res = await fetch(`/api/reps/quests/${id}`, { method: "DELETE" });
+      if (res.ok) loadQuests();
     } catch { /* network */ }
   };
 

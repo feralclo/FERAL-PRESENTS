@@ -188,9 +188,11 @@ export default function RewardsPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await fetch(`/api/reps/rewards/${deleteTarget.id}`, { method: "DELETE" });
-      setDeleteTarget(null);
-      loadRewards();
+      const res = await fetch(`/api/reps/rewards/${deleteTarget.id}`, { method: "DELETE" });
+      if (res.ok) {
+        setDeleteTarget(null);
+        loadRewards();
+      }
     } catch { /* network */ }
     setDeleting(false);
   };
@@ -220,8 +222,8 @@ export default function RewardsPage() {
 
   const handleDeleteMilestone = async (id: string) => {
     try {
-      await fetch(`/api/reps/milestones/${id}`, { method: "DELETE" });
-      if (showMilestone) loadMilestones(showMilestone);
+      const res = await fetch(`/api/reps/milestones/${id}`, { method: "DELETE" });
+      if (res.ok && showMilestone) loadMilestones(showMilestone);
     } catch { /* network */ }
   };
 

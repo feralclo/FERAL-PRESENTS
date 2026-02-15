@@ -2,7 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trophy, Zap, TrendingUp, Swords, Gift, ChevronRight, Copy, Check } from "lucide-react";
+import {
+  Trophy,
+  Zap,
+  TrendingUp,
+  Swords,
+  Gift,
+  ChevronRight,
+  Copy,
+  Check,
+  Flame,
+} from "lucide-react";
 
 interface DashboardData {
   rep: {
@@ -79,8 +89,8 @@ export default function RepDashboardPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
-      {/* Welcome + Level */}
-      <div className="text-center">
+      {/* ── Welcome + Level ── */}
+      <div className="text-center rep-slide-up">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--rep-accent)]/20 to-[var(--rep-accent)]/5 rep-glow mb-3 overflow-hidden">
           {rep.photo_url ? (
             <img src={rep.photo_url} alt="" className="h-full w-full object-cover" />
@@ -99,27 +109,55 @@ export default function RepDashboardPage() {
             Level {rep.level} — {data.level_name}
           </span>
         </div>
-        {/* Level progress */}
+
+        {/* XP progress */}
         <div className="mt-3 mx-auto max-w-xs">
           <div className="h-1.5 rounded-full bg-[var(--rep-border)] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#8B5CF6] transition-all duration-700 ease-out"
+              className="h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#8B5CF6] transition-all duration-700 ease-out rep-xp-fill"
               style={{ width: `${Math.min(100, Math.max(0, levelProgress))}%` }}
             />
           </div>
           <p className="mt-1 text-[10px] text-[var(--rep-text-muted)]">
             {data.next_level_points
-              ? `${rep.points_balance} / ${data.next_level_points} pts to next level`
+              ? `${rep.points_balance} / ${data.next_level_points} XP to next level`
               : "Max level reached!"}
           </p>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* ── Discount Code (prominent) ── */}
+      {data.discount_codes.length > 0 && (
+        <div className="rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-5 rep-pulse-border rep-slide-up" style={{ animationDelay: "50ms" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Flame size={14} className="text-[var(--rep-accent)]" />
+            <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-accent)] font-bold">
+              Your Code
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <p className="text-xl font-bold font-mono tracking-[3px] text-white flex-1 rep-stat-glow">
+              {data.discount_codes[0].code}
+            </p>
+            <button
+              onClick={() => copyCode(data.discount_codes[0].code)}
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--rep-accent)] px-4 py-2.5 text-xs font-semibold text-white transition-all hover:brightness-110"
+            >
+              {copiedCode ? <Check size={12} /> : <Copy size={12} />}
+              {copiedCode ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-[var(--rep-text-muted)]">
+            Share this code — every sale earns you points
+          </p>
+        </div>
+      )}
+
+      {/* ── Stats Grid ── */}
+      <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <div className="rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-card)] p-4 rep-card-hover">
           <p className="text-[10px] uppercase tracking-wider text-[var(--rep-text-muted)] mb-1">Points</p>
-          <p className="text-2xl font-bold text-[var(--rep-accent)] font-mono tabular-nums rep-points-pop">
+          <p className="text-2xl font-bold text-[var(--rep-accent)] font-mono tabular-nums rep-points-pop rep-stat-glow">
             {rep.points_balance}
           </p>
         </div>
@@ -143,47 +181,31 @@ export default function RepDashboardPage() {
         </Link>
       </div>
 
-      {/* Discount Code */}
-      {data.discount_codes.length > 0 && (
-        <div className="rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-5">
-          <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-accent)] font-semibold mb-2">
-            Your Code
-          </p>
-          <div className="flex items-center gap-3">
-            <p className="text-xl font-bold font-mono tracking-[3px] text-white flex-1">
-              {data.discount_codes[0].code}
-            </p>
-            <button
-              onClick={() => copyCode(data.discount_codes[0].code)}
-              className="flex items-center gap-1.5 rounded-lg bg-[var(--rep-accent)] px-3 py-2 text-xs font-semibold text-white transition-all hover:brightness-110"
-            >
-              {copiedCode ? <Check size={12} /> : <Copy size={12} />}
-              {copiedCode ? "Copied" : "Copy"}
-            </button>
-          </div>
-          <p className="mt-2 text-[11px] text-[var(--rep-text-muted)]">
-            Share this code. Every sale earns you points.
-          </p>
-        </div>
-      )}
-
-      {/* Active Events */}
+      {/* ── Active Campaigns / Events ── */}
       {data.active_events.length > 0 && (
-        <div>
+        <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white">Active Events</h2>
+            <div className="flex items-center gap-2">
+              <Flame size={14} className="text-[var(--rep-accent)]" />
+              <h2 className="text-sm font-semibold text-white">Active Campaigns</h2>
+            </div>
             <Link href="/rep/sales" className="text-[11px] text-[var(--rep-accent)] hover:underline flex items-center gap-0.5">
               View all <ChevronRight size={12} />
             </Link>
           </div>
           <div className="space-y-2">
             {data.active_events.map((event) => (
-              <div key={event.id} className="rounded-xl border border-[var(--rep-border)] bg-[var(--rep-card)] p-4 flex items-center justify-between">
+              <div key={event.id} className="rep-campaign-card flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-white">{event.name}</p>
-                  <p className="text-[11px] text-[var(--rep-text-muted)]">
-                    {event.sales_count} sales · £{Number(event.revenue).toFixed(0)}
-                  </p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[11px] text-[var(--rep-text-muted)]">
+                      {event.sales_count} sales
+                    </span>
+                    <span className="text-[11px] font-mono text-[var(--rep-success)]">
+                      £{Number(event.revenue).toFixed(0)}
+                    </span>
+                  </div>
                 </div>
                 <TrendingUp size={16} className="text-[var(--rep-accent)]" />
               </div>
@@ -192,8 +214,8 @@ export default function RepDashboardPage() {
         </div>
       )}
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* ── Quick Links ── */}
+      <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "200ms" }}>
         <Link
           href="/rep/quests"
           className="rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-card)] p-4 flex items-center gap-3 rep-card-hover"
@@ -220,9 +242,9 @@ export default function RepDashboardPage() {
         </Link>
       </div>
 
-      {/* Recent Sales */}
+      {/* ── Recent Sales ── */}
       {data.recent_sales.length > 0 && (
-        <div>
+        <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
           <h2 className="text-sm font-semibold text-white mb-3">Recent Sales</h2>
           <div className="space-y-2">
             {data.recent_sales.map((sale) => (
@@ -241,6 +263,30 @@ export default function RepDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ── Leaderboard CTA ── */}
+      <Link
+        href="/rep/leaderboard"
+        className="block rounded-2xl border border-[var(--rep-gold)]/20 bg-[var(--rep-gold)]/5 p-5 rep-card-hover rep-slide-up"
+        style={{ animationDelay: "300ms" }}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--rep-gold)]/10">
+              <Trophy size={18} className="text-[var(--rep-gold)]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Leaderboard</p>
+              <p className="text-[11px] text-[var(--rep-text-muted)]">
+                {data.leaderboard_position
+                  ? `You're ranked #${data.leaderboard_position}`
+                  : "See where you stand"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-[var(--rep-text-muted)]" />
+        </div>
+      </Link>
     </div>
   );
 }

@@ -97,7 +97,7 @@ export async function POST(
     const siteUrl = (
       process.env.NEXT_PUBLIC_SITE_URL || ""
     ).replace(/\/$/, "");
-    const invite_url = `${siteUrl}/rep-portal/invite/${invite_token}`;
+    const invite_url = `${siteUrl}/rep/invite/${invite_token}`;
 
     return NextResponse.json({
       data: {

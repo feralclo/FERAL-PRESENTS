@@ -34,8 +34,6 @@ import {
   Store,
   Tags,
   UsersRound,
-  Gift,
-  Swords,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -59,12 +57,9 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    label: "Reps",
+    label: "Growth",
     items: [
-      { href: "/admin/reps/", label: "Overview", icon: UsersRound },
-      { href: "/admin/reps/rewards/", label: "Rewards", icon: Gift },
-      { href: "/admin/reps/quests/", label: "Quests", icon: Swords },
-      { href: "/admin/reps/settings/", label: "Settings", icon: Settings },
+      { href: "/admin/reps/", label: "Reps", icon: UsersRound },
     ],
   },
   {

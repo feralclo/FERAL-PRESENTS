@@ -3,7 +3,7 @@
    Scoped to [data-rep] so it never leaks to admin or public pages.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* ── Animated gradient background ── */
+/* ── Theme variables ── */
 [data-rep] {
   --rep-bg: #06060a;
   --rep-surface: #0d0d14;
@@ -37,16 +37,49 @@
   100% { background-position: 100% 100%; }
 }
 
-/* ── Glow effect utility ── */
+/* ══════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ══════════════════════════════════════════════════════════════════════ */
+
 .rep-glow {
   box-shadow: 0 0 20px var(--rep-accent-glow), 0 0 60px rgba(139, 92, 246, 0.05);
 }
-
 .rep-glow-sm {
   box-shadow: 0 0 10px var(--rep-accent-glow);
 }
 
-/* ── Level badge shimmer ── */
+.rep-stat-glow {
+  text-shadow: 0 0 20px var(--rep-accent-glow);
+}
+
+.rep-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.rep-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.08);
+}
+
+.rep-fade-in {
+  animation: repFadeIn 0.4s ease-out both;
+}
+@keyframes repFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rep-slide-up {
+  animation: repSlideUp 0.4s ease-out both;
+}
+@keyframes repSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEVEL / BADGE / PROGRESS
+   ══════════════════════════════════════════════════════════════════════ */
+
 .rep-badge-shimmer {
   position: relative;
   overflow: hidden;
@@ -70,7 +103,278 @@
   100% { transform: translateX(100%); }
 }
 
-/* ── Leaderboard animations ── */
+.rep-points-pop {
+  animation: pointsPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pointsPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.rep-progress-glow {
+  position: relative;
+}
+.rep-progress-glow::after {
+  content: "";
+  position: absolute;
+  top: -2px; right: -2px; bottom: -2px; left: -2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--rep-accent-glow), transparent);
+  opacity: 0.5;
+  animation: progressPulse 2s ease-in-out infinite;
+}
+@keyframes progressPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+.rep-xp-fill {
+  position: relative;
+  overflow: hidden;
+}
+.rep-xp-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+  animation: xpShine 2s ease-in-out infinite;
+}
+@keyframes xpShine {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BOOT SEQUENCE & ONBOARDING
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-boot-line {
+  animation: bootLineIn 0.3s ease-out both;
+}
+@keyframes bootLineIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--rep-accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.8s step-end infinite;
+}
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.rep-step-in {
+  animation: stepSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes stepSlideIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.rep-wizard-step {
+  animation: wizardFadeIn 0.3s ease-out;
+}
+@keyframes wizardFadeIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.rep-choice-tile {
+  border: 1px solid var(--rep-border);
+  background: var(--rep-surface);
+  border-radius: 14px;
+  padding: 14px 20px;
+  color: var(--rep-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.rep-choice-tile:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #fff;
+  background: rgba(139, 92, 246, 0.05);
+}
+.rep-choice-tile.selected {
+  border-color: var(--rep-accent);
+  background: rgba(139, 92, 246, 0.1);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
+.rep-input {
+  width: 100%;
+  border: 1px solid var(--rep-border);
+  background: var(--rep-surface);
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 16px;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-appearance: none;
+}
+.rep-input::placeholder {
+  color: rgba(113, 113, 122, 0.5);
+}
+.rep-input:focus {
+  border-color: var(--rep-accent);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.05);
+}
+
+.rep-social-wrap {
+  position: relative;
+}
+.rep-social-wrap .rep-at {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--rep-text-muted);
+  font-size: 16px;
+  pointer-events: none;
+}
+.rep-social-wrap .rep-input {
+  padding-left: 36px;
+}
+
+.rep-celebrate {
+  animation: celebrateIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes celebrateIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.rep-title-reveal {
+  animation: titleReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes titleReveal {
+  from { opacity: 0; transform: translateY(30px); letter-spacing: 0.2em; }
+  to { opacity: 1; transform: translateY(0); letter-spacing: normal; }
+}
+
+.rep-start-btn {
+  position: relative;
+  overflow: hidden;
+}
+.rep-start-btn::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--rep-accent), rgba(139, 92, 246, 0.4), var(--rep-accent));
+  background-size: 200% 200%;
+  animation: btnPulse 2s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes btnPulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   INVITE / ACCESS GRANTED
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-access-reveal {
+  animation: accessReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes accessReveal {
+  0% { opacity: 0; transform: scale(0.95); filter: blur(10px); }
+  60% { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+.rep-scan-line {
+  position: relative;
+  overflow: hidden;
+}
+.rep-scan-line::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--rep-accent), transparent);
+  animation: scanDown 1.5s ease-in-out;
+}
+@keyframes scanDown {
+  from { top: 0; opacity: 1; }
+  to { top: 100%; opacity: 0; }
+}
+
+.rep-glitch-flash {
+  animation: glitchFlash 0.15s ease-out;
+}
+@keyframes glitchFlash {
+  0% { filter: brightness(3) saturate(0); }
+  100% { filter: brightness(1) saturate(1); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DASHBOARD & CARDS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-pulse-border {
+  position: relative;
+  overflow: hidden;
+}
+.rep-pulse-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--rep-accent), rgba(139, 92, 246, 0.3), var(--rep-accent));
+  background-size: 200% 200%;
+  animation: borderPulse 3s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes borderPulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.rep-campaign-card {
+  background: linear-gradient(135deg, var(--rep-card), var(--rep-surface));
+  border: 1px solid var(--rep-border);
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.rep-campaign-card:hover {
+  border-color: var(--rep-accent);
+  transform: translateY(-2px);
+}
+.rep-campaign-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--rep-accent), transparent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.rep-campaign-card:hover::before {
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEADERBOARD
+   ══════════════════════════════════════════════════════════════════════ */
+
 .rep-leaderboard-item {
   animation: slideInUp 0.4s ease-out both;
 }
@@ -86,57 +390,10 @@
 .rep-leaderboard-item:nth-child(10) { animation-delay: 540ms; }
 
 @keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Points counter animation ── */
-.rep-points-pop {
-  animation: pointsPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes pointsPop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
-}
-
-/* ── Card hover effect ── */
-.rep-card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.rep-card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.08);
-}
-
-/* ── Progress bar glow ── */
-.rep-progress-glow {
-  position: relative;
-}
-.rep-progress-glow::after {
-  content: "";
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  bottom: -2px;
-  left: -2px;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, var(--rep-accent-glow), transparent);
-  opacity: 0.5;
-  animation: progressPulse 2s ease-in-out infinite;
-}
-@keyframes progressPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
-}
-
-/* ── Podium positions ── */
 .rep-podium-gold {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
   border-color: rgba(245, 158, 11, 0.3);
@@ -150,7 +407,10 @@
   border-color: rgba(217, 119, 6, 0.25);
 }
 
-/* ── Quest card ── */
+/* ══════════════════════════════════════════════════════════════════════
+   QUESTS & REWARDS
+   ══════════════════════════════════════════════════════════════════════ */
+
 .rep-quest-card {
   background: var(--rep-card);
   border: 1px solid var(--rep-border);
@@ -162,7 +422,6 @@
   border-color: var(--rep-accent);
 }
 
-/* ── Reward card lock state ── */
 .rep-reward-locked {
   filter: grayscale(0.6);
   opacity: 0.5;
@@ -176,7 +435,10 @@
   100% { transform: scale(1); filter: brightness(1); }
 }
 
-/* ── Mobile bottom nav ── */
+/* ══════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════════════════════════════════ */
+
 .rep-bottom-nav {
   position: fixed;
   bottom: 0;
@@ -185,26 +447,27 @@
   z-index: 50;
   background: rgba(6, 6, 10, 0.95);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--rep-border);
   padding: 8px 0 max(8px, env(safe-area-inset-bottom));
 }
 
-/* ── Signup wizard step transition ── */
-.rep-wizard-step {
-  animation: wizardFadeIn 0.3s ease-out;
+.rep-nav-active-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rep-accent);
+  animation: navDotIn 0.2s ease-out;
 }
-@keyframes wizardFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+@keyframes navDotIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
 }
 
-/* ── Mobile scrollbar hide ── */
+/* ══════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
   [data-rep] ::-webkit-scrollbar {
     display: none;
@@ -213,4 +476,8 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+[data-rep] input[type="date"] {
+  color-scheme: dark;
 }

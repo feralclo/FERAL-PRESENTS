@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import "@/styles/tailwind.css";
@@ -33,9 +33,31 @@ function matchRoute(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
+interface OrgBranding {
+  org_name?: string;
+  logo_url?: string;
+  accent_color?: string;
+}
+
 export default function RepLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const showNav = !isPublic(pathname);
+  const [branding, setBranding] = useState<OrgBranding | null>(null);
+
+  /* Fetch org branding for tenant name/logo */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/branding");
+        const json = await res.json();
+        if (json.data) setBranding(json.data);
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  const brandName = branding?.org_name
+    ? `${branding.org_name} Reps`
+    : "Entry Reps";
 
   return (
     <div data-admin data-rep className="min-h-screen bg-[var(--rep-bg)] text-[var(--rep-text)]">
@@ -43,7 +65,14 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       {showNav && (
         <header className="sticky top-0 z-40 hidden md:flex items-center justify-between border-b border-[var(--rep-border)] bg-[rgba(6,6,10,0.9)] backdrop-blur-xl px-6 h-14">
           <div className="flex items-center gap-6">
-            <Link href="/rep" className="flex items-center gap-2">
+            <Link href="/rep" className="flex items-center gap-2.5">
+              {branding?.logo_url && (
+                <img
+                  src={branding.logo_url}
+                  alt=""
+                  className="h-6 w-auto"
+                />
+              )}
               <span
                 className="font-mono text-[12px] font-bold uppercase tracking-[3px] select-none"
                 style={{
@@ -53,7 +82,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   backgroundClip: "text",
                 }}
               >
-                Entry Reps
+                {brandName}
               </span>
             </Link>
             <nav className="flex items-center gap-1">
@@ -108,6 +137,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               >
                 <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
                 <span className="text-[10px] font-medium">{item.label}</span>
+                {active && <div className="rep-nav-active-dot" />}
               </Link>
             );
           })}

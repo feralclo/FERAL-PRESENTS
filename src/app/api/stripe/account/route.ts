@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES } from "@/lib/constants";
+import { verifyConnectedAccount } from "@/lib/stripe/server";
 
 /**
  * GET /api/stripe/account
@@ -9,9 +10,10 @@ import { TABLES } from "@/lib/constants";
  * Used by client components to load Stripe.js with the correct account context
  * before creating a PaymentIntent (deferred intent flow).
  *
- * Skips live Stripe verification here for speed — the account is fully
- * validated in POST /api/stripe/payment-intent before any charge is created,
- * so a stale ID is caught before money moves.
+ * The account is verified via stripe.accounts.retrieve() to prevent returning
+ * a stale/revoked ID that would break Stripe.js initialization (Apple Pay,
+ * Google Pay would silently fail). Results are cached in-memory for 5 min
+ * so the Stripe API call only happens once per server instance, not per request.
  */
 export async function GET() {
   try {
@@ -26,8 +28,10 @@ export async function GET() {
       .eq("key", "feral_stripe_account")
       .single();
 
-    const accountId =
+    const rawAccountId =
       (data?.data as { account_id?: string })?.account_id || null;
+
+    const accountId = await verifyConnectedAccount(rawAccountId);
 
     return NextResponse.json({ stripe_account_id: accountId });
   } catch {

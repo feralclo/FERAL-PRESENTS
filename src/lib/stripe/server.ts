@@ -29,17 +29,41 @@ export function getStripe(): Stripe {
 }
 
 /**
+ * In-memory cache for verified connected accounts.
+ * Avoids calling stripe.accounts.retrieve() on every checkout load while
+ * still catching stale/revoked accounts within a few minutes.
+ */
+const verifiedAccountCache = new Map<
+  string,
+  { result: string | null; expiresAt: number }
+>();
+const VERIFY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
  * Verify a connected Stripe account is accessible from the platform key.
  * Returns the account ID if valid, or null if the account doesn't exist /
  * access was revoked. This prevents checkout failures when a stale or
  * invalid account ID is stored in the database.
+ *
+ * Results are cached in-memory for 5 minutes so repeated checkout loads
+ * skip the Stripe API call (~100-300ms) after the first verification.
  */
 export async function verifyConnectedAccount(
   accountId: string | null
 ): Promise<string | null> {
   if (!accountId || !stripe) return null;
+
+  const cached = verifiedAccountCache.get(accountId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.result;
+  }
+
   try {
     await stripe.accounts.retrieve(accountId);
+    verifiedAccountCache.set(accountId, {
+      result: accountId,
+      expiresAt: Date.now() + VERIFY_CACHE_TTL_MS,
+    });
     return accountId;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -47,6 +71,10 @@ export async function verifyConnectedAccount(
       `[stripe] Connected account ${accountId} is not accessible — ` +
         `falling back to platform account. Error: ${msg}`
     );
+    verifiedAccountCache.set(accountId, {
+      result: null,
+      expiresAt: Date.now() + VERIFY_CACHE_TTL_MS,
+    });
     return null;
   }
 }

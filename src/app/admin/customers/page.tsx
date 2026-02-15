@@ -44,15 +44,15 @@ function getCustomerTier(totalSpent: number, totalOrders: number): {
   variant: "warning" | "success" | "secondary" | "info";
 } {
   if (totalSpent >= 200 || totalOrders >= 5) {
-    return { label: "VIP", variant: "warning" };
+    return { label: "Superfan", variant: "warning" };
   }
   if (totalOrders > 1) {
-    return { label: "Returning", variant: "success" };
+    return { label: "Fan", variant: "success" };
   }
   if (totalOrders === 0) {
-    return { label: "Lead", variant: "info" };
+    return { label: "Discoverer", variant: "info" };
   }
-  return { label: "New", variant: "secondary" };
+  return { label: "New Fan", variant: "secondary" };
 }
 
 /* ════════════════════════════════════════════════════════

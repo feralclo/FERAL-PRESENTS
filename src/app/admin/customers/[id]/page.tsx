@@ -7,6 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { generateNickname } from "@/lib/nicknames";
@@ -37,6 +43,10 @@ import {
   Crown,
   Sparkles,
   MailWarning,
+  Lock,
+  Check,
+  Star,
+  Music,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -81,19 +91,80 @@ const SEGMENT_CONFIG: Record<CustomerSegment, {
   variant: "warning" | "success" | "secondary" | "info";
   icon: typeof Crown;
   color: string;
+  description: string;
+  /** Raw CSS values for inline styles */
+  raw: { color: string; bg: string; border: string; glow: string; barColor: string };
 }> = {
-  vip: { label: "VIP", variant: "warning", icon: Crown, color: "text-amber-400" },
-  returning: { label: "Returning", variant: "success", icon: Repeat, color: "text-emerald-400" },
-  new: { label: "New", variant: "secondary", icon: Sparkles, color: "text-blue-400" },
-  lead: { label: "Lead", variant: "info", icon: Target, color: "text-purple-400" },
+  superfan: {
+    label: "Superfan",
+    variant: "warning",
+    icon: Crown,
+    color: "text-amber-400",
+    description: "The ultimate supporter",
+    raw: { color: "#fbbf24", bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.4)", glow: "0 0 24px rgba(251,191,36,0.35)", barColor: "#fbbf24" },
+  },
+  fan: {
+    label: "Fan",
+    variant: "success",
+    icon: Music,
+    color: "text-emerald-400",
+    description: "Coming back for more",
+    raw: { color: "#34d399", bg: "rgba(52,211,153,0.1)", border: "rgba(52,211,153,0.4)", glow: "0 0 24px rgba(52,211,153,0.35)", barColor: "#34d399" },
+  },
+  new_fan: {
+    label: "New Fan",
+    variant: "secondary",
+    icon: Sparkles,
+    color: "text-blue-400",
+    description: "Just joined the movement",
+    raw: { color: "#60a5fa", bg: "rgba(96,165,250,0.1)", border: "rgba(96,165,250,0.4)", glow: "0 0 24px rgba(96,165,250,0.35)", barColor: "#60a5fa" },
+  },
+  discoverer: {
+    label: "Discoverer",
+    variant: "info",
+    icon: Target,
+    color: "text-purple-400",
+    description: "Exploring the scene",
+    raw: { color: "#a855f7", bg: "rgba(168,85,247,0.1)", border: "rgba(168,85,247,0.4)", glow: "0 0 24px rgba(168,85,247,0.35)", barColor: "#a855f7" },
+  },
 };
 
-/* ── Journey stage definitions ── */
-const JOURNEY_STAGES = [
-  { key: "lead" as const, label: "Lead", icon: Target },
-  { key: "new" as const, label: "New Customer", icon: Sparkles },
-  { key: "returning" as const, label: "Returning", icon: Repeat },
-  { key: "vip" as const, label: "VIP", icon: Crown },
+/* ── Journey tier definitions ── */
+const JOURNEY_TIERS: {
+  key: CustomerSegment;
+  label: string;
+  icon: typeof Crown;
+  unlockRequirement: string;
+  xpLabel: string;
+}[] = [
+  {
+    key: "discoverer",
+    label: "Discoverer",
+    icon: Target,
+    unlockRequirement: "Enter your email at checkout",
+    xpLabel: "Entry point",
+  },
+  {
+    key: "new_fan",
+    label: "New Fan",
+    icon: Sparkles,
+    unlockRequirement: "Complete your first purchase",
+    xpLabel: "1 order",
+  },
+  {
+    key: "fan",
+    label: "Fan",
+    icon: Music,
+    unlockRequirement: "Place 2+ orders",
+    xpLabel: "2+ orders",
+  },
+  {
+    key: "superfan",
+    label: "Superfan",
+    icon: Crown,
+    unlockRequirement: "Spend £200+ or place 5+ orders",
+    xpLabel: "£200+ or 5+ orders",
+  },
 ];
 
 /* ── Helpers ── */
@@ -145,10 +216,10 @@ function getInitials(first?: string, last?: string, nickname?: string): string {
 }
 
 function getSegment(totalSpent: number, totalOrders: number): CustomerSegment {
-  if (totalSpent >= 200 || totalOrders >= 5) return "vip";
-  if (totalOrders > 1) return "returning";
-  if (totalOrders === 0) return "lead";
-  return "new";
+  if (totalSpent >= 200 || totalOrders >= 5) return "superfan";
+  if (totalOrders > 1) return "fan";
+  if (totalOrders === 0) return "discoverer";
+  return "new_fan";
 }
 
 function memberSince(dateStr?: string): string {
@@ -180,20 +251,18 @@ function buildCustomerTimeline(
   const entries: TimelineEntry[] = [];
   const fmt = (d: string) => formatDateTime(d);
 
-  // Customer created
-  const isLead = customer.total_orders === 0;
+  const isDiscoverer = customer.total_orders === 0;
   entries.push({
-    label: isLead ? "Lead captured" : "Customer created",
-    detail: isLead
+    label: isDiscoverer ? "Discoverer captured" : "Customer created",
+    detail: isDiscoverer
       ? `${customer.nickname || customer.email} entered the funnel`
-      : `${customer.first_name || ""} ${customer.last_name || ""} added to the platform`.trim(),
+      : `${customer.first_name || ""} ${customer.last_name || ""} joined the movement`.trim(),
     time: fmt(customer.created_at),
-    icon: isLead ? Target : UserPlus,
+    icon: isDiscoverer ? Target : UserPlus,
     sortDate: new Date(customer.created_at),
-    color: isLead ? "text-purple-400" : undefined,
+    color: isDiscoverer ? "text-purple-400" : undefined,
   });
 
-  // Abandoned carts
   for (const cart of abandonedCarts) {
     const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
     entries.push({
@@ -217,7 +286,6 @@ function buildCustomerTimeline(
     }
   }
 
-  // Each order
   for (const order of orders) {
     entries.push({
       label: `Order ${order.order_number} placed`,
@@ -227,7 +295,6 @@ function buildCustomerTimeline(
       sortDate: new Date(order.created_at),
     });
 
-    // Payment processed
     if (order.status === "completed") {
       entries.push({
         label: `Payment confirmed`,
@@ -239,7 +306,6 @@ function buildCustomerTimeline(
       });
     }
 
-    // Email sent
     const meta = (order.metadata || {}) as Record<string, unknown>;
     if (meta.email_sent === true && typeof meta.email_sent_at === "string") {
       entries.push({
@@ -260,7 +326,6 @@ function buildCustomerTimeline(
       });
     }
 
-    // Refund
     if (order.status === "refunded") {
       entries.push({
         label: `Order ${order.order_number} refunded`,
@@ -273,7 +338,6 @@ function buildCustomerTimeline(
     }
   }
 
-  // Ticket scans
   for (const ticket of tickets) {
     if (ticket.scanned_at) {
       entries.push({
@@ -292,71 +356,345 @@ function buildCustomerTimeline(
 }
 
 /* ════════════════════════════════════════════════════════════
-   JOURNEY PROGRESS — visual stage indicator with animated bar
+   TIER PROGRESS — computes what it takes to reach each tier
    ════════════════════════════════════════════════════════════ */
-function JourneyProgress({ segment }: { segment: CustomerSegment }) {
-  const stageIndex = JOURNEY_STAGES.findIndex((s) => s.key === segment);
-  const progressPercent = ((stageIndex + 1) / JOURNEY_STAGES.length) * 100;
+function getTierProgress(
+  tierKey: CustomerSegment,
+  totalOrders: number,
+  totalSpent: number
+): { unlocked: boolean; progressItems: { label: string; current: number; target: number; unit: string }[] } {
+  switch (tierKey) {
+    case "discoverer":
+      return { unlocked: true, progressItems: [] };
+    case "new_fan":
+      return {
+        unlocked: totalOrders >= 1,
+        progressItems: [
+          { label: "First purchase", current: Math.min(totalOrders, 1), target: 1, unit: "order" },
+        ],
+      };
+    case "fan":
+      return {
+        unlocked: totalOrders >= 2,
+        progressItems: [
+          { label: "Orders placed", current: Math.min(totalOrders, 2), target: 2, unit: "orders" },
+        ],
+      };
+    case "superfan": {
+      const spendProgress = Math.min(totalSpent, 200);
+      const orderProgress = Math.min(totalOrders, 5);
+      const unlocked = totalSpent >= 200 || totalOrders >= 5;
+      return {
+        unlocked,
+        progressItems: [
+          { label: "Total spent", current: spendProgress, target: 200, unit: "£" },
+          { label: "Orders placed", current: orderProgress, target: 5, unit: "orders" },
+        ],
+      };
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   TIER CARD — individual hoverable tier with glow effects
+   ════════════════════════════════════════════════════════════ */
+function TierCard({
+  tier,
+  config,
+  isUnlocked,
+  isCurrent,
+  isNext,
+  progress,
+  totalOrders,
+}: {
+  tier: (typeof JOURNEY_TIERS)[number];
+  config: (typeof SEGMENT_CONFIG)[CustomerSegment];
+  isUnlocked: boolean;
+  isCurrent: boolean;
+  isNext: boolean;
+  progress: ReturnType<typeof getTierProgress>;
+  totalOrders: number;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const TierIcon = tier.icon;
+  const { raw } = config;
+
+  // Compute styles based on hover + state
+  const cardStyle: React.CSSProperties = isCurrent
+    ? { borderColor: raw.border, backgroundColor: raw.bg, boxShadow: raw.glow }
+    : isUnlocked && hovered
+      ? { borderColor: raw.border, backgroundColor: raw.bg, boxShadow: raw.glow }
+      : {};
+
+  const iconStyle: React.CSSProperties = isCurrent
+    ? { backgroundColor: raw.bg, color: raw.color, boxShadow: `inset 0 0 0 2px ${raw.color}` }
+    : isUnlocked && hovered
+      ? { backgroundColor: raw.bg, color: raw.color, boxShadow: `inset 0 0 0 2px ${raw.color}` }
+    : isUnlocked
+      ? { color: raw.color }
+      : hovered
+        ? { color: "rgba(255,255,255,0.3)" }
+        : { color: "rgba(255,255,255,0.15)" };
+
+  const labelStyle: React.CSSProperties = isCurrent || (isUnlocked && hovered)
+    ? { color: raw.color }
+    : isUnlocked
+      ? { color: "rgba(255,255,255,0.6)" }
+      : hovered
+        ? { color: "rgba(255,255,255,0.3)" }
+        : { color: "rgba(255,255,255,0.15)" };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className={`relative flex flex-col items-center gap-2.5 rounded-xl border p-4 transition-all duration-300 ${
+            isCurrent || (isUnlocked && hovered)
+              ? ""
+              : isUnlocked
+                ? "border-border/60 bg-card"
+                : hovered
+                  ? "border-border/50 bg-card/50"
+                  : "border-border/30 bg-card/30"
+          }`}
+          style={cardStyle}
+        >
+          {/* Tier icon */}
+          <div
+            className="relative flex h-11 w-11 items-center justify-center rounded-full transition-all duration-300"
+            style={isCurrent || (isUnlocked && hovered)
+              ? iconStyle
+              : isUnlocked
+                ? { ...iconStyle, backgroundColor: "rgba(255,255,255,0.05)" }
+                : { ...iconStyle, backgroundColor: "rgba(255,255,255,0.03)" }
+            }
+          >
+            {isUnlocked && !isCurrent ? (
+              <div className="relative">
+                <TierIcon size={18} />
+                <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                  <Check size={8} strokeWidth={3} />
+                </span>
+              </div>
+            ) : !isUnlocked ? (
+              <Lock size={16} />
+            ) : (
+              <TierIcon size={18} />
+            )}
+
+            {/* Pulse ring on current */}
+            {isCurrent && (
+              <span
+                className="absolute inset-0 rounded-full animate-ping opacity-20"
+                style={{ boxShadow: `inset 0 0 0 2px ${raw.color}` }}
+              />
+            )}
+          </div>
+
+          {/* Tier name */}
+          <span
+            className="text-[11px] font-semibold tracking-wider uppercase transition-colors duration-300"
+            style={labelStyle}
+          >
+            {tier.label}
+          </span>
+
+          {/* Current badge */}
+          {isCurrent && (
+            <span
+              className="absolute -top-1.5 right-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest"
+              style={{ backgroundColor: raw.bg, color: raw.color, boxShadow: `inset 0 0 0 1px ${raw.border}` }}
+            >
+              Now
+            </span>
+          )}
+
+          {/* Next tier indicator */}
+          {isNext && (
+            <span className="absolute -top-1.5 right-2 rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+              Next
+            </span>
+          )}
+        </button>
+      </TooltipTrigger>
+
+      {/* ── Hover tooltip ── */}
+      <TooltipContent
+        side="bottom"
+        className="w-64 rounded-xl border border-border bg-card p-0 text-foreground shadow-xl"
+      >
+        {/* Tooltip header */}
+        <div
+          className="flex items-center gap-3 rounded-t-xl px-4 py-3"
+          style={{ backgroundColor: raw.bg }}
+        >
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-full"
+            style={{ backgroundColor: raw.bg, color: raw.color, boxShadow: `inset 0 0 0 1px ${raw.border}` }}
+          >
+            <TierIcon size={14} />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: raw.color }}>
+              {tier.label}
+            </p>
+            <p className="text-[10px] text-muted-foreground">{config.description}</p>
+          </div>
+          {isUnlocked && (
+            <Badge variant="success" className="ml-auto text-[8px] font-bold uppercase">
+              <Check size={8} /> Unlocked
+            </Badge>
+          )}
+        </div>
+
+        {/* Requirements */}
+        <div className="px-4 py-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground/60">
+            {isUnlocked ? "Requirement met" : "How to unlock"}
+          </p>
+          <p className="text-xs text-foreground/80">{tier.unlockRequirement}</p>
+
+          {/* Progress indicators */}
+          {progress.progressItems.length > 0 && (
+            <div className="mt-3 space-y-2.5">
+              {progress.progressItems.map((item) => {
+                const pct = Math.min((item.current / item.target) * 100, 100);
+                const isComplete = item.current >= item.target;
+                return (
+                  <div key={item.label}>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className={isComplete ? "font-semibold text-emerald-400" : "font-mono text-foreground/70"}>
+                        {item.unit === "£"
+                          ? `${formatCurrency(item.current)} / ${formatCurrency(item.target)}`
+                          : `${item.current} / ${item.target}`
+                        }
+                      </span>
+                    </div>
+                    {/* XP bar */}
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: isComplete ? "#34d399" : raw.barColor,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Superfan dual-path note */}
+              {tier.key === "superfan" && !progress.unlocked && (
+                <p className="mt-1 text-center text-[9px] italic text-muted-foreground/50">
+                  Either path unlocks Superfan
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Discoverer — no progress needed */}
+          {tier.key === "discoverer" && isUnlocked && (
+            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400">
+              <Check size={10} />
+              <span>Entered via checkout</span>
+            </div>
+          )}
+
+          {/* New Fan — single quest checkbox */}
+          {tier.key === "new_fan" && !isUnlocked && (
+            <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground/50">
+              <div className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${
+                totalOrders >= 1
+                  ? "border-emerald-500 bg-emerald-500/20"
+                  : "border-muted-foreground/20"
+              }`}>
+                {totalOrders >= 1 && <Check size={8} className="text-emerald-400" />}
+              </div>
+              <span>Complete a purchase</span>
+            </div>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   GAMIFIED JOURNEY — hoverable tier cards with glow + progress
+   ════════════════════════════════════════════════════════════ */
+function GamifiedJourney({
+  segment,
+  totalOrders,
+  totalSpent,
+}: {
+  segment: CustomerSegment;
+  totalOrders: number;
+  totalSpent: number;
+}) {
+  const tierOrder: CustomerSegment[] = ["discoverer", "new_fan", "fan", "superfan"];
+  const currentIndex = tierOrder.indexOf(segment);
 
   return (
     <Card>
       <CardHeader className="border-b border-border pb-4">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <Zap size={15} className="text-primary" />
-          Customer Journey
+          <Star size={15} className="text-primary" />
+          Fan Journey
         </CardTitle>
       </CardHeader>
       <CardContent className="p-5">
-        {/* Stage indicators */}
-        <div className="relative">
-          {/* Background track */}
-          <div className="absolute left-0 right-0 top-5 h-0.5 bg-border" />
-          {/* Active track */}
-          <div
-            className="absolute left-0 top-5 h-0.5 bg-primary transition-all duration-700 ease-out"
-            style={{ width: `${progressPercent - (100 / JOURNEY_STAGES.length / 2)}%` }}
-          />
-
-          <div className="relative flex justify-between">
-            {JOURNEY_STAGES.map((stage, i) => {
-              const isActive = i <= stageIndex;
-              const isCurrent = stage.key === segment;
-              const StageIcon = stage.icon;
+        <TooltipProvider delayDuration={0}>
+          <div className="grid grid-cols-4 gap-3">
+            {JOURNEY_TIERS.map((tier, i) => {
+              const config = SEGMENT_CONFIG[tier.key];
+              const isUnlocked = i <= currentIndex;
+              const isCurrent = tier.key === segment;
+              const isNext = i === currentIndex + 1;
+              const progress = getTierProgress(tier.key, totalOrders, totalSpent);
 
               return (
-                <div key={stage.key} className="flex flex-col items-center gap-2">
-                  <div
-                    className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-500 ${
-                      isCurrent
-                        ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_rgba(139,92,246,0.3)]"
-                        : isActive
-                          ? "border-primary/50 bg-primary/10 text-primary/70"
-                          : "border-border bg-card text-muted-foreground/40"
-                    }`}
-                  >
-                    <StageIcon size={16} />
-                    {isCurrent && (
-                      <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
-                        <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    className={`text-[10px] font-medium tracking-wider ${
-                      isCurrent
-                        ? "text-primary font-semibold"
-                        : isActive
-                          ? "text-foreground/70"
-                          : "text-muted-foreground/40"
-                    }`}
-                  >
-                    {stage.label}
-                  </span>
-                </div>
+                <TierCard
+                  key={tier.key}
+                  tier={tier}
+                  config={config}
+                  isUnlocked={isUnlocked}
+                  isCurrent={isCurrent}
+                  isNext={isNext}
+                  progress={progress}
+                  totalOrders={totalOrders}
+                />
               );
             })}
           </div>
+        </TooltipProvider>
+
+        {/* Connecting progress line between tiers */}
+        <div className="mt-4 flex items-center gap-1 px-8">
+          {JOURNEY_TIERS.map((tier, i) => {
+            if (i === JOURNEY_TIERS.length - 1) return null;
+            const isComplete = i < currentIndex;
+            const isActive = i === currentIndex;
+            const config = SEGMENT_CONFIG[tier.key];
+            return (
+              <div key={`line-${tier.key}`} className="flex flex-1 items-center">
+                <div
+                  className="h-0.5 flex-1 rounded-full transition-all duration-500"
+                  style={{
+                    background: isComplete
+                      ? "rgba(52,211,153,0.5)"
+                      : isActive
+                        ? `linear-gradient(to right, ${config.raw.color}, rgba(255,255,255,0.05))`
+                        : "rgba(255,255,255,0.05)",
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
@@ -411,11 +749,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
                     : "bg-emerald-500/10 text-emerald-400"
                 }`}
               >
-                {isAbandoned ? (
-                  <ShoppingCart size={15} />
-                ) : (
-                  <Zap size={15} />
-                )}
+                {isAbandoned ? <ShoppingCart size={15} /> : <Zap size={15} />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -430,9 +764,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
                   </Badge>
                 </div>
                 <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                  {cart.event?.name && (
-                    <span>{cart.event.name}</span>
-                  )}
+                  {cart.event?.name && <span>{cart.event.name}</span>}
                   <span>{timeAgo(cart.created_at)}</span>
                 </div>
                 {isAbandoned && cart.notification_count === 0 && (
@@ -550,13 +882,11 @@ export default function CustomerProfilePage() {
   const scannedTickets = tickets.filter((t) => t.scanned_at);
   const eventsAttended = new Set(scannedTickets.map((t) => t.event?.name)).size;
 
-  // Merch spend
   const merchSpend = completedOrders.reduce((total, order) => {
     const merchItems = (order.items || []).filter((i) => i.merch_size);
     return total + merchItems.reduce((s, i) => s + Number(i.unit_price) * i.qty, 0);
   }, 0);
 
-  // Latest order
   const latestOrder = orders[0] || null;
   const latestOrderTicketQty = latestOrder
     ? (latestOrder.items || []).reduce((s, i) => s + i.qty, 0)
@@ -567,13 +897,12 @@ export default function CustomerProfilePage() {
   const segmentConfig = SEGMENT_CONFIG[segment];
   const SegmentIcon = segmentConfig.icon;
 
-  // Display name — nickname for leads, real name for customers
-  const isLead = segment === "lead";
-  const displayName = isLead
+  // Display name — nickname for discoverers, real name for fans
+  const isDiscoverer = segment === "discoverer";
+  const displayName = isDiscoverer
     ? (customer.nickname || generateNickname(customer.email))
     : `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || customer.nickname || customer.email;
 
-  // Abandoned carts stats
   const activeAbandonedCarts = abandonedCarts.filter((c) => c.status === "abandoned");
 
   // Timeline
@@ -597,19 +926,19 @@ export default function CustomerProfilePage() {
               {/* Avatar */}
               <div
                 className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full ring-1 ${
-                  isLead
+                  isDiscoverer
                     ? "bg-purple-500/10 ring-purple-500/30"
                     : "bg-muted ring-border"
                 }`}
               >
                 <span
                   className={`font-mono text-lg font-bold ${
-                    isLead ? "text-purple-400" : "text-muted-foreground"
+                    isDiscoverer ? "text-purple-400" : "text-muted-foreground"
                   }`}
                 >
                   {getInitials(customer.first_name, customer.last_name, customer.nickname)}
                 </span>
-                {isLead && (
+                {isDiscoverer && (
                   <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-purple-500 text-[8px] text-white">
                     <Target size={9} />
                   </span>
@@ -632,8 +961,8 @@ export default function CustomerProfilePage() {
                   )}
                 </div>
 
-                {/* Lead: show real name as subtitle if available */}
-                {isLead && (customer.first_name || customer.last_name) && (
+                {/* Discoverer: show real name as subtitle if available */}
+                {isDiscoverer && (customer.first_name || customer.last_name) && (
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     aka {customer.first_name} {customer.last_name}
                   </p>
@@ -652,7 +981,7 @@ export default function CustomerProfilePage() {
                   )}
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <CalendarDays size={13} className="text-muted-foreground/50" />
-                    {isLead ? "First seen" : "Member since"} {memberSince(customer.first_order_at || customer.created_at)}
+                    {isDiscoverer ? "First seen" : "Member since"} {memberSince(customer.first_order_at || customer.created_at)}
                   </div>
                   {activeAbandonedCarts.length > 0 && (
                     <div className="flex items-center gap-1.5 text-sm text-amber-400">
@@ -667,9 +996,13 @@ export default function CustomerProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Journey Progress */}
+      {/* Gamified Journey */}
       <div className="mb-6">
-        <JourneyProgress segment={segment} />
+        <GamifiedJourney
+          segment={segment}
+          totalOrders={customer.total_orders}
+          totalSpent={totalSpent}
+        />
       </div>
 
       {/* KPI Row */}
@@ -834,7 +1167,7 @@ export default function CustomerProfilePage() {
               <div className="flex flex-col items-center justify-center py-10">
                 <Package size={24} className="text-muted-foreground/20" />
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {isLead ? "No purchases yet — still a lead" : "No orders yet"}
+                  {isDiscoverer ? "No purchases yet — still a discoverer" : "No orders yet"}
                 </p>
               </div>
             )}

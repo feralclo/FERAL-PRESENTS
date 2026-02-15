@@ -82,7 +82,7 @@ export interface Ticket {
   };
 }
 
-export type CustomerSegment = "vip" | "returning" | "new" | "lead";
+export type CustomerSegment = "superfan" | "fan" | "new_fan" | "discoverer";
 
 export interface Customer {
   id: string;

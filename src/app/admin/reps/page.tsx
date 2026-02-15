@@ -259,6 +259,8 @@ function TeamTab() {
       });
       const inviteJson = await inviteRes.json();
       if (!inviteRes.ok) {
+        // Clean up the rep we just created so the admin can retry with the same email
+        await fetch(`/api/reps/${newRepId}`, { method: "DELETE" }).catch(() => {});
         setInviteError(inviteJson.error || "Failed to generate invite link");
         setInviting(false);
         return;

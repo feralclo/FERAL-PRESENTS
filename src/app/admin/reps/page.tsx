@@ -207,11 +207,11 @@ function TeamTab() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    getSupabaseClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (data.user) setCurrentUserId(data.user.id);
-      });
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
   }, []);
 
   const loadReps = useCallback(async () => {

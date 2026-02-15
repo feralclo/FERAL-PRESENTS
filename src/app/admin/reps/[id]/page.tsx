@@ -179,11 +179,11 @@ export default function RepDetailPage() {
   }, [loadRep]);
 
   useEffect(() => {
-    getSupabaseClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (data.user) setCurrentUserId(data.user.id);
-      });
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
   }, []);
 
   useEffect(() => {

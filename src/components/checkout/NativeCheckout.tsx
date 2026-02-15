@@ -445,8 +445,10 @@ function StripeCheckoutPage({
         const res = await fetch("/api/stripe/account");
         const data = await res.json();
         const acctId = data.stripe_account_id || undefined;
+        console.log("[Checkout] Stripe account:", acctId || "(platform — no connected account)");
         setStripePromise(getStripeClient(acctId));
       } catch {
+        console.log("[Checkout] Stripe account: (platform — fetch failed)");
         setStripePromise(getStripeClient());
       }
       setStripeReady(true);
@@ -953,11 +955,17 @@ function SinglePageCheckoutForm({
               <ExpressCheckoutElement
                 onClick={handleExpressClick}
                 onConfirm={handleExpressConfirm}
-                onReady={({ availablePaymentMethods }) => {
-                  // Debug: helps diagnose which wallets Stripe detects
-                  console.log("[Express Checkout] Available payment methods:", availablePaymentMethods);
+                onReady={({ availablePaymentMethods: methods }) => {
+                  // Debug: helps diagnose which wallets Stripe detects for this account
+                  console.log("[Express Checkout] Available:", methods);
+                  if (methods) {
+                    console.log("[Express Checkout] Apple Pay:", methods.applePay ? "YES" : "NO");
+                    console.log("[Express Checkout] Google Pay:", methods.googlePay ? "YES" : "NO");
+                  } else {
+                    console.log("[Express Checkout] No wallet methods available");
+                  }
                   setExpressLoaded(true);
-                  if (!availablePaymentMethods) {
+                  if (!methods) {
                     setExpressAvailable(false);
                   }
                 }}

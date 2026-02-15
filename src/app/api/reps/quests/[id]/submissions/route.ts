@@ -33,9 +33,13 @@ export async function GET(
       )
       .eq("org_id", ORG_ID)
       .eq("quest_id", id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (status) {
+      if (!["pending", "approved", "rejected"].includes(status)) {
+        return NextResponse.json({ error: "Invalid status filter" }, { status: 400 });
+      }
       query = query.eq("status", status);
     }
 

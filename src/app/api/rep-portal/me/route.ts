@@ -92,6 +92,15 @@ export async function PUT(request: NextRequest) {
     if (gender !== undefined && gender !== null && !["male", "female", "non-binary", "other", "prefer-not-to-say"].includes(gender)) {
       return NextResponse.json({ error: "Invalid gender value" }, { status: 400 });
     }
+    if (phone !== undefined && typeof phone === "string" && phone.length > 20) {
+      return NextResponse.json({ error: "Phone must be 20 characters or less" }, { status: 400 });
+    }
+    if (photo_url !== undefined && typeof photo_url === "string" && photo_url.length > 2000) {
+      return NextResponse.json({ error: "Photo URL too long" }, { status: 400 });
+    }
+    if (date_of_birth !== undefined && date_of_birth !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth)) {
+      return NextResponse.json({ error: "date_of_birth must be YYYY-MM-DD format" }, { status: 400 });
+    }
 
     // Build update payload — only include provided fields
     const updatePayload: Record<string, unknown> = {

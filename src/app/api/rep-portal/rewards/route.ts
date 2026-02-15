@@ -33,7 +33,8 @@ export async function GET() {
           .select("*, product:products(name, images)")
           .eq("org_id", ORG_ID)
           .eq("status", "active")
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false })
+          .limit(100),
 
         // All milestones
         supabase

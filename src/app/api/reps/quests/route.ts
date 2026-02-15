@@ -33,6 +33,9 @@ export async function GET(request: NextRequest) {
       .limit(200);
 
     if (status) {
+      if (!["active", "paused", "archived", "draft"].includes(status)) {
+        return NextResponse.json({ error: "Invalid status filter" }, { status: 400 });
+      }
       query = query.eq("status", status);
     }
 

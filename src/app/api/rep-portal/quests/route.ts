@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
       .select("*, event:events(id, name, slug)")
       .eq("org_id", ORG_ID)
       .eq("status", statusFilter)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(100);
 
     if (eventIds.length > 0) {
       query = query.or(

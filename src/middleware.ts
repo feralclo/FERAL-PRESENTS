@@ -113,11 +113,25 @@ function isAdminApiRoute(pathname: string, method: string): boolean {
 }
 
 /**
- * Check if a user has the "rep" role in their app_metadata.
- * Rep users must not access admin pages or admin API routes.
+ * Check if a user is a rep-only user (not an admin).
+ *
+ * The platform supports dual-role users — the same person can be both an admin
+ * and a rep (e.g., platform owner testing rep features with their own email).
+ *
+ * Role flags in app_metadata (additive, shallow-merged by Supabase):
+ * - is_admin: true — set when user logs in via /api/auth/login (admin login)
+ * - is_rep: true   — set when user signs up or accepts invite as a rep
+ * - role: "rep"    — legacy flag (backward compat with older rep accounts)
+ *
+ * is_admin always wins: a user who is both admin and rep can access admin.
  */
 function isRepUser(user: { app_metadata?: Record<string, unknown> }): boolean {
-  return user.app_metadata?.role === "rep";
+  const meta = user.app_metadata;
+  if (!meta) return false;
+  // Admin flag always wins — dual-role users can access admin
+  if (meta.is_admin === true) return false;
+  // Check for rep markers (new-style is_rep flag or legacy role field)
+  return meta.is_rep === true || meta.role === "rep";
 }
 
 /**

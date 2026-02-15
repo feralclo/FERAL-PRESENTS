@@ -73,7 +73,12 @@ function isProtectedRepPage(pathname: string): boolean {
 }
 
 function isRepUser(user: { app_metadata?: Record<string, unknown> }): boolean {
-  return user.app_metadata?.role === "rep";
+  const meta = user.app_metadata;
+  if (!meta) return false;
+  // Admin flag always wins — dual-role users can access admin
+  if (meta.is_admin === true) return false;
+  // Check for rep markers (new-style is_rep flag or legacy role field)
+  return meta.is_rep === true || meta.role === "rep";
 }
 
 describe("Route classification", () => {
@@ -301,14 +306,51 @@ describe("Rep page protection", () => {
 });
 
 describe("Rep user detection", () => {
-  it("identifies rep users by app_metadata.role", () => {
+  it("identifies rep users by legacy app_metadata.role", () => {
     expect(isRepUser({ app_metadata: { role: "rep" } })).toBe(true);
+  });
+
+  it("identifies rep users by new is_rep flag", () => {
+    expect(isRepUser({ app_metadata: { is_rep: true } })).toBe(true);
   });
 
   it("does NOT flag admin users as rep users", () => {
     expect(isRepUser({ app_metadata: { role: "admin" } })).toBe(false);
     expect(isRepUser({ app_metadata: {} })).toBe(false);
     expect(isRepUser({})).toBe(false);
+  });
+
+  it("does NOT flag users with no metadata as rep users", () => {
+    expect(isRepUser({ app_metadata: undefined })).toBe(false);
+    expect(isRepUser({})).toBe(false);
+  });
+});
+
+describe("Dual-role user detection (admin + rep)", () => {
+  it("allows admin+rep dual-role user to access admin (is_admin wins)", () => {
+    // User has both flags — is_admin always takes precedence
+    expect(isRepUser({ app_metadata: { is_admin: true, is_rep: true } })).toBe(false);
+  });
+
+  it("allows admin+rep dual-role user with legacy role field", () => {
+    // User has is_admin + legacy role: "rep" — is_admin still wins
+    expect(isRepUser({ app_metadata: { is_admin: true, role: "rep" } })).toBe(false);
+  });
+
+  it("blocks rep-only user (is_rep without is_admin)", () => {
+    expect(isRepUser({ app_metadata: { is_rep: true } })).toBe(true);
+  });
+
+  it("blocks rep-only user with legacy role field (role without is_admin)", () => {
+    expect(isRepUser({ app_metadata: { role: "rep" } })).toBe(true);
+  });
+
+  it("allows admin-only user (is_admin without is_rep)", () => {
+    expect(isRepUser({ app_metadata: { is_admin: true } })).toBe(false);
+  });
+
+  it("allows user with no role flags (dashboard-created admin)", () => {
+    expect(isRepUser({ app_metadata: {} })).toBe(false);
   });
 });
 
@@ -363,7 +405,7 @@ describe("requireAuth", () => {
     expect(result.error!.status).toBe(401);
   });
 
-  it("returns 403 when user is a rep (not admin)", async () => {
+  it("returns 403 when user is a rep-only (legacy role field)", async () => {
     const { getSupabaseServer } = await import("@/lib/supabase/server");
     vi.mocked(getSupabaseServer).mockResolvedValue({
       auth: {
@@ -386,6 +428,79 @@ describe("requireAuth", () => {
     expect(result.user).toBeNull();
     expect(result.error).not.toBeNull();
     expect(result.error!.status).toBe(403);
+  });
+
+  it("returns 403 when user is a rep-only (new is_rep flag)", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "rep-user-2",
+              email: "rep2@feral.com",
+              app_metadata: { is_rep: true },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requireAuth } = await import("@/lib/auth");
+    const result = await requireAuth();
+
+    expect(result.user).toBeNull();
+    expect(result.error).not.toBeNull();
+    expect(result.error!.status).toBe(403);
+  });
+
+  it("allows dual-role user (is_admin + is_rep) to access admin", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "dual-user-1",
+              email: "boss@feral.com",
+              app_metadata: { is_admin: true, is_rep: true },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requireAuth } = await import("@/lib/auth");
+    const result = await requireAuth();
+
+    expect(result.error).toBeNull();
+    expect(result.user).toEqual({ id: "dual-user-1", email: "boss@feral.com" });
+  });
+
+  it("allows dual-role user (is_admin + legacy role:rep) to access admin", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "dual-user-2",
+              email: "boss2@feral.com",
+              app_metadata: { is_admin: true, role: "rep" },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requireAuth } = await import("@/lib/auth");
+    const result = await requireAuth();
+
+    expect(result.error).toBeNull();
+    expect(result.user).toEqual({ id: "dual-user-2", email: "boss2@feral.com" });
   });
 
   it("returns 503 when Supabase is not configured", async () => {

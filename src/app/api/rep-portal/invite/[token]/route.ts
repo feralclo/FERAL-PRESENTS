@@ -217,7 +217,7 @@ export async function POST(
           email: finalEmail,
           password,
           email_confirm: true,
-          app_metadata: { role: "rep" },
+          app_metadata: { is_rep: true },
         });
       if (adminError) {
         if (
@@ -232,9 +232,11 @@ export async function POST(
           );
           if (existingUser) {
             // Update the existing auth user's password so the new invite's password works
+            // Use is_rep: true (additive flag) — Supabase shallow-merges app_metadata,
+            // so this won't overwrite existing flags like is_admin on admin users.
             const { error: updateErr } = await adminClient.auth.admin.updateUserById(
               existingUser.id,
-              { password, email_confirm: true, app_metadata: { role: "rep" } }
+              { password, email_confirm: true, app_metadata: { is_rep: true } }
             );
             if (updateErr) {
               console.error("[rep-portal/invite] Failed to update existing auth user:", updateErr);

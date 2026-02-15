@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
           email: finalEmail,
           password,
           email_confirm: true,
-          app_metadata: { role: "rep" },
+          app_metadata: { is_rep: true },
         });
       if (adminError) {
         if (

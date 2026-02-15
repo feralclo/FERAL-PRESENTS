@@ -62,10 +62,14 @@ export async function requireAuth(): Promise<
       };
     }
 
-    // Block rep users from admin API routes — they must use rep-portal routes.
+    // Block rep-only users from admin API routes — they must use rep-portal routes.
     // This is defense-in-depth: the middleware also blocks rep users from admin
     // routes, but we check here too in case the middleware is bypassed.
-    if (user.app_metadata?.role === "rep") {
+    // Dual-role users (is_admin + is_rep) are allowed — is_admin always wins.
+    const meta = user.app_metadata;
+    const hasRepFlag = meta?.is_rep === true || meta?.role === "rep";
+    const hasAdminFlag = meta?.is_admin === true;
+    if (hasRepFlag && !hasAdminFlag) {
       return {
         user: null,
         error: NextResponse.json(

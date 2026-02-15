@@ -80,6 +80,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (Number(threshold_value) <= 0) {
+      return NextResponse.json(
+        { error: "threshold_value must be a positive number" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return NextResponse.json(

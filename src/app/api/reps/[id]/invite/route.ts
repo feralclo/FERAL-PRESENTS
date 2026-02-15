@@ -47,7 +47,7 @@ export async function POST(
     const invite_token = crypto.randomUUID();
 
     // Update rep with new invite token
-    await supabase
+    const { error: updateError } = await supabase
       .from(TABLES.REPS)
       .update({
         invite_token,
@@ -55,6 +55,14 @@ export async function POST(
       })
       .eq("id", id)
       .eq("org_id", ORG_ID);
+
+    if (updateError) {
+      console.error("[POST /api/reps/[id]/invite] Update error:", updateError);
+      return NextResponse.json(
+        { error: "Failed to generate invite" },
+        { status: 500 }
+      );
+    }
 
     // Create a discount code for this rep (with collision retry)
     const discount = await createRepDiscountCode({

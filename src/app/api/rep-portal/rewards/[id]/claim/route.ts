@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
-import { deductPoints } from "@/lib/rep-points";
+import { deductPoints, awardPoints } from "@/lib/rep-points";
 
 /**
  * POST /api/rep-portal/rewards/[id]/claim — Claim a points_shop reward (protected)
@@ -154,12 +154,20 @@ export async function POST(
 
     if (claimError) {
       console.error("[rep-portal/rewards/claim] Insert error:", claimError);
-      // Points were already deducted — log for manual reconciliation
+      // Refund the deducted points automatically
       console.error(
-        `[rep-portal/rewards/claim] CRITICAL: Points deducted (${pointsCost}) but claim row failed for rep=${repId} reward=${rewardId}`
+        `[rep-portal/rewards/claim] Claim insert failed, refunding ${pointsCost} points for rep=${repId} reward=${rewardId}`
       );
+      await awardPoints({
+        repId,
+        orgId: ORG_ID,
+        points: pointsCost,
+        sourceType: "reward_spend",
+        sourceId: rewardId,
+        description: `Refund: claim failed for reward ${reward.name}`,
+      });
       return NextResponse.json(
-        { error: "Failed to create claim. Please contact support." },
+        { error: "Failed to create claim. Your points have been refunded." },
         { status: 500 }
       );
     }

@@ -636,6 +636,7 @@ function RewardsTab() {
   const [customValue, setCustomValue] = useState("");
   const [totalAvailable, setTotalAvailable] = useState("");
   const [productId, setProductId] = useState("");
+  const [rewardStatus, setRewardStatus] = useState<"active" | "archived">("active");
 
   // Milestones
   const [showMilestone, setShowMilestone] = useState<string | null>(null);
@@ -690,6 +691,7 @@ function RewardsTab() {
     setCustomValue("");
     setTotalAvailable("");
     setProductId("");
+    setRewardStatus("active");
     setSaveError("");
     setShowDialog(true);
   };
@@ -704,6 +706,7 @@ function RewardsTab() {
     setCustomValue(r.custom_value || "");
     setTotalAvailable(r.total_available != null ? String(r.total_available) : "");
     setProductId(r.product_id || "");
+    setRewardStatus(r.status === "archived" ? "archived" : "active");
     setSaveError("");
     setShowDialog(true);
   };
@@ -721,6 +724,7 @@ function RewardsTab() {
       custom_value: customValue.trim() || null,
       total_available: totalAvailable ? Number(totalAvailable) : null,
       product_id: productId || null,
+      ...(editId ? { status: rewardStatus } : {}),
     };
     try {
       const url = editId ? `/api/reps/rewards/${editId}` : "/api/reps/rewards";
@@ -937,6 +941,19 @@ function RewardsTab() {
                 <Input type="number" value={totalAvailable} onChange={(e) => setTotalAvailable(e.target.value)} placeholder="Unlimited" min="1" />
               </div>
             </div>
+            {editId && (
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <select
+                  value={rewardStatus}
+                  onChange={(e) => setRewardStatus(e.target.value as "active" | "archived")}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            )}
           </div>
           {saveError && (
             <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
@@ -1065,6 +1082,8 @@ function QuestsTab() {
   const [submissions, setSubmissions] = useState<RepQuestSubmission[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const loadQuests = useCallback(async () => {
     setLoading(true);
@@ -1343,13 +1362,34 @@ function QuestsTab() {
                     {sub.proof_type === "text" && sub.proof_text && <p className="text-sm text-foreground">{sub.proof_text}</p>}
                   </div>
                   {sub.status === "pending" && (
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id}>
-                        {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Approve
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleReview(sub.id, "rejected")} disabled={reviewingId === sub.id}>
-                        <X size={12} /> Reject
-                      </Button>
+                    <div className="space-y-2">
+                      {rejectingId === sub.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            placeholder="Reason for rejection..."
+                            className="text-sm min-h-[60px]"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="destructive" disabled={!rejectReason.trim() || reviewingId === sub.id}
+                              onClick={() => { handleReview(sub.id, "rejected", rejectReason.trim()); setRejectingId(null); setRejectReason(""); }}>
+                              {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Confirm Reject
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancel</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id}>
+                            {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Approve
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setRejectingId(sub.id)} disabled={reviewingId === sub.id}>
+                            <X size={12} /> Reject
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                   {sub.rejection_reason && <p className="mt-2 text-xs text-destructive">Reason: {sub.rejection_reason}</p>}

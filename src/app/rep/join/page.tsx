@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 /* ── Boot sequence lines ── */
 const BOOT_LINES = [
@@ -142,6 +143,18 @@ export default function RepJoinPage() {
         return;
       }
       setPhase("done");
+      // Auto-login with browser-side Supabase client
+      try {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          await supabase.auth.signInWithPassword({
+            email: email.toLowerCase().trim(),
+            password,
+          });
+        }
+      } catch { /* login will happen manually if auto-login fails */ }
+      // Auto-redirect to dashboard
+      setTimeout(() => router.push("/rep"), 2500);
     } catch {
       setError("Connection lost. Try again.");
       setPhase("review");
@@ -225,7 +238,7 @@ export default function RepJoinPage() {
             We&apos;ll review your application and get back to you. Check your email for updates.
           </p>
           <button
-            onClick={() => router.push("/rep/login")}
+            onClick={() => router.push("/rep")}
             className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
           >
             Go to Login

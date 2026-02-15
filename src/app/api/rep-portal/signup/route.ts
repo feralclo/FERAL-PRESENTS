@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
 import { getRepSettings } from "@/lib/rep-points";
 import { sendRepEmail } from "@/lib/rep-emails";
 
@@ -67,27 +68,57 @@ export async function POST(request: NextRequest) {
     // Get program settings to check auto_approve
     const settings = await getRepSettings(ORG_ID);
 
-    // Create Supabase auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email.toLowerCase().trim(),
-      password,
-    });
+    // Create Supabase auth user — use admin API if service role key available
+    const finalEmail = email.toLowerCase().trim();
+    let authUserId: string | null = null;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (authError) {
-      // Handle duplicate auth user
-      if (authError.message?.includes("already registered")) {
+    if (serviceRoleKey && SUPABASE_URL) {
+      const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
+      const { data: adminAuth, error: adminError } =
+        await adminClient.auth.admin.createUser({
+          email: finalEmail,
+          password,
+          email_confirm: true,
+        });
+      if (adminError) {
+        if (
+          adminError.message?.includes("already registered") ||
+          adminError.message?.includes("already been registered")
+        ) {
+          return NextResponse.json(
+            { error: "An account with this email already exists" },
+            { status: 409 }
+          );
+        }
         return NextResponse.json(
-          { error: "An account with this email already exists" },
-          { status: 409 }
+          { error: adminError.message },
+          { status: 400 }
         );
       }
-      return NextResponse.json(
-        { error: authError.message },
-        { status: 400 }
-      );
+      authUserId = adminAuth.user?.id || null;
+    } else {
+      const { data: authData, error: authError } =
+        await supabase.auth.signUp({
+          email: finalEmail,
+          password,
+        });
+      if (authError) {
+        if (authError.message?.includes("already registered")) {
+          return NextResponse.json(
+            { error: "An account with this email already exists" },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json(
+          { error: authError.message },
+          { status: 400 }
+        );
+      }
+      authUserId = authData.user?.id || null;
     }
 
-    if (!authData.user) {
+    if (!authUserId) {
       return NextResponse.json(
         { error: "Failed to create auth user" },
         { status: 500 }
@@ -102,7 +133,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.REPS)
       .insert({
         org_id: ORG_ID,
-        auth_user_id: authData.user.id,
+        auth_user_id: authUserId,
         status,
         email: email.toLowerCase().trim(),
         first_name: first_name.trim(),

@@ -41,7 +41,12 @@ export default function RepRewardsPage() {
           fetch("/api/rep-portal/rewards"),
           fetch("/api/rep-portal/me"),
         ]);
-        if (!rewardsRes.ok) { setError("Failed to load rewards"); setLoading(false); return; }
+        if (!rewardsRes.ok) {
+          const errJson = await rewardsRes.json().catch(() => null);
+          setError(errJson?.error || "Failed to load rewards (" + rewardsRes.status + ")");
+          setLoading(false);
+          return;
+        }
         const rewardsJson = await rewardsRes.json();
         const meJson = meRes.ok ? await meRes.json() : { data: null };
         if (rewardsJson.data) setRewards(rewardsJson.data);

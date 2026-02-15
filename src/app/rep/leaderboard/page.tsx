@@ -33,7 +33,12 @@ export default function RepLeaderboardPage() {
     (async () => {
       try {
         const res = await fetch("/api/rep-portal/leaderboard");
-        if (!res.ok) { setError("Failed to load leaderboard"); setLoading(false); return; }
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          setError(errJson?.error || "Failed to load leaderboard (" + res.status + ")");
+          setLoading(false);
+          return;
+        }
         const json = await res.json();
         if (json.data) {
           setEntries(json.data.leaderboard || []);

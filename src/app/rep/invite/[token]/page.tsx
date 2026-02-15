@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 
 /* ── Gender options ── */
@@ -39,6 +40,7 @@ export default function RepInvitePage() {
 
   /* ── Form ── */
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [instagram, setInstagram] = useState("");
   const [tiktok, setTiktok] = useState("");
   const [dob, setDob] = useState("");
@@ -67,6 +69,11 @@ export default function RepInvitePage() {
 
         if (json.valid) {
           setRepInfo(json.rep);
+          // Pre-fill email if it's a real one (not a placeholder)
+          const repEmail = json.rep?.email || "";
+          if (repEmail && !repEmail.endsWith("@pending.entry")) {
+            setEmail(repEmail);
+          }
           setPhase("granted");
           // Auto-advance to quiz after 2s
           setTimeout(() => { if (!cancelled) setPhase("quiz"); }, 2000);
@@ -108,7 +115,7 @@ export default function RepInvitePage() {
 
   const canAdvance = (): boolean => {
     switch (step) {
-      case 0: return password.length >= 6;
+      case 0: return email.includes("@") && email.length > 3 && password.length >= 6;
       case 1: return true; // instagram optional
       case 2: return true; // tiktok optional
       case 3: return true; // dob optional
@@ -133,6 +140,7 @@ export default function RepInvitePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          email: email.trim().toLowerCase(),
           password,
           instagram: instagram.trim() || undefined,
           tiktok: tiktok.trim() || undefined,
@@ -147,6 +155,18 @@ export default function RepInvitePage() {
         return;
       }
       setPhase("done");
+      // Auto-login with browser-side Supabase client
+      try {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          await supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password,
+          });
+        }
+      } catch { /* login will happen manually if auto-login fails */ }
+      // Auto-redirect to dashboard after celebration
+      setTimeout(() => router.push("/rep"), 2500);
     } catch {
       setError("Connection lost. Try again.");
       setPhase("quiz");
@@ -247,11 +267,12 @@ export default function RepInvitePage() {
             Your account is live and your discount code is ready. Time to start earning.
           </p>
           <button
-            onClick={() => router.push("/rep/login")}
+            onClick={() => router.push("/rep")}
             className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
           >
             Go to Dashboard
           </button>
+          <p className="mt-4 text-xs text-[var(--rep-text-muted)]">Redirecting automatically...</p>
         </div>
       </div>
     );
@@ -262,24 +283,46 @@ export default function RepInvitePage() {
      ══════════════════════════════════════════════════════════════════ */
   const renderStepContent = () => {
     switch (step) {
-      /* ── 0: Password ── */
+      /* ── 0: Email + Password ── */
       case 0:
         return (
           <>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Set your passcode
+              Set up your login
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">Minimum 6 characters</p>
-            <input
-              ref={inputRef}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="rep-input"
-              placeholder="••••••"
-              autoComplete="new-password"
-            />
+            <p className="text-sm text-[var(--rep-text-muted)] mb-6">
+              This is what you&apos;ll use to sign in
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-[2px] text-[var(--rep-text-muted)] mb-2 block">
+                  Email
+                </label>
+                <input
+                  ref={inputRef}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="rep-input"
+                  placeholder="your@email.com"
+                  autoComplete="email"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-[2px] text-[var(--rep-text-muted)] mb-2 block">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="rep-input"
+                  placeholder="Min 6 characters"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
           </>
         );
 

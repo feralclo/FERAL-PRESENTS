@@ -183,6 +183,7 @@ function TeamTab() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteStep, setInviteStep] = useState<"name" | "result">("name");
   const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteResult, setInviteResult] = useState<{
     invite_url: string;
@@ -225,19 +226,18 @@ function TeamTab() {
   useEffect(() => { loadStats(); }, [loadStats]);
 
   const handleInviteRep = async () => {
-    if (!inviteFirstName.trim()) return;
+    if (!inviteFirstName.trim() || !inviteEmail.trim()) return;
     setInviting(true);
     setInviteError("");
     try {
-      // Step 1: Create the rep with just a first name + generated placeholder email
-      const placeholder = `${inviteFirstName.trim().toLowerCase().replace(/\s+/g, "")}-${Date.now()}@pending.entry`;
+      // Step 1: Create the rep with their name and email
       const createRes = await fetch("/api/reps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           first_name: inviteFirstName.trim(),
           last_name: "",
-          email: placeholder,
+          email: inviteEmail.trim().toLowerCase(),
           status: "pending",
         }),
       });
@@ -332,6 +332,7 @@ function TeamTab() {
     setShowInvite(false);
     setInviteStep("name");
     setInviteFirstName("");
+    setInviteEmail("");
     setInviteResult(null);
     setInviteError("");
   };
@@ -443,7 +444,9 @@ function TeamTab() {
                           <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
                             {rep.display_name || `${rep.first_name} ${rep.last_name || ""}`.trim()}
                           </p>
-                          <p className="text-[11px] text-muted-foreground">{rep.email}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {rep.email?.endsWith("@pending.entry") ? "Invite pending" : rep.email}
+                          </p>
                         </div>
                       </div>
                     </Link>
@@ -520,10 +523,10 @@ function TeamTab() {
               <DialogHeader>
                 <DialogTitle>Invite a Rep</DialogTitle>
                 <DialogDescription>
-                  Enter their first name and we&apos;ll generate a personal invite link you can send them. They&apos;ll fill in the rest when they sign up.
+                  Enter their name and email. We&apos;ll generate a personal invite link you can send them.
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-4">
+              <div className="py-4 space-y-4">
                 <div className="space-y-2">
                   <Label>First Name</Label>
                   <Input
@@ -531,6 +534,15 @@ function TeamTab() {
                     onChange={(e) => setInviteFirstName(e.target.value)}
                     placeholder="e.g. Jordan"
                     autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="jordan@example.com"
                     onKeyDown={(e) => e.key === "Enter" && handleInviteRep()}
                   />
                 </div>
@@ -542,7 +554,7 @@ function TeamTab() {
               )}
               <DialogFooter>
                 <Button variant="outline" onClick={resetInviteDialog}>Cancel</Button>
-                <Button onClick={handleInviteRep} disabled={inviting || !inviteFirstName.trim()}>
+                <Button onClick={handleInviteRep} disabled={inviting || !inviteFirstName.trim() || !inviteEmail.trim() || !inviteEmail.includes("@")}>
                   {inviting && <Loader2 size={14} className="animate-spin" />}
                   {inviting ? "Generating..." : "Generate Invite Link"}
                 </Button>

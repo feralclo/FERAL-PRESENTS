@@ -35,7 +35,12 @@ export default function RepQuestsPage() {
     (async () => {
       try {
         const res = await fetch("/api/rep-portal/quests");
-        if (!res.ok) { setError("Failed to load quests"); setLoading(false); return; }
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          setError(errJson?.error || "Failed to load quests (" + res.status + ")");
+          setLoading(false);
+          return;
+        }
         const json = await res.json();
         if (json.data) setQuests(json.data);
       } catch { setError("Failed to load quests — check your connection"); }

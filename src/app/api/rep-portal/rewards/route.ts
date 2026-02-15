@@ -136,8 +136,14 @@ export async function GET() {
         }
       );
 
+      // Use product image as fallback if reward has no direct image
+      const product = reward.product as Record<string, unknown> | null;
+      const productImages = (product?.images ?? []) as string[];
+      const imageUrl = (reward.image_url as string) || productImages[0] || null;
+
       return {
         ...reward,
+        image_url: imageUrl,
         milestones: rewardType === "milestone" ? milestonesWithProgress : [],
         my_claims: rewardClaims,
         can_purchase:

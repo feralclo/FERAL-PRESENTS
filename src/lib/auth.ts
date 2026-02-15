@@ -106,6 +106,12 @@ export async function requireRepAuth(): Promise<
       .single();
 
     if (repErr || !rep) {
+      console.error("[requireRepAuth] Rep lookup failed:", {
+        authUserId: user.id,
+        authEmail: user.email,
+        orgId: ORG_ID,
+        repErr: repErr?.message,
+      });
       return {
         rep: null,
         error: NextResponse.json(

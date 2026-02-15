@@ -48,7 +48,13 @@ export default function RepDashboardPage() {
           fetch("/api/rep-portal/dashboard"),
           fetch("/api/rep-portal/discount"),
         ]);
-        if (!dashRes.ok) { setError("Failed to load dashboard"); setLoading(false); return; }
+        if (!dashRes.ok) {
+          const errJson = await dashRes.json().catch(() => null);
+          const msg = errJson?.error || `Failed to load dashboard (${dashRes.status})`;
+          setError(msg);
+          setLoading(false);
+          return;
+        }
         const dashJson = await dashRes.json();
         const discountJson = discountRes.ok ? await discountRes.json() : { data: [] };
 

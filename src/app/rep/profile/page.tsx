@@ -48,7 +48,12 @@ export default function RepProfilePage() {
           fetch("/api/rep-portal/me"),
           fetch("/api/rep-portal/discount"),
         ]);
-        if (!meRes.ok) { setError("Failed to load profile"); setLoading(false); return; }
+        if (!meRes.ok) {
+          const errJson = await meRes.json().catch(() => null);
+          setError(errJson?.error || "Failed to load profile (" + meRes.status + ")");
+          setLoading(false);
+          return;
+        }
         const meJson = await meRes.json();
         const discJson = discRes.ok ? await discRes.json() : { data: [] };
 
@@ -88,7 +93,8 @@ export default function RepProfilePage() {
         setError("");
         setTimeout(() => setSaved(false), 2000);
       } else {
-        setError("Failed to save profile");
+        const errJson = await res.json().catch(() => null);
+        setError(errJson?.error || "Failed to save profile (" + res.status + ")");
       }
     } catch { setError("Failed to save profile — check your connection"); }
     setSaving(false);

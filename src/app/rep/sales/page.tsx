@@ -22,7 +22,12 @@ export default function RepSalesPage() {
     (async () => {
       try {
         const res = await fetch("/api/rep-portal/sales");
-        if (!res.ok) { setError("Failed to load sales"); setLoading(false); return; }
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          setError(errJson?.error || "Failed to load sales (" + res.status + ")");
+          setLoading(false);
+          return;
+        }
         const json = await res.json();
         if (json.data) setSales(json.data);
       } catch { setError("Failed to load sales — check your connection"); }

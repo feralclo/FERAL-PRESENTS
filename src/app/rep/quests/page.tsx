@@ -30,6 +30,8 @@ export default function RepQuestsPage() {
   const [proofText, setProofText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -48,8 +50,36 @@ export default function RepQuestsPage() {
     })();
   }, [loadKey]);
 
+  const handleFileUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64, key: `quest-proof-${Date.now()}` }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const mediaUrl = `/api/media/${json.key}`;
+        setUploadedUrl(mediaUrl);
+        setProofText(mediaUrl);
+      } else {
+        setError("Failed to upload image");
+      }
+    } catch { setError("Failed to upload image — check your connection"); }
+    setUploading(false);
+  };
+
   const handleSubmit = async () => {
-    if (!submitQuestId || !proofText.trim()) return;
+    if (!submitQuestId) return;
+    const proofValue = proofType === "screenshot" ? (uploadedUrl || proofText.trim()) : proofText.trim();
+    if (!proofValue) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/rep-portal/quests/${submitQuestId}/submit`, {
@@ -57,8 +87,8 @@ export default function RepQuestsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           proof_type: proofType,
-          proof_text: proofText.trim(),
-          proof_url: proofType === "screenshot" ? proofText.trim() : undefined,
+          proof_text: proofValue,
+          proof_url: proofType === "screenshot" || proofType === "url" ? proofValue : undefined,
         }),
       });
       if (res.ok) {
@@ -264,12 +294,54 @@ export default function RepQuestsPage() {
                     rows={4}
                     autoFocus
                   />
+                ) : proofType === "screenshot" ? (
+                  <div className="space-y-3">
+                    {uploadedUrl ? (
+                      <div className="relative rounded-xl overflow-hidden border border-[var(--rep-border)]">
+                        <img src={uploadedUrl} alt="Proof" className="w-full max-h-48 object-contain bg-[var(--rep-surface)]" />
+                        <button
+                          onClick={() => { setUploadedUrl(""); setProofText(""); }}
+                          className="absolute top-2 right-2 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[var(--rep-border)] bg-[var(--rep-surface)] py-8 cursor-pointer transition-colors hover:border-[var(--rep-accent)]/50 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+                        {uploading ? (
+                          <Loader2 size={20} className="animate-spin text-[var(--rep-accent)]" />
+                        ) : (
+                          <Upload size={20} className="text-[var(--rep-text-muted)]" />
+                        )}
+                        <span className="text-xs text-[var(--rep-text-muted)]">
+                          {uploading ? "Uploading..." : "Tap to upload a screenshot"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file);
+                          }}
+                        />
+                      </label>
+                    )}
+                    <p className="text-[10px] text-center text-[var(--rep-text-muted)]">or paste a URL</p>
+                    <input
+                      value={uploadedUrl ? "" : proofText}
+                      onChange={(e) => { setProofText(e.target.value); setUploadedUrl(""); }}
+                      className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
+                      placeholder="Paste screenshot URL..."
+                      disabled={!!uploadedUrl}
+                    />
+                  </div>
                 ) : (
                   <input
                     value={proofText}
                     onChange={(e) => setProofText(e.target.value)}
                     className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
-                    placeholder={proofType === "url" ? "Paste the URL..." : "Paste screenshot URL..."}
+                    placeholder="Paste the URL..."
                     autoFocus
                   />
                 )}

@@ -1214,10 +1214,10 @@ function SinglePageCheckoutForm({
             disabled={processing || !isReady || !stripe}
           >
             {processing
-              ? "Processing..."
+              ? "Processing\u2026"
               : paymentMethod === "klarna"
-                ? "CONTINUE TO KLARNA"
-                : "PAY NOW"}
+                ? "Continue to Klarna"
+                : `Pay ${symbol}${totalAmount.toFixed(2)}`}
           </button>
 
           {/* Trust Signal */}
@@ -1244,7 +1244,7 @@ function SinglePageCheckoutForm({
                 strokeLinecap="round"
               />
             </svg>
-            <span>Secured by Stripe. Your payment details are encrypted.</span>
+            <span>Secured by Stripe &middot; End-to-end encrypted</span>
           </div>
         </form>
       </div>

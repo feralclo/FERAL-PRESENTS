@@ -129,8 +129,8 @@ function PaymentForm({
         disabled={processing || !ready || !stripe}
       >
         {processing
-          ? "Processing..."
-          : `PAY ${symbol}${subtotal.toFixed(2)}`}
+          ? "Processing\u2026"
+          : `Pay ${symbol}${subtotal.toFixed(2)}`}
       </button>
 
       <button
@@ -139,7 +139,7 @@ function PaymentForm({
         onClick={onBack}
         disabled={processing}
       >
-        &larr; Edit Details
+        &larr; Edit details
       </button>
     </form>
   );

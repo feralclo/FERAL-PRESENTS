@@ -175,7 +175,10 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // ── Admin pages ──
-  // Require authentication AND block rep users from admin pages.
+  // Require authentication. Role-based access is enforced at the API level
+  // by requireAuth() in each admin route handler — not here.
+  // This prevents dual-role users (same email for admin + rep) from being
+  // locked out due to stale or incorrectly set app_metadata flags.
   if (isProtectedAdminPage(pathname)) {
     if (!user) {
       const loginUrl = request.nextUrl.clone();
@@ -183,13 +186,6 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set("redirect", pathname);
       const redirectResponse = NextResponse.redirect(loginUrl);
       return applySecurityHeaders(redirectResponse);
-    }
-    // Block rep users from the admin dashboard — they belong in /rep/
-    if (isRepUser(user)) {
-      const repUrl = request.nextUrl.clone();
-      repUrl.pathname = "/rep/";
-      repUrl.search = "";
-      return applySecurityHeaders(NextResponse.redirect(repUrl));
     }
   }
 
@@ -206,19 +202,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Admin API routes ──
-  // Require authentication AND block rep users.
+  // Require authentication. Role-based access is enforced by requireAuth()
+  // in each route handler (defense-in-depth).
   if (isAdminApiRoute(pathname, method)) {
     if (!user) {
       const errorResponse = NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
-      );
-      return applySecurityHeaders(errorResponse);
-    }
-    if (isRepUser(user)) {
-      const errorResponse = NextResponse.json(
-        { error: "Admin access required" },
-        { status: 403 }
       );
       return applySecurityHeaders(errorResponse);
     }

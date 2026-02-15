@@ -59,6 +59,15 @@ function LoginForm() {
       return;
     }
 
+    // Tag this user as admin via the login API (sets is_admin flag in app_metadata).
+    // This is best-effort — the dashboard works regardless, but the flag helps
+    // distinguish admin users from rep-only users for future role checks.
+    fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }).catch(() => {});
+
     // Redirect to the intended page or admin dashboard
     const redirect = searchParams.get("redirect") || "/admin/";
     router.replace(redirect);

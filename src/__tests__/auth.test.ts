@@ -405,7 +405,11 @@ describe("requireAuth", () => {
     expect(result.error!.status).toBe(401);
   });
 
-  it("returns 403 when user is a rep-only (legacy role field)", async () => {
+  it("allows user with legacy role:rep (requireAuth only checks is_rep flag)", async () => {
+    // Users with the old-style role:"rep" are NOT blocked by requireAuth().
+    // This is intentional — dual-role users (admin + rep with same email) may
+    // have this field set from the rep signup flow. The new is_rep flag is the
+    // only field that blocks admin access.
     const { getSupabaseServer } = await import("@/lib/supabase/server");
     vi.mocked(getSupabaseServer).mockResolvedValue({
       auth: {
@@ -425,9 +429,9 @@ describe("requireAuth", () => {
     const { requireAuth } = await import("@/lib/auth");
     const result = await requireAuth();
 
-    expect(result.user).toBeNull();
-    expect(result.error).not.toBeNull();
-    expect(result.error!.status).toBe(403);
+    // Legacy role:"rep" is allowed through — only is_rep: true blocks
+    expect(result.error).toBeNull();
+    expect(result.user).toEqual({ id: "rep-user-1", email: "rep@feral.com" });
   });
 
   it("returns 403 when user is a rep-only (new is_rep flag)", async () => {

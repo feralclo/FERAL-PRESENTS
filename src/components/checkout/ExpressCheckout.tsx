@@ -167,7 +167,7 @@ function ExpressCheckoutInner({
             applePay: "white-outline",
             googlePay: "white",
           },
-          buttonHeight: 44,
+          buttonHeight: 48,
           layout: {
             maxColumns: 2,
             maxRows: 1,
@@ -240,7 +240,7 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
       variables: {
         colorPrimary: "#ffffff",
         colorBackground: "#0e0e0e",
-        borderRadius: "8px",
+        borderRadius: "24px",
       },
     },
   };

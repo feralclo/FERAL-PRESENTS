@@ -115,7 +115,7 @@ export default function RepInvitePage() {
 
   const canAdvance = (): boolean => {
     switch (step) {
-      case 0: return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && password.length >= 6;
+      case 0: return email.trim().length > 0 && password.length >= 6;
       case 1: return true; // instagram optional
       case 2: return true; // tiktok optional
       case 3: return true; // dob optional
@@ -155,11 +155,13 @@ export default function RepInvitePage() {
       }
       setPhase("done");
       // Auto-login with browser-side Supabase client
+      // Use the email returned by the server (the actual auth email) — NOT the form field
+      const loginEmail = json.data?.email || email.trim().toLowerCase();
       try {
         const supabase = getSupabaseClient();
         if (supabase) {
           await supabase.auth.signInWithPassword({
-            email: email.trim().toLowerCase(),
+            email: loginEmail,
             password,
           });
         }
@@ -298,20 +300,22 @@ export default function RepInvitePage() {
                   Email
                 </label>
                 <input
-                  ref={inputRef}
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="rep-input"
-                  placeholder="your@email.com"
+                  readOnly
+                  className="rep-input opacity-60 cursor-not-allowed"
                   autoComplete="email"
                 />
+                <p className="text-[10px] text-[var(--rep-text-muted)] mt-1.5">
+                  This is the email your invite was sent to
+                </p>
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-[2px] text-[var(--rep-text-muted)] mb-2 block">
                   Password
                 </label>
                 <input
+                  ref={inputRef}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

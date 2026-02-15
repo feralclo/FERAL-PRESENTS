@@ -239,7 +239,7 @@ export const DEFAULT_REP_PROGRAM_SETTINGS: RepProgramSettings = {
   max_events_per_rep: null,
   welcome_message: null,
   email_from_name: "Entry Reps",
-  email_from_address: "reps@updates.agencyferal.com",
+  email_from_address: "reps@feralpresents.com",
 };
 
 // ─── Dashboard Stats ─────────────────────────────────────────────────────────

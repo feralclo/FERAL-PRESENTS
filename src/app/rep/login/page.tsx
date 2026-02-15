@@ -34,6 +34,14 @@ function LoginForm() {
           router.replace(redirect);
           return;
         }
+
+        // User is logged in but not as a rep — sign out so they can
+        // log in with their rep credentials instead
+        const errJson = await res.json().catch(() => null);
+        const code = errJson?.code || "";
+        if (code === "rep_not_found") {
+          await supabase.auth.signOut();
+        }
       } catch { /* network error — fall through to show login */ }
 
       // Not a rep or account not active — show login form
@@ -75,13 +83,13 @@ function LoginForm() {
         await supabase.auth.signOut();
 
         if (code === "rep_pending") {
-          setError("Your application is being reviewed. You'll receive an email once approved.");
+          setError("Your application is being reviewed. You\u2019ll receive an email once approved.");
         } else if (code === "rep_suspended" || code === "rep_deactivated") {
           setError("Your account has been deactivated. Please contact support.");
         } else if (code === "rep_not_found") {
-          setError("No rep account found for this email. Did you use an invite link to sign up?");
+          setError("No rep account found for this email. If you were invited, check your email for the invite link and set up your account there first.");
         } else {
-          setError("No active rep account found for this email");
+          setError("Unable to access the rep dashboard with this account. Please check your email and try again.");
         }
         setLoading(false);
         return;

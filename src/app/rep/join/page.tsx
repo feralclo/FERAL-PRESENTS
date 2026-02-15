@@ -33,6 +33,7 @@ export default function RepJoinPage() {
   const [step, setStep] = useState(0);
   const [stepKey, setStepKey] = useState(0); // for re-triggering animations
   const [error, setError] = useState("");
+  const [repStatus, setRepStatus] = useState<"active" | "pending" | "">("");
 
   /* ── Boot ── */
   const [visibleLines, setVisibleLines] = useState(0);
@@ -142,19 +143,25 @@ export default function RepJoinPage() {
         setPhase("review");
         return;
       }
+      const status = json.data?.status || "pending";
+      setRepStatus(status);
       setPhase("done");
-      // Auto-login with browser-side Supabase client
-      try {
-        const supabase = getSupabaseClient();
-        if (supabase) {
-          await supabase.auth.signInWithPassword({
-            email: email.toLowerCase().trim(),
-            password,
-          });
-        }
-      } catch { /* login will happen manually if auto-login fails */ }
-      // Auto-redirect to dashboard
-      setTimeout(() => router.push("/rep"), 2500);
+
+      // Only auto-login and redirect if the rep was auto-approved (active)
+      if (status === "active") {
+        try {
+          const supabase = getSupabaseClient();
+          if (supabase) {
+            await supabase.auth.signInWithPassword({
+              email: email.toLowerCase().trim(),
+              password,
+            });
+          }
+        } catch { /* login will happen manually if auto-login fails */ }
+        // Auto-redirect to dashboard
+        setTimeout(() => router.push("/rep"), 2500);
+      }
+      // If pending, don't auto-login or redirect — show the "application sent" screen
     } catch {
       setError("Connection lost. Try again.");
       setPhase("review");
@@ -225,6 +232,7 @@ export default function RepJoinPage() {
      RENDER: DONE
      ══════════════════════════════════════════════════════════════════ */
   if (phase === "done") {
+    const isActive = repStatus === "active";
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-6">
         <div className="text-center max-w-sm rep-celebrate">
@@ -233,16 +241,23 @@ export default function RepJoinPage() {
               <path d="M20 6 9 17l-5-5" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Application Sent</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            {isActive ? "You\u2019re In" : "Application Sent"}
+          </h2>
           <p className="text-sm text-[var(--rep-text-muted)] leading-relaxed mb-8 max-w-[280px] mx-auto">
-            We&apos;ll review your application and get back to you. Check your email for updates.
+            {isActive
+              ? "Your account is live. Time to start earning."
+              : "We\u2019ll review your application and get back to you. Check your email for updates."}
           </p>
           <button
-            onClick={() => router.push("/rep")}
+            onClick={() => router.push(isActive ? "/rep" : "/rep/login")}
             className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
           >
-            Go to Login
+            {isActive ? "Go to Dashboard" : "Go to Login"}
           </button>
+          {isActive && (
+            <p className="mt-4 text-xs text-[var(--rep-text-muted)]">Redirecting automatically...</p>
+          )}
         </div>
       </div>
     );

@@ -106,6 +106,48 @@ export async function requireRepAuth(): Promise<
       .single();
 
     if (repErr || !rep) {
+      // Self-healing: if no rep found by auth_user_id, try matching by email.
+      // This handles cases where the invite accept updated the auth user but
+      // the rep row's auth_user_id wasn't saved (e.g., partial update failure).
+      // Only links if the rep has NO existing auth_user_id (prevents account takeover).
+      if (user.email) {
+        const { data: repByEmail } = await supabase
+          .from(TABLES.REPS)
+          .select("id, auth_user_id, email, org_id, status")
+          .eq("email", user.email.toLowerCase())
+          .eq("org_id", ORG_ID)
+          .is("auth_user_id", null)
+          .single();
+
+        if (repByEmail) {
+          // Auto-link this auth user to the rep row
+          console.warn("[requireRepAuth] Auto-linking rep by email:", {
+            repId: repByEmail.id,
+            authUserId: user.id,
+            email: user.email,
+          });
+          await supabase
+            .from(TABLES.REPS)
+            .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
+            .eq("id", repByEmail.id)
+            .eq("org_id", ORG_ID);
+
+          repByEmail.auth_user_id = user.id;
+
+          if (repByEmail.status !== "active") {
+            return {
+              rep: null,
+              error: NextResponse.json(
+                { error: "Your account is not active. Please contact support.", code: `rep_${repByEmail.status}` },
+                { status: 403 }
+              ),
+            };
+          }
+
+          return { rep: repByEmail, error: null };
+        }
+      }
+
       console.error("[requireRepAuth] Rep lookup failed:", {
         authUserId: user.id,
         authEmail: user.email,

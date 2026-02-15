@@ -57,10 +57,57 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (repError || !rep) {
+      // Self-healing: try matching by email if auth_user_id lookup fails.
+      // Only links if the rep has NO existing auth_user_id (prevents account takeover).
+      const userEmail = authData.user.email?.toLowerCase();
+      if (userEmail) {
+        const { data: repByEmail } = await supabase
+          .from(TABLES.REPS)
+          .select("id, auth_user_id, email, org_id, status, first_name, last_name, display_name, photo_url, level, points_balance, onboarding_completed")
+          .eq("email", userEmail)
+          .eq("org_id", ORG_ID)
+          .is("auth_user_id", null)
+          .single();
+
+        if (repByEmail) {
+          console.warn("[rep-portal/login] Auto-linking rep by email:", {
+            repId: repByEmail.id,
+            authUserId: authData.user.id,
+            email: userEmail,
+          });
+          await supabase
+            .from(TABLES.REPS)
+            .update({ auth_user_id: authData.user.id, updated_at: new Date().toISOString() })
+            .eq("id", repByEmail.id)
+            .eq("org_id", ORG_ID);
+
+          repByEmail.auth_user_id = authData.user.id;
+
+          if (repByEmail.status !== "active") {
+            await supabase.auth.signOut();
+            return NextResponse.json(
+              { error: "Your account is not active. Please contact support." },
+              { status: 403 }
+            );
+          }
+
+          return NextResponse.json({
+            data: {
+              session: {
+                access_token: authData.session.access_token,
+                refresh_token: authData.session.refresh_token,
+                expires_at: authData.session.expires_at,
+              },
+              rep: repByEmail,
+            },
+          });
+        }
+      }
+
       // Sign out the auth session since they don't have a rep account
       await supabase.auth.signOut();
       return NextResponse.json(
-        { error: "No rep account found for this email" },
+        { error: "No rep account found for this email", code: "rep_not_found" },
         { status: 403 }
       );
     }

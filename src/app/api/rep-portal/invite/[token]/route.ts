@@ -294,7 +294,7 @@ export async function POST(
     }).catch(() => {});
 
     return NextResponse.json({
-      data: { rep_id: rep.id, status: "active" },
+      data: { rep_id: rep.id, status: "active", email: finalEmail },
     });
   } catch (err) {
     console.error("[rep-portal/invite] POST error:", err);

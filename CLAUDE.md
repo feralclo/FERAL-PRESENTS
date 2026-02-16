@@ -301,13 +301,7 @@ EventPage [Server Component, force-dynamic]
 - Rep public: `signup`, `login`, `logout`, `verify-email`, `invite/[token]`
 - Auth: `login`, `logout`, `recover`
 
-**Security headers** (applied via middleware):
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: SAMEORIGIN`
-- `X-XSS-Protection: 1; mode=block`
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains` (production only)
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=*, interest-cohort=()`
+**Security headers** (applied via middleware): `nosniff`, `SAMEORIGIN`, `XSS-Protection`, HSTS (production), `strict-origin-when-cross-origin` referrer, restrictive permissions policy.
 
 **Rules for new routes:**
 1. Admin API routes: call `requireAuth()` at the top
@@ -413,19 +407,7 @@ This applies to all external services: Supabase, Stripe, Vercel, Resend, Klaviyo
 | GET | `/api/stripe/account` | Get connected Stripe account ID for checkout |
 
 ### Orders & Tickets
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET/POST | `/api/orders` | List (filter by event/status/date) / create (test mode) |
-| GET | `/api/orders/[id]` | Full order detail with customer, items, tickets |
-| POST | `/api/orders/[id]/refund` | Refund order → cancel tickets → update stats |
-| POST | `/api/orders/[id]/resend-email` | Resend order confirmation email |
-| GET | `/api/orders/[id]/pdf` | Generate PDF tickets with QR codes |
-| GET | `/api/orders/[id]/wallet/apple` | Download Apple Wallet pass |
-| GET | `/api/orders/[id]/wallet/google` | Get Google Wallet pass URL |
-| GET | `/api/orders/export` | Export CSV (one row per ticket) |
-| GET | `/api/tickets/[code]` | Validate ticket (scanner API) |
-| POST | `/api/tickets/[code]/scan` | Mark scanned (prevents double-scan) |
-| GET | `/api/tickets/[code]/merch` | Get merch details for a ticket |
+`/api/orders` (GET list, POST create), `/api/orders/[id]` (GET detail), `/api/orders/[id]/refund` (POST), `/api/orders/[id]/resend-email` (POST), `/api/orders/[id]/pdf` (GET), `/api/orders/[id]/wallet/apple|google` (GET), `/api/orders/export` (GET CSV), `/api/tickets/[code]` (GET validate), `/api/tickets/[code]/scan` (POST), `/api/tickets/[code]/merch` (GET)
 
 ### Standard CRUD Groups
 | Group | Routes | Operations |
@@ -461,19 +443,7 @@ This applies to all external services: Supabase, Stripe, Vercel, Resend, Klaviyo
 **Rep portal routes** (`/api/rep-portal/*`, 16 routes): signup, login, logout, verify-email, invite/[token], me, dashboard, sales, points, quests, quest submissions, rewards, reward claims, leaderboard, discount.
 
 ### Admin & Utilities
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET | `/api/admin/dashboard` | Dashboard KPI data |
-| GET | `/api/admin/orders-stats` | Order statistics |
-| POST/GET | `/api/auth/login`, `logout`, `recover` | Admin authentication |
-| POST | `/api/track` | Traffic/popup analytics |
-| POST | `/api/meta/capi` | Meta Conversions API |
-| POST | `/api/upload` | Image upload (base64 → media key) |
-| GET | `/api/media/[key]` | Serve uploaded images |
-| POST | `/api/email/test` | Send test email |
-| GET | `/api/email/status` | Email delivery status |
-| GET | `/api/wallet/status` | Wallet pass config status |
-| GET | `/api/health` | System health checks |
+`/api/admin/dashboard` (GET KPIs), `/api/admin/orders-stats` (GET), `/api/auth/login|logout|recover`, `/api/track` (POST analytics), `/api/meta/capi` (POST), `/api/upload` (POST base64 → media key), `/api/media/[key]` (GET), `/api/email/test|status`, `/api/wallet/status` (GET), `/api/health` (GET)
 
 ---
 
@@ -549,13 +519,8 @@ NEXT_PUBLIC_KLAVIYO_COMPANY_ID      # Klaviyo company ID (has hardcoded fallback
 
 ### Optional — Wallet Passes
 ```
-APPLE_PASS_CERTIFICATE              # Apple pass signing certificate (PEM)
-APPLE_PASS_CERTIFICATE_PASSWORD     # Certificate password
-APPLE_WWDR_CERTIFICATE              # Apple WWDR certificate
-APPLE_PASS_TYPE_IDENTIFIER          # Pass type ID
-APPLE_PASS_TEAM_IDENTIFIER          # Apple team ID
-GOOGLE_WALLET_SERVICE_ACCOUNT_KEY   # Google service account key (JSON)
-GOOGLE_WALLET_ISSUER_ID             # Google Wallet issuer ID
+APPLE_PASS_CERTIFICATE, APPLE_PASS_CERTIFICATE_PASSWORD, APPLE_WWDR_CERTIFICATE, APPLE_PASS_TYPE_IDENTIFIER, APPLE_PASS_TEAM_IDENTIFIER
+GOOGLE_WALLET_SERVICE_ACCOUNT_KEY, GOOGLE_WALLET_ISSUER_ID
 ```
 
 ---
@@ -569,17 +534,7 @@ GOOGLE_WALLET_ISSUER_ID             # Google Wallet issuer ID
 - **Run**: `npm test` (single run) or `npm run test:watch` (watch mode)
 
 ### Test Suites (11 suites)
-- `auth` — requireAuth, requireRepAuth, session handling, middleware auth
-- `useMetaTracking` — referential stability, consent gating, API shape
-- `useDataLayer` — referential stability, event pushing, tracking helpers
-- `useDashboardRealtime` — realtime state management
-- `useTraffic` — funnel tracking
-- `wallet-passes` — Apple Wallet, Google Wallet, configuration checks
-- `products` — product CRUD, type validation
-- `orders` — order creation, validation
-- `rate-limit` — rate limiter behavior
-- `rep-deletion` — rep cascade deletion
-- `vat` — VAT calculation
+`auth`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`
 
 ### Rules for Writing Tests
 1. Every new hook must have a test file — `src/__tests__/useHookName.test.ts`
@@ -642,23 +597,6 @@ Defaults defined in `base.css :root`, overridable per-tenant via branding system
 - Move the utilities import into any `@layer` block
 - Add a global `*` reset that could override Tailwind classes
 
-### CSS File Organization
-| File | Scope |
-|------|-------|
-| `base.css` | Global — reset, CSS variables, typography, reveal animations |
-| `effects.css` | Global — CRT scanlines + noise overlays |
-| `cookie.css` | Global — consent banner |
-| `header.css` | Header, navigation, mobile menu |
-| `landing.css` | Hero, events grid, about pillars, contact form |
-| `event.css` | Event pages, tickets, modals, bottom bar, minimal theme |
-| `aura.css` | Aura theme styles |
-| `aura-effects.css` | Aura theme effects |
-| `checkout-page.css` | Checkout + payment form |
-| `popup.css` | Discount popup |
-| `rep-portal.css` | Rep portal styles |
-| `tailwind.css` | Tailwind v4 theme + utilities (admin only) |
-| `admin.css` | Admin supplementary styles |
-
 ### Rules for New CSS (Public Site)
 1. **Component-level imports** — new components import their own CSS file
 2. **BEM naming** — `.block__element--modifier`
@@ -691,29 +629,9 @@ export { ComponentName };
 ```
 
 ### Admin Design Tokens
-Defined in `tailwind.css` via `@theme inline {}`:
+Defined in `tailwind.css` via `@theme inline {}`. Key tokens: `background` (#08080c), `foreground` (#f0f0f5), `primary` (#8B5CF6 Electric Violet), `card` (#111117), `secondary` (#151520), `muted-foreground` (#8888a0), `border` (#1e1e2a), `destructive` (#F43F5E), `success` (#34D399), `warning` (#FBBF24), `info` (#38BDF8). Sidebar variants: `sidebar` (#0a0a10), `sidebar-foreground` (#8888a0), `sidebar-accent` (#141420), `sidebar-border` (#161624).
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--color-background` | `#08080c` | Page background |
-| `--color-foreground` | `#f0f0f5` | Primary text |
-| `--color-primary` | `#8B5CF6` | Electric Violet — brand / accent |
-| `--color-card` | `#111117` | Card backgrounds |
-| `--color-secondary` | `#151520` | Nested surfaces inside cards |
-| `--color-muted-foreground` | `#8888a0` | Secondary text |
-| `--color-border` | `#1e1e2a` | Borders (purple-tinted) |
-| `--color-destructive` | `#F43F5E` | Danger / delete actions |
-| `--color-success` | `#34D399` | Success states |
-| `--color-warning` | `#FBBF24` | Warning states |
-| `--color-info` | `#38BDF8` | Info states |
-| `--color-sidebar` | `#0a0a10` | Sidebar background |
-| `--color-sidebar-foreground` | `#8888a0` | Sidebar text |
-| `--color-sidebar-accent` | `#141420` | Sidebar active item |
-| `--color-sidebar-border` | `#161624` | Sidebar borders |
-
-Use via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values.
-
-Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-destructive`, `.text-gradient`, `.surface-noise`
+Use via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values. Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-destructive`, `.text-gradient`, `.surface-noise`
 
 ### Rules for New Admin Pages
 1. **Always `"use client"`** — admin pages use React state, effects, and browser APIs

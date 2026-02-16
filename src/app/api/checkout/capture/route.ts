@@ -113,9 +113,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 2. Upsert abandoned cart (if event/items provided) ──
+    let cartCreated = false;
+    let cartError: string | null = null;
+
     if (event_id && items && Array.isArray(items)) {
       // Check for existing abandoned cart for this customer + event
-      const { data: existingCart } = await supabase
+      const { data: existingCart, error: findErr } = await supabase
         .from(TABLES.ABANDONED_CARTS)
         .select("id")
         .eq("org_id", ORG_ID)
@@ -124,36 +127,64 @@ export async function POST(request: NextRequest) {
         .eq("status", "abandoned")
         .single();
 
-      const cartData = {
-        email: normalizedEmail,
-        first_name: first_name || null,
-        last_name: last_name || null,
-        items,
-        subtotal: subtotal || 0,
-        currency: currency || "GBP",
-        updated_at: new Date().toISOString(),
-      };
+      if (findErr && findErr.code !== "PGRST116") {
+        // PGRST116 = "no rows found" — that's expected for new carts
+        console.error("Abandoned cart lookup failed:", findErr.message, findErr.code);
+      }
 
       if (existingCart) {
         // Update existing abandoned cart
-        await supabase
+        const { error: updateErr } = await supabase
           .from(TABLES.ABANDONED_CARTS)
-          .update(cartData)
+          .update({
+            email: normalizedEmail,
+            first_name: first_name || null,
+            last_name: last_name || null,
+            items,
+            subtotal: subtotal || 0,
+            currency: currency || "GBP",
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", existingCart.id);
+
+        if (updateErr) {
+          console.error("Abandoned cart UPDATE failed:", updateErr.message, updateErr.code, updateErr.details);
+          cartError = updateErr.message;
+        } else {
+          cartCreated = true;
+        }
       } else {
         // Create new abandoned cart
-        await supabase.from(TABLES.ABANDONED_CARTS).insert({
-          org_id: ORG_ID,
-          customer_id: customerId,
-          event_id,
-          status: "abandoned",
-          notification_count: 0,
-          ...cartData,
-        });
+        const { error: insertErr } = await supabase
+          .from(TABLES.ABANDONED_CARTS)
+          .insert({
+            org_id: ORG_ID,
+            customer_id: customerId,
+            event_id,
+            email: normalizedEmail,
+            first_name: first_name || null,
+            last_name: last_name || null,
+            items,
+            subtotal: subtotal || 0,
+            currency: currency || "GBP",
+            status: "abandoned",
+            notification_count: 0,
+          });
+
+        if (insertErr) {
+          console.error("Abandoned cart INSERT failed:", insertErr.message, insertErr.code, insertErr.details);
+          cartError = insertErr.message;
+        } else {
+          cartCreated = true;
+        }
       }
     }
 
-    return NextResponse.json({ customer_id: customerId });
+    return NextResponse.json({
+      customer_id: customerId,
+      cart_created: cartCreated,
+      ...(cartError ? { cart_error: cartError } : {}),
+    });
   } catch (err) {
     console.error("Checkout capture error:", err);
     return NextResponse.json(

@@ -1,15 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { TrendingUp } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import {
+  TrendingUp,
+  ShoppingBag,
+  Banknote,
+  BarChart3,
+  Filter,
+  ChevronDown,
+  RefreshCw,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface Sale {
   id: string;
   order_number: string;
   total: number;
+  subtotal: number;
+  fees: number;
+  status: string;
   currency: string;
   created_at: string;
-  event?: { name: string };
+  event?: { id: string; name: string; slug: string };
 }
 
 function getCurrencySymbol(currency?: string): string {
@@ -21,16 +37,62 @@ function getCurrencySymbol(currency?: string): string {
   }
 }
 
+function formatRelativeDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function groupSalesByDate(sales: Sale[]): { label: string; sales: Sale[] }[] {
+  const groups: Map<string, Sale[]> = new Map();
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  for (const sale of sales) {
+    const d = new Date(sale.created_at);
+    let label: string;
+
+    if (d.toDateString() === today.toDateString()) {
+      label = "Today";
+    } else if (d.toDateString() === yesterday.toDateString()) {
+      label = "Yesterday";
+    } else {
+      label = d.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+    }
+
+    const existing = groups.get(label);
+    if (existing) existing.push(sale);
+    else groups.set(label, [sale]);
+  }
+
+  return Array.from(groups.entries()).map(([label, sales]) => ({ label, sales }));
+}
+
 export default function RepSalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [loadKey, setLoadKey] = useState(0);
+  const [filterEvent, setFilterEvent] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/rep-portal/sales");
+        const res = await fetch("/api/rep-portal/sales?limit=200");
         if (!res.ok) {
           const errJson = await res.json().catch(() => null);
           setError(errJson?.error || "Failed to load sales (" + res.status + ")");
@@ -44,26 +106,69 @@ export default function RepSalesPage() {
     })();
   }, [loadKey]);
 
-  const totalRevenue = sales.reduce((sum, s) => sum + Number(s.total), 0);
+  const events = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const sale of sales) {
+      if (sale.event?.id) map.set(sale.event.id, sale.event.name);
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [sales]);
+
+  const filteredSales = useMemo(() => {
+    if (filterEvent === "all") return sales;
+    return sales.filter((s) => s.event?.id === filterEvent);
+  }, [sales, filterEvent]);
+
+  const stats = useMemo(() => {
+    const s = filteredSales;
+    const totalRevenue = s.reduce((sum, sale) => sum + Number(sale.total), 0);
+    const avgOrder = s.length > 0 ? totalRevenue / s.length : 0;
+    return { count: s.length, revenue: totalRevenue, avgOrder };
+  }, [filteredSales]);
+
+  const groups = useMemo(() => groupSalesByDate(filteredSales), [filteredSales]);
+  const currSymbol = getCurrencySymbol(sales[0]?.currency);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+        <div>
+          <Skeleton className="h-6 w-24 mb-2" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[88px] rounded-2xl" />
+          ))}
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-20" />
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-[68px] rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
-        <p className="text-sm text-red-400 mb-3">{error}</p>
-        <button
-          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
-          className="text-xs text-[var(--rep-accent)] hover:underline"
-        >
-          Try again
-        </button>
+      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+        <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
+            <TrendingUp size={22} className="text-destructive" />
+          </div>
+          <p className="text-sm text-foreground font-medium mb-1">Failed to load sales</p>
+          <p className="text-xs text-muted-foreground mb-4">{error}</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          >
+            <RefreshCw size={12} />
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }
@@ -71,49 +176,147 @@ export default function RepSalesPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-white">Sales</h1>
-        <p className="text-sm text-[var(--rep-text-muted)]">
-          Orders placed with your discount code
-        </p>
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-card)] p-4">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--rep-text-muted)] mb-1">Total Sales</p>
-          <p className="text-2xl font-bold text-white font-mono tabular-nums">{sales.length}</p>
-        </div>
-        <div className="rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-card)] p-4">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--rep-text-muted)] mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-[var(--rep-success)] font-mono tabular-nums">
-            {getCurrencySymbol(sales[0]?.currency)}{totalRevenue.toFixed(0)}
+      <div className="flex items-center justify-between rep-slide-up">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Sales</h1>
+          <p className="text-sm text-muted-foreground">
+            Orders placed with your discount code
           </p>
         </div>
+        {events.length > 1 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(showFilters && "border-primary/50 text-primary")}
+          >
+            <Filter size={12} />
+            Filter
+          </Button>
+        )}
       </div>
 
-      {/* Sales List */}
-      {sales.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-accent)]/10 mb-4">
-            <TrendingUp size={22} className="text-[var(--rep-accent)]" />
+      {/* Event filter */}
+      {showFilters && events.length > 1 && (
+        <div className="flex flex-wrap gap-2 rep-slide-up">
+          <button
+            onClick={() => setFilterEvent("all")}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[11px] font-medium border transition-all",
+              filterEvent === "all"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:border-primary/30"
+            )}
+          >
+            All Events
+          </button>
+          {events.map((event) => (
+            <button
+              key={event.id}
+              onClick={() => setFilterEvent(event.id)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-[11px] font-medium border transition-all",
+                filterEvent === event.id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary/30"
+              )}
+            >
+              {event.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "50ms" }}>
+        <Card className="py-0 gap-0">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <ShoppingBag size={12} className="text-primary" />
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sales</p>
+            </div>
+            <p className="text-2xl font-bold text-foreground font-mono tabular-nums">{stats.count}</p>
+          </CardContent>
+        </Card>
+        <Card className="py-0 gap-0">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Banknote size={12} className="text-success" />
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Revenue</p>
+            </div>
+            <p className="text-2xl font-bold text-success font-mono tabular-nums">
+              {currSymbol}{stats.revenue.toFixed(0)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="py-0 gap-0">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <BarChart3 size={12} className="text-info" />
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Avg</p>
+            </div>
+            <p className="text-2xl font-bold text-foreground font-mono tabular-nums">
+              {currSymbol}{stats.avgOrder.toFixed(0)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sales Timeline */}
+      {filteredSales.length === 0 ? (
+        <div className="text-center py-16 rep-slide-up">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+            <TrendingUp size={22} className="text-primary" />
           </div>
-          <p className="text-sm text-white font-medium mb-1">No sales yet</p>
-          <p className="text-xs text-[var(--rep-text-muted)]">Share your code to start earning</p>
+          <p className="text-sm text-foreground font-medium mb-1">
+            {filterEvent !== "all" ? "No sales for this event" : "No sales yet"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {filterEvent !== "all" ? "Try a different filter" : "Share your code to start earning"}
+          </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {sales.map((sale) => (
-            <div key={sale.id} className="flex items-center justify-between rounded-xl border border-[var(--rep-border)] bg-[var(--rep-card)] px-4 py-3">
-              <div>
-                <p className="text-xs font-mono text-white">{sale.order_number}</p>
-                <p className="text-[10px] text-[var(--rep-text-muted)]">
-                  {sale.event?.name || "—"} · {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+        <div className="space-y-5 rep-slide-up" style={{ animationDelay: "100ms" }}>
+          {groups.map((group) => (
+            <div key={group.label}>
+              <div className="flex items-center gap-3 mb-2">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {group.label}
                 </p>
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {group.sales.length} sale{group.sales.length !== 1 ? "s" : ""}
+                </span>
               </div>
-              <p className="text-sm font-bold font-mono text-[var(--rep-success)] tabular-nums">
-                {getCurrencySymbol(sale.currency)}{Number(sale.total).toFixed(2)}
-              </p>
+              <div className="space-y-2">
+                {group.sales.map((sale) => (
+                  <Card key={sale.id} className="py-0 gap-0 hover:border-primary/20 transition-all duration-200">
+                    <CardContent className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                          <TrendingUp size={14} className="text-success" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
+                            {sale.status === "refunded" && (
+                              <Badge variant="destructive" className="text-[8px] px-1 py-0">Refunded</Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {sale.event?.name || "—"}
+                            <span className="mx-1.5">·</span>
+                            {formatRelativeDate(sale.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm font-bold font-mono text-success tabular-nums shrink-0 ml-3">
+                        {getCurrencySymbol(sale.currency)}{Number(sale.total).toFixed(2)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           ))}
         </div>

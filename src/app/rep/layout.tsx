@@ -263,7 +263,10 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       )}
 
       {/* Main content */}
-      <main className={showNav ? "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6" : ""}>
+      <main className={cn(
+        showNav && "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6",
+        "rep-page-enter"
+      )} key={pathname}>
         {children}
       </main>
 

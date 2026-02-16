@@ -11,7 +11,13 @@ import {
   Gift,
   Lock,
   Flame,
+  ArrowUp,
+  ArrowDown,
+  RefreshCw,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,7 +77,35 @@ const REWARD_PILL_STYLES = [
   "rep-reward-pill-silver",
   "rep-reward-pill-bronze",
 ];
-const MEDAL_EMOJI = ["👑", "🥈", "🥉"];
+const MEDAL_EMOJI = ["\uD83D\uDC51", "\uD83E\uDD48", "\uD83E\uDD49"];
+
+const POSITION_STORAGE_KEY = "rep_leaderboard_positions";
+
+// ─── Position tracking ───────────────────────────────────────────────────────
+
+function getStoredPositions(): Record<string, number> {
+  try {
+    const stored = localStorage.getItem(POSITION_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
+}
+
+function storePositions(entries: LeaderboardEntry[], prefix: string = "all") {
+  try {
+    const existing = getStoredPositions();
+    for (const entry of entries) {
+      existing[`${prefix}_${entry.id}`] = entry.position;
+    }
+    localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(existing));
+  } catch { /* silent */ }
+}
+
+function getPositionChange(entryId: string, currentPosition: number, prefix: string = "all"): number {
+  const stored = getStoredPositions();
+  const prevPosition = stored[`${prefix}_${entryId}`];
+  if (prevPosition === undefined) return 0;
+  return prevPosition - currentPosition; // positive = moved up
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
@@ -113,6 +147,23 @@ export default function RepLeaderboardPage() {
   );
 }
 
+// ─── Position Change Indicator ───────────────────────────────────────────────
+
+function PositionIndicator({ change }: { change: number }) {
+  if (change === 0) return null;
+
+  const isUp = change > 0;
+  return (
+    <span className={cn(
+      "rep-position-indicator",
+      isUp ? "text-[var(--rep-success)]" : "text-[#F43F5E]"
+    )}>
+      {isUp ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+      {Math.abs(change)}
+    </span>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ALL-TIME LEADERBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -125,6 +176,7 @@ function AllTimeLeaderboard() {
   const [loadKey, setLoadKey] = useState(0);
   const [myPosition, setMyPosition] = useState<number | null>(null);
   const [myRepId, setMyRepId] = useState<string | null>(null);
+  const [positionChanges, setPositionChanges] = useState<Record<string, number>>({});
 
   useEffect(() => {
     (async () => {
@@ -138,9 +190,20 @@ function AllTimeLeaderboard() {
         }
         const json = await res.json();
         if (json.data) {
-          setEntries(json.data.leaderboard || []);
+          const leaderboard = json.data.leaderboard || [];
+          setEntries(leaderboard);
           setMyPosition(json.data.current_position);
           setMyRepId(json.data.current_rep_id || null);
+
+          // Calculate position changes before storing new ones
+          const changes: Record<string, number> = {};
+          for (const entry of leaderboard) {
+            changes[entry.id] = getPositionChange(entry.id, entry.position, "all");
+          }
+          setPositionChanges(changes);
+
+          // Store new positions for next visit
+          storePositions(leaderboard, "all");
         }
       } catch {
         setError("Failed to load leaderboard");
@@ -157,11 +220,14 @@ function AllTimeLeaderboard() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <LeaderboardSkeleton />;
   if (error) return <ErrorState error={error} onRetry={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }} />;
 
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
+
+  // Your position change
+  const myChange = myRepId ? (positionChanges[myRepId] || 0) : 0;
 
   return (
     <div className="rep-fade-in">
@@ -169,9 +235,12 @@ function AllTimeLeaderboard() {
       {myPosition && (
         <div className="mb-5 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-4 text-center">
           <p className="text-xs text-[var(--rep-text-muted)] mb-1">Your Position</p>
-          <p className="text-3xl font-bold font-mono text-[var(--rep-accent)]">
-            #{myPosition}
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-3xl font-bold font-mono text-[var(--rep-accent)]">
+              #{myPosition}
+            </p>
+            {myChange !== 0 && <PositionIndicator change={myChange} />}
+          </div>
         </div>
       )}
 
@@ -226,6 +295,7 @@ function AllTimeLeaderboard() {
                   <span className="text-[10px] text-[var(--rep-text-muted)]">
                     {entry.total_sales} sales
                   </span>
+                  <PositionIndicator change={positionChanges[entry.id] || 0} />
                 </div>
               </div>
 
@@ -282,9 +352,12 @@ function AllTimeLeaderboard() {
                     <span className="ml-1.5 text-[10px] text-[var(--rep-accent)]/60">(YOU)</span>
                   )}
                 </p>
-                <p className="text-[10px] text-[var(--rep-text-muted)]">
-                  Lv.{entry.level} · {entry.total_sales} sales
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] text-[var(--rep-text-muted)]">
+                    Lv.{entry.level} · {entry.total_sales} sales
+                  </p>
+                  <PositionIndicator change={positionChanges[entry.id] || 0} />
+                </div>
               </div>
 
               {/* Revenue */}
@@ -297,9 +370,7 @@ function AllTimeLeaderboard() {
       )}
 
       {entries.length === 0 && (
-        <div className="text-center py-16 text-sm text-[var(--rep-text-muted)]">
-          No entries yet. Be the first to make a sale!
-        </div>
+        <EmptyLeaderboard />
       )}
     </div>
   );
@@ -333,7 +404,7 @@ function EventsLeaderboard() {
     })();
   }, []);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <LeaderboardSkeleton />;
   if (error) return <ErrorState error={error} onRetry={() => window.location.reload()} />;
 
   if (selectedEvent) {
@@ -351,8 +422,9 @@ function EventsLeaderboard() {
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--rep-accent)]/10 mb-3">
           <Calendar size={22} className="text-[var(--rep-accent)]" />
         </div>
-        <p className="text-sm text-[var(--rep-text-muted)]">
-          No active events yet. You&apos;ll see events here once you&apos;re assigned.
+        <p className="text-sm text-foreground font-medium mb-1">No active events</p>
+        <p className="text-xs text-[var(--rep-text-muted)]">
+          You&apos;ll see events here once you&apos;re assigned.
         </p>
       </div>
     );
@@ -427,7 +499,7 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
           <div>
             <p className="text-[10px] text-[var(--rep-text-muted)]">Your Rank</p>
             <p className="text-sm font-bold font-mono text-[var(--rep-accent)]">
-              {event.your_position ? `#${event.your_position}` : "—"}
+              {event.your_position ? `#${event.your_position}` : "\u2014"}
             </p>
           </div>
           <div>
@@ -468,7 +540,7 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// EVENT LEADERBOARD VIEW (when you tap an event)
+// EVENT LEADERBOARD VIEW
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function EventLeaderboardView({
@@ -482,6 +554,7 @@ function EventLeaderboardView({
   const [data, setData] = useState<EventLeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [positionChanges, setPositionChanges] = useState<Record<string, number>>({});
 
   useEffect(() => {
     (async () => {
@@ -493,7 +566,18 @@ function EventLeaderboardView({
           return;
         }
         const json = await res.json();
-        setData(json.data || null);
+        const d = json.data || null;
+        setData(d);
+
+        if (d) {
+          // Calculate position changes
+          const changes: Record<string, number> = {};
+          for (const entry of d.leaderboard) {
+            changes[entry.id] = getPositionChange(entry.id, entry.position, `evt_${eventId}`);
+          }
+          setPositionChanges(changes);
+          storePositions(d.leaderboard, `evt_${eventId}`);
+        }
       } catch {
         setError("Failed to load");
       }
@@ -501,12 +585,13 @@ function EventLeaderboardView({
     })();
   }, [eventId]);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <LeaderboardSkeleton />;
   if (error) return <ErrorState error={error} onRetry={() => window.location.reload()} />;
   if (!data) return null;
 
   const isLive = !data.locked && data.event?.date_start && isEventUpcoming(data.event.date_start);
   const rewardMap = new Map(data.position_rewards.map((pr) => [pr.position, pr]));
+  const myChange = data.current_rep_id ? (positionChanges[data.current_rep_id] || 0) : 0;
 
   return (
     <div className="rep-fade-in">
@@ -555,9 +640,12 @@ function EventLeaderboardView({
       {data.current_position && (
         <div className="mb-4 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-3 text-center">
           <p className="text-xs text-[var(--rep-text-muted)]">Your Position</p>
-          <p className="text-2xl font-bold font-mono text-[var(--rep-accent)]">
-            #{data.current_position}
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-2xl font-bold font-mono text-[var(--rep-accent)]">
+              #{data.current_position}
+            </p>
+            {myChange !== 0 && <PositionIndicator change={myChange} />}
+          </div>
         </div>
       )}
 
@@ -567,6 +655,7 @@ function EventLeaderboardView({
           const isPodium = i < 3;
           const reward = rewardMap.get(i + 1);
           const isMe = entry.id === data.current_rep_id;
+          const change = positionChanges[entry.id] || 0;
 
           return (
             <button
@@ -651,6 +740,7 @@ function EventLeaderboardView({
                         <Flame size={10} /> Contested
                       </span>
                     )}
+                    <PositionIndicator change={change} />
                   </div>
                 </div>
 
@@ -752,10 +842,27 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
 // SHARED COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function LoadingSpinner() {
+function LeaderboardSkeleton() {
   return (
-    <div className="flex items-center justify-center py-24">
-      <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+    <div className="space-y-3 py-2">
+      <Skeleton className="h-[72px] rounded-2xl" />
+      <Skeleton className="h-[72px] rounded-2xl" />
+      <Skeleton className="h-[72px] rounded-2xl" />
+      <Skeleton className="h-[60px] rounded-xl" />
+      <Skeleton className="h-[60px] rounded-xl" />
+      <Skeleton className="h-[60px] rounded-xl" />
+    </div>
+  );
+}
+
+function EmptyLeaderboard() {
+  return (
+    <div className="text-center py-16">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-gold)]/10 mb-4">
+        <Trophy size={22} className="text-[var(--rep-gold)]" />
+      </div>
+      <p className="text-sm text-foreground font-medium mb-1">No entries yet</p>
+      <p className="text-xs text-[var(--rep-text-muted)]">Be the first to make a sale!</p>
     </div>
   );
 }
@@ -763,13 +870,15 @@ function LoadingSpinner() {
 function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
-      <p className="text-sm text-red-400 mb-3">{error}</p>
-      <button
-        onClick={onRetry}
-        className="text-xs text-[var(--rep-accent)] hover:underline"
-      >
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
+        <Trophy size={22} className="text-destructive" />
+      </div>
+      <p className="text-sm text-foreground font-medium mb-1">Something went wrong</p>
+      <p className="text-xs text-muted-foreground mb-4">{error}</p>
+      <Button size="sm" variant="outline" onClick={onRetry}>
+        <RefreshCw size={12} />
         Try again
-      </button>
+      </Button>
     </div>
   );
 }

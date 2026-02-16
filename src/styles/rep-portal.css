@@ -678,6 +678,9 @@
   [data-rep] {
     -ms-overflow-style: none;
     scrollbar-width: none;
+    /* Smooth overscroll on iOS */
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Ensure inputs don't zoom on iOS (16px min) */
@@ -696,9 +699,160 @@
   [data-rep] .font-mono {
     word-break: break-all;
   }
+
+  /* Prevent overscroll on body to avoid pull-to-refresh browser default */
+  [data-rep] main {
+    overscroll-behavior-y: contain;
+  }
+
+  /* Bottom nav extra padding on notched iPhones */
+  [data-rep] nav[class*="fixed bottom-0"] {
+    padding-bottom: max(env(safe-area-inset-bottom), 8px);
+  }
 }
 
 
 [data-rep] input[type="date"] {
   color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEVEL-UP CELEBRATION
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-level-up-overlay {
+  animation: levelUpOverlayIn 0.5s ease-out both;
+}
+@keyframes levelUpOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rep-level-up-badge {
+  animation: levelUpBadge 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: 0.2s;
+}
+@keyframes levelUpBadge {
+  0% { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+  60% { opacity: 1; transform: scale(1.15) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.rep-level-up-text {
+  animation: levelUpText 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.5s;
+}
+@keyframes levelUpText {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-level-up-ring {
+  animation: levelUpRing 1.2s ease-out both;
+  animation-delay: 0.3s;
+}
+@keyframes levelUpRing {
+  0% { transform: scale(0.5); opacity: 0; box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+  30% { opacity: 1; box-shadow: 0 0 0 20px rgba(139, 92, 246, 0.2); }
+  60% { box-shadow: 0 0 0 40px rgba(139, 92, 246, 0.05); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 60px rgba(139, 92, 246, 0); }
+}
+
+/* ── Confetti burst (reward claim) ── */
+.rep-confetti-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+.rep-confetti-piece {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  top: 40%;
+  left: 50%;
+  animation: confettiBurst 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes confettiBurst {
+  0% {
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+      calc(-50% + var(--cx)),
+      calc(-50% + var(--cy) + 120px)
+    ) scale(0.5) rotate(var(--cr));
+    opacity: 0;
+  }
+}
+
+/* ── Position change arrow bounce ── */
+.rep-position-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  animation: positionIndicatorIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes positionIndicatorIn {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── XP bar smooth fill with counting animation ── */
+.rep-xp-counting {
+  animation: xpCountPulse 0.5s ease-out;
+}
+@keyframes xpCountPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* ── Pull-to-refresh indicator ── */
+.rep-pull-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.rep-pull-refresh-spinner {
+  animation: pullRefreshSpin 0.8s linear infinite;
+}
+@keyframes pullRefreshSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Smooth page transition ── */
+.rep-page-enter {
+  animation: pageEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Skeleton shimmer override for rep portal ── */
+[data-rep] [data-slot="skeleton"] {
+  background: var(--rep-surface);
+}
+
+/* ── Streak counter glow ── */
+.rep-streak-glow {
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.4), 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+/* ── Sale notification toast ── */
+.rep-sale-toast {
+  animation: saleToastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes saleToastIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }

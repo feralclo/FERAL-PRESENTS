@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Trophy,
@@ -12,12 +12,15 @@ import {
   Copy,
   Check,
   Flame,
+  ArrowUp,
+  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface DashboardData {
@@ -41,12 +44,17 @@ interface DashboardData {
   discount_codes: { code: string }[];
 }
 
+const LEVEL_UP_STORAGE_KEY = "rep_last_level";
+
 export default function RepDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
   const [loadKey, setLoadKey] = useState(0);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [levelUpInfo, setLevelUpInfo] = useState<{ level: number; name: string } | null>(null);
+  const [xpAnimated, setXpAnimated] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -66,10 +74,24 @@ export default function RepDashboardPage() {
         const discountJson = discountRes.ok ? await discountRes.json() : { data: [] };
 
         if (dashJson.data) {
-          setData({
+          const d = {
             ...dashJson.data,
             discount_codes: discountJson.data || [],
-          });
+          };
+          setData(d);
+
+          // Check for level-up
+          const lastLevel = parseInt(localStorage.getItem(LEVEL_UP_STORAGE_KEY) || "0", 10);
+          const currentLevel = d.rep.level;
+
+          if (lastLevel > 0 && currentLevel > lastLevel) {
+            setLevelUpInfo({ level: currentLevel, name: d.level_name });
+            setShowLevelUp(true);
+          }
+          localStorage.setItem(LEVEL_UP_STORAGE_KEY, String(currentLevel));
+
+          // Animate XP bar after load
+          setTimeout(() => setXpAnimated(true), 300);
         }
       } catch { setError("Failed to load dashboard — check your connection"); }
       setLoading(false);
@@ -88,8 +110,27 @@ export default function RepDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+        {/* Welcome skeleton */}
+        <div className="flex flex-col items-center">
+          <Skeleton className="h-16 w-16 rounded-full mb-3" />
+          <Skeleton className="h-5 w-40 mb-2" />
+          <Skeleton className="h-6 w-32 rounded-full" />
+          <Skeleton className="h-1.5 w-48 mt-3 rounded-full" />
+        </div>
+        {/* Discount code skeleton */}
+        <Skeleton className="h-[100px] rounded-2xl" />
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-[80px] rounded-2xl" />
+          ))}
+        </div>
+        {/* Quick links skeleton */}
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-[72px] rounded-2xl" />
+          <Skeleton className="h-[72px] rounded-2xl" />
+        </div>
       </div>
     );
   }
@@ -125,6 +166,65 @@ export default function RepDashboardPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      {/* ── Level-Up Celebration Overlay ── */}
+      {showLevelUp && levelUpInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm rep-level-up-overlay">
+          {/* Confetti */}
+          <div className="rep-confetti-container" aria-hidden>
+            {[...Array(20)].map((_, i) => {
+              const angle = (i / 20) * 360;
+              const distance = 80 + Math.random() * 120;
+              const cx = Math.cos((angle * Math.PI) / 180) * distance;
+              const cy = Math.sin((angle * Math.PI) / 180) * distance - 60;
+              const colors = ["#8B5CF6", "#34D399", "#F59E0B", "#F43F5E", "#38BDF8", "#A78BFA"];
+              return (
+                <div
+                  key={i}
+                  className="rep-confetti-piece"
+                  style={{
+                    "--cx": `${cx}px`,
+                    "--cy": `${cy}px`,
+                    "--cr": `${Math.random() * 720 - 360}deg`,
+                    backgroundColor: colors[i % colors.length],
+                    animationDelay: `${i * 30}ms`,
+                    borderRadius: i % 3 === 0 ? "50%" : "2px",
+                    width: `${6 + Math.random() * 6}px`,
+                    height: `${6 + Math.random() * 6}px`,
+                  } as React.CSSProperties}
+                />
+              );
+            })}
+          </div>
+
+          <div className="text-center z-10">
+            <div className="relative inline-block mb-6">
+              <div className="h-24 w-24 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto rep-level-up-ring">
+                <div className="rep-level-up-badge">
+                  <ArrowUp size={32} className="text-primary" />
+                </div>
+              </div>
+            </div>
+            <div className="rep-level-up-text">
+              <p className="text-[10px] uppercase tracking-[4px] text-primary font-bold mb-2">
+                Level Up!
+              </p>
+              <p className="text-4xl font-bold text-foreground mb-1 font-mono">
+                Lv.{levelUpInfo.level}
+              </p>
+              <p className="text-lg text-primary font-semibold">
+                {levelUpInfo.name}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowLevelUp(false)}
+              className="mt-8 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Welcome + Level ── */}
       <div className="text-center rep-slide-up">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 border border-primary/20 rep-glow mb-3 overflow-hidden">
@@ -147,9 +247,9 @@ export default function RepDashboardPage() {
         {/* XP progress */}
         <div className="mt-3 mx-auto max-w-xs">
           <Progress
-            value={Math.min(100, Math.max(0, levelProgress))}
+            value={xpAnimated ? Math.min(100, Math.max(0, levelProgress)) : 0}
             className="h-1.5"
-            indicatorClassName="rep-xp-fill"
+            indicatorClassName="rep-xp-fill transition-all duration-1000 ease-out"
           />
           <p className="mt-1 text-[10px] text-muted-foreground">
             {data.next_level_points
@@ -190,24 +290,30 @@ export default function RepDashboardPage() {
 
       {/* ── Stats Grid ── */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
-        <StatCard
-          size="compact"
-          label="Points"
-          value={String(rep.points_balance)}
-          icon={Zap}
-        />
-        <StatCard
-          size="compact"
-          label="Sales"
-          value={String(rep.total_sales)}
-          icon={TrendingUp}
-        />
-        <StatCard
-          size="compact"
-          label="Revenue"
-          value={`£${Number(rep.total_revenue).toFixed(0)}`}
-          icon={TrendingUp}
-        />
+        <Link href="/rep/points">
+          <StatCard
+            size="compact"
+            label="Points"
+            value={String(rep.points_balance)}
+            icon={Zap}
+          />
+        </Link>
+        <Link href="/rep/sales">
+          <StatCard
+            size="compact"
+            label="Sales"
+            value={String(rep.total_sales)}
+            icon={TrendingUp}
+          />
+        </Link>
+        <Link href="/rep/sales">
+          <StatCard
+            size="compact"
+            label="Revenue"
+            value={`£${Number(rep.total_revenue).toFixed(0)}`}
+            icon={TrendingUp}
+          />
+        </Link>
         <Link href="/rep/leaderboard">
           <StatCard
             size="compact"

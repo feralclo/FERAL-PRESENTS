@@ -283,23 +283,38 @@ export default function RepProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+      <div className="max-w-md mx-auto px-4 py-6 md:py-8 space-y-6">
+        <div className="flex flex-col items-center">
+          <div className="h-24 w-24 rounded-full bg-muted/50 animate-pulse mb-4" />
+          <div className="h-5 w-40 rounded bg-muted/50 animate-pulse mb-2" />
+          <div className="h-4 w-28 rounded bg-muted/50 animate-pulse" />
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-12 rounded-xl bg-muted/50 animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error && !profile) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
-        <p className="text-sm text-destructive mb-3">{error}</p>
-        <Button
-          variant="link"
-          size="sm"
-          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
-        >
-          Try again
-        </Button>
+      <div className="max-w-md mx-auto px-4 py-6 md:py-8">
+        <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-destructive"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <p className="text-sm text-foreground font-medium mb-1">Failed to load profile</p>
+          <p className="text-xs text-muted-foreground mb-4">{error}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          >
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }

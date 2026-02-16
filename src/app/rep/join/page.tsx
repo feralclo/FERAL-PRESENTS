@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 /* ── Boot sequence lines ── */
 const BOOT_LINES = [
@@ -30,7 +33,7 @@ export default function RepJoinPage() {
   /* ── Phase & step ── */
   const [phase, setPhase] = useState<"boot" | "welcome" | "quiz" | "review" | "submitting" | "done">("boot");
   const [step, setStep] = useState(0);
-  const [stepKey, setStepKey] = useState(0); // for re-triggering animations
+  const [stepKey, setStepKey] = useState(0);
   const [error, setError] = useState("");
 
   /* ── Boot ── */
@@ -100,10 +103,10 @@ export default function RepJoinPage() {
       case 1: return lastName.trim().length > 0;
       case 2: return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
       case 3: return password.length >= 6;
-      case 4: return true; // instagram optional
-      case 5: return true; // tiktok optional
-      case 6: return true; // dob optional
-      case 7: return true; // gender optional (but auto-advances on select)
+      case 4: return true;
+      case 5: return true;
+      case 6: return true;
+      case 7: return true;
       default: return false;
     }
   };
@@ -142,7 +145,6 @@ export default function RepJoinPage() {
         return;
       }
 
-      // Always redirect to verify-email — verification required before access
       setPhase("done");
       setTimeout(() => {
         router.push(`/rep/verify-email?email=${encodeURIComponent(email.toLowerCase().trim())}`);
@@ -158,9 +160,7 @@ export default function RepJoinPage() {
     phase === "quiz" ? ((step + 1) / STEP_COUNT) * 100 :
     phase === "review" || phase === "submitting" || phase === "done" ? 100 : 0;
 
-  /* ══════════════════════════════════════════════════════════════════
-     RENDER: BOOT
-     ══════════════════════════════════════════════════════════════════ */
+  /* ══ BOOT ══ */
   if (phase === "boot") {
     return (
       <div className="flex min-h-screen items-center justify-center px-6">
@@ -171,7 +171,7 @@ export default function RepJoinPage() {
               className="rep-boot-line font-mono text-[13px] text-[var(--rep-text-muted)]"
               style={{ animationDelay: `${i * 50}ms` }}
             >
-              <span className="text-[var(--rep-accent)] mr-2">&gt;</span>
+              <span className="text-primary mr-2">&gt;</span>
               {line.text}
               {i === visibleLines - 1 && <span className="rep-cursor" />}
             </p>
@@ -181,57 +181,53 @@ export default function RepJoinPage() {
     );
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     RENDER: WELCOME
-     ══════════════════════════════════════════════════════════════════ */
+  /* ══ WELCOME ══ */
   if (phase === "welcome") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-6">
         <div className="text-center max-w-sm rep-fade-in">
-          {/* Logo mark */}
           <div className="mb-8">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[4px] text-[var(--rep-accent)]">
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[4px] text-primary">
               Entry Reps
             </span>
           </div>
 
-          <h1 className="rep-title-reveal text-3xl font-bold text-white mb-3 tracking-tight">
+          <h1 className="rep-title-reveal text-3xl font-bold text-foreground mb-3 tracking-tight">
             Join the Crew
           </h1>
-          <p className="text-sm text-[var(--rep-text-muted)] leading-relaxed mb-10 max-w-[260px] mx-auto">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-10 max-w-[260px] mx-auto">
             Sell tickets. Earn points. Climb the leaderboard. Claim rewards.
           </p>
 
-          <button
+          <Button
+            size="lg"
             onClick={() => { setPhase("quiz"); setStep(0); setStepKey(0); }}
-            className="rep-start-btn rounded-2xl bg-[var(--rep-accent)] px-10 py-4 text-sm font-bold uppercase tracking-[3px] text-white transition-all hover:brightness-110"
+            className="rep-start-btn rounded-2xl px-10 py-4 text-sm font-bold uppercase tracking-[3px]"
           >
             Press Start
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     RENDER: DONE
-     ══════════════════════════════════════════════════════════════════ */
+  /* ══ DONE ══ */
   if (phase === "done") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-6">
         <div className="text-center max-w-sm rep-celebrate">
-          <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-[var(--rep-success)]/10 border border-[var(--rep-success)]/20 mb-6">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--rep-success)]">
+          <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-success/10 border border-success/20 mb-6">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-success">
               <path d="M20 6 9 17l-5-5" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             Application Sent
           </h2>
-          <p className="text-sm text-[var(--rep-text-muted)] leading-relaxed mb-8 max-w-[280px] mx-auto">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8 max-w-[280px] mx-auto">
             Check your email for a verification link to activate your account.
           </p>
-          <p className="mt-4 text-xs text-[var(--rep-text-muted)]">
+          <p className="mt-4 text-xs text-muted-foreground">
             Redirecting...
           </p>
         </div>
@@ -239,9 +235,7 @@ export default function RepJoinPage() {
     );
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     RENDER: REVIEW
-     ══════════════════════════════════════════════════════════════════ */
+  /* ══ REVIEW ══ */
   if (phase === "review" || phase === "submitting") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-6">
@@ -249,20 +243,20 @@ export default function RepJoinPage() {
           {/* XP bar */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-[var(--rep-accent)]">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-primary">
                 Review
               </span>
-              <span className="text-[10px] text-[var(--rep-text-muted)] font-mono">READY</span>
+              <span className="text-[10px] text-muted-foreground font-mono">READY</span>
             </div>
-            <div className="h-1 rounded-full bg-[var(--rep-border)] overflow-hidden">
-              <div className="h-full rounded-full bg-[var(--rep-accent)] rep-xp-fill" style={{ width: "100%" }} />
+            <div className="h-1 rounded-full bg-border overflow-hidden">
+              <div className="h-full rounded-full bg-primary rep-xp-fill" style={{ width: "100%" }} />
             </div>
           </div>
 
-          <h2 className="text-xl font-bold text-white mb-1">Ready?</h2>
-          <p className="text-sm text-[var(--rep-text-muted)] mb-6">Here&apos;s what we&apos;ve got.</p>
+          <h2 className="text-xl font-bold text-foreground mb-1">Ready?</h2>
+          <p className="text-sm text-muted-foreground mb-6">Here&apos;s what we&apos;ve got.</p>
 
-          <div className="rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-surface)] divide-y divide-[var(--rep-border)]">
+          <div className="rounded-2xl border border-border bg-card divide-y divide-border">
             {[
               { label: "Name", value: `${firstName} ${lastName}` },
               { label: "Email", value: email },
@@ -272,54 +266,52 @@ export default function RepJoinPage() {
               ...(gender ? [{ label: "Gender", value: GENDER_OPTIONS.find((g) => g.value === gender)?.label || gender }] : []),
             ].map((row) => (
               <div key={row.label} className="flex justify-between px-5 py-3.5">
-                <span className="text-[13px] text-[var(--rep-text-muted)]">{row.label}</span>
-                <span className="text-[13px] text-white font-medium">{row.value}</span>
+                <span className="text-[13px] text-muted-foreground">{row.label}</span>
+                <span className="text-[13px] text-foreground font-medium">{row.value}</span>
               </div>
             ))}
           </div>
 
           {error && (
-            <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+            <div className="mt-4 rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
           <div className="flex gap-3 mt-6">
-            <button
+            <Button
+              variant="outline"
+              className="flex-1"
               onClick={goBack}
-              className="flex-1 rounded-xl border border-[var(--rep-border)] px-4 py-3.5 text-sm font-medium text-[var(--rep-text-muted)] hover:border-[var(--rep-accent)]/50 transition-colors"
             >
               Back
-            </button>
-            <button
+            </Button>
+            <Button
+              className="flex-1 uppercase tracking-wider"
               onClick={handleSubmit}
               disabled={phase === "submitting"}
-              className="flex-1 rounded-xl bg-[var(--rep-accent)] px-4 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-all hover:brightness-110 disabled:opacity-50"
             >
-              {phase === "submitting" ? "Sending..." : "Submit"}
-            </button>
+              {phase === "submitting" ? (
+                <><Loader2 size={14} className="animate-spin" /> Sending...</>
+              ) : "Submit"}
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-     RENDER: QUIZ STEPS
-     ══════════════════════════════════════════════════════════════════ */
-
-  /* Step renderers */
+  /* ══ QUIZ STEPS ══ */
   const renderStepContent = () => {
     switch (step) {
-      /* ── 0: First name ── */
       case 0:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               What do people call you?
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">Your first name</p>
-            <input
+            <p className="text-sm text-muted-foreground mb-6">Your first name</p>
+            <Input
               ref={inputRef}
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
@@ -331,14 +323,13 @@ export default function RepJoinPage() {
           </>
         );
 
-      /* ── 1: Last name ── */
       case 1:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               And your surname?
             </h2>
-            <input
+            <Input
               ref={inputRef}
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
@@ -350,15 +341,14 @@ export default function RepJoinPage() {
           </>
         );
 
-      /* ── 2: Email ── */
       case 2:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Drop your email
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">So we can reach you</p>
-            <input
+            <p className="text-sm text-muted-foreground mb-6">So we can reach you</p>
+            <Input
               ref={inputRef}
               type="email"
               value={email}
@@ -371,15 +361,14 @@ export default function RepJoinPage() {
           </>
         );
 
-      /* ── 3: Password ── */
       case 3:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Create your passcode
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">Minimum 6 characters</p>
-            <input
+            <p className="text-sm text-muted-foreground mb-6">Minimum 6 characters</p>
+            <Input
               ref={inputRef}
               type="password"
               value={password}
@@ -392,17 +381,16 @@ export default function RepJoinPage() {
           </>
         );
 
-      /* ── 4: Instagram ── */
       case 4:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Got Instagram?
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">Optional — skip if you don&apos;t use it</p>
+            <p className="text-sm text-muted-foreground mb-6">Optional — skip if you don&apos;t use it</p>
             <div className="rep-social-wrap">
               <span className="rep-at">@</span>
-              <input
+              <Input
                 ref={inputRef}
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value.replace("@", ""))}
@@ -414,17 +402,16 @@ export default function RepJoinPage() {
           </>
         );
 
-      /* ── 5: TikTok ── */
       case 5:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               On TikTok?
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">Optional</p>
+            <p className="text-sm text-muted-foreground mb-6">Optional</p>
             <div className="rep-social-wrap">
               <span className="rep-at">@</span>
-              <input
+              <Input
                 ref={inputRef}
                 value={tiktok}
                 onChange={(e) => setTiktok(e.target.value.replace("@", ""))}
@@ -436,15 +423,14 @@ export default function RepJoinPage() {
           </>
         );
 
-      /* ── 6: Birthday ── */
       case 6:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               When were you born?
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">Optional</p>
-            <input
+            <p className="text-sm text-muted-foreground mb-6">Optional</p>
+            <Input
               ref={inputRef}
               type="date"
               value={dob}
@@ -455,21 +441,19 @@ export default function RepJoinPage() {
           </>
         );
 
-      /* ── 7: Gender ── */
       case 7:
         return (
           <>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               How do you identify?
             </h2>
-            <p className="text-sm text-[var(--rep-text-muted)] mb-6">Choose one, or skip</p>
+            <p className="text-sm text-muted-foreground mb-6">Choose one, or skip</p>
             <div className="grid grid-cols-2 gap-3">
               {GENDER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => {
                     setGender(opt.value);
-                    // Auto-advance after selection
                     setTimeout(advance, 300);
                   }}
                   className={`rep-choice-tile ${gender === opt.value ? "selected" : ""}`}
@@ -486,7 +470,7 @@ export default function RepJoinPage() {
     }
   };
 
-  const isSkippableStep = step >= 4; // Steps 4-7 are optional
+  const isSkippableStep = step >= 4;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6">
@@ -494,16 +478,16 @@ export default function RepJoinPage() {
         {/* XP progress bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-[var(--rep-accent)]">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-primary">
               {step < 4 ? "The Basics" : step < 6 ? "Socials" : "About You"}
             </span>
-            <span className="text-[10px] text-[var(--rep-text-muted)] font-mono">
+            <span className="text-[10px] text-muted-foreground font-mono">
               {step + 1}/{STEP_COUNT}
             </span>
           </div>
-          <div className="h-1 rounded-full bg-[var(--rep-border)] overflow-hidden">
+          <div className="h-1 rounded-full bg-border overflow-hidden">
             <div
-              className="h-full rounded-full bg-[var(--rep-accent)] transition-all duration-500 ease-out rep-xp-fill"
+              className="h-full rounded-full bg-primary transition-all duration-500 ease-out rep-xp-fill"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -518,7 +502,7 @@ export default function RepJoinPage() {
         <div className="flex items-center justify-between mt-8">
           <button
             onClick={goBack}
-            className="flex items-center gap-1.5 text-sm text-[var(--rep-text-muted)] hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft size={14} />
             Back
@@ -526,37 +510,39 @@ export default function RepJoinPage() {
 
           <div className="flex gap-2">
             {isSkippableStep && step !== 7 && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={advance}
-                className="rounded-xl border border-[var(--rep-border)] px-5 py-2.5 text-[13px] font-medium text-[var(--rep-text-muted)] hover:border-[var(--rep-accent)]/50 hover:text-white transition-colors"
               >
                 Skip
-              </button>
+              </Button>
             )}
             {step !== 7 && (
-              <button
+              <Button
+                size="sm"
                 onClick={advance}
                 disabled={!canAdvance()}
-                className="rounded-xl bg-[var(--rep-accent)] px-6 py-2.5 text-[13px] font-semibold text-white transition-all hover:brightness-110 disabled:opacity-30 flex items-center gap-1.5"
               >
                 Continue
                 <ChevronRight size={14} />
-              </button>
+              </Button>
             )}
             {step === 7 && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={advance}
-                className="rounded-xl border border-[var(--rep-border)] px-5 py-2.5 text-[13px] font-medium text-[var(--rep-text-muted)] hover:border-[var(--rep-accent)]/50 hover:text-white transition-colors"
               >
                 {gender ? "Continue" : "Skip"}
-              </button>
+              </Button>
             )}
           </div>
         </div>
 
         {/* Enter hint */}
         {step < 7 && (
-          <p className="text-center text-[10px] text-[var(--rep-text-muted)]/60 mt-6 font-mono">
+          <p className="text-center text-[10px] text-muted-foreground/60 mt-6 font-mono">
             Press Enter ↵ to continue
           </p>
         )}

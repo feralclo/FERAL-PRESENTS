@@ -243,22 +243,39 @@ export default function RepQuestsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-6 w-24 rounded bg-[var(--rep-surface)] animate-pulse mb-2" />
+            <div className="h-4 w-40 rounded bg-[var(--rep-surface)] animate-pulse" />
+          </div>
+        </div>
+        <div className="h-10 rounded-xl bg-[var(--rep-surface)] animate-pulse" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[140px] rounded-2xl bg-[var(--rep-surface)] animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error && quests.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
-        <p className="text-sm text-red-400 mb-3">{error}</p>
-        <button
-          onClick={() => { setError(""); setLoading(true); loadQuests(); }}
-          className="text-xs text-[var(--rep-accent)] hover:underline"
-        >
-          Try again
-        </button>
+      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+        <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 mb-4">
+            <Swords size={22} className="text-red-400" />
+          </div>
+          <p className="text-sm text-white font-medium mb-1">Failed to load quests</p>
+          <p className="text-xs text-[var(--rep-text-muted)] mb-4">{error}</p>
+          <button
+            onClick={() => { setError(""); setLoading(true); loadQuests(); }}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--rep-border)] px-4 py-2 text-xs text-[var(--rep-text-muted)] hover:border-[var(--rep-accent)]/50 hover:text-white transition-colors"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }

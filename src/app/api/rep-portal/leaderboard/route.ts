@@ -9,6 +9,7 @@ import { requireRepAuth } from "@/lib/auth";
  * Returns top 50 reps ordered by total_revenue DESC.
  * Optionally filtered by event_id (uses rep_events stats).
  * Always includes current rep's position.
+ * When event_id is provided, includes position rewards and lock status.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +30,6 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get("event_id");
 
     if (eventId) {
-      // Event-specific leaderboard from rep_events
       return await getEventLeaderboard(supabase, repId, eventId);
     }
 
@@ -67,32 +67,22 @@ export async function GET(request: NextRequest) {
 
     // If current rep isn't in top 50, find their actual position
     if (!currentRepEntry) {
-      const { count } = await supabase
+      const { data: currentRep } = await supabase
         .from(TABLES.REPS)
-        .select("id", { count: "exact", head: true })
+        .select("total_revenue")
+        .eq("id", repId)
         .eq("org_id", ORG_ID)
-        .eq("status", "active")
-        .gt("total_revenue", 0);
+        .single();
 
-      if (count) {
-        // Get how many reps have more revenue
-        const { data: currentRep } = await supabase
+      if (currentRep && Number(currentRep.total_revenue) > 0) {
+        const { count: ahead } = await supabase
           .from(TABLES.REPS)
-          .select("total_revenue")
-          .eq("id", repId)
+          .select("id", { count: "exact", head: true })
           .eq("org_id", ORG_ID)
-          .single();
+          .eq("status", "active")
+          .gt("total_revenue", Number(currentRep.total_revenue));
 
-        if (currentRep) {
-          const { count: ahead } = await supabase
-            .from(TABLES.REPS)
-            .select("id", { count: "exact", head: true })
-            .eq("org_id", ORG_ID)
-            .eq("status", "active")
-            .gt("total_revenue", Number(currentRep.total_revenue));
-
-          currentPosition = (ahead || 0) + 1;
-        }
+        currentPosition = (ahead || 0) + 1;
       }
     }
 
@@ -114,31 +104,47 @@ export async function GET(request: NextRequest) {
 
 /**
  * Event-specific leaderboard using rep_events table.
+ * Includes position rewards and lock status.
  */
 async function getEventLeaderboard(
   supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseAdmin>>>,
   repId: string,
   eventId: string
 ) {
-  const { data: repEvents, error } = await supabase
-    .from(TABLES.REP_EVENTS)
-    .select(
-      "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level)"
-    )
-    .eq("org_id", ORG_ID)
-    .eq("event_id", eventId)
-    .order("revenue", { ascending: false })
-    .limit(50);
+  // Fetch leaderboard, event info, and position rewards in parallel
+  const [leaderboardResult, eventResult, rewardsResult] = await Promise.all([
+    supabase
+      .from(TABLES.REP_EVENTS)
+      .select(
+        "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level)"
+      )
+      .eq("org_id", ORG_ID)
+      .eq("event_id", eventId)
+      .order("revenue", { ascending: false })
+      .limit(50),
+    supabase
+      .from(TABLES.EVENTS)
+      .select("id, name, date_start, status")
+      .eq("id", eventId)
+      .eq("org_id", ORG_ID)
+      .single(),
+    supabase
+      .from(TABLES.REP_EVENT_POSITION_REWARDS)
+      .select("position, reward_name, reward_id, awarded_rep_id")
+      .eq("org_id", ORG_ID)
+      .eq("event_id", eventId)
+      .order("position", { ascending: true }),
+  ]);
 
-  if (error) {
-    console.error("[rep-portal/leaderboard] Event query error:", error);
+  if (leaderboardResult.error) {
+    console.error("[rep-portal/leaderboard] Event query error:", leaderboardResult.error);
     return NextResponse.json(
       { error: "Failed to fetch event leaderboard" },
       { status: 500 }
     );
   }
 
-  const leaderboard = (repEvents || []).map(
+  const leaderboard = (leaderboardResult.data || []).map(
     (re: Record<string, unknown>, index: number) => {
       const rep = re.rep as Record<string, unknown> | null;
       return {
@@ -162,12 +168,30 @@ async function getEventLeaderboard(
     ? currentRepEntry.position
     : null;
 
+  const positionRewards = (rewardsResult.data || []).map((pr) => ({
+    position: pr.position as number,
+    reward_name: pr.reward_name as string,
+    reward_id: pr.reward_id as string | null,
+    awarded_rep_id: pr.awarded_rep_id as string | null,
+  }));
+
+  const locked = positionRewards.some((pr) => pr.awarded_rep_id !== null);
+
+  const event = eventResult.data as Record<string, unknown> | null;
+
   return NextResponse.json({
     data: {
       leaderboard,
       current_position: currentPosition,
       current_rep_id: repId,
       event_id: eventId,
+      event: event ? {
+        name: event.name as string,
+        date_start: event.date_start as string | null,
+        status: event.status as string,
+      } : null,
+      locked,
+      position_rewards: positionRewards,
     },
   });
 }

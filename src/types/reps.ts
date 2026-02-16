@@ -267,3 +267,39 @@ export interface RepProgramStats {
   active_quests: number;
   pending_submissions: number;
 }
+
+// ─── Event Position Rewards ─────────────────────────────────────────────────
+export interface RepEventPositionReward {
+  id: string;
+  org_id: string;
+  event_id: string;
+  position: number;
+  reward_id?: string | null;
+  reward_name: string;
+  awarded_rep_id?: string | null;
+  awarded_at?: string | null;
+  created_at: string;
+  // Joined
+  reward?: RepReward | null;
+  awarded_rep?: { id: string; display_name?: string; first_name: string; photo_url?: string } | null;
+}
+
+// ─── Event Leaderboard (Rep Portal) ────────────────────────────────────────
+export interface EventLeaderboardSummary {
+  event_id: string;
+  event_name: string;
+  event_date: string | null;
+  event_status: string;
+  cover_image?: string | null;
+  reps_count: number;
+  your_position: number | null;
+  your_sales: number;
+  your_revenue: number;
+  locked: boolean;
+  position_rewards: {
+    position: number;
+    reward_name: string;
+    reward_id?: string | null;
+    awarded_rep_id?: string | null;
+  }[];
+}

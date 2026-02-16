@@ -379,6 +379,167 @@
   border-color: rgba(217, 119, 6, 0.25);
 }
 
+/* ── Contested / live event pulsing border ── */
+.rep-contested-border {
+  position: relative;
+}
+.rep-contested-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    var(--rep-gold),
+    rgba(245, 158, 11, 0.2),
+    var(--rep-accent),
+    rgba(139, 92, 246, 0.2),
+    var(--rep-gold)
+  );
+  background-size: 300% 300%;
+  animation: contestedPulse 3s ease-in-out infinite;
+  z-index: -1;
+  opacity: 0.6;
+}
+@keyframes contestedPulse {
+  0%, 100% { background-position: 0% 50%; opacity: 0.4; }
+  50% { background-position: 100% 50%; opacity: 0.7; }
+}
+
+.rep-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rep-success);
+  animation: liveDotPulse 1.5s ease-in-out infinite;
+}
+@keyframes liveDotPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0); }
+}
+
+/* ── Countdown timer styling ── */
+.rep-countdown {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.rep-countdown-segment {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 32px;
+}
+
+/* ── Position change indicators ── */
+.rep-position-up {
+  color: var(--rep-success);
+  animation: positionBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.rep-position-down {
+  color: #F43F5E;
+}
+@keyframes positionBounce {
+  0% { transform: translateY(4px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Event card hover for leaderboard ── */
+.rep-event-card {
+  background: var(--rep-card);
+  border: 1px solid var(--rep-border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.rep-event-card:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.08);
+}
+.rep-event-card.rep-event-live {
+  border-color: rgba(52, 211, 153, 0.3);
+}
+.rep-event-card.rep-event-locked {
+  border-color: rgba(245, 158, 11, 0.2);
+  opacity: 0.85;
+}
+
+/* ── Podium crown / medal icons ── */
+.rep-medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
+}
+.rep-medal-lg {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+}
+
+/* ── Reward pill shown next to podium positions ── */
+.rep-reward-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rep-reward-pill-gold {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--rep-gold);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.rep-reward-pill-silver {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--rep-silver);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.rep-reward-pill-bronze {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--rep-bronze);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+/* ── Tab bar for leaderboard ── */
+.rep-tab-bar {
+  display: flex;
+  gap: 2px;
+  background: var(--rep-surface);
+  border-radius: 12px;
+  padding: 3px;
+  border: 1px solid var(--rep-border);
+}
+.rep-tab {
+  flex: 1;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rep-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.rep-tab:hover {
+  color: var(--rep-text);
+}
+.rep-tab.active {
+  background: var(--rep-accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    QUESTS & REWARDS
    ══════════════════════════════════════════════════════════════════════ */

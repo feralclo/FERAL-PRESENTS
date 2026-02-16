@@ -60,6 +60,7 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   ExternalLink,
+  Trophy,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type {
@@ -132,6 +133,23 @@ export default function RepsHubPage() {
           Recruit, manage, and reward your brand ambassadors
         </p>
       </div>
+
+      {/* Quick link to event leaderboards */}
+      <Link
+        href="/admin/reps/event-boards"
+        className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-4 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 ring-1 ring-primary/10 group-hover:bg-primary/15 transition-colors">
+          <Trophy size={18} className="text-primary/70" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium text-foreground">Event Leaderboards</p>
+          <p className="text-xs text-muted-foreground">
+            Assign position rewards, preview standings, and lock results
+          </p>
+        </div>
+        <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+      </Link>
 
       {/* Internal Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>

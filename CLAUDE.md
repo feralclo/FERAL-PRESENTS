@@ -342,6 +342,7 @@ EventPage [Server Component, force-dynamic]
 | `rep_quests` | Tasks for reps — quest_type (social_post/story_share/content_creation/custom), points_reward |
 | `rep_quest_submissions` | Proof submissions — proof_type (screenshot/url/text), status (pending/approved/rejected) |
 | `rep_reward_claims` | Reward claims — claim_type (milestone/points_shop/manual), status (claimed/fulfilled/cancelled) |
+| `rep_event_position_rewards` | Per-event leaderboard position prizes (1st/2nd/3rd) — position, reward_name, reward_id, awarded_rep_id, awarded_at |
 
 ### Key Constraints
 - `orders.order_number` — unique, format `FERAL-XXXXX` (sequential, padded)
@@ -437,10 +438,10 @@ This applies to all external services: Supabase, Stripe, Vercel, Resend, Klaviyo
 | GET/POST | `/api/stripe/apple-pay-domain` | List / register domains |
 | GET | `/api/stripe/apple-pay-verify` | Serve Apple Pay verification file |
 
-### Reps Program (35 routes)
-**Admin routes** (`/api/reps/*`, 19 routes): CRUD for reps, event assignments, quests, quest submissions, rewards, milestones, reward claims, leaderboard, stats, settings, invite.
+### Reps Program (39 routes)
+**Admin routes** (`/api/reps/*`, 22 routes): CRUD for reps, event assignments, quests, quest submissions, rewards, milestones, reward claims, leaderboard, stats, settings, invite, event leaderboard position rewards (GET/POST `events/leaderboard/[eventId]/rewards`), lock event leaderboard (POST `events/leaderboard/[eventId]/lock`).
 
-**Rep portal routes** (`/api/rep-portal/*`, 16 routes): signup, login, logout, verify-email, invite/[token], me, dashboard, sales, points, quests, quest submissions, rewards, reward claims, leaderboard, discount.
+**Rep portal routes** (`/api/rep-portal/*`, 17 routes): signup, login, logout, verify-email, invite/[token], me, dashboard, sales, points, quests, quest submissions, rewards, reward claims, leaderboard, leaderboard/events, discount.
 
 ### Admin & Utilities
 `/api/admin/dashboard` (GET KPIs), `/api/admin/orders-stats` (GET), `/api/auth/login|logout|recover`, `/api/track` (POST analytics), `/api/meta/capi` (POST), `/api/upload` (POST base64 → media key), `/api/media/[key]` (GET), `/api/email/test|status`, `/api/wallet/status` (GET), `/api/health` (GET)

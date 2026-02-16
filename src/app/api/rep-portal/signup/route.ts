@@ -189,8 +189,9 @@ export async function POST(request: NextRequest) {
 
     const status = settings.auto_approve ? "active" : "pending";
     const inviteToken = crypto.randomUUID();
+    const verificationToken = crypto.randomUUID();
 
-    // Create rep row
+    // Create rep row — email_verified=false until they click the verification link
     const { data: rep, error: repError } = await supabase
       .from(TABLES.REPS)
       .insert({
@@ -208,6 +209,8 @@ export async function POST(request: NextRequest) {
         gender: gender || null,
         bio: bio || null,
         invite_token: inviteToken,
+        email_verified: false,
+        email_verification_token: verificationToken,
         points_balance: 0,
         total_sales: 0,
         total_revenue: 0,
@@ -225,32 +228,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If auto-approved, sign in to get session tokens and send welcome email
-    let session: { access_token: string; refresh_token: string } | null = null;
-    if (status === "active") {
-      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-        const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const { data: signInData } = await anonClient.auth.signInWithPassword({
-          email: finalEmail,
-          password,
-        });
-        if (signInData?.session) {
-          session = {
-            access_token: signInData.session.access_token,
-            refresh_token: signInData.session.refresh_token,
-          };
-        }
-      }
-
-      sendRepEmail({
-        type: "welcome",
-        repId: rep.id,
-        orgId: ORG_ID,
-      }).catch(() => {});
-    }
+    // Send verification email (welcome email sent after verification)
+    sendRepEmail({
+      type: "email_verification",
+      repId: rep.id,
+      orgId: ORG_ID,
+      data: { verification_token: verificationToken },
+    }).catch(() => {});
 
     return NextResponse.json(
-      { data: { rep_id: rep.id, status: rep.status, session } },
+      { data: { rep_id: rep.id, status: rep.status, needs_verification: true } },
       { status: 201 }
     );
   } catch (err) {

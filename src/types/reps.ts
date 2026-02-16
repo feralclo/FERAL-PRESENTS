@@ -25,6 +25,8 @@ export interface Rep {
   invited_by?: string | null;
   invite_token?: string | null;
   onboarding_completed: boolean;
+  email_verified: boolean;
+  email_verification_token?: string | null;
   bio?: string | null;
   created_at: string;
   updated_at: string;

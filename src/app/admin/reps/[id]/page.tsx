@@ -43,6 +43,7 @@ import {
   Copy,
   Check,
   Send,
+  MailCheck,
   Trash2,
   Calendar,
   Mail,
@@ -110,6 +111,10 @@ export default function RepDetailPage() {
     invite_url: string;
     discount_code: string;
   } | null>(null);
+
+  // Resend verification
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   // Delete rep dialog
   const [showDelete, setShowDelete] = useState(false);
@@ -273,6 +278,22 @@ export default function RepDetailPage() {
       setDeleteError("Network error — check connection");
     }
     setDeleting(false);
+  };
+
+  const handleResendVerification = async () => {
+    setResendingVerification(true);
+    setVerificationSent(false);
+    try {
+      const res = await fetch(`/api/reps/${repId}/resend-verification`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        setVerificationSent(true);
+      }
+    } catch {
+      /* network error */
+    }
+    setResendingVerification(false);
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -603,6 +624,37 @@ export default function RepDetailPage() {
                   <CardTitle className="text-sm">Onboarding</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Email Verified
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          rep.email_verified === false ? "warning" : "success"
+                        }
+                      >
+                        {rep.email_verified === false ? "No" : "Yes"}
+                      </Badge>
+                      {rep.email_verified === false && (
+                        <Button
+                          variant="outline"
+                          size="icon-xs"
+                          onClick={handleResendVerification}
+                          disabled={resendingVerification}
+                          title="Resend verification email"
+                        >
+                          {resendingVerification ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : verificationSent ? (
+                            <Check size={12} className="text-success" />
+                          ) : (
+                            <MailCheck size={12} />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
                       Onboarding Completed

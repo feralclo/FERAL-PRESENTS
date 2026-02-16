@@ -99,7 +99,7 @@ export async function requireAuth(): Promise<
  * or a 401/403 NextResponse.
  */
 export async function requireRepAuth(): Promise<
-  | { rep: { id: string; auth_user_id: string; email: string; org_id: string; status: string }; error: null }
+  | { rep: { id: string; auth_user_id: string; email: string; org_id: string; status: string; email_verified?: boolean }; error: null }
   | { rep: null; error: NextResponse }
 > {
   try {
@@ -144,7 +144,7 @@ export async function requireRepAuth(): Promise<
     // Look up the rep row linked to this auth user
     const { data: rep, error: repErr } = await repDb
       .from(TABLES.REPS)
-      .select("id, auth_user_id, email, org_id, status")
+      .select("id, auth_user_id, email, org_id, status, email_verified")
       .eq("auth_user_id", user.id)
       .eq("org_id", ORG_ID)
       .single();
@@ -157,7 +157,7 @@ export async function requireRepAuth(): Promise<
       if (user.email) {
         const { data: repByEmail } = await repDb
           .from(TABLES.REPS)
-          .select("id, auth_user_id, email, org_id, status")
+          .select("id, auth_user_id, email, org_id, status, email_verified")
           .eq("email", user.email.toLowerCase())
           .eq("org_id", ORG_ID)
           .is("auth_user_id", null)
@@ -177,6 +177,16 @@ export async function requireRepAuth(): Promise<
             .eq("org_id", ORG_ID);
 
           repByEmail.auth_user_id = user.id;
+
+          if (repByEmail.email_verified === false) {
+            return {
+              rep: null,
+              error: NextResponse.json(
+                { error: "Please verify your email address.", code: "rep_email_unverified", email: repByEmail.email },
+                { status: 403 }
+              ),
+            };
+          }
 
           if (repByEmail.status !== "active") {
             return {
@@ -202,6 +212,17 @@ export async function requireRepAuth(): Promise<
         rep: null,
         error: NextResponse.json(
           { error: "Rep account not found", code: "rep_not_found" },
+          { status: 403 }
+        ),
+      };
+    }
+
+    // Check email verification before status — unverified reps can't access protected routes
+    if (rep.email_verified === false) {
+      return {
+        rep: null,
+        error: NextResponse.json(
+          { error: "Please verify your email address.", code: "rep_email_unverified", email: rep.email },
           { status: 403 }
         ),
       };

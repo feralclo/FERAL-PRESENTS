@@ -306,11 +306,14 @@ export async function POST(
     }
 
     // Build update payload with provided fields
+    // Admin-invited reps are auto-verified (admin already vetted them)
     const updatePayload: Record<string, unknown> = {
       auth_user_id: authUserId,
       email: finalEmail,
       status: "active",
       onboarding_completed: true,
+      email_verified: true,
+      email_verification_token: null,
       invite_token: null,
       updated_at: new Date().toISOString(),
     };

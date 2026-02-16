@@ -27,6 +27,7 @@ function getResendClient(): Resend | null {
 type RepEmailType =
   | "welcome"
   | "invite"
+  | "email_verification"
   | "quest_notification"
   | "reward_unlocked"
   | "application_rejected"
@@ -187,6 +188,27 @@ function buildEmail(
   const firstName = escapeHtml((rep.first_name as string) || "there");
 
   switch (type) {
+    case "email_verification": {
+      const verifyUrl = `${siteUrl}/rep/verify-email?token=${encodeURIComponent(String(ctx.verification_token || ""))}`;
+      return {
+        subject: `Verify your email — ${orgName} Reps`,
+        html: wrapEmail(accent, orgName, `
+          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+            Verify your email
+          </h1>
+          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+            Hey ${firstName}, tap the button below to confirm your email and activate your rep account.
+          </p>
+          <a href="${verifyUrl}" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none; letter-spacing: 0.5px;">
+            Verify Email
+          </a>
+          <p style="font-size: 12px; color: #71717a; margin: 24px 0 0 0; line-height: 1.6;">
+            If you didn\u2019t sign up for ${orgName} Reps, you can ignore this email.
+          </p>
+        `),
+      };
+    }
+
     case "welcome":
       return {
         subject: `Welcome to the team, ${firstName}!`,

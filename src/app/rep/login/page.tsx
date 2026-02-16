@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -11,6 +12,7 @@ function LoginForm() {
   // Validate redirect is an internal path (prevent open redirect attacks)
   const rawRedirect = searchParams.get("redirect") || "/rep";
   const redirect = rawRedirect.startsWith("/rep") ? rawRedirect : "/rep";
+  const justVerified = searchParams.get("verified") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,24 +29,24 @@ function LoginForm() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setCheckingSession(false); return; }
 
-      // Verify the user actually has an active rep account before redirecting
+      // Check rep status via auth-check (allows unverified/pending through)
       try {
-        const res = await fetch("/api/rep-portal/me");
-        if (res.ok) {
-          router.replace(redirect);
+        const res = await fetch("/api/rep-portal/auth-check");
+        if (!res.ok) { setCheckingSession(false); return; }
+        const json = await res.json();
+
+        if (!json.authenticated || !json.rep) {
+          // Not a rep — sign out so they can log in with rep credentials
+          await supabase.auth.signOut();
+          setCheckingSession(false);
           return;
         }
 
-        // User is logged in but not as a rep — sign out so they can
-        // log in with their rep credentials instead
-        const errJson = await res.json().catch(() => null);
-        const code = errJson?.code || "";
-        if (code === "rep_not_found") {
-          await supabase.auth.signOut();
-        }
-      } catch { /* network error — fall through to show login */ }
+        // Has a rep account — redirect to portal (layout handles gates)
+        router.replace(redirect);
+        return;
+      } catch { /* fall through */ }
 
-      // Not a rep or account not active — show login form
       setCheckingSession(false);
     })();
   }, [router, redirect]);
@@ -74,34 +76,38 @@ function LoginForm() {
       return;
     }
 
-    // Verify user has an active rep account
+    // Check rep account status
     try {
-      const res = await fetch("/api/rep-portal/me");
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        const code = errJson?.code || "";
-        await supabase.auth.signOut();
+      const res = await fetch("/api/rep-portal/auth-check");
+      const json = await res.json();
 
-        if (code === "rep_pending") {
-          setError("Your application is being reviewed. You\u2019ll receive an email once approved.");
-        } else if (code === "rep_suspended" || code === "rep_deactivated") {
-          setError("Your account has been deactivated. Please contact support.");
-        } else if (code === "rep_not_found") {
-          setError("No rep account found for this email. If you were invited, check your email for the invite link and set up your account there first.");
-        } else {
-          setError("Unable to access the rep dashboard with this account. Please check your email and try again.");
-        }
+      if (!json.authenticated || !json.rep) {
+        await supabase.auth.signOut();
+        setError(
+          "No rep account found for this email. If you were invited, check your email for the invite link."
+        );
         setLoading(false);
         return;
       }
+
+      const rep = json.rep;
+
+      // Block suspended/deactivated at login
+      if (rep.status === "suspended" || rep.status === "deactivated") {
+        await supabase.auth.signOut();
+        setError("Your account has been deactivated. Please contact support.");
+        setLoading(false);
+        return;
+      }
+
+      // For all other states (active, pending, unverified) — redirect to portal
+      // The layout will show the appropriate gate
+      router.push(redirect);
     } catch {
       await supabase.auth.signOut();
       setError("Failed to verify rep account");
       setLoading(false);
-      return;
     }
-
-    router.push(redirect);
   };
 
   if (checkingSession) {
@@ -124,6 +130,16 @@ function LoginForm() {
             Sign in to your rep dashboard
           </p>
         </div>
+
+        {/* Verified banner */}
+        {justVerified && (
+          <div className="flex items-center gap-2.5 rounded-xl bg-[var(--rep-success)]/10 border border-[var(--rep-success)]/20 px-4 py-3 mb-6">
+            <CheckCircle2 size={16} className="text-[var(--rep-success)] shrink-0" />
+            <p className="text-sm text-[var(--rep-success)]">
+              Email verified! Sign in to continue.
+            </p>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

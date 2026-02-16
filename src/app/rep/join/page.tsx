@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
 
 /* ── Boot sequence lines ── */
 const BOOT_LINES = [
@@ -33,8 +32,6 @@ export default function RepJoinPage() {
   const [step, setStep] = useState(0);
   const [stepKey, setStepKey] = useState(0); // for re-triggering animations
   const [error, setError] = useState("");
-  const [repStatus, setRepStatus] = useState<"active" | "pending" | "">("");
-  const [autoLoginFailed, setAutoLoginFailed] = useState(false);
 
   /* ── Boot ── */
   const [visibleLines, setVisibleLines] = useState(0);
@@ -144,35 +141,12 @@ export default function RepJoinPage() {
         setPhase("review");
         return;
       }
-      const status = json.data?.status || "pending";
-      setRepStatus(status);
+
+      // Always redirect to verify-email — verification required before access
       setPhase("done");
-
-      // Only auto-login and redirect if the rep was auto-approved (active)
-      if (status === "active") {
-        const sessionTokens = json.data?.session;
-        let loggedIn = false;
-
-        if (sessionTokens?.access_token && sessionTokens?.refresh_token) {
-          const supabase = getSupabaseClient();
-          if (supabase) {
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: sessionTokens.access_token,
-              refresh_token: sessionTokens.refresh_token,
-            });
-            if (!sessionError) {
-              loggedIn = true;
-            }
-          }
-        }
-
-        if (loggedIn) {
-          setTimeout(() => router.push("/rep"), 2500);
-        } else {
-          setAutoLoginFailed(true);
-        }
-      }
-      // If pending, don't auto-login or redirect — show the "application sent" screen
+      setTimeout(() => {
+        router.push(`/rep/verify-email?email=${encodeURIComponent(email.toLowerCase().trim())}`);
+      }, 1800);
     } catch {
       setError("Connection lost. Try again.");
       setPhase("review");
@@ -243,7 +217,6 @@ export default function RepJoinPage() {
      RENDER: DONE
      ══════════════════════════════════════════════════════════════════ */
   if (phase === "done") {
-    const isActive = repStatus === "active";
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-6">
         <div className="text-center max-w-sm rep-celebrate">
@@ -253,38 +226,14 @@ export default function RepJoinPage() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">
-            {isActive ? "You\u2019re In" : "Application Sent"}
+            Application Sent
           </h2>
           <p className="text-sm text-[var(--rep-text-muted)] leading-relaxed mb-8 max-w-[280px] mx-auto">
-            {isActive
-              ? "Your account is live. Time to start earning."
-              : "We\u2019ll review your application and get back to you. Check your email for updates."}
+            Check your email for a verification link to activate your account.
           </p>
-          {isActive && autoLoginFailed ? (
-            <>
-              <button
-                onClick={() => router.push("/rep/login")}
-                className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
-              >
-                Log In to Dashboard
-              </button>
-              <p className="mt-4 text-xs text-[var(--rep-text-muted)]">
-                Use the email and password you just created
-              </p>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => router.push(isActive ? "/rep" : "/rep/login")}
-                className="rounded-xl bg-[var(--rep-accent)] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
-              >
-                {isActive ? "Go to Dashboard" : "Go to Login"}
-              </button>
-              {isActive && (
-                <p className="mt-4 text-xs text-[var(--rep-text-muted)]">Redirecting automatically...</p>
-              )}
-            </>
-          )}
+          <p className="mt-4 text-xs text-[var(--rep-text-muted)]">
+            Redirecting...
+          </p>
         </div>
       </div>
     );

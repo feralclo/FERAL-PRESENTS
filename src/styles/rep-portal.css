@@ -3,6 +3,12 @@
    Scoped to [data-rep] so it never leaks to admin or public pages.
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* ── Kill global CRT effects in rep portal ── */
+body:has([data-rep]) > .scanlines,
+body:has([data-rep]) > .noise {
+  display: none !important;
+}
+
 /* ── Theme variables ── */
 [data-rep] {
   --rep-bg: #06060a;

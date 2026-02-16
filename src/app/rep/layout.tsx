@@ -211,22 +211,23 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                 {branding?.org_name || "Entry"}
               </span>
             </Link>
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-0.5">
               {NAV_ITEMS.map((item) => {
                 const active = matchRoute(pathname, item.href);
+                const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "relative px-3 py-1.5 text-[13px] font-medium transition-colors",
-                      active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
                     )}
                   >
+                    <Icon size={14} strokeWidth={active ? 2.5 : 1.75} />
                     {item.label}
-                    {active && (
-                      <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-primary" />
-                    )}
                   </Link>
                 );
               })}
@@ -275,7 +276,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom tab bar */}
       {showNav && (
-        <nav className="fixed bottom-0 inset-x-0 z-50 flex md:hidden items-center justify-around border-t border-border/30 bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] pt-2 pb-2">
+        <nav className="fixed bottom-0 inset-x-0 z-50 flex md:hidden items-center justify-around border-t border-border/20 bg-background/95 backdrop-blur-2xl pb-[env(safe-area-inset-bottom)] pt-1.5 pb-1.5">
           {MOBILE_NAV_ITEMS.map((item) => {
             const active = matchRoute(pathname, item.href);
             const Icon = item.icon;
@@ -284,15 +285,27 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center justify-center p-2 rounded-lg transition-colors duration-200",
-                  active ? "text-foreground" : "text-muted-foreground/60"
+                  "relative flex flex-col items-center justify-center w-14 py-1.5 rounded-xl transition-all duration-200",
+                  active
+                    ? "text-primary"
+                    : "text-muted-foreground/50 active:text-muted-foreground/80"
                 )}
               >
+                {active && (
+                  <span className="absolute inset-0 rounded-xl bg-primary/10" />
+                )}
                 <Icon
-                  size={22}
+                  size={21}
                   strokeWidth={active ? 2.5 : 1.5}
                   fill={active ? "currentColor" : "none"}
+                  className="relative z-10"
                 />
+                <span className={cn(
+                  "relative z-10 text-[9px] font-semibold mt-0.5 transition-opacity",
+                  active ? "opacity-100" : "opacity-0"
+                )}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}

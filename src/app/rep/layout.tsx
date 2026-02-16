@@ -303,8 +303,8 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   />
                   <Icon
                     size={21}
-                    strokeWidth={active ? 2.25 : 1.5}
-                    fill={active ? "currentColor" : "none"}
+                    strokeWidth={active ? 2.5 : 1.5}
+                    className={active ? "drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]" : ""}
                   />
                   <span
                     className={cn(

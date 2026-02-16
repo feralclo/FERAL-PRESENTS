@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Swords, Upload, Link as LinkIcon, Type, X, Loader2, Check,
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
-  Camera, Share2, Sparkles, Zap,
+  Camera, Share2, Sparkles, Zap, ChevronRight,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -72,6 +72,7 @@ interface TierConfig {
   badgeClass: string;
   xpBadgeClass: string;
   progressClass: string;
+  actionClass: string;
 }
 
 function getQuestTier(points: number): TierConfig {
@@ -83,6 +84,7 @@ function getQuestTier(points: number): TierConfig {
       badgeClass: "rep-tier-badge rep-tier-badge-legendary",
       xpBadgeClass: "rep-xp-badge rep-xp-badge-legendary",
       progressClass: "rep-quest-progress rep-quest-progress-legendary",
+      actionClass: "rep-quest-action rep-quest-action-legendary",
     };
   }
   if (points >= 150) {
@@ -93,6 +95,7 @@ function getQuestTier(points: number): TierConfig {
       badgeClass: "rep-tier-badge rep-tier-badge-epic",
       xpBadgeClass: "rep-xp-badge rep-xp-badge-epic",
       progressClass: "rep-quest-progress rep-quest-progress-epic",
+      actionClass: "rep-quest-action rep-quest-action-epic",
     };
   }
   if (points >= 50) {
@@ -103,6 +106,7 @@ function getQuestTier(points: number): TierConfig {
       badgeClass: "rep-tier-badge rep-tier-badge-rare",
       xpBadgeClass: "rep-xp-badge rep-xp-badge-rare",
       progressClass: "rep-quest-progress rep-quest-progress-rare",
+      actionClass: "rep-quest-action rep-quest-action-rare",
     };
   }
   return {
@@ -112,6 +116,7 @@ function getQuestTier(points: number): TierConfig {
     badgeClass: "rep-tier-badge rep-tier-badge-common",
     xpBadgeClass: "rep-xp-badge rep-xp-badge-common",
     progressClass: "rep-quest-progress rep-quest-progress-common",
+    actionClass: "rep-quest-action rep-quest-action-common",
   };
 }
 
@@ -519,9 +524,10 @@ export default function RepQuestsPage() {
                     {tab === "active" && (
                       <button
                         onClick={() => openSubmitModal(quest)}
-                        className="rounded-lg bg-[var(--rep-accent)] px-4 py-2 text-xs font-semibold text-white transition-all hover:brightness-110"
+                        className={tier.actionClass}
                       >
-                        Submit Proof
+                        Accept Quest
+                        <ChevronRight size={14} />
                       </button>
                     )}
                   </div>

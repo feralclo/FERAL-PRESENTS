@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
 /**
@@ -48,8 +49,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Use admin client for data queries (bypasses RLS)
+    const adminDb = getSupabaseAdmin();
+
     // Verify the auth user has a rep row
-    const { data: rep, error: repError } = await supabase
+    const { data: rep, error: repError } = await adminDb
       .from(TABLES.REPS)
       .select("id, auth_user_id, email, org_id, status, first_name, last_name, display_name, photo_url, level, points_balance, onboarding_completed")
       .eq("auth_user_id", authData.user.id)
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest) {
       // Only links if the rep has NO existing auth_user_id (prevents account takeover).
       const userEmail = authData.user.email?.toLowerCase();
       if (userEmail) {
-        const { data: repByEmail } = await supabase
+        const { data: repByEmail } = await adminDb
           .from(TABLES.REPS)
           .select("id, auth_user_id, email, org_id, status, first_name, last_name, display_name, photo_url, level, points_balance, onboarding_completed")
           .eq("email", userEmail)
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
             authUserId: authData.user.id,
             email: userEmail,
           });
-          await supabase
+          await adminDb
             .from(TABLES.REPS)
             .update({ auth_user_id: authData.user.id, updated_at: new Date().toISOString() })
             .eq("id", repByEmail.id)

@@ -359,41 +359,73 @@ export async function sendOrderConfirmationEmail(params: {
       }
     }
 
-    // Send via Resend
-    const { error } = await resend.emails.send({
-      from: `${settings.from_name} <${settings.from_email}>`,
-      replyTo: settings.reply_to || undefined,
-      to: [params.customer.email],
-      subject,
-      html,
-      text,
-      attachments,
-    });
+    // Send via Resend — retry up to 2 times on transient failures
+    let lastError: unknown = null;
+    const maxAttempts = 3;
 
-    if (error) {
-      console.error("[email] Resend error:", error);
-      // Record failure in order metadata
-      await recordEmailStatus(params.order.id, {
-        email_sent: false,
-        email_error: typeof error === "object" && "message" in error ? error.message : String(error),
-        email_attempted_at: new Date().toISOString(),
-        email_to: params.customer.email,
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const { error } = await resend.emails.send({
+        from: `${settings.from_name} <${settings.from_email}>`,
+        replyTo: settings.reply_to || undefined,
+        to: [params.customer.email],
+        subject,
+        html,
+        text,
+        attachments,
       });
-      return;
+
+      if (!error) {
+        // Record success in order metadata
+        await recordEmailStatus(params.order.id, {
+          email_sent: true,
+          email_sent_at: new Date().toISOString(),
+          email_to: params.customer.email,
+        });
+        console.log(
+          `[email] Order confirmation sent to ${params.customer.email} for ${params.order.order_number}${attempt > 1 ? ` (attempt ${attempt})` : ""}`
+        );
+        return;
+      }
+
+      lastError = error;
+      const errMsg = typeof error === "object" && "message" in error ? error.message : String(error);
+      console.warn(`[email] Resend attempt ${attempt}/${maxAttempts} failed:`, errMsg);
+
+      // Don't retry on validation errors (wrong from address, etc.) — only on transient failures
+      if (typeof error === "object" && "name" in error && (error as { name: string }).name === "validation_error") {
+        break;
+      }
+
+      // Wait before retrying (1s, 2s)
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      }
     }
 
-    // Record success in order metadata
+    // All attempts failed — record the error
+    const errMsg = lastError && typeof lastError === "object" && "message" in lastError
+      ? (lastError as { message: string }).message
+      : String(lastError);
+    console.error("[email] Resend error after all attempts:", errMsg);
     await recordEmailStatus(params.order.id, {
-      email_sent: true,
-      email_sent_at: new Date().toISOString(),
+      email_sent: false,
+      email_error: errMsg,
+      email_attempted_at: new Date().toISOString(),
       email_to: params.customer.email,
     });
-
-    console.log(
-      `[email] Order confirmation sent to ${params.customer.email} for ${params.order.order_number}`
-    );
   } catch (err) {
     // Never throw — email failure must not block the order flow
     console.error("[email] Failed to send order confirmation:", err);
+    // Record the failure so the timeline shows it (previously this was silent)
+    try {
+      await recordEmailStatus(params.order.id, {
+        email_sent: false,
+        email_error: err instanceof Error ? err.message : "Internal error during email generation",
+        email_attempted_at: new Date().toISOString(),
+        email_to: params.customer.email,
+      });
+    } catch {
+      // Last-resort catch — don't let metadata recording break anything
+    }
   }
 }

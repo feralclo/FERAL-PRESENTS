@@ -30,6 +30,8 @@ import {
   ExternalLink,
   QrCode,
   XCircle,
+  RefreshCw,
+  MailCheck,
 } from "lucide-react";
 
 /* ── Status styling ── */
@@ -52,6 +54,7 @@ interface TimelineEntry {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   color: string;
   sortDate: Date;
+  canResend?: boolean;
 }
 
 function buildTimeline(order: Order): TimelineEntry[] {
@@ -88,21 +91,23 @@ function buildTimeline(order: Order): TimelineEntry[] {
   const meta = (order.metadata || {}) as Record<string, unknown>;
   if (meta.email_sent === true && typeof meta.email_sent_at === "string") {
     entries.push({
-      label: "Confirmation email sent",
+      label: "Order Confirmation Sent",
       detail: `to ${meta.email_to || order.customer?.email || "customer"}`,
       time: fmt(meta.email_sent_at as string),
       icon: Send,
       color: "text-muted-foreground",
       sortDate: new Date(meta.email_sent_at as string),
+      canResend: true,
     });
   } else if (meta.email_sent === false && typeof meta.email_attempted_at === "string") {
     entries.push({
-      label: "Email delivery failed",
+      label: "Order Confirmation Failed",
       detail: (meta.email_error as string) || "Unknown error",
       time: fmt(meta.email_attempted_at as string),
       icon: AlertCircle,
-      color: "text-muted-foreground",
+      color: "text-destructive",
       sortDate: new Date(meta.email_attempted_at as string),
+      canResend: true,
     });
   }
 
@@ -167,6 +172,7 @@ export default function OrderDetailPage() {
   const [refunding, setRefunding] = useState(false);
   const [showRefund, setShowRefund] = useState(false);
   const [refundReason, setRefundReason] = useState("");
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   const loadOrder = useCallback(async () => {
     const res = await fetch(`/api/orders/${orderId}`);
@@ -222,6 +228,25 @@ export default function OrderDetailPage() {
     } catch {
       alert("Failed to download PDF");
     }
+  };
+
+  const handleResendEmail = async () => {
+    setResendingEmail(true);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/resend-email`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.message || "Order confirmation resent successfully");
+        loadOrder(); // Refresh to update timeline
+      } else {
+        alert(json.error || "Failed to resend email");
+      }
+    } catch {
+      alert("Network error — could not resend email");
+    }
+    setResendingEmail(false);
   };
 
   if (loading) {
@@ -678,13 +703,38 @@ export default function OrderDetailPage() {
                       <Icon size={11} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{entry.label}</p>
-                      {entry.detail && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{entry.detail}</p>
-                      )}
-                      <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
-                        {entry.time}
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{entry.label}</p>
+                          {entry.detail && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">{entry.detail}</p>
+                          )}
+                          <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                            {entry.time}
+                          </p>
+                        </div>
+                        {entry.canResend && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 gap-1.5 text-xs"
+                            onClick={handleResendEmail}
+                            disabled={resendingEmail}
+                          >
+                            {resendingEmail ? (
+                              <>
+                                <RefreshCw size={12} className="animate-spin" />
+                                Sending…
+                              </>
+                            ) : (
+                              <>
+                                <MailCheck size={12} />
+                                Resend
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

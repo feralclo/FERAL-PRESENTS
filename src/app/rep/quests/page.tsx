@@ -427,180 +427,186 @@ export default function RepQuestsPage() {
                 className={`rep-quest-card ${tier.cardClass}`}
                 style={{ animationDelay: `${index * 60}ms` }}
               >
-                {/* Expiry warning */}
-                {expiry?.urgent && (
-                  <div className="flex items-center gap-1.5 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
-                    <Clock size={12} className="text-amber-400 shrink-0" />
-                    <span className="text-[11px] font-medium text-amber-400">{expiry.text}</span>
+                {/* Ambient image backdrop */}
+                {quest.image_url && (
+                  <div className={`rep-quest-ambient rep-quest-ambient-${tier.tier}`}>
+                    <img src={quest.image_url} alt="" />
                   </div>
                 )}
 
-                {/* Top row: Tier badge — Quest type — XP badge */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className={tier.badgeClass}>{tier.label}</span>
-                    <div className="flex items-center gap-1 text-[10px] text-[var(--rep-text-muted)] uppercase tracking-wider">
-                      <QuestTypeIcon size={11} />
-                      <span>{questTypeLabel}</span>
+                {/* Card content — above ambient layer */}
+                <div className="relative z-10">
+                  {/* Expiry warning */}
+                  {expiry?.urgent && (
+                    <div className="flex items-center gap-1.5 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
+                      <Clock size={12} className="text-amber-400 shrink-0" />
+                      <span className="text-[11px] font-medium text-amber-400">{expiry.text}</span>
+                    </div>
+                  )}
+
+                  {/* Top row: Tier badge — Quest type — XP badge */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className={tier.badgeClass}>{tier.label}</span>
+                      <div className="flex items-center gap-1 text-[10px] text-[var(--rep-text-muted)] uppercase tracking-wider">
+                        <QuestTypeIcon size={11} />
+                        <span>{questTypeLabel}</span>
+                      </div>
+                    </div>
+                    <span className={tier.xpBadgeClass}>+{quest.points_reward} XP</span>
+                  </div>
+
+                  {/* Title + description */}
+                  <div className="mb-3">
+                    <h3 className="text-[15px] font-bold text-white">{quest.title}</h3>
+                    {quest.description && (
+                      <p className="text-xs text-[var(--rep-text-muted)] mt-1 line-clamp-2">{quest.description}</p>
+                    )}
+                  </div>
+
+                  {quest.instructions && (
+                    <div className="rounded-lg bg-[var(--rep-surface)] p-3 mb-3">
+                      <p className="text-[11px] text-[var(--rep-text-muted)] leading-relaxed">{quest.instructions}</p>
+                    </div>
+                  )}
+
+                  {/* Progress bar for repeatable quests */}
+                  {isRepeatable && (
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-[var(--rep-text-muted)]">Progress</span>
+                        <span className="text-[10px] font-semibold text-[var(--rep-text-muted)]">
+                          {approvedCount}/{quest.max_completions}
+                        </span>
+                      </div>
+                      <div className={tier.progressClass}>
+                        <div
+                          className="rep-quest-progress-fill"
+                          style={{ width: `${Math.min(100, (approvedCount / (quest.max_completions || 1)) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submission status badges */}
+                  {hasSubs && (
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                      {subs.pending > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                          <Clock size={10} /> {subs.pending} pending
+                        </span>
+                      )}
+                      {subs.approved > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                          <Check size={10} /> {subs.approved} approved
+                        </span>
+                      )}
+                      {subs.rejected > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                          <X size={10} /> {subs.rejected} rejected
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-[10px] text-[var(--rep-text-muted)]">
+                      {expiry && !expiry.urgent && (
+                        <span>{expiry.text}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* View past submissions */}
+                      {hasSubs && (
+                        <button
+                          onClick={() => toggleSubmissions(quest.id)}
+                          className="flex items-center gap-1 rounded-lg border border-[var(--rep-border)] px-3 py-2 text-[11px] text-[var(--rep-text-muted)] transition-colors hover:text-white hover:border-white/20"
+                        >
+                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          History
+                        </button>
+                      )}
+                      {tab === "active" && (
+                        <button
+                          onClick={() => openSubmitModal(quest)}
+                          className={tier.actionClass}
+                        >
+                          Accept Quest
+                          <ChevronRight size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <span className={tier.xpBadgeClass}>+{quest.points_reward} XP</span>
-                </div>
 
-                {/* Title + description */}
-                <div className="mb-3">
-                  <h3 className="text-[15px] font-bold text-white">{quest.title}</h3>
-                  {quest.description && (
-                    <p className="text-xs text-[var(--rep-text-muted)] mt-1 line-clamp-2">{quest.description}</p>
+                  {/* Expanded submissions list */}
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-[var(--rep-border)]">
+                      {loadingSubs === quest.id ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-spin h-4 w-4 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+                        </div>
+                      ) : !questSubmissions[quest.id]?.length ? (
+                        <p className="text-xs text-[var(--rep-text-muted)] text-center py-3">No submissions yet</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {questSubmissions[quest.id].map((sub) => (
+                            <div
+                              key={sub.id}
+                              className="rounded-lg bg-[var(--rep-surface)] border border-[var(--rep-border)] p-3"
+                            >
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] text-[var(--rep-text-muted)]">
+                                  {formatDate(sub.created_at)}
+                                </span>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                                  sub.status === "approved"
+                                    ? "bg-emerald-500/10 text-emerald-400"
+                                    : sub.status === "rejected"
+                                    ? "bg-red-500/10 text-red-400"
+                                    : "bg-amber-500/10 text-amber-400"
+                                }`}>
+                                  {sub.status}
+                                  {sub.status === "approved" && sub.points_awarded > 0 && (
+                                    <span className="ml-1">+{sub.points_awarded} pts</span>
+                                  )}
+                                </span>
+                              </div>
+                              {/* Proof summary */}
+                              <div className="text-xs text-[var(--rep-text-muted)]">
+                                {sub.proof_type === "screenshot" && sub.proof_url && (
+                                  <img src={sub.proof_url} alt="Proof" className="max-h-20 rounded mt-1" />
+                                )}
+                                {(sub.proof_type === "tiktok_link" || sub.proof_type === "instagram_link" || sub.proof_type === "url") && (sub.proof_url || sub.proof_text) && (
+                                  <a
+                                    href={sub.proof_url || sub.proof_text || "#"}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[var(--rep-accent)] hover:underline break-all inline-flex items-center gap-1"
+                                  >
+                                    <ExternalLink size={10} />
+                                    {sub.proof_type === "tiktok_link" ? "TikTok" : sub.proof_type === "instagram_link" ? "Instagram" : "Link"}
+                                  </a>
+                                )}
+                                {sub.proof_type === "text" && sub.proof_text && (
+                                  <p className="line-clamp-2 mt-0.5">{sub.proof_text}</p>
+                                )}
+                              </div>
+                              {/* Rejection reason */}
+                              {sub.status === "rejected" && sub.rejection_reason && (
+                                <div className="mt-2 rounded bg-red-500/5 border border-red-500/10 px-2.5 py-1.5">
+                                  <div className="flex items-start gap-1.5">
+                                    <AlertCircle size={10} className="text-red-400 mt-0.5 shrink-0" />
+                                    <p className="text-[10px] text-red-400">{sub.rejection_reason}</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-
-                {quest.instructions && (
-                  <div className="rounded-lg bg-[var(--rep-surface)] p-3 mb-3">
-                    <p className="text-[11px] text-[var(--rep-text-muted)] leading-relaxed">{quest.instructions}</p>
-                  </div>
-                )}
-
-                {quest.image_url && (
-                  <img src={quest.image_url} alt="" className="rounded-lg mb-3 max-h-40 w-full object-cover" />
-                )}
-
-                {/* Progress bar for repeatable quests */}
-                {isRepeatable && (
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] text-[var(--rep-text-muted)]">Progress</span>
-                      <span className="text-[10px] font-semibold text-[var(--rep-text-muted)]">
-                        {approvedCount}/{quest.max_completions}
-                      </span>
-                    </div>
-                    <div className={tier.progressClass}>
-                      <div
-                        className="rep-quest-progress-fill"
-                        style={{ width: `${Math.min(100, (approvedCount / (quest.max_completions || 1)) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Submission status badges */}
-                {hasSubs && (
-                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                    {subs.pending > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
-                        <Clock size={10} /> {subs.pending} pending
-                      </span>
-                    )}
-                    {subs.approved > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                        <Check size={10} /> {subs.approved} approved
-                      </span>
-                    )}
-                    {subs.rejected > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
-                        <X size={10} /> {subs.rejected} rejected
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-[10px] text-[var(--rep-text-muted)]">
-                    {expiry && !expiry.urgent && (
-                      <span>{expiry.text}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* View past submissions */}
-                    {hasSubs && (
-                      <button
-                        onClick={() => toggleSubmissions(quest.id)}
-                        className="flex items-center gap-1 rounded-lg border border-[var(--rep-border)] px-3 py-2 text-[11px] text-[var(--rep-text-muted)] transition-colors hover:text-white hover:border-white/20"
-                      >
-                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        History
-                      </button>
-                    )}
-                    {tab === "active" && (
-                      <button
-                        onClick={() => openSubmitModal(quest)}
-                        className={tier.actionClass}
-                      >
-                        Accept Quest
-                        <ChevronRight size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expanded submissions list */}
-                {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-[var(--rep-border)]">
-                    {loadingSubs === quest.id ? (
-                      <div className="flex items-center justify-center py-4">
-                        <div className="animate-spin h-4 w-4 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
-                      </div>
-                    ) : !questSubmissions[quest.id]?.length ? (
-                      <p className="text-xs text-[var(--rep-text-muted)] text-center py-3">No submissions yet</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {questSubmissions[quest.id].map((sub) => (
-                          <div
-                            key={sub.id}
-                            className="rounded-lg bg-[var(--rep-surface)] border border-[var(--rep-border)] p-3"
-                          >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[10px] text-[var(--rep-text-muted)]">
-                                {formatDate(sub.created_at)}
-                              </span>
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-                                sub.status === "approved"
-                                  ? "bg-emerald-500/10 text-emerald-400"
-                                  : sub.status === "rejected"
-                                  ? "bg-red-500/10 text-red-400"
-                                  : "bg-amber-500/10 text-amber-400"
-                              }`}>
-                                {sub.status}
-                                {sub.status === "approved" && sub.points_awarded > 0 && (
-                                  <span className="ml-1">+{sub.points_awarded} pts</span>
-                                )}
-                              </span>
-                            </div>
-                            {/* Proof summary */}
-                            <div className="text-xs text-[var(--rep-text-muted)]">
-                              {sub.proof_type === "screenshot" && sub.proof_url && (
-                                <img src={sub.proof_url} alt="Proof" className="max-h-20 rounded mt-1" />
-                              )}
-                              {(sub.proof_type === "tiktok_link" || sub.proof_type === "instagram_link" || sub.proof_type === "url") && (sub.proof_url || sub.proof_text) && (
-                                <a
-                                  href={sub.proof_url || sub.proof_text || "#"}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[var(--rep-accent)] hover:underline break-all inline-flex items-center gap-1"
-                                >
-                                  <ExternalLink size={10} />
-                                  {sub.proof_type === "tiktok_link" ? "TikTok" : sub.proof_type === "instagram_link" ? "Instagram" : "Link"}
-                                </a>
-                              )}
-                              {sub.proof_type === "text" && sub.proof_text && (
-                                <p className="line-clamp-2 mt-0.5">{sub.proof_text}</p>
-                              )}
-                            </div>
-                            {/* Rejection reason */}
-                            {sub.status === "rejected" && sub.rejection_reason && (
-                              <div className="mt-2 rounded bg-red-500/5 border border-red-500/10 px-2.5 py-1.5">
-                                <div className="flex items-start gap-1.5">
-                                  <AlertCircle size={10} className="text-red-400 mt-0.5 shrink-0" />
-                                  <p className="text-[10px] text-red-400">{sub.rejection_reason}</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}

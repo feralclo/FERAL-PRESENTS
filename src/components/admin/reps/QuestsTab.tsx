@@ -41,6 +41,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import type {
   RepQuest,
   QuestType,
@@ -292,15 +293,15 @@ export function QuestsTab() {
                 <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Reference Image URL</Label>
-                <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Show them what to create" />
-              </div>
-              <div className="space-y-2">
-                <Label>Reference Video URL</Label>
-                <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="TikTok / YouTube link" />
-              </div>
+            <ImageUpload
+              label="Reference Image"
+              value={imageUrl}
+              onChange={setImageUrl}
+              uploadKey={editId ? `quest_${editId}_image` : undefined}
+            />
+            <div className="space-y-2">
+              <Label>Reference Video URL</Label>
+              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="TikTok / YouTube link" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

@@ -513,12 +513,48 @@ body:has([data-rep]) > .noise {
 
 /* ── Quest card base ── */
 .rep-quest-card {
+  position: relative;
+  overflow: hidden;
   background: var(--rep-card);
   border: 1px solid var(--rep-border);
   border-radius: 16px;
   padding: 20px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   animation: repSlideUp 0.4s ease-out both;
+}
+
+/* ── Quest ambient image (ghosted right-side backdrop) ── */
+.rep-quest-ambient {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 55%;
+  z-index: 0;
+  pointer-events: none;
+  mask-image: linear-gradient(to right, transparent 0%, black 50%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 50%);
+}
+.rep-quest-ambient img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rep-quest-ambient-common img {
+  opacity: 0.04;
+  filter: blur(10px) grayscale(0.8);
+}
+.rep-quest-ambient-rare img {
+  opacity: 0.06;
+  filter: blur(8px) saturate(1.3);
+}
+.rep-quest-ambient-epic img {
+  opacity: 0.08;
+  filter: blur(6px) saturate(1.5);
+}
+.rep-quest-ambient-legendary img {
+  opacity: 0.10;
+  filter: blur(4px) saturate(1.8) sepia(0.1);
 }
 
 /* ── Quest tier: Common ── */
@@ -555,11 +591,9 @@ body:has([data-rep]) > .noise {
 
 /* ── Quest tier: Legendary ── */
 .rep-quest-legendary {
-  position: relative;
   border-color: transparent;
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.04), var(--rep-card));
   box-shadow: 0 0 24px rgba(245, 158, 11, 0.06);
-  overflow: hidden;
 }
 .rep-quest-legendary::before {
   content: "";

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 
+// Images are mutable (same key can be overwritten), so never statically cache this route
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/media/[key] — Serve an uploaded image.
  *
  * Fetches the base64 image from site_settings, decodes it to binary,
- * and returns it with proper Content-Type and aggressive cache headers.
- * This means images load like normal URLs — no base64 in page payloads.
+ * and returns it with proper Content-Type. Browser caching relies on
+ * the ?v= cache-buster appended by the upload API — each new upload
+ * gets a unique URL so browsers fetch fresh.
  */
 export async function GET(
   _request: NextRequest,
@@ -16,7 +20,8 @@ export async function GET(
     const { key } = await params;
     const storageKey = `media_${key}`;
 
-    // Fetch directly from Supabase REST (bypass server client for speed)
+    // Always fetch fresh from Supabase — no server-side caching.
+    // Browser-level caching (Cache-Control below) handles repeat visits.
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/site_settings?key=eq.${encodeURIComponent(storageKey)}&select=data`,
       {
@@ -24,8 +29,7 @@ export async function GET(
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        // Cache for 1 hour on server, revalidate in background
-        next: { revalidate: 3600 },
+        cache: "no-store",
       }
     );
 
@@ -48,7 +52,7 @@ export async function GET(
       headers: {
         "Content-Type": contentType || "image/jpeg",
         "Content-Length": String(buffer.length),
-        // Cache for 1 day — URLs include ?v= cache-buster on each upload
+        // Browser caching — URLs include ?v=<timestamp> cache-buster per upload
         "Cache-Control": "public, max-age=86400",
       },
     });

@@ -521,16 +521,21 @@ body:has([data-rep]) > .noise {
   padding: 20px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   animation: repSlideUp 0.4s ease-out both;
+  /* Glass edge — subtle inner highlight */
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
-/* ── Quest ambient image (full-card atmospheric backdrop) ── */
+/* ── Quest ambient image — frosted glass card art ──────────────────
+   Architecture: image → glass overlay (::after) → content (z-10)
+   The image is sharp and vivid underneath. The glass overlay uses
+   backdrop-filter to blur it through a tinted, semi-transparent pane.
+   Higher tiers = clearer glass = more premium feel.
+   ── */
 .rep-quest-ambient {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  mask-image: radial-gradient(ellipse 80% 90% at 60% 50%, black 10%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 90% at 60% 50%, black 10%, transparent 70%);
 }
 .rep-quest-ambient img {
   width: 100%;
@@ -538,21 +543,129 @@ body:has([data-rep]) > .noise {
   object-fit: cover;
   object-position: center;
 }
+
+/* Frosted glass pane — sits between image and content */
+.rep-quest-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* Glass light refraction — subtle highlight at top edge */
+.rep-quest-ambient::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 20%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.06) 80%,
+    transparent 100%
+  );
+}
+
+/* ── Common: heavy frost, cool-toned ── */
 .rep-quest-ambient-common img {
-  opacity: 0.50;
-  filter: blur(3px) grayscale(0.3);
+  opacity: 0.7;
+  filter: brightness(0.9) grayscale(0.1);
 }
+.rep-quest-ambient-common::after {
+  background: linear-gradient(
+    160deg,
+    rgba(17, 17, 24, 0.93) 0%,
+    rgba(17, 17, 24, 0.82) 35%,
+    rgba(17, 17, 24, 0.6) 65%,
+    rgba(17, 17, 24, 0.4) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ── Rare: medium frost, cool blue tint ── */
 .rep-quest-ambient-rare img {
-  opacity: 0.55;
-  filter: blur(2px) saturate(1.3);
+  opacity: 0.75;
+  filter: brightness(0.9) saturate(1.3);
 }
+.rep-quest-ambient-rare::after {
+  background: linear-gradient(
+    160deg,
+    rgba(17, 17, 24, 0.9) 0%,
+    rgba(14, 18, 28, 0.76) 35%,
+    rgba(12, 22, 38, 0.5) 65%,
+    rgba(15, 30, 50, 0.3) 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.rep-quest-ambient-rare::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.06) 20%,
+    rgba(56, 189, 248, 0.12) 50%,
+    rgba(56, 189, 248, 0.06) 80%,
+    transparent 100%
+  );
+}
+
+/* ── Epic: light frost, purple tint, inner glow ── */
 .rep-quest-ambient-epic img {
-  opacity: 0.60;
-  filter: blur(1.5px) saturate(1.5);
+  opacity: 0.8;
+  filter: brightness(0.9) saturate(1.4);
 }
+.rep-quest-ambient-epic::after {
+  background: linear-gradient(
+    160deg,
+    rgba(17, 17, 24, 0.88) 0%,
+    rgba(22, 15, 32, 0.72) 35%,
+    rgba(30, 18, 48, 0.45) 65%,
+    rgba(35, 20, 55, 0.25) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rep-quest-ambient-epic::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 92, 246, 0.08) 20%,
+    rgba(139, 92, 246, 0.15) 50%,
+    rgba(139, 92, 246, 0.08) 80%,
+    transparent 100%
+  );
+}
+
+/* ── Legendary: near-clear warm glass, golden tint ── */
 .rep-quest-ambient-legendary img {
-  opacity: 0.65;
-  filter: blur(1px) saturate(1.8) sepia(0.1);
+  opacity: 0.85;
+  filter: brightness(0.95) saturate(1.5) sepia(0.06);
+}
+.rep-quest-ambient-legendary::after {
+  background: linear-gradient(
+    160deg,
+    rgba(17, 17, 24, 0.85) 0%,
+    rgba(28, 22, 14, 0.68) 35%,
+    rgba(40, 30, 12, 0.38) 65%,
+    rgba(50, 38, 10, 0.2) 100%
+  );
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.rep-quest-ambient-legendary::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(245, 158, 11, 0.1) 20%,
+    rgba(251, 191, 36, 0.18) 50%,
+    rgba(245, 158, 11, 0.1) 80%,
+    transparent 100%
+  );
 }
 
 /* ── Quest tier: Common ── */
@@ -568,22 +681,23 @@ body:has([data-rep]) > .noise {
 .rep-quest-rare {
   border-color: rgba(56, 189, 248, 0.15);
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.03), var(--rep-card));
+  box-shadow: inset 0 1px 0 0 rgba(56, 189, 248, 0.06);
 }
 .rep-quest-rare:hover {
   border-color: rgba(56, 189, 248, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(56, 189, 248, 0.06), 0 8px 24px rgba(56, 189, 248, 0.06);
 }
 
 /* ── Quest tier: Epic ── */
 .rep-quest-epic {
   border-color: rgba(139, 92, 246, 0.2);
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.04), var(--rep-card));
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.04);
+  box-shadow: inset 0 1px 0 0 rgba(139, 92, 246, 0.08), 0 0 20px rgba(139, 92, 246, 0.04);
 }
 .rep-quest-epic:hover {
   border-color: rgba(139, 92, 246, 0.35);
-  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.1);
+  box-shadow: inset 0 1px 0 0 rgba(139, 92, 246, 0.08), 0 8px 30px rgba(139, 92, 246, 0.1);
   transform: translateY(-2px);
 }
 
@@ -591,7 +705,7 @@ body:has([data-rep]) > .noise {
 .rep-quest-legendary {
   border-color: transparent;
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.04), var(--rep-card));
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(245, 158, 11, 0.1), 0 0 24px rgba(245, 158, 11, 0.06);
 }
 .rep-quest-legendary::before {
   content: "";
@@ -619,7 +733,7 @@ body:has([data-rep]) > .noise {
   z-index: -1;
 }
 .rep-quest-legendary:hover {
-  box-shadow: 0 8px 36px rgba(245, 158, 11, 0.12);
+  box-shadow: inset 0 1px 0 0 rgba(245, 158, 11, 0.1), 0 8px 36px rgba(245, 158, 11, 0.12);
   transform: translateY(-2px);
 }
 @keyframes legendaryBorderPulse {

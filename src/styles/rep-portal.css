@@ -20,60 +20,19 @@
   --rep-text-muted: #71717a;
 }
 
-/* ── Animated dot-grid background ── */
-[data-rep]::before {
-  content: "";
-  position: fixed;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
-  z-index: -2;
-  background-color: var(--rep-bg);
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    rgba(139, 92, 246, 0.12) 1px,
-    transparent 0
-  );
-  background-size: 32px 32px;
-  animation: rep-grid-drift 90s linear infinite;
-}
-
-/* ── Soft ambient purple glow overlay ── */
-[data-rep]::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(ellipse 50% 40% at 20% 20%, rgba(139, 92, 246, 0.06), transparent),
-    radial-gradient(ellipse 40% 50% at 80% 80%, rgba(139, 92, 246, 0.05), transparent);
-  animation: rep-ambient-shift 20s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-@keyframes rep-grid-drift {
-  from { transform: translate(0, 0); }
-  to { transform: translate(32px, 32px); }
-}
-
-@keyframes rep-ambient-shift {
-  0% { opacity: 0.6; }
-  100% { opacity: 1; }
-}
 
 /* ══════════════════════════════════════════════════════════════════════
    UTILITY CLASSES
    ══════════════════════════════════════════════════════════════════════ */
 
 .rep-glow {
-  box-shadow: 0 0 20px var(--rep-accent-glow), 0 0 60px rgba(139, 92, 246, 0.05);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.08);
 }
 .rep-card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 .rep-card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .rep-fade-in {
@@ -88,7 +47,7 @@
   animation: repSlideUp 0.4s ease-out both;
 }
 @keyframes repSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -336,12 +295,13 @@
   border-radius: inherit;
   background: linear-gradient(135deg, var(--rep-accent), rgba(139, 92, 246, 0.3), var(--rep-accent));
   background-size: 200% 200%;
-  animation: borderPulse 3s ease-in-out infinite;
+  animation: borderPulse 4s ease-in-out infinite;
   z-index: -1;
+  opacity: 0.7;
 }
 @keyframes borderPulse {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%, 100% { background-position: 0% 50%; opacity: 0.5; }
+  50% { background-position: 100% 50%; opacity: 0.7; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════

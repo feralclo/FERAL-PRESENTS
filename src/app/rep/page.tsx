@@ -18,7 +18,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -121,8 +120,8 @@ export default function RepDashboardPage() {
         {/* Discount code skeleton */}
         <Skeleton className="h-[100px] rounded-2xl" />
         {/* Stats skeleton */}
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[80px] rounded-2xl" />
           ))}
         </div>
@@ -289,38 +288,39 @@ export default function RepDashboardPage() {
       )}
 
       {/* ── Stats Grid ── */}
-      <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
+      <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <Link href="/rep/points">
-          <StatCard
-            size="compact"
-            label="Points"
-            value={String(rep.points_balance)}
-            icon={Zap}
-          />
+          <Card className="py-0 gap-0 border-border/40">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Zap size={12} className="text-primary" />
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">XP</p>
+              </div>
+              <p className="text-2xl font-bold text-foreground font-mono tabular-nums">{rep.points_balance}</p>
+            </CardContent>
+          </Card>
         </Link>
         <Link href="/rep/sales">
-          <StatCard
-            size="compact"
-            label="Sales"
-            value={String(rep.total_sales)}
-            icon={TrendingUp}
-          />
-        </Link>
-        <Link href="/rep/sales">
-          <StatCard
-            size="compact"
-            label="Revenue"
-            value={`£${Number(rep.total_revenue).toFixed(0)}`}
-            icon={TrendingUp}
-          />
+          <Card className="py-0 gap-0 border-border/40">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Flame size={12} className="text-orange-400" />
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sold</p>
+              </div>
+              <p className="text-2xl font-bold text-foreground font-mono tabular-nums">{rep.total_sales}</p>
+            </CardContent>
+          </Card>
         </Link>
         <Link href="/rep/leaderboard">
-          <StatCard
-            size="compact"
-            label="Rank"
-            value={`#${data.leaderboard_position || "—"}`}
-            icon={Trophy}
-          />
+          <Card className="py-0 gap-0 border-border/40">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Trophy size={12} className="text-yellow-500" />
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Rank</p>
+              </div>
+              <p className="text-2xl font-bold text-foreground font-mono tabular-nums">#{data.leaderboard_position || "—"}</p>
+            </CardContent>
+          </Card>
         </Link>
       </div>
 
@@ -342,14 +342,9 @@ export default function RepDashboardPage() {
                 <CardContent className="p-4 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">{event.name}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[11px] text-muted-foreground">
-                        {event.sales_count} sales
-                      </span>
-                      <span className="text-[11px] font-mono text-success">
-                        £{Number(event.revenue).toFixed(0)}
-                      </span>
-                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {event.sales_count} ticket{event.sales_count !== 1 ? "s" : ""} sold
+                    </p>
                   </div>
                   <TrendingUp size={16} className="text-primary" />
                 </CardContent>
@@ -394,7 +389,7 @@ export default function RepDashboardPage() {
       {/* ── Recent Sales ── */}
       {data.recent_sales.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
-          <h2 className="text-sm font-semibold text-foreground mb-3">Recent Sales</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-3">Recent Activity</h2>
           <div className="space-y-2">
             {data.recent_sales.map((sale) => (
               <Card key={sale.id} className="py-0 gap-0">

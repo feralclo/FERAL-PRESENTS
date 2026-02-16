@@ -213,7 +213,7 @@ export default function PublicRepProfilePage() {
         />
         <StatCard
           size="compact"
-          label="Revenue"
+          label="Earned"
           value={`£${Number(profile.total_revenue).toFixed(0)}`}
           icon={TrendingUp}
         />

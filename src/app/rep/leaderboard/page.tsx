@@ -299,7 +299,7 @@ function AllTimeLeaderboard() {
                 </div>
               </div>
 
-              {/* Revenue */}
+              {/* Earned */}
               <div className="text-right">
                 <p className="text-sm font-bold font-mono tabular-nums text-white">
                   £{Number(entry.total_revenue).toFixed(0)}
@@ -360,7 +360,7 @@ function AllTimeLeaderboard() {
                 </div>
               </div>
 
-              {/* Revenue */}
+              {/* Earned */}
               <p className="text-sm font-bold font-mono tabular-nums text-white">
                 £{Number(entry.total_revenue).toFixed(0)}
               </p>
@@ -507,7 +507,7 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
             <p className="text-sm font-bold font-mono text-white">{event.your_sales}</p>
           </div>
           <div>
-            <p className="text-[10px] text-[var(--rep-text-muted)]">Revenue</p>
+            <p className="text-[10px] text-[var(--rep-text-muted)]">Earned</p>
             <p className="text-sm font-bold font-mono text-white">
               £{Number(event.your_revenue).toFixed(0)}
             </p>
@@ -744,7 +744,7 @@ function EventLeaderboardView({
                   </div>
                 </div>
 
-                {/* Revenue */}
+                {/* Earned */}
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold font-mono tabular-nums text-white">
                     £{Number(entry.total_revenue).toFixed(0)}

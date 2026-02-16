@@ -242,7 +242,7 @@ export default function RepSalesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Banknote size={12} className="text-success" />
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Revenue</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Earned</p>
             </div>
             <p className="text-2xl font-bold text-success font-mono tabular-nums">
               {currSymbol}{stats.revenue.toFixed(0)}
@@ -253,7 +253,7 @@ export default function RepSalesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-2">
               <BarChart3 size={12} className="text-info" />
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Avg</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Per Order</p>
             </div>
             <p className="text-2xl font-bold text-foreground font-mono tabular-nums">
               {currSymbol}{stats.avgOrder.toFixed(0)}

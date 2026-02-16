@@ -156,7 +156,7 @@ function PositionIndicator({ change }: { change: number }) {
   return (
     <span className={cn(
       "rep-position-indicator",
-      isUp ? "text-[var(--rep-success)]" : "text-[#F43F5E]"
+      isUp ? "text-[var(--rep-success)]" : "text-[var(--rep-destructive)]"
     )}>
       {isUp ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
       {Math.abs(change)}

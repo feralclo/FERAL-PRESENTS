@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
             currency: currency || "GBP",
             status: "abandoned",
             notification_count: 0,
+            cart_token: crypto.randomUUID(),
           });
 
         if (insertErr) {

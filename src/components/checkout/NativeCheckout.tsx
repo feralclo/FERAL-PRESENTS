@@ -35,9 +35,18 @@ import "@/styles/checkout-page.css";
    TYPES
    ================================================================ */
 
+/** Pre-filled cart data from abandoned cart recovery email click */
+interface RestoreData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  cartParam: string;
+}
+
 interface NativeCheckoutProps {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
+  restoreData?: RestoreData | null;
 }
 
 interface CartLine {
@@ -121,14 +130,15 @@ const CARD_ELEMENT_STYLE = {
    MAIN CHECKOUT COMPONENT
    ================================================================ */
 
-export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
+export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps) {
   const searchParams = useSearchParams();
-  const cartParam = searchParams.get("cart");
+  const cartParam = restoreData?.cartParam || searchParams.get("cart");
   const piParam = searchParams.get("pi");
   const { trackPageView } = useMetaTracking();
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [capturedEmail, setCapturedEmail] = useState<string>(() => {
+    if (restoreData?.email) return restoreData.email;
     if (typeof window !== "undefined") {
       try {
         return sessionStorage.getItem("feral_checkout_email") || "";
@@ -138,6 +148,15 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
     }
     return "";
   });
+
+  // Persist restored email to sessionStorage so page refresh keeps it
+  useEffect(() => {
+    if (restoreData?.email && typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("feral_checkout_email", restoreData.email);
+      } catch {}
+    }
+  }, [restoreData?.email]);
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
   const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
 
@@ -353,6 +372,7 @@ export function NativeCheckout({ slug, event }: NativeCheckoutProps) {
       onComplete={setCompletedOrder}
       capturedEmail={capturedEmail}
       onChangeEmail={() => setCapturedEmail("")}
+      restoreData={restoreData}
     />
   );
 }
@@ -477,6 +497,7 @@ function StripeCheckoutPage({
   onComplete,
   capturedEmail,
   onChangeEmail,
+  restoreData,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -488,6 +509,7 @@ function StripeCheckoutPage({
   onComplete: (order: Order) => void;
   capturedEmail: string;
   onChangeEmail: () => void;
+  restoreData?: RestoreData | null;
 }) {
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
@@ -597,6 +619,7 @@ function StripeCheckoutPage({
                 totalAmount={total}
                 capturedEmail={capturedEmail}
                 onChangeEmail={onChangeEmail}
+                restoreData={restoreData}
               />
             </Elements>
           </div>
@@ -641,6 +664,7 @@ function SinglePageCheckoutForm({
   totalAmount,
   capturedEmail,
   onChangeEmail,
+  restoreData,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -654,16 +678,17 @@ function SinglePageCheckoutForm({
   totalAmount: number;
   capturedEmail: string;
   onChangeEmail: () => void;
+  restoreData?: RestoreData | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const { trackAddPaymentInfo } = useMetaTracking();
   const { trackEngagement } = useTraffic();
 
-  // Form state
+  // Form state — pre-fill from restore data (abandoned cart recovery)
   const [email, setEmail] = useState(capturedEmail);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState(restoreData?.firstName || "");
+  const [lastName, setLastName] = useState(restoreData?.lastName || "");
   const [nameOnCard, setNameOnCard] = useState("");
   const [country, setCountry] = useState(event.currency === "EUR" ? "BE" : "GB");
   const [processing, setProcessing] = useState(false);

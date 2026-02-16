@@ -135,6 +135,7 @@ export interface AbandonedCart {
   recovered_order_id?: string;
   notified_at?: string;
   notification_count: number;
+  cart_token?: string;
   created_at: string;
   updated_at: string;
   // Joined

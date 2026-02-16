@@ -29,8 +29,18 @@ export default async function CheckoutRoute({
     ? sp.template
     : undefined;
 
+  // Cart restoration: ?restore= token from abandoned cart recovery email
+  const restoreToken = typeof sp.restore === "string" ? sp.restore : undefined;
+
   // Fetch event from DB
   let event = null;
+  let restoreData: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    cartParam: string;
+  } | null = null;
+
   try {
     const supabase = await getSupabaseAdmin();
     if (supabase) {
@@ -43,6 +53,36 @@ export default async function CheckoutRoute({
 
       if (data) {
         event = data;
+      }
+
+      // Fetch abandoned cart by restore token (recovery email click)
+      if (restoreToken && event) {
+        const { data: cart } = await supabase
+          .from(TABLES.ABANDONED_CARTS)
+          .select("email, first_name, last_name, items")
+          .eq("cart_token", restoreToken)
+          .eq("event_id", event.id)
+          .eq("org_id", ORG_ID)
+          .eq("status", "abandoned")
+          .single();
+
+        if (cart) {
+          // Reconstruct cart param string from items
+          // Format matches existing: ticketTypeId:qty:size,ticketTypeId:qty
+          const cartParam = (cart.items as { ticket_type_id: string; qty: number; merch_size?: string }[])
+            .map((item) => {
+              const base = `${item.ticket_type_id}:${item.qty}`;
+              return item.merch_size ? `${base}:${item.merch_size}` : base;
+            })
+            .join(",");
+
+          restoreData = {
+            email: cart.email,
+            firstName: cart.first_name || "",
+            lastName: cart.last_name || "",
+            cartParam,
+          };
+        }
       }
     }
   } catch {
@@ -88,7 +128,7 @@ export default async function CheckoutRoute({
     <>
       {preconnectHints}
       <Suspense>
-        <NativeCheckout slug={slug} event={event} />
+        <NativeCheckout slug={slug} event={event} restoreData={restoreData} />
       </Suspense>
     </>
   );

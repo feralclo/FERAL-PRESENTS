@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
-import { buildOrderConfirmationEmail, type EmailWalletLinks } from "@/lib/email-templates";
+import { buildOrderConfirmationEmail, buildAbandonedCartRecoveryEmail, type EmailWalletLinks, type AbandonedCartEmailData } from "@/lib/email-templates";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings, WalletPassSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS, DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
 
@@ -427,5 +427,201 @@ export async function sendOrderConfirmationEmail(params: {
     } catch {
       // Last-resort catch — don't let metadata recording break anything
     }
+  }
+}
+
+/**
+ * Send abandoned cart recovery email.
+ *
+ * Called by the abandoned cart automation cron job. Fetches email settings,
+ * builds recovery URL from cart token, sends via Resend with retry, and
+ * updates the cart's notification state on success.
+ *
+ * Never throws — failures are logged but don't block the cron.
+ */
+export async function sendAbandonedCartRecoveryEmail(params: {
+  orgId: string;
+  cartId: string;
+  email: string;
+  firstName?: string;
+  event: {
+    name: string;
+    slug: string;
+    venue_name?: string;
+    date_start?: string;
+    doors_time?: string;
+    currency?: string;
+  };
+  items: {
+    name: string;
+    qty: number;
+    price: number;
+    merch_size?: string;
+  }[];
+  subtotal: number;
+  currency: string;
+  cartToken: string;
+  stepConfig: {
+    subject: string;
+    preview_text: string;
+    include_discount: boolean;
+    discount_code?: string;
+    discount_percent?: number;
+  };
+}): Promise<boolean> {
+  try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.log("[email] RESEND_API_KEY not configured — skipping abandoned cart recovery email");
+      return false;
+    }
+
+    let settings = await getEmailSettings(params.orgId);
+
+    // Build recovery URL
+    const siteUrl = (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+    ).replace(/\/$/, "");
+    const recoveryUrl = `${siteUrl}/event/${params.event.slug}/checkout?restore=${params.cartToken}`;
+
+    const currency = params.currency || params.event.currency || "GBP";
+    const symbol = getCurrencySymbol(currency);
+
+    // Build email data
+    const cartEmailData: AbandonedCartEmailData = {
+      customer_first_name: params.firstName,
+      event_name: params.event.name,
+      venue_name: params.event.venue_name || "",
+      event_date: formatEventDate(params.event.date_start),
+      doors_time: params.event.doors_time,
+      currency_symbol: symbol,
+      cart_items: params.items.map((item) => ({
+        name: item.name,
+        qty: item.qty,
+        unit_price: item.price,
+        merch_size: item.merch_size,
+      })),
+      subtotal: params.subtotal.toFixed(2),
+      recovery_url: recoveryUrl,
+      ...(params.stepConfig.include_discount && params.stepConfig.discount_code
+        ? {
+            discount_code: params.stepConfig.discount_code,
+            discount_percent: params.stepConfig.discount_percent || 0,
+          }
+        : {}),
+    };
+
+    let emailLogoBase64: string | null = null;
+
+    // Fetch email logo base64 from DB for CID inline embedding
+    try {
+      const sb = await getSupabaseAdmin();
+      if (sb && settings.logo_url) {
+        const m = settings.logo_url.match(/\/api\/media\/(.+)$/);
+        if (m) {
+          const { data: row } = await sb
+            .from(TABLES.SITE_SETTINGS).select("data")
+            .eq("key", `media_${m[1]}`).single();
+          const d = row?.data as { image?: string } | null;
+          if (d?.image) emailLogoBase64 = d.image;
+        }
+      }
+    } catch { /* logo fetch failed — email will use text fallback */ }
+
+    // Embed logo as CID inline attachment
+    if (emailLogoBase64) {
+      settings = { ...settings, logo_url: "cid:brand-logo" };
+    }
+
+    const { subject, html, text } = buildAbandonedCartRecoveryEmail(
+      settings,
+      cartEmailData,
+      {
+        subject: params.stepConfig.subject,
+        preview_text: params.stepConfig.preview_text,
+      },
+    );
+
+    // Build attachments — logo only (no PDF for recovery emails)
+    const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [];
+
+    if (emailLogoBase64) {
+      const base64Match = emailLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (base64Match) {
+        attachments.push({
+          filename: "logo.png",
+          content: Buffer.from(base64Match[2], "base64"),
+          contentType: base64Match[1],
+          contentId: "brand-logo",
+        });
+      }
+    }
+
+    // Send via Resend — retry up to 2 times on transient failures
+    let lastError: unknown = null;
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const { error } = await resend.emails.send({
+        from: `${settings.from_name} <${settings.from_email}>`,
+        replyTo: settings.reply_to || undefined,
+        to: [params.email],
+        subject,
+        html,
+        text,
+        ...(attachments.length > 0 ? { attachments } : {}),
+      });
+
+      if (!error) {
+        // Update abandoned cart notification state
+        // notification_count is incremented by the cron job that calls this function
+        try {
+          const supabase = await getSupabaseAdmin();
+          if (supabase) {
+            await supabase
+              .from(TABLES.ABANDONED_CARTS)
+              .update({
+                notified_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", params.cartId);
+          }
+        } catch {
+          // Don't let DB update failure affect success return
+        }
+
+        console.log(
+          `[email] Abandoned cart recovery sent to ${params.email} for cart ${params.cartId}${attempt > 1 ? ` (attempt ${attempt})` : ""}`
+        );
+        return true;
+      }
+
+      lastError = error;
+      const errMsg = typeof error === "object" && "message" in error ? error.message : String(error);
+      console.warn(`[email] Abandoned cart recovery attempt ${attempt}/${maxAttempts} failed:`, errMsg);
+
+      // Don't retry on validation errors
+      if (typeof error === "object" && "name" in error && (error as { name: string }).name === "validation_error") {
+        break;
+      }
+
+      // Wait before retrying (1s, 2s)
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      }
+    }
+
+    // All attempts failed
+    const errMsg = lastError && typeof lastError === "object" && "message" in lastError
+      ? (lastError as { message: string }).message
+      : String(lastError);
+    console.error(`[email] Abandoned cart recovery failed for cart ${params.cartId}:`, errMsg);
+    return false;
+  } catch (err) {
+    // Never throw — email failure must not block the cron
+    console.error(`[email] Failed to send abandoned cart recovery for cart ${params.cartId}:`, err);
+    return false;
   }
 }

@@ -136,6 +136,7 @@ export interface AbandonedCart {
   notified_at?: string;
   notification_count: number;
   cart_token?: string;
+  unsubscribed_at?: string;
   created_at: string;
   updated_at: string;
   // Joined

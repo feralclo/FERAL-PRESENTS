@@ -54,6 +54,8 @@ const PUBLIC_API_PREFIXES = [
   "/api/track",
   "/api/meta/capi",
   "/api/health",
+  "/api/cron/",
+  "/api/unsubscribe",
   "/api/media/",
   "/api/auth/",
   "/api/rep-portal/signup",

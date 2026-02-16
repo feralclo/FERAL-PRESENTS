@@ -61,6 +61,11 @@ export function repsKey(orgId: string): string {
   return `${orgId}_reps`;
 }
 
+/** Generate the abandoned cart automation settings key for a given org */
+export function abandonedCartAutomationKey(orgId: string): string {
+  return `${orgId}_abandoned_cart_automation`;
+}
+
 // Klaviyo
 export const KLAVIYO_LIST_ID =
   process.env.NEXT_PUBLIC_KLAVIYO_LIST_ID || "SnE86f";

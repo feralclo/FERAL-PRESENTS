@@ -479,6 +479,7 @@ export interface AbandonedCartEmailData {
   }[];
   subtotal: string;
   recovery_url: string;
+  unsubscribe_url?: string;
   discount_code?: string;
   discount_percent?: number;
 }
@@ -767,7 +768,10 @@ export function buildAbandonedCartRecoveryEmail(
               </div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #bbb;">
                 You\u2019re receiving this because you started a checkout. If this wasn\u2019t you, you can safely ignore this email.
-              </div>
+              </div>${cart.unsubscribe_url ? `
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #bbb; margin-top: 8px;">
+                <a href="${escapeHtml(cart.unsubscribe_url)}" style="color: #999; text-decoration: underline;">Unsubscribe</a> from cart recovery emails
+              </div>` : ""}
             </td>
           </tr>
 
@@ -800,7 +804,7 @@ COMPLETE YOUR ORDER: ${cart.recovery_url}
 
 ---
 ${s.footer_text || s.from_name}
-You're receiving this because you started a checkout. If this wasn't you, you can safely ignore this email.`;
+You're receiving this because you started a checkout. If this wasn't you, you can safely ignore this email.${cart.unsubscribe_url ? `\n\nUnsubscribe from cart recovery emails: ${cart.unsubscribe_url}` : ""}`;
 
   return { subject, html, text };
 }

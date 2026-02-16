@@ -485,6 +485,7 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
     ).replace(/\/$/, "");
     const recoveryUrl = `${siteUrl}/event/${params.event.slug}/checkout?restore=${params.cartToken}`;
+    const unsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${encodeURIComponent(params.cartToken)}&type=cart_recovery`;
 
     const currency = params.currency || params.event.currency || "GBP";
     const symbol = getCurrencySymbol(currency);
@@ -505,6 +506,7 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       })),
       subtotal: params.subtotal.toFixed(2),
       recovery_url: recoveryUrl,
+      unsubscribe_url: unsubscribeUrl,
       ...(params.stepConfig.include_discount && params.stepConfig.discount_code
         ? {
             discount_code: params.stepConfig.discount_code,
@@ -571,6 +573,10 @@ export async function sendAbandonedCartRecoveryEmail(params: {
         subject,
         html,
         text,
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
         ...(attachments.length > 0 ? { attachments } : {}),
       });
 

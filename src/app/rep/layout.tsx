@@ -8,7 +8,7 @@ import "@/styles/rep-portal.css";
 import {
   LayoutDashboard,
   Trophy,
-  Swords,
+  Compass,
   Gift,
   User,
   TrendingUp,
@@ -29,14 +29,14 @@ import { Button } from "@/components/ui/button";
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
   { href: "/rep/leaderboard", label: "Board", icon: Trophy },
-  { href: "/rep/quests", label: "Quests", icon: Swords },
+  { href: "/rep/quests", label: "Side Quests", icon: Compass },
   { href: "/rep/rewards", label: "Rewards", icon: Gift },
 ];
 
 const MOBILE_NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
   { href: "/rep/leaderboard", label: "Board", icon: Trophy },
-  { href: "/rep/quests", label: "Quests", icon: Swords },
+  { href: "/rep/quests", label: "Quests", icon: Compass },
   { href: "/rep/rewards", label: "Rewards", icon: Gift },
   { href: "/rep/profile", label: "Me", icon: User },
 ];
@@ -340,7 +340,7 @@ const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
   sale_attributed: TrendingUp,
   reward_unlocked: Gift,
   reward_fulfilled: CheckCircle2,
-  quest_approved: Swords,
+  quest_approved: Compass,
   level_up: ArrowUp,
   manual_grant: Star,
 };

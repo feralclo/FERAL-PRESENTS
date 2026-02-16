@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Zap,
   TrendingUp,
-  Swords,
+  Compass,
   Gift,
   RefreshCw,
   ArrowDownLeft,
@@ -40,7 +40,7 @@ const SOURCE_CONFIG: Record<string, {
     bgColor: "bg-success/10",
   },
   quest: {
-    icon: Swords,
+    icon: Compass,
     label: "Quest",
     color: "text-primary",
     bgColor: "bg-primary/10",

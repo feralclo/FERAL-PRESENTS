@@ -6,7 +6,7 @@ import {
   Trophy,
   Zap,
   TrendingUp,
-  Swords,
+  Compass,
   Gift,
   ChevronRight,
   Copy,
@@ -360,10 +360,10 @@ export default function RepDashboardPage() {
           <Card className="py-0 gap-0 hover:border-primary/20 transition-all duration-200">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Swords size={18} className="text-primary" />
+                <Compass size={18} className="text-primary" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">Quests</p>
+                <p className="text-sm font-medium text-foreground">Side Quests</p>
                 <p className="text-[11px] text-muted-foreground">{data.active_quests} active</p>
               </div>
             </CardContent>

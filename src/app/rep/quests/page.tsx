@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Swords, Upload, Link as LinkIcon, Type, X, Loader2, Check,
+  Compass, Upload, Link as LinkIcon, Type, X, Loader2, Check,
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
   Camera, Share2, Sparkles, Zap, ChevronRight,
 } from "lucide-react";
@@ -330,7 +330,7 @@ export default function RepQuestsPage() {
       <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
         <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 mb-4">
-            <Swords size={22} className="text-red-400" />
+            <Compass size={22} className="text-red-400" />
           </div>
           <p className="text-sm text-white font-medium mb-1">Failed to load quests</p>
           <p className="text-xs text-[var(--rep-text-muted)] mb-4">{error}</p>
@@ -352,9 +352,9 @@ export default function RepQuestsPage() {
       {/* Header */}
       <div className="flex flex-col items-center text-center pt-2">
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/20 mb-3">
-          <Swords size={22} className="text-[var(--rep-accent)]" />
+          <Compass size={22} className="text-[var(--rep-accent)]" />
         </div>
-        <h1 className="text-xl font-bold text-white">Quests</h1>
+        <h1 className="text-xl font-bold text-white">Side Quests</h1>
         <p className="text-sm text-[var(--rep-text-muted)] mt-1">
           Complete tasks to earn bonus points
         </p>
@@ -399,7 +399,7 @@ export default function RepQuestsPage() {
       {displayQuests.length === 0 ? (
         <div className="text-center py-16">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-accent)]/10 mb-4">
-            <Swords size={22} className="text-[var(--rep-accent)]" />
+            <Compass size={22} className="text-[var(--rep-accent)]" />
           </div>
           <p className="text-sm text-white font-medium mb-1">
             {tab === "active" ? "No active quests" : "No completed quests"}

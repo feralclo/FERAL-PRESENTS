@@ -13,6 +13,8 @@ import {
   User,
   TrendingUp,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -106,19 +108,19 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   // Show loading spinner while checking auth for protected pages
   if (!authChecked || (!authValid && !isPublicPage)) {
     return (
-      <div data-admin data-rep className="min-h-screen bg-[var(--rep-bg)] text-[var(--rep-text)]">
+      <div data-admin data-rep className="min-h-screen bg-background text-foreground">
         <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+          <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
         </div>
       </div>
     );
   }
 
   return (
-    <div data-admin data-rep className="min-h-screen bg-[var(--rep-bg)] text-[var(--rep-text)]">
+    <div data-admin data-rep className="min-h-screen bg-background text-foreground">
       {/* Desktop top nav */}
       {showNav && (
-        <header className="sticky top-0 z-40 hidden md:flex items-center justify-between border-b border-[var(--rep-border)] bg-[rgba(6,6,10,0.9)] backdrop-blur-xl px-6 h-14">
+        <header className="sticky top-0 z-40 hidden md:flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-6 h-14">
           <div className="flex items-center gap-6">
             <Link href="/rep" className="flex items-center gap-2.5">
               {branding?.logo_url && (
@@ -128,7 +130,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   className="h-6 w-auto"
                 />
               )}
-              <span className="font-mono text-[12px] font-bold uppercase tracking-[3px] select-none text-[var(--rep-accent)]">
+              <span className="font-mono text-[12px] font-bold uppercase tracking-[3px] select-none text-primary">
                 {brandName}
               </span>
             </Link>
@@ -137,40 +139,46 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                 const active = matchRoute(pathname, item.href);
                 const Icon = item.icon;
                 return (
-                  <Link
+                  <Button
                     key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all ${
-                      active
-                        ? "bg-[var(--rep-accent)]/10 text-white"
-                        : "text-[var(--rep-text-muted)] hover:text-white hover:bg-white/5"
-                    }`}
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className={cn(
+                      active && "bg-primary/10 text-foreground"
+                    )}
                   >
-                    <Icon size={14} className={active ? "text-[var(--rep-accent)]" : ""} />
-                    {item.label}
-                  </Link>
+                    <Link href={item.href}>
+                      <Icon size={14} className={cn(active && "text-primary")} />
+                      {item.label}
+                    </Link>
+                  </Button>
                 );
               })}
             </nav>
           </div>
-          <Link
-            href="/rep/profile"
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] text-[var(--rep-text-muted)] hover:text-white transition-colors"
-          >
-            <User size={14} />
-            Profile
-          </Link>
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] text-muted-foreground/50 font-medium tracking-wider uppercase select-none">
+              Powered by Entry
+            </span>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/rep/profile">
+                <User size={14} />
+                Profile
+              </Link>
+            </Button>
+          </div>
         </header>
       )}
 
       {/* Main content */}
-      <main className={showNav ? "pb-20 md:pb-6" : ""}>
+      <main className={showNav ? "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6" : ""}>
         {children}
       </main>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom tab bar */}
       {showNav && (
-        <nav className="rep-bottom-nav flex md:hidden items-center justify-around">
+        <nav className="fixed bottom-0 inset-x-0 z-50 flex md:hidden items-center justify-around border-t border-border/50 bg-background/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] pt-1.5">
           {MOBILE_NAV_ITEMS.map((item) => {
             const active = matchRoute(pathname, item.href);
             const Icon = item.icon;
@@ -178,13 +186,16 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors ${
-                  active ? "text-[var(--rep-accent)]" : "text-[var(--rep-text-muted)]"
-                }`}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-all duration-200",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
               >
-                <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
+                <Icon size={20} strokeWidth={active ? 2.5 : 1.75} />
                 <span className="text-[10px] font-medium">{item.label}</span>
-                {active && <div className="rep-nav-active-dot" />}
+                {active && (
+                  <div className="h-1 w-1 rounded-full bg-primary shadow-[0_0_6px_rgba(139,92,246,0.6)]" />
+                )}
               </Link>
             );
           })}

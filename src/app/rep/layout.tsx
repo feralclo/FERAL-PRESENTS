@@ -197,21 +197,21 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     <div data-admin data-rep className="min-h-screen bg-background text-foreground">
       {/* Desktop top nav */}
       {showNav && (
-        <header className="sticky top-0 z-40 hidden md:flex items-center justify-between border-b border-border/30 bg-background/90 backdrop-blur-xl px-6 h-12">
-          <div className="flex items-center gap-6">
-            <Link href="/rep" className="flex items-center gap-2">
+        <header className="sticky top-0 z-40 hidden md:flex items-center justify-between border-b border-white/[0.06] bg-background/80 backdrop-blur-2xl px-6 h-14">
+          <div className="flex items-center gap-8">
+            <Link href="/rep" className="flex items-center gap-2.5">
               {branding?.logo_url && (
                 <img
                   src={branding.logo_url}
                   alt=""
-                  className="h-5 w-auto"
+                  className="h-6 w-auto"
                 />
               )}
-              <span className="text-[13px] font-semibold select-none text-foreground/90">
+              <span className="text-sm font-semibold select-none text-foreground">
                 {branding?.org_name || "Entry"}
               </span>
             </Link>
-            <nav className="flex items-center gap-0.5">
+            <nav className="flex items-center gap-1">
               {NAV_ITEMS.map((item) => {
                 const active = matchRoute(pathname, item.href);
                 const Icon = item.icon;
@@ -220,31 +220,31 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200",
+                      "flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
                       active
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                        ? "bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(139,92,246,0.15)]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
                     )}
                   >
-                    <Icon size={14} strokeWidth={active ? 2.5 : 1.75} />
+                    <Icon size={15} strokeWidth={active ? 2.5 : 1.75} />
                     {item.label}
                   </Link>
                 );
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <NotificationCenter />
             <Link
               href="/rep/profile"
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                "flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-200",
                 matchRoute(pathname, "/rep/profile")
-                  ? "bg-primary/15 text-primary"
-                  : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                  ? "bg-primary/15 border-primary/30 text-primary"
+                  : "bg-white/[0.04] border-white/[0.06] text-muted-foreground hover:text-foreground hover:border-white/[0.12]"
               )}
             >
-              <User size={14} />
+              <User size={15} />
             </Link>
           </div>
         </header>
@@ -252,12 +252,12 @@ export default function RepLayout({ children }: { children: ReactNode }) {
 
       {/* Mobile top bar */}
       {showNav && (
-        <div className="flex md:hidden items-center justify-between px-4 pt-[max(env(safe-area-inset-top),12px)] pb-1">
-          <Link href="/rep" className="flex items-center gap-2">
+        <div className="flex md:hidden items-center justify-between px-5 pt-[max(env(safe-area-inset-top),16px)] pb-3">
+          <Link href="/rep" className="flex items-center gap-2.5">
             {branding?.logo_url ? (
-              <img src={branding.logo_url} alt="" className="h-5 w-auto" />
+              <img src={branding.logo_url} alt="" className="h-7 w-auto" />
             ) : (
-              <span className="text-[13px] font-semibold text-foreground/90">
+              <span className="text-[15px] font-bold text-foreground">
                 {branding?.org_name || "Entry"}
               </span>
             )}
@@ -268,48 +268,49 @@ export default function RepLayout({ children }: { children: ReactNode }) {
 
       {/* Main content */}
       <main className={cn(
-        showNav && "pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6",
+        showNav && "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6",
         "rep-page-enter"
       )} key={pathname}>
         {children}
       </main>
 
-      {/* Mobile bottom tab bar */}
+      {/* Mobile bottom tab bar — floating pill */}
       {showNav && (
-        <nav className="fixed bottom-0 inset-x-0 z-50 flex md:hidden items-center justify-around border-t border-border/20 bg-background/95 backdrop-blur-2xl pb-[env(safe-area-inset-bottom)] pt-1.5 pb-1.5">
-          {MOBILE_NAV_ITEMS.map((item) => {
-            const active = matchRoute(pathname, item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "relative flex flex-col items-center justify-center w-14 py-1.5 rounded-xl transition-all duration-200",
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground/50 active:text-muted-foreground/80"
-                )}
-              >
-                {active && (
-                  <span className="absolute inset-0 rounded-xl bg-primary/10" />
-                )}
-                <Icon
-                  size={21}
-                  strokeWidth={active ? 2.5 : 1.5}
-                  fill={active ? "currentColor" : "none"}
-                  className="relative z-10"
-                />
-                <span className={cn(
-                  "relative z-10 text-[9px] font-semibold mt-0.5 transition-opacity",
-                  active ? "opacity-100" : "opacity-0"
-                )}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
+          <nav className="flex items-center justify-around rounded-2xl border border-white/[0.08] bg-[#0c0c12]/90 backdrop-blur-2xl shadow-[0_-4px_32px_rgba(0,0,0,0.5)] py-2 pointer-events-auto">
+            {MOBILE_NAV_ITEMS.map((item) => {
+              const active = matchRoute(pathname, item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "relative flex flex-col items-center justify-center w-14 h-11 rounded-xl transition-all duration-200",
+                    active
+                      ? "text-primary"
+                      : "text-[#555566] active:text-[#777788]"
+                  )}
+                >
+                  {active && (
+                    <span className="absolute inset-1 rounded-lg bg-primary/[0.08]" />
+                  )}
+                  <Icon
+                    size={22}
+                    strokeWidth={active ? 2.5 : 1.5}
+                    fill={active ? "currentColor" : "none"}
+                    className="relative z-10"
+                  />
+                  {active && (
+                    <span className="relative z-10 text-[9px] font-bold mt-0.5 tracking-wide">
+                      {item.label}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       )}
     </div>
   );
@@ -441,16 +442,16 @@ function NotificationCenter() {
       <button
         onClick={handleOpen}
         className={cn(
-          "relative flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200",
+          "relative flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-200",
           open
-            ? "bg-primary/15 text-primary"
-            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            ? "bg-primary/15 border-primary/30 text-primary"
+            : "bg-white/[0.04] border-white/[0.06] text-muted-foreground hover:text-foreground hover:border-white/[0.12]"
         )}
         aria-label="Notifications"
       >
-        <Bell size={16} strokeWidth={open ? 2.5 : 2} />
+        <Bell size={18} strokeWidth={open ? 2.5 : 2} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white rep-notification-badge">
+          <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary ring-2 ring-background px-1 text-[9px] font-bold text-white rep-notification-badge">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

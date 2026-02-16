@@ -1,7 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Gift, Lock, Check, Loader2, ShoppingCart, Target } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import {
+  Gift,
+  Lock,
+  Check,
+  Loader2,
+  ShoppingCart,
+  Target,
+  Zap,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Sparkles,
+  X,
+  ChevronRight,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface Reward {
   id: string;
@@ -13,7 +34,6 @@ interface Reward {
   custom_value?: string;
   total_available?: number;
   total_claimed: number;
-  // Milestone info
   milestones?: {
     id: string;
     title: string;
@@ -24,54 +44,101 @@ interface Reward {
     claimed: boolean;
     progress_percent: number;
   }[];
-  // User claim status
-  my_claims?: { id: string }[];
+  my_claims?: { id: string; status: string }[];
   can_purchase?: boolean;
 }
 
+interface Claim {
+  id: string;
+  claim_type: "milestone" | "points_shop" | "manual";
+  points_spent: number;
+  status: "claimed" | "fulfilled" | "cancelled";
+  notes?: string;
+  created_at: string;
+  fulfilled_at?: string;
+  reward?: {
+    id: string;
+    name: string;
+    description?: string;
+    image_url?: string;
+    reward_type: string;
+    points_cost?: number;
+    custom_value?: string;
+    product?: { name: string; images?: string[] } | null;
+  };
+}
+
+type TabId = "earned" | "shop" | "history";
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const CLAIM_STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Check }> = {
+  claimed: { label: "Pending", variant: "secondary", icon: Clock },
+  fulfilled: { label: "Fulfilled", variant: "default", icon: CheckCircle2 },
+  cancelled: { label: "Cancelled", variant: "destructive", icon: XCircle },
+};
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
 export default function RepRewardsPage() {
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [loadKey, setLoadKey] = useState(0);
   const [myPoints, setMyPoints] = useState(0);
+  const [tab, setTab] = useState<TabId>("shop");
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [confirmReward, setConfirmReward] = useState<Reward | null>(null);
+  const [successReward, setSuccessReward] = useState<Reward | null>(null);
+  const [loadKey, setLoadKey] = useState(0);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [rewardsRes, meRes, claimsRes] = await Promise.all([
+        fetch("/api/rep-portal/rewards"),
+        fetch("/api/rep-portal/me"),
+        fetch("/api/rep-portal/rewards/claims"),
+      ]);
+      if (!rewardsRes.ok) {
+        const errJson = await rewardsRes.json().catch(() => null);
+        setError(errJson?.error || `Failed to load rewards (${rewardsRes.status})`);
+        setLoading(false);
+        return;
+      }
+      const rewardsJson = await rewardsRes.json();
+      const meJson = meRes.ok ? await meRes.json() : { data: null };
+      const claimsJson = claimsRes.ok ? await claimsRes.json() : { data: [] };
+
+      if (rewardsJson.data) setRewards(rewardsJson.data);
+      if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
+      if (claimsJson.data) setClaims(claimsJson.data);
+    } catch {
+      setError("Failed to load rewards — check your connection");
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [rewardsRes, meRes] = await Promise.all([
-          fetch("/api/rep-portal/rewards"),
-          fetch("/api/rep-portal/me"),
-        ]);
-        if (!rewardsRes.ok) {
-          const errJson = await rewardsRes.json().catch(() => null);
-          setError(errJson?.error || "Failed to load rewards (" + rewardsRes.status + ")");
-          setLoading(false);
-          return;
-        }
-        const rewardsJson = await rewardsRes.json();
-        const meJson = meRes.ok ? await meRes.json() : { data: null };
-        if (rewardsJson.data) setRewards(rewardsJson.data);
-        if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
-      } catch { setError("Failed to load rewards — check your connection"); }
-      setLoading(false);
-    })();
-  }, [loadKey]);
+    setLoading(true);
+    fetchData();
+  }, [fetchData, loadKey]);
 
-  const handleClaim = async (rewardId: string) => {
-    setClaimingId(rewardId);
+  const handleClaim = async (reward: Reward) => {
+    setClaimingId(reward.id);
+    setConfirmReward(null);
     try {
-      const res = await fetch(`/api/rep-portal/rewards/${rewardId}/claim`, {
+      const res = await fetch(`/api/rep-portal/rewards/${reward.id}/claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
       if (res.ok) {
         setError("");
-        // Refresh rewards and balance in parallel
-        const [rewardsRes, meRes] = await Promise.all([
+        setSuccessReward(reward);
+        // Refresh data
+        const [rewardsRes, meRes, claimsRes] = await Promise.all([
           fetch("/api/rep-portal/rewards"),
           fetch("/api/rep-portal/me"),
+          fetch("/api/rep-portal/rewards/claims"),
         ]);
         if (rewardsRes.ok) {
           const json = await rewardsRes.json();
@@ -81,207 +148,501 @@ export default function RepRewardsPage() {
           const meJson = await meRes.json();
           if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
         }
+        if (claimsRes.ok) {
+          const claimsJson = await claimsRes.json();
+          if (claimsJson.data) setClaims(claimsJson.data);
+        }
+        // Auto-dismiss success after 3s
+        setTimeout(() => setSuccessReward(null), 3000);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.error || "Failed to claim reward");
       }
-    } catch { setError("Failed to claim reward — check your connection"); }
+    } catch {
+      setError("Failed to claim reward — check your connection");
+    }
     setClaimingId(null);
   };
 
-  const hasClaimed = (r: Reward) => (r.my_claims?.length ?? 0) > 0;
+  const hasClaimed = (r: Reward) =>
+    (r.my_claims?.length ?? 0) > 0 &&
+    r.my_claims!.some((c) => c.status !== "cancelled");
 
   const milestoneRewards = rewards.filter((r) => r.reward_type === "milestone");
   const shopRewards = rewards.filter((r) => r.reward_type === "points_shop");
 
+  // Auto-select tab based on content
+  useEffect(() => {
+    if (!loading) {
+      if (shopRewards.length > 0) setTab("shop");
+      else if (milestoneRewards.length > 0) setTab("earned");
+      else if (claims.length > 0) setTab("history");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
 
-  if (error && rewards.length === 0) {
+  if (error && rewards.length === 0 && claims.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
-        <p className="text-sm text-red-400 mb-3">{error}</p>
-        <button
+        <p className="text-sm text-destructive mb-3">{error}</p>
+        <Button
+          variant="link"
+          size="sm"
           onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
-          className="text-xs text-[var(--rep-accent)] hover:underline"
         >
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      {/* Header with points balance */}
+      <div className="flex items-center justify-between rep-slide-up">
         <div>
-          <h1 className="text-xl font-bold text-white">Rewards</h1>
-          <p className="text-sm text-[var(--rep-text-muted)]">
-            Earn points, unlock rewards
-          </p>
+          <h1 className="text-xl font-bold text-foreground">Rewards</h1>
+          <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/20 px-4 py-2">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--rep-accent)] mb-0.5">Balance</p>
-          <p className="text-lg font-bold font-mono text-[var(--rep-accent)] tabular-nums">{myPoints}</p>
+        <div className="rounded-xl bg-primary/10 border border-primary/20 px-4 py-2.5 rep-glow">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Zap size={10} className="text-primary" />
+            <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
+          </div>
+          <p className="text-lg font-bold font-mono text-primary tabular-nums">{myPoints}</p>
         </div>
       </div>
 
-      {/* Inline error (e.g. claim failure) */}
-      {error && rewards.length > 0 && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
-          <p className="text-xs text-red-400">{error}</p>
+      {/* Tab bar */}
+      <div className="rep-tab-bar rep-slide-up" style={{ animationDelay: "50ms" }}>
+        {[
+          { id: "earned" as TabId, label: "Earned", count: milestoneRewards.length },
+          { id: "shop" as TabId, label: "Shop", count: shopRewards.length },
+          { id: "history" as TabId, label: "History", count: claims.length },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={cn("rep-tab", tab === t.id && "active")}
+          >
+            {t.label}
+            {t.count > 0 && (
+              <span className={cn(
+                "ml-1.5 text-[10px]",
+                tab === t.id ? "text-white/70" : "text-muted-foreground"
+              )}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Inline error */}
+      {error && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <p className="text-xs text-destructive">{error}</p>
         </div>
       )}
 
-      {/* Milestones */}
-      {milestoneRewards.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Target size={16} className="text-[var(--rep-accent)]" />
-            <h2 className="text-sm font-semibold text-white">Milestones</h2>
-          </div>
-          <div className="space-y-3">
-            {milestoneRewards.map((reward) => (
-              <div
-                key={reward.id}
-                className={`rounded-2xl border p-4 transition-all ${
-                  hasClaimed(reward)
-                    ? "border-[var(--rep-success)]/30 bg-[var(--rep-success)]/5"
-                    : "border-[var(--rep-border)] bg-[var(--rep-card)]"
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  {reward.image_url ? (
-                    <div className={`h-14 w-14 shrink-0 rounded-xl overflow-hidden ${!hasClaimed(reward) ? "rep-reward-locked" : ""}`}>
-                      <img src={reward.image_url} alt="" className="h-full w-full object-contain" />
-                    </div>
-                  ) : (
-                    <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${
-                      hasClaimed(reward) ? "bg-[var(--rep-success)]/10" : "bg-[var(--rep-surface)]"
-                    }`}>
-                      {hasClaimed(reward) ? <Check size={20} className="text-[var(--rep-success)]" /> : <Lock size={20} className="text-[var(--rep-text-muted)]" />}
-                    </div>
+      {/* ── Earned (Milestones) Tab ── */}
+      {tab === "earned" && (
+        <div className="space-y-3 rep-slide-up">
+          {milestoneRewards.length === 0 ? (
+            <EmptyState icon={Target} text="No milestones yet" sub="Milestones will appear as the team sets them up" />
+          ) : (
+            milestoneRewards.map((reward) => {
+              const claimed = hasClaimed(reward);
+              return (
+                <Card
+                  key={reward.id}
+                  className={cn(
+                    "py-0 gap-0 transition-all",
+                    claimed && "border-success/30 bg-success/5"
                   )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-white">{reward.name}</h3>
-                    {reward.description && (
-                      <p className="text-[11px] text-[var(--rep-text-muted)] mt-0.5">{reward.description}</p>
-                    )}
-                    {reward.milestones && reward.milestones.length > 0 && (
-                      <div className="mt-2 space-y-2">
-                        {reward.milestones.map((m) => (
-                          <div key={m.id}>
-                            <div className="flex items-center justify-between mb-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <div className={`h-1.5 w-1.5 rounded-full ${m.achieved ? "bg-[var(--rep-success)]" : "bg-[var(--rep-border)]"}`} />
-                                <span className={`text-[11px] ${m.achieved ? "text-[var(--rep-success)]" : "text-[var(--rep-text-muted)]"}`}>
-                                  {m.title}
-                                </span>
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      {reward.image_url ? (
+                        <div className={cn(
+                          "h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-muted/30",
+                          !claimed && "rep-reward-locked"
+                        )}>
+                          <img src={reward.image_url} alt="" className="h-full w-full object-contain" />
+                        </div>
+                      ) : (
+                        <div className={cn(
+                          "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl",
+                          claimed ? "bg-success/10" : "bg-muted/30"
+                        )}>
+                          {claimed ? <Check size={20} className="text-success" /> : <Lock size={20} className="text-muted-foreground" />}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-medium text-foreground">{reward.name}</h3>
+                          {claimed && (
+                            <Badge variant="default" className="bg-success/15 text-success border-success/20 text-[9px] px-1.5 py-0">
+                              Unlocked
+                            </Badge>
+                          )}
+                        </div>
+                        {reward.description && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{reward.description}</p>
+                        )}
+                        {reward.milestones && reward.milestones.length > 0 && (
+                          <div className="mt-3 space-y-2.5">
+                            {reward.milestones.map((m) => (
+                              <div key={m.id}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className={cn(
+                                      "h-1.5 w-1.5 rounded-full",
+                                      m.achieved ? "bg-success" : "bg-border"
+                                    )} />
+                                    <span className={cn(
+                                      "text-[11px]",
+                                      m.achieved ? "text-success font-medium" : "text-muted-foreground"
+                                    )}>
+                                      {m.title}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                                    {m.current_value}/{m.threshold_value}
+                                  </span>
+                                </div>
+                                <Progress
+                                  value={m.progress_percent}
+                                  className="h-1"
+                                  indicatorClassName={m.achieved ? "bg-success" : ""}
+                                />
                               </div>
-                              <span className="text-[10px] font-mono text-[var(--rep-text-muted)] tabular-nums">
-                                {m.current_value}/{m.threshold_value}
-                              </span>
-                            </div>
-                            <div className="h-1 rounded-full bg-[var(--rep-border)] overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${m.achieved ? "bg-[var(--rep-success)]" : "bg-[var(--rep-accent)]"}`}
-                                style={{ width: `${m.progress_percent}%` }}
-                              />
-                            </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ── Shop (Points Shop) Tab ── */}
+      {tab === "shop" && (
+        <div className="rep-slide-up">
+          {shopRewards.length === 0 ? (
+            <EmptyState icon={ShoppingCart} text="Shop is empty" sub="Rewards will appear here when they're available" />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {shopRewards.map((reward) => {
+                const claimed = hasClaimed(reward);
+                const canAfford = myPoints >= (reward.points_cost || 0);
+                const soldOut = reward.total_available != null && reward.total_claimed >= reward.total_available;
+                const remaining = reward.total_available != null ? reward.total_available - reward.total_claimed : null;
+
+                return (
+                  <Card
+                    key={reward.id}
+                    className={cn(
+                      "py-0 gap-0 overflow-hidden transition-all rep-card-hover",
+                      claimed && "border-success/30"
+                    )}
+                  >
+                    {reward.image_url && (
+                      <div className="relative h-28 bg-muted/20 flex items-center justify-center">
+                        <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-3" />
+                        {remaining !== null && remaining > 0 && remaining <= 5 && !claimed && (
+                          <span className="absolute top-2 right-2 text-[9px] font-bold text-warning bg-warning/15 border border-warning/20 px-1.5 py-0.5 rounded-full">
+                            {remaining} left
+                          </span>
+                        )}
                       </div>
                     )}
-                  </div>
-                  {hasClaimed(reward) && (
-                    <span className="shrink-0 text-[10px] font-semibold text-[var(--rep-success)] uppercase tracking-wider">
-                      Unlocked
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+                    <CardContent className="p-3">
+                      <h3 className="text-xs font-medium text-foreground mb-1 line-clamp-2">{reward.name}</h3>
+                      {reward.description && (
+                        <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{reward.description}</p>
+                      )}
+                      <div className="flex items-baseline gap-1 mb-3">
+                        <Zap size={10} className="text-primary" />
+                        <span className="text-lg font-bold font-mono text-primary tabular-nums">
+                          {reward.points_cost}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">pts</span>
+                      </div>
+
+                      {claimed ? (
+                        <div className="flex items-center gap-1.5 text-[11px] text-success font-medium">
+                          <Check size={12} /> Claimed
+                        </div>
+                      ) : soldOut ? (
+                        <div className="text-[11px] text-muted-foreground font-medium">Sold out</div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="w-full text-[11px]"
+                          disabled={!canAfford || claimingId === reward.id}
+                          onClick={() => setConfirmReward(reward)}
+                        >
+                          {claimingId === reward.id ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : canAfford ? (
+                            <>
+                              <ShoppingCart size={12} />
+                              Buy with {reward.points_cost} pts
+                            </>
+                          ) : (
+                            `Need ${(reward.points_cost || 0) - myPoints} more`
+                          )}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Points Shop */}
-      {shopRewards.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <ShoppingCart size={16} className="text-[var(--rep-accent)]" />
-            <h2 className="text-sm font-semibold text-white">Points Shop</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {shopRewards.map((reward) => {
-              const canAfford = myPoints >= (reward.points_cost || 0);
-              const soldOut = reward.total_available != null && reward.total_claimed >= reward.total_available;
+      {/* ── History Tab ── */}
+      {tab === "history" && (
+        <div className="space-y-2 rep-slide-up">
+          {claims.length === 0 ? (
+            <EmptyState icon={Clock} text="No claim history" sub="Your reward claims will show up here" />
+          ) : (
+            claims.map((claim) => {
+              const config = CLAIM_STATUS_CONFIG[claim.status] || CLAIM_STATUS_CONFIG.claimed;
+              const StatusIcon = config.icon;
+              const reward = claim.reward;
+              const productImg = reward?.product?.images?.[0];
+              const imgUrl = reward?.image_url || productImg;
 
               return (
-                <div
-                  key={reward.id}
-                  className={`rounded-2xl border bg-[var(--rep-card)] overflow-hidden transition-all rep-card-hover ${
-                    hasClaimed(reward) ? "border-[var(--rep-success)]/30" : "border-[var(--rep-border)]"
-                  }`}
-                >
-                  {reward.image_url && (
-                    <div className="relative h-28 bg-[var(--rep-surface)] flex items-center justify-center">
-                      <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-3" />
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <h3 className="text-xs font-medium text-white mb-1 line-clamp-1">{reward.name}</h3>
-                    <p className="text-lg font-bold font-mono text-[var(--rep-accent)] tabular-nums mb-2">
-                      {reward.points_cost} <span className="text-[10px] font-normal">pts</span>
-                    </p>
-                    {hasClaimed(reward) ? (
-                      <div className="flex items-center gap-1 text-[10px] text-[var(--rep-success)]">
-                        <Check size={10} /> Claimed
-                      </div>
-                    ) : soldOut ? (
-                      <div className="text-[10px] text-[var(--rep-text-muted)]">Sold out</div>
-                    ) : (
-                      <button
-                        onClick={() => handleClaim(reward.id)}
-                        disabled={!canAfford || claimingId === reward.id}
-                        className={`w-full rounded-lg py-2 text-[11px] font-semibold transition-all ${
-                          canAfford
-                            ? "bg-[var(--rep-accent)] text-white hover:brightness-110"
-                            : "bg-[var(--rep-surface)] text-[var(--rep-text-muted)] cursor-not-allowed"
-                        }`}
-                      >
-                        {claimingId === reward.id ? (
-                          <Loader2 size={12} className="animate-spin mx-auto" />
-                        ) : canAfford ? (
-                          "Claim"
-                        ) : (
-                          `Need ${(reward.points_cost || 0) - myPoints} more`
+                <Card key={claim.id} className="py-0 gap-0">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      {imgUrl ? (
+                        <div className="h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-muted/30">
+                          <img src={imgUrl} alt="" className="h-full w-full object-contain" />
+                        </div>
+                      ) : (
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/30">
+                          <Gift size={16} className="text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium text-foreground line-clamp-1">
+                              {reward?.name || "Reward"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <Badge variant={config.variant} className="text-[9px] px-1.5 py-0 gap-1">
+                                <StatusIcon size={9} />
+                                {config.label}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground capitalize">
+                                {claim.claim_type === "points_shop" ? "Points" : claim.claim_type}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {claim.points_spent > 0 && (
+                              <p className="text-xs font-mono text-muted-foreground tabular-nums">
+                                -{claim.points_spent} pts
+                              </p>
+                            )}
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {new Date(claim.created_at).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        {/* Show fulfilment details */}
+                        {claim.status === "fulfilled" && (
+                          <div className="mt-2 rounded-lg bg-success/5 border border-success/10 px-3 py-2">
+                            <p className="text-[10px] text-success font-medium flex items-center gap-1">
+                              <CheckCircle2 size={10} /> Fulfilled
+                              {claim.fulfilled_at && (
+                                <span className="text-muted-foreground font-normal ml-1">
+                                  {new Date(claim.fulfilled_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                </span>
+                              )}
+                            </p>
+                            {reward?.custom_value && (
+                              <p className="text-[11px] text-foreground/80 mt-1">{reward.custom_value}</p>
+                            )}
+                            {reward?.product?.name && (
+                              <p className="text-[11px] text-foreground/80 mt-1">Product: {reward.product.name}</p>
+                            )}
+                            {claim.notes && (
+                              <p className="text-[10px] text-muted-foreground mt-1 italic">&ldquo;{claim.notes}&rdquo;</p>
+                            )}
+                          </div>
                         )}
-                      </button>
-                    )}
-                  </div>
-                </div>
+                        {claim.status === "cancelled" && claim.notes && (
+                          <p className="text-[10px] text-muted-foreground mt-1 italic">{claim.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               );
-            })}
+            })
+          )}
+        </div>
+      )}
+
+      {rewards.length === 0 && claims.length === 0 && (
+        <EmptyState icon={Gift} text="No rewards yet" sub="Rewards will appear here once they're set up" />
+      )}
+
+      {/* ── Confirmation Modal ── */}
+      {confirmReward && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm rep-fade-in">
+          <div className="w-full max-w-sm mx-4 mb-4 md:mb-0 rounded-2xl border border-border bg-background p-6 rep-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-foreground">Confirm Purchase</h3>
+              <button onClick={() => setConfirmReward(null)} className="text-muted-foreground hover:text-foreground">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-4">
+              {confirmReward.image_url ? (
+                <div className="h-14 w-14 rounded-xl overflow-hidden bg-muted/30 shrink-0">
+                  <img src={confirmReward.image_url} alt="" className="h-full w-full object-contain" />
+                </div>
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Gift size={20} className="text-primary" />
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium text-foreground">{confirmReward.name}</p>
+                {confirmReward.description && (
+                  <p className="text-[11px] text-muted-foreground line-clamp-2">{confirmReward.description}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 mb-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Cost</span>
+                <div className="flex items-center gap-1">
+                  <Zap size={10} className="text-primary" />
+                  <span className="text-sm font-bold font-mono text-primary">{confirmReward.points_cost}</span>
+                  <span className="text-[10px] text-muted-foreground">pts</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-muted-foreground">Your balance</span>
+                <span className="text-sm font-mono text-foreground tabular-nums">{myPoints} pts</span>
+              </div>
+              <div className="border-t border-border mt-2 pt-2 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">After purchase</span>
+                <span className="text-sm font-mono text-foreground tabular-nums">
+                  {myPoints - (confirmReward.points_cost || 0)} pts
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setConfirmReward(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={claimingId === confirmReward.id}
+                onClick={() => handleClaim(confirmReward)}
+              >
+                {claimingId === confirmReward.id ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <>
+                    <ShoppingCart size={14} />
+                    Buy Now
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {rewards.length === 0 && (
-        <div className="text-center py-16">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-accent)]/10 mb-4">
-            <Gift size={22} className="text-[var(--rep-accent)]" />
+      {/* ── Success Animation ── */}
+      {successReward && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="text-center rep-celebrate">
+            <div className="relative inline-block mb-4">
+              <div className="h-20 w-20 rounded-2xl bg-success/15 border border-success/30 flex items-center justify-center mx-auto rep-reward-success-ring">
+                {successReward.image_url ? (
+                  <img src={successReward.image_url} alt="" className="h-14 w-14 object-contain" />
+                ) : (
+                  <Sparkles size={28} className="text-success" />
+                )}
+              </div>
+              {/* Particles */}
+              <div className="rep-success-particles" aria-hidden>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="rep-success-particle" style={{ '--i': i } as React.CSSProperties} />
+                ))}
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-foreground mb-1 rep-title-reveal">
+              Reward Claimed!
+            </h3>
+            <p className="text-sm text-muted-foreground mb-1">{successReward.name}</p>
+            <p className="text-xs text-primary font-mono">-{successReward.points_cost} pts</p>
+            <button
+              onClick={() => setSuccessReward(null)}
+              className="mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Dismiss
+            </button>
           </div>
-          <p className="text-sm text-white font-medium mb-1">No rewards yet</p>
-          <p className="text-xs text-[var(--rep-text-muted)]">Rewards will appear here once they&apos;re set up</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Empty State ────────────────────────────────────────────────────────────
+
+function EmptyState({
+  icon: Icon,
+  text,
+  sub,
+}: {
+  icon: typeof Gift;
+  text: string;
+  sub: string;
+}) {
+  return (
+    <div className="text-center py-16">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+        <Icon size={22} className="text-primary" />
+      </div>
+      <p className="text-sm text-foreground font-medium mb-1">{text}</p>
+      <p className="text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }

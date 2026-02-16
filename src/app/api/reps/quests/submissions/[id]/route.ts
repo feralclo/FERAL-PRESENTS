@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
+import { createNotification } from "@/lib/rep-notifications";
 
 /**
  * PUT /api/reps/quests/submissions/[id] — Approve or reject a submission
@@ -124,6 +125,17 @@ export async function PUT(
         })
         .eq("id", submission.quest_id)
         .eq("org_id", ORG_ID);
+
+      // In-app notification for quest approval
+      createNotification({
+        repId: submission.rep_id,
+        orgId: ORG_ID,
+        type: "quest_approved",
+        title: "Quest Approved!",
+        body: `${submission.quest?.title || "Quest"} — +${pointsReward} pts`,
+        link: "/rep/quests",
+        metadata: { quest_id: submission.quest_id, submission_id: id, points_awarded: pointsReward },
+      }).catch(() => {});
     }
 
     return NextResponse.json({ data });

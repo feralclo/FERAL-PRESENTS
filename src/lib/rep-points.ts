@@ -97,6 +97,16 @@ export async function awardPoints(params: {
 
     // Update denormalized balance + recalculate level
     const settings = await getRepSettings(orgId);
+
+    // Fetch current level to detect level-up
+    const { data: repFull } = await supabase
+      .from(TABLES.REPS)
+      .select("level")
+      .eq("id", params.repId)
+      .eq("org_id", orgId)
+      .single();
+    const oldLevel = repFull?.level || 1;
+
     const newLevel = calculateLevel(newBalance, settings.level_thresholds);
 
     await supabase
@@ -108,6 +118,38 @@ export async function awardPoints(params: {
       })
       .eq("id", params.repId)
       .eq("org_id", orgId);
+
+    // Detect level-up and fire notification + email (fire-and-forget)
+    if (newLevel > oldLevel && params.points > 0) {
+      const oldLevelName = settings.level_names[oldLevel - 1] || `Level ${oldLevel}`;
+      const newLevelName = settings.level_names[newLevel - 1] || `Level ${newLevel}`;
+
+      import("@/lib/rep-notifications").then(({ createNotification }) => {
+        createNotification({
+          repId: params.repId,
+          orgId,
+          type: "level_up",
+          title: "Level Up!",
+          body: `You're now Level ${newLevel} — ${newLevelName}`,
+          link: "/rep",
+          metadata: { old_level: oldLevel, new_level: newLevel },
+        }).catch(() => {});
+      }).catch(() => {});
+
+      import("@/lib/rep-emails").then(({ sendRepEmail }) => {
+        sendRepEmail({
+          type: "level_up",
+          repId: params.repId,
+          orgId,
+          data: {
+            old_level: oldLevel,
+            old_level_name: oldLevelName,
+            new_level: newLevel,
+            new_level_name: newLevelName,
+          },
+        }).catch(() => {});
+      }).catch(() => {});
+    }
 
     return newBalance;
   } catch (err) {

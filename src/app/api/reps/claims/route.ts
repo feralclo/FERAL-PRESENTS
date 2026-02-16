@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { createNotification } from "@/lib/rep-notifications";
 
 /**
  * GET /api/reps/claims — List reward claims
@@ -152,6 +153,25 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", reward_id)
       .eq("org_id", ORG_ID);
+
+    // Fetch reward name for notification
+    const { data: rewardInfo } = await supabase
+      .from(TABLES.REP_REWARDS)
+      .select("name")
+      .eq("id", reward_id)
+      .eq("org_id", ORG_ID)
+      .single();
+
+    // Send in-app notification (fire-and-forget)
+    createNotification({
+      repId: rep_id,
+      orgId: ORG_ID,
+      type: "manual_grant",
+      title: "Reward Granted!",
+      body: `You've been awarded: ${rewardInfo?.name || "a reward"}`,
+      link: "/rep/rewards",
+      metadata: { reward_id, claim_id: data?.id },
+    }).catch(() => {});
 
     return NextResponse.json({ data }, { status: 201 });
   } catch {

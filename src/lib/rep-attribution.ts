@@ -1,6 +1,7 @@
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { awardPoints, getRepSettings } from "@/lib/rep-points";
+import { createNotification } from "@/lib/rep-notifications";
 
 /**
  * Attribute a sale to a rep based on a discount code.
@@ -116,6 +117,17 @@ export async function attributeSaleToRep(params: {
     // 6. Send sale notification email (fire-and-forget)
     sendRepSaleNotification(repId, orgId, params).catch(() => {});
 
+    // 7. Create in-app sale notification (fire-and-forget)
+    createNotification({
+      repId,
+      orgId,
+      type: "sale_attributed",
+      title: "Sale incoming!",
+      body: `${params.ticketCount} ticket${params.ticketCount > 1 ? "s" : ""} sold — +${pointsEarned} pts`,
+      link: "/rep/sales",
+      metadata: { order_id: params.orderId, ticket_count: params.ticketCount, order_total: params.orderTotal },
+    }).catch(() => {});
+
     console.log(
       `[rep-attribution] Sale attributed to rep ${repId}: ${params.ticketCount} tickets, ${pointsEarned} points`
     );
@@ -205,6 +217,17 @@ async function checkMilestones(
           .eq("id", reward.id)
           .eq("org_id", orgId);
       }
+
+      // In-app notification for milestone unlock
+      createNotification({
+        repId,
+        orgId,
+        type: "reward_unlocked",
+        title: "Reward Unlocked!",
+        body: `${reward?.name || "Reward"} — ${milestone.title}`,
+        link: "/rep/rewards",
+        metadata: { reward_id: milestone.reward_id, milestone_id: milestone.id },
+      }).catch(() => {});
 
       console.log(
         `[rep-attribution] Milestone achieved: rep=${repId}, milestone=${milestone.title}`

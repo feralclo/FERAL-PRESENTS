@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import "@/styles/tailwind.css";
@@ -15,6 +15,13 @@ import {
   Mail,
   Clock,
   Loader2,
+  Bell,
+  Zap,
+  ShoppingCart,
+  Star,
+  ArrowUp,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -225,10 +232,11 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] text-muted-foreground/50 font-medium tracking-wider uppercase select-none">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground/50 font-medium tracking-wider uppercase select-none mr-2">
               Powered by Entry
             </span>
+            <NotificationCenter />
             <Button variant="ghost" size="sm" asChild>
               <Link href="/rep/profile">
                 <User size={14} />
@@ -237,6 +245,21 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </header>
+      )}
+
+      {/* Mobile top bar (notification bell) */}
+      {showNav && (
+        <div className="flex md:hidden items-center justify-between px-4 pt-3 pb-1">
+          <Link href="/rep" className="flex items-center gap-2">
+            {branding?.logo_url && (
+              <img src={branding.logo_url} alt="" className="h-5 w-auto" />
+            )}
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[2px] select-none text-primary">
+              {brandName}
+            </span>
+          </Link>
+          <NotificationCenter />
+        </div>
       )}
 
       {/* Main content */}
@@ -268,6 +291,233 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+      )}
+    </div>
+  );
+}
+
+// ─── Notification Center ─────────────────────────────────────────────────────
+
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body?: string | null;
+  link?: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
+  sale_attributed: TrendingUp,
+  reward_unlocked: Gift,
+  reward_fulfilled: CheckCircle2,
+  quest_approved: Swords,
+  level_up: ArrowUp,
+  manual_grant: Star,
+};
+
+function NotificationCenter() {
+  const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Poll for unread count every 30s
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/rep-portal/notifications?limit=1");
+      if (res.ok) {
+        const json = await res.json();
+        setUnreadCount(json.unread_count || 0);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  // Fetch full list when opened
+  const handleOpen = async () => {
+    const wasOpen = open;
+    setOpen(!wasOpen);
+    if (!wasOpen) {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/rep-portal/notifications?limit=20");
+        if (res.ok) {
+          const json = await res.json();
+          setNotifications(json.data || []);
+          setUnreadCount(json.unread_count || 0);
+        }
+      } catch { /* silent */ }
+      setLoading(false);
+    }
+  };
+
+  // Click outside to close
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const markAllRead = async () => {
+    try {
+      await fetch("/api/rep-portal/notifications/read", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch { /* silent */ }
+  };
+
+  const handleNotificationClick = (n: Notification) => {
+    // Mark as read
+    if (!n.read) {
+      fetch("/api/rep-portal/notifications/read", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [n.id] }),
+      }).catch(() => {});
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    }
+    if (n.link) {
+      setOpen(false);
+      router.push(n.link);
+    }
+  };
+
+  const formatTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return "now";
+    if (diffMin < 60) return `${diffMin}m`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return `${diffDay}d`;
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  return (
+    <div className="relative" ref={panelRef}>
+      <button
+        onClick={handleOpen}
+        className={cn(
+          "relative flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200",
+          open
+            ? "bg-primary/15 text-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+        )}
+        aria-label="Notifications"
+      >
+        <Bell size={16} strokeWidth={open ? 2.5 : 2} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white rep-notification-badge">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {/* Notification Panel */}
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/20 z-50 overflow-hidden rep-notification-panel">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+            <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllRead}
+                  className="text-[10px] text-primary hover:underline font-medium"
+                >
+                  Mark all read
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                className="text-muted-foreground hover:text-foreground md:hidden"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* List */}
+          <div className="overflow-y-auto max-h-[calc(70vh-48px)]">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 size={16} className="animate-spin text-muted-foreground" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="text-center py-8 px-4">
+                <Bell size={20} className="text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">No notifications yet</p>
+              </div>
+            ) : (
+              notifications.map((n, i) => {
+                const Icon = NOTIFICATION_ICONS[n.type] || Bell;
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => handleNotificationClick(n)}
+                    className={cn(
+                      "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30 rep-notification-item",
+                      !n.read && "bg-primary/5"
+                    )}
+                    style={{ animationDelay: `${i * 30}ms` }}
+                  >
+                    <div className={cn(
+                      "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                      !n.read ? "bg-primary/15" : "bg-muted/50"
+                    )}>
+                      <Icon size={14} className={!n.read ? "text-primary" : "text-muted-foreground"} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={cn(
+                          "text-xs leading-tight",
+                          !n.read ? "font-semibold text-foreground" : "font-medium text-foreground/80"
+                        )}>
+                          {n.title}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                          {formatTime(n.created_at)}
+                        </span>
+                      </div>
+                      {n.body && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                          {n.body}
+                        </p>
+                      )}
+                    </div>
+                    {!n.read && (
+                      <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

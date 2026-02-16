@@ -284,6 +284,28 @@ export interface RepEventPositionReward {
   awarded_rep?: { id: string; display_name?: string; first_name: string; photo_url?: string } | null;
 }
 
+// ─── Notifications ──────────────────────────────────────────────────────────
+export type RepNotificationType =
+  | "reward_unlocked"
+  | "quest_approved"
+  | "sale_attributed"
+  | "level_up"
+  | "reward_fulfilled"
+  | "manual_grant";
+
+export interface RepNotification {
+  id: string;
+  org_id: string;
+  rep_id: string;
+  type: RepNotificationType;
+  title: string;
+  body?: string | null;
+  link?: string | null;
+  metadata?: Record<string, unknown> | null;
+  read: boolean;
+  created_at: string;
+}
+
 // ─── Event Leaderboard (Rep Portal) ────────────────────────────────────────
 export interface EventLeaderboardSummary {
   event_id: string;

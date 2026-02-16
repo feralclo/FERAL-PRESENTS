@@ -28,6 +28,7 @@ export const TABLES = {
   REP_QUEST_SUBMISSIONS: "rep_quest_submissions",
   REP_REWARD_CLAIMS: "rep_reward_claims",
   REP_EVENT_POSITION_REWARDS: "rep_event_position_rewards",
+  REP_NOTIFICATIONS: "rep_notifications",
   ABANDONED_CARTS: "abandoned_carts",
 } as const;
 

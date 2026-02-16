@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
+import { createNotification } from "@/lib/rep-notifications";
+import { sendRepEmail } from "@/lib/rep-emails";
 
 /**
  * PUT /api/reps/claims/[id] — Fulfill or cancel a claim
@@ -76,6 +78,42 @@ export async function PUT(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // If fulfilling, send notification + email
+    if (status === "fulfilled") {
+      // Fetch reward details for notification content
+      const { data: rewardInfo } = await supabase
+        .from(TABLES.REP_REWARDS)
+        .select("name, custom_value, product:products(name)")
+        .eq("id", claim.reward_id)
+        .eq("org_id", ORG_ID)
+        .single();
+
+      const rewardName = rewardInfo?.name || "Your reward";
+      const product = rewardInfo?.product as unknown as { name: string } | null;
+
+      createNotification({
+        repId: claim.rep_id,
+        orgId: ORG_ID,
+        type: "reward_fulfilled",
+        title: "Reward Fulfilled!",
+        body: `${rewardName} is ready for you`,
+        link: "/rep/rewards",
+        metadata: { reward_id: claim.reward_id, claim_id: id },
+      }).catch(() => {});
+
+      sendRepEmail({
+        type: "reward_fulfilled",
+        repId: claim.rep_id,
+        orgId: ORG_ID,
+        data: {
+          reward_name: rewardName,
+          product_name: product?.name,
+          custom_value: rewardInfo?.custom_value,
+          notes: notes?.trim() || claim.notes,
+        },
+      }).catch(() => {});
     }
 
     // If cancelling, refund points and decrement total_claimed

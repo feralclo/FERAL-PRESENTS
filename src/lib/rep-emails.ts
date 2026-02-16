@@ -30,6 +30,8 @@ type RepEmailType =
   | "email_verification"
   | "quest_notification"
   | "reward_unlocked"
+  | "reward_fulfilled"
+  | "level_up"
   | "application_rejected"
   | "sale_notification";
 
@@ -284,6 +286,64 @@ function buildEmail(
           </a>
         `),
       };
+
+    case "reward_fulfilled": {
+      const rewardName = escapeHtml(String(ctx.reward_name || "Your reward"));
+      const productDetails = ctx.product_name ? escapeHtml(String(ctx.product_name)) : null;
+      const customValue = ctx.custom_value ? escapeHtml(String(ctx.custom_value)) : null;
+      const fulfilmentNotes = ctx.notes ? escapeHtml(String(ctx.notes)) : null;
+      return {
+        subject: `Your reward is ready — ${rewardName}`,
+        html: wrapEmail(accent, orgName, `
+          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+            Reward Fulfilled!
+          </h1>
+          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+            ${firstName}, your reward has been processed and is ready for you.
+          </p>
+          <div style="background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+            <p style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+              ${rewardName}
+            </p>
+            ${productDetails ? `<p style="font-size: 14px; color: #34D399; margin: 0 0 4px 0;">Product: ${productDetails}</p>` : ""}
+            ${customValue ? `<p style="font-size: 14px; color: #a0a0b0; margin: 0 0 4px 0;">${customValue}</p>` : ""}
+            ${fulfilmentNotes ? `<p style="font-size: 13px; color: #a0a0b0; margin: 8px 0 0 0; font-style: italic;">"${fulfilmentNotes}"</p>` : ""}
+          </div>
+          <a href="${siteUrl}/rep/rewards" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
+            View Rewards
+          </a>
+        `),
+      };
+    }
+
+    case "level_up": {
+      const newLevel = ctx.new_level || 2;
+      const newLevelName = escapeHtml(String(ctx.new_level_name || `Level ${newLevel}`));
+      const oldLevel = ctx.old_level || 1;
+      const oldLevelName = escapeHtml(String(ctx.old_level_name || `Level ${oldLevel}`));
+      return {
+        subject: `You leveled up — ${newLevelName}!`,
+        html: wrapEmail(accent, orgName, `
+          <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0;">
+            Level Up!
+          </h1>
+          <p style="font-size: 14px; color: #a0a0b0; margin: 0 0 24px 0; line-height: 1.6;">
+            ${firstName}, you've been promoted.
+          </p>
+          <div style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
+            <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-decoration: line-through;">
+              Level ${oldLevel} — ${oldLevelName}
+            </p>
+            <p style="font-size: 28px; font-weight: 800; margin: 8px 0 0 0; background: linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+              Level ${newLevel} — ${newLevelName}
+            </p>
+          </div>
+          <a href="${siteUrl}/rep" style="display: inline-block; background: ${accent}; color: #ffffff; font-size: 14px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
+            View Dashboard
+          </a>
+        `),
+      };
+    }
 
     case "application_rejected":
       return {

@@ -50,7 +50,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Use admin client for data queries (bypasses RLS)
-    const adminDb = getSupabaseAdmin();
+    const adminDb = await getSupabaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json(
+        { error: "Service unavailable" },
+        { status: 503 }
+      );
+    }
 
     // Verify the auth user has a rep row
     const { data: rep, error: repError } = await adminDb

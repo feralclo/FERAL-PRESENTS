@@ -203,9 +203,10 @@ src/
 │   ├── date-utils.ts                      # Date formatting helpers
 │   ├── image-utils.ts                     # Image processing utilities
 │   ├── supabase/
+│   │   ├── admin.ts                       # Server Supabase client for data queries (service role key → session fallback)
 │   │   ├── client.ts                      # Browser Supabase client (singleton, no-cache)
 │   │   ├── middleware.ts                  # Supabase client for Next.js middleware
-│   │   └── server.ts                      # Server Supabase client (cookies, no-cache)
+│   │   └── server.ts                      # Server Supabase client (cookies, no-cache) — auth only
 │   └── stripe/
 │       ├── client.ts                      # Browser Stripe.js (lazy singleton, Connect-aware)
 │       ├── server.ts                      # Server Stripe instance (platform account)
@@ -423,6 +424,29 @@ There is no self-registration — admin access is invitation-only.
 - `orders.payment_ref` — used for idempotency (Stripe PaymentIntent ID)
 - `products.product_id` on `ticket_types` — FK to `products` table (ON DELETE SET NULL)
 - All tables have `org_id` column
+
+### Supabase Client Rules (CRITICAL — Data Access)
+
+The platform has THREE Supabase clients. Using the wrong one causes silent data loss (queries return empty arrays instead of errors when blocked by RLS).
+
+| Client | File | When to Use |
+|--------|------|-------------|
+| `getSupabaseAdmin()` | `lib/supabase/admin.ts` | **ALL data queries** in API routes, server components, and lib functions. Uses service role key (bypasses RLS). Falls back to session-based client if key is unavailable. |
+| `getSupabaseServer()` | `lib/supabase/server.ts` | **Auth operations ONLY** — `requireAuth()`, `getSession()`, login/logout routes. Needs the user's session cookies to verify identity. |
+| `getSupabaseClient()` | `lib/supabase/client.ts` | **Browser-side only** — realtime subscriptions, client-side reads. Subject to RLS. |
+
+**Rules for new code:**
+1. **Every API route that reads/writes data** must use `getSupabaseAdmin()` — NEVER `getSupabaseServer()` for data queries
+2. **Only auth routes** (login, logout, `requireAuth()`) should use `getSupabaseServer()` — they need session cookies
+3. **Never create a raw `createClient()` with the anon key** for server-side data access — it has no session context and is blocked by RLS
+4. **New tables must be added to the health check** in `/api/health/route.ts` → `checkDataAccess()` so RLS issues are caught immediately
+5. **Admin pages must show API errors** — never silently swallow `fetch()` failures. Check `res.ok` and display `json.error` to the user
+
+**Why this matters:**
+Supabase RLS (Row Level Security) silently returns empty arrays when queries are blocked — no errors, no warnings, just empty data. The service role key in `getSupabaseAdmin()` bypasses RLS entirely. If you use `getSupabaseServer()` for data queries, RLS will block them whenever policies change, and the admin will see "no data" with no explanation.
+
+**Health monitoring:**
+`GET /api/health` tests all critical tables (events, orders, customers, tickets, abandoned_carts, order_items) and reports per-table status. Check `/admin/health/` to verify data access is working.
 
 ### External Service Changes Rule (CRITICAL)
 The user manages Supabase, Vercel, Stripe, and other services manually via their dashboards. They do NOT use migration files, CLI tools, or infrastructure-as-code. Whenever code requires a change to an external service, you MUST:

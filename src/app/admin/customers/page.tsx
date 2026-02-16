@@ -67,6 +67,7 @@ export default function CustomersPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [total, setTotal] = useState(0);
 
@@ -77,15 +78,26 @@ export default function CustomersPage() {
 
   const loadCustomers = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ limit: "100" });
     if (search) params.set("search", search);
 
-    const res = await fetch(`/api/customers?${params}`);
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/customers?${params}`);
+      const json = await res.json();
 
-    if (json.data) {
-      setCustomers(json.data);
-      setTotal(json.total || json.data.length);
+      if (!res.ok) {
+        setError(`API error (${res.status}): ${json.error || "Unknown error"}`);
+        setLoading(false);
+        return;
+      }
+
+      if (json.data) {
+        setCustomers(json.data);
+        setTotal(json.total || json.data.length);
+      }
+    } catch (e) {
+      setError(`Network error: ${e instanceof Error ? e.message : "Failed to fetch customers"}`);
     }
     setLoading(false);
   }, [search]);
@@ -151,7 +163,23 @@ export default function CustomersPage() {
 
       {/* Customers Table */}
       <div className="mt-4">
-        {loading ? (
+        {error ? (
+          <Card className="border-destructive/30">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <Users size={24} className="text-destructive" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-destructive">Failed to load customers</p>
+              <p className="mt-1 max-w-md text-center text-xs text-muted-foreground">{error}</p>
+              <button
+                onClick={() => loadCustomers()}
+                className="mt-4 rounded-md bg-primary px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90"
+              >
+                Retry
+              </button>
+            </CardContent>
+          </Card>
+        ) : loading ? (
           <Card>
             <CardContent className="flex items-center justify-center py-16">
               <div className="flex flex-col items-center gap-3">

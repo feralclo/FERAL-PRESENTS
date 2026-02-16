@@ -150,6 +150,7 @@ function OrdersContent() {
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
   const [filterEvent, setFilterEvent] = useState("__all__");
@@ -167,16 +168,27 @@ function OrdersContent() {
   const activeEventFilter = filterEvent === "__all__" ? "" : filterEvent;
 
   const loadOrders = useCallback(async () => {
+    setError(null);
     const params = new URLSearchParams();
     if (activeEventFilter) params.set("event_id", activeEventFilter);
     if (filterStatus) params.set("status", filterStatus);
     if (customerIdParam) params.set("customer_id", customerIdParam);
     params.set("limit", "100");
 
-    const res = await fetch(`/api/orders?${params}`);
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/orders?${params}`);
+      const json = await res.json();
 
-    if (json.data) setOrders(json.data);
+      if (!res.ok) {
+        setError(`API error (${res.status}): ${json.error || "Unknown error"}`);
+        setLoading(false);
+        return;
+      }
+
+      if (json.data) setOrders(json.data);
+    } catch (e) {
+      setError(`Network error: ${e instanceof Error ? e.message : "Failed to fetch orders"}`);
+    }
     setLoading(false);
   }, [activeEventFilter, filterStatus, customerIdParam]);
 
@@ -366,7 +378,23 @@ function OrdersContent() {
 
       {/* Orders Table */}
       <div className="mt-4">
-        {loading ? (
+        {error ? (
+          <Card className="border-destructive/30">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <Package size={24} className="text-destructive" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-destructive">Failed to load orders</p>
+              <p className="mt-1 max-w-md text-center text-xs text-muted-foreground">{error}</p>
+              <button
+                onClick={() => { setLoading(true); loadOrders(); }}
+                className="mt-4 rounded-md bg-primary px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90"
+              >
+                Retry
+              </button>
+            </CardContent>
+          </Card>
+        ) : loading ? (
           <Card>
             <CardContent className="flex items-center justify-center py-16">
               <div className="flex flex-col items-center gap-3">

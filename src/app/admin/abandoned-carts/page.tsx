@@ -404,6 +404,7 @@ export default function AbandonedCartsPage() {
   const router = useRouter();
   const [carts, setCarts] = useState<AbandonedCart[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [total, setTotal] = useState(0);
@@ -418,19 +419,30 @@ export default function AbandonedCartsPage() {
 
   const loadCarts = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ limit: "100" });
     if (search) params.set("search", search);
     if (statusFilter) params.set("status", statusFilter);
 
-    const res = await fetch(`/api/abandoned-carts?${params}`);
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/abandoned-carts?${params}`);
+      const json = await res.json();
 
-    if (json.data) {
-      setCarts(json.data);
-      setTotal(json.total || json.data.length);
-    }
-    if (json.stats) {
-      setStats(json.stats);
+      if (!res.ok) {
+        setError(`API error (${res.status}): ${json.error || "Unknown error"}`);
+        setLoading(false);
+        return;
+      }
+
+      if (json.data) {
+        setCarts(json.data);
+        setTotal(json.total || json.data.length);
+      }
+      if (json.stats) {
+        setStats(json.stats);
+      }
+    } catch (e) {
+      setError(`Network error: ${e instanceof Error ? e.message : "Failed to fetch carts"}`);
     }
     setLoading(false);
   }, [search, statusFilter]);
@@ -597,7 +609,23 @@ export default function AbandonedCartsPage() {
 
       {/* Carts list */}
       <div className="mt-4 space-y-3">
-        {loading ? (
+        {error ? (
+          <Card className="border-destructive/30">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <ShoppingCart size={24} className="text-destructive" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-destructive">Failed to load abandoned carts</p>
+              <p className="mt-1 max-w-md text-center text-xs text-muted-foreground">{error}</p>
+              <button
+                onClick={() => loadCarts()}
+                className="mt-4 rounded-md bg-primary px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90"
+              >
+                Retry
+              </button>
+            </CardContent>
+          </Card>
+        ) : loading ? (
           <Card>
             <CardContent className="flex items-center justify-center py-16">
               <div className="flex flex-col items-center gap-3">

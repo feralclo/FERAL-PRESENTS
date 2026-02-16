@@ -221,7 +221,8 @@ export function useDashboardRealtime(): DashboardState {
     try {
       const res = await fetch("/api/admin/dashboard");
       if (!res.ok) {
-        console.warn("[Entry] Dashboard API returned", res.status);
+        const errBody = await res.json().catch(() => ({}));
+        console.warn("[Entry] Dashboard API returned", res.status, errBody.error || "");
         return false;
       }
       const data = await res.json();

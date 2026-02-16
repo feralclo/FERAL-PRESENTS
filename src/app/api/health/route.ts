@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, SETTINGS_KEYS, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID } from "@/lib/constants";
+import { TABLES, SETTINGS_KEYS, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID, ORG_ID } from "@/lib/constants";
 import { stripe } from "@/lib/stripe/server";
 
 interface HealthCheck {
@@ -68,7 +68,10 @@ async function checkSupabase(): Promise<HealthCheck> {
 }
 
 /**
- * Verify actual data access works — catches RLS issues, schema changes, etc.
+ * Verify actual data access works across ALL critical tables.
+ * Tests events, orders, customers, tickets, and abandoned_carts.
+ * Catches RLS issues, schema changes, missing tables, etc.
+ *
  * This is the early warning system: if data queries silently return empty
  * when they shouldn't, this check flags it before users notice.
  */
@@ -82,31 +85,67 @@ async function checkDataAccess(): Promise<HealthCheck> {
 
     const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // Try reading from the events table (should always have at least one event)
-    const { data, error, count } = await supabase
-      .from(TABLES.EVENTS)
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", "feral")
-      .limit(1);
+    // Test ALL critical tables — not just events
+    const tableChecks = [
+      { name: "events", table: TABLES.EVENTS },
+      { name: "orders", table: TABLES.ORDERS },
+      { name: "customers", table: TABLES.CUSTOMERS },
+      { name: "tickets", table: TABLES.TICKETS },
+      { name: "abandoned_carts", table: TABLES.ABANDONED_CARTS },
+      { name: "order_items", table: TABLES.ORDER_ITEMS },
+    ];
+
+    const results = await Promise.all(
+      tableChecks.map(async ({ name, table }) => {
+        try {
+          const { error, count } = await supabase
+            .from(table)
+            .select("*", { count: "exact", head: true })
+            .eq("org_id", ORG_ID)
+            .limit(1);
+          return { name, error: error?.message || null, count: count ?? 0 };
+        } catch (e) {
+          return { name, error: e instanceof Error ? e.message : "Query failed", count: 0 };
+        }
+      })
+    );
 
     const latency = Date.now() - start;
 
-    if (error) {
+    const failedTables = results.filter((r) => r.error);
+    const emptyTables = results.filter((r) => !r.error && r.count === 0);
+    const okTables = results.filter((r) => !r.error && r.count > 0);
+
+    // Build detail summary
+    const parts: string[] = [];
+    if (okTables.length > 0) {
+      parts.push(`OK: ${okTables.map((t) => `${t.name}(${t.count})`).join(", ")}`);
+    }
+    if (emptyTables.length > 0) {
+      parts.push(`Empty: ${emptyTables.map((t) => t.name).join(", ")}`);
+    }
+    if (failedTables.length > 0) {
+      parts.push(`FAILED: ${failedTables.map((t) => `${t.name}: ${t.error}`).join("; ")}`);
+    }
+    parts.push(`Client: ${hasServiceRole ? "service_role (RLS bypassed)" : "anon+session (RLS applies)"}`);
+
+    if (failedTables.length > 0) {
       return {
         name: "Data Access",
         status: "down",
         latency,
-        detail: `Query failed: ${error.message}${error.code ? ` (${error.code})` : ""}. ${!hasServiceRole ? "SUPABASE_SERVICE_ROLE_KEY not set — may be blocked by RLS." : ""}`,
+        detail: parts.join(" | "),
       };
     }
 
-    // If count is 0, data might be blocked by RLS
-    if (count === 0) {
+    // Events table should always have data — if empty, something is wrong
+    const eventsResult = results.find((r) => r.name === "events");
+    if (eventsResult && eventsResult.count === 0) {
       return {
         name: "Data Access",
         status: "degraded",
         latency,
-        detail: `Events table returned 0 rows. ${!hasServiceRole ? "WARNING: SUPABASE_SERVICE_ROLE_KEY not set — RLS may be blocking queries." : "This may indicate RLS is blocking access even with service role key — check Supabase dashboard."}`,
+        detail: `Events table returned 0 rows — ${!hasServiceRole ? "RLS may be blocking." : "check Supabase dashboard."} | ${parts.join(" | ")}`,
       };
     }
 
@@ -114,7 +153,7 @@ async function checkDataAccess(): Promise<HealthCheck> {
       name: "Data Access",
       status: "ok",
       latency,
-      detail: `${count} events readable. Client: ${hasServiceRole ? "service_role (RLS bypassed)" : "anon+session (RLS applies)"}`,
+      detail: parts.join(" | "),
     };
   } catch (e) {
     return {

@@ -24,7 +24,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }

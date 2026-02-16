@@ -566,7 +566,7 @@ async function fetchImageBuffer(url: string | undefined): Promise<Buffer | null>
       const key = url.replace("/api/media/", "");
       const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
       const { TABLES } = await import("@/lib/constants");
-      const supabase = getSupabaseAdmin();
+      const supabase = await getSupabaseAdmin();
       if (!supabase) return null;
 
       const { data } = await supabase

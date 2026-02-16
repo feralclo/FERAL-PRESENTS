@@ -19,6 +19,7 @@ interface HealthCheck {
 export async function GET() {
   const checks: HealthCheck[] = await Promise.all([
     checkSupabase(),
+    checkDataAccess(),
     checkStripe(),
     checkMetaPixel(),
     checkEnvVars(),
@@ -42,7 +43,7 @@ export async function GET() {
 async function checkSupabase(): Promise<HealthCheck> {
   const start = Date.now();
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return { name: "Supabase", status: "down", detail: "Client not configured" };
     }
@@ -59,6 +60,65 @@ async function checkSupabase(): Promise<HealthCheck> {
   } catch (e) {
     return {
       name: "Supabase",
+      status: "down",
+      latency: Date.now() - start,
+      detail: e instanceof Error ? e.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Verify actual data access works — catches RLS issues, schema changes, etc.
+ * This is the early warning system: if data queries silently return empty
+ * when they shouldn't, this check flags it before users notice.
+ */
+async function checkDataAccess(): Promise<HealthCheck> {
+  const start = Date.now();
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) {
+      return { name: "Data Access", status: "down", detail: "Client not configured" };
+    }
+
+    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    // Try reading from the events table (should always have at least one event)
+    const { data, error, count } = await supabase
+      .from(TABLES.EVENTS)
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", "feral")
+      .limit(1);
+
+    const latency = Date.now() - start;
+
+    if (error) {
+      return {
+        name: "Data Access",
+        status: "down",
+        latency,
+        detail: `Query failed: ${error.message}${error.code ? ` (${error.code})` : ""}. ${!hasServiceRole ? "SUPABASE_SERVICE_ROLE_KEY not set — may be blocked by RLS." : ""}`,
+      };
+    }
+
+    // If count is 0, data might be blocked by RLS
+    if (count === 0) {
+      return {
+        name: "Data Access",
+        status: "degraded",
+        latency,
+        detail: `Events table returned 0 rows. ${!hasServiceRole ? "WARNING: SUPABASE_SERVICE_ROLE_KEY not set — RLS may be blocking queries." : "This may indicate RLS is blocking access even with service role key — check Supabase dashboard."}`,
+      };
+    }
+
+    return {
+      name: "Data Access",
+      status: "ok",
+      latency,
+      detail: `${count} events readable. Client: ${hasServiceRole ? "service_role (RLS bypassed)" : "anon+session (RLS applies)"}`,
+    };
+  } catch (e) {
+    return {
+      name: "Data Access",
       status: "down",
       latency: Date.now() - start,
       detail: e instanceof Error ? e.message : "Unknown error",
@@ -98,7 +158,7 @@ async function checkStripe(): Promise<HealthCheck> {
 /** Check Meta Pixel configuration via marketing settings */
 async function checkMetaPixel(): Promise<HealthCheck> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return { name: "Meta Pixel", status: "degraded", detail: "Cannot check — DB down" };
     }
@@ -143,6 +203,7 @@ async function checkEnvVars(): Promise<HealthCheck> {
   const checks = [
     { key: "Supabase URL", set: !!SUPABASE_URL },
     { key: "Supabase Anon Key", set: !!SUPABASE_ANON_KEY },
+    { key: "Supabase Service Role Key", set: !!process.env.SUPABASE_SERVICE_ROLE_KEY },
     { key: "Stripe Secret Key", set: !!process.env.STRIPE_SECRET_KEY },
     { key: "Stripe Webhook Secret", set: !!process.env.STRIPE_WEBHOOK_SECRET },
     { key: "GTM ID", set: !!GTM_ID },

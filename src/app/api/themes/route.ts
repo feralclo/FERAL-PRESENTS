@@ -42,7 +42,7 @@ function generateId(): string {
  */
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ data: getDefaultThemeStore() });
     }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
 
 /** Save theme store to site_settings */
 async function saveThemeStore(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
+  supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
   key: string,
   store: ThemeStore
 ) {
@@ -245,7 +245,7 @@ async function saveThemeStore(
 
 /** Sync a theme's branding to the live branding key so all event pages use it */
 async function syncBrandingToLive(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
+  supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
   branding: BrandingSettings
 ) {
   if (!supabase) return;

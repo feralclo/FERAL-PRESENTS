@@ -15,7 +15,7 @@ import type { ThemeStore } from "@/types/settings";
  */
 export async function getActiveTemplate(): Promise<string> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return "midnight";
 
     const key = themesKey(ORG_ID);

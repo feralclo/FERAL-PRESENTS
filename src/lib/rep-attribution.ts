@@ -21,7 +21,7 @@ export async function attributeSaleToRep(params: {
   try {
     if (!params.discountCode) return;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return;
 
     const orgId = params.orgId || ORG_ID;
@@ -133,7 +133,7 @@ async function checkMilestones(
   orgId: string,
   eventId: string
 ): Promise<void> {
-  const supabase = getSupabaseAdmin();
+  const supabase = await getSupabaseAdmin();
   if (!supabase) return;
 
   // Get rep's current stats

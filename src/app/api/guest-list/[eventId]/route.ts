@@ -15,7 +15,7 @@ export async function GET(
     if (auth.error) return auth.error;
 
     const { eventId } = await params;
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -124,7 +124,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },

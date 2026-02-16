@@ -16,7 +16,7 @@ export async function GET(
     if (auth.error) return auth.error;
 
     const { code } = await params;
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },

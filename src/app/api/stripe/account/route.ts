@@ -17,7 +17,7 @@ import { verifyConnectedAccount } from "@/lib/stripe/server";
  */
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ stripe_account_id: null });
     }

@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     let pdfLogoBase64: string | null = null;
 
     try {
-      const supabase = getSupabaseAdmin();
+      const supabase = await getSupabaseAdmin();
       if (supabase) {
         const [emailResult, pdfResult] = await Promise.all([
           supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_email").single(),

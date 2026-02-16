@@ -19,7 +19,7 @@ export async function GET() {
 
     let walletSettings: WalletPassSettings = { ...DEFAULT_WALLET_PASS_SETTINGS };
     try {
-      const supabase = getSupabaseAdmin();
+      const supabase = await getSupabaseAdmin();
       if (supabase) {
         const { data: settingsRow } = await supabase
           .from(TABLES.SITE_SETTINGS)

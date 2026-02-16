@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const body = await request.json();
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -150,7 +150,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },

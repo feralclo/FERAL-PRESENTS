@@ -17,7 +17,7 @@ export async function GET() {
 
     const repId = auth.rep.id;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },
@@ -161,7 +161,7 @@ export async function GET() {
  * or their event_id is in the rep's assigned events.
  */
 async function getActiveQuestsCount(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
+  supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
   repId: string
 ): Promise<number> {
   try {

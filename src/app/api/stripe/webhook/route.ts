@@ -112,7 +112,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   const items: { ticket_type_id: string; qty: number; merch_size?: string }[] =
     JSON.parse(itemsJson);
 
-  const supabase = getSupabaseAdmin();
+  const supabase = await getSupabaseAdmin();
   if (!supabase) {
     console.error("Supabase not configured for webhook handler");
     return;

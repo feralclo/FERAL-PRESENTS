@@ -21,7 +21,7 @@ export async function POST(
     const repId = auth.rep.id;
     const { id: rewardId } = await params;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },

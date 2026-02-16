@@ -44,6 +44,22 @@ export interface DashboardState {
 
 /* ── Helpers ── */
 
+function todayStart(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+}
+
+function yesterdayRange(): { start: string; end: string } {
+  const now = new Date();
+  const yStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return { start: yStart.toISOString(), end: yEnd.toISOString() };
+}
+
+function minutesAgo(n: number): string {
+  return new Date(Date.now() - n * 60 * 1000).toISOString();
+}
+
 /* ── Main Hook ── */
 
 export function useDashboardRealtime(): DashboardState {
@@ -125,106 +141,195 @@ export function useDashboardRealtime(): DashboardState {
     setActivityFeed((prev) => [newItem, ...prev].slice(0, 30));
   }, []);
 
-  /* ── Initial data load via API (bypasses RLS) ── */
-  const loadInitialData = useCallback(async () => {
+  /* ── Process raw query results into dashboard state ── */
+  const processQueryResults = useCallback((results: {
+    todayOrders: { id: string; total: number }[];
+    todayTicketCount: number;
+    yOrders: { id: string; total: number }[];
+    yTicketCount: number;
+    funnelData: FunnelStats;
+    yLanding: number;
+    yPurchase: number;
+    recentSessions: { session_id: string }[];
+    recentCarts: { session_id: string; timestamp: string }[];
+    recentPurchases: { session_id: string }[];
+    recentCheckouts: { session_id: string; timestamp: string }[];
+    recentActivity: { event_type: string; event_name?: string; product_name?: string; product_price?: number; timestamp: string }[];
+  }) => {
+    const todayRevenue = results.todayOrders.reduce((s, o) => s + Number(o.total), 0);
+    const todayOrderCount = results.todayOrders.length;
+    const todayConvRate = results.funnelData.landing > 0 ? (results.funnelData.purchase / results.funnelData.landing) * 100 : 0;
+    const yRevenue = results.yOrders.reduce((s, o) => s + Number(o.total), 0);
+    const yOrderCount = results.yOrders.length;
+    const yConvRate = results.yLanding > 0 ? (results.yPurchase / results.yLanding) * 100 : 0;
+
+    setToday({
+      revenue: todayRevenue, orders: todayOrderCount, ticketsSold: results.todayTicketCount,
+      avgOrderValue: todayOrderCount > 0 ? todayRevenue / todayOrderCount : 0, conversionRate: todayConvRate,
+    });
+    setYesterday({
+      revenue: yRevenue, orders: yOrderCount, ticketsSold: results.yTicketCount,
+      avgOrderValue: yOrderCount > 0 ? yRevenue / yOrderCount : 0, conversionRate: yConvRate,
+    });
+    setFunnel(results.funnelData);
+
+    const now = Date.now();
+    const uniqueSessions = new Set<string>(results.recentSessions.map((r) => r.session_id));
+    for (const sid of uniqueSessions) visitorMap.current.set(sid, now);
+    setActiveVisitors(uniqueSessions.size);
+
+    const purchasedMap = new Map<string, number>();
+    for (const r of results.recentPurchases) purchasedMap.set(r.session_id, now);
+    purchaseSessions.current = purchasedMap;
+    let cartCount = 0;
+    for (const row of results.recentCarts) {
+      const ts = new Date(row.timestamp).getTime();
+      cartSessions.current.set(row.session_id, ts);
+      if (!purchasedMap.has(row.session_id)) cartCount++;
+    }
+    setActiveCarts(cartCount);
+
+    let chkCount = 0;
+    for (const row of results.recentCheckouts) {
+      const ts = new Date(row.timestamp).getTime();
+      checkoutSessions.current.set(row.session_id, ts);
+      if (!purchasedMap.has(row.session_id)) chkCount++;
+    }
+    setInCheckout(chkCount);
+
+    const feedItems: ActivityItem[] = [];
+    for (const row of results.recentActivity) {
+      feedIdCounter.current++;
+      const ts = new Date(row.timestamp);
+      if (row.event_type === "add_to_cart") {
+        feedItems.push({ id: `init-${feedIdCounter.current}`, type: "add_to_cart",
+          title: row.product_name ? `Added ${row.product_name} to cart` : "Added to cart",
+          amount: row.product_price ? `£${Number(row.product_price).toFixed(2)}` : undefined, timestamp: ts, eventName: row.event_name || undefined });
+      } else if (row.event_type === "landing") {
+        feedItems.push({ id: `init-${feedIdCounter.current}`, type: "page_view", title: "Viewing event page", timestamp: ts, eventName: row.event_name || undefined });
+      } else if (row.event_type === "purchase") {
+        feedItems.push({ id: `init-${feedIdCounter.current}`, type: "purchase", title: "Purchase completed", timestamp: ts, eventName: row.event_name || undefined });
+      } else if (row.event_type === "checkout" || row.event_type === "checkout_start") {
+        feedItems.push({ id: `init-${feedIdCounter.current}`, type: "checkout", title: "Started checkout", timestamp: ts, eventName: row.event_name || undefined });
+      }
+    }
+    setActivityFeed(feedItems);
+  }, []);
+
+  /* ── Load via API (server-side, bypasses RLS via service role key) ── */
+  const loadViaApi = useCallback(async (): Promise<boolean> => {
     try {
       const res = await fetch("/api/admin/dashboard");
-      if (!res.ok) { setIsLoading(false); return; }
+      if (!res.ok) {
+        console.warn("[Entry] Dashboard API returned", res.status);
+        return false;
+      }
       const data = await res.json();
+      if (!data.today) return false; // Sanity check — API returned unexpected shape
 
+      processQueryResults({
+        todayOrders: (data.today.orders > 0) ? Array(data.today.orders).fill(null).map((_, i) => ({ id: `api-${i}`, total: 0 })) : [],
+        todayTicketCount: data.today.ticketsSold,
+        yOrders: [],
+        yTicketCount: data.yesterday.ticketsSold,
+        funnelData: data.funnel,
+        yLanding: 0,
+        yPurchase: 0,
+        recentSessions: data.recentSessions || [],
+        recentCarts: data.recentCartSessions || [],
+        recentPurchases: data.recentPurchaseSessions || [],
+        recentCheckouts: data.recentCheckoutSessions || [],
+        recentActivity: data.recentActivity || [],
+      });
+
+      // API returns pre-computed values — override with those directly
       setToday(data.today);
       setYesterday(data.yesterday);
-      setFunnel(data.funnel);
-
-      // Active visitors
-      const now = Date.now();
-      const sessions = data.recentSessions || [];
-      const uniqueSessions = new Set<string>(sessions.map((r: { session_id: string }) => r.session_id));
-      for (const sid of uniqueSessions) {
-        visitorMap.current.set(sid, now);
-      }
-      setActiveVisitors(data.activeVisitors || uniqueSessions.size);
-
-      // Active carts
-      const purchasedMap = new Map<string, number>();
-      for (const r of data.recentPurchaseSessions || []) {
-        purchasedMap.set(r.session_id, now);
-      }
-      purchaseSessions.current = purchasedMap;
-      let carts = 0;
-      for (const row of data.recentCartSessions || []) {
-        const ts = new Date(row.timestamp).getTime();
-        cartSessions.current.set(row.session_id, ts);
-        if (!purchasedMap.has(row.session_id)) carts++;
-      }
-      setActiveCarts(data.activeCarts ?? carts);
-
-      // In checkout
-      let chk = 0;
-      for (const row of data.recentCheckoutSessions || []) {
-        const ts = new Date(row.timestamp).getTime();
-        checkoutSessions.current.set(row.session_id, ts);
-        if (!purchasedMap.has(row.session_id)) chk++;
-      }
-      setInCheckout(data.inCheckout ?? chk);
-
-      // Top events
+      setActiveVisitors(data.activeVisitors ?? 0);
+      setActiveCarts(data.activeCarts ?? 0);
+      setInCheckout(data.inCheckout ?? 0);
       if (data.topEvents) setTopEvents(data.topEvents);
 
-      // Recent activity for feed
-      const feedItems: ActivityItem[] = [];
-      for (const row of data.recentActivity || []) {
-        feedIdCounter.current++;
-        const ts = new Date(row.timestamp);
-        if (row.event_type === "add_to_cart") {
-          feedItems.push({
-            id: `init-${feedIdCounter.current}`,
-            type: "add_to_cart",
-            title: row.product_name ? `Added ${row.product_name} to cart` : "Added to cart",
-            amount: row.product_price ? `£${Number(row.product_price).toFixed(2)}` : undefined,
-            timestamp: ts,
-            eventName: row.event_name || undefined,
-          });
-        } else if (row.event_type === "landing") {
-          feedItems.push({
-            id: `init-${feedIdCounter.current}`,
-            type: "page_view",
-            title: "Viewing event page",
-            timestamp: ts,
-            eventName: row.event_name || undefined,
-          });
-        } else if (row.event_type === "purchase") {
-          feedItems.push({
-            id: `init-${feedIdCounter.current}`,
-            type: "purchase",
-            title: "Purchase completed",
-            timestamp: ts,
-            eventName: row.event_name || undefined,
-          });
-        } else if (row.event_type === "checkout" || row.event_type === "checkout_start") {
-          feedItems.push({
-            id: `init-${feedIdCounter.current}`,
-            type: "checkout",
-            title: "Started checkout",
-            timestamp: ts,
-            eventName: row.event_name || undefined,
-          });
-        }
-      }
-      setActivityFeed(feedItems);
+      return true;
+    } catch (err) {
+      console.warn("[Entry] Dashboard API failed, falling back to direct queries:", err);
+      return false;
+    }
+  }, [processQueryResults]);
 
+  /* ── Load via direct Supabase queries (fallback — uses browser client with session) ── */
+  const loadViaDirectQueries = useCallback(async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    const todayStr = todayStart();
+    const yRange = yesterdayRange();
+
+    const [
+      ordersRes, ticketsRes, yOrdersRes, yTicketsRes,
+      landingRes, ticketsViewRes, addToCartRes, checkoutRes, purchaseRes,
+      yLandingRes, yPurchaseRes,
+      recentSessionsRes, recentCartsRes, recentPurchasesRes, recentCheckoutsRes,
+      recentActivityRes,
+    ] = await Promise.all([
+      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", ORG_ID).eq("status", "completed").gte("created_at", todayStr),
+      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", ORG_ID).gte("created_at", todayStr),
+      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", ORG_ID).eq("status", "completed").gte("created_at", yRange.start).lt("created_at", yRange.end),
+      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", ORG_ID).gte("created_at", yRange.start).lt("created_at", yRange.end),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "landing").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "tickets").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "add_to_cart").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "checkout").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "purchase").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "landing").gte("timestamp", yRange.start).lt("timestamp", yRange.end),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "purchase").gte("timestamp", yRange.start).lt("timestamp", yRange.end),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id").gte("timestamp", minutesAgo(5)),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id, timestamp").eq("event_type", "add_to_cart").gte("timestamp", minutesAgo(15)),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id").eq("event_type", "purchase").gte("timestamp", minutesAgo(15)),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id, timestamp").in("event_type", ["checkout", "checkout_start"]).gte("timestamp", minutesAgo(10)),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("event_type, event_name, product_name, product_price, product_qty, timestamp").gte("timestamp", minutesAgo(30)).order("timestamp", { ascending: false }).limit(20),
+    ]);
+
+    processQueryResults({
+      todayOrders: (ordersRes.data || []) as { id: string; total: number }[],
+      todayTicketCount: ticketsRes.count || 0,
+      yOrders: (yOrdersRes.data || []) as { id: string; total: number }[],
+      yTicketCount: yTicketsRes.count || 0,
+      funnelData: {
+        landing: landingRes.count || 0, tickets: ticketsViewRes.count || 0,
+        add_to_cart: addToCartRes.count || 0, checkout: checkoutRes.count || 0, purchase: purchaseRes.count || 0,
+      },
+      yLanding: yLandingRes.count || 0,
+      yPurchase: yPurchaseRes.count || 0,
+      recentSessions: (recentSessionsRes.data || []) as { session_id: string }[],
+      recentCarts: (recentCartsRes.data || []) as { session_id: string; timestamp: string }[],
+      recentPurchases: (recentPurchasesRes.data || []) as { session_id: string }[],
+      recentCheckouts: (recentCheckoutsRes.data || []) as { session_id: string; timestamp: string }[],
+      recentActivity: (recentActivityRes.data || []) as { event_type: string; event_name?: string; product_name?: string; product_price?: number; timestamp: string }[],
+    });
+  }, [processQueryResults]);
+
+  /* ── Initial data load: API first, direct queries as fallback ── */
+  const loadInitialData = useCallback(async () => {
+    try {
+      // Try API first (uses service role key server-side, bypasses RLS)
+      const apiSuccess = await loadViaApi();
+      if (!apiSuccess) {
+        // Fallback: direct Supabase queries (uses browser session)
+        await loadViaDirectQueries();
+      }
     } catch {
       // Graceful degradation — dashboard shows zeros
     }
 
     setIsLoading(false);
-  }, []);
+  }, [loadViaApi, loadViaDirectQueries]);
 
-  /* ── Load top events (included in dashboard API response, polled via loadInitialData) ── */
-  const loadTopEvents = useCallback(() => {
-    // Top events are now fetched as part of loadInitialData via the API.
-    // This callback is kept for the polling interval compatibility.
-    loadInitialData();
+  /* ── Load top events (polled) ── */
+  const loadTopEvents = useCallback(async () => {
+    // Top events come from the dashboard API load. If API already loaded them,
+    // just re-run the full load which includes top events.
+    await loadInitialData();
   }, [loadInitialData]);
 
   /* ── Setup effect: initial load + realtime + polling ── */

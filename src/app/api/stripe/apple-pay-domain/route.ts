@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Check for connected account
     let stripeAccountId: string | null = null;
     try {
-      const supabase = getSupabaseAdmin();
+      const supabase = await getSupabaseAdmin();
       if (supabase) {
         const { data } = await supabase
           .from(TABLES.SITE_SETTINGS)
@@ -87,7 +87,7 @@ export async function GET() {
     // Check for connected account
     let stripeAccountId: string | null = null;
     try {
-      const supabase = getSupabaseAdmin();
+      const supabase = await getSupabaseAdmin();
       if (supabase) {
         const { data } = await supabase
           .from(TABLES.SITE_SETTINGS)

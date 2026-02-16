@@ -50,7 +50,7 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
       return;
     }
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return;
 
     // Fetch rep info
@@ -118,7 +118,7 @@ export async function sendRepInviteEmail(params: {
     const resend = getResendClient();
     if (!resend) return;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return;
 
     const { data: brandingRow } = await supabase

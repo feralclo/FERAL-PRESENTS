@@ -16,7 +16,7 @@ export async function GET() {
 
     const repId = auth.rep.id;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },

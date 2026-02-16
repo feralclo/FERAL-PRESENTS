@@ -32,7 +32,7 @@ export default async function CheckoutRoute({
   // Fetch event from DB
   let event = null;
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (supabase) {
       const { data } = await supabase
         .from(TABLES.EVENTS)

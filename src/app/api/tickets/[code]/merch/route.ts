@@ -20,7 +20,7 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const { collected_by } = body as { collected_by?: string };
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },

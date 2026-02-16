@@ -13,7 +13,7 @@ export async function GET() {
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },
@@ -68,7 +68,7 @@ export async function PUT(request: NextRequest) {
       onboarding_completed,
     } = body;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },

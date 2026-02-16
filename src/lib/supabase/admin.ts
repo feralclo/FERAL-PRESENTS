@@ -1,23 +1,23 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { SUPABASE_URL } from "@/lib/constants";
 
 let adminClient: SupabaseClient | null = null;
-let anonAdminClient: SupabaseClient | null = null;
 
 /**
- * Get a Supabase client with elevated privileges for server-side data operations.
+ * Get a Supabase client for server-side data operations.
  *
- * Uses the service role key (bypasses Row Level Security) when available.
- * Falls back to a plain anon-key client (no cookies/session) as a last resort.
+ * Strategy (in order of preference):
+ * 1. Service role key (bypasses RLS entirely) — best for admin routes
+ * 2. Session-based server client (has user's auth context) — same as before
  *
- * IMPORTANT: This client should ONLY be used on the server side (API routes,
- * server components). Never expose the service role key to the browser.
+ * This ensures we NEVER downgrade from the original behavior. If the
+ * service role key is available, we get full access. If not, we fall
+ * back to the exact same session-based client the routes used before.
  *
- * Auth verification should still use getSupabaseServer() via requireAuth()
- * since it needs access to the user's session cookies. This client is purely
- * for data operations AFTER auth has been verified.
+ * IMPORTANT: Only use on the server side (API routes, server components).
  */
-export function getSupabaseAdmin(): SupabaseClient | null {
+export async function getSupabaseAdmin(): Promise<SupabaseClient | null> {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   // Prefer service role key — bypasses RLS entirely
@@ -33,18 +33,7 @@ export function getSupabaseAdmin(): SupabaseClient | null {
     return adminClient;
   }
 
-  // Fallback: anon key without session (for environments without service role key)
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    if (!anonAdminClient) {
-      anonAdminClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      });
-    }
-    return anonAdminClient;
-  }
-
-  return null;
+  // Fallback: session-based server client (preserves user's auth context)
+  // This is the SAME client routes used before — never worse than original behavior
+  return getSupabaseServer();
 }

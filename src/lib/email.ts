@@ -23,7 +23,7 @@ function getResendClient(): Resend | null {
  */
 async function getEmailSettings(orgId: string): Promise<EmailSettings> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return DEFAULT_EMAIL_SETTINGS;
 
     const { data } = await supabase
@@ -46,7 +46,7 @@ async function getEmailSettings(orgId: string): Promise<EmailSettings> {
  */
 async function getWalletPassSettings(orgId: string): Promise<WalletPassSettings> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return DEFAULT_WALLET_PASS_SETTINGS;
 
     const { data } = await supabase
@@ -69,7 +69,7 @@ async function getWalletPassSettings(orgId: string): Promise<WalletPassSettings>
  */
 async function getPdfTicketSettings(orgId: string): Promise<PdfTicketSettings> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return DEFAULT_PDF_TICKET_SETTINGS;
 
     const { data } = await supabase
@@ -113,7 +113,7 @@ async function recordEmailStatus(
   emailMeta: Record<string, unknown>
 ): Promise<void> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return;
 
     // Merge into existing metadata (don't overwrite other fields)
@@ -227,7 +227,7 @@ export async function sendOrderConfirmationEmail(params: {
 
     // Fetch email logo base64 from DB for CID inline embedding
     try {
-      const sb = getSupabaseAdmin();
+      const sb = await getSupabaseAdmin();
       if (sb && settings.logo_url) {
         const m = settings.logo_url.match(/\/api\/media\/(.+)$/);
         if (m) {
@@ -323,7 +323,7 @@ export async function sendOrderConfirmationEmail(params: {
       const m = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
       if (m) {
         try {
-          const sb = getSupabaseAdmin();
+          const sb = await getSupabaseAdmin();
           if (sb) {
             const { data: row } = await sb
               .from(TABLES.SITE_SETTINGS).select("data")

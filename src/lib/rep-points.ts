@@ -10,7 +10,7 @@ export async function getRepSettings(
   orgId: string = ORG_ID
 ): Promise<RepProgramSettings> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return DEFAULT_REP_PROGRAM_SETTINGS;
 
     const { data } = await supabase
@@ -62,7 +62,7 @@ export async function awardPoints(params: {
   createdBy?: string;
 }): Promise<number | null> {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return null;
     const orgId = params.orgId || ORG_ID;
 
@@ -145,7 +145,7 @@ export async function getPointsHistory(
   offset: number = 0
 ) {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return [];
 
     const { data } = await supabase

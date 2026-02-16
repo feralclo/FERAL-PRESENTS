@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 /** Fetch event from DB (for admin-editable content). */
 async function getEventFromDB(slug: string) {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) return null;
 
     const { data } = await supabase

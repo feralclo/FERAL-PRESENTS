@@ -32,7 +32,7 @@ export default async function EventLayout({
   let eventId: string | null = null;
 
   // Single Supabase client, reused across all queries
-  const supabase = getSupabaseAdmin();
+  const supabase = await getSupabaseAdmin();
 
   // STEP 1: Fetch event from DB
   if (supabase) {

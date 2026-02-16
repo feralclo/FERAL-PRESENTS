@@ -16,7 +16,7 @@ export async function createRepDiscountCode(params: {
   applicableEventIds?: string[] | null;
   description?: string;
 }): Promise<{ id: string; code: string } | null> {
-  const supabase = getSupabaseAdmin();
+  const supabase = await getSupabaseAdmin();
   if (!supabase) return null;
 
   const {

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const repId = auth.rep.id;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
  * Event-specific leaderboard using rep_events table.
  */
 async function getEventLeaderboard(
-  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseAdmin>>>,
   repId: string,
   eventId: string
 ) {

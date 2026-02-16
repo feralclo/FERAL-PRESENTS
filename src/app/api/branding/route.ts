@@ -26,7 +26,7 @@ const DEFAULT_BRANDING: BrandingSettings = {
  */
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ data: DEFAULT_BRANDING });
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const body = await request.json();
-    const supabase = getSupabaseAdmin();
+    const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },

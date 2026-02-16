@@ -53,9 +53,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(
-        `email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`
-      );
+      // Sanitize search term: escape characters that have special meaning in PostgREST filters
+      const sanitized = search.replace(/[\\%_(),."']/g, "");
+      if (sanitized) {
+        query = query.or(
+          `email.ilike.%${sanitized}%,first_name.ilike.%${sanitized}%,last_name.ilike.%${sanitized}%`
+        );
+      }
     }
 
     const { data, error, count } = await query;

@@ -118,7 +118,7 @@ export default async function CheckoutRoute({
       <>
         {preconnectHints}
         <Suspense>
-          <AuraCheckout slug={slug} event={event} />
+          <AuraCheckout slug={slug} event={event} restoreData={restoreData} />
         </Suspense>
       </>
     );

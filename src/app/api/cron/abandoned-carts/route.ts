@@ -34,6 +34,30 @@ const EXPIRY_MINUTES = 7 * 24 * 60;
 /** Max carts to process per run (prevent timeout) */
 const BATCH_LIMIT = 100;
 
+/** Bump notification_count and set notified_at in a single atomic update.
+ *  Returns true if the update succeeded. Logs errors. */
+async function bumpNotificationCount(
+  supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
+  cartId: string,
+  currentCount: number,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from(TABLES.ABANDONED_CARTS)
+    .update({
+      notification_count: currentCount + 1,
+      notified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", cartId)
+    .eq("status", "abandoned"); // Guard: don't update if status changed
+  if (error) {
+    console.error(`[cron/abandoned-carts] Failed to bump notification_count for cart ${cartId}:`, error.message);
+    return false;
+  }
+  return true;
+}
+
 /**
  * GET /api/cron/abandoned-carts
  *
@@ -162,28 +186,14 @@ export async function GET(request: NextRequest) {
         // Skip unsubscribed emails
         if (unsubscribedEmails.has(cart.email.toLowerCase())) {
           // Bump notification_count so this cart progresses past disabled/skipped steps
-          await supabase
-            .from(TABLES.ABANDONED_CARTS)
-            .update({
-              notification_count: cart.notification_count + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", cart.id)
-            .eq("status", "abandoned");
+          await bumpNotificationCount(supabase, cart.id, cart.notification_count);
           summary.skipped_disabled++;
           continue;
         }
 
         // Skip if step is disabled — bump count so cart progresses
         if (!step.enabled) {
-          await supabase
-            .from(TABLES.ABANDONED_CARTS)
-            .update({
-              notification_count: cart.notification_count + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", cart.id)
-            .eq("status", "abandoned");
+          await bumpNotificationCount(supabase, cart.id, cart.notification_count);
           summary.skipped_disabled++;
           continue;
         }
@@ -203,14 +213,7 @@ export async function GET(request: NextRequest) {
         if (!event || !event.slug) {
           summary.errors.push(`Cart ${cart.id}: missing event data`);
           // Bump count to avoid re-processing
-          await supabase
-            .from(TABLES.ABANDONED_CARTS)
-            .update({
-              notification_count: cart.notification_count + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", cart.id)
-            .eq("status", "abandoned");
+          await bumpNotificationCount(supabase, cart.id, cart.notification_count);
           summary.failed++;
           continue;
         }
@@ -227,6 +230,23 @@ export async function GET(request: NextRequest) {
             .eq("status", "abandoned");
           summary.expired++;
           continue;
+        }
+
+        // Skip if event date has already passed — no point recovering tickets for past events
+        if (event.date_start) {
+          const eventDate = new Date(event.date_start);
+          if (eventDate.getTime() < Date.now()) {
+            await supabase
+              .from(TABLES.ABANDONED_CARTS)
+              .update({
+                status: "expired",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", cart.id)
+              .eq("status", "abandoned");
+            summary.expired++;
+            continue;
+          }
         }
 
         // ── Race condition guard: re-check status ──
@@ -271,16 +291,16 @@ export async function GET(request: NextRequest) {
         });
 
         if (sent) {
-          // Increment notification_count (notified_at is set by sendAbandonedCartRecoveryEmail)
-          await supabase
-            .from(TABLES.ABANDONED_CARTS)
-            .update({
-              notification_count: cart.notification_count + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", cart.id)
-            .eq("status", "abandoned"); // Guard: don't update if status changed
-          summary.sent++;
+          // Atomic update: bump notification_count + notified_at together
+          // (email.ts no longer sets notified_at — single source of truth here)
+          const bumped = await bumpNotificationCount(supabase, cart.id, cart.notification_count);
+          if (bumped) {
+            summary.sent++;
+          } else {
+            // Email sent but DB update failed — log as error so we can investigate
+            summary.sent++;
+            summary.errors.push(`Cart ${cart.id}: email sent but notification_count update failed`);
+          }
         } else {
           summary.failed++;
           summary.errors.push(`Cart ${cart.id}: email send failed`);

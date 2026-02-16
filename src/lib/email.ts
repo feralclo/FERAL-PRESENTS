@@ -581,23 +581,8 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       });
 
       if (!error) {
-        // Update abandoned cart notification state
-        // notification_count is incremented by the cron job that calls this function
-        try {
-          const supabase = await getSupabaseAdmin();
-          if (supabase) {
-            await supabase
-              .from(TABLES.ABANDONED_CARTS)
-              .update({
-                notified_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", params.cartId);
-          }
-        } catch {
-          // Don't let DB update failure affect success return
-        }
-
+        // Cart state (notified_at, notification_count) is updated atomically
+        // by the cron job that calls this function — not here.
         console.log(
           `[email] Abandoned cart recovery sent to ${params.email} for cart ${params.cartId}${attempt > 1 ? ` (attempt ${attempt})` : ""}`
         );

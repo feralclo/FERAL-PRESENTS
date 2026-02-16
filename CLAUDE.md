@@ -74,7 +74,9 @@ src/
 │       ├── discounts/         # CRUD, validate, seed
 │       ├── reps/              # Admin rep management (19 routes)
 │       ├── rep-portal/        # Rep-facing API (16 routes)
-│       ├── abandoned-carts/   # Cart tracking
+│       ├── abandoned-carts/   # Cart listing + email preview
+│       ├── cron/              # Vercel cron jobs (abandoned cart recovery)
+│       ├── unsubscribe/       # One-click email unsubscribe
 │       ├── email/             # test send, delivery status
 │       ├── wallet/            # wallet pass status
 │       ├── track/             # traffic + popup analytics
@@ -109,11 +111,11 @@ src/
 │   ├── supabase/              # admin.ts (data), server.ts (auth only), client.ts (browser), middleware.ts
 │   ├── stripe/                # client.ts (browser), server.ts (platform), config.ts (fees/currency)
 │   ├── auth.ts                # requireAuth(), requireRepAuth(), getSession()
-│   ├── constants.ts           # ORG_ID, TABLES, SETTINGS_KEYS, brandingKey()
+│   ├── constants.ts           # ORG_ID, TABLES, SETTINGS_KEYS, brandingKey(), abandonedCartAutomationKey()
 │   ├── settings.ts            # fetchSettings (server), saveSettings (client)
 │   ├── orders.ts              # Order creation helpers
-│   ├── email.ts               # Order confirmation email (Resend + PDF attachment)
-│   ├── email-templates.ts     # HTML email template builder
+│   ├── email.ts               # Order confirmation + abandoned cart recovery email (Resend)
+│   ├── email-templates.ts     # HTML email template builder (order confirmation + cart recovery)
 │   ├── pdf.ts                 # PDF ticket generation (jsPDF, A5, custom branding)
 │   ├── qr.ts                  # QR code generation
 │   ├── ticket-utils.ts        # generateTicketCode, generateOrderNumber
@@ -234,6 +236,7 @@ Each tenant can fully customize their visual identity:
 | `{org_id}_themes` | Theme store (active template, theme configs) — `themesKey()` |
 | `{org_id}_vat` | VAT configuration — `vatKey()` |
 | `{org_id}_reps` | Reps program settings — `repsKey()` |
+| `{org_id}_abandoned_cart_automation` | Abandoned cart email automation config — `abandonedCartAutomationKey()` |
 | `feral_marketing` | Meta Pixel + CAPI settings |
 | `feral_email` | Email template settings |
 | `feral_wallet_passes` | Wallet pass configuration |
@@ -292,6 +295,8 @@ EventPage [Server Component, force-dynamic]
 - Analytics: `POST /api/track`, `POST /api/meta/capi`
 - Discounts: `POST /api/discounts/validate`
 - Health: `GET /api/health`
+- Cron: `/api/cron/*` (protected by CRON_SECRET, not session auth)
+- Unsubscribe: `/api/unsubscribe` (token-based, no session auth)
 - Wallet: `GET /api/orders/[id]/wallet/*` (order UUID = unguessable access token)
 - Rep public: `signup`, `login`, `logout`, `verify-email`, `invite/[token]`
 - Auth: `login`, `logout`, `recover`
@@ -328,7 +333,7 @@ EventPage [Server Component, force-dynamic]
 | `customers` | Customer profiles | email, first_name, last_name, nickname, total_orders, total_spent |
 | `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in, checked_in_at |
 | `discounts` | Discount codes | code, type (percentage/fixed), value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at, min_order_amount |
-| `abandoned_carts` | Checkout abandonment | customer_id, event_id, items (jsonb), subtotal, status, notification_count |
+| `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 
@@ -403,7 +408,7 @@ This applies to all external services: Supabase, Stripe, Vercel, Resend, Klaviyo
 |--------|-------|---------|
 | POST | `/api/stripe/payment-intent` | Create PaymentIntent (validates tickets, applies discounts + VAT, rate limited) |
 | POST | `/api/stripe/confirm-order` | Verify payment → create order + tickets + email confirmation |
-| POST | `/api/checkout/capture` | Post-payment order creation (alternative capture flow) |
+| POST | `/api/checkout/capture` | Upsert customer + abandoned cart on checkout email capture |
 | POST | `/api/stripe/webhook` | Handle payment_intent.succeeded / failed |
 | GET | `/api/stripe/account` | Get connected Stripe account ID for checkout |
 
@@ -430,8 +435,16 @@ This applies to all external services: Supabase, Stripe, Vercel, Resend, Klaviyo
 | Customers | `/api/customers` | GET (list + search) |
 | Guest List | `/api/guest-list`, `/api/guest-list/[eventId]` | POST/GET/PUT/DELETE |
 | Discounts | `/api/discounts`, `/api/discounts/[id]`, `/api/discounts/validate`, `/api/discounts/seed` | GET/POST/PUT/DELETE + public validate |
-| Abandoned Carts | `/api/abandoned-carts` | GET |
+| Abandoned Carts | `/api/abandoned-carts`, `/api/abandoned-carts/preview-email` | GET (list + stats, email HTML preview) |
 | Settings | `/api/settings`, `/api/branding`, `/api/themes` | GET/POST |
+
+### Abandoned Cart Recovery
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/abandoned-carts` | List carts with stats + pipeline breakdown (admin) |
+| GET | `/api/abandoned-carts/preview-email` | Render recovery email HTML with sample data (admin) |
+| GET | `/api/cron/abandoned-carts` | Vercel cron — process email sequence (CRON_SECRET auth) |
+| GET | `/api/unsubscribe?token=&type=cart_recovery` | One-click unsubscribe from recovery emails (public) |
 
 ### Stripe Connect
 | Method | Route | Purpose |
@@ -520,6 +533,11 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY  # Stripe public key (client-side)
 ```
 RESEND_API_KEY                      # Resend API key (order confirmation emails + PDF attachments)
 NEXT_PUBLIC_SITE_URL                # Site URL (used in emails, PDFs, wallet passes, CAPI)
+```
+
+### Required for Abandoned Cart Automation
+```
+CRON_SECRET                        # Vercel cron job auth (set automatically by Vercel)
 ```
 
 ### Optional — Analytics

@@ -35,9 +35,18 @@ import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
 
+/** Pre-filled cart data from abandoned cart recovery email click */
+interface RestoreData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  cartParam: string;
+}
+
 interface AuraCheckoutProps {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
+  restoreData?: RestoreData | null;
 }
 
 interface CartLine {
@@ -96,9 +105,9 @@ const CARD_ELEMENT_STYLE = {
 /* ===============================================
    Main Checkout Entry Point
    =============================================== */
-export function AuraCheckout({ slug, event }: AuraCheckoutProps) {
+export function AuraCheckout({ slug, event, restoreData }: AuraCheckoutProps) {
   const searchParams = useSearchParams();
-  const cartParam = searchParams.get("cart");
+  const cartParam = restoreData?.cartParam || searchParams.get("cart");
   const piParam = searchParams.get("pi");
   const { trackPageView } = useMetaTracking();
 
@@ -207,6 +216,7 @@ export function AuraCheckout({ slug, event }: AuraCheckoutProps) {
         totalQty={totalQty}
         symbol={symbol}
         onComplete={setCompletedOrder}
+        restoreData={restoreData}
       />
     );
   }
@@ -220,6 +230,7 @@ export function AuraCheckout({ slug, event }: AuraCheckoutProps) {
       totalQty={totalQty}
       symbol={symbol}
       onComplete={setCompletedOrder}
+      restoreData={restoreData}
     />
   );
 }
@@ -290,6 +301,7 @@ function AuraStripeCheckout({
   totalQty,
   symbol,
   onComplete,
+  restoreData,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -298,6 +310,7 @@ function AuraStripeCheckout({
   totalQty: number;
   symbol: string;
   onComplete: (order: Order) => void;
+  restoreData?: RestoreData | null;
 }) {
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
@@ -362,6 +375,7 @@ function AuraStripeCheckout({
                 symbol={symbol}
                 onComplete={onComplete}
                 stripePromise={stripePromise}
+                restoreData={restoreData}
               />
             </Elements>
           </div>
@@ -388,6 +402,7 @@ function AuraCheckoutForm({
   totalQty,
   symbol,
   onComplete,
+  restoreData,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -397,14 +412,15 @@ function AuraCheckoutForm({
   symbol: string;
   onComplete: (order: Order) => void;
   stripePromise: Promise<Stripe | null>;
+  restoreData?: RestoreData | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const { trackAddPaymentInfo } = useMetaTracking();
 
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState(restoreData?.email || "");
+  const [firstName, setFirstName] = useState(restoreData?.firstName || "");
+  const [lastName, setLastName] = useState(restoreData?.lastName || "");
   const [nameOnCard, setNameOnCard] = useState("");
   const [country, setCountry] = useState(event.currency === "EUR" ? "BE" : "GB");
   const [processing, setProcessing] = useState(false);
@@ -773,6 +789,7 @@ function AuraTestCheckout({
   totalQty,
   symbol,
   onComplete,
+  restoreData,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -781,10 +798,11 @@ function AuraTestCheckout({
   totalQty: number;
   symbol: string;
   onComplete: (order: Order) => void;
+  restoreData?: RestoreData | null;
 }) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState(restoreData?.firstName || "");
+  const [lastName, setLastName] = useState(restoreData?.lastName || "");
+  const [email, setEmail] = useState(restoreData?.email || "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 

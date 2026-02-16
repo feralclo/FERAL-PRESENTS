@@ -27,6 +27,7 @@ import {
   CalendarDays,
   Ticket as TicketIcon,
   ChevronRight,
+  ChevronDown,
   Package,
   Clock,
   TrendingUp,
@@ -47,6 +48,11 @@ import {
   Check,
   Star,
   Music,
+  Flame,
+  Timer,
+  PartyPopper,
+  CircleDot,
+  X,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -702,93 +708,561 @@ function GamifiedJourney({
 }
 
 /* ════════════════════════════════════════════════════════════
-   ABANDONED CARTS — shows active abandoned carts with status
+   RECOVERY ROADMAP — visual timeline for each abandoned cart
+   ════════════════════════════════════════════════════════════ */
+interface RoadmapStep {
+  label: string;
+  detail: string;
+  icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
+  status: "completed" | "active" | "upcoming" | "skipped";
+  timestamp?: string;
+  color: string;
+  glowColor: string;
+}
+
+function getRecoveryRoadmap(cart: AbandonedCart): RoadmapStep[] {
+  const createdAt = new Date(cart.created_at).getTime();
+  const now = Date.now();
+  const elapsed = now - createdAt;
+  const isRecovered = cart.status === "recovered";
+  const isExpired = cart.status === "expired";
+
+  const THIRTY_MIN = 30 * 60 * 1000;
+  const TWENTY_FOUR_HR = 24 * 60 * 60 * 1000;
+  const FORTY_EIGHT_HR = 48 * 60 * 60 * 1000;
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+
+  const steps: RoadmapStep[] = [];
+
+  // Step 1: Cart abandoned
+  steps.push({
+    label: "Cart Abandoned",
+    detail: `Captured at checkout`,
+    icon: ShoppingCart,
+    status: "completed",
+    timestamp: cart.created_at,
+    color: "#f59e0b",
+    glowColor: "rgba(245,158,11,0.3)",
+  });
+
+  // Step 2: Recovery Email #1 (30 min)
+  const email1Sent = cart.notification_count >= 1;
+  const email1Due = createdAt + THIRTY_MIN;
+  if (isRecovered && !email1Sent) {
+    steps.push({
+      label: "Recovery Email #1",
+      detail: "Cart recovered before email needed",
+      icon: Send,
+      status: "skipped",
+      color: "#71717a",
+      glowColor: "transparent",
+    });
+  } else {
+    steps.push({
+      label: "Recovery Email #1",
+      detail: email1Sent
+        ? "Nudge email delivered"
+        : elapsed >= THIRTY_MIN
+          ? "Ready to send"
+          : `Scheduled — ${formatCountdown(email1Due - now)}`,
+      icon: Send,
+      status: email1Sent ? "completed" : elapsed >= THIRTY_MIN ? "active" : "upcoming",
+      timestamp: email1Sent && cart.notified_at ? cart.notified_at : undefined,
+      color: "#8B5CF6",
+      glowColor: "rgba(139,92,246,0.3)",
+    });
+  }
+
+  // Step 3: Recovery Email #2 (24hr)
+  const email2Sent = cart.notification_count >= 2;
+  const email2Due = createdAt + TWENTY_FOUR_HR;
+  if (isRecovered && !email2Sent) {
+    steps.push({
+      label: "Recovery Email #2",
+      detail: "Cart recovered before email needed",
+      icon: MailWarning,
+      status: "skipped",
+      color: "#71717a",
+      glowColor: "transparent",
+    });
+  } else {
+    steps.push({
+      label: "Recovery Email #2",
+      detail: email2Sent
+        ? "Urgency email delivered"
+        : elapsed >= TWENTY_FOUR_HR
+          ? "Ready to send"
+          : `Scheduled — ${formatCountdown(email2Due - now)}`,
+      icon: MailWarning,
+      status: email2Sent ? "completed" : elapsed >= TWENTY_FOUR_HR ? "active" : "upcoming",
+      color: "#f97316",
+      glowColor: "rgba(249,115,22,0.3)",
+    });
+  }
+
+  // Step 4: Final reminder (48hr)
+  const email3Sent = cart.notification_count >= 3;
+  const email3Due = createdAt + FORTY_EIGHT_HR;
+  if (isRecovered && !email3Sent) {
+    steps.push({
+      label: "Final Reminder",
+      detail: "Cart recovered before reminder needed",
+      icon: Flame,
+      status: "skipped",
+      color: "#71717a",
+      glowColor: "transparent",
+    });
+  } else {
+    steps.push({
+      label: "Final Reminder",
+      detail: email3Sent
+        ? "Last chance email delivered"
+        : elapsed >= FORTY_EIGHT_HR
+          ? "Ready to send"
+          : `Scheduled — ${formatCountdown(email3Due - now)}`,
+      icon: Flame,
+      status: email3Sent ? "completed" : elapsed >= FORTY_EIGHT_HR ? "active" : "upcoming",
+      color: "#ef4444",
+      glowColor: "rgba(239,68,68,0.3)",
+    });
+  }
+
+  // Step 5: Outcome — recovered or expires
+  if (isRecovered) {
+    steps.push({
+      label: "Recovered!",
+      detail: "Converted to order",
+      icon: PartyPopper,
+      status: "completed",
+      timestamp: cart.recovered_at,
+      color: "#10b981",
+      glowColor: "rgba(16,185,129,0.4)",
+    });
+  } else if (isExpired) {
+    steps.push({
+      label: "Expired",
+      detail: "Cart window closed",
+      icon: X,
+      status: "completed",
+      color: "#71717a",
+      glowColor: "transparent",
+    });
+  } else {
+    const expiresAt = createdAt + SEVEN_DAYS;
+    steps.push({
+      label: "Cart Expires",
+      detail: elapsed >= SEVEN_DAYS
+        ? "Expiring soon"
+        : `Expires in ${formatCountdown(expiresAt - now)}`,
+      icon: Timer,
+      status: "upcoming",
+      color: "#71717a",
+      glowColor: "transparent",
+    });
+  }
+
+  return steps;
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "now";
+  const totalMinutes = Math.floor(ms / 60000);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  if (hours < 24) return `${hours}h ${totalMinutes % 60}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}
+
+function getUrgencyLevel(cart: AbandonedCart): {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+  glow: string;
+  icon: typeof Flame;
+  pulse: boolean;
+} {
+  if (cart.status === "recovered") {
+    return {
+      label: "RECOVERED",
+      color: "#10b981",
+      bg: "rgba(16,185,129,0.08)",
+      border: "rgba(16,185,129,0.25)",
+      glow: "0 0 20px rgba(16,185,129,0.2)",
+      icon: PartyPopper,
+      pulse: false,
+    };
+  }
+  const elapsed = Date.now() - new Date(cart.created_at).getTime();
+  const hours = elapsed / (1000 * 60 * 60);
+  if (hours < 1) {
+    return {
+      label: "HOT",
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.08)",
+      border: "rgba(239,68,68,0.3)",
+      glow: "0 0 24px rgba(239,68,68,0.25)",
+      icon: Flame,
+      pulse: true,
+    };
+  }
+  if (hours < 24) {
+    return {
+      label: "WARM",
+      color: "#f59e0b",
+      bg: "rgba(245,158,11,0.08)",
+      border: "rgba(245,158,11,0.25)",
+      glow: "0 0 20px rgba(245,158,11,0.2)",
+      icon: Zap,
+      pulse: true,
+    };
+  }
+  return {
+    label: "COOLING",
+    color: "#71717a",
+    bg: "rgba(113,113,122,0.06)",
+    border: "rgba(113,113,122,0.15)",
+    glow: "none",
+    icon: Clock,
+    pulse: false,
+  };
+}
+
+/* ═══ Single cart card with expandable roadmap ═══ */
+function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
+  const [expanded, setExpanded] = useState(false);
+  const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
+  const isAbandoned = cart.status === "abandoned";
+  const isRecovered = cart.status === "recovered";
+  const urgency = getUrgencyLevel(cart);
+  const UrgencyIcon = urgency.icon;
+  const roadmap = getRecoveryRoadmap(cart);
+
+  return (
+    <div
+      className="overflow-hidden rounded-xl border transition-all duration-300"
+      style={{
+        borderColor: expanded ? urgency.border : "var(--color-border)",
+        backgroundColor: expanded ? urgency.bg : "transparent",
+        boxShadow: expanded ? urgency.glow : "none",
+      }}
+    >
+      {/* Cart header — clickable */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/20"
+      >
+        {/* Urgency icon with optional pulse */}
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: urgency.bg }}>
+          <UrgencyIcon size={16} style={{ color: urgency.color }} />
+          {urgency.pulse && (
+            <span
+              className="absolute inset-0 animate-ping rounded-full opacity-20"
+              style={{ backgroundColor: urgency.color }}
+            />
+          )}
+        </div>
+
+        {/* Cart info */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">
+              {cart.event?.name || "Unknown Event"}
+            </span>
+            <Badge
+              variant={isRecovered ? "success" : isAbandoned ? "warning" : "secondary"}
+              className="text-[9px] font-bold uppercase"
+            >
+              {urgency.label}
+            </Badge>
+          </div>
+          <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Package size={11} />
+              {itemCount} item{itemCount !== 1 ? "s" : ""}
+            </span>
+            <span>{timeAgo(cart.created_at)}</span>
+            {isAbandoned && cart.notification_count > 0 && (
+              <span className="flex items-center gap-1 text-primary/70">
+                <Send size={10} />
+                {cart.notification_count} sent
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Value */}
+        <div className="flex items-center gap-3">
+          <span
+            className="font-mono text-lg font-bold tabular-nums"
+            style={{ color: isRecovered ? "#10b981" : urgency.color }}
+          >
+            {formatCurrency(cart.subtotal)}
+          </span>
+          <ChevronDown
+            size={16}
+            className={`text-muted-foreground/50 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+          />
+        </div>
+      </button>
+
+      {/* Expanded: Recovery Roadmap + Cart Contents */}
+      {expanded && (
+        <div className="border-t px-5 pb-5 pt-4" style={{ borderColor: urgency.border }}>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+            {/* Recovery Roadmap — left side */}
+            <div className="lg:col-span-3">
+              <h4 className="mb-4 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[2px] text-muted-foreground/60">
+                <CircleDot size={11} />
+                Recovery Roadmap
+              </h4>
+              <div className="relative space-y-0">
+                {roadmap.map((step, i) => {
+                  const StepIcon = step.icon;
+                  const isLast = i === roadmap.length - 1;
+                  const isActive = step.status === "active";
+                  const isCompleted = step.status === "completed";
+                  const isSkipped = step.status === "skipped";
+
+                  return (
+                    <div key={i} className="relative flex items-start gap-4">
+                      {/* Vertical connecting line */}
+                      {!isLast && (
+                        <div
+                          className="absolute left-[15px] top-[32px] w-0.5"
+                          style={{
+                            height: "calc(100% - 16px)",
+                            background: isCompleted
+                              ? `linear-gradient(to bottom, ${step.color}, ${roadmap[i + 1]?.color || step.color})`
+                              : "rgba(255,255,255,0.06)",
+                          }}
+                        />
+                      )}
+
+                      {/* Step icon node */}
+                      <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
+                        <div
+                          className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
+                          style={{
+                            backgroundColor: isCompleted || isActive
+                              ? `${step.color}18`
+                              : isSkipped
+                                ? "rgba(255,255,255,0.03)"
+                                : "rgba(255,255,255,0.04)",
+                            boxShadow: isActive
+                              ? `0 0 16px ${step.glowColor}, inset 0 0 0 1.5px ${step.color}`
+                              : isCompleted
+                                ? `inset 0 0 0 1.5px ${step.color}60`
+                                : "none",
+                          }}
+                        >
+                          {isCompleted && !isSkipped ? (
+                            <Check size={12} style={{ color: step.color }} />
+                          ) : isSkipped ? (
+                            <span className="text-[10px] text-muted-foreground/30">—</span>
+                          ) : (
+                            <StepIcon
+                              size={13}
+                              style={{
+                                color: isActive ? step.color : "rgba(255,255,255,0.15)",
+                              }}
+                            />
+                          )}
+                        </div>
+                        {isActive && (
+                          <span
+                            className="absolute inset-0 animate-ping rounded-full opacity-15"
+                            style={{ backgroundColor: step.color }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Step content */}
+                      <div className={`min-w-0 flex-1 ${isLast ? "pb-0" : "pb-5"}`}>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-[12px] font-semibold uppercase tracking-wider"
+                            style={{
+                              color: isCompleted || isActive
+                                ? step.color
+                                : isSkipped
+                                  ? "rgba(255,255,255,0.2)"
+                                  : "rgba(255,255,255,0.3)",
+                            }}
+                          >
+                            {step.label}
+                          </span>
+                          {isActive && (
+                            <span
+                              className="inline-flex h-1.5 w-1.5 rounded-full"
+                              style={{ backgroundColor: step.color, boxShadow: `0 0 6px ${step.color}` }}
+                            />
+                          )}
+                        </div>
+                        <p
+                          className="mt-0.5 text-[11px]"
+                          style={{
+                            color: isSkipped ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.4)",
+                          }}
+                        >
+                          {step.detail}
+                        </p>
+                        {step.timestamp && (
+                          <p className="mt-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground/40">
+                            {formatDateTime(step.timestamp)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Cart Contents — right side */}
+            <div className="lg:col-span-2">
+              <h4 className="mb-4 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[2px] text-muted-foreground/60">
+                <Package size={11} />
+                Cart Contents
+              </h4>
+              <div className="space-y-2">
+                {cart.items?.map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-lg border border-border/30 bg-background/40 px-3.5 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] font-medium text-foreground">
+                        {item.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/60">
+                        {item.qty}x @ {formatCurrency(item.price)}
+                        {item.merch_size && ` — Size ${item.merch_size}`}
+                      </p>
+                    </div>
+                    <span className="ml-3 shrink-0 font-mono text-[12px] font-semibold tabular-nums text-foreground/70">
+                      {formatCurrency(item.price * item.qty)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total */}
+              <div className="mt-3 flex items-center justify-between rounded-lg border px-3.5 py-3" style={{ borderColor: urgency.border, backgroundColor: urgency.bg }}>
+                <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: urgency.color }}>
+                  {isRecovered ? "Recovered Value" : "Revenue at Risk"}
+                </span>
+                <span className="font-mono text-sm font-bold tabular-nums" style={{ color: urgency.color }}>
+                  {formatCurrency(cart.subtotal)}
+                </span>
+              </div>
+
+              {/* Recovery status */}
+              {isRecovered && cart.recovered_at && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/8 px-3.5 py-2.5">
+                  <PartyPopper size={14} className="text-emerald-400" />
+                  <div>
+                    <p className="text-[11px] font-semibold text-emerald-400">Cart Recovered</p>
+                    <p className="text-[10px] text-emerald-400/60">{formatDateTime(cart.recovered_at)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   ABANDONED CARTS — gamified section with urgency + roadmap
    ════════════════════════════════════════════════════════════ */
 function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
   if (carts.length === 0) return null;
 
   const activeCarts = carts.filter((c) => c.status === "abandoned");
   const recoveredCarts = carts.filter((c) => c.status === "recovered");
+  const totalAtRisk = activeCarts.reduce((s, c) => s + c.subtotal, 0);
+  const totalRecovered = recoveredCarts.reduce((s, c) => s + c.subtotal, 0);
+  const recoveryRate = carts.length > 0 ? (recoveredCarts.length / carts.length) * 100 : 0;
+
+  // Hot carts (< 1hr old) for counter
+  const hotCarts = activeCarts.filter((c) => {
+    const elapsed = Date.now() - new Date(c.created_at).getTime();
+    return elapsed < 60 * 60 * 1000;
+  });
 
   return (
-    <Card>
-      <CardHeader className="border-b border-border pb-4">
+    <Card className="overflow-hidden">
+      {/* Gamified header with revenue at risk */}
+      <div
+        className="relative border-b px-5 py-4"
+        style={{
+          borderColor: activeCarts.length > 0 ? "rgba(245,158,11,0.15)" : "var(--color-border)",
+          background: activeCarts.length > 0
+            ? "linear-gradient(135deg, rgba(245,158,11,0.04), rgba(239,68,68,0.02))"
+            : "transparent",
+        }}
+      >
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <ShoppingCart size={15} className="text-amber-400" />
-            Abandoned Carts
-            {activeCarts.length > 0 && (
-              <Badge variant="warning" className="text-[10px]">
-                {activeCarts.length} active
-              </Badge>
-            )}
-          </CardTitle>
-          {recoveredCarts.length > 0 && (
-            <span className="text-[11px] text-emerald-400">
-              {recoveredCarts.length} recovered
-            </span>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {carts.map((cart) => {
-          const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
-          const isAbandoned = cart.status === "abandoned";
-
-          return (
-            <div
-              key={cart.id}
-              className={`flex items-center gap-4 border-b border-border/50 px-5 py-4 last:border-b-0 ${
-                isAbandoned ? "bg-amber-500/[0.02]" : ""
-              }`}
-            >
-              <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                  isAbandoned
-                    ? "bg-amber-500/10 text-amber-400"
-                    : "bg-emerald-500/10 text-emerald-400"
-                }`}
-              >
-                {isAbandoned ? <ShoppingCart size={15} /> : <Zap size={15} />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">
-                    {itemCount} item{itemCount !== 1 ? "s" : ""}
-                  </span>
-                  <Badge
-                    variant={isAbandoned ? "warning" : "success"}
-                    className="text-[9px]"
-                  >
-                    {cart.status}
-                  </Badge>
-                </div>
-                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                  {cart.event?.name && <span>{cart.event.name}</span>}
-                  <span>{timeAgo(cart.created_at)}</span>
-                </div>
-                {isAbandoned && cart.notification_count === 0 && (
-                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-400/70">
-                    <MailWarning size={11} />
-                    <span>Awaiting recovery email</span>
-                  </div>
-                )}
-                {isAbandoned && cart.notification_count > 0 && (
-                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <Send size={11} />
-                    <span>
-                      {cart.notification_count} email{cart.notification_count !== 1 ? "s" : ""} sent
-                      {cart.notified_at && ` — last ${timeAgo(cart.notified_at)}`}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <span className="shrink-0 font-mono text-sm font-semibold text-foreground">
-                {formatCurrency(cart.subtotal)}
-              </span>
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10">
+              <ShoppingCart size={16} className="text-amber-400" />
+              {hotCarts.length > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
+                  {hotCarts.length}
+                </span>
+              )}
             </div>
-          );
-        })}
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-foreground">
+                  Abandoned Carts
+                </h3>
+                {activeCarts.length > 0 && (
+                  <Badge variant="warning" className="text-[9px] font-bold">
+                    {activeCarts.length} active
+                  </Badge>
+                )}
+              </div>
+              {activeCarts.length > 0 && (
+                <p className="mt-0.5 text-[11px] text-amber-400/70">
+                  {formatCurrency(totalAtRisk)} revenue at risk
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Mini stats */}
+          <div className="flex items-center gap-4">
+            {recoveredCarts.length > 0 && (
+              <div className="text-right">
+                <p className="font-mono text-sm font-bold text-emerald-400">{formatCurrency(totalRecovered)}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-400/50">
+                  Recovered
+                </p>
+              </div>
+            )}
+            {carts.length > 1 && (
+              <div className="text-right">
+                <p className="font-mono text-sm font-bold text-foreground/70">{recoveryRate.toFixed(0)}%</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  Rate
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Cart cards */}
+      <CardContent className="space-y-3 p-4">
+        {carts.map((cart) => (
+          <AbandonedCartCard key={cart.id} cart={cart} />
+        ))}
       </CardContent>
     </Card>
   );

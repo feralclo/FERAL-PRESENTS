@@ -688,3 +688,14 @@ Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-dest
 4. **Use design tokens** — `bg-background`, `text-foreground`, `border-border`, etc.
 5. **Settings pattern** — fetch from `site_settings` table, save back via `/api/settings`
 6. **File uploads** — POST base64 to `/api/upload`, get back a media key
+
+---
+
+## Document Maintenance
+
+1. **Read this file fully at the start of every session** — it is the single source of truth for the platform architecture
+2. **Update it after any architecture change**, new module, new database table, or new API route group
+3. **Delete deprecated references immediately** — never leave dead code documented
+4. **Keep it under 40K characters** — if approaching the limit, compress verbose sections rather than removing useful information
+5. **Scale detail to complexity** — simple things get one line, complex systems get diagrams or tables
+6. **This file is the map.** If something isn't documented here, Claude won't know it exists. If something is documented wrong, Claude will build on broken assumptions

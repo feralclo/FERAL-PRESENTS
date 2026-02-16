@@ -63,13 +63,10 @@ export async function requireAuth(): Promise<
     }
 
     // Block rep-only users from admin API routes — they must use rep-portal routes.
-    // Only checks the new is_rep flag (set on rep signup/invite going forward).
-    // The legacy role:"rep" field is NOT checked here because dual-role users
-    // (admin + rep with the same email) may have that field set on their auth
-    // user from the rep signup flow, and we must not lock them out of admin.
     // The is_admin flag (set on admin login) overrides is_rep for dual-role users.
     const meta = user.app_metadata;
     if (meta?.is_rep === true && meta?.is_admin !== true) {
+      console.warn("[requireAuth] Blocked rep-only user from admin route:", user.email);
       return {
         user: null,
         error: NextResponse.json(

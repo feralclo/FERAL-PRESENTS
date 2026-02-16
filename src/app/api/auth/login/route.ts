@@ -48,21 +48,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
-    // Tag user as admin in app_metadata. This is an additive flag (shallow merge)
-    // that allows the same user to be both admin and rep without conflict.
-    // The is_admin flag persists and overrides any is_rep flag in middleware checks.
+    // Tag user as admin in app_metadata. This is REQUIRED for dual-role users
+    // (admin + rep) — without is_admin, requireAuth() will block them with 403.
+    // Retry once on failure to ensure the flag is set reliably.
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (serviceRoleKey && SUPABASE_URL) {
-      try {
-        const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
-        await adminClient.auth.admin.updateUserById(data.user.id, {
-          app_metadata: { is_admin: true },
-        });
-      } catch (err) {
-        // Non-fatal — admin tagging is best-effort.
-        // User can still log in; they just won't be tagged yet.
-        console.warn("[auth/login] Failed to tag admin metadata:", err);
+      const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await adminClient.auth.admin.updateUserById(data.user.id, {
+            app_metadata: { is_admin: true },
+          });
+          break; // success
+        } catch (err) {
+          if (attempt === 2) {
+            console.error("[auth/login] Failed to tag admin metadata after 2 attempts:", err);
+          } else {
+            await new Promise((r) => setTimeout(r, 500));
+          }
+        }
       }
+    } else {
+      console.warn("[auth/login] SUPABASE_SERVICE_ROLE_KEY not configured — cannot tag admin metadata");
     }
 
     return NextResponse.json({

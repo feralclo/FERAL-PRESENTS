@@ -1,23 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
-
-/**
- * Get a Supabase client for rep table lookups.
- *
- * Uses the service role key when available (bypasses RLS) so that rep
- * portal reads/writes work even if RLS policies on the reps table don't
- * grant access to the authenticated user's role. Falls back to the
- * session-based server client.
- */
-async function getRepDbClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (serviceRoleKey && SUPABASE_URL) {
-    return createClient(SUPABASE_URL, serviceRoleKey);
-  }
-  return getSupabaseServer();
-}
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { TABLES, ORG_ID } from "@/lib/constants";
 
 /**
  * Auth helper for admin API routes.
@@ -99,7 +83,7 @@ export async function requireAuth(): Promise<
  * or a 401/403 NextResponse.
  */
 export async function requireRepAuth(): Promise<
-  | { rep: { id: string; auth_user_id: string; email: string; org_id: string; status: string; email_verified?: boolean }; error: null }
+  | { rep: { id: string; auth_user_id: string; email: string; org_id: string; status: string }; error: null }
   | { rep: null; error: NextResponse }
 > {
   try {
@@ -130,8 +114,8 @@ export async function requireRepAuth(): Promise<
     }
 
     // Use admin client for rep table lookups (bypasses RLS)
-    const repDb = await getRepDbClient();
-    if (!repDb) {
+    const adminDb = await getSupabaseAdmin();
+    if (!adminDb) {
       return {
         rep: null,
         error: NextResponse.json(
@@ -142,9 +126,9 @@ export async function requireRepAuth(): Promise<
     }
 
     // Look up the rep row linked to this auth user
-    const { data: rep, error: repErr } = await repDb
+    const { data: rep, error: repErr } = await adminDb
       .from(TABLES.REPS)
-      .select("id, auth_user_id, email, org_id, status, email_verified")
+      .select("id, auth_user_id, email, org_id, status")
       .eq("auth_user_id", user.id)
       .eq("org_id", ORG_ID)
       .single();
@@ -155,9 +139,9 @@ export async function requireRepAuth(): Promise<
       // the rep row's auth_user_id wasn't saved (e.g., partial update failure).
       // Only links if the rep has NO existing auth_user_id (prevents account takeover).
       if (user.email) {
-        const { data: repByEmail } = await repDb
+        const { data: repByEmail } = await adminDb
           .from(TABLES.REPS)
-          .select("id, auth_user_id, email, org_id, status, email_verified")
+          .select("id, auth_user_id, email, org_id, status")
           .eq("email", user.email.toLowerCase())
           .eq("org_id", ORG_ID)
           .is("auth_user_id", null)
@@ -170,23 +154,13 @@ export async function requireRepAuth(): Promise<
             authUserId: user.id,
             email: user.email,
           });
-          await repDb
+          await adminDb
             .from(TABLES.REPS)
             .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
             .eq("id", repByEmail.id)
             .eq("org_id", ORG_ID);
 
           repByEmail.auth_user_id = user.id;
-
-          if (repByEmail.email_verified === false) {
-            return {
-              rep: null,
-              error: NextResponse.json(
-                { error: "Please verify your email address.", code: "rep_email_unverified", email: repByEmail.email },
-                { status: 403 }
-              ),
-            };
-          }
 
           if (repByEmail.status !== "active") {
             return {
@@ -212,17 +186,6 @@ export async function requireRepAuth(): Promise<
         rep: null,
         error: NextResponse.json(
           { error: "Rep account not found", code: "rep_not_found" },
-          { status: 403 }
-        ),
-      };
-    }
-
-    // Check email verification before status — unverified reps can't access protected routes
-    if (rep.email_verified === false) {
-      return {
-        rep: null,
-        error: NextResponse.json(
-          { error: "Please verify your email address.", code: "rep_email_unverified", email: rep.email },
           { status: 403 }
         ),
       };

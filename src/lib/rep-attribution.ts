@@ -1,6 +1,6 @@
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { awardPoints, getRepSettings } from "@/lib/rep-points";
+import { awardPoints, getRepSettings, calculateLevel } from "@/lib/rep-points";
 import { createNotification } from "@/lib/rep-notifications";
 
 /**
@@ -257,6 +257,233 @@ async function sendRepSaleNotification(
     });
   } catch {
     // Email failure is non-critical
+  }
+}
+
+/**
+ * Reverse rep attribution for a refunded order.
+ *
+ * Uses the `reverse_rep_attribution` RPC for atomic stat reversal,
+ * then recalculates level in TypeScript (since thresholds live in site_settings).
+ *
+ * Returns { repId, repName, pointsDeducted } or null if no attribution / already reversed.
+ * Never throws — failures are logged and silently ignored.
+ */
+export async function reverseRepAttribution(params: {
+  orderId: string;
+  orgId?: string;
+}): Promise<{
+  repId: string;
+  repName: string;
+  pointsDeducted: number;
+} | null> {
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return null;
+
+    const orgId = params.orgId || ORG_ID;
+
+    // Call the atomic RPC
+    const { data, error } = await supabase.rpc("reverse_rep_attribution", {
+      p_order_id: params.orderId,
+      p_org_id: orgId,
+    });
+
+    if (error) {
+      console.error("[rep-attribution] RPC error:", error);
+      return null;
+    }
+
+    const result = data as {
+      success?: boolean;
+      skipped?: boolean;
+      reason?: string;
+      error?: string;
+      rep_id?: string;
+      points_deducted?: number;
+      new_balance?: number;
+    };
+
+    if (result.skipped || result.error) {
+      if (result.error) {
+        console.error("[rep-attribution] Reversal failed:", result.error);
+      }
+      return null;
+    }
+
+    if (!result.success || !result.rep_id) return null;
+
+    const repId = result.rep_id;
+    const pointsDeducted = result.points_deducted || 0;
+    const newBalance = result.new_balance || 0;
+
+    // Recalculate level from new balance (RPC can't do this — thresholds are in site_settings)
+    const settings = await getRepSettings(orgId);
+    const newLevel = calculateLevel(newBalance, settings.level_thresholds);
+
+    await supabase
+      .from(TABLES.REPS)
+      .update({ level: newLevel, updated_at: new Date().toISOString() })
+      .eq("id", repId)
+      .eq("org_id", orgId);
+
+    // Recalculate milestones — cancel any milestone claims that are no longer earned
+    recalculateMilestones(repId, orgId).catch(() => {});
+
+    // Get rep name for the response
+    const { data: rep } = await supabase
+      .from(TABLES.REPS)
+      .select("first_name, display_name")
+      .eq("id", repId)
+      .eq("org_id", orgId)
+      .single();
+
+    const repName = rep?.display_name || rep?.first_name || "Unknown";
+
+    console.log(
+      `[rep-attribution] Reversed attribution for rep ${repId}: -${pointsDeducted} points`
+    );
+
+    return { repId, repName, pointsDeducted };
+  } catch (err) {
+    console.error("[rep-attribution] reverseRepAttribution failed:", err);
+    return null;
+  }
+}
+
+/**
+ * After a refund, check if any milestone-based reward claims should be cancelled
+ * because the rep no longer meets the threshold.
+ */
+async function recalculateMilestones(
+  repId: string,
+  orgId: string
+): Promise<void> {
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) return;
+
+  // Get current rep stats
+  const { data: rep } = await supabase
+    .from(TABLES.REPS)
+    .select("total_sales, total_revenue, points_balance")
+    .eq("id", repId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (!rep) return;
+
+  // Get all milestone claims for this rep that are in "claimed" status (not yet fulfilled)
+  const { data: claims } = await supabase
+    .from(TABLES.REP_REWARD_CLAIMS)
+    .select("id, milestone_id, reward_id")
+    .eq("rep_id", repId)
+    .eq("org_id", orgId)
+    .eq("claim_type", "milestone")
+    .eq("status", "claimed");
+
+  if (!claims || claims.length === 0) return;
+
+  const milestoneIds = claims
+    .map((c: { milestone_id: string | null }) => c.milestone_id)
+    .filter(Boolean) as string[];
+
+  if (milestoneIds.length === 0) return;
+
+  const { data: milestones } = await supabase
+    .from(TABLES.REP_MILESTONES)
+    .select("id, milestone_type, threshold_value, reward_id")
+    .in("id", milestoneIds);
+
+  if (!milestones) return;
+
+  for (const milestone of milestones) {
+    let stillAchieved = false;
+    switch (milestone.milestone_type) {
+      case "sales_count":
+        stillAchieved = rep.total_sales >= milestone.threshold_value;
+        break;
+      case "revenue":
+        stillAchieved = Number(rep.total_revenue) >= milestone.threshold_value;
+        break;
+      case "points":
+        stillAchieved = rep.points_balance >= milestone.threshold_value;
+        break;
+    }
+
+    if (!stillAchieved) {
+      // Cancel the claim
+      const claim = claims.find(
+        (c: { milestone_id: string | null }) => c.milestone_id === milestone.id
+      );
+      if (claim) {
+        await supabase
+          .from(TABLES.REP_REWARD_CLAIMS)
+          .update({ status: "cancelled", notes: "Auto-cancelled: refund dropped below threshold" })
+          .eq("id", claim.id)
+          .eq("org_id", orgId);
+
+        // Decrement total_claimed on the reward
+        const { data: reward } = await supabase
+          .from(TABLES.REP_REWARDS)
+          .select("total_claimed")
+          .eq("id", milestone.reward_id)
+          .eq("org_id", orgId)
+          .single();
+
+        if (reward && reward.total_claimed > 0) {
+          await supabase
+            .from(TABLES.REP_REWARDS)
+            .update({ total_claimed: reward.total_claimed - 1 })
+            .eq("id", milestone.reward_id)
+            .eq("org_id", orgId);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Look up rep attribution info for an order (for the refund warning UI).
+ * Returns rep name + points awarded, or null if no attribution.
+ */
+export async function getOrderRepAttribution(orderId: string, orgId: string = ORG_ID): Promise<{
+  repId: string;
+  repName: string;
+  pointsAwarded: number;
+} | null> {
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return null;
+
+    const { data: order } = await supabase
+      .from(TABLES.ORDERS)
+      .select("metadata")
+      .eq("id", orderId)
+      .eq("org_id", orgId)
+      .single();
+
+    if (!order?.metadata) return null;
+
+    const meta = order.metadata as Record<string, unknown>;
+    const repId = meta.rep_id as string | undefined;
+    if (!repId) return null;
+
+    const pointsAwarded = (meta.rep_points_awarded as number) || 0;
+
+    const { data: rep } = await supabase
+      .from(TABLES.REPS)
+      .select("first_name, display_name")
+      .eq("id", repId)
+      .eq("org_id", orgId)
+      .single();
+
+    return {
+      repId,
+      repName: rep?.display_name || rep?.first_name || "Unknown",
+      pointsAwarded,
+    };
+  } catch {
+    return null;
   }
 }
 

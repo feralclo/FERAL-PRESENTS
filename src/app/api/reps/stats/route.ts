@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import type { RepProgramStats } from "@/types/reps";
 
 /**
  * GET /api/reps/stats — Aggregate program stats
+ *
+ * Uses the `get_rep_program_stats` RPC for DB-level aggregation
+ * (SUM, COUNT with FILTER) in a single query instead of fetching all rows.
  */
 export async function GET(_request: NextRequest) {
   try {
@@ -20,63 +23,25 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // Total reps
-    const { count: totalReps } = await supabase
-      .from(TABLES.REPS)
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", ORG_ID);
+    const { data, error } = await supabase.rpc("get_rep_program_stats", {
+      p_org_id: ORG_ID,
+    });
 
-    // Active reps
-    const { count: activeReps } = await supabase
-      .from(TABLES.REPS)
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
-      .eq("status", "active");
-
-    // Pending applications
-    const { count: pendingApplications } = await supabase
-      .from(TABLES.REPS)
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
-      .eq("status", "pending");
-
-    // Total sales and revenue via reps (sum from reps table)
-    const { data: repAggregates } = await supabase
-      .from(TABLES.REPS)
-      .select("total_sales, total_revenue")
-      .eq("org_id", ORG_ID);
-
-    let totalSalesViaReps = 0;
-    let totalRevenueViaReps = 0;
-    if (repAggregates) {
-      for (const rep of repAggregates) {
-        totalSalesViaReps += rep.total_sales || 0;
-        totalRevenueViaReps += rep.total_revenue || 0;
-      }
+    if (error) {
+      console.error("[reps/stats] RPC error:", error);
+      return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
     }
 
-    // Active quests
-    const { count: activeQuests } = await supabase
-      .from(TABLES.REP_QUESTS)
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
-      .eq("status", "active");
-
-    // Pending submissions
-    const { count: pendingSubmissions } = await supabase
-      .from(TABLES.REP_QUEST_SUBMISSIONS)
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
-      .eq("status", "pending");
+    const result = data as Record<string, number>;
 
     const stats: RepProgramStats = {
-      total_reps: totalReps || 0,
-      active_reps: activeReps || 0,
-      pending_applications: pendingApplications || 0,
-      total_sales_via_reps: totalSalesViaReps,
-      total_revenue_via_reps: totalRevenueViaReps,
-      active_quests: activeQuests || 0,
-      pending_submissions: pendingSubmissions || 0,
+      total_reps: result.total_reps || 0,
+      active_reps: result.active_reps || 0,
+      pending_applications: result.pending_applications || 0,
+      total_sales_via_reps: result.total_sales_via_reps || 0,
+      total_revenue_via_reps: result.total_revenue_via_reps || 0,
+      active_quests: result.active_quests || 0,
+      pending_submissions: result.pending_submissions || 0,
     };
 
     return NextResponse.json({ data: stats });

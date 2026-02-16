@@ -214,6 +214,13 @@ export async function POST(
 
     if (submitError) {
       console.error("[rep-portal/quests/submit] Insert error:", submitError);
+      // Handle unique constraint violation (duplicate pending/approved submission)
+      if (submitError.code === "23505") {
+        return NextResponse.json(
+          { error: "You already have a pending or approved submission for this quest" },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: "Failed to create submission" },
         { status: 500 }

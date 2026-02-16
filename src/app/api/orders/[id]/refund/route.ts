@@ -3,6 +3,7 @@ import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { reverseRepAttribution } from "@/lib/rep-attribution";
 
 /**
  * POST /api/orders/[id]/refund — Refund an order via Stripe + update database.
@@ -186,7 +187,21 @@ export async function POST(
         .eq("id", order.customer_id);
     }
 
-    return NextResponse.json({ success: true });
+    // Reverse rep attribution (fire-and-forget — refund succeeds even if this fails)
+    let repReversal: { repName: string; pointsDeducted: number } | null = null;
+    try {
+      const result = await reverseRepAttribution({ orderId: id });
+      if (result) {
+        repReversal = { repName: result.repName, pointsDeducted: result.pointsDeducted };
+      }
+    } catch (err) {
+      console.error("[refund] Rep attribution reversal failed (non-blocking):", err);
+    }
+
+    return NextResponse.json({
+      success: true,
+      rep_reversal: repReversal,
+    });
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

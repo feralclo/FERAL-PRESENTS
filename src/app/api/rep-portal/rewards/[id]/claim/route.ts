@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
-import { deductPoints, awardPoints } from "@/lib/rep-points";
 
 /**
  * POST /api/rep-portal/rewards/[id]/claim — Claim a points_shop reward (protected)
  *
- * Verifies the rep has enough points, deducts them, creates a claim row,
- * and updates the reward's total_claimed counter.
+ * Uses the `claim_reward_atomic` RPC to deduct points + create claim + increment
+ * total_claimed in a single database transaction. This prevents race conditions
+ * where points are deducted but the claim row fails to insert.
  */
 export async function POST(
   _request: NextRequest,
@@ -29,10 +29,10 @@ export async function POST(
       );
     }
 
-    // Fetch the reward
+    // Fetch the reward for validation before calling RPC
     const { data: reward, error: rewardError } = await supabase
       .from(TABLES.REP_REWARDS)
-      .select("*")
+      .select("reward_type, points_cost")
       .eq("id", rewardId)
       .eq("org_id", ORG_ID)
       .single();
@@ -44,47 +44,9 @@ export async function POST(
       );
     }
 
-    // Validate reward type
     if (reward.reward_type !== "points_shop") {
       return NextResponse.json(
         { error: "This reward cannot be claimed via points. It is a milestone reward." },
-        { status: 400 }
-      );
-    }
-
-    // Validate reward is active
-    if (reward.status !== "active") {
-      return NextResponse.json(
-        { error: "This reward is no longer available" },
-        { status: 400 }
-      );
-    }
-
-    // Check availability
-    if (
-      reward.total_available !== null &&
-      reward.total_claimed >= reward.total_available
-    ) {
-      return NextResponse.json(
-        { error: "This reward is sold out" },
-        { status: 400 }
-      );
-    }
-
-    // Check if this rep already has an active claim for this reward (allow re-claim after cancellation)
-    const { data: existingClaim } = await supabase
-      .from(TABLES.REP_REWARD_CLAIMS)
-      .select("id")
-      .eq("rep_id", repId)
-      .eq("reward_id", rewardId)
-      .eq("org_id", ORG_ID)
-      .eq("claim_type", "points_shop")
-      .neq("status", "cancelled")
-      .maybeSingle();
-
-    if (existingClaim) {
-      return NextResponse.json(
-        { error: "You have already claimed this reward" },
         { status: 400 }
       );
     }
@@ -97,104 +59,61 @@ export async function POST(
       );
     }
 
-    // Verify rep has enough points
-    const { data: rep, error: repError } = await supabase
-      .from(TABLES.REPS)
-      .select("points_balance")
-      .eq("id", repId)
-      .eq("org_id", ORG_ID)
-      .single();
-
-    if (repError || !rep) {
-      return NextResponse.json(
-        { error: "Rep not found" },
-        { status: 404 }
-      );
-    }
-
-    if (rep.points_balance < pointsCost) {
-      return NextResponse.json(
-        {
-          error: `Not enough points. You have ${rep.points_balance} points but this reward costs ${pointsCost} points.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Deduct points
-    const newBalance = await deductPoints({
-      repId,
-      orgId: ORG_ID,
-      points: pointsCost,
-      sourceType: "reward_spend",
-      sourceId: rewardId,
-      description: `Claimed reward: ${reward.name}`,
+    // Call the atomic RPC — handles locking, balance check, deduction, claim creation
+    const { data, error } = await supabase.rpc("claim_reward_atomic", {
+      p_rep_id: repId,
+      p_org_id: ORG_ID,
+      p_reward_id: rewardId,
+      p_points_cost: pointsCost,
     });
 
-    if (newBalance === null) {
+    if (error) {
+      console.error("[rep-portal/rewards/claim] RPC error:", error);
       return NextResponse.json(
-        { error: "Failed to deduct points" },
+        { error: "Failed to process claim" },
         { status: 500 }
       );
     }
 
-    // Create claim row
-    const { data: claim, error: claimError } = await supabase
-      .from(TABLES.REP_REWARD_CLAIMS)
-      .insert({
-        org_id: ORG_ID,
-        rep_id: repId,
-        reward_id: rewardId,
-        claim_type: "points_shop",
-        milestone_id: null,
-        points_spent: pointsCost,
-        status: "claimed",
-      })
-      .select("*")
-      .single();
+    const result = data as {
+      success?: boolean;
+      error?: string;
+      balance?: number;
+      claim_id?: string;
+      new_balance?: number;
+    };
 
-    if (claimError) {
-      console.error("[rep-portal/rewards/claim] Insert error:", claimError);
-      // Refund the deducted points automatically
-      console.error(
-        `[rep-portal/rewards/claim] Claim insert failed, refunding ${pointsCost} points for rep=${repId} reward=${rewardId}`
-      );
-      const refundResult = await awardPoints({
-        repId,
-        orgId: ORG_ID,
-        points: pointsCost,
-        sourceType: "refund",
-        sourceId: rewardId,
-        description: `Refund: claim failed for reward ${reward.name}`,
-      });
-      if (!refundResult) {
-        console.error(`[rep-portal/rewards/claim] CRITICAL: Refund also failed for rep=${repId} reward=${rewardId} points=${pointsCost}`);
+    if (result.error) {
+      // Map RPC errors to appropriate HTTP status codes
+      const errorMap: Record<string, { status: number; message: string }> = {
+        "Rep not found": { status: 404, message: "Rep not found" },
+        "Reward not found": { status: 404, message: "Reward not found" },
+        "Reward is not active": { status: 400, message: "This reward is no longer available" },
+        "Reward is sold out": { status: 400, message: "This reward is sold out" },
+        "Already claimed": { status: 400, message: "You have already claimed this reward" },
+      };
+
+      if (result.error === "Insufficient points") {
+        return NextResponse.json(
+          {
+            error: `Not enough points. You have ${result.balance} points but this reward costs ${pointsCost} points.`,
+          },
+          { status: 400 }
+        );
       }
-      return NextResponse.json(
-        { error: "Failed to create claim. Your points have been refunded." },
-        { status: 500 }
-      );
+
+      const mapped = errorMap[result.error];
+      if (mapped) {
+        return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+      }
+
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
-
-    // Update reward total_claimed atomically via rpc or re-fetch
-    // Re-fetch current total_claimed to avoid race condition with stale value
-    const { data: currentReward } = await supabase
-      .from(TABLES.REP_REWARDS)
-      .select("total_claimed")
-      .eq("id", rewardId)
-      .eq("org_id", ORG_ID)
-      .single();
-
-    await supabase
-      .from(TABLES.REP_REWARDS)
-      .update({ total_claimed: (currentReward?.total_claimed ?? reward.total_claimed) + 1 })
-      .eq("id", rewardId)
-      .eq("org_id", ORG_ID);
 
     return NextResponse.json({
       data: {
-        claim,
-        new_balance: newBalance,
+        claim_id: result.claim_id,
+        new_balance: result.new_balance,
       },
     });
   } catch (err) {

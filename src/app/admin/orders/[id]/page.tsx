@@ -173,6 +173,10 @@ export default function OrderDetailPage() {
   const [showRefund, setShowRefund] = useState(false);
   const [refundReason, setRefundReason] = useState("");
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [repAttribution, setRepAttribution] = useState<{
+    repName: string;
+    pointsAwarded: number;
+  } | null>(null);
 
   const loadOrder = useCallback(async () => {
     const res = await fetch(`/api/orders/${orderId}`);
@@ -184,6 +188,24 @@ export default function OrderDetailPage() {
   useEffect(() => {
     loadOrder();
   }, [loadOrder]);
+
+  // Fetch rep attribution when refund panel opens
+  useEffect(() => {
+    if (!showRefund || !orderId) return;
+    fetch(`/api/orders/${orderId}/rep-info`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) {
+          setRepAttribution({
+            repName: json.data.repName,
+            pointsAwarded: json.data.pointsAwarded,
+          });
+        } else {
+          setRepAttribution(null);
+        }
+      })
+      .catch(() => setRepAttribution(null));
+  }, [showRefund, orderId]);
 
   const handleRefund = async () => {
     if (!confirm("Are you sure you want to refund this order? All tickets will be cancelled."))
@@ -353,6 +375,15 @@ export default function OrderDetailPage() {
                 Process Refund
               </h3>
             </div>
+            {repAttribution && repAttribution.pointsAwarded > 0 && (
+              <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+                <AlertCircle size={14} className="shrink-0 text-warning" />
+                <p className="text-sm text-warning">
+                  This will also reverse <span className="font-bold">{repAttribution.pointsAwarded} rep points</span> for{" "}
+                  <span className="font-bold">{repAttribution.repName}</span>
+                </p>
+              </div>
+            )}
             <div className="flex flex-col gap-3 sm:flex-row">
               <Input
                 value={refundReason}

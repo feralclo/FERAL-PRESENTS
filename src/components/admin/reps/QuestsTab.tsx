@@ -74,7 +74,6 @@ export function QuestsTab() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [instructions, setInstructions] = useState("");
   const [questType, setQuestType] = useState<QuestType>("social_post");
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -116,7 +115,7 @@ export function QuestsTab() {
   }, []);
 
   const openCreate = () => {
-    setEditId(null); setTitle(""); setDescription(""); setInstructions("");
+    setEditId(null); setTitle(""); setDescription("");
     setQuestType("social_post"); setImageUrl(""); setVideoUrl("");
     setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setShowDialog(true);
@@ -124,7 +123,7 @@ export function QuestsTab() {
 
   const openEdit = (q: RepQuest) => {
     setEditId(q.id); setTitle(q.title); setDescription(q.description || "");
-    setInstructions(q.instructions || ""); setQuestType(q.quest_type);
+    setQuestType(q.quest_type);
     setImageUrl(q.image_url || ""); setVideoUrl(q.video_url || "");
     setPointsReward(String(q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
@@ -137,7 +136,7 @@ export function QuestsTab() {
     setSaving(true);
     const body = {
       title: title.trim(), description: description.trim() || null,
-      instructions: instructions.trim() || null, quest_type: questType,
+      quest_type: questType,
       image_url: imageUrl.trim() || null, video_url: videoUrl.trim() || null,
       points_reward: Number(pointsReward) || 0,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
@@ -270,10 +269,6 @@ export function QuestsTab() {
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What should reps do?" rows={2} />
-            </div>
-            <div className="space-y-2">
-              <Label>Instructions</Label>
-              <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Step-by-step instructions..." rows={3} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

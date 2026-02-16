@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Return the serving URL
-    const url = `/api/media/${key}`;
+    // Return the serving URL (cache-bust so browser fetches new version on replace)
+    const url = `/api/media/${key}?v=${Date.now()}`;
     console.log(`[upload] Stored image: key=${storageKey}, size=${Math.round(imageData.length / 1024)}KB, url=${url}`);
 
     return NextResponse.json({ url });

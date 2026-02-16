@@ -48,8 +48,8 @@ export async function GET(
       headers: {
         "Content-Type": contentType || "image/jpeg",
         "Content-Length": String(buffer.length),
-        // Aggressive caching — images are immutable once uploaded
-        "Cache-Control": "public, max-age=31536000, immutable",
+        // Cache for 1 day — URLs include ?v= cache-buster on each upload
+        "Cache-Control": "public, max-age=86400",
       },
     });
   } catch {

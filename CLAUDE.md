@@ -1,7 +1,7 @@
 # Entry — Platform Context
 
 ## Mission
-Entry is a white-label events and ticketing platform. Today it powers FERAL's own events (Liverpool, Kompass Klub). The goal is to become a **"Shopify for Events"** — any promoter or artist can sell tickets, merch, and manage events under their own brand, with the platform taking a fee.
+Entry is a white-label events and ticketing platform. Today it powers FERAL's own events. The goal is to become a **"Shopify for Events"** — any promoter or artist can sell tickets, merch, and manage events under their own brand, with the platform taking a fee.
 
 Everything built must serve that multi-tenant future. Every database query filters by `org_id`. Every feature must work for promoters who aren't FERAL.
 
@@ -14,7 +14,6 @@ Everything built must serve that multi-tenant future. Every database query filte
 | Runtime | React | 19.2.3 |
 | Database | Supabase (PostgreSQL + REST + Realtime) | — |
 | Payments | Stripe (Connect, direct charges) | 20.3.1 |
-| Legacy Payments | WeeZTix/Eventix (being phased out) | — |
 | Hosting | Vercel | — |
 | Analytics | GTM + Meta Pixel + Meta CAPI + Supabase tables | — |
 | Email Marketing | Klaviyo | — |
@@ -29,253 +28,182 @@ Everything built must serve that multi-tenant future. Every database query filte
 
 ```
 src/
-├── middleware.ts                            # Auth session refresh, route protection, security headers
+├── middleware.ts              # Auth session refresh, route protection, security headers
 ├── app/
-│   ├── layout.tsx                          # Root layout (fonts, GTM, consent, scanlines)
-│   ├── global-error.tsx                    # Global error boundary
-│   ├── page.tsx                            # Landing page (/)
-│   ├── event/[slug]/
-│   │   ├── layout.tsx                      # Server Component: fetches settings + theme + branding CSS vars
-│   │   ├── page.tsx                        # Routes to WeeZTix or Dynamic event page
-│   │   ├── tickets/page.tsx                # Ticket selection (WeeZTix only, redirects for Stripe)
-│   │   ├── checkout/page.tsx               # Routes to WeeZTix embed or NativeCheckout
-│   │   ├── error.tsx                       # Error boundary
-│   │   └── loading.tsx                     # Loading skeleton (logo + progress bar)
-│   ├── admin/
-│   │   ├── layout.tsx                      # Sidebar nav + logout (Entry-branded admin shell)
-│   │   ├── error.tsx                       # Admin error boundary
-│   │   ├── login/page.tsx                  # Supabase Auth login page (email/password)
-│   │   ├── page.tsx                        # Dashboard (KPIs, quick links)
-│   │   ├── events/page.tsx                 # Event list + create form
-│   │   ├── events/[slug]/page.tsx          # Event editor (tabbed: details, content, design, tickets, settings)
-│   │   ├── orders/page.tsx                 # Order list + export CSV
-│   │   ├── orders/[id]/page.tsx            # Order detail + refund + PDF download
-│   │   ├── customers/page.tsx              # Customer search + stats
-│   │   ├── customers/[id]/page.tsx         # Customer detail (order history, spend)
-│   │   ├── guest-list/page.tsx             # Per-event guest list + check-in
-│   │   ├── merch/page.tsx                   # Merch catalog (standalone merchandise)
-│   │   ├── merch/[id]/page.tsx             # Merch editor (images, sizes, pricing)
-│   │   ├── traffic/page.tsx                # Funnel analytics (realtime)
-│   │   ├── popup/page.tsx                  # Popup performance (realtime)
-│   │   ├── payments/page.tsx               # Stripe Connect setup (promoter-facing)
-│   │   ├── connect/page.tsx                # Stripe Connect admin (platform-level)
-│   │   ├── marketing/page.tsx              # Meta Pixel + CAPI config
-│   │   ├── communications/page.tsx          # Communications hub
-│   │   ├── communications/transactional/page.tsx              # Transactional templates hub
-│   │   ├── communications/transactional/order-confirmation/page.tsx  # Email template editor
-│   │   ├── communications/transactional/pdf-ticket/page.tsx          # PDF ticket design editor
-│   │   ├── communications/transactional/wallet-passes/page.tsx       # Wallet pass settings
-│   │   ├── communications/marketing/page.tsx                         # Marketing campaigns hub
-│   │   ├── communications/marketing/abandoned-cart/page.tsx          # Abandoned cart campaigns
-│   │   ├── settings/page.tsx               # Platform settings + danger zone resets
-│   │   └── health/page.tsx                 # System health monitoring
-│   └── api/
-│       ├── auth/login/route.ts             # POST sign in with Supabase Auth
-│       ├── auth/logout/route.ts            # POST sign out + clear cookies
-│       ├── branding/route.ts               # GET/POST org branding settings (logo, colors, fonts)
-│       ├── settings/route.ts               # GET/POST settings by key
-│       ├── track/route.ts                  # POST traffic/popup events
-│       ├── health/route.ts                 # GET system health checks
-│       ├── upload/route.ts                 # POST image upload (base64 → media key)
-│       ├── media/[key]/route.ts            # GET serve uploaded images
-│       ├── customers/route.ts              # GET customer list with search
-│       ├── events/route.ts                 # GET/POST events (full field support)
-│       ├── events/[id]/route.ts            # GET/PUT/DELETE single event + ticket types
-│       ├── merch/route.ts                  # GET/POST merch catalog
-│       ├── merch/[id]/route.ts             # GET/PUT/DELETE single merch item
-│       ├── merch/[id]/linked-tickets/route.ts  # GET tickets linked to a merch item
-│       ├── guest-list/route.ts             # POST add guest entry
-│       ├── guest-list/[eventId]/route.ts   # GET/PUT/DELETE guest list per event
-│       ├── orders/route.ts                 # GET/POST orders
-│       ├── orders/[id]/route.ts            # GET order detail
-│       ├── orders/[id]/pdf/route.ts        # GET download PDF tickets
-│       ├── orders/[id]/refund/route.ts     # POST refund order
-│       ├── orders/[id]/wallet/apple/route.ts   # GET Apple Wallet pass download
-│       ├── orders/[id]/wallet/google/route.ts  # GET Google Wallet pass URL
-│       ├── orders/export/route.ts          # GET export CSV
-│       ├── tickets/[code]/route.ts         # GET validate ticket by code
-│       ├── tickets/[code]/scan/route.ts    # POST mark ticket scanned
-│       ├── tickets/[code]/merch/route.ts   # GET merch details for a ticket
-│       ├── meta/capi/route.ts              # POST forward events to Meta CAPI
-│       ├── email/test/route.ts             # POST send test email with PDF attachment
-│       ├── email/status/route.ts           # GET email delivery status
-│       ├── wallet/status/route.ts          # GET wallet pass configuration status
-│       ├── stripe/payment-intent/route.ts  # POST create PaymentIntent (per-event Stripe account)
-│       ├── stripe/confirm-order/route.ts   # POST confirm payment → create order
-│       ├── stripe/webhook/route.ts         # POST Stripe webhook handler
-│       ├── stripe/account/route.ts         # GET connected account ID
-│       ├── stripe/connect/route.ts         # GET/POST list/create Connect accounts
-│       ├── stripe/connect/[accountId]/route.ts          # GET/DELETE account
-│       ├── stripe/connect/[accountId]/onboarding/route.ts # GET/POST onboarding
-│       ├── stripe/apple-pay-domain/route.ts # GET/POST Apple Pay domain registration
-│       └── stripe/apple-pay-verify/route.ts # GET serve Apple Pay verification file
+│   ├── layout.tsx             # Root layout (fonts, GTM, consent, scanlines)
+│   ├── page.tsx               # Landing page (/)
+│   ├── global-error.tsx       # Global error boundary
+│   ├── event/[slug]/          # Public event pages
+│   │   ├── layout.tsx         # Server Component: fetches event + settings + branding → CSS vars
+│   │   ├── page.tsx           # Routes to DynamicEventPage (Stripe) or legacy event page
+│   │   ├── checkout/page.tsx  # NativeCheckout (Stripe Elements)
+│   │   ├── error.tsx          # Error boundary
+│   │   └── loading.tsx        # Loading skeleton
+│   ├── admin/                 # Admin dashboard (25+ pages)
+│   │   ├── layout.tsx         # Sidebar nav + logout (Entry-branded shell)
+│   │   ├── login/             # Supabase Auth login (email/password)
+│   │   ├── page.tsx           # Dashboard (KPIs, activity feed, funnel chart)
+│   │   ├── events/            # Event list + tabbed event editor
+│   │   ├── orders/            # Order list + detail + refund + PDF
+│   │   ├── customers/         # Customer search + detail
+│   │   ├── guest-list/        # Per-event guest list + check-in
+│   │   ├── merch/             # Merch catalog + editor
+│   │   ├── discounts/         # Discount code management
+│   │   ├── abandoned-carts/   # Abandoned cart tracking
+│   │   ├── reps/              # Rep program (list, detail, quests, rewards, settings)
+│   │   ├── ticketstore/       # Theme management + Shopify-style editor
+│   │   ├── finance/           # Finance overview
+│   │   ├── traffic/           # Funnel analytics (realtime)
+│   │   ├── popup/             # Popup performance (realtime)
+│   │   ├── payments/          # Stripe Connect setup (promoter-facing)
+│   │   ├── connect/           # Stripe Connect admin (platform-level)
+│   │   ├── marketing/         # Meta Pixel + CAPI config
+│   │   ├── communications/    # Email templates, PDF tickets, wallet passes, marketing campaigns
+│   │   ├── settings/          # Platform settings + danger zone
+│   │   └── health/            # System health monitoring
+│   └── api/                   # See API Routes section for full endpoint list
+│       ├── auth/              # login, logout, recover
+│       ├── admin/             # dashboard, orders-stats
+│       ├── events/            # CRUD + ticket types
+│       ├── orders/            # CRUD, refund, PDF, wallet passes, resend email, export
+│       ├── stripe/            # payment-intent, confirm-order, webhook, connect, apple-pay
+│       ├── checkout/          # capture (post-payment order creation)
+│       ├── customers/         # list + search
+│       ├── guest-list/        # CRUD per event
+│       ├── merch/             # CRUD + linked tickets
+│       ├── discounts/         # CRUD, validate, seed
+│       ├── reps/              # Admin rep management (19 routes)
+│       ├── rep-portal/        # Rep-facing API (16 routes)
+│       ├── abandoned-carts/   # Cart tracking
+│       ├── email/             # test send, delivery status
+│       ├── wallet/            # wallet pass status
+│       ├── track/             # traffic + popup analytics
+│       ├── meta/capi/         # Meta Conversions API
+│       ├── health/            # system health checks
+│       ├── settings/          # key-value settings CRUD
+│       ├── branding/          # org branding CRUD
+│       ├── upload/            # image upload (base64 → media key)
+│       └── media/[key]/       # serve uploaded images
 ├── components/
-│   ├── admin/                              # Admin-specific reusable components
-│   │   ├── ImageUpload.tsx                 # Image upload with preview + hover overlay
-│   │   ├── LineupTagInput.tsx              # Tag input for lineup artist names
-│   │   ├── TierSelector.tsx                # Ticket tier visual selector (standard/platinum/black/valentine)
-│   │   └── event-editor/                   # Event editor tab components
-│   │       ├── types.ts                    # Shared types for event editor
-│   │       ├── EventEditorHeader.tsx       # Editor header with save/status
-│   │       ├── DetailsTab.tsx              # Name, slug, venue, dates, status
-│   │       ├── ContentTab.tsx              # About, lineup, details text, tagline
-│   │       ├── DesignTab.tsx               # Theme, images, cover settings
-│   │       ├── TicketsTab.tsx              # Ticket types list + add/remove/reorder
-│   │       ├── TicketCard.tsx              # Individual ticket type editor card
-│   │       ├── GroupManager.tsx            # Ticket group management
-│   │       └── SettingsTab.tsx             # Payment method, Stripe account, fees, danger zone
-│   ├── landing/
-│   │   ├── LandingPage.tsx                 # Full homepage orchestrator
-│   │   ├── HeroSection.tsx                 # Hero with particle canvas + CTA
-│   │   ├── ParticleCanvas.tsx              # Interactive particle grid (canvas)
-│   │   ├── HeroGlitchText.tsx              # Scramble-reveal title animation
-│   │   ├── EventsSection.tsx               # Horizontal event card scroll
-│   │   ├── AboutSection.tsx                # "Why FERAL" pillars with animations
-│   │   └── ContactSection.tsx              # Email signup + social links
-│   ├── event/
-│   │   ├── DynamicEventPage.tsx            # DB-driven event page (Stripe events, uses branding)
-│   │   ├── LiverpoolEventPage.tsx          # Hardcoded Liverpool event (WeeZTix)
-│   │   ├── KompassEventPage.tsx            # Hardcoded Kompass event (WeeZTix)
-│   │   ├── TicketsPage.tsx                 # Standalone tickets page (WeeZTix)
-│   │   ├── EventHero.tsx                   # Event banner + details
-│   │   ├── TicketWidget.tsx                # Ticket selector (WeeZTix events)
-│   │   ├── DynamicTicketWidget.tsx          # Ticket selector (Stripe events, DB-driven)
-│   │   ├── BottomBar.tsx                   # Sticky bottom bar (Buy Now / Checkout)
-│   │   ├── TeeModal.tsx                    # Merch image zoom + size selection
-│   │   ├── DiscountPopup.tsx               # 3-screen discount popup + Klaviyo
-│   │   ├── EngagementTracker.tsx           # Invisible scroll/time tracking
-│   │   └── SocialProofToast.tsx            # "Last ticket booked X min ago" toast
-│   ├── checkout/
-│   │   ├── CheckoutPage.tsx                # WeeZTix checkout (legacy)
-│   │   ├── NativeCheckout.tsx              # Stripe checkout (single page, dynamic branding)
-│   │   ├── StripePaymentForm.tsx           # Stripe PaymentElement form
-│   │   ├── ExpressCheckout.tsx             # Apple Pay / Google Pay button
-│   │   ├── OrderConfirmation.tsx           # Post-purchase with QR codes + PDF + wallet passes
-│   │   ├── OrderSummary.tsx                # Inline cart summary strip
-│   │   ├── CheckoutTimer.tsx               # 8-minute urgency countdown
-│   │   ├── LoadingScreen.tsx               # Payment processing interstitial
-│   │   └── WeeZTixEmbed.tsx                # WeeZTix iframe embed (legacy)
-│   ├── ui/                                # shadcn/ui components (Tailwind + Radix UI)
-│   │   ├── avatar.tsx                     # Avatar with image/fallback initials
-│   │   ├── badge.tsx                      # Status badge with variants
-│   │   ├── button.tsx                     # Button with variants (default, ghost, outline, destructive)
-│   │   ├── card.tsx                       # Card, CardHeader, CardTitle, CardContent, CardFooter
-│   │   ├── collapsible.tsx                # Collapsible section (Radix)
-│   │   ├── dialog.tsx                     # Modal dialog (Radix)
-│   │   ├── input.tsx                      # Text input
-│   │   ├── label.tsx                      # Form label
-│   │   ├── progress.tsx                   # Progress bar
-│   │   ├── separator.tsx                  # Visual separator (horizontal/vertical)
-│   │   ├── slider.tsx                     # Range slider
-│   │   ├── stat-card.tsx                  # Dashboard stat card with icon + trend
-│   │   ├── switch.tsx                     # Toggle switch
-│   │   ├── table.tsx                      # Data table (header, body, row, cell)
-│   │   ├── tabs.tsx                       # Tabs, TabsList, TabsTrigger, TabsContent
-│   │   ├── textarea.tsx                   # Textarea
-│   │   └── tooltip.tsx                    # Tooltip (Radix)
-│   └── layout/
-│       ├── Header.tsx                      # Nav bar + hamburger menu
-│       ├── Footer.tsx                      # Copyright + status
-│       ├── Scanlines.tsx                   # CRT scanline + noise overlays
-│       └── CookieConsent.tsx               # GDPR consent banner + GTM integration
+│   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
+│   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
+│   │   └── dashboard/         # ActivityFeed, FunnelChart, TopEventsTable
+│   ├── aura/                  # Aura theme components (full event page + checkout variant)
+│   ├── event/                 # DynamicEventPage, DynamicTicketWidget, EventHero, BottomBar,
+│   │                          # TeeModal, DiscountPopup, EngagementTracker, SocialProofToast
+│   ├── checkout/              # NativeCheckout, StripePaymentForm, ExpressCheckout,
+│   │                          # OrderConfirmation, OrderSummary, CheckoutTimer, LoadingScreen
+│   ├── landing/               # LandingPage, HeroSection, ParticleCanvas, EventsSection, etc.
+│   ├── layout/                # Header, Footer, Scanlines, CookieConsent
+│   └── ui/                    # shadcn/ui (27 components — see Admin UI section)
 ├── hooks/
-│   ├── useBranding.ts                     # Org branding settings (logo, colors, fonts — module-level cache)
-│   ├── useSettings.tsx                     # Settings context + realtime subscription
-│   ├── useTicketCart.ts                    # Cart state (3 ticket types, sizes, totals)
-│   ├── useMetaTracking.ts                 # Meta Pixel + CAPI (consent-aware, stable refs)
-│   ├── useDataLayer.ts                    # GTM dataLayer push (stable refs)
-│   ├── useTraffic.ts                      # Supabase funnel tracking
-│   ├── useHeaderScroll.ts                 # Header hide/show on scroll
-│   └── useScrollReveal.ts                 # IntersectionObserver scroll animations
+│   ├── useBranding.ts         # Org branding (module-level cache, single fetch)
+│   ├── useSettings.tsx        # Settings context + realtime subscription
+│   ├── useDashboardRealtime.ts # Dashboard live updates
+│   ├── useMetaTracking.ts     # Meta Pixel + CAPI (consent-aware, stable refs)
+│   ├── useDataLayer.ts        # GTM dataLayer push (stable refs)
+│   ├── useTraffic.ts          # Supabase funnel tracking
+│   ├── useHeaderScroll.ts     # Header hide/show on scroll
+│   └── useScrollReveal.ts     # IntersectionObserver scroll animations
 ├── lib/
-│   ├── auth.ts                            # requireAuth(), getSession() — API route auth helpers
-│   ├── constants.ts                       # ORG_ID, TABLES, SETTINGS_KEYS, brandingKey()
-│   ├── utils.ts                           # cn() helper (clsx + tailwind-merge)
-│   ├── settings.ts                        # fetchSettings (server), saveSettings (client)
-│   ├── klaviyo.ts                         # Email subscription + identify
-│   ├── meta.ts                            # Meta CAPI: hash PII, send events
-│   ├── email.ts                           # Order confirmation email sender (Resend + PDF attachment)
-│   ├── email-templates.ts                 # HTML email template builder (order confirmation)
-│   ├── pdf.ts                             # PDF ticket generation (jsPDF, A5 format, custom branding)
-│   ├── qr.ts                              # QR code generation (data URL + PNG buffer)
-│   ├── ticket-utils.ts                    # generateTicketCode, generateOrderNumber
-│   ├── wallet-passes.ts                   # Apple Wallet + Google Wallet pass generation
-│   ├── date-utils.ts                      # Date formatting helpers
-│   ├── image-utils.ts                     # Image processing utilities
-│   ├── supabase/
-│   │   ├── admin.ts                       # Server Supabase client for data queries (service role key → session fallback)
-│   │   ├── client.ts                      # Browser Supabase client (singleton, no-cache)
-│   │   ├── middleware.ts                  # Supabase client for Next.js middleware
-│   │   └── server.ts                      # Server Supabase client (cookies, no-cache) — auth only
-│   └── stripe/
-│       ├── client.ts                      # Browser Stripe.js (lazy singleton, Connect-aware)
-│       ├── server.ts                      # Server Stripe instance (platform account)
-│       └── config.ts                      # Platform fees, currency helpers, toSmallestUnit
-├── types/
-│   ├── settings.ts                        # EventSettings, BrandingSettings, EventThemeOverrides
-│   ├── events.ts                          # Event, TicketTypeRow, EventStatus, PaymentMethod
-│   ├── orders.ts                          # Order, OrderItem, Ticket, Customer, GuestListEntry
-│   ├── tickets.ts                         # TicketKey, TicketType, TeeSize, CartItem
-│   ├── products.ts                        # Product (standalone merch catalog)
-│   ├── email.ts                           # EmailSettings, PdfTicketSettings, OrderEmailData
-│   ├── analytics.ts                       # TrafficEvent, PopupEvent types
-│   └── marketing.ts                       # MarketingSettings, MetaEventPayload, MetaCAPIRequest
+│   ├── supabase/              # admin.ts (data), server.ts (auth only), client.ts (browser), middleware.ts
+│   ├── stripe/                # client.ts (browser), server.ts (platform), config.ts (fees/currency)
+│   ├── auth.ts                # requireAuth(), requireRepAuth(), getSession()
+│   ├── constants.ts           # ORG_ID, TABLES, SETTINGS_KEYS, brandingKey()
+│   ├── settings.ts            # fetchSettings (server), saveSettings (client)
+│   ├── orders.ts              # Order creation helpers
+│   ├── email.ts               # Order confirmation email (Resend + PDF attachment)
+│   ├── email-templates.ts     # HTML email template builder
+│   ├── pdf.ts                 # PDF ticket generation (jsPDF, A5, custom branding)
+│   ├── qr.ts                  # QR code generation
+│   ├── ticket-utils.ts        # generateTicketCode, generateOrderNumber
+│   ├── wallet-passes.ts       # Apple Wallet + Google Wallet pass generation
+│   ├── discount-codes.ts      # Discount code validation + application
+│   ├── vat.ts                 # VAT calculation
+│   ├── rate-limit.ts          # API rate limiting
+│   ├── themes.ts              # Theme system helpers
+│   ├── rep-attribution.ts     # Rep sale attribution
+│   ├── rep-emails.ts          # Rep notification emails
+│   ├── rep-points.ts          # Rep points calculation
+│   ├── klaviyo.ts             # Email subscription + identify
+│   ├── meta.ts                # Meta CAPI: hash PII, send events
+│   ├── nicknames.ts           # Customer nickname generation
+│   ├── date-utils.ts          # Date formatting helpers
+│   ├── image-utils.ts         # Image processing utilities
+│   └── utils.ts               # cn() helper (clsx + tailwind-merge)
+├── types/                     # TypeScript types per domain
+│   ├── settings.ts            # EventSettings, BrandingSettings, EventThemeOverrides
+│   ├── events.ts              # Event, TicketTypeRow, EventStatus, PaymentMethod
+│   ├── orders.ts              # Order, OrderItem, Ticket, Customer, GuestListEntry
+│   ├── tickets.ts             # TicketKey, TicketType, TeeSize, CartItem
+│   ├── products.ts            # Product (standalone merch catalog)
+│   ├── discounts.ts           # Discount code types
+│   ├── reps.ts                # Rep program types
+│   ├── email.ts               # EmailSettings, PdfTicketSettings, OrderEmailData
+│   ├── analytics.ts           # TrafficEvent, PopupEvent types
+│   └── marketing.ts           # MarketingSettings, MetaEventPayload, MetaCAPIRequest
 └── styles/
-    ├── base.css                          # Reset, CSS variables, typography, footer, reveal animations
-    ├── effects.css                       # CRT scanlines + noise texture overlays
-    ├── header.css                        # Header, navigation, mobile menu, buttons
-    ├── landing.css                       # Hero, events grid, about pillars, contact form
-    ├── event.css                         # Event pages, tickets, modals, bottom bar, minimal theme
-    ├── cookie.css                        # Cookie consent banner + preferences modal
-    ├── admin.css                         # Admin dashboard styles
-    ├── tickets-page.css                  # Ticket selection page (WeeZTix)
-    ├── checkout-page.css                 # Checkout + payment form
-    └── popup.css                         # Discount popup
+    ├── base.css               # Reset, CSS variables, typography, reveal animations
+    ├── effects.css            # CRT scanlines + noise texture overlays
+    ├── header.css             # Header, navigation, mobile menu
+    ├── landing.css            # Hero, events grid, about pillars, contact form
+    ├── event.css              # Event pages, tickets, modals, bottom bar, minimal theme
+    ├── aura.css               # Aura theme styles
+    ├── aura-effects.css       # Aura theme effects
+    ├── checkout-page.css      # Checkout + payment form
+    ├── cookie.css             # Cookie consent banner
+    ├── popup.css              # Discount popup
+    ├── rep-portal.css         # Rep portal styles
+    ├── tailwind.css           # Tailwind v4 theme + utilities (admin only)
+    └── admin.css              # Admin supplementary styles
 ```
-
-### Legacy Files (Repo Root)
-Static HTML from the pre-Next.js era — served via Vercel rewrites:
-- `agencyferal/` → `www.agencyferal.com` domain
-- `artist/`, `artist-invite/`, `artist-login/`, `contract/` → static pages
-- `index.html`, `event.html`, `admin/`, `css/`, `js/` → old site (not used by Next.js)
 
 ---
 
 ## Architecture
 
-### Dual Payment System (WeeZTix → Stripe Migration)
-The platform supports two payment methods simultaneously:
-
-**WeeZTix (legacy)** — Liverpool, Kompass Klub events
-- Hardcoded event pages (`LiverpoolEventPage`, `KompassEventPage`)
-- Ticket IDs stored in `site_settings` JSONB
-- Checkout via iframe embed (`WeeZTixEmbed`)
-- Cart format: `ticketId:qty` or `ticketId:qty:SIZE`
-
-**Stripe (native)** — All new events
-- Dynamic event pages (`DynamicEventPage`) rendered from `events` table
-- Ticket types stored in `ticket_types` table with proper pricing/capacity
-- Checkout via `NativeCheckout` → `CardFields` + `ExpressCheckout`
-- PaymentIntent flow: create → confirm → webhook creates order + tickets
+### Payment System (Stripe)
+All events use Stripe for payment processing:
+- Dynamic event pages (`DynamicEventPage` / `AuraEventPage`) rendered from `events` table
+- Ticket types stored in `ticket_types` table with pricing, capacity, tiers, merch links
+- Checkout via `NativeCheckout` or `AuraCheckout` → `StripePaymentForm` + `ExpressCheckout`
+- PaymentIntent flow: create → confirm → webhook creates order + tickets + email
 - Apple Pay / Google Pay via Stripe ExpressCheckoutElement
-- Klarna (pay later) support built-in
+- Discount codes applied at checkout (validated server-side via `/api/discounts/validate`)
 
-Event routing is automatic: `event/[slug]/page.tsx` checks `payment_method` in the DB and renders the correct component.
+**One legacy exception**: The slug `kompass-klub-7-march` routes to a hardcoded `KompassEventPage` using external ticketing (Paylogic). All other slugs use the DB-driven flow.
+
+### Theme-Based Routing
+Event pages route to different component trees based on the **active template**:
+
+```
+event/[slug]/page.tsx
+  → getActiveTemplate() reads from site_settings ({org_id}_themes)
+  → template === "aura"    → AuraEventPage / AuraCheckout
+  → template === "midnight" → DynamicEventPage / NativeCheckout (default)
+```
+
+- Default template: `midnight` (falls back if no theme configured)
+- Admin can preview non-active themes via `?editor=1&template=aura`
+- Theme store managed in `/admin/ticketstore/` with Shopify-style editor
 
 ### Stripe Connect (Multi-Tenant Payments)
 - **Model**: Direct charges on connected accounts with application fee
 - **Account type**: Custom (white-labeled — promoter never sees Stripe dashboard)
 - **Platform fee**: 5% default, £0.50 minimum (configurable per event via `platform_fee_percent`)
-- **Per-event routing**: `payment-intent` and `confirm-order` routes check `event.stripe_account_id` first, then fall back to global `feral_stripe_account` in `site_settings`
-- **Currency**: Amounts always in smallest unit (pence/cents) — use `toSmallestUnit()` / `fromSmallestUnit()`
-- Admin pages: `/admin/payments/` (promoter-facing setup), `/admin/connect/` (platform admin)
-- Onboarding: Embedded via ConnectJS (`client_secret`) or hosted link fallback
+- **Per-event routing**: `event.stripe_account_id` → fallback to `feral_stripe_account` in site_settings → fallback to platform-only charge
+- **Account verification**: `verifyConnectedAccount()` validates account is accessible; falls back to platform if revoked
+- **Currency**: GBP, EUR, USD. Amounts always in smallest unit (pence/cents) — use `toSmallestUnit()` / `fromSmallestUnit()` from `lib/stripe/config.ts`
+- **VAT**: `lib/vat.ts` calculates VAT (inclusive or exclusive), configured via `feral_vat` settings key
+- **Discounts**: Validated server-side during PaymentIntent creation. Supports percentage and fixed-amount codes with expiry, usage limits, and per-event restrictions
+- **Rate limiting**: Payment endpoint: 10 requests/minute/IP via `createRateLimiter()`
+- Admin pages: `/admin/payments/` (promoter-facing setup), `/admin/connect/` (platform admin), `/admin/finance/` (finance overview)
 
 ### Multi-Tenancy: org_id on EVERYTHING
 Every database table has an `org_id` column. Every query must filter by it.
-- Current value: `'feral'` (from `constants.ts`)
+- Current value: `'feral'` (from `lib/constants.ts`)
 - Every new table, every new query, every new API route must include `org_id`
-- Supabase RLS policies must enforce org_id isolation
+- Supabase RLS policies should enforce org_id isolation
 - This is non-negotiable — it's the foundation for the multi-promoter platform
 
 ### White-Label Branding System
@@ -283,8 +211,7 @@ Each tenant can fully customize their visual identity:
 
 **Org-level branding** (`BrandingSettings` in `site_settings` under key `{org_id}_branding`):
 - Logo, org name, accent color, background color, card color, text color
-- Heading font, body font, copyright text, support email, social links
-- Used by: checkout header/footer, event page footer/banner, email templates, PDF tickets
+- Heading font, body font, copyright text
 
 **How it flows — no FOUC:**
 1. Event layout (Server Component) fetches branding from `site_settings` in parallel with other data
@@ -294,109 +221,95 @@ Each tenant can fully customize their visual identity:
 5. `POST /api/branding` saves branding (admin auth required)
 
 ### Settings System
-Two sources of truth depending on event type:
-
-**WeeZTix events**: `site_settings` table (key → JSONB)
-- Keys: `feral_event_liverpool`, `feral_event_kompass`
-- Contains: ticket IDs, names, theme config, image settings
-- Server-side fetch in event layout → `SettingsProvider` context → no FOUC
-- Realtime subscription for live admin updates
-
-**Native events**: `events` + `ticket_types` tables
-- Event data (name, venue, dates, theme, about, lineup, images) in `events` table
+**Event data**: `events` + `ticket_types` tables
+- Event content (name, venue, dates, theme, about, lineup, images) in `events` table
 - Ticket configuration (price, capacity, sold, tier, merch) in `ticket_types` table
-- Settings key still exists for theme/image overrides
 - Marketing settings stored under key `feral_marketing`
 - Branding settings stored under key `{org_id}_branding`
 
+**Settings keys** (stored in `site_settings` table as key → JSONB):
+| Key | Purpose |
+|-----|---------|
+| `{org_id}_branding` | Org branding (logo, colors, fonts) — `brandingKey()` |
+| `{org_id}_themes` | Theme store (active template, theme configs) — `themesKey()` |
+| `{org_id}_vat` | VAT configuration — `vatKey()` |
+| `{org_id}_reps` | Reps program settings — `repsKey()` |
+| `feral_marketing` | Meta Pixel + CAPI settings |
+| `feral_email` | Email template settings |
+| `feral_wallet_passes` | Wallet pass configuration |
+| `feral_events_list` | Events list configuration |
+| `feral_stripe_account` | Global Stripe Connect account (fallback) |
+
 ### Request Flow (Event Pages)
 ```
-Browser request → /event/[slug]/
-    ↓
-RootLayout (fonts, GTM consent defaults, scanlines, cookie consent)
-    ↓
+Browser → /event/[slug]/
+  ↓
+RootLayout (fonts, GTM consent, scanlines, cookie consent)
+  ↓
 EventLayout [Server Component, force-dynamic]
-    ├─ Fetch event from events table (get theme, payment_method)
-    ├─ Fetch settings from site_settings (parallel)
-    ├─ Check for media uploads (parallel)
-    ├─ Fetch org branding for CSS variables (parallel)
-    ├─ Determine theme (minimal vs default) + inject CSS variables
-    └─ Wrap children in SettingsProvider
-    ↓
+  ├─ Fetch event from events table (theme, cover_image, settings_key)
+  ├─ Fetch settings from site_settings (parallel)
+  ├─ Fetch org branding for CSS variable injection (parallel)
+  ├─ Fetch active template via getActiveTemplate() (parallel)
+  ├─ Inject CSS variables + data-theme attribute
+  ├─ Mount ThemeEditorBridge (live editor support)
+  └─ Wrap children in SettingsProvider
+  ↓
 EventPage [Server Component, force-dynamic]
-    ├─ payment_method === "weeztix" → LiverpoolEventPage / KompassEventPage
-    └─ payment_method === "stripe"/"test" → DynamicEventPage
+  ├─ template === "aura"    → AuraEventPage
+  └─ template === "midnight" → DynamicEventPage (default)
 ```
 
-### Caching Strategy (Vercel)
-- Event pages: `Cache-Control: public, max-age=0, must-revalidate` + `CDN-Cache-Control: max-age=60, stale-while-revalidate=300`
-- Admin pages: `Cache-Control: no-cache, no-store, must-revalidate`
-- All Supabase fetches use `cache: "no-store"` — settings changes must appear immediately
-- Apple Pay verification file: aggressive cache (`max-age=86400`)
-- Uploaded media: aggressive cache (`max-age=31536000`)
+### Caching Strategy
+- Event + admin pages: `export const dynamic = "force-dynamic"` — every request fetches fresh data
+- All Supabase fetches: `cache: "no-store"` — admin changes appear immediately
+- Uploaded media (`/api/media/[key]`): `max-age=31536000, immutable`
+- Apple Pay verification file: `max-age=86400`
 
 ### Authentication & Security
-The platform uses Supabase Auth for admin authentication with defense-in-depth:
 
-**Authentication flow:**
-1. Admin navigates to `/admin/` → middleware checks for valid Supabase session
-2. No session → redirect to `/admin/login/` (Supabase Auth email/password)
-3. Successful login → session cookie set → middleware allows access
-4. Logout → `supabase.auth.signOut()` → cookies cleared → redirect to login
+**Two auth systems:**
 
-**Key files:**
-- `src/middleware.ts` — Next.js middleware: session refresh, route protection, security headers
-- `src/lib/auth.ts` — `requireAuth()` helper for API route defense-in-depth
-- `src/lib/supabase/middleware.ts` — Supabase client configured for middleware cookie handling
-- `src/app/admin/login/page.tsx` — Login page using Supabase Auth
-- `src/app/api/auth/login/route.ts` — Server-side login API
-- `src/app/api/auth/logout/route.ts` — Server-side logout API
+| System | Middleware protection | Route handler | Users |
+|--------|---------------------|---------------|-------|
+| Admin | `/admin/*` pages, all non-public `/api/*` | `requireAuth()` | Created in Supabase Auth dashboard (invitation-only) |
+| Rep portal | `/rep/*` pages, `/api/rep-portal/*` | `requireRepAuth()` | Self-signup or admin invite via `/api/reps/[id]/invite` |
+
+**Role flags** (in Supabase `app_metadata`, additive):
+- `is_admin: true` — set on admin login. Grants admin access. Always wins over `is_rep`.
+- `is_rep: true` — set on rep signup/invite. Grants rep portal access.
+- Dual-role users supported (same email can be admin + rep)
 
 **Two layers of API protection:**
-1. **Middleware** (first layer) — blocks unauthenticated requests to protected API routes at the edge
-2. **`requireAuth()`** (second layer) — each protected API handler verifies auth independently
+1. **Middleware** (first layer) — blocks unauthenticated requests to protected routes at the edge
+2. **`requireAuth()` / `requireRepAuth()`** (second layer) — each handler verifies auth + role independently
 
 **Public API routes (no auth required):**
-- `POST /api/stripe/payment-intent` — customer checkout
-- `POST /api/stripe/confirm-order` — payment confirmation
-- `POST /api/stripe/webhook` — Stripe webhooks (verified by signature)
-- `GET /api/stripe/account` — Stripe account ID for checkout
-- `GET /api/stripe/apple-pay-verify` — Apple Pay verification
-- `GET /api/events`, `GET /api/events/[id]` — public event data
-- `GET /api/settings` — public settings for event pages
-- `GET /api/branding` — org branding for checkout/event pages
-- `GET /api/merch` — public merch catalog
-- `GET /api/media/[key]` — public media serving
-- `POST /api/track` — analytics tracking
-- `POST /api/meta/capi` — Meta CAPI
-- `GET /api/health` — system health
-- `GET /api/orders/[id]/wallet/*` — wallet pass downloads (order UUID = unguessable access token)
+- Stripe: `payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`
+- Checkout: `checkout/capture`
+- Data: `GET /api/events`, `GET /api/settings`, `GET /api/merch`, `GET /api/branding`, `GET /api/themes`
+- Media: `GET /api/media/[key]`
+- Analytics: `POST /api/track`, `POST /api/meta/capi`
+- Discounts: `POST /api/discounts/validate`
+- Health: `GET /api/health`
+- Wallet: `GET /api/orders/[id]/wallet/*` (order UUID = unguessable access token)
+- Rep public: `signup`, `login`, `logout`, `verify-email`, `invite/[token]`
+- Auth: `login`, `logout`, `recover`
 
-**Protected API routes (admin auth required):**
-- All `POST/PUT/DELETE` on `/api/settings`, `/api/events`, `/api/orders`
-- `POST /api/branding` — save branding settings
-- All `/api/customers`, `/api/guest-list`, `/api/upload`
-- All `/api/merch` mutations (POST/PUT/DELETE)
-- All `/api/stripe/connect/*`, `/api/stripe/apple-pay-domain`
-- All `/api/tickets/[code]/*` (scanner endpoints)
-- All `/api/orders/*` (list, detail, refund, export, PDF)
-
-**Security headers** (applied globally via `next.config.ts` and middleware):
+**Security headers** (applied via middleware):
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: SAMEORIGIN`
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- `X-XSS-Protection: 1; mode=block`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains` (production only)
 - `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=*, interest-cohort=()`
 
 **Rules for new routes:**
-1. Every new admin API route must call `requireAuth()` at the top
-2. Every new public API route must be added to `PUBLIC_API_PREFIXES` or `PUBLIC_API_EXACT_GETS` in middleware.ts
-3. Never hardcode secrets in source — use environment variables only
-4. Stripe webhook must always verify signatures in production
-
-**Setting up admin users:**
-Admin users must be created in the Supabase Auth dashboard (Authentication → Users → Add User).
-There is no self-registration — admin access is invitation-only.
+1. Admin API routes: call `requireAuth()` at the top
+2. Rep portal API routes: call `requireRepAuth()` at the top
+3. New public API routes: add to `PUBLIC_API_PREFIXES` or `PUBLIC_API_EXACT_GETS` in `middleware.ts`
+4. Never hardcode secrets — use environment variables only
+5. Stripe webhook must always verify signatures in production
 
 ---
 
@@ -414,9 +327,22 @@ There is no self-registration — admin access is invitation-only.
 | `tickets` | Individual tickets with QR | ticket_code (FERAL-XXXXXXXX), order_id, status, holder_*, scanned_at, scanned_by |
 | `customers` | Customer profiles | email, first_name, last_name, nickname, total_orders, total_spent |
 | `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in, checked_in_at |
+| `discounts` | Discount codes | code, type (percentage/fixed), value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at, min_order_amount |
+| `abandoned_carts` | Checkout abandonment | customer_id, event_id, items (jsonb), subtotal, status, notification_count |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
-| `abandoned_carts` | Checkout abandonment tracking | customer_id, event_id, items (jsonb), subtotal, status, notification_count, notified_at, recovered_at |
+
+**Reps Program tables** (brand ambassador / street team system):
+| Table | Purpose |
+|-------|---------|
+| `reps` | Rep profiles — points_balance, total_sales, total_revenue, level, invite_token, auth_user_id |
+| `rep_events` | Rep-to-event assignments with per-rep discount_id, sales_count, revenue |
+| `rep_rewards` | Rewards catalog — reward_type (milestone/points_shop/manual), points_cost, product_id |
+| `rep_milestones` | Achievement thresholds — milestone_type (sales_count/revenue/points), threshold_value |
+| `rep_points_log` | Points ledger — source_type (sale/quest/manual/reward_spend/refund), points, balance_after |
+| `rep_quests` | Tasks for reps — quest_type (social_post/story_share/content_creation/custom), points_reward |
+| `rep_quest_submissions` | Proof submissions — proof_type (screenshot/url/text), status (pending/approved/rejected) |
+| `rep_reward_claims` | Reward claims — claim_type (milestone/points_shop/manual), status (claimed/fulfilled/cancelled) |
 
 ### Key Constraints
 - `orders.order_number` — unique, format `FERAL-XXXXX` (sequential, padded)
@@ -431,74 +357,47 @@ The platform has THREE Supabase clients. Using the wrong one causes silent data 
 
 | Client | File | When to Use |
 |--------|------|-------------|
-| `getSupabaseAdmin()` | `lib/supabase/admin.ts` | **ALL data queries** in API routes, server components, and lib functions. Uses service role key (bypasses RLS). Falls back to session-based client if key is unavailable. |
-| `getSupabaseServer()` | `lib/supabase/server.ts` | **Auth operations ONLY** — `requireAuth()`, `getSession()`, login/logout routes. Needs the user's session cookies to verify identity. |
+| `getSupabaseAdmin()` | `lib/supabase/admin.ts` | **ALL data queries** in API routes, server components, and lib functions. Uses service role key (bypasses RLS). Falls back to session-based client if unavailable. |
+| `getSupabaseServer()` | `lib/supabase/server.ts` | **Auth operations ONLY** — `requireAuth()`, `requireRepAuth()`, `getSession()`, login/logout. Needs session cookies. |
 | `getSupabaseClient()` | `lib/supabase/client.ts` | **Browser-side only** — realtime subscriptions, client-side reads. Subject to RLS. |
 
 **Rules for new code:**
 1. **Every API route that reads/writes data** must use `getSupabaseAdmin()` — NEVER `getSupabaseServer()` for data queries
-2. **Only auth routes** (login, logout, `requireAuth()`) should use `getSupabaseServer()` — they need session cookies
-3. **Never create a raw `createClient()` with the anon key** for server-side data access — it has no session context and is blocked by RLS
-4. **New tables must be added to the health check** in `/api/health/route.ts` → `checkDataAccess()` so RLS issues are caught immediately
-5. **Admin pages must show API errors** — never silently swallow `fetch()` failures. Check `res.ok` and display `json.error` to the user
-
-**Why this matters:**
-Supabase RLS (Row Level Security) silently returns empty arrays when queries are blocked — no errors, no warnings, just empty data. The service role key in `getSupabaseAdmin()` bypasses RLS entirely. If you use `getSupabaseServer()` for data queries, RLS will block them whenever policies change, and the admin will see "no data" with no explanation.
-
-**Health monitoring:**
-`GET /api/health` tests all critical tables (events, orders, customers, tickets, abandoned_carts, order_items) and reports per-table status. Check `/admin/health/` to verify data access is working.
+2. **Only auth routes** should use `getSupabaseServer()` — they need session cookies
+3. **Never create a raw `createClient()` with the anon key** for server-side data access — blocked by RLS
+4. **New tables must be added to the health check** in `/api/health/route.ts` → `checkDataAccess()`
+5. **Admin pages must show API errors** — never silently swallow `fetch()` failures
 
 ### External Service Changes Rule (CRITICAL)
 The user manages Supabase, Vercel, Stripe, and other services manually via their dashboards. They do NOT use migration files, CLI tools, or infrastructure-as-code. Whenever code requires a change to an external service, you MUST:
 
-1. **Tell the user immediately** — in the same response where the code is written, not later
-2. **Make it copy-paste ready** — exact SQL, exact env var names and values, exact settings to toggle
-3. **Say exactly where to go** — "Supabase dashboard → SQL Editor", "Vercel dashboard → Settings → Environment Variables", etc.
-4. **Never assume it already exists** unless it's documented in this file
+1. **Tell the user immediately** — in the same response where the code is written
+2. **Make it copy-paste ready** — exact SQL, exact env var names, exact settings to toggle
+3. **Say exactly where to go** — "Supabase dashboard → SQL Editor", etc.
+4. **Never assume it already exists** unless documented in this file
 
-This applies to ALL external services:
-
-**Supabase (database)**
-- New tables or columns → provide exact `CREATE TABLE` / `ALTER TABLE` SQL
-- New RLS policies → provide exact `CREATE POLICY` SQL
-- New indexes → provide exact `CREATE INDEX` SQL
-- Reference: only tables/columns listed in the Tables section above are confirmed to exist
-
-**Vercel (hosting)**
-- New environment variables → provide exact variable name + description of the value
-- Changed build settings, redirects, or rewrites → provide exact config
-- New domains or domain settings → provide exact steps
-
-**Stripe (payments)**
-- New webhook endpoints → provide exact event types to subscribe to
-- New products/prices → provide exact steps in Stripe dashboard
-- Changed Connect settings → provide exact steps
-
-**Any other service** (Resend, Klaviyo, GTM, etc.)
-- Same rule: exact steps, exact values, exact location in the dashboard
-
-### Key Settings Keys
-| Key | Purpose |
-|-----|---------|
-| `feral_event_liverpool` | Liverpool event config (WeeZTix) |
-| `feral_event_kompass` | Kompass event config (WeeZTix) |
-| `feral_marketing` | Meta Pixel + CAPI settings |
-| `feral_email` | Email template settings |
-| `feral_wallet_passes` | Wallet pass configuration |
-| `feral_branding` | Org branding (logo, colors, fonts) |
-| `feral_stripe_account` | Global Stripe Connect account (fallback) |
+This applies to: Supabase (SQL for tables/columns/RLS/indexes), Vercel (env vars, build settings), Stripe (webhooks, Connect settings), and any other service (Resend, Klaviyo, GTM).
 
 ---
 
-## API Routes (39 endpoints)
+## API Routes (85 endpoints)
 
-### Orders & Tickets (critical path)
+### Critical Path (Payment → Order)
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET | `/api/orders` | List orders (filter by event, status, date range) |
-| POST | `/api/orders` | Create order (test mode only) |
+| POST | `/api/stripe/payment-intent` | Create PaymentIntent (validates tickets, applies discounts + VAT, rate limited) |
+| POST | `/api/stripe/confirm-order` | Verify payment → create order + tickets + email confirmation |
+| POST | `/api/checkout/capture` | Post-payment order creation (alternative capture flow) |
+| POST | `/api/stripe/webhook` | Handle payment_intent.succeeded / failed |
+| GET | `/api/stripe/account` | Get connected Stripe account ID for checkout |
+
+### Orders & Tickets
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET/POST | `/api/orders` | List (filter by event/status/date) / create (test mode) |
 | GET | `/api/orders/[id]` | Full order detail with customer, items, tickets |
 | POST | `/api/orders/[id]/refund` | Refund order → cancel tickets → update stats |
+| POST | `/api/orders/[id]/resend-email` | Resend order confirmation email |
 | GET | `/api/orders/[id]/pdf` | Generate PDF tickets with QR codes |
 | GET | `/api/orders/[id]/wallet/apple` | Download Apple Wallet pass |
 | GET | `/api/orders/[id]/wallet/google` | Get Google Wallet pass URL |
@@ -507,52 +406,45 @@ This applies to ALL external services:
 | POST | `/api/tickets/[code]/scan` | Mark scanned (prevents double-scan) |
 | GET | `/api/tickets/[code]/merch` | Get merch details for a ticket |
 
-### Stripe (payment processing)
+### Standard CRUD Groups
+| Group | Routes | Operations |
+|-------|--------|------------|
+| Events | `/api/events`, `/api/events/[id]` | GET/POST/PUT/DELETE + ticket types |
+| Merch | `/api/merch`, `/api/merch/[id]`, `/api/merch/[id]/linked-tickets` | GET/POST/PUT/DELETE |
+| Customers | `/api/customers` | GET (list + search) |
+| Guest List | `/api/guest-list`, `/api/guest-list/[eventId]` | POST/GET/PUT/DELETE |
+| Discounts | `/api/discounts`, `/api/discounts/[id]`, `/api/discounts/validate`, `/api/discounts/seed` | GET/POST/PUT/DELETE + public validate |
+| Abandoned Carts | `/api/abandoned-carts` | GET |
+| Settings | `/api/settings`, `/api/branding`, `/api/themes` | GET/POST |
+
+### Stripe Connect
 | Method | Route | Purpose |
 |--------|-------|---------|
-| POST | `/api/stripe/payment-intent` | Create PaymentIntent (per-event Stripe account + fee) |
-| POST | `/api/stripe/confirm-order` | Verify payment → create order + tickets |
-| POST | `/api/stripe/webhook` | Handle payment_intent.succeeded / failed |
-| GET | `/api/stripe/account` | Get connected Stripe account ID |
 | GET/POST | `/api/stripe/connect` | List / create Connect accounts |
 | GET/DELETE | `/api/stripe/connect/[accountId]` | Get / delete account |
 | GET/POST | `/api/stripe/connect/[accountId]/onboarding` | Onboarding link / session |
 | GET/POST | `/api/stripe/apple-pay-domain` | List / register domains |
 | GET | `/api/stripe/apple-pay-verify` | Serve Apple Pay verification file |
 
-### Events, Merch & Content
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET/POST | `/api/events` | List / create events (all fields including content + Stripe account) |
-| GET/PUT/DELETE | `/api/events/[id]` | Get / update / delete event + ticket types |
-| GET/POST | `/api/merch` | List / create standalone merch items |
-| GET/PUT/DELETE | `/api/merch/[id]` | Get / update / delete merch item |
-| GET | `/api/merch/[id]/linked-tickets` | Get ticket types linked to a merch item |
-| GET/POST | `/api/settings` | Get / save settings by key |
-| GET/POST | `/api/branding` | Get / save org branding (logo, colors, fonts) |
-| POST | `/api/upload` | Upload image (base64 → media key) |
-| GET | `/api/media/[key]` | Serve uploaded image |
+### Reps Program (35 routes)
+**Admin routes** (`/api/reps/*`, 19 routes): CRUD for reps, event assignments, quests, quest submissions, rewards, milestones, reward claims, leaderboard, stats, settings, invite.
 
-### Email & Wallet Passes
+**Rep portal routes** (`/api/rep-portal/*`, 16 routes): signup, login, logout, verify-email, invite/[token], me, dashboard, sales, points, quests, quest submissions, rewards, reward claims, leaderboard, discount.
+
+### Admin & Utilities
 | Method | Route | Purpose |
 |--------|-------|---------|
-| POST | `/api/email/test` | Send test email with PDF attachment |
+| GET | `/api/admin/dashboard` | Dashboard KPI data |
+| GET | `/api/admin/orders-stats` | Order statistics |
+| POST/GET | `/api/auth/login`, `logout`, `recover` | Admin authentication |
+| POST | `/api/track` | Traffic/popup analytics |
+| POST | `/api/meta/capi` | Meta Conversions API |
+| POST | `/api/upload` | Image upload (base64 → media key) |
+| GET | `/api/media/[key]` | Serve uploaded images |
+| POST | `/api/email/test` | Send test email |
 | GET | `/api/email/status` | Email delivery status |
-| GET | `/api/wallet/status` | Wallet pass configuration status |
-
-### Analytics & Tracking
-| Method | Route | Purpose |
-|--------|-------|---------|
-| POST | `/api/track` | Log traffic/popup events to Supabase |
-| POST | `/api/meta/capi` | Forward events to Meta Conversions API |
-| GET | `/api/health` | System health checks (Supabase, Stripe, Meta, env) |
-
-### Customers & Guest Lists
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET | `/api/customers` | List/search customers |
-| POST | `/api/guest-list` | Add guest entry |
-| GET/PUT/DELETE | `/api/guest-list/[eventId]` | Manage guest list per event |
+| GET | `/api/wallet/status` | Wallet pass config status |
+| GET | `/api/health` | System health checks |
 
 ---
 
@@ -566,6 +458,7 @@ Hooks that return objects/functions consumed as `useEffect`/`useCallback` depend
 - `useDataLayer()` — returns `useMemo({ push, trackViewContent, trackAddToCart, ... })`
 - `useSettings()` — context value wrapped in `useMemo`
 - `useBranding()` — returns `useMemo(branding)` with module-level cache
+- `useDashboardRealtime()` — returns `useMemo(dashboardState)`
 
 **Consumer pattern:**
 ```typescript
@@ -595,29 +488,40 @@ useEffect(() => { meta.trackViewContent(...) }, [meta]);
 
 ### Required (app won't function without these)
 ```
-NEXT_PUBLIC_SUPABASE_URL          # Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY     # Supabase anonymous key
+NEXT_PUBLIC_SUPABASE_URL            # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY       # Supabase anonymous key
+SUPABASE_SERVICE_ROLE_KEY           # Supabase service role key (bypasses RLS — used by getSupabaseAdmin())
 ```
 
 ### Required for Payments
 ```
-STRIPE_SECRET_KEY                 # Stripe secret key (server-side only)
-STRIPE_WEBHOOK_SECRET             # Stripe webhook signature verification
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY # Stripe public key (client-side)
+STRIPE_SECRET_KEY                   # Stripe secret key (server-side only)
+STRIPE_WEBHOOK_SECRET               # Stripe webhook signature verification
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY  # Stripe public key (client-side)
 ```
 
-### Required for Analytics
+### Required for Full Selling Path
 ```
-NEXT_PUBLIC_GTM_ID                # Google Tag Manager container ID
-NEXT_PUBLIC_SITE_URL              # Site URL for CAPI event_source_url
+RESEND_API_KEY                      # Resend API key (order confirmation emails + PDF attachments)
+NEXT_PUBLIC_SITE_URL                # Site URL (used in emails, PDFs, wallet passes, CAPI)
 ```
 
-### Optional Integrations
+### Optional — Analytics
 ```
-NEXT_PUBLIC_KLAVIYO_LIST_ID       # Klaviyo email list ID
-NEXT_PUBLIC_KLAVIYO_COMPANY_ID    # Klaviyo company ID
-NEXT_PUBLIC_WEEZTIX_SHOP_ID      # WeeZTix shop ID (legacy)
-RESEND_API_KEY                    # Resend API key (transactional email)
+NEXT_PUBLIC_GTM_ID                  # Google Tag Manager container ID (has hardcoded fallback)
+NEXT_PUBLIC_KLAVIYO_LIST_ID         # Klaviyo email list ID (has hardcoded fallback)
+NEXT_PUBLIC_KLAVIYO_COMPANY_ID      # Klaviyo company ID (has hardcoded fallback)
+```
+
+### Optional — Wallet Passes
+```
+APPLE_PASS_CERTIFICATE              # Apple pass signing certificate (PEM)
+APPLE_PASS_CERTIFICATE_PASSWORD     # Certificate password
+APPLE_WWDR_CERTIFICATE              # Apple WWDR certificate
+APPLE_PASS_TYPE_IDENTIFIER          # Pass type ID
+APPLE_PASS_TEAM_IDENTIFIER          # Apple team ID
+GOOGLE_WALLET_SERVICE_ACCOUNT_KEY   # Google service account key (JSON)
+GOOGLE_WALLET_ISSUER_ID             # Google Wallet issuer ID
 ```
 
 ---
@@ -630,180 +534,118 @@ RESEND_API_KEY                    # Resend API key (transactional email)
 - **Setup**: `src/__tests__/setup.ts` — localStorage mock, crypto.randomUUID mock, jest-dom
 - **Run**: `npm test` (single run) or `npm run test:watch` (watch mode)
 
-### Current Coverage (109 tests, 6 suites)
-- `useTicketCart` — 25 tests (state, add/remove, tee sizes, cart params, checkout URL, settings preservation)
-- `useMetaTracking` — 10 tests (referential stability, consent gating, API shape)
-- `useDataLayer` — 8 tests (referential stability, event pushing, tracking helpers)
-- `auth` — 38 tests (requireAuth, session handling, middleware auth)
-- `wallet-passes` — 18 tests (Apple Wallet, Google Wallet, configuration checks)
-- `products` — 10 tests (product CRUD, type validation)
+### Test Suites (11 suites)
+- `auth` — requireAuth, requireRepAuth, session handling, middleware auth
+- `useMetaTracking` — referential stability, consent gating, API shape
+- `useDataLayer` — referential stability, event pushing, tracking helpers
+- `useDashboardRealtime` — realtime state management
+- `useTraffic` — funnel tracking
+- `wallet-passes` — Apple Wallet, Google Wallet, configuration checks
+- `products` — product CRUD, type validation
+- `orders` — order creation, validation
+- `rate-limit` — rate limiter behavior
+- `rep-deletion` — rep cascade deletion
+- `vat` — VAT calculation
 
 ### Rules for Writing Tests
-1. **Every new hook must have a test file** — `src/__tests__/useHookName.test.ts`
-2. **Every new API route must have a test file** — `src/__tests__/api/routeName.test.ts`
-3. **Referential stability tests are mandatory** for any hook returning objects/functions used in effect dependencies
-4. **Test what matters** — state logic, referential stability, API shape, edge cases, payment flows
-5. **Don't test** — pure UI rendering, CSS classes, static text
-6. **Tests must pass before committing** — run `npm test` and fix failures
-
-### Adding Tests for New Features
-When building a new feature, write tests for:
-- The hook's public API (what it returns)
-- State transitions (add → remove → reset)
-- Integration with settings (admin-configurable values)
-- Error/edge cases (null settings, empty data, network failures)
+1. Every new hook must have a test file — `src/__tests__/useHookName.test.ts`
+2. Every new API route should have a test file — `src/__tests__/api/routeName.test.ts`
+3. Referential stability tests are mandatory for hooks returning objects/functions used in effect dependencies
+4. Test what matters — state logic, referential stability, API shape, edge cases, payment flows
+5. Don't test — pure UI rendering, CSS classes, static text
+6. Tests must pass before committing — run `npm test` and fix failures
 
 ---
 
-## What's Actually Built vs What's Next
-
-### Built and Working
-- **Full selling path**: Event page → Ticket selection → Checkout → Payment → Order + QR tickets + Email
-- Stripe checkout (PaymentIntent, Apple Pay, Google Pay, Klarna)
-- Stripe Connect (direct charges, per-event accounts, per-event platform fees)
-- QR ticket generation (ticket codes, QR data URLs, PDF download)
-- PDF ticket customization (A5 format, configurable colors, logo, QR size, disclaimers)
-- Apple Wallet + Google Wallet pass generation
-- Email confirmations (Resend — order confirmation with PDF ticket attachment)
-- Email template customization (branding, logo, accent color, copy, logo sizing)
-- Meta Pixel + CAPI (client-side pixel, server-side conversion API)
-- Order management (create, list, detail, refund, CSV export)
-- Event CRUD (create events with full content, configure ticket types, set themes)
-- Merch catalog (standalone merch with sizes, images, SKUs, linkable to ticket types)
-- Ticket store theme editor (multi-theme system with live preview, Shopify-style editor)
-- Customer management (profiles, order history, spend tracking, detail view)
-- Guest list management (add guests, check-in, export)
-- Traffic analytics (funnel tracking, realtime updates)
-- Popup analytics (impressions, engagement, conversions)
-- Admin dashboard (Tailwind v4 + shadcn/ui, 20+ pages, tabbed event editor)
-- White-label branding (per-org logo, colors, fonts — server-side CSS variable injection)
-- System health monitoring
-- Test infrastructure (109 tests, 6 suites)
-
-### Still To Build
-1. **Scanner PWA** — mobile web app for door staff. API endpoints exist (`/api/tickets/[code]` and `/api/tickets/[code]/scan`) but no frontend app.
-2. **Ticket Store — additional themes** — the multi-theme editor is built (`/admin/ticketstore/`), with Midnight theme complete. Daylight and Neon themes need full CSS implementations.
-3. **Google Ads + TikTok tracking** — placeholders exist in marketing page but no implementation.
-4. **Multi-tenant promoter dashboard** — Stripe Connect is built, but the actual promoter-facing dashboard (separate from platform admin) doesn't exist yet.
-5. **Rate limiting** — API routes have no request rate limiting. Consider adding for payment and auth endpoints.
-6. **Supabase RLS policies** — Row-Level Security policies should be configured in Supabase dashboard to enforce org_id isolation at the database level.
+## Known Gaps
+1. **Scanner PWA** — API endpoints exist (`/api/tickets/[code]` + `/api/tickets/[code]/scan`) but no frontend
+2. **Multi-tenant promoter dashboard** — Stripe Connect is built, but no separate promoter-facing dashboard yet
+3. **Google Ads + TikTok tracking** — placeholders exist in marketing admin but no implementation
+4. **Supabase RLS policies** — should be configured to enforce org_id isolation at database level
 
 ---
 
 ## Design System
 
-### Platform Brand (Entry)
+### Platform Brand (Entry — Admin)
 - **Primary**: `#8B5CF6` (Electric Violet)
 - **Gradient**: `linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)`
-- **Glow**: `rgba(139, 92, 246, 0.15)` / `rgba(139, 92, 246, 0.25)`
-- The Entry wordmark, login page, admin buttons, and active states all use the Electric Violet palette
-- See Admin Design Tokens below for full token list
+- The Entry wordmark, login page, admin buttons, and active states all use Electric Violet
 
 ### Public Event Pages (Tenant-Configurable)
-- **Background**: `#0e0e0e` default (overridable via branding `--bg-dark`)
-- **Accent**: `#ff0033` default (overridable via branding `--accent`)
-- **Card/Section background**: `#1a1a1a` with `#2a2a2a` border (overridable via branding `--card-bg`)
-- **Text**: `#fff` (primary), `#888` (secondary), `#555` (muted)
-- **Heading font**: `Space Mono` (monospace, uppercase, letter-spacing) (overridable via branding `--font-mono`)
-- **Body font**: `Inter` (sans-serif) (overridable via branding `--font-sans`)
+Defaults defined in `base.css :root`, overridable per-tenant via branding system:
+```css
+--accent: #ff0033;        --bg-dark: #0e0e0e;       --card-bg: #1a1a1a;
+--card-border: #2a2a2a;   --text-primary: #fff;      --text-secondary: #888;
+--text-muted: #555;       --font-mono: 'Space Mono'; --font-sans: 'Inter';
+```
 - **Effects**: CRT scanlines, noise texture overlays, glitch animations
 - **Mobile-first**: Most ticket buyers are on phones
-- **No FOUC**: Server-side settings + branding fetch, CSS variables injected in initial HTML
-- **Live updates**: Admin changes reflect on the live site instantly via Supabase realtime
 
 ---
 
 ## CSS Architecture
 
-### File Organization
-CSS is split into component-aligned files instead of one monolithic stylesheet. Each file is imported only where needed:
-
-| File | Loaded By | Scope |
-|------|-----------|-------|
-| `base.css` | Root layout (`app/layout.tsx`) | Global — reset, CSS variables, typography, footer, reveal animations |
-| `effects.css` | Root layout (`app/layout.tsx`) | Global — CRT scanlines + noise overlays |
-| `cookie.css` | Root layout (`app/layout.tsx`) | Global — consent banner (appears on all pages) |
-| `header.css` | `Header.tsx` | Navigation, mobile menu, buttons |
-| `landing.css` | `LandingPage.tsx` | Hero, events grid, about pillars, contact form |
-| `event.css` | Event layout (`app/event/[slug]/layout.tsx`) | Event pages, tickets, modals, bottom bar, minimal theme |
-| `tailwind.css` | Admin layout (`app/admin/layout.tsx`) | Tailwind v4 theme + utilities + admin-scoped preflight |
-| `admin.css` | Admin layout (`app/admin/layout.tsx`) | Admin dashboard supplementary styles |
-| `tickets-page.css` | `TicketsPage.tsx` | WeeZTix ticket selection |
-| `checkout-page.css` | Checkout components | Checkout + payment form |
-| `popup.css` | `DiscountPopup.tsx` | Discount popup |
-
-### CSS Variables (defined in `base.css :root`, overridden by branding)
-```css
---bg-dark: #0e0e0e;           --card-bg: #1a1a1a;
---card-border: #2a2a2a;        --accent: #ff0033;
---text-primary: #fff;          --text-secondary: #888;
---text-muted: #555;            --font-mono: 'Space Mono', monospace;
---font-sans: 'Inter', sans-serif;
-```
-
-These variables are **overridable per-tenant** via the branding system. The event layout injects org branding as inline CSS variables server-side, so the entire page adapts without FOUC.
-
-### Standardized Breakpoints
-```
-@media (max-width: 1024px)  — Tablet landscape / small desktop
-@media (max-width: 768px)   — Tablet portrait / large phone
-@media (max-width: 480px)   — Phone
-```
-
-### Rules for New CSS (Public Site)
-1. **Component-level imports** — new components import their own CSS file
-2. **BEM naming** — `.block__element--modifier` (28 prefixes already in use)
-3. **Use CSS custom properties** from `base.css :root` for all colors, fonts, spacing
-4. **CSS Modules** for all new components — prevents class name collisions as the platform scales
-5. **No Tailwind on public pages** — public site uses hand-written CSS only
-6. **Responsive rules live with their component** — media queries go in the same file as the styles they modify
-
----
-
-## Admin UI Stack (Tailwind + shadcn/ui)
-
-The admin dashboard (`/admin/*`) uses a completely separate UI stack from the public site: **Tailwind CSS v4 + shadcn/ui** (built on Radix UI primitives). The admin shell is branded **Entry** (the platform's name).
-
 ### Two Separate CSS Worlds (CRITICAL)
-The platform has two CSS systems that must not interfere:
-
 | Area | CSS System | Entry Point |
 |------|-----------|-------------|
 | Public site (events, checkout, landing) | Hand-written CSS (`base.css`, `event.css`, etc.) | `app/layout.tsx` |
 | Admin dashboard (`/admin/*`) | Tailwind v4 + shadcn/ui utilities | `app/admin/layout.tsx` via `tailwind.css` |
 
-**Isolation mechanism**: The admin layout renders `<div data-admin>`. All Tailwind preflight resets are scoped to `[data-admin]` so they never affect public pages.
+**Isolation mechanism**: Admin layout renders `<div data-admin>`. All Tailwind preflight resets are scoped to `[data-admin]` via `@layer admin-reset` so they never affect public pages.
 
 ### CSS Cascade Layer Rules (DO NOT BREAK)
-The `src/styles/tailwind.css` file has a carefully tuned layer setup:
-
 ```css
-@layer theme;
-@import "tailwindcss/theme" layer(theme);     /* Variables only — in a layer */
+@layer theme, admin-reset;
+@import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/utilities";               /* UNLAYERED — intentional! */
 ```
 
-**Why utilities are unlayered**: The public site's `base.css` has an unlayered `* { margin: 0; padding: 0; }` reset. CSS cascade rules say unlayered styles always beat layered styles. If Tailwind utilities were in `@layer utilities`, the `*` reset would override every `p-4`, `m-2`, `gap-3` class — making the entire admin layout broken. By keeping utilities unlayered, they compete on specificity (class > universal selector) and win.
+**Why utilities are unlayered**: `base.css` has an unlayered `* { margin: 0; padding: 0; }`. Unlayered styles always beat layered styles. If Tailwind utilities were layered, that `*` reset would override every `p-4`, `m-2`, `gap-3` class. By keeping utilities unlayered, they win on specificity (class > universal selector).
 
 **NEVER**:
 - Add `layer(utilities)` to the Tailwind utilities import
 - Move the utilities import into any `@layer` block
 - Add a global `*` reset that could override Tailwind classes
 
+### CSS File Organization
+| File | Scope |
+|------|-------|
+| `base.css` | Global — reset, CSS variables, typography, reveal animations |
+| `effects.css` | Global — CRT scanlines + noise overlays |
+| `cookie.css` | Global — consent banner |
+| `header.css` | Header, navigation, mobile menu |
+| `landing.css` | Hero, events grid, about pillars, contact form |
+| `event.css` | Event pages, tickets, modals, bottom bar, minimal theme |
+| `aura.css` | Aura theme styles |
+| `aura-effects.css` | Aura theme effects |
+| `checkout-page.css` | Checkout + payment form |
+| `popup.css` | Discount popup |
+| `rep-portal.css` | Rep portal styles |
+| `tailwind.css` | Tailwind v4 theme + utilities (admin only) |
+| `admin.css` | Admin supplementary styles |
+
+### Rules for New CSS (Public Site)
+1. **Component-level imports** — new components import their own CSS file
+2. **BEM naming** — `.block__element--modifier`
+3. **Use CSS custom properties** from `base.css :root` for all colors, fonts, spacing
+4. **No Tailwind on public pages** — public site uses hand-written CSS only
+5. **Breakpoints**: `1024px` (tablet), `768px` (portrait), `480px` (phone)
+
+---
+
+## Admin UI Stack (Tailwind + shadcn/ui)
+
 ### shadcn/ui Components
+**Location**: `src/components/ui/*.tsx` (27 components)
 
-**Location**: `src/components/ui/*.tsx`
-
-**Current components**: Avatar, Badge, Button, Card, Collapsible, Dialog, Input, Label, Progress, Separator, Slider, StatCard, Switch, Table, Tabs, Textarea, Tooltip
+Alert, Avatar, Badge, Button, Calendar, Card, Collapsible, ColorPicker, DatePicker, Dialog, Input, Label, LiveIndicator, LiveStatCard, NativeSelect, Popover, Progress, Select, Separator, Slider, StatCard, Switch, Table, Tabs, Textarea, Tooltip, TrendBadge
 
 **How to add new shadcn components**:
-1. Write the component manually in `src/components/ui/` following the shadcn pattern
+1. Create in `src/components/ui/` following the pattern below
 2. Use Radix UI primitives from the `radix-ui` package (already installed)
-3. Use `cn()` from `@/lib/utils` for className merging (clsx + tailwind-merge)
-4. Follow the existing component patterns — `React.forwardRef`, `ComponentRef`, CVA variants
-5. The shadcn CLI may not have registry access — creating components manually is identical
+3. Use `cn()` from `@/lib/utils` for className merging
 
-**Example pattern** (every shadcn component follows this):
 ```tsx
 import * as React from "react";
 import { cn } from "@/lib/utils";
@@ -811,69 +653,38 @@ import { cn } from "@/lib/utils";
 function ComponentName({ className, ...props }: React.ComponentProps<"div">) {
   return <div className={cn("base-classes", className)} {...props} />;
 }
-
 export { ComponentName };
 ```
 
-**For Radix-based components** (Tabs, Switch, Slider, etc.):
-```tsx
-import { Tabs as TabsPrimitive } from "radix-ui";
-
-function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.List>) {
-  return <TabsPrimitive.List className={cn("base-classes", className)} {...props} />;
-}
-```
-
 ### Admin Design Tokens
-Design tokens are defined in `tailwind.css` via `@theme inline {}`. All shadcn components consume these:
+Defined in `tailwind.css` via `@theme inline {}`:
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--color-background` | `#08080c` | Page background |
 | `--color-foreground` | `#f0f0f5` | Primary text |
-| `--color-primary` | `#8B5CF6` | Electric Violet — accent / brand color |
+| `--color-primary` | `#8B5CF6` | Electric Violet — brand / accent |
 | `--color-card` | `#111117` | Card backgrounds |
-| `--color-muted-foreground` | `#71717a` | Secondary text |
+| `--color-secondary` | `#151520` | Nested surfaces inside cards |
+| `--color-muted-foreground` | `#8888a0` | Secondary text |
 | `--color-border` | `#1e1e2a` | Borders (purple-tinted) |
+| `--color-destructive` | `#F43F5E` | Danger / delete actions |
+| `--color-success` | `#34D399` | Success states |
+| `--color-warning` | `#FBBF24` | Warning states |
+| `--color-info` | `#38BDF8` | Info states |
 | `--color-sidebar` | `#0a0a10` | Sidebar background |
 | `--color-sidebar-foreground` | `#8888a0` | Sidebar text |
 | `--color-sidebar-accent` | `#141420` | Sidebar active item |
 | `--color-sidebar-border` | `#161624` | Sidebar borders |
 
-**Always use these tokens** via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values in admin components.
+Use via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values.
 
-### Admin UI Patterns
-
-**Image upload with hover overlay** (used for logos):
-- Dark preview background (`bg-[#0e0e0e]`) containing the image
-- Tiny icon buttons (24x24) positioned at top-right using `absolute top-2 right-2`
-- Glass-morphism style: `bg-white/10 backdrop-blur-sm text-white/70`
-- Appear on hover via `opacity-0 group-hover:opacity-100` on a parent with `group relative`
-- Use Pencil icon (edit) + Trash2 icon (remove) from lucide-react
-
-**Settings forms**:
-- Use shadcn `Card` for sections, `Label` + `Input`/`Textarea`/`Switch`/`Slider` for controls
-- Use shadcn `Tabs` (variant="line" where appropriate) for Settings/Preview/Full Preview
-- Color pickers: native `<input type="color">` with a small preview swatch
-- Save via `saveSettings()` from `@/lib/settings` — debounce where appropriate
-
-**Event editor** (`app/admin/events/[slug]/page.tsx`):
-- Tabbed interface: Details, Content, Design, Tickets, Settings
-- Components in `src/components/admin/event-editor/`
-- Each tab is a standalone component receiving the event state and an update callback
-- Ticket types managed inline with add/remove/reorder
-
-**Sidebar layout** (`app/admin/layout.tsx`):
-- Fixed sidebar (w-64) with sections, mobile overlay with slide transition
-- User footer at bottom: avatar (initials), org name, email, click for dropdown
-- Dropdown positioned above footer: `absolute inset-x-3 bottom-full mb-2`
-- Outside-click dismissal via `mousedown` event listener on `useRef`
+Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-destructive`, `.text-gradient`, `.surface-noise`
 
 ### Rules for New Admin Pages
 1. **Always `"use client"`** — admin pages use React state, effects, and browser APIs
-2. **Import `tailwind.css`** — already done via `admin/layout.tsx`, no extra import needed
-3. **Use shadcn components** — never recreate Button, Input, Card, Tabs, etc. from scratch
-4. **Use Tailwind classes** — all styling via utility classes, no hand-written CSS for admin
-5. **Use design tokens** — `bg-background`, `text-foreground`, `border-border`, etc.
-6. **Settings pattern** — fetch from `site_settings` table, save back via `/api/settings`
-7. **File uploads** — POST base64 to `/api/upload`, get back a media key for the URL
+2. **Use shadcn components** — never recreate Button, Input, Card, Tabs, etc.
+3. **Use Tailwind classes** — all styling via utility classes, no hand-written CSS
+4. **Use design tokens** — `bg-background`, `text-foreground`, `border-border`, etc.
+5. **Settings pattern** — fetch from `site_settings` table, save back via `/api/settings`
+6. **File uploads** — POST base64 to `/api/upload`, get back a media key

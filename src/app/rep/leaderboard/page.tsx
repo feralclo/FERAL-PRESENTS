@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Trophy } from "lucide-react";
 
 interface LeaderboardEntry {
@@ -23,6 +24,7 @@ const PODIUM_STYLES = [
 const MEDAL_COLORS = ["var(--rep-gold)", "var(--rep-silver)", "var(--rep-bronze)"];
 
 export default function RepLeaderboardPage() {
+  const router = useRouter();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -50,6 +52,14 @@ export default function RepLeaderboardPage() {
       setLoading(false);
     })();
   }, [loadKey]);
+
+  const handleEntryClick = (entry: LeaderboardEntry) => {
+    if (entry.id === myRepId) {
+      router.push("/rep/profile");
+    } else {
+      router.push(`/rep/profile/${entry.id}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -91,14 +101,16 @@ export default function RepLeaderboardPage() {
       {/* Leaderboard */}
       <div className="space-y-2">
         {entries.map((entry, i) => (
-          <div
+          <button
             key={entry.id}
-            className={`rep-leaderboard-item flex items-center gap-3 rounded-2xl p-4 transition-colors ${
+            type="button"
+            onClick={() => handleEntryClick(entry)}
+            className={`rep-leaderboard-item w-full text-left flex items-center gap-3 rounded-2xl p-4 transition-colors cursor-pointer active:scale-[0.98] ${
               i < 3
                 ? PODIUM_STYLES[i]
                 : entry.id === myRepId
                   ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5"
-                  : "border border-[var(--rep-border)] bg-[var(--rep-card)]"
+                  : "border border-[var(--rep-border)] bg-[var(--rep-card)] hover:border-[var(--rep-accent)]/20"
             }`}
           >
             {/* Rank */}
@@ -120,7 +132,7 @@ export default function RepLeaderboardPage() {
                 <img src={entry.photo_url} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="h-full w-full flex items-center justify-center bg-[var(--rep-accent)]/10 text-xs font-bold text-[var(--rep-accent)]">
-                  {entry.first_name.charAt(0)}{entry.last_name?.charAt(0) || ""}
+                  {entry.display_name?.charAt(0) || entry.first_name.charAt(0)}
                 </div>
               )}
             </div>
@@ -142,7 +154,7 @@ export default function RepLeaderboardPage() {
                 £{Number(entry.total_revenue).toFixed(0)}
               </p>
             </div>
-          </div>
+          </button>
         ))}
 
         {entries.length === 0 && (

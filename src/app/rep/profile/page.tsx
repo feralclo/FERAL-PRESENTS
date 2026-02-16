@@ -1,9 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, LogOut, Save, Loader2 } from "lucide-react";
+import {
+  Camera,
+  Copy,
+  Check,
+  LogOut,
+  Save,
+  Loader2,
+  Instagram,
+  Flame,
+  User,
+} from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface RepProfile {
   id: string;
@@ -21,14 +39,93 @@ interface RepProfile {
   total_sales: number;
 }
 
+// TikTok icon (not in lucide)
+function TikTokIcon({ size = 16, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.8a8.19 8.19 0 0 0 3.76.96V6.32a4.85 4.85 0 0 1-.01.37Z" />
+    </svg>
+  );
+}
+
+/**
+ * Crop and resize an image file to a square, returns base64 JPEG.
+ */
+function processProfileImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const x = (img.width - size) / 2;
+        const y = (img.height - size) / 2;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 400;
+        canvas.height = 400;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas not supported"));
+
+        ctx.drawImage(img, x, y, size, size, 0, 0, 400, 400);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Open social profile in native app (iOS deep link) with web fallback.
+ * Does not navigate away from the portal.
+ */
+function openSocialProfile(platform: "instagram" | "tiktok", username: string) {
+  const schemes: Record<string, string> = {
+    instagram: `instagram://user?username=${username}`,
+    tiktok: `snssdk1233://user/profile/${username}`,
+  };
+  const webUrls: Record<string, string> = {
+    instagram: `https://instagram.com/${username}`,
+    tiktok: `https://tiktok.com/@${username}`,
+  };
+
+  // Try native app scheme
+  window.location.href = schemes[platform];
+
+  // If we're still here after 1.5s, the app didn't open — use web fallback
+  const timer = setTimeout(() => {
+    window.open(webUrls[platform], "_blank", "noopener");
+  }, 1500);
+
+  // If the native app opened, the page becomes hidden — cancel fallback
+  const onVisibility = () => {
+    if (document.hidden) {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    }
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+
+  // Clean up listener after fallback fires
+  setTimeout(() => {
+    document.removeEventListener("visibilitychange", onVisibility);
+  }, 2000);
+}
+
 export default function RepProfilePage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<RepProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [loadKey, setLoadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Editable fields
   const [displayName, setDisplayName] = useState("");
@@ -36,6 +133,7 @@ export default function RepProfilePage() {
   const [instagram, setInstagram] = useState("");
   const [tiktok, setTiktok] = useState("");
   const [bio, setBio] = useState("");
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // Discount
   const [discountCode, setDiscountCode] = useState("");
@@ -65,17 +163,71 @@ export default function RepProfilePage() {
           setInstagram(p.instagram || "");
           setTiktok(p.tiktok || "");
           setBio(p.bio || "");
+          setPhotoPreview(null);
         }
         if (discJson.data?.[0]) {
           setDiscountCode(discJson.data[0].code);
         }
-      } catch { setError("Failed to load profile — check your connection"); }
+      } catch {
+        setError("Failed to load profile — check your connection");
+      }
       setLoading(false);
     })();
   }, [loadKey]);
 
+  const handlePhotoSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so the same file can be selected again
+    e.target.value = "";
+
+    setUploading(true);
+    setError("");
+
+    try {
+      const imageData = await processProfileImage(file);
+      setPhotoPreview(imageData);
+
+      // Upload to server
+      const key = `rep-avatar-${profile?.id || "unknown"}-${Date.now()}`;
+      const uploadRes = await fetch("/api/rep-portal/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData, key }),
+      });
+
+      if (!uploadRes.ok) {
+        const errJson = await uploadRes.json().catch(() => null);
+        throw new Error(errJson?.error || "Upload failed");
+      }
+
+      const { url } = await uploadRes.json();
+
+      // Save photo URL to rep record
+      const saveRes = await fetch("/api/rep-portal/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photo_url: url }),
+      });
+
+      if (saveRes.ok) {
+        const json = await saveRes.json();
+        if (json?.data) {
+          setProfile(json.data);
+          setPhotoPreview(null);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Photo upload failed");
+      setPhotoPreview(null);
+    }
+    setUploading(false);
+  }, [profile?.id]);
+
   const handleSave = async () => {
     setSaving(true);
+    setError("");
     try {
       const res = await fetch("/api/rep-portal/me", {
         method: "PUT",
@@ -99,19 +251,19 @@ export default function RepProfilePage() {
           setBio(json.data.bio || "");
         }
         setSaved(true);
-        setError("");
         setTimeout(() => setSaved(false), 2000);
       } else {
         const errJson = await res.json().catch(() => null);
         setError(errJson?.error || "Failed to save profile (" + res.status + ")");
       }
-    } catch { setError("Failed to save profile — check your connection"); }
+    } catch {
+      setError("Failed to save profile — check your connection");
+    }
     setSaving(false);
   };
 
   const handleLogout = async () => {
     try {
-      // Clear both server-side and client-side sessions
       const supabase = getSupabaseClient();
       await Promise.all([
         fetch("/api/rep-portal/logout", { method: "POST" }),
@@ -126,15 +278,13 @@ export default function RepProfilePage() {
       await navigator.clipboard.writeText(discountCode);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
-    } catch {
-      /* clipboard not available */
-    }
+    } catch { /* clipboard not available */ }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="animate-spin h-6 w-6 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -142,141 +292,260 @@ export default function RepProfilePage() {
   if (error && !profile) {
     return (
       <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
-        <p className="text-sm text-red-400 mb-3">{error}</p>
-        <button
+        <p className="text-sm text-destructive mb-3">{error}</p>
+        <Button
+          variant="link"
+          size="sm"
           onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
-          className="text-xs text-[var(--rep-accent)] hover:underline"
         >
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
 
   if (!profile) return null;
 
+  const avatarSrc = photoPreview || profile.photo_url;
+
   return (
-    <div className="max-w-md mx-auto px-4 py-6 md:py-8 space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/20 rep-glow mb-3 overflow-hidden">
-          {profile.photo_url ? (
-            <img src={profile.photo_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-3xl font-bold text-[var(--rep-accent)]">
-              {profile.first_name.charAt(0)}
-            </span>
-          )}
-        </div>
-        <h1 className="text-lg font-bold text-white">
-          {profile.first_name} {profile.last_name}
+    <div className="max-w-md mx-auto px-4 py-6 md:py-8 space-y-6 rep-fade-in">
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
+
+      {/* ── Avatar + Identity ── */}
+      <div className="text-center rep-slide-up">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="relative inline-block group"
+          aria-label="Change profile photo"
+        >
+          <div className={cn(
+            "h-24 w-24 rounded-full border-2 border-primary/20 overflow-hidden mx-auto transition-all duration-300",
+            "bg-primary/5 rep-glow",
+            uploading && "rep-photo-uploading"
+          )}>
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center">
+                <span className="text-3xl font-bold text-primary">
+                  {profile.first_name.charAt(0)}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* Camera overlay */}
+          <div className={cn(
+            "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
+            uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
+          )}>
+            {uploading ? (
+              <Loader2 size={20} className="text-white animate-spin" />
+            ) : (
+              <Camera size={20} className="text-white" />
+            )}
+          </div>
+        </button>
+
+        <h1 className="mt-3 text-lg font-bold text-foreground">
+          {profile.display_name || profile.first_name}
         </h1>
-        <p className="text-xs text-[var(--rep-text-muted)]">{profile.email}</p>
+        <p className="text-xs text-muted-foreground">{profile.email}</p>
+
+        {/* Social links (view mode) */}
+        {(instagram || tiktok) && (
+          <div className="flex items-center justify-center gap-3 mt-3">
+            {instagram && (
+              <button
+                type="button"
+                onClick={() => openSocialProfile("instagram", instagram)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-card border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+              >
+                <Instagram size={13} />
+                @{instagram}
+              </button>
+            )}
+            {tiktok && (
+              <button
+                type="button"
+                onClick={() => openSocialProfile("tiktok", tiktok)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-card border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+              >
+                <TikTokIcon size={13} />
+                @{tiktok}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Discount Code */}
+      {/* ── Discount Code ── */}
       {discountCode && (
-        <div className="rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-4">
-          <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-accent)] font-semibold mb-2">
-            Your Discount Code
-          </p>
-          <div className="flex items-center gap-3">
-            <p className="text-lg font-bold font-mono tracking-[3px] text-white flex-1">
-              {discountCode}
-            </p>
-            <button
-              onClick={copyCode}
-              className="flex items-center gap-1.5 rounded-lg bg-[var(--rep-accent)] px-3 py-2 text-xs font-semibold text-white transition-all hover:brightness-110"
-            >
-              {copiedCode ? <Check size={12} /> : <Copy size={12} />}
-              {copiedCode ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
+        <Card className="py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up" style={{ animationDelay: "50ms" }}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Flame size={14} className="text-primary" />
+              <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold">
+                Your Code
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <p className="text-lg font-bold font-mono tracking-[3px] text-foreground flex-1">
+                {discountCode}
+              </p>
+              <Button size="sm" onClick={copyCode}>
+                {copiedCode ? <Check size={12} /> : <Copy size={12} />}
+                {copiedCode ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Edit Form */}
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-[var(--rep-text-muted)] uppercase tracking-wider">
-            Display Name
-          </label>
-          <input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            maxLength={50}
-            className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
-            placeholder="How you appear on the leaderboard"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-[var(--rep-text-muted)] uppercase tracking-wider">
-            Phone
-          </label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            maxLength={20}
-            className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
-            placeholder="+44..."
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-[var(--rep-text-muted)] uppercase tracking-wider">Instagram</label>
-            <input
-              value={instagram}
-              onChange={(e) => setInstagram(e.target.value.replace("@", ""))}
-              maxLength={30}
-              className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
-              placeholder="@handle"
+      {/* ── Edit Form ── */}
+      <Card className="py-0 gap-0 rep-slide-up" style={{ animationDelay: "100ms" }}>
+        <CardContent className="p-5 space-y-5">
+          <div className="flex items-center gap-2 mb-1">
+            <User size={14} className="text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Edit Profile</h2>
+          </div>
+
+          {/* Display Name */}
+          <div className="space-y-2">
+            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Display Name
+            </Label>
+            <Input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              maxLength={50}
+              placeholder="How you appear on the leaderboard"
+            />
+            <p className="text-[10px] text-muted-foreground/60">
+              This is what other reps see. Leave blank to use your first name.
+            </p>
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-2">
+            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Phone
+            </Label>
+            <Input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              maxLength={20}
+              placeholder="+44..."
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-[var(--rep-text-muted)] uppercase tracking-wider">TikTok</label>
-            <input
-              value={tiktok}
-              onChange={(e) => setTiktok(e.target.value.replace("@", ""))}
-              maxLength={30}
-              className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
-              placeholder="@handle"
-            />
+
+          <Separator />
+
+          {/* Socials */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Socials
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Instagram size={11} /> Instagram
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">@</span>
+                  <Input
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value.replace("@", ""))}
+                    maxLength={30}
+                    placeholder="handle"
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <TikTokIcon size={11} /> TikTok
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">@</span>
+                  <Input
+                    value={tiktok}
+                    onChange={(e) => setTiktok(e.target.value.replace("@", ""))}
+                    maxLength={30}
+                    placeholder="handle"
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-[var(--rep-text-muted)] uppercase tracking-wider">Bio</label>
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            maxLength={300}
-            className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors resize-none"
-            placeholder="Tell everyone about yourself..."
-            rows={3}
-          />
-        </div>
 
-        {error && profile && (
-          <p className="text-xs text-red-400 text-center">{error}</p>
-        )}
+          <Separator />
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full rounded-xl bg-[var(--rep-accent)] px-4 py-3 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
+          {/* Bio */}
+          <div className="space-y-2">
+            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Bio
+            </Label>
+            <Textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              maxLength={500}
+              placeholder="Tell everyone about yourself..."
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-[10px] text-muted-foreground/60 text-right">
+              {bio.length}/500
+            </p>
+          </div>
+
+          {error && profile && (
+            <Badge variant="destructive" className="w-full justify-center py-1.5">
+              {error}
+            </Badge>
+          )}
+
+          {/* Save */}
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full"
+            size="lg"
+          >
+            {saving ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : saved ? (
+              <Check size={14} />
+            ) : (
+              <Save size={14} />
+            )}
+            {saving ? "Saving..." : saved ? "Saved!" : "Save Profile"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Sign Out ── */}
+      <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          className="w-full border-destructive/20 text-destructive hover:bg-destructive/5 hover:text-destructive"
         >
-          {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : <Save size={14} />}
-          {saving ? "Saving..." : saved ? "Saved!" : "Save Profile"}
-        </button>
+          <LogOut size={14} />
+          Sign Out
+        </Button>
       </div>
-
-      {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="w-full rounded-xl border border-red-500/20 px-4 py-3 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/5 flex items-center justify-center gap-2"
-      >
-        <LogOut size={14} /> Sign Out
-      </button>
     </div>
   );
 }

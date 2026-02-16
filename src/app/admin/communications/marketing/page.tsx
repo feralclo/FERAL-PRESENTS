@@ -1,18 +1,35 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ShoppingCart, Sparkles } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ShoppingCart,
+  Sparkles,
+  Power,
+} from "lucide-react";
 
 export default function MarketingPage() {
+  const [automationActive, setAutomationActive] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings?key=feral_abandoned_cart_automation")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data?.enabled) setAutomationActive(true);
+      })
+      .catch(() => {});
+  }, []);
+
   const automations = [
     {
       name: "Abandoned Cart",
-      description: "Recover lost sales — automatically email customers who added tickets but didn't complete checkout",
+      description: "Recover lost sales — automatically email customers who added tickets but didn\u2019t complete checkout",
       href: "/admin/communications/marketing/abandoned-cart/",
-      active: false,
-      note: "Coming soon",
+      active: automationActive,
       icon: ShoppingCart,
     },
   ];
@@ -41,22 +58,45 @@ export default function MarketingPage() {
         {automations.map((a) => {
           const Icon = a.icon;
           return (
-            <Card key={a.name} className="p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/80">
-                    <Icon size={16} className="text-muted-foreground" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-sm font-medium text-foreground">{a.name}</span>
-                      <Badge variant="secondary" className="text-[10px] py-0">{a.note}</Badge>
+            <Link key={a.name} href={a.href} className="block group">
+              <Card
+                className="p-5 transition-all duration-200 hover:border-primary/20"
+                style={a.active ? {
+                  borderColor: "rgba(16,185,129,0.2)",
+                  background: "linear-gradient(135deg, rgba(16,185,129,0.03), transparent)",
+                } : {}}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="flex items-center justify-center w-9 h-9 rounded-lg transition-all"
+                      style={{
+                        backgroundColor: a.active ? "rgba(16,185,129,0.1)" : "var(--color-accent)",
+                      }}
+                    >
+                      <Icon size={16} style={{ color: a.active ? "#10b981" : undefined }} className={a.active ? "" : "text-muted-foreground"} />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{a.description}</p>
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-medium text-foreground">{a.name}</span>
+                        {a.active ? (
+                          <Badge variant="success" className="gap-1 text-[9px] font-bold uppercase">
+                            <Power size={7} /> Live
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] py-0">Configure</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{a.description}</p>
+                    </div>
                   </div>
+                  <ChevronRight
+                    size={16}
+                    className="text-muted-foreground/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+                  />
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </Link>
           );
         })}
       </div>

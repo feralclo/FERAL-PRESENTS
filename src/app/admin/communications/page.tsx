@@ -142,6 +142,7 @@ export default function CommunicationsPage() {
 
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [walletEnabled, setWalletEnabled] = useState(false);
+  const [abandonedCartEnabled, setAbandonedCartEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/email/status")
@@ -160,6 +161,13 @@ export default function CommunicationsPage() {
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.apple_wallet_enabled || json?.data?.google_wallet_enabled) setWalletEnabled(true);
+      })
+      .catch(() => {});
+
+    fetch("/api/settings?key=feral_abandoned_cart_automation")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data?.enabled) setAbandonedCartEnabled(true);
       })
       .catch(() => {});
   }, []);
@@ -237,9 +245,9 @@ export default function CommunicationsPage() {
           title="Marketing"
           description="Campaigns and automated sequences"
           icon={Megaphone}
-          status="coming-soon"
+          status={abandonedCartEnabled ? "live" : "coming-soon"}
           templates={[
-            { name: "Abandoned Cart", href: "/admin/communications/marketing/abandoned-cart/", active: false, icon: ShoppingCart },
+            { name: "Abandoned Cart", href: "/admin/communications/marketing/abandoned-cart/", active: abandonedCartEnabled, icon: ShoppingCart },
           ]}
         />
       </div>

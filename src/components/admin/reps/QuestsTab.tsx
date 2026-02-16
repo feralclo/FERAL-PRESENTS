@@ -293,12 +293,15 @@ export function QuestsTab() {
                 <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
               </div>
             </div>
-            <ImageUpload
-              label="Reference Image"
-              value={imageUrl}
-              onChange={setImageUrl}
-              uploadKey={editId ? `quest_${editId}_image` : undefined}
-            />
+            <div className="space-y-1.5">
+              <ImageUpload
+                label="Reference Image"
+                value={imageUrl}
+                onChange={setImageUrl}
+                uploadKey={editId ? `quest_${editId}_image` : undefined}
+              />
+              <p className="text-[11px] text-muted-foreground">Recommended: 800 &times; 450px landscape (16:9). Shown as an ambient background on quest cards.</p>
+            </div>
             <div className="space-y-2">
               <Label>Reference Video URL</Label>
               <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="TikTok / YouTube link" />

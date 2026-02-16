@@ -369,14 +369,30 @@ The platform has THREE Supabase clients. Using the wrong one causes silent data 
 5. **Admin pages must show API errors** — never silently swallow `fetch()` failures
 
 ### External Service Changes Rule (CRITICAL)
-The user manages Supabase, Vercel, Stripe, and other services manually via their dashboards. They do NOT use migration files, CLI tools, or infrastructure-as-code. Whenever code requires a change to an external service, you MUST:
+Claude has MCP (Model Context Protocol) access to **Supabase**, **Stripe**, and **Vercel**. Use MCP tools directly instead of telling the user to go to dashboards.
 
-1. **Tell the user immediately** — in the same response where the code is written
-2. **Make it copy-paste ready** — exact SQL, exact env var names, exact settings to toggle
-3. **Say exactly where to go** — "Supabase dashboard → SQL Editor", etc.
+**Supabase (full MCP access)** — use MCP tools to:
+- Create tables, add columns, modify schema (`apply_migration`)
+- Run queries (`execute_sql`)
+- List tables, check migrations, manage extensions
+- Deploy Edge Functions
+- Do NOT tell the user to go to the Supabase dashboard for schema changes — do it directly
+
+**Stripe (MCP access)** — use MCP tools to:
+- Create/list products, prices, customers, invoices, payment links, coupons, subscriptions
+- Search resources, fetch details, manage refunds and disputes
+- Fall back to telling the user to use the Stripe dashboard only for things MCP can't do (e.g., webhook endpoint configuration, Connect onboarding settings, complex dashboard-only features)
+
+**Vercel** — no MCP access currently. Tell the user to go to the Vercel dashboard for:
+- Environment variable changes, build settings, domain configuration
+
+**For all services, you MUST:**
+1. **Never hardcode secrets** — always use environment variables
+2. **Document changes in this file** — update the Database tables section, API routes, or env vars after any structural change
+3. **Tell the user about manual steps** — if MCP can't do something, make it copy-paste ready with exact instructions
 4. **Never assume it already exists** unless documented in this file
 
-This applies to: Supabase (SQL for tables/columns/RLS/indexes), Vercel (env vars, build settings), Stripe (webhooks, Connect settings), and any other service (Resend, Klaviyo, GTM).
+This applies to all external services: Supabase, Stripe, Vercel, Resend, Klaviyo, GTM.
 
 ---
 

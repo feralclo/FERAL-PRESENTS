@@ -145,7 +145,7 @@ export interface RepQuest {
 }
 
 // ─── Quest Submissions ───────────────────────────────────────────────────────
-export type SubmissionProofType = "screenshot" | "url" | "text";
+export type SubmissionProofType = "screenshot" | "url" | "text" | "tiktok_link" | "instagram_link";
 export type SubmissionStatus = "pending" | "approved" | "rejected";
 
 export interface RepQuestSubmission {

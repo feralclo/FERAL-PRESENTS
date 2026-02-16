@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Swords, Upload, Link as LinkIcon, Type, X, Loader2, Check } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import {
+  Swords, Upload, Link as LinkIcon, Type, X, Loader2, Check,
+  Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
+} from "lucide-react";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Quest {
   id: string;
@@ -17,38 +22,123 @@ interface Quest {
   max_completions?: number;
 }
 
+interface Submission {
+  id: string;
+  quest_id: string;
+  proof_type: string;
+  proof_url?: string | null;
+  proof_text?: string | null;
+  status: "pending" | "approved" | "rejected";
+  rejection_reason?: string | null;
+  points_awarded: number;
+  created_at: string;
+}
+
+type ProofType = "tiktok_link" | "instagram_link" | "screenshot" | "url" | "text";
+
+// ─── Quest type → proof type mapping ─────────────────────────────────────────
+
+const QUEST_PROOF_MAP: Record<string, { types: ProofType[]; default: ProofType }> = {
+  social_post: { types: ["tiktok_link", "instagram_link", "url"], default: "tiktok_link" },
+  story_share: { types: ["screenshot", "url"], default: "screenshot" },
+  content_creation: { types: ["tiktok_link", "instagram_link", "url", "screenshot"], default: "url" },
+  custom: { types: ["tiktok_link", "instagram_link", "url", "screenshot", "text"], default: "url" },
+};
+
+const PROOF_TYPE_CONFIG: Record<ProofType, { label: string; icon: typeof LinkIcon; placeholder: string }> = {
+  tiktok_link: { label: "TikTok", icon: LinkIcon, placeholder: "Paste your TikTok video URL..." },
+  instagram_link: { label: "Instagram", icon: LinkIcon, placeholder: "Paste your Instagram post/reel URL..." },
+  url: { label: "URL", icon: LinkIcon, placeholder: "Paste the URL..." },
+  screenshot: { label: "Screenshot", icon: Upload, placeholder: "Paste screenshot URL..." },
+  text: { label: "Text", icon: Type, placeholder: "Describe what you did..." },
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getExpiryInfo(expiresAt: string): { text: string; urgent: boolean } | null {
+  const now = new Date();
+  const expiry = new Date(expiresAt);
+  const diffMs = expiry.getTime() - now.getTime();
+  if (diffMs <= 0) return null;
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays <= 1) return { text: "Expires today", urgent: true };
+  if (diffDays <= 3) return { text: `Expires in ${diffDays} days`, urgent: true };
+  if (diffDays <= 7) return { text: `Expires in ${diffDays} days`, urgent: false };
+  return { text: `Expires ${expiry.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, urgent: false };
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export default function RepQuestsPage() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [loadKey, setLoadKey] = useState(0);
   const [tab, setTab] = useState<"active" | "completed">("active");
 
   // Submit proof
   const [submitQuestId, setSubmitQuestId] = useState<string | null>(null);
-  const [proofType, setProofType] = useState<"screenshot" | "url" | "text">("url");
+  const [proofType, setProofType] = useState<ProofType>("url");
   const [proofText, setProofText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState("");
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/rep-portal/quests");
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => null);
-          setError(errJson?.error || "Failed to load quests (" + res.status + ")");
-          setLoading(false);
-          return;
-        }
+  // View submissions
+  const [expandedQuestId, setExpandedQuestId] = useState<string | null>(null);
+  const [questSubmissions, setQuestSubmissions] = useState<Record<string, Submission[]>>({});
+  const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
+
+  const loadQuests = useCallback(async () => {
+    try {
+      const res = await fetch("/api/rep-portal/quests");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        setError(errJson?.error || "Failed to load quests (" + res.status + ")");
+        setLoading(false);
+        return;
+      }
+      const json = await res.json();
+      if (json.data) setQuests(json.data);
+    } catch {
+      setError("Failed to load quests — check your connection");
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadQuests(); }, [loadQuests]);
+
+  const loadSubmissions = useCallback(async (questId: string) => {
+    setLoadingSubs(questId);
+    try {
+      const res = await fetch(`/api/rep-portal/quests/submissions?quest_id=${questId}`);
+      if (res.ok) {
         const json = await res.json();
-        if (json.data) setQuests(json.data);
-      } catch { setError("Failed to load quests — check your connection"); }
-      setLoading(false);
-    })();
-  }, [loadKey]);
+        setQuestSubmissions((prev) => ({ ...prev, [questId]: json.data || [] }));
+      }
+    } catch { /* network */ }
+    setLoadingSubs(null);
+  }, []);
+
+  const toggleSubmissions = (questId: string) => {
+    if (expandedQuestId === questId) {
+      setExpandedQuestId(null);
+    } else {
+      setExpandedQuestId(questId);
+      if (!questSubmissions[questId]) {
+        loadSubmissions(questId);
+      }
+    }
+  };
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
@@ -77,8 +167,20 @@ export default function RepQuestsPage() {
       } else {
         setError("Failed to upload image");
       }
-    } catch { setError("Failed to upload image — check your connection"); }
+    } catch {
+      setError("Failed to upload image — check your connection");
+    }
     setUploading(false);
+  };
+
+  const openSubmitModal = (quest: Quest) => {
+    const mapping = QUEST_PROOF_MAP[quest.quest_type] || QUEST_PROOF_MAP.custom;
+    setSubmitQuestId(quest.id);
+    setProofType(mapping.default);
+    setSubmitted(false);
+    setProofText("");
+    setUploadedUrl("");
+    setError("");
   };
 
   const handleSubmit = async () => {
@@ -87,34 +189,44 @@ export default function RepQuestsPage() {
     if (!proofValue) return;
     setSubmitting(true);
     try {
+      const isUrlType = ["tiktok_link", "instagram_link", "url", "screenshot"].includes(proofType);
       const res = await fetch(`/api/rep-portal/quests/${submitQuestId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           proof_type: proofType,
           proof_text: proofValue,
-          proof_url: proofType === "screenshot" || proofType === "url" ? proofValue : undefined,
+          proof_url: isUrlType ? proofValue : undefined,
         }),
       });
       if (res.ok) {
         setSubmitted(true);
         setError("");
+        // Auto-refresh: close modal after delay, then reload quests + submissions
         setTimeout(() => {
+          const questId = submitQuestId;
           setSubmitQuestId(null);
           setSubmitted(false);
           setProofText("");
+          setUploadedUrl("");
+          // Refresh quest list to update submission counts
+          loadQuests();
+          // Refresh submissions if this quest's submissions are expanded
+          if (questId && expandedQuestId === questId) {
+            loadSubmissions(questId);
+          }
         }, 1500);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.error || "Failed to submit quest proof");
       }
-    } catch { setError("Failed to submit quest proof — check your connection"); }
+    } catch {
+      setError("Failed to submit quest proof — check your connection");
+    }
     setSubmitting(false);
   };
 
-  const getApprovedCount = (q: Quest): number => {
-    return q.my_submissions?.approved ?? 0;
-  };
+  const getApprovedCount = (q: Quest): number => q.my_submissions?.approved ?? 0;
 
   const activeQuests = quests.filter((q) =>
     !q.max_completions || getApprovedCount(q) < q.max_completions
@@ -122,6 +234,12 @@ export default function RepQuestsPage() {
   const completedQuests = quests.filter((q) =>
     q.max_completions && getApprovedCount(q) >= q.max_completions
   );
+
+  // Get current quest for submit modal context
+  const submitQuest = submitQuestId ? quests.find((q) => q.id === submitQuestId) : null;
+  const availableProofTypes = submitQuest
+    ? (QUEST_PROOF_MAP[submitQuest.quest_type] || QUEST_PROOF_MAP.custom).types
+    : [];
 
   if (loading) {
     return (
@@ -136,7 +254,7 @@ export default function RepQuestsPage() {
       <div className="flex flex-col items-center justify-center py-32 px-4 text-center">
         <p className="text-sm text-red-400 mb-3">{error}</p>
         <button
-          onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+          onClick={() => { setError(""); setLoading(true); loadQuests(); }}
           className="text-xs text-[var(--rep-accent)] hover:underline"
         >
           Try again
@@ -157,7 +275,7 @@ export default function RepQuestsPage() {
         </p>
       </div>
 
-      {/* Inline error (e.g. submission failure) */}
+      {/* Inline error */}
       {error && quests.length > 0 && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
           <p className="text-xs text-red-400">{error}</p>
@@ -177,6 +295,9 @@ export default function RepQuestsPage() {
             }`}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === "active" && activeQuests.length > 0 && (
+              <span className="ml-1.5 text-[10px] opacity-60">{activeQuests.length}</span>
+            )}
           </button>
         ))}
       </div>
@@ -196,67 +317,187 @@ export default function RepQuestsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {displayQuests.map((quest) => (
-            <div key={quest.id} className="rep-quest-card">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-white">{quest.title}</h3>
-                  {quest.description && (
-                    <p className="text-xs text-[var(--rep-text-muted)] mt-1 line-clamp-2">{quest.description}</p>
-                  )}
-                </div>
-                <div className="shrink-0 rounded-lg bg-[var(--rep-accent)]/10 px-2.5 py-1">
-                  <span className="text-xs font-bold text-[var(--rep-accent)]">+{quest.points_reward}</span>
-                </div>
-              </div>
+          {displayQuests.map((quest) => {
+            const expiry = quest.expires_at ? getExpiryInfo(quest.expires_at) : null;
+            const subs = quest.my_submissions;
+            const hasSubs = subs.total > 0;
+            const isExpanded = expandedQuestId === quest.id;
 
-              {quest.instructions && (
-                <div className="rounded-lg bg-[var(--rep-surface)] p-3 mb-3">
-                  <p className="text-[11px] text-[var(--rep-text-muted)] leading-relaxed">{quest.instructions}</p>
-                </div>
-              )}
+            return (
+              <div key={quest.id} className="rep-quest-card">
+                {/* Expiry warning */}
+                {expiry?.urgent && (
+                  <div className="flex items-center gap-1.5 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
+                    <Clock size={12} className="text-amber-400 shrink-0" />
+                    <span className="text-[11px] font-medium text-amber-400">{expiry.text}</span>
+                  </div>
+                )}
 
-              {quest.image_url && (
-                <img src={quest.image_url} alt="" className="rounded-lg mb-3 max-h-40 w-full object-cover" />
-              )}
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-[10px] text-[var(--rep-text-muted)]">
-                  <span className="uppercase tracking-wider">{quest.quest_type.replace("_", " ")}</span>
-                  {quest.expires_at && (
-                    <span>Expires {new Date(quest.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-                  )}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-white">{quest.title}</h3>
+                    {quest.description && (
+                      <p className="text-xs text-[var(--rep-text-muted)] mt-1 line-clamp-2">{quest.description}</p>
+                    )}
+                  </div>
+                  <div className="shrink-0 rounded-lg bg-[var(--rep-accent)]/10 px-2.5 py-1">
+                    <span className="text-xs font-bold text-[var(--rep-accent)]">+{quest.points_reward}</span>
+                  </div>
                 </div>
-                {tab === "active" && (
-                  <button
-                    onClick={() => {
-                      setSubmitQuestId(quest.id);
-                      setSubmitted(false);
-                      setProofText("");
-                    }}
-                    className="rounded-lg bg-[var(--rep-accent)] px-4 py-2 text-xs font-semibold text-white transition-all hover:brightness-110"
-                  >
-                    Submit Proof
-                  </button>
+
+                {quest.instructions && (
+                  <div className="rounded-lg bg-[var(--rep-surface)] p-3 mb-3">
+                    <p className="text-[11px] text-[var(--rep-text-muted)] leading-relaxed">{quest.instructions}</p>
+                  </div>
+                )}
+
+                {quest.image_url && (
+                  <img src={quest.image_url} alt="" className="rounded-lg mb-3 max-h-40 w-full object-cover" />
+                )}
+
+                {/* Submission status badges */}
+                {hasSubs && (
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                    {subs.pending > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                        <Clock size={10} /> {subs.pending} pending
+                      </span>
+                    )}
+                    {subs.approved > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                        <Check size={10} /> {subs.approved} approved
+                      </span>
+                    )}
+                    {subs.rejected > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                        <X size={10} /> {subs.rejected} rejected
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-[10px] text-[var(--rep-text-muted)]">
+                    <span className="uppercase tracking-wider">{quest.quest_type.replace("_", " ")}</span>
+                    {expiry && !expiry.urgent && (
+                      <span>{expiry.text}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* View past submissions */}
+                    {hasSubs && (
+                      <button
+                        onClick={() => toggleSubmissions(quest.id)}
+                        className="flex items-center gap-1 rounded-lg border border-[var(--rep-border)] px-3 py-2 text-[11px] text-[var(--rep-text-muted)] transition-colors hover:text-white hover:border-white/20"
+                      >
+                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        History
+                      </button>
+                    )}
+                    {tab === "active" && (
+                      <button
+                        onClick={() => openSubmitModal(quest)}
+                        className="rounded-lg bg-[var(--rep-accent)] px-4 py-2 text-xs font-semibold text-white transition-all hover:brightness-110"
+                      >
+                        Submit Proof
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded submissions list */}
+                {isExpanded && (
+                  <div className="mt-3 pt-3 border-t border-[var(--rep-border)]">
+                    {loadingSubs === quest.id ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin h-4 w-4 border-2 border-[var(--rep-accent)] border-t-transparent rounded-full" />
+                      </div>
+                    ) : !questSubmissions[quest.id]?.length ? (
+                      <p className="text-xs text-[var(--rep-text-muted)] text-center py-3">No submissions yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {questSubmissions[quest.id].map((sub) => (
+                          <div
+                            key={sub.id}
+                            className="rounded-lg bg-[var(--rep-surface)] border border-[var(--rep-border)] p-3"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[10px] text-[var(--rep-text-muted)]">
+                                {formatDate(sub.created_at)}
+                              </span>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                                sub.status === "approved"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : sub.status === "rejected"
+                                  ? "bg-red-500/10 text-red-400"
+                                  : "bg-amber-500/10 text-amber-400"
+                              }`}>
+                                {sub.status}
+                                {sub.status === "approved" && sub.points_awarded > 0 && (
+                                  <span className="ml-1">+{sub.points_awarded} pts</span>
+                                )}
+                              </span>
+                            </div>
+                            {/* Proof summary */}
+                            <div className="text-xs text-[var(--rep-text-muted)]">
+                              {sub.proof_type === "screenshot" && sub.proof_url && (
+                                <img src={sub.proof_url} alt="Proof" className="max-h-20 rounded mt-1" />
+                              )}
+                              {(sub.proof_type === "tiktok_link" || sub.proof_type === "instagram_link" || sub.proof_type === "url") && (sub.proof_url || sub.proof_text) && (
+                                <a
+                                  href={sub.proof_url || sub.proof_text || "#"}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[var(--rep-accent)] hover:underline break-all inline-flex items-center gap-1"
+                                >
+                                  <ExternalLink size={10} />
+                                  {sub.proof_type === "tiktok_link" ? "TikTok" : sub.proof_type === "instagram_link" ? "Instagram" : "Link"}
+                                </a>
+                              )}
+                              {sub.proof_type === "text" && sub.proof_text && (
+                                <p className="line-clamp-2 mt-0.5">{sub.proof_text}</p>
+                              )}
+                            </div>
+                            {/* Rejection reason */}
+                            {sub.status === "rejected" && sub.rejection_reason && (
+                              <div className="mt-2 rounded bg-red-500/5 border border-red-500/10 px-2.5 py-1.5">
+                                <div className="flex items-start gap-1.5">
+                                  <AlertCircle size={10} className="text-red-400 mt-0.5 shrink-0" />
+                                  <p className="text-[10px] text-red-400">{sub.rejection_reason}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Submit Proof Modal */}
       {submitQuestId && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setSubmitQuestId(null); }}
+        <div
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
         >
           <div className="w-full max-w-md rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-bg)] p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-bold text-white">Submit Proof</h3>
-              <button onClick={() => setSubmitQuestId(null)} className="text-[var(--rep-text-muted)] hover:text-white">
+              <button
+                onClick={() => { if (!submitting) setSubmitQuestId(null); }}
+                className="text-[var(--rep-text-muted)] hover:text-white"
+              >
                 <X size={18} />
               </button>
             </div>
+            {submitQuest && (
+              <p className="text-xs text-[var(--rep-text-muted)] mb-4 line-clamp-1">{submitQuest.title}</p>
+            )}
 
             {submitted ? (
               <div className="text-center py-6">
@@ -268,25 +509,25 @@ export default function RepQuestsPage() {
             ) : (
               <>
                 {/* Proof type selector */}
-                <div className="flex gap-2 mb-4">
-                  {([
-                    { value: "url" as const, label: "URL", icon: LinkIcon },
-                    { value: "screenshot" as const, label: "Screenshot", icon: Upload },
-                    { value: "text" as const, label: "Text", icon: Type },
-                  ]).map(({ value, label, icon: Icon }) => (
-                    <button
-                      key={value}
-                      onClick={() => setProofType(value)}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                        proofType === value
-                          ? "bg-[var(--rep-accent)]/10 text-[var(--rep-accent)] border border-[var(--rep-accent)]/30"
-                          : "bg-[var(--rep-surface)] text-[var(--rep-text-muted)] border border-[var(--rep-border)]"
-                      }`}
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {availableProofTypes.map((pt) => {
+                    const config = PROOF_TYPE_CONFIG[pt];
+                    const Icon = config.icon;
+                    return (
+                      <button
+                        key={pt}
+                        onClick={() => { setProofType(pt); setProofText(""); setUploadedUrl(""); }}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                          proofType === pt
+                            ? "bg-[var(--rep-accent)]/10 text-[var(--rep-accent)] border border-[var(--rep-accent)]/30"
+                            : "bg-[var(--rep-surface)] text-[var(--rep-text-muted)] border border-[var(--rep-border)]"
+                        }`}
+                      >
+                        <Icon size={12} />
+                        {config.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Proof input */}
@@ -295,7 +536,7 @@ export default function RepQuestsPage() {
                     value={proofText}
                     onChange={(e) => setProofText(e.target.value)}
                     className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors resize-none"
-                    placeholder="Describe what you did..."
+                    placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
                     rows={4}
                     autoFocus
                   />
@@ -337,23 +578,36 @@ export default function RepQuestsPage() {
                       value={uploadedUrl ? "" : proofText}
                       onChange={(e) => { setProofText(e.target.value); setUploadedUrl(""); }}
                       className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
-                      placeholder="Paste screenshot URL..."
+                      placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
                       disabled={!!uploadedUrl}
                     />
                   </div>
                 ) : (
+                  /* tiktok_link, instagram_link, url — all are URL inputs */
                   <input
                     value={proofText}
                     onChange={(e) => setProofText(e.target.value)}
                     className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
-                    placeholder="Paste the URL..."
+                    placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
                     autoFocus
                   />
                 )}
 
+                {/* Inline validation hint for social links */}
+                {proofType === "tiktok_link" && proofText && !/tiktok\.com\//.test(proofText) && (
+                  <p className="mt-2 text-[10px] text-amber-400 flex items-center gap-1">
+                    <AlertCircle size={10} /> Must be a TikTok URL (e.g. tiktok.com/@user/video/...)
+                  </p>
+                )}
+                {proofType === "instagram_link" && proofText && !/instagram\.com\/(p|reel|reels|tv)\//.test(proofText) && (
+                  <p className="mt-2 text-[10px] text-amber-400 flex items-center gap-1">
+                    <AlertCircle size={10} /> Must be an Instagram post or reel URL
+                  </p>
+                )}
+
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || !proofText.trim()}
+                  disabled={submitting || (!proofText.trim() && !uploadedUrl)}
                   className="w-full mt-4 rounded-xl bg-[var(--rep-accent)] px-4 py-3 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
                 >
                   {submitting ? (

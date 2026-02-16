@@ -25,24 +25,19 @@ export async function POST(
     const { proof_type, proof_url, proof_text } = body;
 
     // Validate proof_type
-    const validProofTypes = ["screenshot", "url", "text"];
+    const validProofTypes = ["screenshot", "url", "text", "tiktok_link", "instagram_link"];
     if (!proof_type || !validProofTypes.includes(proof_type)) {
       return NextResponse.json(
-        { error: "Invalid proof_type. Must be: screenshot, url, or text" },
+        { error: "Invalid proof_type. Must be: screenshot, url, text, tiktok_link, or instagram_link" },
         { status: 400 }
       );
     }
 
     // Validate proof content based on type
-    if (proof_type === "screenshot" && !proof_url) {
+    const urlProofTypes = ["screenshot", "url", "tiktok_link", "instagram_link"];
+    if (urlProofTypes.includes(proof_type) && !proof_url) {
       return NextResponse.json(
-        { error: "proof_url is required for screenshot submissions" },
-        { status: 400 }
-      );
-    }
-    if (proof_type === "url" && !proof_url) {
-      return NextResponse.json(
-        { error: "proof_url is required for URL submissions" },
+        { error: `proof_url is required for ${proof_type} submissions` },
         { status: 400 }
       );
     }
@@ -68,7 +63,7 @@ export async function POST(
     }
 
     // URL format validation for url/screenshot types
-    if (proof_url && (proof_type === "url" || proof_type === "screenshot")) {
+    if (proof_url && urlProofTypes.includes(proof_type)) {
       try {
         const parsed = new URL(proof_url);
         if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -85,6 +80,28 @@ export async function POST(
             { status: 400 }
           );
         }
+      }
+    }
+
+    // TikTok URL validation
+    if (proof_type === "tiktok_link" && proof_url) {
+      const tiktokPattern = /^https?:\/\/(www\.|m\.|vm\.)?tiktok\.com\//;
+      if (!tiktokPattern.test(proof_url)) {
+        return NextResponse.json(
+          { error: "Please submit a valid TikTok URL (e.g. https://www.tiktok.com/@user/video/...)" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Instagram URL validation
+    if (proof_type === "instagram_link" && proof_url) {
+      const instaPattern = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|tv)\//;
+      if (!instaPattern.test(proof_url)) {
+        return NextResponse.json(
+          { error: "Please submit a valid Instagram post or reel URL (e.g. https://www.instagram.com/p/... or /reel/...)" },
+          { status: 400 }
+        );
       }
     }
 

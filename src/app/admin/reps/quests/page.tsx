@@ -40,8 +40,10 @@ import {
   Eye,
   Check,
   X,
-  Image as ImageIcon,
+  CheckSquare,
+  Square,
 } from "lucide-react";
+import { ProofDisplay } from "@/components/admin/SocialEmbed";
 import type { RepQuest, QuestType, QuestStatus, RepQuestSubmission } from "@/types/reps";
 
 const QUEST_TYPE_LABELS: Record<QuestType, string> = {
@@ -56,6 +58,14 @@ const STATUS_VARIANT: Record<QuestStatus, "success" | "warning" | "secondary" | 
   paused: "warning",
   archived: "secondary",
   draft: "outline",
+};
+
+/** Maps quest type to recommended proof types for the admin UI hint */
+const QUEST_PROOF_HINT: Record<QuestType, string> = {
+  social_post: "Reps will submit TikTok or Instagram links",
+  story_share: "Reps will upload a screenshot",
+  content_creation: "Reps can submit any URL or file upload",
+  custom: "Reps can submit any proof type",
 };
 
 export default function QuestsPage() {
@@ -88,6 +98,10 @@ export default function QuestsPage() {
   const [reviewError, setReviewError] = useState("");
   const [saveError, setSaveError] = useState("");
 
+  // Batch selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchProcessing, setBatchProcessing] = useState(false);
+
   const loadQuests = useCallback(async () => {
     setLoading(true);
     try {
@@ -104,6 +118,7 @@ export default function QuestsPage() {
 
   const loadSubmissions = useCallback(async (questId: string) => {
     setLoadingSubs(true);
+    setSelectedIds(new Set());
     try {
       const res = await fetch(`/api/reps/quests/${questId}/submissions`);
       const json = await res.json();
@@ -203,6 +218,52 @@ export default function QuestsPage() {
     setReviewingId(null);
   };
 
+  // ─── Batch operations ─────────────────────────────────────────────────────
+
+  const pendingSubmissions = submissions.filter((s) => s.status === "pending");
+  const allPendingSelected = pendingSubmissions.length > 0 && pendingSubmissions.every((s) => selectedIds.has(s.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allPendingSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pendingSubmissions.map((s) => s.id)));
+    }
+  };
+
+  const handleBatchReview = async (status: "approved" | "rejected", reason?: string) => {
+    if (selectedIds.size === 0) return;
+    setBatchProcessing(true);
+    setReviewError("");
+    const ids = Array.from(selectedIds);
+    let failCount = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/reps/quests/submissions/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status, rejection_reason: reason }),
+        });
+        if (!res.ok) failCount++;
+      } catch { failCount++; }
+    }
+    if (failCount > 0) {
+      setReviewError(`${failCount} of ${ids.length} reviews failed`);
+    }
+    setSelectedIds(new Set());
+    setBatchProcessing(false);
+    if (showSubmissions) loadSubmissions(showSubmissions);
+  };
+
   const filtered = filter === "all" ? quests : quests.filter((q) => q.status === filter);
   const counts = {
     all: quests.length,
@@ -300,7 +361,7 @@ export default function QuestsPage() {
                   <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                     {quest.expires_at
                       ? new Date(quest.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-                      : "—"}
+                      : "\u2014"}
                   </TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[quest.status]}>{quest.status}</Badge>
@@ -373,6 +434,7 @@ export default function QuestsPage() {
                     <SelectItem value="custom">Custom</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-muted-foreground">{QUEST_PROOF_HINT[questType]}</p>
               </div>
               <div className="space-y-2">
                 <Label>Points Reward</Label>
@@ -423,12 +485,50 @@ export default function QuestsPage() {
       </Dialog>
 
       {/* Submissions Review Dialog */}
-      <Dialog open={!!showSubmissions} onOpenChange={(open) => !open && setShowSubmissions(null)}>
+      <Dialog open={!!showSubmissions} onOpenChange={(open) => { if (!open) { setShowSubmissions(null); setSelectedIds(new Set()); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Quest Submissions</DialogTitle>
             <DialogDescription>Review proof submitted by reps.</DialogDescription>
           </DialogHeader>
+
+          {/* Batch actions bar */}
+          {pendingSubmissions.length > 0 && (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <button
+                onClick={toggleSelectAll}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {allPendingSelected ? <CheckSquare size={14} className="text-primary" /> : <Square size={14} />}
+                {allPendingSelected ? "Deselect all" : `Select all pending (${pendingSubmissions.length})`}
+              </button>
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
+                  <Button
+                    size="sm"
+                    disabled={batchProcessing}
+                    onClick={() => handleBatchReview("approved")}
+                  >
+                    {batchProcessing ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                    Approve All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={batchProcessing}
+                    onClick={() => {
+                      const reason = prompt("Rejection reason for all selected submissions:");
+                      if (reason?.trim()) handleBatchReview("rejected", reason.trim());
+                    }}
+                  >
+                    <X size={12} /> Reject All
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {loadingSubs ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 size={18} className="animate-spin text-primary/60" />
@@ -440,34 +540,48 @@ export default function QuestsPage() {
               {submissions.map((sub) => (
                 <div key={sub.id} className="rounded-lg border border-border p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {new Date(sub.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
+                    <div className="flex items-start gap-2">
+                      {/* Batch checkbox for pending submissions */}
+                      {sub.status === "pending" && (
+                        <button
+                          onClick={() => toggleSelect(sub.id)}
+                          className="mt-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {selectedIds.has(sub.id) ? (
+                            <CheckSquare size={16} className="text-primary" />
+                          ) : (
+                            <Square size={16} />
+                          )}
+                        </button>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {new Date(sub.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
                     </div>
                     <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"}>
                       {sub.status}
                     </Badge>
                   </div>
-                  {/* Proof */}
+
+                  {/* Proof display with social embeds */}
                   <div className="rounded-md bg-muted/30 p-3 mb-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Proof ({sub.proof_type})</p>
-                    {sub.proof_type === "screenshot" && sub.proof_url && (
-                      <img src={sub.proof_url} alt="Proof" className="max-h-40 rounded-md" />
-                    )}
-                    {sub.proof_type === "url" && sub.proof_text && (
-                      <a href={sub.proof_text} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">
-                        {sub.proof_text}
-                      </a>
-                    )}
-                    {sub.proof_type === "text" && sub.proof_text && (
-                      <p className="text-sm text-foreground">{sub.proof_text}</p>
-                    )}
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                      Proof ({sub.proof_type.replace("_", " ")})
+                    </p>
+                    <ProofDisplay
+                      proofType={sub.proof_type}
+                      proofUrl={sub.proof_url}
+                      proofText={sub.proof_text}
+                      compact
+                    />
                   </div>
-                  {/* Actions */}
+
+                  {/* Actions for pending submissions */}
                   {sub.status === "pending" && (
                     <div className="space-y-2">
                       {rejectingId === sub.id ? (
@@ -531,7 +645,7 @@ export default function QuestsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowSubmissions(null); setReviewError(""); setRejectingId(null); }}>Close</Button>
+            <Button variant="outline" onClick={() => { setShowSubmissions(null); setReviewError(""); setRejectingId(null); setSelectedIds(new Set()); }}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { TABLES, ORG_ID } from "@/lib/constants";
 
 /**
  * GET /api/rep-portal/auth-check — Lightweight rep status check (protected by session)
@@ -30,25 +30,27 @@ export async function GET() {
     }
 
     // Use admin client for rep lookup (bypasses RLS)
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const repDb =
-      serviceRoleKey && SUPABASE_URL
-        ? createClient(SUPABASE_URL, serviceRoleKey)
-        : supabase;
+    const adminDb = await getSupabaseAdmin();
+    if (!adminDb) {
+      return NextResponse.json(
+        { authenticated: false, error: "Service unavailable" },
+        { status: 503 }
+      );
+    }
 
     // Look up rep by auth_user_id
-    let { data: rep } = await repDb
+    let { data: rep } = await adminDb
       .from(TABLES.REPS)
-      .select("id, email, first_name, status, email_verified, onboarding_completed")
+      .select("id, email, first_name, status, onboarding_completed")
       .eq("auth_user_id", user.id)
       .eq("org_id", ORG_ID)
       .single();
 
     // Self-healing: try email-based lookup if auth_user_id not matched
     if (!rep && user.email) {
-      const { data: repByEmail } = await repDb
+      const { data: repByEmail } = await adminDb
         .from(TABLES.REPS)
-        .select("id, email, first_name, status, email_verified, onboarding_completed")
+        .select("id, email, first_name, status, onboarding_completed")
         .eq("email", user.email.toLowerCase())
         .eq("org_id", ORG_ID)
         .is("auth_user_id", null)
@@ -56,7 +58,7 @@ export async function GET() {
 
       if (repByEmail) {
         // Auto-link
-        await repDb
+        await adminDb
           .from(TABLES.REPS)
           .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
           .eq("id", repByEmail.id)
@@ -79,7 +81,6 @@ export async function GET() {
         email: rep.email,
         first_name: rep.first_name,
         status: rep.status,
-        email_verified: rep.email_verified ?? true, // default true for reps without the column yet
         onboarding_completed: rep.onboarding_completed,
       },
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { saveSettings } from "@/lib/settings";
 import {
   ChevronLeft,
@@ -30,11 +31,15 @@ import {
   Mail,
   Percent,
   AlertTriangle,
-  ChevronDown,
   Eye,
   Sparkles,
   Target,
   ArrowRight,
+  Plus,
+  Loader2,
+  CheckCircle2,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -159,7 +164,6 @@ function MasterToggle({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {/* Power icon with glow */}
           <div className="relative">
             <div
               className="flex h-12 w-12 items-center justify-center rounded-full transition-all duration-500"
@@ -206,7 +210,6 @@ function MasterToggle({
           </div>
         </div>
 
-        {/* Toggle switch */}
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             {enabled ? "On" : "Off"}
@@ -218,7 +221,6 @@ function MasterToggle({
         </div>
       </div>
 
-      {/* Decorative gradient orbs */}
       {enabled && (
         <>
           <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-emerald-500/5" />
@@ -263,11 +265,9 @@ function RecoveryPipeline({
         </div>
       </CardHeader>
       <CardContent className="p-5">
-        {/* Pipeline visual */}
         <div className="relative space-y-0">
           {/* Cart abandoned — origin node */}
           <div className="relative flex items-start gap-4">
-            {/* Connecting line */}
             <div
               className="absolute left-[15px] top-[32px] w-0.5"
               style={{
@@ -307,7 +307,6 @@ function RecoveryPipeline({
 
             return (
               <div key={step.id} className="relative flex items-start gap-4">
-                {/* Connecting line to next */}
                 {!isLast && (
                   <div
                     className="absolute left-[15px] top-[32px] w-0.5"
@@ -331,7 +330,6 @@ function RecoveryPipeline({
                   />
                 )}
 
-                {/* Step node */}
                 <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
                   <div
                     className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
@@ -355,7 +353,6 @@ function RecoveryPipeline({
                   )}
                 </div>
 
-                {/* Step content — clickable */}
                 <button
                   type="button"
                   onClick={() => onSelectStep(step.id)}
@@ -406,7 +403,7 @@ function RecoveryPipeline({
                   {isSelected && (
                     <div className="mt-2 flex items-center gap-1 text-[10px]" style={{ color: step.color }}>
                       <Eye size={10} />
-                      <span>Click to configure below</span>
+                      <span>Editing below</span>
                     </div>
                   )}
                 </button>
@@ -442,6 +439,293 @@ function RecoveryPipeline({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMAIL PREVIEW — live rendered email in iframe
+   ═══════════════════════════════════════════════════════════ */
+function EmailPreview({ step }: { step: EmailStep | null }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [loading, setLoading] = useState(true);
+
+  // Build preview URL from step config
+  const previewUrl = useMemo(() => {
+    if (!step) return null;
+    const params = new URLSearchParams();
+    params.set("subject", step.subject);
+    params.set("preview_text", step.preview_text);
+    if (step.include_discount && step.discount_code) {
+      params.set("discount_code", step.discount_code);
+      params.set("discount_percent", String(step.discount_percent));
+    }
+    return `/api/abandoned-carts/preview-email?${params.toString()}`;
+  }, [step?.subject, step?.preview_text, step?.include_discount, step?.discount_code, step?.discount_percent]);
+
+  useEffect(() => {
+    setLoading(true);
+  }, [previewUrl]);
+
+  if (!step) {
+    return (
+      <Card className="flex h-full items-center justify-center">
+        <CardContent className="py-16 text-center">
+          <Mail size={28} className="mx-auto text-muted-foreground/20" />
+          <p className="mt-3 text-sm text-muted-foreground">
+            Select a step to preview the email
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="flex h-full flex-col overflow-hidden">
+      <CardHeader className="shrink-0 border-b border-border pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Eye size={15} className="text-primary" />
+            Email Preview
+          </CardTitle>
+          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              onClick={() => setPreviewMode("desktop")}
+              className={`rounded-md px-2 py-1 transition-all ${
+                previewMode === "desktop"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Monitor size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewMode("mobile")}
+              className={`rounded-md px-2 py-1 transition-all ${
+                previewMode === "mobile"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Smartphone size={13} />
+            </button>
+          </div>
+        </div>
+        {/* Fake email client header */}
+        <div className="mt-3 space-y-1.5 rounded-lg border border-border/50 bg-secondary/50 px-3 py-2.5">
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="shrink-0 font-semibold text-muted-foreground">Subject:</span>
+            <span className="truncate text-foreground">{step.subject}</span>
+          </div>
+          {step.preview_text && (
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="shrink-0 font-semibold text-muted-foreground">Preview:</span>
+              <span className="truncate text-muted-foreground/70">{step.preview_text}</span>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="relative flex-1 overflow-hidden p-4">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 size={18} className="animate-spin text-muted-foreground" />
+              <span className="text-[11px] text-muted-foreground">Rendering preview...</span>
+            </div>
+          </div>
+        )}
+        <div
+          className="mx-auto overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
+          style={{
+            width: previewMode === "mobile" ? "375px" : "100%",
+            height: "100%",
+          }}
+        >
+          {previewUrl && (
+            <iframe
+              ref={iframeRef}
+              src={previewUrl}
+              title="Email Preview"
+              className="h-full w-full border-0"
+              sandbox="allow-same-origin"
+              onLoad={() => setLoading(false)}
+            />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CREATE DISCOUNT INLINE — create a discount code from editor
+   ═══════════════════════════════════════════════════════════ */
+function CreateDiscountInline({
+  onCreated,
+  disabled,
+}: {
+  onCreated: (code: string, percent: number) => void;
+  disabled: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [percent, setPercent] = useState(10);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleCreate = async () => {
+    if (!code.trim()) {
+      setError("Enter a discount code");
+      return;
+    }
+    if (percent < 1 || percent > 100) {
+      setError("Percentage must be 1–100");
+      return;
+    }
+
+    setCreating(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/discounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: code.trim().toUpperCase(),
+          description: `Abandoned cart recovery discount (${percent}% off)`,
+          type: "percentage",
+          value: percent,
+          status: "active",
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Failed to create discount");
+        setCreating(false);
+        return;
+      }
+
+      setSuccess(true);
+      onCreated(code.trim().toUpperCase(), percent);
+
+      setTimeout(() => {
+        setOpen(false);
+        setSuccess(false);
+        setCode("");
+        setPercent(10);
+      }, 1200);
+    } catch {
+      setError("Network error");
+    }
+    setCreating(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-40"
+      >
+        <Plus size={12} />
+        Create New Discount Code
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="overflow-hidden rounded-lg border transition-all"
+      style={{
+        borderColor: success ? "rgba(16,185,129,0.3)" : "rgba(139,92,246,0.2)",
+        background: success
+          ? "rgba(16,185,129,0.04)"
+          : "rgba(139,92,246,0.04)",
+      }}
+    >
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
+            {success ? "Discount Created" : "New Discount Code"}
+          </span>
+          {!success && (
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setError(null); }}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+
+        {success ? (
+          <div className="mt-2 flex items-center gap-2 text-sm text-emerald-400">
+            <CheckCircle2 size={14} />
+            <span className="font-mono font-bold">{code.toUpperCase()}</span> — {percent}% off
+          </div>
+        ) : (
+          <>
+            <div className="mt-3 grid grid-cols-5 gap-3">
+              <div className="col-span-3">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Code
+                </Label>
+                <Input
+                  className="mt-1 font-mono text-xs"
+                  value={code}
+                  onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(null); }}
+                  placeholder="COMEBACK10"
+                  disabled={creating}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Discount %
+                </Label>
+                <Input
+                  className="mt-1 font-mono text-xs"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={percent}
+                  onChange={(e) => setPercent(Number(e.target.value))}
+                  disabled={creating}
+                />
+              </div>
+            </div>
+            {error && (
+              <p className="mt-2 flex items-center gap-1 text-[11px] text-red-400">
+                <AlertTriangle size={10} />
+                {error}
+              </p>
+            )}
+            <Button
+              size="sm"
+              className="mt-3 w-full gap-1.5 text-xs"
+              onClick={handleCreate}
+              disabled={creating || !code.trim()}
+            >
+              {creating ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Plus size={12} />
+              )}
+              {creating ? "Creating..." : "Create & Apply"}
+            </Button>
+            <p className="mt-2 text-[10px] text-muted-foreground/40">
+              Creates a percentage discount in the Discounts system and auto-fills it above
+            </p>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -598,34 +882,47 @@ function StepEditor({
             </div>
 
             {step.include_discount && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Discount Code
-                  </Label>
-                  <Input
-                    className="mt-1.5 font-mono"
-                    value={step.discount_code}
-                    onChange={(e) => onUpdate(step.id, { discount_code: e.target.value.toUpperCase() })}
-                    placeholder="COMEBACK10"
-                    disabled={isDisabled}
-                  />
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Discount Code
+                    </Label>
+                    <Input
+                      className="mt-1.5 font-mono"
+                      value={step.discount_code}
+                      onChange={(e) => onUpdate(step.id, { discount_code: e.target.value.toUpperCase() })}
+                      placeholder="COMEBACK10"
+                      disabled={isDisabled}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Discount %
+                    </Label>
+                    <Input
+                      className="mt-1.5 font-mono"
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={step.discount_percent}
+                      onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
+                      disabled={isDisabled}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Discount %
-                  </Label>
-                  <Input
-                    className="mt-1.5 font-mono"
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={step.discount_percent}
-                    onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
-                    disabled={isDisabled}
-                  />
-                </div>
-              </div>
+
+                {/* Inline discount creation */}
+                <CreateDiscountInline
+                  disabled={isDisabled}
+                  onCreated={(newCode, newPercent) => {
+                    onUpdate(step.id, {
+                      discount_code: newCode,
+                      discount_percent: newPercent,
+                    });
+                  }}
+                />
+              </>
             )}
           </TabsContent>
 
@@ -841,7 +1138,6 @@ function HowItWorks() {
             return (
               <div key={step.label} className="relative">
                 <div className="flex flex-col items-center text-center">
-                  {/* Step number + icon */}
                   <div className="relative mb-3">
                     <div
                       className="flex h-12 w-12 items-center justify-center rounded-full"
@@ -867,7 +1163,6 @@ function HowItWorks() {
                   </p>
                 </div>
 
-                {/* Arrow connector */}
                 {i < steps.length - 1 && (
                   <ArrowRight
                     size={14}
@@ -912,7 +1207,6 @@ export default function AbandonedCartPage() {
       const res = await fetch(`/api/settings?key=${SETTINGS_KEY}`);
       const json = await res.json();
       if (json?.data) {
-        // Merge with defaults to handle missing fields
         const loaded = json.data as AutomationSettings;
         setSettings({
           enabled: loaded.enabled ?? false,
@@ -939,7 +1233,6 @@ export default function AbandonedCartPage() {
 
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
-      // Strip non-serializable icon references before saving
       const toSave = {
         ...newSettings,
         steps: newSettings.steps.map(({ icon, ...rest }) => rest),
@@ -1095,10 +1388,10 @@ export default function AbandonedCartPage() {
         </div>
       )}
 
-      {/* Pipeline + Step Editor — side by side on large screens */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      {/* Pipeline + Step Editor + Email Preview — three-column on xl */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         {/* Recovery Pipeline */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-3">
           <RecoveryPipeline
             steps={settings.steps}
             automationEnabled={settings.enabled}
@@ -1109,7 +1402,7 @@ export default function AbandonedCartPage() {
         </div>
 
         {/* Step Editor */}
-        <div className="lg:col-span-3">
+        <div className="xl:col-span-4">
           {activeStep ? (
             <StepEditor
               step={activeStep}
@@ -1126,6 +1419,11 @@ export default function AbandonedCartPage() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Email Preview */}
+        <div className="xl:col-span-5" style={{ minHeight: "640px" }}>
+          <EmailPreview step={activeStep} />
         </div>
       </div>
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,6 +16,7 @@ import {
   Flame,
   Zap,
   Send,
+  Mail,
   MailWarning,
   Timer,
   PartyPopper,
@@ -25,6 +25,8 @@ import {
   Check,
   TrendingUp,
   DollarSign,
+  ArrowRight,
+  Settings2,
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
 import type { AbandonedCart } from "@/types/orders";
@@ -397,11 +399,189 @@ interface AbandonedCartStats {
   recovered_value: number;
 }
 
+interface PipelineStep {
+  step: number;
+  sent: number;
+  recovered: number;
+  recovered_value: number;
+}
+
+/* ═══ Recovery Pipeline Dashboard ═══ */
+const PIPELINE_META = [
+  { label: "Gentle Nudge", icon: Send, color: "#8B5CF6", glowColor: "rgba(139,92,246,0.3)" },
+  { label: "Urgency Boost", icon: Zap, color: "#f97316", glowColor: "rgba(249,115,22,0.3)" },
+  { label: "Final Chance", icon: Flame, color: "#ef4444", glowColor: "rgba(239,68,68,0.3)" },
+];
+
+function PipelineDashboard({
+  pipeline,
+  recoveredWithoutEmail,
+  totalRecovered,
+}: {
+  pipeline: PipelineStep[];
+  recoveredWithoutEmail: number;
+  totalRecovered: number;
+}) {
+  const totalSent = pipeline.reduce((sum, p) => sum + p.sent, 0);
+  const totalRecoveredByEmail = pipeline.reduce((sum, p) => sum + p.recovered, 0);
+  const totalRecoveredValue = pipeline.reduce((sum, p) => sum + p.recovered_value, 0);
+
+  if (totalSent === 0 && totalRecovered === 0) return null;
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CircleDot size={15} className="text-primary" />
+            <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-foreground">
+              Recovery Pipeline
+            </h3>
+          </div>
+          <Link
+            href="/admin/communications/marketing/abandoned-cart/"
+            className="flex items-center gap-1.5 text-[10px] font-medium text-primary transition-colors hover:text-primary/80"
+          >
+            <Settings2 size={10} />
+            Configure
+          </Link>
+        </div>
+      </div>
+      <CardContent className="p-5">
+        <div className="space-y-4">
+          {/* Self-recovered (no email needed) */}
+          {recoveredWithoutEmail > 0 && (
+            <div className="flex items-center gap-4 rounded-lg border border-emerald-500/15 bg-emerald-500/4 px-4 py-3">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(16,185,129,0.12)", boxShadow: "inset 0 0 0 1.5px rgba(16,185,129,0.4)" }}
+              >
+                <PartyPopper size={13} style={{ color: "#10b981" }} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[12px] font-semibold text-emerald-400">
+                  Self-recovered
+                </span>
+                <p className="text-[11px] text-muted-foreground/50">
+                  Returned without any recovery email
+                </p>
+              </div>
+              <span className="font-mono text-lg font-bold tabular-nums text-emerald-400">
+                {recoveredWithoutEmail}
+              </span>
+            </div>
+          )}
+
+          {/* Email steps */}
+          {pipeline.map((pStep, i) => {
+            const meta = PIPELINE_META[i];
+            if (!meta) return null;
+            const StepIcon = meta.icon;
+            const convRate = pStep.sent > 0 ? ((pStep.recovered / pStep.sent) * 100).toFixed(0) : "0";
+
+            return (
+              <div key={pStep.step}>
+                <div className="flex items-center gap-4">
+                  {/* Step icon */}
+                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-full"
+                      style={{
+                        backgroundColor: pStep.sent > 0 ? `${meta.color}18` : "rgba(255,255,255,0.04)",
+                        boxShadow: pStep.sent > 0 ? `inset 0 0 0 1.5px ${meta.color}60` : "none",
+                      }}
+                    >
+                      <StepIcon size={13} style={{ color: pStep.sent > 0 ? meta.color : "rgba(255,255,255,0.15)" }} />
+                    </div>
+                  </div>
+
+                  {/* Step details */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-[12px] font-semibold uppercase tracking-wider"
+                        style={{ color: pStep.sent > 0 ? meta.color : "rgba(255,255,255,0.3)" }}
+                      >
+                        {meta.label}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-3">
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                        <Mail size={10} />
+                        {pStep.sent} sent
+                      </span>
+                      <ArrowRight size={10} className="text-muted-foreground/20" />
+                      <span className="flex items-center gap-1 text-[11px] text-emerald-400/80">
+                        <CheckCircle2 size={10} />
+                        {pStep.recovered} recovered
+                      </span>
+                      {pStep.sent > 0 && (
+                        <>
+                          <span className="text-muted-foreground/20">|</span>
+                          <span className="font-mono text-[10px] font-semibold" style={{ color: Number(convRate) >= 20 ? "#10b981" : Number(convRate) >= 10 ? "#f59e0b" : "var(--color-muted-foreground)" }}>
+                            {convRate}% conversion
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recovered value */}
+                  {pStep.recovered_value > 0 && (
+                    <span className="font-mono text-sm font-bold tabular-nums text-emerald-400">
+                      {formatCurrency(pStep.recovered_value)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                {pStep.sent > 0 && (
+                  <div className="ml-12 mt-2">
+                    <div className="h-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${Math.min(Number(convRate), 100)}%`,
+                          backgroundColor: meta.color,
+                          opacity: 0.6,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Summary bar */}
+          {totalSent > 0 && (
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-4 py-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Total via email
+              </span>
+              <div className="flex items-center gap-4">
+                <span className="text-[11px] text-muted-foreground">
+                  {totalSent} emails &rarr; {totalRecoveredByEmail} recovered
+                </span>
+                {totalRecoveredValue > 0 && (
+                  <span className="font-mono text-sm font-bold tabular-nums text-emerald-400">
+                    {formatCurrency(totalRecoveredValue)}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 /* ════════════════════════════════════════════════════════
    ABANDONED CARTS PAGE — gamified dashboard
    ════════════════════════════════════════════════════════ */
 export default function AbandonedCartsPage() {
-  const router = useRouter();
   const [carts, setCarts] = useState<AbandonedCart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -416,6 +596,8 @@ export default function AbandonedCartsPage() {
     recovered_value: 0,
   });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [pipeline, setPipeline] = useState<PipelineStep[]>([]);
+  const [recoveredWithoutEmail, setRecoveredWithoutEmail] = useState(0);
 
   const loadCarts = useCallback(async () => {
     setLoading(true);
@@ -440,6 +622,12 @@ export default function AbandonedCartsPage() {
       }
       if (json.stats) {
         setStats(json.stats);
+      }
+      if (json.pipeline) {
+        setPipeline(json.pipeline);
+      }
+      if (json.recovered_without_email != null) {
+        setRecoveredWithoutEmail(json.recovered_without_email);
       }
     } catch (e) {
       setError(`Network error: ${e instanceof Error ? e.message : "Failed to fetch carts"}`);
@@ -467,20 +655,31 @@ export default function AbandonedCartsPage() {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
-            Abandoned Carts
-          </h1>
-          {hotCount > 0 && (
-            <Badge variant="destructive" className="gap-1 text-[10px] font-bold uppercase">
-              <Flame size={10} />
-              {hotCount} hot
-            </Badge>
-          )}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
+                Abandoned Carts
+              </h1>
+              {hotCount > 0 && (
+                <Badge variant="destructive" className="gap-1 text-[10px] font-bold uppercase">
+                  <Flame size={10} />
+                  {hotCount} hot
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Track and recover lost revenue from incomplete checkouts
+            </p>
+          </div>
+          <Link
+            href="/admin/communications/marketing/abandoned-cart/"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary no-underline"
+          >
+            <Settings2 size={13} />
+            Automation Settings
+          </Link>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Track and recover lost revenue from incomplete checkouts
-        </p>
       </div>
 
       {/* Stats — gamified cards */}
@@ -563,6 +762,17 @@ export default function AbandonedCartsPage() {
           <p className="mt-1 text-[11px] text-muted-foreground/60">Ready for recovery outreach</p>
         </div>
       </div>
+
+      {/* Recovery Pipeline Dashboard */}
+      {(pipeline.length > 0 || stats.recovered > 0) && (
+        <div className="mt-6">
+          <PipelineDashboard
+            pipeline={pipeline}
+            recoveredWithoutEmail={recoveredWithoutEmail}
+            totalRecovered={stats.recovered}
+          />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mt-6 flex items-center gap-3">

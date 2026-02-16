@@ -64,23 +64,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Also fetch aggregate stats
+    // Also fetch aggregate stats (include notification_count for pipeline breakdown)
     const { data: allCarts } = await supabase
       .from(TABLES.ABANDONED_CARTS)
-      .select("status, subtotal")
+      .select("status, subtotal, notification_count")
       .eq("org_id", ORG_ID);
+
+    type CartRow = { status: string; subtotal: number; notification_count: number };
 
     const stats = {
       total: allCarts?.length || 0,
-      abandoned: allCarts?.filter((c: { status: string }) => c.status === "abandoned").length || 0,
-      recovered: allCarts?.filter((c: { status: string }) => c.status === "recovered").length || 0,
+      abandoned: allCarts?.filter((c: CartRow) => c.status === "abandoned").length || 0,
+      recovered: allCarts?.filter((c: CartRow) => c.status === "recovered").length || 0,
       total_value: allCarts
-        ?.filter((c: { status: string }) => c.status === "abandoned")
-        .reduce((sum: number, c: { subtotal: number }) => sum + Number(c.subtotal), 0) || 0,
+        ?.filter((c: CartRow) => c.status === "abandoned")
+        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0) || 0,
       recovered_value: allCarts
-        ?.filter((c: { status: string }) => c.status === "recovered")
-        .reduce((sum: number, c: { subtotal: number }) => sum + Number(c.subtotal), 0) || 0,
+        ?.filter((c: CartRow) => c.status === "recovered")
+        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0) || 0,
     };
+
+    // Per-step pipeline stats: how many emails sent per step and recoveries after each
+    const pipeline = [1, 2, 3].map((step) => {
+      const sent = allCarts?.filter((c: CartRow) => c.notification_count >= step).length || 0;
+      const recoveredAfter = allCarts?.filter(
+        (c: CartRow) => c.status === "recovered" && c.notification_count === step
+      ).length || 0;
+      const recoveredValue = allCarts
+        ?.filter((c: CartRow) => c.status === "recovered" && c.notification_count === step)
+        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0) || 0;
+      return { step, sent, recovered: recoveredAfter, recovered_value: recoveredValue };
+    });
+
+    // Carts recovered without any email (notification_count === 0)
+    const recoveredWithoutEmail = allCarts?.filter(
+      (c: CartRow) => c.status === "recovered" && c.notification_count === 0
+    ).length || 0;
 
     return NextResponse.json({
       data: data || [],
@@ -88,6 +107,8 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       stats,
+      pipeline,
+      recovered_without_email: recoveredWithoutEmail,
     });
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

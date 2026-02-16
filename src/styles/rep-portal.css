@@ -511,16 +511,215 @@ body:has([data-rep]) > .noise {
    QUESTS & REWARDS
    ══════════════════════════════════════════════════════════════════════ */
 
+/* ── Quest card base ── */
 .rep-quest-card {
   background: var(--rep-card);
   border: 1px solid var(--rep-border);
   border-radius: 16px;
   padding: 20px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: repSlideUp 0.4s ease-out both;
 }
-.rep-quest-card:hover {
-  border-color: var(--rep-accent);
+
+/* ── Quest tier: Common ── */
+.rep-quest-common {
+  border-color: rgba(30, 30, 42, 0.4);
 }
+.rep-quest-common:hover {
+  border-color: rgba(102, 102, 128, 0.3);
+}
+
+/* ── Quest tier: Rare ── */
+.rep-quest-rare {
+  border-color: rgba(56, 189, 248, 0.15);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.03), var(--rep-card));
+}
+.rep-quest-rare:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* ── Quest tier: Epic ── */
+.rep-quest-epic {
+  border-color: rgba(139, 92, 246, 0.2);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.04), var(--rep-card));
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.04);
+}
+.rep-quest-epic:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.08);
+}
+
+/* ── Quest tier: Legendary ── */
+.rep-quest-legendary {
+  position: relative;
+  border-color: transparent;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.04), var(--rep-card));
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.06);
+  overflow: hidden;
+}
+.rep-quest-legendary::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.5),
+    rgba(245, 158, 11, 0.15),
+    rgba(251, 191, 36, 0.4),
+    rgba(245, 158, 11, 0.15),
+    rgba(245, 158, 11, 0.5)
+  );
+  background-size: 300% 300%;
+  animation: legendaryBorderPulse 3s ease-in-out infinite;
+  z-index: -1;
+}
+.rep-quest-legendary::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.04), var(--rep-card));
+  z-index: -1;
+}
+.rep-quest-legendary:hover {
+  box-shadow: 0 0 32px rgba(245, 158, 11, 0.1);
+}
+@keyframes legendaryBorderPulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Tier badge (tiny label) ── */
+.rep-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+}
+.rep-tier-badge-common {
+  background: rgba(102, 102, 128, 0.1);
+  color: #666680;
+  border: 1px solid rgba(102, 102, 128, 0.2);
+}
+.rep-tier-badge-rare {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+.rep-tier-badge-epic {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.rep-tier-badge-legendary {
+  background: rgba(245, 158, 11, 0.1);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.rep-tier-badge-legendary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── XP badge (points pill) ── */
+.rep-xp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 18px;
+}
+.rep-xp-badge-common {
+  background: rgba(102, 102, 128, 0.1);
+  color: #666680;
+}
+.rep-xp-badge-rare {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+}
+.rep-xp-badge-epic {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8B5CF6;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.rep-xp-badge-epic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+.rep-xp-badge-legendary {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 191, 36, 0.15));
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+.rep-xp-badge-legendary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── Quest progress bar ── */
+.rep-quest-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.rep-quest-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rep-quest-progress-common .rep-quest-progress-fill { background: #666680; }
+.rep-quest-progress-rare .rep-quest-progress-fill { background: #38BDF8; }
+.rep-quest-progress-epic .rep-quest-progress-fill { background: #8B5CF6; }
+.rep-quest-progress-legendary .rep-quest-progress-fill { background: #F59E0B; }
 
 /* ── Profile photo upload pulse ── */
 .rep-photo-uploading {

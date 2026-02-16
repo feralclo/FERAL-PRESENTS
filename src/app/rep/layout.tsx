@@ -277,7 +277,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       {/* Mobile bottom tab bar — floating pill */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
-          <nav className="flex items-center justify-around rounded-2xl border border-white/[0.08] bg-[#0c0c12]/90 backdrop-blur-2xl shadow-[0_-4px_32px_rgba(0,0,0,0.5)] py-2 pointer-events-auto">
+          <nav className="flex items-center justify-around rounded-2xl border border-white/[0.08] bg-[#0c0c12]/90 backdrop-blur-2xl shadow-[0_-4px_32px_rgba(0,0,0,0.5)] py-2.5 pointer-events-auto">
             {MOBILE_NAV_ITEMS.map((item) => {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
@@ -286,26 +286,34 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "relative flex flex-col items-center justify-center w-14 h-11 rounded-xl transition-all duration-200",
+                    "relative flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200",
                     active
                       ? "text-primary"
-                      : "text-[#555566] active:text-[#777788]"
+                      : "text-[#444455] active:text-[#666677]"
                   )}
                 >
-                  {active && (
-                    <span className="absolute inset-1 rounded-lg bg-primary/[0.08]" />
-                  )}
-                  <Icon
-                    size={22}
-                    strokeWidth={active ? 2.5 : 1.5}
-                    fill={active ? "currentColor" : "none"}
-                    className="relative z-10"
+                  {/* Active dot indicator */}
+                  <span
+                    className={cn(
+                      "h-[3px] w-[3px] rounded-full bg-primary transition-all duration-200",
+                      active
+                        ? "opacity-100 scale-100"
+                        : "opacity-0 scale-0"
+                    )}
                   />
-                  {active && (
-                    <span className="relative z-10 text-[9px] font-bold mt-0.5 tracking-wide">
-                      {item.label}
-                    </span>
-                  )}
+                  <Icon
+                    size={21}
+                    strokeWidth={active ? 2.25 : 1.5}
+                    fill={active ? "currentColor" : "none"}
+                  />
+                  <span
+                    className={cn(
+                      "text-[9px] font-semibold tracking-wide",
+                      active ? "text-primary" : "text-[#444455]"
+                    )}
+                  >
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}

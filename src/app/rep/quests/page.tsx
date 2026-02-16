@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Swords, Upload, Link as LinkIcon, Type, X, Loader2, Check,
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
+  Camera, Share2, Sparkles, Zap,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -52,6 +53,67 @@ const PROOF_TYPE_CONFIG: Record<ProofType, { label: string; icon: typeof LinkIco
   screenshot: { label: "Screenshot", icon: Upload, placeholder: "Paste screenshot URL..." },
   text: { label: "Text", icon: Type, placeholder: "Describe what you did..." },
 };
+
+// ─── Quest type icons ────────────────────────────────────────────────────────
+
+const QUEST_TYPE_ICONS: Record<string, typeof Camera> = {
+  social_post: Camera,
+  story_share: Share2,
+  content_creation: Sparkles,
+  custom: Zap,
+};
+
+// ─── Tier system ─────────────────────────────────────────────────────────────
+
+interface TierConfig {
+  tier: "common" | "rare" | "epic" | "legendary";
+  label: string;
+  cardClass: string;
+  badgeClass: string;
+  xpBadgeClass: string;
+  progressClass: string;
+}
+
+function getQuestTier(points: number): TierConfig {
+  if (points >= 500) {
+    return {
+      tier: "legendary",
+      label: "LEGENDARY",
+      cardClass: "rep-quest-legendary",
+      badgeClass: "rep-tier-badge rep-tier-badge-legendary",
+      xpBadgeClass: "rep-xp-badge rep-xp-badge-legendary",
+      progressClass: "rep-quest-progress rep-quest-progress-legendary",
+    };
+  }
+  if (points >= 150) {
+    return {
+      tier: "epic",
+      label: "EPIC",
+      cardClass: "rep-quest-epic",
+      badgeClass: "rep-tier-badge rep-tier-badge-epic",
+      xpBadgeClass: "rep-xp-badge rep-xp-badge-epic",
+      progressClass: "rep-quest-progress rep-quest-progress-epic",
+    };
+  }
+  if (points >= 50) {
+    return {
+      tier: "rare",
+      label: "RARE",
+      cardClass: "rep-quest-rare",
+      badgeClass: "rep-tier-badge rep-tier-badge-rare",
+      xpBadgeClass: "rep-xp-badge rep-xp-badge-rare",
+      progressClass: "rep-quest-progress rep-quest-progress-rare",
+    };
+  }
+  return {
+    tier: "common",
+    label: "COMMON",
+    cardClass: "rep-quest-common",
+    badgeClass: "rep-tier-badge rep-tier-badge-common",
+    xpBadgeClass: "rep-xp-badge rep-xp-badge-common",
+    progressClass: "rep-quest-progress rep-quest-progress-common",
+  };
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -202,16 +264,13 @@ export default function RepQuestsPage() {
       if (res.ok) {
         setSubmitted(true);
         setError("");
-        // Auto-refresh: close modal after delay, then reload quests + submissions
         setTimeout(() => {
           const questId = submitQuestId;
           setSubmitQuestId(null);
           setSubmitted(false);
           setProofText("");
           setUploadedUrl("");
-          // Refresh quest list to update submission counts
           loadQuests();
-          // Refresh submissions if this quest's submissions are expanded
           if (questId && expandedQuestId === questId) {
             loadSubmissions(questId);
           }
@@ -235,6 +294,8 @@ export default function RepQuestsPage() {
     q.max_completions && getApprovedCount(q) >= q.max_completions
   );
 
+  const totalAvailableXP = activeQuests.reduce((sum, q) => sum + q.points_reward, 0);
+
   // Get current quest for submit modal context
   const submitQuest = submitQuestId ? quests.find((q) => q.id === submitQuestId) : null;
   const availableProofTypes = submitQuest
@@ -244,16 +305,15 @@ export default function RepQuestsPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="h-6 w-24 rounded bg-[var(--rep-surface)] animate-pulse mb-2" />
-            <div className="h-4 w-40 rounded bg-[var(--rep-surface)] animate-pulse" />
-          </div>
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <div className="h-12 w-12 rounded-2xl bg-[var(--rep-surface)] animate-pulse" />
+          <div className="h-6 w-24 rounded bg-[var(--rep-surface)] animate-pulse" />
+          <div className="h-4 w-48 rounded bg-[var(--rep-surface)] animate-pulse" />
         </div>
         <div className="h-10 rounded-xl bg-[var(--rep-surface)] animate-pulse" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[140px] rounded-2xl bg-[var(--rep-surface)] animate-pulse" />
+            <div key={i} className="h-[160px] rounded-2xl bg-[var(--rep-surface)] animate-pulse" />
           ))}
         </div>
       </div>
@@ -285,11 +345,20 @@ export default function RepQuestsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
       {/* Header */}
-      <div>
+      <div className="flex flex-col items-center text-center pt-2">
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/20 mb-3">
+          <Swords size={22} className="text-[var(--rep-accent)]" />
+        </div>
         <h1 className="text-xl font-bold text-white">Quests</h1>
-        <p className="text-sm text-[var(--rep-text-muted)]">
+        <p className="text-sm text-[var(--rep-text-muted)] mt-1">
           Complete tasks to earn bonus points
         </p>
+        {totalAvailableXP > 0 && (
+          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/15 px-4 py-1.5">
+            <Zap size={13} className="text-[var(--rep-accent)]" />
+            <span className="text-xs font-bold text-[var(--rep-accent)]">{totalAvailableXP} XP available</span>
+          </div>
+        )}
       </div>
 
       {/* Inline error */}
@@ -299,24 +368,26 @@ export default function RepQuestsPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-[var(--rep-surface)] p-1 w-fit">
-        {(["active", "completed"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-lg px-4 py-2 text-xs font-medium transition-colors ${
-              tab === t
-                ? "bg-[var(--rep-card)] text-white shadow-sm"
-                : "text-[var(--rep-text-muted)] hover:text-white"
-            }`}
-          >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-            {t === "active" && activeQuests.length > 0 && (
-              <span className="ml-1.5 text-[10px] opacity-60">{activeQuests.length}</span>
-            )}
-          </button>
-        ))}
+      {/* Tab bar — uses rep-tab-bar for consistency with leaderboard/rewards */}
+      <div className="rep-tab-bar">
+        <button
+          onClick={() => setTab("active")}
+          className={`rep-tab ${tab === "active" ? "active" : ""}`}
+        >
+          Active
+          {activeQuests.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-bold min-w-[18px]">{activeQuests.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab("completed")}
+          className={`rep-tab ${tab === "completed" ? "active" : ""}`}
+        >
+          Completed
+          {completedQuests.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-bold min-w-[18px]">{completedQuests.length}</span>
+          )}
+        </button>
       </div>
 
       {/* Quest Cards */}
@@ -334,14 +405,23 @@ export default function RepQuestsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {displayQuests.map((quest) => {
+          {displayQuests.map((quest, index) => {
             const expiry = quest.expires_at ? getExpiryInfo(quest.expires_at) : null;
             const subs = quest.my_submissions;
             const hasSubs = subs.total > 0;
             const isExpanded = expandedQuestId === quest.id;
+            const tier = getQuestTier(quest.points_reward);
+            const QuestTypeIcon = QUEST_TYPE_ICONS[quest.quest_type] || Zap;
+            const questTypeLabel = quest.quest_type.replace(/_/g, " ");
+            const approvedCount = getApprovedCount(quest);
+            const isRepeatable = quest.max_completions && quest.max_completions > 1;
 
             return (
-              <div key={quest.id} className="rep-quest-card">
+              <div
+                key={quest.id}
+                className={`rep-quest-card ${tier.cardClass}`}
+                style={{ animationDelay: `${index * 60}ms` }}
+              >
                 {/* Expiry warning */}
                 {expiry?.urgent && (
                   <div className="flex items-center gap-1.5 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
@@ -350,16 +430,24 @@ export default function RepQuestsPage() {
                   </div>
                 )}
 
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-white">{quest.title}</h3>
-                    {quest.description && (
-                      <p className="text-xs text-[var(--rep-text-muted)] mt-1 line-clamp-2">{quest.description}</p>
-                    )}
+                {/* Top row: Tier badge — Quest type — XP badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className={tier.badgeClass}>{tier.label}</span>
+                    <div className="flex items-center gap-1 text-[10px] text-[var(--rep-text-muted)] uppercase tracking-wider">
+                      <QuestTypeIcon size={11} />
+                      <span>{questTypeLabel}</span>
+                    </div>
                   </div>
-                  <div className="shrink-0 rounded-lg bg-[var(--rep-accent)]/10 px-2.5 py-1">
-                    <span className="text-xs font-bold text-[var(--rep-accent)]">+{quest.points_reward}</span>
-                  </div>
+                  <span className={tier.xpBadgeClass}>+{quest.points_reward} XP</span>
+                </div>
+
+                {/* Title + description */}
+                <div className="mb-3">
+                  <h3 className="text-[15px] font-bold text-white">{quest.title}</h3>
+                  {quest.description && (
+                    <p className="text-xs text-[var(--rep-text-muted)] mt-1 line-clamp-2">{quest.description}</p>
+                  )}
                 </div>
 
                 {quest.instructions && (
@@ -370,6 +458,24 @@ export default function RepQuestsPage() {
 
                 {quest.image_url && (
                   <img src={quest.image_url} alt="" className="rounded-lg mb-3 max-h-40 w-full object-cover" />
+                )}
+
+                {/* Progress bar for repeatable quests */}
+                {isRepeatable && (
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-[var(--rep-text-muted)]">Progress</span>
+                      <span className="text-[10px] font-semibold text-[var(--rep-text-muted)]">
+                        {approvedCount}/{quest.max_completions}
+                      </span>
+                    </div>
+                    <div className={tier.progressClass}>
+                      <div
+                        className="rep-quest-progress-fill"
+                        style={{ width: `${Math.min(100, (approvedCount / (quest.max_completions || 1)) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
                 )}
 
                 {/* Submission status badges */}
@@ -395,7 +501,6 @@ export default function RepQuestsPage() {
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-[10px] text-[var(--rep-text-muted)]">
-                    <span className="uppercase tracking-wider">{quest.quest_type.replace("_", " ")}</span>
                     {expiry && !expiry.urgent && (
                       <span>{expiry.text}</span>
                     )}

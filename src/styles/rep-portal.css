@@ -539,22 +539,23 @@ body:has([data-rep]) > .noise {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
 }
 .rep-quest-ambient-common img {
-  opacity: 0.04;
-  filter: blur(10px) grayscale(0.8);
+  opacity: 0.12;
+  filter: blur(6px) grayscale(0.6);
 }
 .rep-quest-ambient-rare img {
-  opacity: 0.06;
-  filter: blur(8px) saturate(1.3);
+  opacity: 0.16;
+  filter: blur(4px) saturate(1.3);
 }
 .rep-quest-ambient-epic img {
-  opacity: 0.08;
-  filter: blur(6px) saturate(1.5);
+  opacity: 0.20;
+  filter: blur(3px) saturate(1.5);
 }
 .rep-quest-ambient-legendary img {
-  opacity: 0.10;
-  filter: blur(4px) saturate(1.8) sepia(0.1);
+  opacity: 0.24;
+  filter: blur(2px) saturate(1.8) sepia(0.1);
 }
 
 /* ── Quest tier: Common ── */

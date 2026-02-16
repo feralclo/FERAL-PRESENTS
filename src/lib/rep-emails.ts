@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getRepSettings } from "@/lib/rep-points";
 
@@ -50,7 +50,7 @@ export async function sendRepEmail(params: RepEmailParams): Promise<void> {
       return;
     }
 
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return;
 
     // Fetch rep info
@@ -118,7 +118,7 @@ export async function sendRepInviteEmail(params: {
     const resend = getResendClient();
     if (!resend) return;
 
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return;
 
     const { data: brandingRow } = await supabase

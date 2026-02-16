@@ -15,8 +15,6 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, ORG_ID } from "@/lib/constants";
 import {
   Select,
   SelectTrigger,
@@ -183,61 +181,32 @@ function OrdersContent() {
   }, [activeEventFilter, filterStatus, customerIdParam]);
 
   const loadEvents = useCallback(async () => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
-    const { data } = await supabase
-      .from(TABLES.EVENTS)
-      .select("id, name")
-      .eq("org_id", ORG_ID)
-      .order("date_start", { ascending: false });
-
-    setEvents(data || []);
+    try {
+      const res = await fetch("/api/events");
+      const json = await res.json();
+      if (json.data) {
+        setEvents(json.data.map((e: { id: string; name: string }) => ({ id: e.id, name: e.name })));
+      }
+    } catch {
+      // Fail silently
+    }
   }, []);
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
+    try {
+      const dateStart = getDateStart(period);
+      const res = await fetch(`/api/admin/orders-stats?from=${encodeURIComponent(dateStart)}`);
+      const json = await res.json();
 
-    const dateStart = getDateStart(period);
-
-    const { data: completedOrders } = await supabase
-      .from(TABLES.ORDERS)
-      .select("id, total")
-      .eq("org_id", ORG_ID)
-      .eq("status", "completed")
-      .gte("created_at", dateStart);
-
-    const ords = completedOrders || [];
-    setOrderCount(ords.length);
-    setRevenue(ords.reduce((s, o) => s + Number(o.total), 0));
-
-    const { count: ticketCount } = await supabase
-      .from(TABLES.TICKETS)
-      .select("*", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
-      .gte("created_at", dateStart);
-
-    setTicketsSold(ticketCount || 0);
-
-    const orderIds = ords.map((o) => o.id);
-    if (orderIds.length > 0) {
-      const { data: merch } = await supabase
-        .from(TABLES.ORDER_ITEMS)
-        .select("unit_price, qty")
-        .eq("org_id", ORG_ID)
-        .in("order_id", orderIds)
-        .not("merch_size", "is", null);
-
-      const items = merch || [];
-      setMerchRevenue(items.reduce((s, i) => s + Number(i.unit_price) * i.qty, 0));
-      setMerchItems(items.reduce((s, i) => s + i.qty, 0));
-    } else {
-      setMerchRevenue(0);
-      setMerchItems(0);
+      setOrderCount(json.orderCount || 0);
+      setRevenue(json.revenue || 0);
+      setTicketsSold(json.ticketsSold || 0);
+      setMerchRevenue(json.merchRevenue || 0);
+      setMerchItems(json.merchItems || 0);
+    } catch {
+      // Fail silently
     }
-
     setStatsLoading(false);
   }, [period]);
 

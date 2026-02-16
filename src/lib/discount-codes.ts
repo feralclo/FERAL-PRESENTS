@@ -1,4 +1,4 @@
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
 /**
@@ -16,7 +16,7 @@ export async function createRepDiscountCode(params: {
   applicableEventIds?: string[] | null;
   description?: string;
 }): Promise<{ id: string; code: string } | null> {
-  const supabase = await getSupabaseServer();
+  const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
   const {

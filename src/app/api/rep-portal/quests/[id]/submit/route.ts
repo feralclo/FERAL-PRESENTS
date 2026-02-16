@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
@@ -88,7 +88,7 @@ export async function POST(
       }
     }
 
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },

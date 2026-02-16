@@ -1,5 +1,5 @@
 import { TABLES, ORG_ID } from "@/lib/constants";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { awardPoints, getRepSettings } from "@/lib/rep-points";
 
 /**
@@ -21,7 +21,7 @@ export async function attributeSaleToRep(params: {
   try {
     if (!params.discountCode) return;
 
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return;
 
     const orgId = params.orgId || ORG_ID;
@@ -133,7 +133,7 @@ async function checkMilestones(
   orgId: string,
   eventId: string
 ): Promise<void> {
-  const supabase = await getSupabaseServer();
+  const supabase = getSupabaseAdmin();
   if (!supabase) return;
 
   // Get rep's current stats

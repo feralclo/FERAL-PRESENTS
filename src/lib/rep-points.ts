@@ -1,5 +1,5 @@
 import { TABLES, ORG_ID, repsKey } from "@/lib/constants";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { PointsSourceType, RepProgramSettings } from "@/types/reps";
 import { DEFAULT_REP_PROGRAM_SETTINGS } from "@/types/reps";
 
@@ -10,7 +10,7 @@ export async function getRepSettings(
   orgId: string = ORG_ID
 ): Promise<RepProgramSettings> {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return DEFAULT_REP_PROGRAM_SETTINGS;
 
     const { data } = await supabase
@@ -62,7 +62,7 @@ export async function awardPoints(params: {
   createdBy?: string;
 }): Promise<number | null> {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return null;
     const orgId = params.orgId || ORG_ID;
 
@@ -145,7 +145,7 @@ export async function getPointsHistory(
   offset: number = 0
 ) {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return [];
 
     const { data } = await supabase

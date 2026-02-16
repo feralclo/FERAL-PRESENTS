@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { verifyConnectedAccount } from "@/lib/stripe/server";
 
@@ -17,7 +17,7 @@ import { verifyConnectedAccount } from "@/lib/stripe/server";
  */
 export async function GET() {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ stripe_account_id: null });
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { generateGoogleWalletUrl, type WalletPassTicketData } from "@/lib/wallet-passes";
 import type { WalletPassSettings } from "@/types/email";
@@ -23,7 +23,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }

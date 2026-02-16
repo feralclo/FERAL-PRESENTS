@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { NativeCheckout } from "@/components/checkout/NativeCheckout";
 import { AuraCheckout } from "@/components/aura/AuraCheckout";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
@@ -32,7 +32,7 @@ export default async function CheckoutRoute({
   // Fetch event from DB
   let event = null;
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (supabase) {
       const { data } = await supabase
         .from(TABLES.EVENTS)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
@@ -16,7 +16,7 @@ export async function GET(
     if (auth.error) return auth.error;
 
     const { id } = await params;
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -55,7 +55,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -148,7 +148,7 @@ export async function DELETE(
     if (auth.error) return auth.error;
 
     const { id } = await params;
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },

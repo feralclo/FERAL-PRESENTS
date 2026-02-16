@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { requireAuth } from "@/lib/auth";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { buildOrderConfirmationEmail } from "@/lib/email-templates";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     let pdfLogoBase64: string | null = null;
 
     try {
-      const supabase = await getSupabaseServer();
+      const supabase = getSupabaseAdmin();
       if (supabase) {
         const [emailResult, pdfResult] = await Promise.all([
           supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_email").single(),

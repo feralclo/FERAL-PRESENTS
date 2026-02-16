@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 import { getRepSettings } from "@/lib/rep-points";
@@ -17,7 +17,7 @@ export async function GET() {
 
     const repId = auth.rep.id;
 
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Service unavailable" },
@@ -161,7 +161,7 @@ export async function GET() {
  * or their event_id is in the rep's assigned events.
  */
 async function getActiveQuestsCount(
-  supabase: Awaited<ReturnType<typeof getSupabaseServer>>,
+  supabase: ReturnType<typeof getSupabaseAdmin>,
   repId: string
 ): Promise<number> {
   try {

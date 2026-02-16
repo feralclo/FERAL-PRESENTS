@@ -1,4 +1,4 @@
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID, themesKey } from "@/lib/constants";
 import type { ThemeStore } from "@/types/settings";
 
@@ -15,7 +15,7 @@ import type { ThemeStore } from "@/types/settings";
  */
 export async function getActiveTemplate(): Promise<string> {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return "midnight";
 
     const key = themesKey(ORG_ID);

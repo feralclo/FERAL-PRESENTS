@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { getWalletConfigStatus } from "@/lib/wallet-passes";
 import type { WalletPassSettings } from "@/types/email";
@@ -19,7 +19,7 @@ export async function GET() {
 
     let walletSettings: WalletPassSettings = { ...DEFAULT_WALLET_PASS_SETTINGS };
     try {
-      const supabase = await getSupabaseServer();
+      const supabase = getSupabaseAdmin();
       if (supabase) {
         const { data: settingsRow } = await supabase
           .from(TABLES.SITE_SETTINGS)

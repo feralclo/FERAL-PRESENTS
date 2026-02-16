@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { KompassEventPage } from "@/components/event/KompassEventPage";
 import { DynamicEventPage } from "@/components/event/DynamicEventPage";
 import { AuraEventPage } from "@/components/aura/AuraEventPage";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, ORG_ID } from "@/lib/constants";
 
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 /** Fetch event from DB (for admin-editable content). */
 async function getEventFromDB(slug: string) {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) return null;
 
     const { data } = await supabase

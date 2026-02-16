@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Check for connected account
     let stripeAccountId: string | null = null;
     try {
-      const supabase = await getSupabaseServer();
+      const supabase = getSupabaseAdmin();
       if (supabase) {
         const { data } = await supabase
           .from(TABLES.SITE_SETTINGS)
@@ -87,7 +87,7 @@ export async function GET() {
     // Check for connected account
     let stripeAccountId: string | null = null;
     try {
-      const supabase = await getSupabaseServer();
+      const supabase = getSupabaseAdmin();
       if (supabase) {
         const { data } = await supabase
           .from(TABLES.SITE_SETTINGS)

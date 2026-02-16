@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID, themesKey, brandingKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings, StoreTheme, ThemeStore } from "@/types/settings";
@@ -42,7 +42,7 @@ function generateId(): string {
  */
 export async function GET() {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ data: getDefaultThemeStore() });
     }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
 
 /** Save theme store to site_settings */
 async function saveThemeStore(
-  supabase: Awaited<ReturnType<typeof getSupabaseServer>>,
+  supabase: ReturnType<typeof getSupabaseAdmin>,
   key: string,
   store: ThemeStore
 ) {
@@ -245,7 +245,7 @@ async function saveThemeStore(
 
 /** Sync a theme's branding to the live branding key so all event pages use it */
 async function syncBrandingToLive(
-  supabase: Awaited<ReturnType<typeof getSupabaseServer>>,
+  supabase: ReturnType<typeof getSupabaseAdmin>,
   branding: BrandingSettings
 ) {
   if (!supabase) return;

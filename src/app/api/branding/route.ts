@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings } from "@/types/settings";
@@ -26,7 +26,7 @@ const DEFAULT_BRANDING: BrandingSettings = {
  */
 export async function GET() {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ data: DEFAULT_BRANDING });
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const body = await request.json();
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
         { error: "Database not configured" },

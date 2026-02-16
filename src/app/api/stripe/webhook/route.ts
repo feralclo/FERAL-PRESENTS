@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { createOrder, type OrderVat } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
@@ -112,7 +112,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   const items: { ticket_type_id: string; qty: number; merch_size?: string }[] =
     JSON.parse(itemsJson);
 
-  const supabase = await getSupabaseServer();
+  const supabase = getSupabaseAdmin();
   if (!supabase) {
     console.error("Supabase not configured for webhook handler");
     return;

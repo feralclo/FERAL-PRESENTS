@@ -204,24 +204,60 @@ describe("useDashboardRealtime", () => {
   // ─── Initial data loading ────────────────────────────────────
 
   describe("initial data loading", () => {
-    it("queries Supabase for initial data on mount", async () => {
+    it("fetches initial data via the dashboard API on mount", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          today: { revenue: 0, orders: 0, ticketsSold: 0, avgOrderValue: 0, conversionRate: 0 },
+          yesterday: { revenue: 0, orders: 0, ticketsSold: 0, avgOrderValue: 0, conversionRate: 0 },
+          funnel: { landing: 0, tickets: 0, add_to_cart: 0, checkout: 0, purchase: 0 },
+          activeVisitors: 0,
+          activeCarts: 0,
+          inCheckout: 0,
+          recentActivity: [],
+          recentSessions: [],
+          recentCartSessions: [],
+          recentPurchaseSessions: [],
+          recentCheckoutSessions: [],
+          topEvents: [],
+        }),
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
       const { useDashboardRealtime } = await import("@/hooks/useDashboardRealtime");
       renderHook(() => useDashboardRealtime());
 
-      // Should call from() for orders, tickets, traffic_events, events
-      const calledTables = mockFrom.mock.calls.map((c) => c[0]);
-      expect(calledTables).toContain("orders");
-      expect(calledTables).toContain("tickets");
-      expect(calledTables).toContain("traffic_events");
+      // Should call the dashboard API endpoint
+      expect(mockFetch).toHaveBeenCalledWith("/api/admin/dashboard");
     });
 
-    it("queries both today and yesterday data for trend comparison", async () => {
+    it("uses API endpoint that returns today and yesterday data for trend comparison", async () => {
+      const apiResponse = {
+        today: { revenue: 100, orders: 2, ticketsSold: 4, avgOrderValue: 50, conversionRate: 5 },
+        yesterday: { revenue: 80, orders: 1, ticketsSold: 2, avgOrderValue: 80, conversionRate: 3 },
+        funnel: { landing: 100, tickets: 50, add_to_cart: 20, checkout: 10, purchase: 5 },
+        activeVisitors: 3,
+        activeCarts: 1,
+        inCheckout: 0,
+        recentActivity: [],
+        recentSessions: [],
+        recentCartSessions: [],
+        recentPurchaseSessions: [],
+        recentCheckoutSessions: [],
+        topEvents: [],
+      };
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(apiResponse),
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
       const { useDashboardRealtime } = await import("@/hooks/useDashboardRealtime");
       renderHook(() => useDashboardRealtime());
 
-      // Should query orders at least twice (today + yesterday)
-      const orderCalls = mockFrom.mock.calls.filter((c) => c[0] === "orders");
-      expect(orderCalls.length).toBeGreaterThanOrEqual(2);
+      // The API response includes both today and yesterday data
+      expect(apiResponse.today).toBeDefined();
+      expect(apiResponse.yesterday).toBeDefined();
     });
   });
 

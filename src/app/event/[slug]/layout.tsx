@@ -1,6 +1,6 @@
 import { fetchSettings } from "@/lib/settings";
 import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
 import { SettingsProvider } from "@/hooks/useSettings";
 import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
@@ -32,7 +32,7 @@ export default async function EventLayout({
   let eventId: string | null = null;
 
   // Single Supabase client, reused across all queries
-  const supabase = await getSupabaseServer();
+  const supabase = getSupabaseAdmin();
 
   // STEP 1: Fetch event from DB
   if (supabase) {

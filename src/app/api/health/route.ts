@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, SETTINGS_KEYS, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID } from "@/lib/constants";
 import { stripe } from "@/lib/stripe/server";
 
@@ -42,7 +42,7 @@ export async function GET() {
 async function checkSupabase(): Promise<HealthCheck> {
   const start = Date.now();
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return { name: "Supabase", status: "down", detail: "Client not configured" };
     }
@@ -98,7 +98,7 @@ async function checkStripe(): Promise<HealthCheck> {
 /** Check Meta Pixel configuration via marketing settings */
 async function checkMetaPixel(): Promise<HealthCheck> {
   try {
-    const supabase = await getSupabaseServer();
+    const supabase = getSupabaseAdmin();
     if (!supabase) {
       return { name: "Meta Pixel", status: "degraded", detail: "Cannot check — DB down" };
     }

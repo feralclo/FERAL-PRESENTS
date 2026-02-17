@@ -305,6 +305,7 @@
 .event-tickets {
   position: sticky;
   top: calc(var(--header-height) + 24px);
+  z-index: 10000;
 }
 
 .event-tickets__box {
@@ -487,7 +488,10 @@
 
 .feral-tickets__checkout {
   width: 100%;
-  padding: 18px 24px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--red);
   color: var(--white);
   border: none;
@@ -2143,7 +2147,7 @@
   }
 
   .feral-tickets__checkout {
-    padding: 16px 20px;
+    height: 48px;
     font-size: 0.8rem;
   }
 

@@ -1874,7 +1874,7 @@ html.checkout-active .noise {
    TICKET PAGE EXPRESS CHECKOUT
    ======================================== */
 .feral-tickets__express {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .feral-tickets__express .express-checkout {
@@ -1882,11 +1882,14 @@ html.checkout-active .noise {
   overflow: hidden;
 }
 
+/* Divider: — or — between checkout and Apple Pay */
 .feral-tickets__express-divider {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  padding: 12px 0;
+  width: 100%;
+  padding: 14px 0;
 }
 
 .feral-tickets__express-divider-line {
@@ -1898,9 +1901,11 @@ html.checkout-active .noise {
 .feral-tickets__express-divider-text {
   font-family: var(--font-mono), 'Space Mono', monospace;
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--text-muted, #555);
+  flex-shrink: 0;
+  text-align: center;
 }
 
 .feral-tickets__express-error {

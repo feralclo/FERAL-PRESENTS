@@ -226,7 +226,13 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
     })();
   }, []);
 
-  if (!ready) return null;
+  if (!ready) {
+    return (
+      <div className="express-checkout">
+        <div className="express-checkout__skeleton" />
+      </div>
+    );
+  }
 
   const stripePromise = getStripeClient(stripeAccountId);
   const amountInSmallest = toSmallestUnit(props.amount);

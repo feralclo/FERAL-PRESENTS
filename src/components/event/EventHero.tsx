@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 interface EventHeroProps {
   title: string;
@@ -22,10 +21,11 @@ export function EventHero({
   age,
   bannerImage,
   coverImage,
-  tag = "SECOND RELEASE NOW ACTIVE",
+  tag,
 }: EventHeroProps) {
   const imgSrc = coverImage || bannerImage;
   const [imgFailed, setImgFailed] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
     <section className="event-hero">
@@ -35,47 +35,36 @@ export function EventHero({
           <img
             src={imgSrc}
             alt={title}
-            className="event-hero__bg-img"
+            className={`event-hero__bg-img${imgLoaded ? " event-hero__bg-img--loaded" : ""}`}
             onError={() => setImgFailed(true)}
+            onLoad={() => setImgLoaded(true)}
           />
         )}
-        <div className="event-hero__darken" />
-        <div className="event-hero__noise" />
-        <div className="event-hero__scanline" />
+        <div className="event-hero__gradient" />
       </div>
       <div className="container">
         <div className="event-hero__content">
-          <div className="event-hero__topbar">
-            <div className="event-hero__meta">
-              <span className="event-hero__tag">{tag}</span>
+          {tag && (
+            <div className="event-hero__badge">
+              <span className="event-hero__badge-dot" />
+              <span className="event-hero__badge-text">{tag}</span>
             </div>
-            <Link href="/" className="event-hero__back">
-              <span className="event-hero__back-arrow">&larr;</span>
-              <span>Back to all events</span>
-            </Link>
-          </div>
+          )}
 
-          <h1 className="event-hero__title glitch" data-text={title}>
-            {title}
-          </h1>
+          <h1 className="event-hero__title">{title}</h1>
 
           <div className="event-hero__details">
-            <div className="event-hero__detail">
-              <span className="event-hero__detail-label">DATE</span>
-              <span className="event-hero__detail-value">{date}</span>
-            </div>
-            <div className="event-hero__detail">
-              <span className="event-hero__detail-label">DOORS</span>
-              <span className="event-hero__detail-value">{doors}</span>
-            </div>
-            <div className="event-hero__detail">
-              <span className="event-hero__detail-label">LOCATION</span>
-              <span className="event-hero__detail-value">{location}</span>
-            </div>
-            <div className="event-hero__detail">
-              <span className="event-hero__detail-label">AGE</span>
-              <span className="event-hero__detail-value">{age}</span>
-            </div>
+            <span className="event-hero__detail-value">{date}</span>
+            {doors && (
+              <>
+                <span className="event-hero__detail-divider" />
+                <span className="event-hero__detail-value">{doors}</span>
+              </>
+            )}
+            <span className="event-hero__detail-divider" />
+            <span className="event-hero__detail-value">{location}</span>
+            <span className="event-hero__detail-divider" />
+            <span className="event-hero__detail-value">{age}</span>
           </div>
         </div>
       </div>

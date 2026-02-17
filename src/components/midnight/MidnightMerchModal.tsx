@@ -8,7 +8,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
@@ -131,11 +130,11 @@ export function MidnightMerchModal({
 
           {/* ── Scrollable content ─────────────────── */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <div className="md:grid md:grid-cols-2">
+            <div className="md:grid md:grid-cols-[1.1fr_1fr]">
 
-              {/* Image area */}
-              <div className="midnight-merch-viewer relative md:border-r border-foreground/[0.04]">
-                <div className="flex justify-center items-center p-5 pt-12 max-md:pt-11 max-md:p-4 min-h-[240px] max-md:min-h-[180px] max-[380px]:min-h-[140px]">
+              {/* Image — the hero of the popup */}
+              <div className="midnight-merch-viewer relative">
+                <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-11 max-md:pb-2 min-h-[280px] max-md:min-h-[220px] max-[380px]:min-h-[160px]">
                   {images.length > 0 ? (
                     images.map((img) => (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -143,7 +142,7 @@ export function MidnightMerchModal({
                         key={img.view}
                         src={img.src}
                         alt={img.alt}
-                        className={`max-w-[260px] max-md:max-w-[180px] max-[380px]:max-w-[150px] max-h-[280px] max-md:max-h-[180px] max-[380px]:max-h-[150px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
+                        className={`max-w-[300px] max-md:max-w-[220px] max-[380px]:max-w-[170px] max-h-[320px] max-md:max-h-[240px] max-[380px]:max-h-[180px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
                           activeView === img.view ? "block opacity-100" : "hidden opacity-0"
                         }`}
                         style={{
@@ -179,10 +178,10 @@ export function MidnightMerchModal({
                 )}
               </div>
 
-              {/* Info column */}
-              <div className="p-5 max-md:p-4 md:border-l border-foreground/[0.04] flex flex-col justify-center">
+              {/* Product info — clean, focused */}
+              <div className="p-5 max-md:px-5 max-md:py-4 md:border-l border-foreground/[0.04] flex flex-col justify-center">
                 {/* Name + Price */}
-                <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="flex items-start justify-between gap-3 mb-1">
                   <h3 className="font-[family-name:var(--font-sans)] text-sm font-bold tracking-[0.02em] uppercase text-foreground/90">
                     {title}
                   </h3>
@@ -191,61 +190,53 @@ export function MidnightMerchModal({
                   </span>
                 </div>
 
-                {/* Description */}
-                <p className="font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-muted-foreground/50 mb-4 max-md:mb-3">
-                  {description}
+                {/* VIP inclusion — single quiet line */}
+                <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.06em] text-foreground/25 mb-5 max-md:mb-4">
+                  {vipText}
                 </p>
 
-                {/* Badges — compact row */}
-                <div className="flex gap-1.5 flex-wrap mb-5 max-md:mb-4">
-                  <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[8px] tracking-[0.1em] uppercase text-foreground/40 bg-foreground/[0.02] border-foreground/[0.08] px-2 py-0.5 rounded-md">
-                    Limited Edition
-                  </Badge>
-                  <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[8px] tracking-[0.1em] uppercase text-foreground/40 bg-foreground/[0.02] border-foreground/[0.08] px-2 py-0.5 rounded-md">
-                    {vipText}
-                  </Badge>
-                </div>
+                {/* Description — desktop only, subtle */}
+                {description && (
+                  <p className="hidden md:block font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-muted-foreground/40 mb-5">
+                    {description}
+                  </p>
+                )}
 
-                {/* Size selector */}
-                <div>
-                  <span className="block font-[family-name:var(--font-mono)] text-[9px] font-medium tracking-[0.12em] uppercase text-foreground/30 text-center mb-2.5">
-                    Select Size
-                  </span>
-                  <MidnightSizeSelector
-                    sizes={sizes}
-                    selectedSize={selectedSize}
-                    onSelect={(s) => setSelectedSize(s as TeeSize)}
-                    variant="platinum"
-                  />
-                </div>
+                {/* Size selector — no label needed, buttons are self-explanatory */}
+                <MidnightSizeSelector
+                  sizes={sizes}
+                  selectedSize={selectedSize}
+                  onSelect={(s) => setSelectedSize(s as TeeSize)}
+                  variant="platinum"
+                />
               </div>
 
             </div>
           </div>
 
           {/* ── CTA bar — always visible, outside scroll ── */}
-          <div className="shrink-0 p-4 max-md:p-3 bg-foreground/[0.025] border-t border-foreground/[0.06] flex items-center gap-3">
-            <div className="flex items-center gap-2.5 shrink-0">
-              <Button
-                variant="outline"
-                size="icon"
-                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-foreground/[0.04] border-foreground/[0.10] text-foreground/60 hover:bg-foreground/[0.08] hover:border-foreground/[0.18] rounded-xl active:scale-[0.92] transition-transform duration-100"
+          <div className="shrink-0 px-5 py-4 max-md:px-4 max-md:py-3.5 bg-foreground/[0.02] border-t border-foreground/[0.06] flex items-center gap-3">
+            {/* Compact qty stepper */}
+            <div className="flex items-center gap-1.5 shrink-0 bg-foreground/[0.03] border border-foreground/[0.06] rounded-lg px-1 py-1">
+              <button
+                type="button"
+                className="w-8 h-8 flex items-center justify-center text-sm text-foreground/50 hover:text-foreground/80 rounded-md hover:bg-foreground/[0.06] active:scale-[0.90] transition-all duration-100 cursor-pointer"
                 onClick={() => setQty(Math.max(1, qty - 1))}
               >
                 &minus;
-              </Button>
-              <span className="font-[family-name:var(--font-mono)] text-lg font-bold min-w-[28px] text-center tabular-nums">
+              </button>
+              <span className="font-[family-name:var(--font-mono)] text-sm font-bold min-w-[24px] text-center tabular-nums text-foreground/80">
                 {qty}
               </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-foreground/[0.04] border-foreground/[0.10] text-foreground/60 hover:bg-foreground/[0.08] hover:border-foreground/[0.18] rounded-xl active:scale-[0.92] transition-transform duration-100"
+              <button
+                type="button"
+                className="w-8 h-8 flex items-center justify-center text-sm text-foreground/50 hover:text-foreground/80 rounded-md hover:bg-foreground/[0.06] active:scale-[0.90] transition-all duration-100 cursor-pointer"
                 onClick={() => setQty(qty + 1)}
               >
                 +
-              </Button>
+              </button>
             </div>
+            {/* Add to cart — the main action */}
             <Button
               className="midnight-metallic-cta flex-1 h-12 max-md:h-11 font-[family-name:var(--font-sans)] text-xs max-md:text-[11px] font-bold tracking-[0.04em] uppercase rounded-xl"
               onClick={handleAdd}

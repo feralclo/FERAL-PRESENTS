@@ -65,8 +65,10 @@ export function MidnightHero({
         <div className="midnight-hero-frame absolute inset-0" />
       </div>
 
-      {/* Content — large cinematic typography */}
-      <div className="relative z-[2] w-full max-w-[900px] px-6 pb-14 max-md:px-5 max-md:pb-9 max-[480px]:px-4 max-[480px]:pb-7">
+      {/* Content — large cinematic typography
+           max-lg:z-[11] lifts content above the ticket section (z-10) in the
+           overlap zone so the CTA button is tappable on mobile. */}
+      <div className="relative z-[2] max-lg:z-[11] w-full max-w-[900px] px-6 pb-14 max-md:px-5 max-md:pb-9 max-[480px]:px-4 max-[480px]:pb-7">
         {tag && (
           <div className="inline-flex items-center gap-2.5 font-[family-name:var(--font-mono)] text-[10px] font-medium tracking-[0.18em] uppercase text-foreground/50 mb-6 max-md:mb-4 max-[480px]:text-[9px]">
             <span
@@ -108,7 +110,7 @@ export function MidnightHero({
         <Button
           size="lg"
           variant="outline"
-          className="midnight-hero-cta mt-7 max-md:mt-5 max-[480px]:mt-4 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.03em] rounded-xl bg-white/[0.06] border-white/[0.12] text-foreground/90 hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200"
+          className="mt-7 max-md:mt-5 max-[480px]:mt-4 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.03em] rounded-xl bg-white/[0.06] border-white/[0.12] text-foreground/90 hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200"
           onClick={() =>
             document
               .getElementById("tickets")

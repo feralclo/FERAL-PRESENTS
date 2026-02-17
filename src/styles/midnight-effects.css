@@ -545,11 +545,13 @@ body:has([data-theme="midnight"]) .header {
 /* ═══════════════════════════════════════════════
    CHECKOUT PAGE — Premium express checkout treatment
    Matches the ticket widget glass enclosure on the
-   checkout form page. Scoped to midnight theme only.
+   checkout form page. Scoped to .native-checkout so
+   these styles DON'T bleed onto the ticket page
+   (which has its own midnight-express-glass container).
    ═══════════════════════════════════════════════ */
 
 /* Glass enclosure around the express button area */
-[data-theme="midnight"] .express-checkout {
+[data-theme="midnight"] .native-checkout .express-checkout {
   position: relative;
   background: linear-gradient(
     180deg,
@@ -568,7 +570,7 @@ body:has([data-theme="midnight"]) .header {
 }
 
 /* Ambient halo behind the glass */
-[data-theme="midnight"] .express-checkout::after {
+[data-theme="midnight"] .native-checkout .express-checkout::after {
   content: '';
   position: absolute;
   inset: -6px;
@@ -583,7 +585,7 @@ body:has([data-theme="midnight"]) .header {
 }
 
 /* Luminous frame around the Stripe button */
-[data-theme="midnight"] .express-checkout__element {
+[data-theme="midnight"] .native-checkout .express-checkout__element {
   border-radius: 12px;
   overflow: hidden;
   box-shadow:
@@ -593,7 +595,7 @@ body:has([data-theme="midnight"]) .header {
 }
 
 /* Refined label — mono, tracked out, quiet */
-[data-theme="midnight"] .express-checkout__label {
+[data-theme="midnight"] .native-checkout .express-checkout__label {
   font-family: var(--font-mono, 'Space Mono', monospace);
   font-size: 9px;
   font-weight: 700;
@@ -603,12 +605,12 @@ body:has([data-theme="midnight"]) .header {
 }
 
 /* Gradient divider lines */
-[data-theme="midnight"] .checkout-divider__line {
+[data-theme="midnight"] .native-checkout .checkout-divider__line {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
 }
 
 /* Refined divider text — matches ticket page "or" style */
-[data-theme="midnight"] .checkout-divider__text {
+[data-theme="midnight"] .native-checkout .checkout-divider__text {
   font-family: var(--font-mono, 'Space Mono', monospace);
   font-size: 9px;
   font-weight: 700;
@@ -618,7 +620,7 @@ body:has([data-theme="midnight"]) .header {
 }
 
 /* Skeleton inside the glass gets matching radius */
-[data-theme="midnight"] .express-checkout__skeleton {
+[data-theme="midnight"] .native-checkout .express-checkout__skeleton {
   border-radius: 12px;
 }
 

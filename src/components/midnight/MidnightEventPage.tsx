@@ -132,11 +132,11 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           tag={event.tag_line || ""}
         />
 
-        <section className="relative z-10 pt-16 pb-16 max-lg:-mt-16 max-lg:pt-0 max-md:-mt-20 max-md:pb-10">
+        <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10">
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-20 max-lg:gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info — on mobile, show below tickets */}
-              <div className="max-lg:order-2 max-lg:px-6 max-lg:pb-20 max-lg:flex max-lg:flex-col">
+              <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-20 max-lg:flex max-lg:flex-col">
                 {/* Lineup moves above About on mobile via order */}
                 {lineup.length > 0 && (
                   <div className="lg:hidden order-[-1] mb-10 max-md:mb-8">

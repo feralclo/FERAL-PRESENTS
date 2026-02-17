@@ -103,6 +103,31 @@
   }
 }
 
+/* ── Layout spacing tokens ──
+   Predictable spacing regardless of content height.
+   The ticket widget can grow (more tiers, merch, etc.) and spacing
+   between sections stays consistent because it's defined here, not
+   on individual components. */
+[data-theme="midnight"] {
+  --midnight-section-gap: 48px;
+  --midnight-hero-overlap: 80px;
+  --midnight-content-px: 24px;
+}
+
+@media (min-width: 1024px) {
+  [data-theme="midnight"] {
+    --midnight-section-gap: 80px;
+    --midnight-hero-overlap: 0px;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-theme="midnight"] {
+    --midnight-section-gap: 40px;
+    --midnight-content-px: 16px;
+  }
+}
+
 /* ── Button shadow fix: shared Button hardcodes purple glow, override to match red primary ── */
 [data-theme="midnight"] [data-slot="button"][data-variant="default"] {
   box-shadow: 0 1px 12px color-mix(in srgb, var(--color-primary) 25%, transparent);

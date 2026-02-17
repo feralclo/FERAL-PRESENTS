@@ -399,6 +399,20 @@ body:has([data-theme="midnight"]) .header {
   pointer-events: none;
 }
 
+/* Button frame — luminous inset edge around the express button.
+   Creates a "set into glass" effect: thin light-catching border
+   with a top-edge highlight and soft ambient glow.
+   The Stripe iframe sits inside this, visually framed. */
+[data-theme="midnight"] .midnight-express-btn-frame {
+  box-shadow:
+    /* Thin luminous border */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    /* Top-edge light catch */
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    /* Soft ambient glow */
+    0 0 12px rgba(255, 255, 255, 0.025);
+}
+
 /* Express Checkout reveal — one-shot border glow */
 @keyframes midnight-reveal-glow {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 35%, transparent); }

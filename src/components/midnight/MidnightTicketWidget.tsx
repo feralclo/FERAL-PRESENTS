@@ -257,9 +257,11 @@ export function MidnightTicketWidget({
                   </div>
                 )}
 
-                {/* Glass enclosure — premium container for express checkout */}
-                <div className="midnight-express-glass rounded-2xl p-3">
-                  <div className="rounded-xl overflow-hidden">
+                {/* Glass enclosure — only styled when express methods confirmed.
+                    ExpressCheckout stays mounted always for instant readiness,
+                    but the glass treatment is invisible until onAvailable fires. */}
+                <div className={expressAvailable ? "midnight-express-glass rounded-2xl p-3" : ""}>
+                  <div className={expressAvailable ? "midnight-express-btn-frame rounded-xl overflow-hidden" : "rounded-xl overflow-hidden"}>
                     <ExpressCheckout
                       eventId={eventId}
                       currency={currency}

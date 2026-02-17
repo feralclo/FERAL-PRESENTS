@@ -24,6 +24,8 @@ interface ExpressCheckoutProps {
   items: { ticket_type_id: string; qty: number; merch_size?: string }[];
   onSuccess: (order: Order) => void;
   onError: (message: string) => void;
+  /** Called when express payment methods are confirmed available */
+  onAvailable?: () => void;
 }
 
 /**
@@ -36,6 +38,7 @@ function ExpressCheckoutInner({
   currency,
   onSuccess,
   onError,
+  onAvailable,
 }: ExpressCheckoutProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -163,6 +166,8 @@ function ExpressCheckoutInner({
         onReady={({ availablePaymentMethods }) => {
           if (!availablePaymentMethods) {
             setAvailable(false);
+          } else {
+            onAvailable?.();
           }
         }}
         options={{
@@ -171,8 +176,8 @@ function ExpressCheckoutInner({
             googlePay: "plain",
           },
           buttonTheme: {
-            applePay: "white-outline",
-            googlePay: "white",
+            applePay: "black",
+            googlePay: "black",
           },
           buttonHeight: 48,
           layout: {
@@ -246,7 +251,7 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
       variables: {
         colorPrimary: "#ffffff",
         colorBackground: "#0e0e0e",
-        borderRadius: "8px",
+        borderRadius: "12px",
       },
     },
   };

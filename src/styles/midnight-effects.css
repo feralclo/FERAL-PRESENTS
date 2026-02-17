@@ -493,11 +493,14 @@ body:has([data-theme="midnight"]) .header {
    ═══════════════════════════════════════════════ */
 
 /* Solid background (no backdrop-filter) — avoids compositing jank
-   in Instagram/TikTok in-app browsers when their chrome hides on scroll. */
+   in Instagram/TikTok in-app browsers when their chrome hides on scroll.
+   Gradient top edge simulates light hitting a glass surface. */
 [data-theme="midnight"] .midnight-bottom-bar {
-  background: rgba(10, 10, 14, 0.97);
+  background: linear-gradient(180deg, rgba(18, 18, 22, 0.98) 0%, rgba(10, 10, 14, 0.99) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.03),
+    0 -12px 40px rgba(0, 0, 0, 0.7);
 }
 
 

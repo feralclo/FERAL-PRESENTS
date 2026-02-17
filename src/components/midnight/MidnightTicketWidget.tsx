@@ -54,6 +54,7 @@ export function MidnightTicketWidget({
   const hadItemsBefore = useRef(false);
   const [ctaGlow, setCtaGlow] = useState(false);
   const [expressRevealed, setExpressRevealed] = useState(false);
+  const [expressAvailable, setExpressAvailable] = useState(false);
 
   const {
     activeTypes,
@@ -212,14 +213,14 @@ export function MidnightTicketWidget({
               </div>
             ))}
 
-            {/* Checkout CTA — ghost when empty, white when active */}
+            {/* Checkout CTA — ghost when empty, frosted glass when active */}
             <button
               type="button"
               className={cn(
-                "w-full h-[52px] mt-5 text-sm max-[480px]:text-[13px] font-bold tracking-[0.02em] uppercase rounded-xl transition-all duration-300 cursor-pointer",
+                "w-full h-[48px] mt-5 text-[13px] max-[480px]:text-xs font-bold tracking-[0.03em] uppercase rounded-xl transition-all duration-300 cursor-pointer",
                 totalQty === 0
                   ? "bg-foreground/[0.04] text-foreground/25 border border-foreground/[0.06] cursor-default"
-                  : "bg-white text-[#0e0e0e] shadow-[0_0_20px_rgba(255,255,255,0.08)] hover:shadow-[0_0_28px_rgba(255,255,255,0.14)] hover:bg-[#f0f0f0] active:scale-[0.98]",
+                  : "bg-white/[0.12] border border-white/[0.18] text-foreground shadow-[0_0_20px_rgba(255,255,255,0.04)] hover:bg-white/[0.18] hover:border-white/[0.25] hover:shadow-[0_0_24px_rgba(255,255,255,0.07)] active:scale-[0.98]",
                 ctaGlow ? "midnight-cta-ready" : "",
               )}
               disabled={totalQty === 0}
@@ -227,30 +228,33 @@ export function MidnightTicketWidget({
             >
               {totalQty === 0
                 ? "Select tickets to continue"
-                : <span className="flex items-center justify-center gap-2">
+                : <span className="flex items-center justify-center gap-2.5">
                     <span>Checkout</span>
-                    <span className="w-px h-4 bg-[#0e0e0e]/20" />
+                    <span className="w-px h-3.5 bg-white/20" />
                     <span key={totalPrice} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{currSymbol}{totalPrice.toFixed(2)}</span>
                   </span>}
             </button>
 
             {/* Express Checkout (Apple Pay / Google Pay) — always mounted
-                for instant readiness. Hidden until first item added. */}
+                for instant readiness. Hidden until first item added.
+                "or" divider only renders when express methods are confirmed available. */}
             {isStripe && (
               <div
                 className={`mt-0 overflow-hidden transition-all duration-500 ease-out ${
                   totalQty > 0
                     ? "opacity-100 max-h-[200px]"
                     : "opacity-0 max-h-0 pointer-events-none"
-                } ${expressRevealed && totalQty > 0 ? "midnight-reveal-glow rounded-lg" : ""}`}
+                }`}
               >
-                <div className="flex items-center gap-3 py-4">
-                  <Separator className="flex-1 opacity-20" />
-                  <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] uppercase text-muted-foreground/60 shrink-0">
-                    or
-                  </span>
-                  <Separator className="flex-1 opacity-20" />
-                </div>
+                {expressAvailable && (
+                  <div className="flex items-center gap-3 py-4">
+                    <Separator className="flex-1 opacity-20" />
+                    <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40 shrink-0">
+                      or pay with
+                    </span>
+                    <Separator className="flex-1 opacity-20" />
+                  </div>
+                )}
                 <div className="rounded-xl overflow-hidden">
                   <ExpressCheckout
                     eventId={eventId}
@@ -259,6 +263,7 @@ export function MidnightTicketWidget({
                     items={expressItems}
                     onSuccess={handleExpressSuccess}
                     onError={setExpressError}
+                    onAvailable={() => setExpressAvailable(true)}
                   />
                 </div>
                 {expressError && (

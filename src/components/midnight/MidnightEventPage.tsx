@@ -134,19 +134,19 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
         <section className="relative z-10 pt-16 pb-16 max-lg:-mt-16 max-lg:pt-0 max-md:-mt-20 max-md:pb-10">
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-20 max-lg:gap-6">
-              {/* Mobile lineup — sits ABOVE tickets on mobile, hidden on desktop */}
-              {lineup.length > 0 && (
-                <div className="lg:hidden max-lg:order-1 px-6 max-md:px-5">
-                  <MidnightLineup
-                    artists={lineup}
-                    onArtistClick={() => tracking.trackEngagement("click_lineup")}
-                  />
-                </div>
-              )}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-20 max-lg:gap-8">
+              {/* Left: Event Info — on mobile, show below tickets */}
+              <div className="max-lg:order-2 max-lg:px-6 max-lg:pb-20 max-lg:flex max-lg:flex-col">
+                {/* Lineup moves above About on mobile via order */}
+                {lineup.length > 0 && (
+                  <div className="lg:hidden order-[-1] mb-10 max-md:mb-8">
+                    <MidnightLineup
+                      artists={lineup}
+                      onArtistClick={() => tracking.trackEngagement("click_lineup")}
+                    />
+                  </div>
+                )}
 
-              {/* Left: Event Info */}
-              <div className="max-lg:order-3 max-lg:px-6 max-lg:pb-20">
                 <MidnightEventInfo
                   aboutText={event.about_text}
                   detailsText={event.details_text}
@@ -164,8 +164,8 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 )}
               </div>
 
-              {/* Right: Ticket Widget — on mobile, show after lineup */}
-              <div className="max-lg:order-2">
+              {/* Right: Ticket Widget — on mobile, show first */}
+              <div className="max-lg:order-1">
                 <MidnightTicketWidget
                   eventSlug={event.slug}
                   eventId={event.id}

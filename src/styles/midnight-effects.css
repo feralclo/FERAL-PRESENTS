@@ -26,15 +26,26 @@ body:has([data-theme="midnight"]) > .noise {
    scroll jank from browser repaints.
    ═══════════════════════════════════════════════ */
 
+/* Base: slight zoom so the image never shows edges during animation.
+   translate3d(0,0,0) promotes to a stable GPU layer without will-change
+   (which causes layer churn on scroll → visual pops). */
 [data-theme="midnight"] .midnight-hero-img {
-  will-change: transform;
-  animation: midnight-hero-breathe 25s ease-in-out infinite alternate;
+  transform: translate3d(0, 0, 0) scale(1.03);
   transform-origin: 50% 40%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Only run the Ken Burns drift AFTER the image has loaded and faded in.
+   This prevents an invisible image from accumulating animation progress,
+   which caused the "pop in + enlarge" glitch on scroll. */
+[data-theme="midnight"] .midnight-hero-img--loaded {
+  animation: midnight-hero-breathe 30s ease-in-out infinite alternate;
 }
 
 @keyframes midnight-hero-breathe {
-  0% { transform: scale(1.0); }
-  100% { transform: scale(1.04); }
+  0%   { transform: translate3d(0, 0, 0) scale(1.03); }
+  100% { transform: translate3d(0, 0, 0) scale(1.06); }
 }
 
 /* Vignette — radial edge darkening for framed depth */
@@ -439,6 +450,7 @@ body:has([data-theme="midnight"]) > .noise {
 
 @media (prefers-reduced-motion: reduce) {
   [data-theme="midnight"] .midnight-hero-img,
+  [data-theme="midnight"] .midnight-hero-img--loaded,
   [data-theme="midnight"] .midnight-metallic-platinum::after,
   [data-theme="midnight"] .midnight-metallic-obsidian::after,
   [data-theme="midnight"] .midnight-merch-viewer::before,

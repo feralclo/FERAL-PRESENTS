@@ -34,7 +34,7 @@ export function MidnightHero({
           <img
             src={bannerImage}
             alt=""
-            className={`midnight-hero-img w-full h-full object-cover object-center transition-opacity duration-[1200ms] ease-out ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            className={`midnight-hero-img w-full h-full object-cover object-center transition-opacity duration-700 ease-out ${imgLoaded ? "opacity-100 midnight-hero-img--loaded" : "opacity-0"}`}
             onError={() => setImgFailed(true)}
             onLoad={() => setImgLoaded(true)}
           />

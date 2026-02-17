@@ -363,12 +363,7 @@ body:has([data-theme="midnight"]) .header {
    The Apple Pay / Google Pay button sits inside this container.
    Creates a "jewel case" effect: subtle gradient glass with
    ambient light bleeding from the top edge. The white Stripe
-   button appears to float inside a lit display.
-
-   The border uses an animated conic gradient (::after) that
-   slowly rotates a point of light around the perimeter.
-   ::before provides the ambient halo glow behind.
-   The container itself has no border — the pseudo-element IS the border. */
+   button appears to float inside a lit display. */
 [data-theme="midnight"] .midnight-express-glass {
   position: relative;
   background: linear-gradient(
@@ -377,53 +372,12 @@ body:has([data-theme="midnight"]) .header {
     rgba(255, 255, 255, 0.015) 50%,
     rgba(255, 255, 255, 0.025) 100%
   );
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 -1px 0 rgba(255, 255, 255, 0.02),
     0 0 24px rgba(255, 255, 255, 0.03),
     0 4px 20px rgba(0, 0, 0, 0.25);
-}
-
-/* Animated gradient border — light traces the perimeter.
-   A conic gradient rotates behind the container. The inner
-   area is masked out by an inset shape, leaving only a 1px
-   border of animated light visible. */
-[data-theme="midnight"] .midnight-express-glass::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(
-    from var(--express-border-angle, 0deg),
-    rgba(255, 255, 255, 0.03) 0%,
-    rgba(255, 255, 255, 0.14) 12%,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.03) 75%,
-    rgba(255, 255, 255, 0.14) 87%,
-    rgba(255, 255, 255, 0.03) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
-  animation: express-border-rotate 10s linear infinite;
-}
-
-@property --express-border-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes express-border-rotate {
-  to { --express-border-angle: 360deg; }
 }
 
 /* Ambient halo — ultra-soft glow behind the glass */
@@ -604,39 +558,10 @@ body:has([data-theme="midnight"]) .header {
   border-radius: 16px;
   padding: 12px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 -1px 0 rgba(255, 255, 255, 0.02),
     0 0 24px rgba(255, 255, 255, 0.03),
     0 4px 20px rgba(0, 0, 0, 0.25);
-}
-
-/* Animated gradient border — matches ticket page treatment */
-[data-theme="midnight"] .native-checkout .express-checkout::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(
-    from var(--express-border-angle, 0deg),
-    rgba(255, 255, 255, 0.03) 0%,
-    rgba(255, 255, 255, 0.14) 12%,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.03) 75%,
-    rgba(255, 255, 255, 0.14) 87%,
-    rgba(255, 255, 255, 0.03) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
-  animation: express-border-rotate 10s linear infinite;
 }
 
 /* Ambient halo behind the glass */
@@ -722,15 +647,8 @@ body:has([data-theme="midnight"]) .header {
   [data-theme="midnight"] .midnight-diamond-icon::before,
   [data-theme="midnight"] .midnight-qty-pop,
   [data-theme="midnight"] .midnight-cta-ready,
-  [data-theme="midnight"] .midnight-reveal-glow,
-  [data-theme="midnight"] .midnight-express-glass::after,
-  [data-theme="midnight"] .native-checkout .express-checkout::after {
+  [data-theme="midnight"] .midnight-reveal-glow {
     animation: none;
-  }
-  /* Static fallback border when animation disabled */
-  [data-theme="midnight"] .midnight-express-glass::after,
-  [data-theme="midnight"] .native-checkout .express-checkout::after {
-    background: rgba(255, 255, 255, 0.08);
   }
   [data-theme="midnight"] .midnight-lineup-pill {
     transition: none;

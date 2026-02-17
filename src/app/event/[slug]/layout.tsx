@@ -126,17 +126,33 @@ export default async function EventLayout({
 
   const dataThemeAttr = activeTemplate || "midnight";
 
+  /* Preconnect hints — browser starts DNS + TCP/TLS handshake before
+     any JS loads, shaving ~100-300ms off Express Checkout readiness.
+     Stripe domains for payment processing, Google domains for Google Pay. */
+  const preconnectHints = (
+    <>
+      <link rel="preconnect" href="https://js.stripe.com" />
+      <link rel="preconnect" href="https://api.stripe.com" />
+      <link rel="preconnect" href="https://pay.google.com" />
+      <link rel="dns-prefetch" href="https://pay.google.com" />
+      <link rel="dns-prefetch" href="https://www.googleapis.com" />
+    </>
+  );
+
   return (
-    <div
-      data-theme-root
-      data-theme={dataThemeAttr}
-      className={themeClasses || undefined}
-      style={cssVars as React.CSSProperties}
-    >
-      <ThemeEditorBridge />
-      <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
-        {children}
-      </SettingsProvider>
-    </div>
+    <>
+      {preconnectHints}
+      <div
+        data-theme-root
+        data-theme={dataThemeAttr}
+        className={themeClasses || undefined}
+        style={cssVars as React.CSSProperties}
+      >
+        <ThemeEditorBridge />
+        <SettingsProvider settingsKey={settingsKey} initialSettings={settings}>
+          {children}
+        </SettingsProvider>
+      </div>
+    </>
   );
 }

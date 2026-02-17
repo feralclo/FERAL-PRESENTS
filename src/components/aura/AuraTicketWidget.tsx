@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
+import { preloadStripe } from "@/lib/stripe/client";
 import { AuraTicketCard } from "./AuraTicketCard";
 import type { TicketTypeRow } from "@/types/events";
 
@@ -70,6 +71,11 @@ export function AuraTicketWidget({
   const { trackAddToCart, trackInitiateCheckout } = useMetaTracking();
   const currSymbol = CURR_SYMBOL[currency] || "$";
   const isStripe = paymentMethod === "stripe";
+
+  // Pre-warm Stripe.js + account fetch while user browses
+  useEffect(() => {
+    if (isStripe) preloadStripe();
+  }, [isStripe]);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [quantities, setQuantities] = useState<Record<string, number>>({});

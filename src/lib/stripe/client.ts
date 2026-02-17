@@ -11,15 +11,36 @@ let platformPromise: Promise<Stripe | null> | null = null;
  *  Avoids re-calling loadStripe on every checkout mount — saves ~100-200ms. */
 const accountCache = new Map<string, Promise<Stripe | null>>();
 
-/**
- * Get or create the Stripe.js instance.
- *
- * - No args → platform instance (cached as singleton).
- * - With stripeAccount → connected account instance (cached per account ID).
- *
- * Calling with no args first "pre-warms" the Stripe.js script download
- * so subsequent calls with a connected account resolve faster.
+/* ── Stripe account preloading ────────────────────────────────────────
+ * Caches the /api/stripe/account fetch at module level so the result
+ * is ready instantly when ExpressCheckout mounts.
  */
+let _accountPromise: Promise<string | undefined> | null = null;
+
+/**
+ * Preload the connected Stripe account ID.
+ * Returns a cached promise — safe to call multiple times.
+ */
+export function preloadStripeAccount(): Promise<string | undefined> {
+  if (!_accountPromise) {
+    _accountPromise = fetch("/api/stripe/account")
+      .then((res) => res.json())
+      .then((data) => data.stripe_account_id || undefined)
+      .catch(() => undefined);
+  }
+  return _accountPromise;
+}
+
+/**
+ * Kick off Stripe.js download AND account fetch in parallel.
+ * Call this early (e.g. on ticket widget mount) so both are cached
+ * by the time the user adds a ticket and ExpressCheckout renders.
+ */
+export function preloadStripe(): void {
+  getStripeClient(); // start Stripe.js download
+  preloadStripeAccount(); // start account fetch
+}
+
 export function getStripeClient(stripeAccount?: string): Promise<Stripe | null> {
   if (!publishableKey) {
     console.warn("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set");

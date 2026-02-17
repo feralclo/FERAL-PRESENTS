@@ -12,7 +12,7 @@ import type {
   StripeExpressCheckoutElementClickEvent,
   StripeElementsOptions,
 } from "@stripe/stripe-js";
-import { getStripeClient } from "@/lib/stripe/client";
+import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import { toSmallestUnit } from "@/lib/stripe/config";
 import type { Order } from "@/types/orders";
 
@@ -210,18 +210,11 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
     if (initialized.current) return;
     initialized.current = true;
 
-    // Start Stripe.js loading immediately (parallel with account fetch)
-    getStripeClient();
-
-    // Fetch connected account config
+    // Use cached preload — resolves instantly if preloadStripe() was called
+    // earlier (e.g. on ticket widget mount). Falls back to fetching if not.
     (async () => {
-      try {
-        const res = await fetch("/api/stripe/account");
-        const data = await res.json();
-        setStripeAccountId(data.stripe_account_id || undefined);
-      } catch {
-        // No connected account — use platform
-      }
+      const accountId = await preloadStripeAccount();
+      setStripeAccountId(accountId);
       setReady(true);
     })();
   }, []);

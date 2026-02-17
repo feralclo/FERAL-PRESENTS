@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
+import { preloadStripe } from "@/lib/stripe/client";
 import { MidnightTicketCard } from "./MidnightTicketCard";
 import { MidnightCartSummary } from "./MidnightCartSummary";
 import { MidnightTierProgression } from "./MidnightTierProgression";
@@ -62,6 +63,13 @@ export function MidnightTicketWidget({
     handleSizeConfirm,
     handleCheckout,
   } = cart;
+
+  // Pre-warm Stripe.js + account fetch while user browses tickets.
+  // By the time they tap "add," both are cached — Express Checkout
+  // renders ~1s faster.
+  useEffect(() => {
+    if (isStripe) preloadStripe();
+  }, [isStripe]);
 
   // Express checkout success — redirect to confirmation
   const handleExpressSuccess = useCallback(

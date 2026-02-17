@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 interface MidnightHeroProps {
@@ -22,45 +21,21 @@ export function MidnightHero({
   bannerImage,
   tag,
 }: MidnightHeroProps) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  // Handle cached images: onLoad may not fire during hydration if the
-  // browser already has the image. Check .complete after mount.
-  useEffect(() => {
-    const img = imgRef.current;
-    if (img && img.complete && img.naturalWidth > 0) {
-      setImgLoaded(true);
-    }
-  }, []);
-
   return (
     <section className="midnight-hero relative flex items-end justify-center text-center overflow-hidden bg-background">
-      {/* Background image — static, no transform/animation */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        {bannerImage && !imgFailed && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            ref={imgRef}
-            src={bannerImage}
-            alt=""
-            className={`midnight-hero-img w-full h-full object-cover object-center transition-opacity duration-700 ease-out ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-            onError={() => setImgFailed(true)}
-            onLoad={() => setImgLoaded(true)}
-          />
-        )}
-      </div>
+      {/* Background image via CSS — avoids iOS Safari <img> + object-fit
+          compositor bug that causes "pop and enlarge" during scroll */}
+      {bannerImage && (
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${bannerImage})` }}
+        />
+      )}
 
-      {/* Glass depth overlays — static layers for museum-glass depth */}
+      {/* Glass depth overlays */}
       <div className="absolute inset-0 z-[1] pointer-events-none">
-        {/* Vignette — radial edge darkening */}
         <div className="midnight-hero-vignette absolute inset-0" />
-
-        {/* Glass reflection — subtle diagonal highlight */}
         <div className="midnight-hero-reflection absolute inset-0" />
-
-        {/* Cinematic gradient — top darkening + bottom fade to bg */}
         <div
           className="absolute inset-0"
           style={{
@@ -75,8 +50,6 @@ export function MidnightHero({
             )`,
           }}
         />
-
-        {/* Inner frame — inset shadow for glass depth */}
         <div className="midnight-hero-frame absolute inset-0" />
       </div>
 
@@ -99,14 +72,12 @@ export function MidnightHero({
           {title}
         </h1>
 
-        {/* Primary meta — date / venue */}
         <div className="flex items-center justify-center gap-4 max-md:gap-3 max-[480px]:gap-2 flex-wrap font-[family-name:var(--font-display)] text-[15px] max-md:text-sm max-[480px]:text-[13px] font-medium text-foreground/80 tracking-[0.01em] mb-2">
           <span>{date}</span>
           <span className="w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
           <span>{location}</span>
         </div>
 
-        {/* Secondary meta — doors / age */}
         {(doors || age) && (
           <div className="flex items-center justify-center gap-2 font-[family-name:var(--font-display)] text-[13px] max-md:text-xs max-[480px]:text-[11px] text-foreground/40">
             {doors && <span>Doors {doors}</span>}
@@ -115,7 +86,6 @@ export function MidnightHero({
           </div>
         )}
 
-        {/* CTA */}
         <Button
           size="lg"
           className="mt-8 max-md:mt-6 max-[480px]:mt-6 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.02em] rounded-[10px]"

@@ -20,37 +20,35 @@ body:has([data-theme="midnight"]) > .noise {
 
 /* ═══════════════════════════════════════════════
    HERO — Stable layout + premium glass window
+   Fixed pixel heights — no viewport units (vh/svh).
+   Viewport units cause resize glitches on iOS Safari
+   when the address bar collapses during scroll.
    ═══════════════════════════════════════════════ */
 
-/* Hero height — uses svh (small viewport height) to prevent the
-   "pop and enlarge" glitch caused by mobile browser address bars
-   collapsing on scroll. svh = viewport with address bar VISIBLE,
-   so it never changes during scroll. vh fallback for older browsers. */
 [data-theme="midnight"] .midnight-hero {
-  height: clamp(480px, 65vh, 750px);
-  height: clamp(480px, 65svh, 750px);
+  height: 600px;
 }
 
 @media (max-width: 1023px) {
   [data-theme="midnight"] .midnight-hero {
-    height: clamp(380px, 55vh, 560px);
-    height: clamp(380px, 55svh, 560px);
+    height: 440px;
   }
 }
 
 @media (max-width: 480px) {
   [data-theme="midnight"] .midnight-hero {
-    height: clamp(320px, 50vh, 480px);
-    height: clamp(320px, 50svh, 480px);
+    height: 380px;
   }
 }
 
-/* Hero image — no transform, no animation. Clean static image
-   with object-cover. GPU promotion only via backface-visibility
-   (lightest-weight compositor hint, no scale/translate artifacts). */
-[data-theme="midnight"] .midnight-hero-img {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+/* ── Suppress header backdrop-filter on midnight pages ──
+   The fixed header's blur(12px) forces the GPU to constantly
+   re-composite the hero image during scroll on iOS Safari,
+   causing visual pops. Solid bg is visually identical at 0.85 opacity. */
+body:has([data-theme="midnight"]) .header {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.92);
 }
 
 /* Vignette — radial edge darkening for framed depth */

@@ -1,15 +1,16 @@
 /*
- * Midnight Effects — Visual effects scoped to [data-theme="midnight"]
+ * Midnight Effects — Cinematic visual layer for [data-theme="midnight"]
  *
- * Glassmorphism, metallic gradients, shimmer animations, floating hearts,
- * CRT suppression, and reduced-motion overrides. These are the "cyberpunk
- * personality" classes that distinguish Midnight from other themes.
+ * Design language: Dark cinema. Deep blacks, controlled light, dramatic
+ * contrast. Metallic tier gradients, glass surfaces, restrained animation.
+ * Every effect serves immersion — nothing decorative, everything purposeful.
  *
- * All classes are consumed by Midnight components via cn() composition.
+ * All classes consumed by Midnight components via cn() composition.
  */
 
+
 /* ═══════════════════════════════════════════════
-   CRT SUPPRESSION — Hide scanlines on midnight event pages
+   CRT SUPPRESSION — Hide scanlines on midnight pages
    ═══════════════════════════════════════════════ */
 
 body:has([data-theme="midnight"]) > .scanlines,
@@ -19,102 +20,107 @@ body:has([data-theme="midnight"]) > .noise {
 
 
 /* ═══════════════════════════════════════════════
-   HERO — Stable layout + premium glass window
+   HERO — Stable layout with cinematic depth
    Fixed pixel heights — no viewport units (vh/svh).
-   Viewport units cause resize glitches on iOS Safari
-   when the address bar collapses during scroll.
+   Viewport units cause resize on iOS Safari when
+   the address bar collapses during scroll.
    ═══════════════════════════════════════════════ */
 
 [data-theme="midnight"] .midnight-hero {
-  height: 600px;
+  height: 620px;
 }
 
 @media (max-width: 1023px) {
   [data-theme="midnight"] .midnight-hero {
-    height: 440px;
+    height: 460px;
   }
 }
 
 @media (max-width: 480px) {
   [data-theme="midnight"] .midnight-hero {
-    height: 380px;
+    height: 400px;
   }
 }
 
-/* ── Suppress header backdrop-filter on midnight pages ──
-   The fixed header's blur(12px) forces the GPU to constantly
-   re-composite the hero image during scroll on iOS Safari,
-   causing visual pops. Solid bg is visually identical at 0.85 opacity. */
+/* Suppress header backdrop-filter on midnight pages.
+   iOS Safari re-composites the hero image through the blur
+   on every scroll frame, causing visible jank. Solid bg
+   is visually equivalent at high opacity. */
 body:has([data-theme="midnight"]) .header {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background: rgba(0, 0, 0, 0.92);
+  background: rgba(0, 0, 0, 0.94);
 }
 
-/* Vignette — radial edge darkening for framed depth */
+/* Vignette — deep radial edge darkening for cinematic depth */
 [data-theme="midnight"] .midnight-hero-vignette {
   background: radial-gradient(
-    ellipse 65% 55% at 50% 45%,
-    transparent 40%,
-    rgba(0, 0, 0, 0.55) 100%
+    ellipse 70% 60% at 50% 40%,
+    transparent 25%,
+    rgba(0, 0, 0, 0.65) 100%
   );
 }
 
-/* Glass reflection — diagonal highlight band on the "glass surface" */
+/* Reflection — diagonal highlight band on the glass surface */
 [data-theme="midnight"] .midnight-hero-reflection {
   background: linear-gradient(
-    115deg,
+    125deg,
     transparent 0%,
-    transparent 36%,
-    rgba(255, 255, 255, 0.03) 40%,
-    rgba(255, 255, 255, 0.06) 44%,
-    rgba(255, 255, 255, 0.10) 47%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.03) 54%,
+    transparent 40%,
+    rgba(255, 255, 255, 0.015) 44%,
+    rgba(255, 255, 255, 0.04) 47%,
+    rgba(255, 255, 255, 0.06) 49%,
+    rgba(255, 255, 255, 0.04) 51%,
+    rgba(255, 255, 255, 0.015) 54%,
     transparent 58%,
     transparent 100%
   );
 }
 
-/* Inner frame — inset shadows simulate depth between viewer and image */
+/* Inner frame — inset shadows for depth between viewer and image */
 [data-theme="midnight"] .midnight-hero-frame {
   box-shadow:
-    inset 0 0 100px 20px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    inset 0 0 140px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
 }
 
-/* Glass border — premium framed panel on desktop, full-bleed on mobile */
+/* Glass border — premium framed panel on desktop, full-bleed mobile */
 [data-theme="midnight"] .midnight-hero-glass-border {
   overflow: hidden;
 }
 
 @media (min-width: 1024px) {
   [data-theme="midnight"] .midnight-hero-glass-border {
-    border-radius: 16px;
+    border-radius: 20px;
     margin-left: 24px;
     margin-right: 24px;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      inset 0 -2px 0 rgba(0, 0, 0, 0.4),
-      0 8px 40px rgba(0, 0, 0, 0.6);
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+      0 16px 64px rgba(0, 0, 0, 0.7);
   }
 }
 
 
 /* ═══════════════════════════════════════════════
-   GLASSMORPHISM — Frosted glass card effect
+   GLASSMORPHISM — Refined frosted surface
    ═══════════════════════════════════════════════ */
 
 [data-theme="midnight"] .glass {
-  background: linear-gradient(160deg, rgba(30, 30, 36, 0.7) 0%, rgba(20, 20, 24, 0.8) 100%);
-  backdrop-filter: blur(40px) saturate(150%);
-  -webkit-backdrop-filter: blur(40px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  background: linear-gradient(
+    165deg,
+    rgba(24, 24, 28, 0.6) 0%,
+    rgba(16, 16, 20, 0.75) 100%
+  );
+  backdrop-filter: blur(40px) saturate(140%);
+  -webkit-backdrop-filter: blur(40px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 16px 56px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.03) inset;
 }
 
-/* Disable blur on mobile for performance */
 @media (max-width: 1024px) {
   [data-theme="midnight"] .glass {
     backdrop-filter: none;
@@ -126,47 +132,49 @@ body:has([data-theme="midnight"]) .header {
 
 /* ═══════════════════════════════════════════════
    METALLIC TIER EFFECTS — Platinum / Obsidian / Valentine
+   Restrained shimmer, thin borders, premium subtlety.
    ═══════════════════════════════════════════════ */
 
 /* --- Platinum (VIP) --- */
 [data-theme="midnight"] .midnight-metallic-platinum {
-  background: rgba(229, 228, 226, 0.04);
-  border: 2px solid rgba(229, 228, 226, 0.5);
+  background: rgba(229, 228, 226, 0.03);
+  border: 1px solid rgba(229, 228, 226, 0.3);
   overflow: hidden;
-  box-shadow: 0 0 15px rgba(229, 228, 226, 0.08);
+  box-shadow: 0 0 10px rgba(229, 228, 226, 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 [data-theme="midnight"] .midnight-metallic-platinum:hover {
-  border-color: rgba(229, 228, 226, 0.7);
-  box-shadow: 0 0 20px rgba(229, 228, 226, 0.12);
+  border-color: rgba(229, 228, 226, 0.5);
+  box-shadow: 0 0 16px rgba(229, 228, 226, 0.08);
 }
 
-/* Accent bar — left edge */
+/* Left accent bar */
 [data-theme="midnight"] .midnight-metallic-platinum::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
+  width: 2px;
   background: linear-gradient(180deg, var(--color-platinum-light) 0%, var(--color-platinum) 50%, var(--color-platinum-dark) 100%);
 }
 
-/* Platinum shimmer */
+/* Shimmer — slow, barely perceptible */
 [data-theme="midnight"] .midnight-metallic-platinum::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
     110deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.08) 40%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0.08) 60%,
-    transparent 80%
+    transparent 25%,
+    rgba(255, 255, 255, 0.03) 42%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 58%,
+    transparent 75%
   );
-  background-size: 200% 100%;
-  animation: platinumShine 3s ease-in-out infinite;
+  background-size: 250% 100%;
+  animation: platinumShine 5s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -175,78 +183,65 @@ body:has([data-theme="midnight"]) .header {
   100% { background-position: -200% center; }
 }
 
-/* Platinum active — glow intensifies */
 [data-theme="midnight"] .midnight-metallic-platinum.midnight-active {
-  border-color: rgba(229, 228, 226, 0.7);
-  background: rgba(229, 228, 226, 0.06);
-  box-shadow: 0 0 20px rgba(229, 228, 226, 0.15);
+  border-color: rgba(229, 228, 226, 0.55);
+  background: rgba(229, 228, 226, 0.05);
+  box-shadow: 0 0 14px rgba(229, 228, 226, 0.1);
 }
 
 
 /* --- Obsidian (Black / Centurion) --- */
 [data-theme="midnight"] .midnight-metallic-obsidian {
   background:
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 255, 255, 0.01) 2px,
-      rgba(255, 255, 255, 0.01) 4px
-    ),
-    linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 30%, #050505 70%, #000000 100%);
-  border: 2px solid rgba(255, 255, 255, 0.25);
+    linear-gradient(145deg, #161616 0%, #0d0d0d 35%, #050505 75%, #000000 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   overflow: hidden;
   box-shadow:
-    0 0 40px rgba(0, 0, 0, 0.8),
-    0 0 2px rgba(255, 255, 255, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+    0 0 30px rgba(0, 0, 0, 0.7),
+    0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 [data-theme="midnight"] .midnight-metallic-obsidian:hover {
-  border-color: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.35);
   box-shadow:
-    0 0 50px rgba(0, 0, 0, 0.9),
-    0 0 3px rgba(255, 255, 255, 0.5),
-    0 0 20px color-mix(in srgb, var(--color-primary) 15%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 0 40px rgba(0, 0, 0, 0.8),
+    0 0 2px rgba(255, 255, 255, 0.4),
+    0 0 14px color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
-/* Accent bar — left edge */
+/* Left accent bar */
 [data-theme="midnight"] .midnight-metallic-obsidian::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
+  width: 2px;
   background: linear-gradient(180deg,
     var(--color-primary) 0%,
-    color-mix(in srgb, var(--color-primary) 80%, transparent) 50%,
-    color-mix(in srgb, var(--color-primary) 50%, transparent) 100%);
-  box-shadow: 0 0 15px color-mix(in srgb, var(--color-primary) 60%, transparent);
+    color-mix(in srgb, var(--color-primary) 60%, transparent) 100%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 40%, transparent);
   z-index: 3;
 }
 
-/* Silver metallic shimmer */
+/* Silver shimmer */
 [data-theme="midnight"] .midnight-metallic-obsidian::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
     110deg,
-    transparent 0%,
-    transparent 35%,
-    rgba(255, 255, 255, 0.06) 40%,
-    rgba(255, 255, 255, 0.18) 45%,
-    rgba(200, 200, 200, 0.12) 50%,
-    rgba(255, 255, 255, 0.18) 55%,
-    rgba(255, 255, 255, 0.06) 60%,
-    transparent 65%,
-    transparent 100%
+    transparent 30%,
+    rgba(255, 255, 255, 0.03) 43%,
+    rgba(255, 255, 255, 0.1) 48%,
+    rgba(200, 200, 200, 0.07) 52%,
+    rgba(255, 255, 255, 0.03) 57%,
+    transparent 70%
   );
-  background-size: 200% 100%;
-  animation: silverShine 3s ease-in-out infinite;
+  background-size: 250% 100%;
+  animation: silverShine 5s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
 }
@@ -256,149 +251,151 @@ body:has([data-theme="midnight"]) .header {
   100% { background-position: -200% center; }
 }
 
-/* Obsidian active — white border + accent glow */
 [data-theme="midnight"] .midnight-metallic-obsidian.midnight-active {
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
   box-shadow:
-    0 0 40px rgba(0, 0, 0, 0.8),
-    0 0 3px rgba(255, 255, 255, 0.5),
-    0 0 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
+    0 0 30px rgba(0, 0, 0, 0.7),
+    0 0 2px rgba(255, 255, 255, 0.35),
+    0 0 18px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 
 /* --- Valentine (Romantic Pink-Red) --- */
 [data-theme="midnight"] .midnight-metallic-valentine {
   background:
-    linear-gradient(145deg,
-      #2a0a14 0%,
-      #1f0810 30%,
-      #2d0c18 50%,
-      #1a0610 100%);
-  border: 2px solid var(--color-valentine);
+    linear-gradient(145deg, #2a0a14 0%, #1f0810 30%, #2d0c18 50%, #1a0610 100%);
+  border: 1px solid rgba(232, 54, 93, 0.5);
   overflow: hidden;
   box-shadow:
-    0 0 25px rgba(232, 54, 93, 0.15),
-    0 0 2px rgba(255, 126, 179, 0.3),
-    inset 0 1px 0 rgba(255, 92, 138, 0.15);
+    0 0 18px rgba(232, 54, 93, 0.1),
+    0 0 1px rgba(255, 126, 179, 0.2);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 [data-theme="midnight"] .midnight-metallic-valentine:hover {
   border-color: var(--color-valentine-light);
   box-shadow:
-    0 0 35px rgba(232, 54, 93, 0.25),
-    0 0 4px rgba(255, 126, 179, 0.4),
-    0 0 60px rgba(232, 54, 93, 0.1),
-    inset 0 1px 0 rgba(255, 92, 138, 0.2);
+    0 0 25px rgba(232, 54, 93, 0.18),
+    0 0 3px rgba(255, 126, 179, 0.3);
 }
 
-/* Pink accent bar — left edge */
+/* Left accent bar */
 [data-theme="midnight"] .midnight-metallic-valentine::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
+  width: 2px;
   background: linear-gradient(180deg,
     var(--color-valentine-pink) 0%,
     var(--color-valentine) 50%,
     var(--color-valentine-dark) 100%);
-  box-shadow: 0 0 12px rgba(232, 54, 93, 0.4);
+  box-shadow: 0 0 6px rgba(232, 54, 93, 0.3);
   z-index: 3;
 }
 
-/* Valentine active — pink glow intensifies */
 [data-theme="midnight"] .midnight-metallic-valentine.midnight-active {
   border-color: var(--color-valentine-light);
   box-shadow:
-    0 0 30px rgba(232, 54, 93, 0.2),
-    0 0 3px rgba(255, 126, 179, 0.35);
+    0 0 22px rgba(232, 54, 93, 0.14),
+    0 0 2px rgba(255, 126, 179, 0.25);
 }
 
 
 /* ═══════════════════════════════════════════════
-   KEYFRAME ANIMATIONS
+   KEYFRAME ANIMATIONS — Restrained, purposeful
    ═══════════════════════════════════════════════ */
 
+/* Hero tag pulsing dot */
 @keyframes midnight-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.3; }
 }
 
+/* Valentine floating hearts */
 @keyframes floatHeart {
   0% {
     transform: translateY(0) scale(0.6) rotate(0deg);
     opacity: 0;
   }
-  10% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 0.3;
-  }
+  10% { opacity: 0.5; }
+  50% { opacity: 0.3; }
   100% {
     transform: translateY(-120px) scale(1) rotate(15deg);
     opacity: 0;
   }
 }
 
+/* Merch viewer glow pulse */
 @keyframes glowPulse {
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.05); }
 }
 
+/* Diamond icon glow */
 @keyframes iconGlow {
   0%, 100% { filter: drop-shadow(0 0 4px rgba(229, 228, 226, 0.6)); }
   50% { filter: drop-shadow(0 0 8px rgba(229, 228, 226, 1)); }
 }
 
-/* Qty counter pop — brief scale bounce on +/- tap */
+/* Qty counter — brief scale on +/- tap */
 @keyframes midnight-qty-pop {
   0% { transform: scale(1); }
-  40% { transform: scale(1.35); }
+  40% { transform: scale(1.2); }
   100% { transform: scale(1); }
 }
 [data-theme="midnight"] .midnight-qty-pop {
-  animation: midnight-qty-pop 200ms ease-out;
+  animation: midnight-qty-pop 160ms ease-out;
 }
 
-/* Checkout CTA glow pulse — one-shot when cart becomes non-empty */
+/* CTA glow — one-shot when cart becomes non-empty */
 @keyframes midnight-cta-ready {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 50%, transparent); }
-  50% { box-shadow: 0 0 20px 4px color-mix(in srgb, var(--color-primary) 40%, transparent); }
+  50% { box-shadow: 0 0 28px 6px color-mix(in srgb, var(--color-primary) 35%, transparent); }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 [data-theme="midnight"] .midnight-cta-ready {
   animation: midnight-cta-ready 600ms ease-out;
 }
 
-/* Express Checkout reveal glow — one-shot border glow on first appearance */
+/* Express Checkout reveal — one-shot border glow */
 @keyframes midnight-reveal-glow {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 40%, transparent); }
-  50% { box-shadow: 0 0 16px 2px color-mix(in srgb, var(--color-primary) 25%, transparent); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 35%, transparent); }
+  50% { box-shadow: 0 0 14px 2px color-mix(in srgb, var(--color-primary) 20%, transparent); }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 [data-theme="midnight"] .midnight-reveal-glow {
   animation: midnight-reveal-glow 800ms ease-out;
 }
 
-/* Cart toast entrance */
+/* Cart toast slide */
 @keyframes midnight-toast-in {
-  0% { transform: translateY(100%) scale(0.95); opacity: 0; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
+  0% { transform: translateY(12px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 @keyframes midnight-toast-out {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(100%) scale(0.95); opacity: 0; }
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(12px); opacity: 0; }
+}
+
+/* Bottom bar slide */
+@keyframes midnight-bar-in {
+  0% { transform: translateY(100%); }
+  100% { transform: translateY(0); }
 }
 
 
 /* ═══════════════════════════════════════════════
-   MERCH VIEWER — Radial glow for merch modal
+   MERCH VIEWER — Radial glow backdrop
    ═══════════════════════════════════════════════ */
 
 [data-theme="midnight"] .midnight-merch-viewer {
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--color-primary) 15%, transparent) 0%, transparent 70%);
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-primary) 10%, transparent) 0%,
+    transparent 70%
+  );
   position: relative;
 }
 
@@ -406,7 +403,11 @@ body:has([data-theme="midnight"]) .header {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--color-primary) 20%, transparent) 0%, transparent 60%);
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-primary) 15%, transparent) 0%,
+    transparent 60%
+  );
   animation: glowPulse 3s ease-in-out infinite;
   pointer-events: none;
 }
@@ -420,13 +421,12 @@ body:has([data-theme="midnight"]) .header {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(135deg, rgba(229, 228, 226, 0.12) 0%, rgba(229, 228, 226, 0.03) 100%);
-  border: 1px solid rgba(229, 228, 226, 0.4);
+  background: linear-gradient(135deg, rgba(229, 228, 226, 0.08) 0%, rgba(229, 228, 226, 0.02) 100%);
+  border: 1px solid rgba(229, 228, 226, 0.3);
   padding: 8px 16px;
   position: relative;
 }
 
-/* Corner accents */
 [data-theme="midnight"] .midnight-legendary-badge::before,
 [data-theme="midnight"] .midnight-legendary-badge::after {
   content: '';
@@ -477,21 +477,16 @@ body:has([data-theme="midnight"]) .header {
 
 [data-theme="midnight"] .midnight-metallic-cta:hover {
   background: linear-gradient(135deg, #fff 0%, var(--color-platinum-light) 50%, var(--color-platinum) 100%);
-  box-shadow: 0 0 30px rgba(229, 228, 226, 0.5);
+  box-shadow: 0 0 24px rgba(229, 228, 226, 0.4);
 }
 
 [data-theme="midnight"] .midnight-metallic-cta:active {
   transform: scale(0.98);
 }
 
-[data-theme="midnight"] .midnight-metallic-cta--success {
-  background: #22c55e;
-  color: #fff;
-}
-
 
 /* ═══════════════════════════════════════════════
-   LINEUP PILLS — Artist name tags with hover glow
+   LINEUP PILLS — Artist tags with accent glow hover
    ═══════════════════════════════════════════════ */
 
 [data-theme="midnight"] .midnight-lineup-pill {
@@ -499,10 +494,22 @@ body:has([data-theme="midnight"]) .header {
 }
 
 [data-theme="midnight"] .midnight-lineup-pill:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
   color: var(--color-foreground);
-  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+
+/* ═══════════════════════════════════════════════
+   BOTTOM BAR — Fixed mobile checkout CTA
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .midnight-bottom-bar {
+  background: rgba(10, 10, 12, 0.92);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 

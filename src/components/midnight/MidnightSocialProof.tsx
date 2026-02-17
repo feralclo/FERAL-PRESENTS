@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 
 /**
- * Minimal "Last ticket sold X min ago" social proof toast.
- * Same timing logic as the original SocialProofToast but with Tailwind styling.
+ * Subtle "Last ticket sold X min ago" social proof indicator.
+ * Appears after popup is dismissed with staggered delay.
  */
 export function MidnightSocialProof() {
   const [visible, setVisible] = useState(false);
@@ -90,15 +90,15 @@ export function MidnightSocialProof() {
 
   return (
     <div
-      className={`fixed bottom-20 max-[480px]:bottom-[72px] left-6 max-[480px]:left-4 bg-[rgba(20,20,20,0.9)] backdrop-blur-[12px] border border-foreground/[0.06] px-4 max-[480px]:px-3.5 py-2.5 max-[480px]:py-2 rounded-[20px] max-[480px]:rounded-2xl z-[996] transition-all duration-500 pointer-events-none ${
+      className={`fixed bottom-24 max-[480px]:bottom-[88px] left-4 max-[480px]:left-3 bg-[rgba(14,14,14,0.88)] backdrop-blur-[12px] border border-foreground/[0.05] px-3.5 max-[480px]:px-3 py-2 max-[480px]:py-1.5 rounded-xl z-[996] transition-all duration-500 pointer-events-none ${
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"
-          : "opacity-0 translate-y-3"
+          : "opacity-0 translate-y-2"
       }`}
     >
-      <span className="font-[family-name:var(--font-display)] text-xs max-[480px]:text-[11px] text-muted-foreground whitespace-nowrap">
+      <span className="font-[family-name:var(--font-display)] text-[11px] max-[480px]:text-[10px] text-muted-foreground/70 whitespace-nowrap">
         Last ticket sold{" "}
-        <span className="text-muted-foreground font-medium">{timeText}</span>
+        <span className="text-muted-foreground/90 font-medium">{timeText}</span>
       </span>
     </div>
   );

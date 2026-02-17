@@ -57,7 +57,6 @@ export function MidnightTicketCard({
   useEffect(() => {
     if (qty !== prevQty.current && qtyRef.current) {
       qtyRef.current.classList.remove("midnight-qty-pop");
-      // Force reflow to restart animation
       void qtyRef.current.offsetWidth;
       qtyRef.current.classList.add("midnight-qty-pop");
       prevQty.current = qty;
@@ -69,13 +68,16 @@ export function MidnightTicketCard({
       role="article"
       aria-label={`${tt.name} — ${priceDisplay}`}
       className={cn(
-        "relative p-[18px] mb-2 rounded-lg transition-all duration-200",
-        !tierEffect && "bg-foreground/[0.03] border border-foreground/[0.08]",
-        !tierEffect && "hover:border-foreground/[0.16] hover:bg-foreground/[0.05] hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
-        !tierEffect && isActive && "border-primary/40 bg-primary/[0.04] shadow-[0_0_16px] shadow-primary/10",
+        "relative p-5 mb-2.5 rounded-xl transition-all duration-200",
+        // Standard tier styling
+        !tierEffect && "bg-foreground/[0.025] border border-foreground/[0.06]",
+        !tierEffect && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
+        !tierEffect && isActive && "border-primary/30 bg-primary/[0.03]",
+        // Metallic tier styling
         tierEffect,
         tierEffect && isActive && "midnight-active",
-        "max-[480px]:p-3.5",
+        // Mobile
+        "max-[480px]:p-4",
       )}
       data-ticket-id={tt.id}
     >
@@ -83,11 +85,11 @@ export function MidnightTicketCard({
       {tier === "valentine" && <MidnightFloatingHearts />}
 
       {/* Top row: name + price */}
-      <div className="relative z-[2] flex justify-between items-start mb-3 max-[480px]:mb-2.5">
-        <div className="flex-1">
+      <div className="relative z-[2] flex justify-between items-start mb-3.5 max-[480px]:mb-3">
+        <div className="flex-1 min-w-0 mr-4">
           <span
             className={cn(
-              "font-[family-name:var(--font-mono)] text-[13px] max-[480px]:text-xs font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase block mb-1",
+              "font-[family-name:var(--font-mono)] text-sm max-[480px]:text-[13px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase block mb-1.5",
               TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
             )}
           >
@@ -95,7 +97,7 @@ export function MidnightTicketCard({
           </span>
           <span
             className={cn(
-              "font-[family-name:var(--font-mono)] text-[11px] max-[480px]:text-[10px] tracking-[0.5px] block",
+              "font-[family-name:var(--font-display)] text-[12px] max-[480px]:text-[11px] tracking-[0.01em] block leading-relaxed",
               TIER_DESC_CLASSES[tier] || TIER_DESC_DEFAULT,
             )}
           >
@@ -104,7 +106,7 @@ export function MidnightTicketCard({
         </div>
         <span
           className={cn(
-            "relative z-[2] font-[family-name:var(--font-mono)] text-[15px] max-[480px]:text-[13px] font-bold tracking-[1px] shrink-0",
+            "relative z-[2] font-[family-name:var(--font-mono)] text-base max-[480px]:text-[14px] font-bold tracking-[0.5px] shrink-0 mt-0.5",
             TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
           )}
         >
@@ -113,13 +115,13 @@ export function MidnightTicketCard({
       </div>
 
       {/* Bottom row: view merch + qty controls */}
-      <div className="relative z-[2] flex justify-between items-center max-[480px]:flex-wrap max-[480px]:gap-2.5">
+      <div className="relative z-[2] flex justify-between items-center">
         {tt.includes_merch ? (
           hasMerchImages ? (
             <Badge
               variant="outline"
               className={cn(
-                "cursor-pointer text-[10px] max-[480px]:text-[9px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase px-3 max-[480px]:px-2.5 py-2 max-[480px]:py-1.5",
+                "cursor-pointer text-[10px] max-[480px]:text-[9px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase px-3 max-[480px]:px-2.5 py-2 max-[480px]:py-1.5 rounded-lg",
                 TIER_MERCH_BADGE_CLASSES[tier] || TIER_MERCH_BADGE_CLASSES.standard,
               )}
               onClick={() => onViewMerch?.(tt)}
@@ -127,19 +129,21 @@ export function MidnightTicketCard({
               View Merch
             </Badge>
           ) : (
-            <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[1.5px] uppercase text-muted-foreground opacity-60">
+            <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[1.5px] uppercase text-muted-foreground/50">
               Includes merch
             </span>
           )
         ) : (
           <span />
         )}
-        <div className="relative z-[2] flex items-center gap-3.5 max-[480px]:gap-2.5">
+
+        {/* Quantity stepper — compact pill */}
+        <div className="relative z-[2] flex items-center gap-1 bg-foreground/[0.03] rounded-lg border border-foreground/[0.06] p-0.5">
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             className={cn(
-              "w-10 h-10 max-[480px]:w-9 max-[480px]:h-9 text-base max-[480px]:text-[15px] touch-manipulation",
+              "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base max-[480px]:text-[15px] rounded-md touch-manipulation hover:bg-foreground/[0.06]",
               TIER_BUTTON_CLASSES[tier],
             )}
             onClick={() => onRemove(tt)}
@@ -150,19 +154,19 @@ export function MidnightTicketCard({
           <span
             ref={qtyRef}
             className={cn(
-              "font-[family-name:var(--font-mono)] text-lg max-[480px]:text-base font-bold min-w-7 max-[480px]:min-w-6 text-center",
+              "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[15px] font-bold min-w-7 max-[480px]:min-w-6 text-center tabular-nums",
               isActive
                 ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-primary"
-                : "text-foreground",
+                : "text-foreground/60",
             )}
           >
             {qty}
           </span>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             className={cn(
-              "w-10 h-10 max-[480px]:w-9 max-[480px]:h-9 text-base max-[480px]:text-[15px] touch-manipulation",
+              "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base max-[480px]:text-[15px] rounded-md touch-manipulation hover:bg-foreground/[0.06]",
               TIER_BUTTON_CLASSES[tier],
             )}
             onClick={() => onAdd(tt)}

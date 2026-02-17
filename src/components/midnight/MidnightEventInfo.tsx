@@ -1,7 +1,5 @@
 "use client";
 
-import { Separator } from "@/components/ui/separator";
-
 interface MidnightEventInfoProps {
   aboutText?: string | null;
   detailsText?: string | null;
@@ -27,11 +25,11 @@ export function MidnightEventInfo({
   return (
     <div>
       {sections.map((section, i) => (
-        <div key={section.title} className={i > 0 ? "mt-14 max-md:mt-10" : ""}>
-          <h2 className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.2em] uppercase mb-7 pb-4 border-b border-foreground/[0.06] text-foreground/35">
+        <div key={section.title} className={i > 0 ? "mt-16 max-md:mt-12" : ""}>
+          <h2 className="font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.25em] uppercase mb-8 pb-4 border-b border-foreground/[0.05] text-foreground/30">
             {section.title}
           </h2>
-          <p className="font-[family-name:var(--font-display)] text-base leading-[1.85] text-foreground/60 tracking-[0.01em]">
+          <p className="font-[family-name:var(--font-display)] text-base max-md:text-[15px] leading-[1.95] text-foreground/55 tracking-[0.01em]">
             {section.content}
           </p>
         </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -84,14 +85,12 @@ export function MidnightTicketWidget({
     }
   }, [totalQty, isStripe]);
 
-  // Pre-warm Stripe.js + account fetch while user browses tickets.
-  // By the time they tap "add," both are cached — Express Checkout
-  // renders ~1s faster.
+  // Pre-warm Stripe.js while user browses
   useEffect(() => {
     if (isStripe) preloadStripe();
   }, [isStripe]);
 
-  // Express checkout success — redirect to confirmation
+  // Express checkout success → redirect
   const handleExpressSuccess = useCallback(
     (order: Order) => {
       if (order.payment_ref) {
@@ -135,11 +134,11 @@ export function MidnightTicketWidget({
         className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[calc(var(--header-height,80px)+24px)] max-lg:scroll-mt-[var(--header-height,80px)] max-lg:relative [overflow-anchor:none]"
         id="tickets"
       >
-        <Card className="glass rounded-2xl p-7 max-lg:rounded-none max-lg:p-6 max-lg:shadow-none">
-          <h3 className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[4px] uppercase mb-2">
-            Get Tickets<span className="text-primary">_</span>
+        <Card className="glass rounded-2xl p-8 max-lg:rounded-none max-lg:p-6 max-lg:shadow-none max-lg:bg-transparent max-lg:border-0">
+          <h3 className="font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.15em] uppercase mb-2">
+            Tickets
           </h3>
-          <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[1px] text-muted-foreground">
+          <p className="font-[family-name:var(--font-display)] text-sm text-muted-foreground">
             Tickets are not yet available for this event.
           </p>
         </Card>
@@ -147,7 +146,7 @@ export function MidnightTicketWidget({
     );
   }
 
-  // Group tickets: default group first, then named groups
+  // Group tickets
   const groups = ticketGroups || [];
   const defaultGroup = activeTypes.filter((tt) => !groupMap[tt.id]);
   const namedGroups = groups
@@ -163,13 +162,15 @@ export function MidnightTicketWidget({
         className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[calc(var(--header-height,80px)+24px)] max-lg:scroll-mt-[var(--header-height,80px)] max-lg:relative [overflow-anchor:none]"
         id="tickets"
       >
-        <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-x-0 max-lg:border-t max-lg:border-t-primary/15 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-card p-0 gap-0">
-          <CardContent className="p-7 max-lg:p-6 max-[480px]:p-4">
-            <h3 className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[4px] uppercase mb-2">
-              Get Tickets<span className="text-primary">_</span>
+        {/* Desktop: glass card. Mobile: transparent — tickets float on page bg */}
+        <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-0 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-transparent p-0 gap-0">
+          <CardContent className="p-8 max-lg:p-6 max-[480px]:p-4">
+            {/* Section header */}
+            <h3 className="font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.15em] uppercase mb-1.5">
+              Tickets
             </h3>
-            <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[1px] text-muted-foreground mb-5">
-              Secure your entry. Limited availability.
+            <p className="font-[family-name:var(--font-display)] text-xs tracking-[0.02em] text-muted-foreground/70 mb-6">
+              Limited availability
             </p>
 
             {/* Release progression bar */}
@@ -190,12 +191,12 @@ export function MidnightTicketWidget({
 
             {/* Named groups with headers */}
             {namedGroups.map((group) => (
-              <div key={group.name} className="mt-5 max-[480px]:mt-4 pt-4 max-[480px]:pt-3 border-t border-foreground/[0.06]">
-                <div className="flex items-center gap-2.5 max-[480px]:gap-2 mb-2.5 max-[480px]:mb-2">
-                  <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[0.6rem] max-[480px]:text-[0.55rem] font-bold tracking-[0.2em] uppercase text-muted-foreground shrink-0">
+              <div key={group.name} className="mt-6 max-[480px]:mt-5 pt-5 max-[480px]:pt-4 border-t border-foreground/[0.05]">
+                <div className="flex items-center gap-2.5 max-[480px]:gap-2 mb-3 max-[480px]:mb-2.5">
+                  <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[0.6rem] max-[480px]:text-[0.55rem] font-bold tracking-[0.2em] uppercase text-muted-foreground/60 shrink-0 rounded-md">
                     {group.name}
                   </Badge>
-                  <Separator className="flex-1 opacity-30" />
+                  <Separator className="flex-1 opacity-20" />
                 </div>
                 {group.tickets.map((tt) => (
                   <MidnightTicketCard
@@ -211,20 +212,26 @@ export function MidnightTicketWidget({
               </div>
             ))}
 
-            {/* Checkout Button */}
+            {/* Checkout CTA — ghost when empty, vivid accent when items in cart */}
             <Button
-              className={`w-full h-12 mt-4 text-[0.85rem] max-[480px]:text-[0.8rem] font-bold tracking-[0.02em] uppercase ${ctaGlow ? "midnight-cta-ready" : ""}`}
+              className={cn(
+                "w-full h-[52px] mt-5 text-sm max-[480px]:text-[13px] font-bold tracking-[0.02em] uppercase rounded-xl transition-all duration-300",
+                totalQty === 0
+                  ? "bg-foreground/[0.04] text-foreground/25 border border-foreground/[0.06] hover:bg-foreground/[0.06] hover:text-foreground/35 shadow-none"
+                  : "",
+                ctaGlow ? "midnight-cta-ready" : "",
+              )}
+              variant={totalQty > 0 ? "default" : "ghost"}
               disabled={totalQty === 0}
               onClick={handleCheckout}
             >
               {totalQty === 0
                 ? "Select tickets to continue"
-                : <>Checkout — <span key={totalPrice} className="midnight-qty-pop inline-block">{currSymbol}{totalPrice.toFixed(2)}</span></>}
+                : <>Checkout &mdash; <span key={totalPrice} className="midnight-qty-pop inline-block">{currSymbol}{totalPrice.toFixed(2)}</span></>}
             </Button>
 
-            {/* Express Checkout (Apple Pay / Google Pay) — always mounted for
-                instant readiness. Hidden until first item added, then reveals
-                with smooth expand animation. */}
+            {/* Express Checkout (Apple Pay / Google Pay) — always mounted
+                for instant readiness. Hidden until first item added. */}
             {isStripe && (
               <div
                 className={`mt-0 overflow-hidden transition-all duration-500 ease-out ${
@@ -233,14 +240,14 @@ export function MidnightTicketWidget({
                     : "opacity-0 max-h-0 pointer-events-none"
                 } ${expressRevealed && totalQty > 0 ? "midnight-reveal-glow rounded-lg" : ""}`}
               >
-                <div className="flex items-center gap-3 py-3.5">
-                  <Separator className="flex-1 opacity-30" />
-                  <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.15em] uppercase text-muted-foreground/80 shrink-0">
+                <div className="flex items-center gap-3 py-4">
+                  <Separator className="flex-1 opacity-20" />
+                  <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] uppercase text-muted-foreground/60 shrink-0">
                     or
                   </span>
-                  <Separator className="flex-1 opacity-30" />
+                  <Separator className="flex-1 opacity-20" />
                 </div>
-                <div className="rounded-lg overflow-hidden">
+                <div className="rounded-xl overflow-hidden">
                   <ExpressCheckout
                     eventId={eventId}
                     currency={currency}
@@ -251,7 +258,7 @@ export function MidnightTicketWidget({
                   />
                 </div>
                 {expressError && (
-                  <div className="mt-2 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.5px] text-destructive text-center p-2 bg-destructive/[0.06] border border-destructive/15 rounded-lg">
+                  <div className="mt-2.5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.5px] text-destructive text-center p-2.5 bg-destructive/[0.05] border border-destructive/10 rounded-xl">
                     {expressError}
                   </div>
                 )}
@@ -269,14 +276,14 @@ export function MidnightTicketWidget({
         </Card>
       </aside>
 
-      {/* Size Selection Dialog — Radix Dialog with focus trap + aria-modal */}
+      {/* Size Selection Dialog */}
       <Dialog
         open={sizePopup !== null}
         onOpenChange={(open) => {
           if (!open) setSizePopup(null);
         }}
       >
-        <DialogContent className="max-w-[360px] text-center">
+        <DialogContent className="max-w-[360px] text-center rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-[family-name:var(--font-mono)] text-xs font-bold tracking-[2px] uppercase text-platinum">
               Select Your Size
@@ -287,7 +294,7 @@ export function MidnightTicketWidget({
               </DialogDescription>
             )}
           </DialogHeader>
-          <div className="my-4">
+          <div className="my-5">
             <MidnightSizeSelector
               sizes={sizePopupSizes}
               selectedSize={sizePopup?.selectedSize || "M"}
@@ -301,7 +308,7 @@ export function MidnightTicketWidget({
           <DialogFooter>
             <Button
               size="lg"
-              className="w-full midnight-metallic-cta font-[family-name:var(--font-mono)] text-[11px] tracking-[2px] uppercase rounded-lg"
+              className="w-full midnight-metallic-cta font-[family-name:var(--font-mono)] text-[11px] tracking-[2px] uppercase rounded-xl"
               onClick={handleSizeConfirm}
             >
               Add to Cart
@@ -312,3 +319,4 @@ export function MidnightTicketWidget({
     </>
   );
 }
+

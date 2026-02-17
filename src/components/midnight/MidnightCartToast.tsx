@@ -36,17 +36,17 @@ export function MidnightCartToast({ message }: MidnightCartToastProps) {
 
   return (
     <div
-      className="fixed bottom-20 right-4 max-md:right-3 max-md:bottom-16 z-[998] pointer-events-none"
+      className="fixed bottom-24 right-4 max-md:right-3 max-md:bottom-[88px] z-[998] pointer-events-none"
       style={{
         animation: exiting
           ? "midnight-toast-out 300ms ease-in forwards"
           : "midnight-toast-in 300ms ease-out forwards",
       }}
     >
-      <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg bg-card/95 border border-primary/25 backdrop-blur-sm shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-card/90 border border-foreground/[0.06] backdrop-blur-sm shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
         <svg
-          width="16"
-          height="16"
+          width="14"
+          height="14"
           viewBox="0 0 16 16"
           fill="none"
           className="text-primary shrink-0"
@@ -60,7 +60,7 @@ export function MidnightCartToast({ message }: MidnightCartToastProps) {
             strokeLinejoin="round"
           />
         </svg>
-        <span className="font-[family-name:var(--font-mono)] text-[11px] font-semibold tracking-[0.5px] text-foreground/90 whitespace-nowrap">
+        <span className="font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.3px] text-foreground/80 whitespace-nowrap">
           {displayMessage}
         </span>
       </div>

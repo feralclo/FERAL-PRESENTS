@@ -9,6 +9,7 @@ import { useEventTracking } from "@/hooks/useEventTracking";
 import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { Button } from "@/components/ui/button";
 import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
@@ -80,7 +81,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     const len = cart.cartItems.length;
     if (len > prevCartLength.current && cart.cartItems.length > 0) {
       const newest = cart.cartItems[cart.cartItems.length - 1];
-      const sizeInfo = newest.size ? ` (Size ${newest.size})` : "";
+      const sizeInfo = newest.size ? ` (${newest.size})` : "";
       showToast(`${newest.name}${sizeInfo} added`);
     }
     prevCartLength.current = len;
@@ -156,16 +157,16 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0 pointer-events-auto">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info — on mobile, show below tickets */}
-              <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-20 max-lg:flex max-lg:flex-col">
-                {/* Mobile section divider — accent glow transition from ticket card */}
-                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-12">
-                  <div className="h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
-                  <div className="h-10 bg-gradient-to-b from-primary/[0.04] to-transparent" />
+              <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
+                {/* Mobile section divider */}
+                <div className="lg:hidden order-[-2] mb-16 max-[480px]:mb-12">
+                  <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent" />
+                  <div className="h-8 bg-gradient-to-b from-foreground/[0.02] to-transparent" />
                 </div>
 
-                {/* Lineup moves above About on mobile via order */}
+                {/* Lineup on mobile (above about) */}
                 {lineup.length > 0 && (
-                  <div className="lg:hidden order-[-1] mb-10 max-md:mb-8">
+                  <div className="lg:hidden order-[-1] mb-12 max-md:mb-10">
                     <MidnightLineup artists={lineup} />
                   </div>
                 )}
@@ -178,7 +179,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
-                  <div className="hidden lg:block mt-14">
+                  <div className="hidden lg:block mt-16">
                     <MidnightLineup artists={lineup} />
                   </div>
                 )}
@@ -205,7 +206,34 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
       <MidnightFooter />
 
-      {/* Merch Modal — data-driven from ticket type config */}
+      {/* Fixed bottom bar — mobile checkout CTA */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar transition-transform duration-300 ease-out ${
+          cart.totalQty > 0 ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        <div className="px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col min-w-0">
+              <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] uppercase text-foreground/40">
+                {cart.totalQty} {cart.totalQty === 1 ? "ticket" : "tickets"}
+              </span>
+              <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.02em]">
+                {currSymbol}{cart.totalPrice.toFixed(2)}
+              </span>
+            </div>
+            <Button
+              size="lg"
+              className="px-8 text-sm font-bold tracking-[0.02em] rounded-xl shrink-0"
+              onClick={cart.handleCheckout}
+            >
+              Checkout
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Merch Modal */}
       {teeModalTicketType && (
         <MidnightMerchModal
           isOpen={teeModalOpen}

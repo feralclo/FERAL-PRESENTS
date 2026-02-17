@@ -26,7 +26,7 @@ export function MidnightHero({
       {/* Background image via CSS — avoids iOS Safari <img> + object-fit
           compositor bug that causes "pop and enlarge" during scroll.
           scale(1.05) prevents edge gaps on varied aspect ratios.
-          saturate(1.15) enriches colours through the glass overlays. */}
+          saturate(1.15) enriches colours through the dark overlays. */}
       {bannerImage && (
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"
@@ -38,7 +38,8 @@ export function MidnightHero({
         />
       )}
 
-      {/* Glass depth overlays */}
+      {/* Cinematic depth overlays — aggressive bottom fade dissolves
+          the artwork into the page background for seamless transition */}
       <div className="absolute inset-0 z-[1] pointer-events-none">
         <div className="midnight-hero-vignette absolute inset-0" />
         <div className="midnight-hero-reflection absolute inset-0" />
@@ -46,55 +47,58 @@ export function MidnightHero({
           className="absolute inset-0"
           style={{
             background: `linear-gradient(180deg,
-              rgba(0,0,0,0.2) 0%,
-              rgba(0,0,0,0.05) 15%,
-              transparent 30%,
-              transparent 50%,
-              rgba(0,0,0,0.4) 65%,
-              rgba(0,0,0,0.7) 82%,
-              var(--color-background) 100%
+              rgba(0,0,0,0.25) 0%,
+              rgba(0,0,0,0.05) 10%,
+              transparent 22%,
+              transparent 38%,
+              rgba(0,0,0,0.2) 50%,
+              rgba(0,0,0,0.5) 62%,
+              rgba(0,0,0,0.78) 75%,
+              var(--color-background) 92%
             )`,
           }}
         />
         <div className="midnight-hero-frame absolute inset-0" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-[2] w-full max-w-[800px] px-6 pb-12 max-md:px-5 max-md:pb-7 max-[480px]:px-4 max-[480px]:pb-5">
+      {/* Content — large cinematic typography */}
+      <div className="relative z-[2] w-full max-w-[900px] px-6 pb-14 max-md:px-5 max-md:pb-9 max-[480px]:px-4 max-[480px]:pb-7">
         {tag && (
-          <div className="inline-flex items-center gap-2 font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/60 mb-5 max-[480px]:text-[9px] max-[480px]:mb-3.5">
+          <div className="inline-flex items-center gap-2.5 font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.18em] uppercase text-foreground/50 mb-6 max-md:mb-4 max-[480px]:text-[9px]">
             <span
               className="w-1.5 h-1.5 rounded-full bg-primary"
               style={{
-                boxShadow: "0 0 12px var(--color-primary)",
-                animation: "midnight-pulse 2s ease-in-out infinite",
+                boxShadow: "0 0 10px var(--color-primary)",
+                animation: "midnight-pulse 2.5s ease-in-out infinite",
               }}
             />
             {tag}
           </div>
         )}
 
-        <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.5rem,7vw,5rem)] max-md:text-[clamp(2rem,9vw,3rem)] max-[480px]:text-[clamp(1.6rem,8vw,2.4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] text-foreground [text-wrap:balance] mb-6 max-md:mb-5 max-[480px]:mb-4">
+        <h1 className="font-[family-name:var(--font-display)] text-[clamp(3rem,9vw,5.5rem)] max-md:text-[clamp(2.2rem,10vw,3.2rem)] max-[480px]:text-[clamp(1.8rem,9vw,2.6rem)] font-black tracking-[-0.04em] leading-[0.88] text-foreground [text-wrap:balance] mb-7 max-md:mb-5 max-[480px]:mb-4">
           {title}
         </h1>
 
-        <div className="flex items-center justify-center gap-4 max-md:gap-3 max-[480px]:gap-2 flex-wrap font-[family-name:var(--font-display)] text-[15px] max-md:text-sm max-[480px]:text-[13px] font-medium text-foreground/80 tracking-[0.01em] mb-2">
+        {/* Metadata — date, location, doors, age in compact rows */}
+        <div className="flex items-center justify-center gap-3 max-md:gap-2.5 flex-wrap font-[family-name:var(--font-display)] text-[15px] max-md:text-sm max-[480px]:text-[13px] font-medium text-foreground/75 tracking-[0.01em]">
           <span>{date}</span>
-          <span className="w-1 h-1 rounded-full bg-foreground/30 shrink-0" />
+          <span className="w-[3px] h-[3px] rounded-full bg-foreground/25 shrink-0" />
           <span>{location}</span>
         </div>
 
         {(doors || age) && (
-          <div className="flex items-center justify-center gap-2 font-[family-name:var(--font-display)] text-[13px] max-md:text-xs max-[480px]:text-[11px] text-foreground/40">
+          <div className="flex items-center justify-center gap-2 mt-1.5 font-[family-name:var(--font-display)] text-[13px] max-md:text-xs max-[480px]:text-[11px] text-foreground/35">
             {doors && <span>Doors {doors}</span>}
-            {doors && age && <span className="opacity-50">&middot;</span>}
+            {doors && age && <span className="opacity-40">&middot;</span>}
             {age && <span>{age}</span>}
           </div>
         )}
 
         <Button
           size="lg"
-          className="mt-8 max-md:mt-6 max-[480px]:mt-6 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.02em] rounded-[10px]"
+          variant="outline"
+          className="mt-9 max-md:mt-7 max-[480px]:mt-6 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.03em] rounded-xl bg-white/[0.06] border-white/[0.12] text-foreground/90 backdrop-blur-sm hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200"
           onClick={() =>
             document
               .getElementById("tickets")

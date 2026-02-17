@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
@@ -16,8 +16,6 @@ import { MidnightLineup } from "./MidnightLineup";
 import { MidnightTicketWidget } from "./MidnightTicketWidget";
 import { MidnightMerchModal } from "./MidnightMerchModal";
 
-import { MidnightCartToast } from "./MidnightCartToast";
-import { MidnightSocialProof } from "./MidnightSocialProof";
 import { MidnightFooter } from "./MidnightFooter";
 import type { Event, TicketTypeRow } from "@/types/events";
 
@@ -66,26 +64,6 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   // Merch modal state
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
-
-  // Toast state — unique key triggers re-render of toast component
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastCounter = useRef(0);
-  const showToast = useCallback((msg: string) => {
-    toastCounter.current += 1;
-    setToastMessage(`${msg}\x00${toastCounter.current}`);
-  }, []);
-
-  // Watch cart items for additions → trigger toast
-  const prevCartLength = useRef(0);
-  useEffect(() => {
-    const len = cart.cartItems.length;
-    if (len > prevCartLength.current && cart.cartItems.length > 0) {
-      const newest = cart.cartItems[cart.cartItems.length - 1];
-      const sizeInfo = newest.size ? ` (${newest.size})` : "";
-      showToast(`${newest.name}${sizeInfo} added`);
-    }
-    prevCartLength.current = len;
-  }, [cart.cartItems, showToast]);
 
   const handleViewMerch = useCallback((tt: TicketTypeRow) => {
     setTeeModalTicketType(tt);
@@ -206,11 +184,14 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
       <MidnightFooter />
 
-      {/* Fixed bottom bar — mobile checkout CTA */}
+      {/* Fixed bottom bar — mobile checkout CTA
+           Hides when scrolling down (synced with header), slides back on scroll up.
+           translate-y-full when cart empty OR when scrolling down. */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar transition-transform duration-300 ease-out ${
-          cart.totalQty > 0 ? "translate-y-0" : "translate-y-full"
+        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar ${
+          cart.totalQty > 0 && !headerHidden ? "translate-y-0" : "translate-y-full"
         }`}
+        style={{ transition: "transform 400ms cubic-bezier(0.25, 1, 0.5, 1)" }}
       >
         <div className="px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between gap-3">
@@ -268,13 +249,9 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
         />
       )}
 
-      {/* Cart feedback toast */}
-      <MidnightCartToast message={toastMessage} />
-
       {/* Engagement features */}
       <DiscountPopup />
       <EngagementTracker />
-      <MidnightSocialProof />
     </>
   );
 }

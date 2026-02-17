@@ -72,7 +72,7 @@ export function MidnightTicketCard({
         // Standard tier styling
         !tierEffect && "bg-foreground/[0.025] border border-foreground/[0.06]",
         !tierEffect && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
-        !tierEffect && isActive && "border-primary/30 bg-primary/[0.03]",
+        !tierEffect && isActive && "border-foreground/[0.15] bg-foreground/[0.04]",
         // Metallic tier styling
         tierEffect,
         tierEffect && isActive && "midnight-active",
@@ -156,7 +156,7 @@ export function MidnightTicketCard({
             className={cn(
               "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[15px] font-bold min-w-7 max-[480px]:min-w-6 text-center tabular-nums",
               isActive
-                ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-primary"
+                ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
                 : "text-foreground/60",
             )}
           >

@@ -33,10 +33,10 @@ export const TIER_DESC_DEFAULT = "text-muted-foreground";
 
 /** Tier active quantity colors */
 export const TIER_QTY_ACTIVE_CLASSES: Record<string, string> = {
-  standard: "text-primary",
+  standard: "text-foreground",
   platinum: "text-platinum",
   valentine: "text-valentine-pink",
-  black: "text-primary",
+  black: "text-foreground",
 };
 
 /** Tier +/- button classes */

@@ -90,7 +90,7 @@ export function MidnightHero({
           onClick={() =>
             document
               .getElementById("tickets")
-              ?.scrollIntoView({ behavior: "smooth" })
+              ?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         >
           Get Tickets

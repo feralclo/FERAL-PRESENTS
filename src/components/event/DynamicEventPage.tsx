@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { EventHero } from "./EventHero";
 import { DynamicTicketWidget } from "./DynamicTicketWidget";
@@ -9,9 +9,8 @@ import { DiscountPopup } from "./DiscountPopup";
 import { EngagementTracker } from "./EngagementTracker";
 import { SocialProofToast } from "./SocialProofToast";
 import { isEditorPreview } from "./ThemeEditorBridge";
-import { useMetaTracking } from "@/hooks/useMetaTracking";
-import { useTraffic } from "@/hooks/useTraffic";
-import { useDataLayer } from "@/hooks/useDataLayer";
+import { useEventTracking } from "@/hooks/useEventTracking";
+import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
@@ -22,32 +21,35 @@ interface DynamicEventPageProps {
 }
 
 export function DynamicEventPage({ event }: DynamicEventPageProps) {
-  const { trackPageView, trackViewContent } = useMetaTracking();
-  const { trackEngagement } = useTraffic();
-  const { trackViewContent: gtmTrackViewContent } = useDataLayer();
+  const tracking = useEventTracking();
   const { settings } = useSettings();
   const branding = useBranding();
   const headerHidden = useHeaderScroll();
 
+  const cart = useCart({
+    eventSlug: event.slug,
+    ticketTypes: event.ticket_types || [],
+    currency: event.currency,
+    tracking,
+  });
+
   // Track PageView + ViewContent on mount (skip in editor preview)
   useEffect(() => {
     if (isEditorPreview()) return;
-    trackPageView();
+    tracking.trackPageView();
     const ids = (event.ticket_types || [])
       .filter((tt) => tt.status === "active")
       .map((tt) => tt.id);
     const minPrice = ids.length > 0
       ? Math.min(...(event.ticket_types || []).filter((tt) => tt.status === "active").map((tt) => Number(tt.price)))
       : 0;
-    trackViewContent({
+    tracking.trackViewContent({
       content_name: `${event.name} — Event Page`,
       content_ids: ids,
-      content_type: "product",
       value: minPrice,
       currency: event.currency || "GBP",
     });
-    gtmTrackViewContent(`${event.name} — Event Page`, ids, minPrice);
-  }, [event, trackPageView, trackViewContent, gtmTrackViewContent]);
+  }, [event, tracking]);
 
   // Merch modal state
   const [teeModalOpen, setTeeModalOpen] = useState(false);
@@ -58,16 +60,14 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
     setTeeModalOpen(true);
   }, []);
 
-  // Ref for adding merch from TeeModal into the ticket widget cart
-  const addMerchRef = useRef<((ticketTypeId: string, size: string, qty: number) => void) | null>(null);
-
+  // Direct function — no ref hack needed
   const handleTeeAdd = useCallback(
     (size: string, qty: number) => {
-      if (teeModalTicketType && addMerchRef.current) {
-        addMerchRef.current(teeModalTicketType.id, size, qty);
+      if (teeModalTicketType) {
+        cart.addMerchExternal(teeModalTicketType.id, size, qty);
       }
     },
-    [teeModalTicketType]
+    [teeModalTicketType, cart.addMerchExternal]
   );
 
   // Format date for hero display
@@ -90,8 +90,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   // Doors display
   const doorsDisplay = event.doors_time || "";
 
-  // Banner image for the hero: hero_image (banner) is primary, cover_image (tile) is fallback,
-  // then try the media serving URL (in case DB columns don't exist but image was uploaded)
+  // Banner image for the hero
   const heroImage = event.hero_image || event.cover_image
     || `/api/media/event_${event.id}_banner`;
 
@@ -146,7 +145,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                     </h2>
                     <div className="event-info__lineup">
                       {lineup.map((artist) => (
-                        <div className="event-info__artist" key={artist} onClick={() => trackEngagement("click_lineup")}>
+                        <div className="event-info__artist" key={artist} onClick={() => tracking.trackEngagement("click_lineup")}>
                           <span className="event-info__artist-name">
                             {artist}
                           </span>
@@ -180,12 +179,12 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 eventSlug={event.slug}
                 eventId={event.id}
                 paymentMethod={event.payment_method}
-                ticketTypes={event.ticket_types || []}
                 currency={event.currency}
+                ticketTypes={event.ticket_types || []}
+                cart={cart}
                 ticketGroups={ticketGroups}
                 ticketGroupMap={ticketGroupMap}
                 onViewMerch={handleViewMerch}
-                addMerchRef={addMerchRef}
               />
             </div>
           </div>

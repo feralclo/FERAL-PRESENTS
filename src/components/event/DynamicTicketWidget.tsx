@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
-import { useMetaTracking } from "@/hooks/useMetaTracking";
-import { useTraffic } from "@/hooks/useTraffic";
-import { useDataLayer } from "@/hooks/useDataLayer";
+import { TicketCard } from "./TicketCard";
+import { CartSummary } from "./CartSummary";
+import { TierProgression } from "./TierProgression";
+import type { UseCartResult } from "@/hooks/useCart";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 
@@ -14,8 +15,9 @@ interface DynamicTicketWidgetProps {
   eventSlug: string;
   eventId: string;
   paymentMethod: string;
-  ticketTypes: TicketTypeRow[];
   currency: string;
+  ticketTypes: TicketTypeRow[];
+  cart: UseCartResult;
   onCartChange?: (totalPrice: number, totalQty: number, items: { name: string; qty: number; size?: string }[]) => void;
   onCheckoutReady?: (checkoutFn: (() => void) | null) => void;
   /** Named ticket groups (e.g. ["VIP Experiences"]) */
@@ -24,239 +26,47 @@ interface DynamicTicketWidgetProps {
   ticketGroupMap?: Record<string, string | null>;
   /** Called when user clicks "View Merch" on a ticket type with merch images */
   onViewMerch?: (ticketType: TicketTypeRow) => void;
-  /** Ref that receives a function to add merch from an external source (e.g. TeeModal) */
-  addMerchRef?: React.MutableRefObject<((ticketTypeId: string, size: string, qty: number) => void) | null>;
 }
-
-/** Tier → CSS class mapping for visual styling */
-const TIER_CLASS: Record<string, string> = {
-  standard: "",
-  platinum: "ticket-option--vip",
-  black: "ticket-option--vip-black",
-  valentine: "ticket-option--valentine",
-};
 
 export function DynamicTicketWidget({
   eventSlug,
   eventId,
   paymentMethod,
-  ticketTypes,
   currency,
+  ticketTypes,
+  cart,
   onCartChange,
   onCheckoutReady,
   ticketGroups,
   ticketGroupMap,
   onViewMerch,
-  addMerchRef,
 }: DynamicTicketWidgetProps) {
-  const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
   const isStripe = paymentMethod === "stripe";
-  const { trackAddToCart: metaTrackAddToCart, trackInitiateCheckout: metaTrackInitiateCheckout } = useMetaTracking();
-  const { trackAddToCart: supaTrackAddToCart, trackEngagement } = useTraffic();
-  const { trackAddToCart: gtmTrackAddToCart, trackRemoveFromCart: gtmTrackRemoveFromCart, trackInitiateCheckout: gtmTrackInitiateCheckout } = useDataLayer();
-  const interactFired = useRef(false);
   const [expressError, setExpressError] = useState("");
 
-  // Only show active ticket types, sorted by sort_order
-  const activeTypes = useMemo(
-    () =>
-      ticketTypes
-        .filter((tt) => tt.status === "active")
-        .sort((a, b) => a.sort_order - b.sort_order),
-    [ticketTypes]
-  );
-
-  // Quantity state: { [ticketTypeId]: qty }
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-
-  // Size state for merch tickets: { [ticketTypeId]: { [size]: qty } }
-  const [merchSizes, setMerchSizes] = useState<
-    Record<string, Record<string, number>>
-  >({});
-
-  // Size popup state
-  const [sizePopup, setSizePopup] = useState<{
-    ticketTypeId: string;
-    selectedSize: string;
-  } | null>(null);
-
-  const getQty = (id: string) => quantities[id] || 0;
-
-  const addTicket = useCallback(
-    (tt: TicketTypeRow) => {
-      // Fire interact_tickets once per page load
-      if (!interactFired.current) {
-        interactFired.current = true;
-        trackEngagement("interact_tickets");
-      }
-      if (tt.includes_merch) {
-        // Show size popup
-        setSizePopup({ ticketTypeId: tt.id, selectedSize: "M" });
-        return;
-      }
-      setQuantities((prev) => ({
-        ...prev,
-        [tt.id]: Math.min((prev[tt.id] || 0) + 1, tt.max_per_order),
-      }));
-      metaTrackAddToCart({
-        content_name: tt.name,
-        content_ids: [tt.id],
-        content_type: "product",
-        value: Number(tt.price),
-        currency,
-        num_items: 1,
-      });
-      supaTrackAddToCart(tt.name, Number(tt.price), 1);
-      gtmTrackAddToCart(tt.name, [tt.id], Number(tt.price), 1);
-    },
-    [metaTrackAddToCart, supaTrackAddToCart, gtmTrackAddToCart, trackEngagement, currency]
-  );
-
-  const removeTicket = useCallback(
-    (tt: TicketTypeRow) => {
-      if (tt.includes_merch) {
-        // Remove last size added
-        setMerchSizes((prev) => {
-          const sizes = { ...prev[tt.id] };
-          const lastSize = [...TEE_SIZES].reverse().find((s) => (sizes[s] || 0) > 0);
-          if (!lastSize) return prev;
-          sizes[lastSize] = (sizes[lastSize] || 0) - 1;
-          if (sizes[lastSize] <= 0) delete sizes[lastSize];
-          const newTotal = Object.values(sizes).reduce((a, b) => a + b, 0);
-          setQuantities((qPrev) => ({ ...qPrev, [tt.id]: newTotal }));
-          return { ...prev, [tt.id]: sizes };
-        });
-        trackEngagement("remove_from_cart");
-        gtmTrackRemoveFromCart(tt.name, [tt.id]);
-        return;
-      }
-      setQuantities((prev) => ({
-        ...prev,
-        [tt.id]: Math.max((prev[tt.id] || 0) - 1, 0),
-      }));
-      trackEngagement("remove_from_cart");
-      gtmTrackRemoveFromCart(tt.name, [tt.id]);
-    },
-    [trackEngagement, gtmTrackRemoveFromCart]
-  );
-
-  const handleSizeConfirm = useCallback(() => {
-    if (!sizePopup) return;
-    const { ticketTypeId, selectedSize } = sizePopup;
-    const tt = activeTypes.find((t) => t.id === ticketTypeId);
-    setMerchSizes((prev) => {
-      const sizes = { ...(prev[ticketTypeId] || {}) };
-      sizes[selectedSize] = (sizes[selectedSize] || 0) + 1;
-      const newTotal = Object.values(sizes).reduce((a, b) => a + b, 0);
-      setQuantities((qPrev) => ({ ...qPrev, [ticketTypeId]: newTotal }));
-      return { ...prev, [ticketTypeId]: sizes };
-    });
-    if (tt) {
-      metaTrackAddToCart({
-        content_name: tt.name,
-        content_ids: [tt.id],
-        content_type: "product",
-        value: Number(tt.price),
-        currency,
-        num_items: 1,
-      });
-      supaTrackAddToCart(tt.name, Number(tt.price), 1);
-      gtmTrackAddToCart(tt.name, [tt.id], Number(tt.price), 1);
-    }
-    setSizePopup(null);
-  }, [sizePopup, activeTypes, metaTrackAddToCart, supaTrackAddToCart, gtmTrackAddToCart, currency]);
-
-  // Expose addMerch function for external callers (TeeModal)
-  const addMerchExternal = useCallback(
-    (ticketTypeId: string, size: string, qty: number) => {
-      setMerchSizes((prev) => {
-        const sizes = { ...(prev[ticketTypeId] || {}) };
-        sizes[size] = (sizes[size] || 0) + qty;
-        const newTotal = Object.values(sizes).reduce((a, b) => a + b, 0);
-        setQuantities((qPrev) => ({ ...qPrev, [ticketTypeId]: newTotal }));
-        return { ...prev, [ticketTypeId]: sizes };
-      });
-      const tt = activeTypes.find((t) => t.id === ticketTypeId);
-      if (tt) {
-        metaTrackAddToCart({
-          content_name: tt.name,
-          content_ids: [tt.id],
-          content_type: "product",
-          value: Number(tt.price) * qty,
-          currency,
-          num_items: qty,
-        });
-        supaTrackAddToCart(tt.name, Number(tt.price) * qty, qty);
-        gtmTrackAddToCart(tt.name, [tt.id], Number(tt.price) * qty, qty);
-      }
-    },
-    [activeTypes, metaTrackAddToCart, supaTrackAddToCart, gtmTrackAddToCart, currency]
-  );
-
-  useEffect(() => {
-    if (addMerchRef) addMerchRef.current = addMerchExternal;
-    return () => { if (addMerchRef) addMerchRef.current = null; };
-  }, [addMerchRef, addMerchExternal]);
-
-  const totalQty = useMemo(
-    () => Object.values(quantities).reduce((a, b) => a + b, 0),
-    [quantities]
-  );
-
-  const totalPrice = useMemo(
-    () =>
-      activeTypes.reduce(
-        (sum, tt) => sum + (quantities[tt.id] || 0) * Number(tt.price),
-        0
-      ),
-    [quantities, activeTypes]
-  );
-
-  const getCheckoutUrl = useCallback(() => {
-    const items: string[] = [];
-    for (const tt of activeTypes) {
-      const qty = quantities[tt.id] || 0;
-      if (qty <= 0) continue;
-
-      if (tt.includes_merch && merchSizes[tt.id]) {
-        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-          if (sQty > 0) items.push(`${tt.id}:${sQty}:${size}`);
-        }
-      } else {
-        items.push(`${tt.id}:${qty}`);
-      }
-    }
-    if (items.length === 0) return null;
-    return `/event/${eventSlug}/checkout/?cart=${encodeURIComponent(items.join(","))}`;
-  }, [activeTypes, quantities, merchSizes, eventSlug]);
-
-  const handleCheckout = useCallback(() => {
-    const url = getCheckoutUrl();
-    if (!url) return;
-
-    // Track InitiateCheckout before navigating
-    const ids = activeTypes
-      .filter((tt) => (quantities[tt.id] || 0) > 0)
-      .map((tt) => tt.id);
-    metaTrackInitiateCheckout({
-      content_ids: ids,
-      content_type: "product",
-      value: totalPrice,
-      currency,
-      num_items: totalQty,
-    });
-    trackEngagement("checkout_start");
-    gtmTrackInitiateCheckout(ids, totalPrice, totalQty);
-
-    window.location.assign(url);
-  }, [getCheckoutUrl, activeTypes, quantities, totalPrice, currency, totalQty, metaTrackInitiateCheckout, trackEngagement, gtmTrackInitiateCheckout]);
+  const {
+    activeTypes,
+    quantities,
+    sizePopup,
+    setSizePopup,
+    totalQty,
+    totalPrice,
+    cartItems,
+    expressItems,
+    minPrice,
+    currSymbol,
+    addTicket,
+    removeTicket,
+    handleSizeConfirm,
+    handleCheckout,
+  } = cart;
 
   // Expose checkout handler to parent (for bottom bar)
   useEffect(() => {
     onCheckoutReady?.(totalQty > 0 ? handleCheckout : null);
   }, [totalQty, handleCheckout, onCheckoutReady]);
 
-  // Express checkout (Apple Pay / Google Pay) success — redirect to confirmation
+  // Express checkout success — redirect to confirmation
   const handleExpressSuccess = useCallback(
     (order: Order) => {
       if (order.payment_ref) {
@@ -270,49 +80,25 @@ export function DynamicTicketWidget({
     [eventSlug]
   );
 
-  // Build items array for express checkout
-  const expressItems = useMemo(() => {
-    const items: { ticket_type_id: string; qty: number; merch_size?: string }[] = [];
-    for (const tt of activeTypes) {
-      const qty = quantities[tt.id] || 0;
-      if (qty <= 0) continue;
-      if (tt.includes_merch && merchSizes[tt.id]) {
-        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-          if (sQty > 0) items.push({ ticket_type_id: tt.id, qty: sQty, merch_size: size });
-        }
-      } else {
-        items.push({ ticket_type_id: tt.id, qty });
-      }
-    }
-    return items;
-  }, [activeTypes, quantities, merchSizes]);
-
-  // Cart summary items
-  const cartItems = useMemo(() => {
-    const items: { name: string; qty: number; size?: string }[] = [];
-    for (const tt of activeTypes) {
-      const qty = quantities[tt.id] || 0;
-      if (qty <= 0) continue;
-      if (tt.includes_merch && merchSizes[tt.id]) {
-        for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-          if (sQty > 0) items.push({ name: tt.name, qty: sQty, size });
-        }
-      } else {
-        items.push({ name: tt.name, qty });
-      }
-    }
-    return items;
-  }, [activeTypes, quantities, merchSizes]);
-
   // Notify parent of cart changes (for bottom bar updates)
   useEffect(() => {
     onCartChange?.(totalPrice, totalQty, cartItems);
   }, [totalPrice, totalQty, cartItems, onCartChange]);
 
-  // Find minimum price for display
-  const minPrice = activeTypes.length > 0
-    ? Math.min(...activeTypes.map((tt) => Number(tt.price)))
-    : 0;
+  // Progression tickets: standard-tier ungrouped, not archived
+  const groupMap = ticketGroupMap || {};
+  const progressionTickets = useMemo(
+    () =>
+      ticketTypes
+        .filter(
+          (tt) =>
+            (tt.tier || "standard") === "standard" &&
+            !groupMap[tt.id] &&
+            tt.status !== "archived"
+        )
+        .sort((a, b) => a.sort_order - b.sort_order),
+    [ticketTypes, groupMap]
+  );
 
   if (activeTypes.length === 0) {
     return (
@@ -329,6 +115,16 @@ export function DynamicTicketWidget({
     );
   }
 
+  // Group tickets: default group first, then named groups
+  const groups = ticketGroups || [];
+  const defaultGroup = activeTypes.filter((tt) => !groupMap[tt.id]);
+  const namedGroups = groups
+    .map((name) => ({
+      name,
+      tickets: activeTypes.filter((tt) => groupMap[tt.id] === name),
+    }))
+    .filter((g) => g.tickets.length > 0);
+
   return (
     <>
       <aside className="event-tickets" id="tickets">
@@ -342,164 +138,41 @@ export function DynamicTicketWidget({
 
           <div className="event-tickets__embed" id="tickets-embed">
             <div className="feral-tickets" id="feral-tickets">
-              {(() => {
-                // Group tickets: default group first, then named groups
-                const groupMap = ticketGroupMap || {};
-                const groups = ticketGroups || [];
-                const defaultGroup = activeTypes.filter(
-                  (tt) => !groupMap[tt.id]
-                );
-                const namedGroups = groups.map((name) => ({
-                  name,
-                  tickets: activeTypes.filter(
-                    (tt) => groupMap[tt.id] === name
-                  ),
-                })).filter((g) => g.tickets.length > 0);
+              {/* Release progression bar */}
+              <TierProgression tickets={progressionTickets} currSymbol={currSymbol} />
 
-                // Tier progression: standard-tier ungrouped tickets sorted by release order
-                // Shows demand signal when multiple releases exist (sold out → on sale → upcoming)
-                const progressionTickets = ticketTypes
-                  .filter(
-                    (tt) =>
-                      (tt.tier || "standard") === "standard" &&
-                      !groupMap[tt.id] &&
-                      tt.status !== "archived"
-                  )
-                  .sort((a, b) => a.sort_order - b.sort_order);
-                const showProgression = progressionTickets.length >= 2;
+              {/* Default (ungrouped) tickets */}
+              {defaultGroup.map((tt) => (
+                <TicketCard
+                  key={tt.id}
+                  ticket={tt}
+                  qty={quantities[tt.id] || 0}
+                  currSymbol={currSymbol}
+                  onAdd={addTicket}
+                  onRemove={removeTicket}
+                  onViewMerch={onViewMerch}
+                />
+              ))}
 
-                const renderTicket = (tt: TicketTypeRow) => {
-                  const tierClass = TIER_CLASS[tt.tier || "standard"] || "";
-                  const qty = getQty(tt.id);
-                  const priceDisplay =
-                    Number(tt.price) % 1 === 0
-                      ? Number(tt.price)
-                      : Number(tt.price).toFixed(2);
-
-                  return (
-                    <div
+              {/* Named groups with headers */}
+              {namedGroups.map((group) => (
+                <div key={group.name} className="ticket-group">
+                  <div className="ticket-group__header">
+                    <span className="ticket-group__name">{group.name}</span>
+                  </div>
+                  {group.tickets.map((tt) => (
+                    <TicketCard
                       key={tt.id}
-                      className={`ticket-option ${tierClass}${qty > 0 ? " ticket-option--active" : ""}`}
-                      data-ticket-id={tt.id}
-                    >
-                      {tt.tier === "valentine" && (
-                        <div className="ticket-option__hearts">
-                          {[...Array(5)].map((_, i) => (
-                            <span key={i} className="ticket-option__heart">{"\u2665"}</span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="ticket-option__row">
-                        <div className="ticket-option__info">
-                          <span className="ticket-option__name">{tt.name}</span>
-                          <span className="ticket-option__perks">
-                            {tt.description || "Standard entry"}
-                          </span>
-                        </div>
-                        <span className="ticket-option__price">
-                          {currSymbol}{priceDisplay}
-                        </span>
-                      </div>
-                      <div className="ticket-option__bottom">
-                        {tt.includes_merch ? (
-                          (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.front || (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.back ? (
-                            <span
-                              className="ticket-option__view-tee"
-                              onClick={() => onViewMerch?.(tt)}
-                              style={{ cursor: "pointer" }}
-                            >
-                              View Merch
-                            </span>
-                          ) : (
-                            <span
-                              className="ticket-option__view-tee"
-                              style={{ cursor: "default", opacity: 0.6 }}
-                            >
-                              Includes merch
-                            </span>
-                          )
-                        ) : (
-                          <span />
-                        )}
-                        <div className="ticket-option__controls">
-                          <button
-                            className="ticket-option__btn"
-                            onClick={() => removeTicket(tt)}
-                            aria-label="Remove"
-                          >
-                            &minus;
-                          </button>
-                          <span className="ticket-option__qty">{qty}</span>
-                          <button
-                            className="ticket-option__btn"
-                            onClick={() => addTicket(tt)}
-                            aria-label="Add"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                };
-
-                return (
-                  <>
-                    {/* Release progression bar — shows demand signal */}
-                    {showProgression && (
-                      <div className="tier-progression">
-                        {progressionTickets.map((tt) => {
-                          const statusClass =
-                            tt.status === "sold_out"
-                              ? "tier-progression__tier--sold"
-                              : tt.status === "active"
-                                ? "tier-progression__tier--active"
-                                : "tier-progression__tier--next";
-                          const statusLabel =
-                            tt.status === "sold_out"
-                              ? "SOLD OUT"
-                              : tt.status === "active"
-                                ? "ON SALE"
-                                : "UPCOMING";
-                          const priceDisplay =
-                            Number(tt.price) % 1 === 0
-                              ? Number(tt.price)
-                              : Number(tt.price).toFixed(2);
-                          return (
-                            <div
-                              key={tt.id}
-                              className={`tier-progression__tier ${statusClass}`}
-                            >
-                              <span className="tier-progression__name">
-                                {tt.name}
-                              </span>
-                              <span className="tier-progression__price">
-                                {currSymbol}{priceDisplay}
-                              </span>
-                              <span className="tier-progression__status">
-                                {statusLabel}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Default (ungrouped) tickets */}
-                    {defaultGroup.map(renderTicket)}
-
-                    {/* Named groups with headers */}
-                    {namedGroups.map((group) => (
-                      <div key={group.name} className="ticket-group">
-                        <div className="ticket-group__header">
-                          <span className="ticket-group__name">{group.name}</span>
-                        </div>
-                        {group.tickets.map(renderTicket)}
-                      </div>
-                    ))}
-                  </>
-                );
-              })()}
+                      ticket={tt}
+                      qty={quantities[tt.id] || 0}
+                      currSymbol={currSymbol}
+                      onAdd={addTicket}
+                      onRemove={removeTicket}
+                      onViewMerch={onViewMerch}
+                    />
+                  ))}
+                </div>
+              ))}
 
               {/* Checkout Button */}
               <button
@@ -535,63 +208,13 @@ export function DynamicTicketWidget({
               )}
 
               {/* Cart Summary */}
-              {cartItems.length > 0 && (
-                <div className="cart-summary">
-                  <div className="cart-summary__header">
-                    <span className="cart-summary__title">Your Order</span>
-                    <span className="cart-summary__count">
-                      {totalQty} {totalQty === 1 ? "item" : "items"}
-                    </span>
-                  </div>
-                  <div className="cart-summary__lines">
-                    {cartItems.map((item, i) => {
-                      const tt = activeTypes.find((t) => t.name === item.name);
-                      const unitPrice = tt ? Number(tt.price) : 0;
-                      const linePrice = unitPrice * item.qty;
-                      const hasMerch = tt?.includes_merch && item.size;
-                      const merchLabel =
-                        (tt?.product?.name) ||
-                        tt?.merch_name ||
-                        (tt?.merch_type === "hoodie" ? "Hoodie" : "T-Shirt");
-
-                      return (
-                        <div className="cart-summary__line" key={i}>
-                          <div className="cart-summary__line-main">
-                            <span className="cart-summary__line-qty">
-                              {item.qty}&times;
-                            </span>
-                            <span className="cart-summary__line-name">
-                              {item.name}
-                            </span>
-                            <span className="cart-summary__line-price">
-                              {currSymbol}
-                              {linePrice % 1 === 0
-                                ? linePrice
-                                : linePrice.toFixed(2)}
-                            </span>
-                          </div>
-                          {hasMerch && (
-                            <div className="cart-summary__line-merch">
-                              <span className="cart-summary__merch-badge">
-                                + {merchLabel}
-                              </span>
-                              <span className="cart-summary__merch-size">
-                                Size: <strong>{item.size}</strong>
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="cart-summary__footer">
-                    <span className="cart-summary__total-label">Total</span>
-                    <span className="cart-summary__total-value">
-                      {currSymbol}{totalPrice.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              )}
+              <CartSummary
+                items={cartItems}
+                ticketTypes={activeTypes}
+                totalPrice={totalPrice}
+                totalQty={totalQty}
+                currSymbol={currSymbol}
+              />
             </div>
           </div>
 

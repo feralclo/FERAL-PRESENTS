@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
@@ -123,141 +122,144 @@ export function MidnightMerchModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DialogContent className="max-w-[480px] md:max-w-[800px] max-h-[90vh] md:max-h-[85vh] overflow-y-auto overflow-x-hidden p-0 gap-0 rounded-2xl">
-          {/* Header */}
-          <DialogHeader className="p-5 pb-4 text-center border-b border-foreground/[0.05] md:col-span-2">
-            <div className="flex justify-center mb-3">
-              <div className="midnight-legendary-badge">
-                <span className="midnight-diamond-icon w-4 h-4 flex items-center justify-center" />
-                <span className="font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.2em] text-platinum uppercase">
-                  Event Exclusive
-                </span>
-              </div>
-            </div>
-            <DialogTitle className="font-[family-name:var(--font-sans)] text-base font-bold tracking-[0.02em] uppercase">
-              {title}
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Merch details and size selection for {title}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="midnight-merch-dialog max-w-[420px] md:max-w-[720px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col">
+          {/* Accessibility — sr-only */}
+          <DialogTitle className="sr-only">{title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Merch details and size selection for {title}
+          </DialogDescription>
 
-          {/* Desktop: 2-column, Mobile: single column */}
-          <div className="md:grid md:grid-cols-2">
-            {/* Image viewer */}
-            <div className="midnight-merch-viewer md:row-span-2">
-              {/* Image tabs */}
-              <div className="flex justify-center gap-1 px-5 pt-4">
-                {images.map((img) => (
-                  <button
-                    key={img.view}
-                    className={`font-[family-name:var(--font-sans)] text-[10px] font-semibold tracking-[0.08em] uppercase px-5 py-2 border rounded-md transition-all
-                      ${activeView === img.view
-                        ? "bg-foreground/[0.08] border-foreground/[0.15] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                        : "bg-foreground/[0.03] border-foreground/[0.06] text-muted-foreground/60 hover:bg-foreground/[0.06] hover:text-muted-foreground"
-                      }`}
-                    onClick={() => setActiveView(img.view)}
-                  >
-                    {img.view.charAt(0).toUpperCase() + img.view.slice(1)}
-                  </button>
-                ))}
+          {/* ── Scrollable content ─────────────────── */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <div className="md:grid md:grid-cols-2">
+
+              {/* Image area */}
+              <div className="midnight-merch-viewer relative md:border-r border-foreground/[0.04]">
+                <div className="flex justify-center items-center p-5 pt-12 max-md:pt-11 max-md:p-4 min-h-[240px] max-md:min-h-[180px] max-[380px]:min-h-[140px]">
+                  {images.length > 0 ? (
+                    images.map((img) => (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        key={img.view}
+                        src={img.src}
+                        alt={img.alt}
+                        className={`max-w-[260px] max-md:max-w-[180px] max-[380px]:max-w-[150px] max-h-[280px] max-md:max-h-[180px] max-[380px]:max-h-[150px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
+                          activeView === img.view ? "block opacity-100" : "hidden opacity-0"
+                        }`}
+                        style={{
+                          filter: `drop-shadow(0 0 24px color-mix(in srgb, var(--color-primary) 40%, transparent))`,
+                        }}
+                        onClick={() => openFullscreen(img.view)}
+                      />
+                    ))
+                  ) : (
+                    <div className="w-[160px] h-[160px] rounded-xl bg-foreground/[0.04] border border-foreground/[0.06] flex items-center justify-center">
+                      <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/20 uppercase tracking-[0.1em]">No image</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dot navigation for front/back */}
+                {images.length > 1 && (
+                  <div className="flex justify-center gap-2.5 pb-4 max-md:pb-3">
+                    {images.map((img) => (
+                      <button
+                        key={img.view}
+                        type="button"
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          activeView === img.view
+                            ? "bg-foreground/60 scale-125"
+                            : "bg-foreground/15 hover:bg-foreground/30"
+                        }`}
+                        onClick={() => setActiveView(img.view)}
+                        aria-label={`View ${img.view}`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Image */}
-              <div className="flex justify-center items-center p-6 max-md:p-4 min-h-[340px] max-md:min-h-[200px] max-[380px]:min-h-[160px] relative">
-                {images.map((img) => (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    key={img.view}
-                    src={img.src}
-                    alt={img.alt}
-                    className={`max-w-[320px] max-md:max-w-[220px] max-[380px]:max-w-[180px] max-h-[380px] max-md:max-h-[260px] max-[380px]:max-h-[220px] w-auto h-auto object-contain cursor-zoom-in relative z-[1] transition-all duration-300
-                      ${activeView === img.view ? "block" : "hidden"}`}
-                    style={{
-                      filter: `drop-shadow(0 0 30px color-mix(in srgb, var(--color-primary) 50%, transparent))`,
-                    }}
-                    onClick={() => openFullscreen(img.view)}
+              {/* Info column */}
+              <div className="p-5 max-md:p-4 md:border-l border-foreground/[0.04] flex flex-col justify-center">
+                {/* Name + Price */}
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h3 className="font-[family-name:var(--font-sans)] text-sm font-bold tracking-[0.02em] uppercase text-foreground/90">
+                    {title}
+                  </h3>
+                  <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground tracking-[0.02em] shrink-0">
+                    {currencySymbol}{price.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Description */}
+                <p className="font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-muted-foreground/50 mb-4 max-md:mb-3">
+                  {description}
+                </p>
+
+                {/* Badges — compact row */}
+                <div className="flex gap-1.5 flex-wrap mb-5 max-md:mb-4">
+                  <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[8px] tracking-[0.1em] uppercase text-foreground/40 bg-foreground/[0.02] border-foreground/[0.08] px-2 py-0.5 rounded-md">
+                    Limited Edition
+                  </Badge>
+                  <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[8px] tracking-[0.1em] uppercase text-foreground/40 bg-foreground/[0.02] border-foreground/[0.08] px-2 py-0.5 rounded-md">
+                    {vipText}
+                  </Badge>
+                </div>
+
+                {/* Size selector */}
+                <div>
+                  <span className="block font-[family-name:var(--font-mono)] text-[9px] font-medium tracking-[0.12em] uppercase text-foreground/30 text-center mb-2.5">
+                    Select Size
+                  </span>
+                  <MidnightSizeSelector
+                    sizes={sizes}
+                    selectedSize={selectedSize}
+                    onSelect={(s) => setSelectedSize(s as TeeSize)}
+                    variant="platinum"
                   />
-                ))}
-                <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-[family-name:var(--font-mono)] text-[8px] tracking-[0.08em] text-muted-foreground/40 uppercase z-[2]">
-                  Tap to zoom
-                </span>
+                </div>
               </div>
-            </div>
 
-            {/* Exclusivity section */}
-            <div className="p-5 max-md:p-4 border-t md:border-t-0 md:border-l border-foreground/[0.04] md:flex md:flex-col md:justify-center">
-              <div className="font-[family-name:var(--font-display)] text-sm max-md:text-[13px] font-bold tracking-[0.01em] text-foreground/90 mb-2 max-md:text-center">
-                One-Time Drop. Never Again.
-              </div>
-              <p className="font-[family-name:var(--font-display)] text-[11px] leading-relaxed text-muted-foreground/60 mb-4 max-md:text-center max-w-[320px] max-md:mx-auto">
-                {description}
-              </p>
-              <div className="flex gap-2 max-md:justify-center flex-wrap">
-                <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[8px] tracking-[0.1em] uppercase text-platinum/80 bg-platinum/[0.04] border-platinum/20 px-2.5 py-1 rounded-md">
-                  Limited Edition
-                </Badge>
-                <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[8px] tracking-[0.1em] uppercase text-platinum/80 bg-platinum/[0.04] border-platinum/20 px-2.5 py-1 rounded-md">
-                  Collector&apos;s Piece
-                </Badge>
-                <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[8px] tracking-[0.1em] uppercase text-[#F5A623]/80 bg-[rgba(245,166,35,0.04)] border-[rgba(245,166,35,0.2)] px-2.5 py-1 rounded-md">
-                  {vipText}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Size selector */}
-            <div className="p-4 max-md:p-3 border-t md:border-t-0 md:border-l border-foreground/[0.04]">
-              <span className="block font-[family-name:var(--font-sans)] text-[9px] font-medium tracking-[0.1em] uppercase text-muted-foreground/50 text-center mb-3 max-md:mb-2.5">
-                Select Size
-              </span>
-              <MidnightSizeSelector
-                sizes={sizes}
-                selectedSize={selectedSize}
-                onSelect={(s) => setSelectedSize(s as TeeSize)}
-                variant="platinum"
-              />
             </div>
           </div>
 
-          {/* Cart controls — sticky on mobile */}
-          <div className="p-5 max-md:p-4 max-md:pb-[calc(16px+env(safe-area-inset-bottom))] bg-foreground/[0.02] border-t border-foreground/[0.05] flex flex-col md:flex-row items-center justify-between gap-4 max-md:sticky max-md:bottom-0 max-md:bg-[rgba(10,10,12,0.97)] will-change-transform">
-            <div className="flex items-center gap-4">
+          {/* ── CTA bar — always visible, outside scroll ── */}
+          <div className="shrink-0 p-4 max-md:p-3 bg-foreground/[0.025] border-t border-foreground/[0.06] flex items-center gap-3">
+            <div className="flex items-center gap-2.5 shrink-0">
               <Button
                 variant="outline"
                 size="icon"
-                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-platinum/8 border-platinum/25 text-platinum hover:bg-platinum/15 hover:border-platinum/50 rounded-xl active:scale-[0.92] transition-transform duration-100"
+                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-foreground/[0.04] border-foreground/[0.10] text-foreground/60 hover:bg-foreground/[0.08] hover:border-foreground/[0.18] rounded-xl active:scale-[0.92] transition-transform duration-100"
                 onClick={() => setQty(Math.max(1, qty - 1))}
               >
                 &minus;
               </Button>
-              <span className="font-[family-name:var(--font-mono)] text-xl font-bold min-w-[32px] text-center tabular-nums">
+              <span className="font-[family-name:var(--font-mono)] text-lg font-bold min-w-[28px] text-center tabular-nums">
                 {qty}
               </span>
               <Button
                 variant="outline"
                 size="icon"
-                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-platinum/8 border-platinum/25 text-platinum hover:bg-platinum/15 hover:border-platinum/50 rounded-xl active:scale-[0.92] transition-transform duration-100"
+                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-foreground/[0.04] border-foreground/[0.10] text-foreground/60 hover:bg-foreground/[0.08] hover:border-foreground/[0.18] rounded-xl active:scale-[0.92] transition-transform duration-100"
                 onClick={() => setQty(qty + 1)}
               >
                 +
               </Button>
             </div>
             <Button
-              className="midnight-metallic-cta w-full md:w-auto md:min-w-[200px] py-4 px-6 max-md:py-3.5 font-[family-name:var(--font-sans)] text-xs max-md:text-[11px] font-bold tracking-[0.04em] uppercase rounded-xl"
+              className="midnight-metallic-cta flex-1 h-12 max-md:h-11 font-[family-name:var(--font-sans)] text-xs max-md:text-[11px] font-bold tracking-[0.04em] uppercase rounded-xl"
               onClick={handleAdd}
             >
-              Add to Cart &mdash; {currencySymbol}
-              {(price * qty).toFixed(2)}
+              Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Fullscreen zoom */}
+      {/* ── Fullscreen image zoom ─────────────── */}
       <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
         <DialogContent
-          className="max-w-[90vw] max-h-[90vh] p-0 bg-black/97 border-none flex items-center justify-center cursor-zoom-out rounded-2xl"
+          className="midnight-merch-dialog max-w-[90vw] max-h-[90vh] p-0 bg-black/97 border-none flex items-center justify-center cursor-zoom-out rounded-2xl"
           onClick={() => setFullscreenOpen(false)}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
@@ -268,6 +270,7 @@ export function MidnightMerchModal({
           {images.length > 1 && (
             <>
               <button
+                type="button"
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-black/50 border border-foreground/15 rounded-xl flex items-center justify-center text-foreground/80 hover:bg-foreground/10 hover:border-foreground/25 transition-all z-10"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -280,6 +283,7 @@ export function MidnightMerchModal({
                 </svg>
               </button>
               <button
+                type="button"
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-black/50 border border-foreground/15 rounded-xl flex items-center justify-center text-foreground/80 hover:bg-foreground/10 hover:border-foreground/25 transition-all z-10"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -299,22 +303,20 @@ export function MidnightMerchModal({
             <img
               src={images[fullscreenIndex].src}
               alt={images[fullscreenIndex].alt}
-              className="max-w-[90vw] max-h-[90vh] object-contain"
-              style={{ filter: `drop-shadow(0 0 50px color-mix(in srgb, var(--color-primary) 40%, transparent))` }}
+              className="max-w-[85vw] max-h-[85vh] object-contain"
+              style={{ filter: `drop-shadow(0 0 40px color-mix(in srgb, var(--color-primary) 35%, transparent))` }}
               onClick={(e) => e.stopPropagation()}
             />
           )}
 
           {images.length > 1 && (
-            <div className="absolute bottom-[28px] left-1/2 -translate-x-1/2 flex gap-2 z-10">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
               {images.map((_, i) => (
                 <span
                   key={i}
-                  className={`w-2 h-2 rounded-full transition-all cursor-pointer
-                    ${i === fullscreenIndex
-                      ? "bg-foreground"
-                      : "bg-foreground/25"
-                    }`}
+                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                    i === fullscreenIndex ? "bg-foreground" : "bg-foreground/25"
+                  }`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setFullscreenIndex(i);

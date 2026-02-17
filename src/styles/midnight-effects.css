@@ -424,13 +424,40 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
-   MERCH VIEWER — Radial glow backdrop
+   MERCH MODAL — Close button + viewer glow
    ═══════════════════════════════════════════════ */
 
+/* Close button — bigger, visible, glass background */
+[data-theme="midnight"] .midnight-merch-dialog > button:last-child {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  opacity: 1;
+  top: 10px;
+  right: 10px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+[data-theme="midnight"] .midnight-merch-dialog > button:last-child:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+[data-theme="midnight"] .midnight-merch-dialog > button:last-child svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Viewer — subtle radial glow */
 [data-theme="midnight"] .midnight-merch-viewer {
   background: radial-gradient(
     ellipse at center,
-    color-mix(in srgb, var(--color-primary) 10%, transparent) 0%,
+    color-mix(in srgb, var(--color-primary) 8%, transparent) 0%,
     transparent 70%
   );
   position: relative;
@@ -442,58 +469,11 @@ body:has([data-theme="midnight"]) .header {
   inset: 0;
   background: radial-gradient(
     ellipse at center,
-    color-mix(in srgb, var(--color-primary) 15%, transparent) 0%,
+    color-mix(in srgb, var(--color-primary) 12%, transparent) 0%,
     transparent 60%
   );
   animation: glowPulse 3s ease-in-out infinite;
   pointer-events: none;
-}
-
-
-/* ═══════════════════════════════════════════════
-   LEGENDARY BADGE + DIAMOND ICON
-   ═══════════════════════════════════════════════ */
-
-[data-theme="midnight"] .midnight-legendary-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(135deg, rgba(229, 228, 226, 0.08) 0%, rgba(229, 228, 226, 0.02) 100%);
-  border: 1px solid rgba(229, 228, 226, 0.3);
-  padding: 8px 16px;
-  position: relative;
-}
-
-[data-theme="midnight"] .midnight-legendary-badge::before,
-[data-theme="midnight"] .midnight-legendary-badge::after {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-color: var(--color-platinum);
-  border-style: solid;
-}
-
-[data-theme="midnight"] .midnight-legendary-badge::before {
-  top: -1px;
-  left: -1px;
-  border-width: 1px 0 0 1px;
-}
-
-[data-theme="midnight"] .midnight-legendary-badge::after {
-  bottom: -1px;
-  right: -1px;
-  border-width: 0 1px 1px 0;
-}
-
-[data-theme="midnight"] .midnight-diamond-icon::before {
-  content: '';
-  display: block;
-  width: 12px;
-  height: 12px;
-  background: var(--color-platinum);
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  animation: iconGlow 2s ease-in-out infinite;
 }
 
 
@@ -669,7 +649,6 @@ body:has([data-theme="midnight"]) .header {
   [data-theme="midnight"] .midnight-metallic-platinum::after,
   [data-theme="midnight"] .midnight-metallic-obsidian::after,
   [data-theme="midnight"] .midnight-merch-viewer::before,
-  [data-theme="midnight"] .midnight-diamond-icon::before,
   [data-theme="midnight"] .midnight-qty-pop,
   [data-theme="midnight"] .midnight-cta-ready,
   [data-theme="midnight"] .midnight-reveal-glow {

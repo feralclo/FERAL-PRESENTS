@@ -15,6 +15,7 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -27,6 +28,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const { trackViewContent: gtmTrackViewContent } = useDataLayer();
   const { settings } = useSettings();
   const branding = useBranding();
+  const scrollRevealRef = useScrollReveal();
 
   // Track PageView + ViewContent on mount (skip in editor preview)
   useEffect(() => {
@@ -177,10 +179,10 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
           <div className="container">
             <div className="event-content__grid">
               {/* Left: Event Info */}
-              <div className="event-info" id="eventInfo">
+              <div className="event-info" id="eventInfo" ref={scrollRevealRef as React.RefObject<HTMLDivElement>}>
                 {/* About Section */}
                 {event.about_text && (
-                  <div className="event-info__section event-info__section--about">
+                  <div className="event-info__section event-info__section--about" data-reveal>
                     <h2 className="event-info__heading">About</h2>
                     <p className="event-info__text">{event.about_text}</p>
                   </div>
@@ -188,7 +190,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
 
                 {/* Lineup Section (moves above About on mobile via CSS order) */}
                 {lineup.length > 0 && (
-                  <div className="event-info__section event-info__section--lineup">
+                  <div className="event-info__section event-info__section--lineup" data-reveal>
                     <h2 className="event-info__heading">
                       Lineup{" "}
                       <span className="event-info__az">[A-Z]</span>
@@ -207,7 +209,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
 
                 {/* Details Section */}
                 {event.details_text && (
-                  <div className="event-info__section event-info__section--details">
+                  <div className="event-info__section event-info__section--details" data-reveal>
                     <h2 className="event-info__heading">Details</h2>
                     <p className="event-info__text">{event.details_text}</p>
                   </div>
@@ -217,7 +219,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 {!event.about_text &&
                   !event.details_text &&
                   event.description && (
-                    <div className="event-info__section event-info__section--about">
+                    <div className="event-info__section event-info__section--about" data-reveal>
                       <h2 className="event-info__heading">About</h2>
                       <p className="event-info__text">{event.description}</p>
                     </div>

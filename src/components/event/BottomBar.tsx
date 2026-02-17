@@ -26,7 +26,7 @@ export function BottomBar({
   const hasCart = cartQty > 0 && cartTotal;
 
   return (
-    <div className="bottom-bar" id="bottomBar">
+    <div className={`bottom-bar${hasCart ? ' bottom-bar--has-cart' : ''}`} id="bottomBar">
       <div className="bottom-bar__inner">
         <div className="bottom-bar__price">
           <span className="bottom-bar__amount">

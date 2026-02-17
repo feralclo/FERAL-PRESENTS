@@ -5,7 +5,6 @@ import { Header } from "@/components/layout/Header";
 import { EventHero } from "./EventHero";
 import { DynamicTicketWidget } from "./DynamicTicketWidget";
 import { TeeModal } from "./TeeModal";
-import { BottomBar } from "./BottomBar";
 import { DiscountPopup } from "./DiscountPopup";
 import { EngagementTracker } from "./EngagementTracker";
 import { SocialProofToast } from "./SocialProofToast";
@@ -15,6 +14,7 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
+import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -27,6 +27,18 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const { trackViewContent: gtmTrackViewContent } = useDataLayer();
   const { settings } = useSettings();
   const branding = useBranding();
+  const headerHidden = useHeaderScroll();
+
+  // Track whether user has scrolled past the hero for header transparency
+  const [pastHero, setPastHero] = useState(false);
+  useEffect(() => {
+    function onScroll() {
+      setPastHero(window.scrollY > window.innerHeight * 0.6);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Track PageView + ViewContent on mount (skip in editor preview)
   useEffect(() => {
@@ -48,22 +60,6 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
     gtmTrackViewContent(`${event.name} — Event Page`, ids, minPrice);
   }, [event, trackPageView, trackViewContent, gtmTrackViewContent]);
 
-  // Track cart state from ticket widget for bottom bar
-  const [cartTotal, setCartTotal] = useState(0);
-  const [cartQty, setCartQty] = useState(0);
-  const [cartItems, setCartItems] = useState<{ name: string; qty: number; size?: string }[]>([]);
-  const [checkoutFn, setCheckoutFn] = useState<(() => void) | null>(null);
-
-  const handleCartChange = useCallback((total: number, qty: number, items: { name: string; qty: number; size?: string }[]) => {
-    setCartTotal(total);
-    setCartQty(qty);
-    setCartItems(items);
-  }, []);
-
-  const handleCheckoutReady = useCallback((fn: (() => void) | null) => {
-    setCheckoutFn(() => fn);
-  }, []);
-
   // Merch modal state
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
@@ -84,11 +80,6 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
     },
     [teeModalTicketType]
   );
-
-  const scrollToTickets = useCallback(() => {
-    const el = document.getElementById("tickets");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-  }, []);
 
   // Format date for hero display
   const dateDisplay = useMemo(() => {
@@ -115,14 +106,6 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const heroImage = event.hero_image || event.cover_image
     || `/api/media/event_${event.id}_banner`;
 
-  // Lowest price for bottom bar
-  const activeTypes = (event.ticket_types || []).filter(
-    (tt) => tt.status === "active"
-  );
-  const minPrice =
-    activeTypes.length > 0
-      ? Math.min(...activeTypes.map((tt) => Number(tt.price)))
-      : 0;
   const currSymbol =
     event.currency === "GBP" ? "£" : event.currency === "EUR" ? "€" : "$";
 
@@ -136,7 +119,10 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   return (
     <>
       {/* Navigation */}
-      <header className="header" id="header">
+      <header
+        className={`header${!pastHero ? " header--transparent" : ""}${headerHidden ? " header--hidden" : ""}`}
+        id="header"
+      >
         <div className="announcement-banner">
           <span className="announcement-banner__shield">
             <svg
@@ -231,8 +217,6 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
                 paymentMethod={event.payment_method}
                 ticketTypes={event.ticket_types || []}
                 currency={event.currency}
-                onCartChange={handleCartChange}
-                onCheckoutReady={handleCheckoutReady}
                 ticketGroups={ticketGroups}
                 ticketGroupMap={ticketGroupMap}
                 onViewMerch={handleViewMerch}
@@ -242,15 +226,6 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
           </div>
         </section>
       </main>
-
-      <BottomBar
-        fromPrice={`${currSymbol}${minPrice % 1 === 0 ? minPrice : minPrice.toFixed(2)}`}
-        cartTotal={cartQty > 0 ? `${currSymbol}${cartTotal.toFixed(2)}` : undefined}
-        cartQty={cartQty}
-        cartItems={cartItems}
-        onBuyNow={scrollToTickets}
-        onCheckout={checkoutFn ?? undefined}
-      />
 
       {/* Footer */}
       <footer className="footer">

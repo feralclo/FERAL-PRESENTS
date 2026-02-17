@@ -9,8 +9,8 @@
 }
 
 /* Suppress CRT effects on event pages */
-.event-page ~ .scanlines,
-.event-page ~ .noise {
+body:has(.event-page) > .scanlines,
+body:has(.event-page) > .noise {
   display: none !important;
 }
 
@@ -59,7 +59,7 @@
   width: 100%;
   height: 100%;
   background:
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.3) 40%, rgba(0, 0, 0, 0.7) 75%, var(--bg-dark) 100%);
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.2) 20%, rgba(0, 0, 0, 0.3) 40%, rgba(0, 0, 0, 0.7) 75%, var(--bg-dark) 100%);
   z-index: 1;
 }
 
@@ -226,7 +226,7 @@
 .event-tickets {
   position: sticky;
   top: calc(var(--header-height) + 24px);
-  z-index: 10000;
+  z-index: 50;
 }
 
 .event-tickets__box {
@@ -2263,13 +2263,17 @@
 
   .tee-modal__header {
     grid-column: 1 / -1;
+    grid-row: 1;
   }
 
   .tee-modal__viewer {
+    grid-column: 1;
     grid-row: 2 / 4;
   }
 
   .tee-modal__exclusive {
+    grid-column: 2;
+    grid-row: 2;
     border-top: none;
     border-left: 1px solid rgba(255, 255, 255, 0.06);
     text-align: left;
@@ -2279,6 +2283,8 @@
   }
 
   .tee-modal__sizes {
+    grid-column: 2;
+    grid-row: 3;
     border-top: none;
     border-left: 1px solid rgba(255, 255, 255, 0.06);
   }
@@ -2300,9 +2306,9 @@
 }
 
 .tee-modal__close {
-  position: sticky;
-  top: 0;
-  float: right;
+  position: absolute;
+  top: 12px;
+  right: 12px;
   width: 44px;
   height: 44px;
   display: flex;
@@ -2319,7 +2325,6 @@
   z-index: 10;
   line-height: 1;
   padding: 0;
-  margin: 10px 10px 0 0;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
@@ -2878,14 +2883,13 @@
   }
 
   .tee-modal__close {
-    position: sticky;
-    top: 0;
-    margin: 8px 8px 0 0;
+    position: absolute;
+    top: 8px;
+    right: 8px;
   }
 
   .tee-modal__header {
-    padding: 0 16px 14px;
-    margin-top: -36px;
+    padding: 16px 16px 14px;
   }
 
   .tee-modal__image-container {
@@ -2894,8 +2898,8 @@
   }
 
   .tee-modal__img {
-    max-width: 180px;
-    max-height: 220px;
+    max-width: 220px;
+    max-height: 260px;
   }
 
   .tee-modal__exclusive {
@@ -2960,8 +2964,8 @@
   }
 
   .tee-modal__img {
-    max-width: 150px;
-    max-height: 180px;
+    max-width: 180px;
+    max-height: 220px;
   }
 }
 
@@ -3226,10 +3230,7 @@
   flex-shrink: 0;
 }
 
-/* Ensure footer is never hidden behind the fixed bottom bar */
-body:has(.bottom-bar) .footer {
-  padding-bottom: 80px;
-}
+/* Footer spacing (bottom bar removed) */
 
 @media (max-width: 480px) {
   .bottom-bar {
@@ -3628,7 +3629,7 @@ body:has(.bottom-bar) .footer {
 
   .event-tickets {
     position: relative;
-    z-index: 10000;
+    z-index: 50;
     order: -1;
   }
 

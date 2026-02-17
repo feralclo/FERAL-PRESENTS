@@ -38,7 +38,7 @@ export function MidnightTierProgression({
               !soldOut && !isActive && !isNext && "bg-foreground/[0.015] border border-foreground/[0.05]",
             )}
           >
-            <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] font-bold tracking-[0.5px] max-[480px]:tracking-[0.3px] uppercase block mb-1 truncate text-muted-foreground">
+            <span className="font-[family-name:var(--font-sans)] text-[9px] max-[480px]:text-[8px] font-semibold tracking-[0.04em] uppercase block mb-1 truncate text-muted-foreground">
               {isActive && <span className="text-foreground/90">{tt.name}</span>}
               {!isActive && tt.name}
             </span>

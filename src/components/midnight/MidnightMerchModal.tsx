@@ -134,7 +134,7 @@ export function MidnightMerchModal({
                 </span>
               </div>
             </div>
-            <DialogTitle className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[0.12em] uppercase">
+            <DialogTitle className="font-[family-name:var(--font-sans)] text-base font-bold tracking-[0.02em] uppercase">
               {title}
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -151,7 +151,7 @@ export function MidnightMerchModal({
                 {images.map((img) => (
                   <button
                     key={img.view}
-                    className={`font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[1.5px] uppercase px-5 py-2 border rounded-md transition-all
+                    className={`font-[family-name:var(--font-sans)] text-[10px] font-semibold tracking-[0.08em] uppercase px-5 py-2 border rounded-md transition-all
                       ${activeView === img.view
                         ? "bg-primary/10 border-primary/30 text-foreground"
                         : "bg-foreground/[0.03] border-foreground/[0.06] text-muted-foreground/60 hover:bg-foreground/[0.06] hover:text-muted-foreground"
@@ -208,7 +208,7 @@ export function MidnightMerchModal({
 
             {/* Size selector */}
             <div className="p-4 max-md:p-3 border-t md:border-t-0 md:border-l border-foreground/[0.04]">
-              <span className="block font-[family-name:var(--font-mono)] text-[8px] tracking-[0.15em] uppercase text-muted-foreground/50 text-center mb-3 max-md:mb-2.5">
+              <span className="block font-[family-name:var(--font-sans)] text-[9px] font-medium tracking-[0.1em] uppercase text-muted-foreground/50 text-center mb-3 max-md:mb-2.5">
                 Select Size
               </span>
               <MidnightSizeSelector
@@ -244,7 +244,7 @@ export function MidnightMerchModal({
               </Button>
             </div>
             <Button
-              className="midnight-metallic-cta w-full md:w-auto md:min-w-[200px] py-4 px-6 max-md:py-3.5 font-[family-name:var(--font-mono)] text-xs max-md:text-[11px] rounded-xl"
+              className="midnight-metallic-cta w-full md:w-auto md:min-w-[200px] py-4 px-6 max-md:py-3.5 font-[family-name:var(--font-sans)] text-xs max-md:text-[11px] font-bold tracking-[0.04em] uppercase rounded-xl"
               onClick={handleAdd}
             >
               Add to Cart &mdash; {currencySymbol}

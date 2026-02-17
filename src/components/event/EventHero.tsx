@@ -53,18 +53,25 @@ export function EventHero({
 
           <h1 className="event-hero__title">{title}</h1>
 
-          <div className="event-hero__details">
-            <span className="event-hero__detail-value">{date}</span>
-            {doors && (
-              <>
-                <span className="event-hero__detail-divider" />
-                <span className="event-hero__detail-value">{doors}</span>
-              </>
+          <div className="event-hero__meta">
+            <div className="event-hero__meta-row">
+              <span className="event-hero__meta-item">
+                <span className="event-hero__meta-label">Date</span>
+                <span className="event-hero__meta-value">{date}</span>
+              </span>
+              <span className="event-hero__meta-divider" />
+              <span className="event-hero__meta-item">
+                <span className="event-hero__meta-label">Venue</span>
+                <span className="event-hero__meta-value">{location}</span>
+              </span>
+            </div>
+            {(doors || age) && (
+              <div className="event-hero__meta-secondary">
+                {doors && <span>Doors {doors}</span>}
+                {doors && age && <span className="event-hero__meta-sep" />}
+                {age && <span>{age}</span>}
+              </div>
             )}
-            <span className="event-hero__detail-divider" />
-            <span className="event-hero__detail-value">{location}</span>
-            <span className="event-hero__detail-divider" />
-            <span className="event-hero__detail-value">{age}</span>
           </div>
         </div>
       </div>

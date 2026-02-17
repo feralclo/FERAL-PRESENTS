@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 interface MidnightHeroProps {
@@ -24,24 +24,35 @@ export function MidnightHero({
 }: MidnightHeroProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Handle cached images: onLoad may not fire during hydration if the
+  // browser already has the image. Check .complete after mount.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) {
+      setImgLoaded(true);
+    }
+  }, []);
 
   return (
-    <section className="relative flex items-end justify-center text-center overflow-hidden bg-background h-[clamp(480px,65vh,750px)] max-md:h-[clamp(380px,55vh,560px)] max-[480px]:h-[clamp(320px,50vh,480px)]">
-      {/* Background image with subtle Ken Burns */}
+    <section className="midnight-hero relative flex items-end justify-center text-center overflow-hidden bg-background">
+      {/* Background image — static, no transform/animation */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         {bannerImage && !imgFailed && (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
+            ref={imgRef}
             src={bannerImage}
             alt=""
-            className={`midnight-hero-img w-full h-full object-cover object-center transition-opacity duration-700 ease-out ${imgLoaded ? "opacity-100 midnight-hero-img--loaded" : "opacity-0"}`}
+            className={`midnight-hero-img w-full h-full object-cover object-center transition-opacity duration-700 ease-out ${imgLoaded ? "opacity-100" : "opacity-0"}`}
             onError={() => setImgFailed(true)}
             onLoad={() => setImgLoaded(true)}
           />
         )}
       </div>
 
-      {/* Glass depth overlays — static layers the image drifts behind */}
+      {/* Glass depth overlays — static layers for museum-glass depth */}
       <div className="absolute inset-0 z-[1] pointer-events-none">
         {/* Vignette — radial edge darkening */}
         <div className="midnight-hero-vignette absolute inset-0" />

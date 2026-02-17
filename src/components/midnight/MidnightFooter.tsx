@@ -6,16 +6,19 @@ export function MidnightFooter() {
   const branding = useBranding();
 
   return (
-    <footer className="py-6 px-6 max-md:py-5 max-md:px-4">
+    <footer className="py-10 px-6 max-md:py-8 max-md:px-4">
       <div className="max-w-[1200px] mx-auto">
-        <div className="h-px bg-foreground/[0.04] mb-5" />
-        <div className="flex items-center justify-between text-muted-foreground/50 font-[family-name:var(--font-sans)] text-[9px] tracking-[0.06em] uppercase">
-          <span data-branding="copyright">
+        <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent mb-8 max-md:mb-6" />
+        <div className="flex items-center justify-between">
+          <span
+            data-branding="copyright"
+            className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.12em] uppercase text-foreground/25"
+          >
             &copy; {new Date().getFullYear()}{" "}
-            {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. All rights reserved.`}
+            {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}`}
           </span>
-          <span className="text-muted-foreground/30">
-            <span className="text-primary/50">&#9679;</span> Online
+          <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.12em] uppercase text-foreground/15">
+            Entry
           </span>
         </div>
       </div>

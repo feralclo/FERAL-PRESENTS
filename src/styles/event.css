@@ -276,33 +276,34 @@
 
 .event-info__lineup {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 0;
 }
 
 .event-info__artist {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  padding: 10px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transition: all var(--transition-smooth);
   cursor: default;
 }
 
+.event-info__artist:last-child {
+  border-bottom: none;
+}
+
 .event-info__artist:hover {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
-  transform: translateY(-1px);
+  padding-left: 12px;
 }
 
 .event-info__artist-name {
   font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0;
-  transition: color var(--transition-smooth);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  transition: all var(--transition-smooth);
 }
 
 .event-info__artist:hover .event-info__artist-name {
@@ -468,8 +469,8 @@
 }
 
 .feral-tickets__btn:hover {
-  border-color: var(--red);
-  color: var(--red);
+  border-color: var(--accent);
+  color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
@@ -737,7 +738,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  color: var(--red);
+  color: var(--accent);
   flex-shrink: 0;
   min-width: 22px;
 }
@@ -789,7 +790,7 @@
 }
 
 .cart-summary__merch-size strong {
-  color: var(--red);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -985,11 +986,10 @@
   width: 100%;
   padding: 18px 24px;
   text-align: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 
@@ -1366,8 +1366,8 @@
   transform: translateY(-50%);
   width: 2px;
   height: 12px;
-  background: var(--red);
-  box-shadow: 0 0 10px var(--red), 0 0 20px var(--red);
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .ticket-scarcity__info {
@@ -1384,7 +1384,7 @@
 }
 
 .ticket-scarcity__count {
-  color: var(--red);
+  color: var(--accent);
   font-weight: 700;
   font-size: 14px;
 }
@@ -1440,7 +1440,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 1px;
-  color: var(--red);
+  color: var(--accent);
 }
 
 .lineup-widget__artists {
@@ -1459,7 +1459,7 @@
 .lineup-widget__dot {
   width: 3px;
   height: 3px;
-  background: var(--red);
+  background: var(--accent);
   border-radius: 50%;
   opacity: 0.6;
 }
@@ -1470,7 +1470,7 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--red), transparent);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
   animation: lineupScan 3s ease-in-out infinite;
 }
 
@@ -1510,31 +1510,30 @@
   justify-content: space-between;
   width: 100%;
   padding: 16px 24px;
-  background: var(--red);
-  color: var(--white);
+  background: var(--cta-bg);
+  color: var(--cta-text);
   text-decoration: none;
   transition: all var(--transition-base);
   border-radius: 8px;
-  box-shadow: 0 2px 12px var(--red-glow);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.08);
 }
 
 .mobile-cta__btn:active {
   transform: scale(0.98);
-  background: var(--red-dark);
+  background: var(--cta-active);
 }
 
 .mobile-cta__text {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .mobile-cta__price {
   font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   opacity: 0.9;
 }
 
@@ -1618,7 +1617,7 @@
 }
 
 .tier-progression__tier--active .tier-progression__status {
-  color: var(--red);
+  color: var(--accent);
 }
 
 /* Next tier — upcoming */
@@ -1683,7 +1682,7 @@
 }
 
 .ticket-option--active .ticket-option__qty {
-  color: var(--red);
+  color: var(--accent);
 }
 
 /* Platinum active — silver glow intensifies */
@@ -1707,7 +1706,7 @@
 }
 
 .ticket-option--vip-black.ticket-option--active .ticket-option__qty {
-  color: var(--red);
+  color: var(--accent);
 }
 
 /* Valentine active — pink glow intensifies */
@@ -1746,27 +1745,18 @@
   background: linear-gradient(180deg, var(--platinum-light) 0%, var(--platinum) 50%, var(--platinum-dark) 100%);
 }
 
-/* Platinum shine animation */
+/* Platinum subtle highlight — static gradient, no animation */
 .ticket-option--vip::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    110deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.08) 40%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0.08) 60%,
-    transparent 80%
+    145deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 70%
   );
-  background-size: 200% 100%;
-  animation: platinumShine 3s ease-in-out infinite;
   pointer-events: none;
-}
-
-@keyframes platinumShine {
-  0% { background-position: 200% center; }
-  100% { background-position: -200% center; }
 }
 
 /* Featured VIP + Tee - enhanced premium styling */
@@ -1839,32 +1829,19 @@
   z-index: 3;
 }
 
-/* Silver metallic shimmer - premium card effect */
+/* Silver subtle highlight — static gradient, no animation */
 .ticket-option--vip-black::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    110deg,
-    transparent 0%,
-    transparent 35%,
-    rgba(255, 255, 255, 0.06) 40%,
-    rgba(255, 255, 255, 0.18) 45%,
-    rgba(200, 200, 200, 0.12) 50%,
-    rgba(255, 255, 255, 0.18) 55%,
-    rgba(255, 255, 255, 0.06) 60%,
-    transparent 65%,
-    transparent 100%
+    145deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 70%
   );
-  background-size: 200% 100%;
-  animation: silverShine 3s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
-}
-
-@keyframes silverShine {
-  0% { background-position: 200% center; }
-  100% { background-position: -200% center; }
 }
 
 /* VIP Black text - crisp white with subtle glow */
@@ -1977,71 +1954,7 @@
 
 /* No ::after sheen — keep valentine clean */
 
-/* Floating hearts animation container */
-.ticket-option--valentine .ticket-option__hearts {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.ticket-option--valentine .ticket-option__heart {
-  position: absolute;
-  bottom: -20px;
-  font-size: 14px;
-  opacity: 0;
-  animation: floatHeart 6s ease-in infinite;
-  pointer-events: none;
-  filter: drop-shadow(0 0 3px rgba(232, 54, 93, 0.4));
-}
-.ticket-option--valentine .ticket-option__heart:nth-child(1) {
-  left: 8%;
-  animation-delay: 0s;
-  animation-duration: 7s;
-  font-size: 12px;
-}
-.ticket-option--valentine .ticket-option__heart:nth-child(2) {
-  left: 25%;
-  animation-delay: 1.5s;
-  animation-duration: 5.5s;
-  font-size: 15px;
-}
-.ticket-option--valentine .ticket-option__heart:nth-child(3) {
-  left: 50%;
-  animation-delay: 3s;
-  animation-duration: 6.5s;
-  font-size: 13px;
-}
-.ticket-option--valentine .ticket-option__heart:nth-child(4) {
-  left: 72%;
-  animation-delay: 2s;
-  animation-duration: 5s;
-  font-size: 11px;
-}
-.ticket-option--valentine .ticket-option__heart:nth-child(5) {
-  left: 90%;
-  animation-delay: 4s;
-  animation-duration: 7.5s;
-  font-size: 14px;
-}
-
-@keyframes floatHeart {
-  0% {
-    transform: translateY(0) scale(0.6) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 0.3;
-  }
-  100% {
-    transform: translateY(-120px) scale(1) rotate(15deg);
-    opacity: 0;
-  }
-}
+/* Valentine — clean, no floating hearts */
 
 /* Valentine text — crisp white with pink glow */
 .ticket-option--valentine .ticket-option__name {
@@ -2123,11 +2036,10 @@
 }
 
 .ticket-option__name {
-  font-family: var(--font-mono);
-  font-size: 13px;
+  font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--white);
   display: block;
   margin-bottom: 4px;
@@ -2138,22 +2050,20 @@
 }
 
 .ticket-option__perks {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  color: var(--gray-text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--text-secondary);
   display: block;
+  line-height: 1.5;
 }
 
 .ticket-option__price {
   font-family: var(--font-mono);
   font-size: 18px;
   font-weight: 700;
-  letter-spacing: 1px;
-  background: linear-gradient(180deg, var(--white) 30%, rgba(255, 255, 255, 0.6) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  letter-spacing: 0.5px;
+  color: var(--white);
   flex-shrink: 0;
 }
 
@@ -2242,16 +2152,16 @@
 
 /* Tier info for standard ticket */
 .ticket-option__tier {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
-  letter-spacing: 1px;
+  letter-spacing: 0.02em;
   color: var(--gray-text);
   display: block;
   margin-top: 2px;
 }
 
 .ticket-option__tier .tier-highlight {
-  color: var(--red);
+  color: var(--accent);
 }
 
 /* --- Ticket Options: Responsive (≤480px) --- */
@@ -2591,23 +2501,17 @@
 
 /* Image viewer with tabs */
 .tee-modal__viewer {
-  background: radial-gradient(ellipse at center, rgba(246, 4, 52, 0.15) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 70%);
   position: relative;
 }
 
-/* Pulsating glow effect */
+/* Subtle glow effect */
 .tee-modal__viewer::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, rgba(246, 4, 52, 0.2) 0%, transparent 60%);
-  animation: glowPulse 3s ease-in-out infinite;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 12%, transparent) 0%, transparent 60%);
   pointer-events: none;
-}
-
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
 }
 
 .tee-modal__image-tabs {
@@ -2637,8 +2541,8 @@
 }
 
 .tee-modal__tab--active {
-  background: rgba(246, 4, 52, 0.15);
-  border-color: rgba(246, 4, 52, 0.4);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   color: #fff;
 }
 
@@ -2657,7 +2561,7 @@
   width: auto;
   height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 0 35px rgba(246, 4, 52, 0.6));
+  filter: drop-shadow(0 0 35px color-mix(in srgb, var(--accent) 40%, transparent));
   transition: transform 0.3s ease, filter 0.3s ease, opacity 0.25s ease;
   display: none;
   cursor: zoom-in;
@@ -2671,7 +2575,7 @@
 
 .tee-modal__img:hover {
   transform: scale(1.03);
-  filter: drop-shadow(0 0 50px rgba(246, 4, 52, 0.8));
+  filter: drop-shadow(0 0 50px color-mix(in srgb, var(--accent) 50%, transparent));
 }
 
 /* Zoom hint */
@@ -2712,7 +2616,7 @@
   max-width: 90vw;
   max-height: 90vh;
   object-fit: contain;
-  filter: drop-shadow(0 0 60px rgba(246, 4, 52, 0.5));
+  filter: drop-shadow(0 0 60px color-mix(in srgb, var(--accent) 35%, transparent));
 }
 
 .tee-modal__fullscreen-close {
@@ -3378,13 +3282,13 @@
 }
 
 .bottom-bar__cart-size {
-  color: var(--accent, var(--red));
+  color: var(--accent);
   margin-left: 4px;
   font-weight: 600;
 }
 
 .bottom-bar__ticket-count {
-  color: var(--accent, var(--red));
+  color: var(--accent);
   font-size: 0.7rem;
   font-family: var(--font-mono);
   white-space: nowrap;
@@ -3608,7 +3512,7 @@ body:has(.bottom-bar) .footer {
 
 /* Detail label styling - red accent */
 .theme-minimal .event-hero__detail-label {
-  color: var(--red);
+  color: var(--accent);
   opacity: 0.9;
   font-size: 9px;
   letter-spacing: 2px;
@@ -3640,7 +3544,7 @@ body:has(.bottom-bar) .footer {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 3px;
-  color: var(--red);
+  color: var(--accent);
   margin-bottom: 14px;
   text-transform: uppercase;
 }
@@ -3681,13 +3585,13 @@ body:has(.bottom-bar) .footer {
 }
 
 .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot):hover {
-  color: var(--red);
+  color: var(--accent);
 }
 
 /* Add // separator after each artist except the last */
 .theme-minimal .lineup-widget__artists > span:not(.lineup-widget__dot)::after {
   content: '//';
-  color: var(--red);
+  color: var(--accent);
   margin: 0 14px;
   font-weight: 700;
   font-size: 12px;
@@ -3700,7 +3604,7 @@ body:has(.bottom-bar) .footer {
 
 /* Horizontal lineup with // separators (for event-info section) */
 .theme-minimal .event-info__lineup {
-  display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
   gap: 4px 0;
@@ -3710,6 +3614,8 @@ body:has(.bottom-bar) .footer {
 .theme-minimal .event-info__artist {
   display: inline-flex;
   align-items: center;
+  padding: 0;
+  border-bottom: none;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -3717,9 +3623,20 @@ body:has(.bottom-bar) .footer {
   color: rgba(255, 255, 255, 0.9);
 }
 
+.theme-minimal .event-info__artist:hover {
+  padding-left: 0;
+}
+
+.theme-minimal .event-info__artist-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
 .theme-minimal .event-info__artist::after {
   content: '//';
-  color: var(--red);
+  color: var(--accent);
   margin: 0 14px;
   font-weight: 700;
   font-size: 12px;
@@ -3787,9 +3704,13 @@ body:has(.bottom-bar) .footer {
 /* --- Responsive (event) --- */
 
 @media (max-width: 1024px) {
+  .event-content {
+    padding: 24px 0;
+  }
+
   .event-content__grid {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: 24px;
   }
 
   .event-tickets {
@@ -3830,16 +3751,21 @@ body:has(.bottom-bar) .footer {
   .event-info {
     display: flex;
     flex-direction: column;
+    padding-bottom: 80px;
   }
 
   .event-info__section--lineup {
     order: -1;
   }
+
+  .event-info__artist-name {
+    font-size: 18px;
+  }
 }
 
 @media (max-width: 768px) {
   .event-hero {
-    min-height: 50vh;
+    min-height: 85svh;
     padding: 0 0 24px;
   }
 
@@ -3866,13 +3792,30 @@ body:has(.bottom-bar) .footer {
   }
 
   .event-content {
-    padding: 0 0 60px 0;
+    padding: 0;
+  }
+
+  .event-content__grid {
+    gap: 16px;
+  }
+
+  .event-info__section {
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+  }
+
+  .event-info__artist {
+    padding: 12px 0;
+  }
+
+  .event-info__artist-name {
+    font-size: 16px;
   }
 }
 
 @media (max-width: 480px) {
   .event-hero {
-    min-height: 40vh;
+    min-height: 75svh;
     padding: 0 0 14px;
   }
 

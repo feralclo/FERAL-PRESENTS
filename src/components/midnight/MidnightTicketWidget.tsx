@@ -212,23 +212,27 @@ export function MidnightTicketWidget({
               </div>
             ))}
 
-            {/* Checkout CTA — ghost when empty, vivid accent when items in cart */}
-            <Button
+            {/* Checkout CTA — ghost when empty, white when active */}
+            <button
+              type="button"
               className={cn(
-                "w-full h-[52px] mt-5 text-sm max-[480px]:text-[13px] font-bold tracking-[0.02em] uppercase rounded-xl transition-all duration-300",
+                "w-full h-[52px] mt-5 text-sm max-[480px]:text-[13px] font-bold tracking-[0.02em] uppercase rounded-xl transition-all duration-300 cursor-pointer",
                 totalQty === 0
-                  ? "bg-foreground/[0.04] text-foreground/25 border border-foreground/[0.06] hover:bg-foreground/[0.06] hover:text-foreground/35 shadow-none"
-                  : "",
+                  ? "bg-foreground/[0.04] text-foreground/25 border border-foreground/[0.06] cursor-default"
+                  : "bg-white text-[#0e0e0e] shadow-[0_0_20px_rgba(255,255,255,0.08)] hover:shadow-[0_0_28px_rgba(255,255,255,0.14)] hover:bg-[#f0f0f0] active:scale-[0.98]",
                 ctaGlow ? "midnight-cta-ready" : "",
               )}
-              variant={totalQty > 0 ? "default" : "ghost"}
               disabled={totalQty === 0}
               onClick={handleCheckout}
             >
               {totalQty === 0
                 ? "Select tickets to continue"
-                : <>Checkout &mdash; <span key={totalPrice} className="midnight-qty-pop inline-block">{currSymbol}{totalPrice.toFixed(2)}</span></>}
-            </Button>
+                : <span className="flex items-center justify-center gap-2">
+                    <span>Checkout</span>
+                    <span className="w-px h-4 bg-[#0e0e0e]/20" />
+                    <span key={totalPrice} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{currSymbol}{totalPrice.toFixed(2)}</span>
+                  </span>}
+            </button>
 
             {/* Express Checkout (Apple Pay / Google Pay) — always mounted
                 for instant readiness. Hidden until first item added. */}

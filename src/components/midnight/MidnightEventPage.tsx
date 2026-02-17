@@ -9,7 +9,6 @@ import { useEventTracking } from "@/hooks/useEventTracking";
 import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
-import { Button } from "@/components/ui/button";
 import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
@@ -185,31 +184,31 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       <MidnightFooter />
 
       {/* Fixed bottom bar — mobile checkout CTA
-           Hides when scrolling down (synced with header), slides back on scroll up.
-           translate-y-full when cart empty OR when scrolling down. */}
+           Synced with header scroll: hides on scroll down, shows on scroll up.
+           will-change + no backdrop-filter prevents Instagram in-app browser jank. */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar ${
+        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar will-change-transform ${
           cart.totalQty > 0 && !headerHidden ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ transition: "transform 400ms cubic-bezier(0.25, 1, 0.5, 1)" }}
       >
-        <div className="px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex flex-col min-w-0">
-              <span className="font-[family-name:var(--font-sans)] text-[10px] font-medium tracking-[0.06em] uppercase text-foreground/40">
-                {cart.totalQty} {cart.totalQty === 1 ? "ticket" : "tickets"}
-              </span>
-              <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.02em]">
+        <div className="px-5 pt-3.5 pb-[max(16px,calc(12px+env(safe-area-inset-bottom)))]">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold text-foreground tracking-[0.01em]">
                 {currSymbol}{cart.totalPrice.toFixed(2)}
               </span>
+              <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35">
+                {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
+              </span>
             </div>
-            <Button
-              size="lg"
-              className="px-8 text-sm font-bold tracking-[0.02em] rounded-xl shrink-0"
+            <button
+              type="button"
+              className="h-11 px-7 text-[13px] font-bold tracking-[0.03em] rounded-xl shrink-0 bg-white text-[#0e0e0e] active:scale-[0.97] transition-transform duration-150 cursor-pointer"
               onClick={cart.handleCheckout}
             >
               Checkout
-            </Button>
+            </button>
           </div>
         </div>
       </div>

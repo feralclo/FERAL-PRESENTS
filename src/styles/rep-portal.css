@@ -2089,6 +2089,489 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   COMPOUND EFFECT — PHASE 2
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Gradient Text ─────────────────────────────────────────────────── */
+
+.rep-gradient-text {
+  background: linear-gradient(135deg, #C4B5FD, #8B5CF6, #7C3AED, #A78BFA);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: repGradientShift 4s ease-in-out infinite;
+}
+.rep-gradient-text-gold {
+  background: linear-gradient(135deg, #FDE68A, #F59E0B, #D97706, #FBBF24);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: repGradientShift 4s ease-in-out infinite;
+}
+@keyframes repGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Glass Card ───────────────────────────────────────────────────── */
+
+.rep-glass-card {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Hero Banner ──────────────────────────────────────────────────── */
+
+.rep-hero-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+}
+.rep-hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.rep-hero-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(139, 92, 246, 0.04) 50%, transparent 60%);
+  background-size: 200% 200%;
+  animation: repHeroShine 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes repHeroShine {
+  0%, 100% { background-position: 200% 200%; }
+  50% { background-position: -100% -100%; }
+}
+
+/* ── Scan Line Card ───────────────────────────────────────────────── */
+
+.rep-scan-card {
+  overflow: hidden;
+  position: relative;
+}
+.rep-scan-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rep-accent), transparent);
+  opacity: 0;
+  animation: repScanDown 5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes repScanDown {
+  0% { top: -1px; opacity: 0; }
+  5% { opacity: 0.3; }
+  95% { opacity: 0.3; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ── Visual Podium ────────────────────────────────────────────────── */
+
+.rep-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 12px 0;
+}
+.rep-podium-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  max-width: 130px;
+}
+.rep-podium-bar {
+  width: 100%;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px 8px 12px;
+  position: relative;
+  overflow: hidden;
+}
+.rep-podium-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+  pointer-events: none;
+}
+.rep-podium-bar-1 {
+  min-height: 160px;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.03) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-bottom: none;
+  box-shadow: 0 -8px 32px rgba(245, 158, 11, 0.08);
+}
+.rep-podium-bar-2 {
+  min-height: 120px;
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.02) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-bottom: none;
+}
+.rep-podium-bar-3 {
+  min-height: 95px;
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.1) 0%, rgba(180, 83, 9, 0.02) 100%);
+  border: 1px solid rgba(180, 83, 9, 0.15);
+  border-bottom: none;
+}
+/* Podium base */
+.rep-podium-base {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+/* Podium avatar */
+.rep-podium-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rep-podium-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.1);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rep-accent);
+}
+.rep-podium-col:first-child .rep-podium-avatar {
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+  border: 2px solid rgba(245, 158, 11, 0.4);
+}
+.rep-podium-col:nth-child(2) .rep-podium-avatar {
+  border: 2px solid rgba(148, 163, 184, 0.3);
+}
+.rep-podium-col:nth-child(3) .rep-podium-avatar {
+  border: 2px solid rgba(180, 83, 9, 0.3);
+}
+/* Podium medal */
+.rep-podium-medal {
+  font-size: 24px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-col:first-child .rep-podium-medal {
+  font-size: 28px;
+}
+/* Podium name + stats */
+.rep-podium-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rep-text);
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-stat {
+  font-size: 10px;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  color: var(--rep-text-muted);
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-revenue {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--rep-text);
+  margin-top: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Enhanced Hover States ────────────────────────────────────────── */
+
+.rep-card-compound {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s, border-color 0.25s;
+}
+.rep-card-compound:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.15);
+}
+.rep-card-compound:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* Battle log entry — left accent bar on hover */
+.rep-battle-log-entry {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.rep-battle-log-entry:hover {
+  transform: translateX(4px);
+  box-shadow: -4px 0 12px rgba(52, 211, 153, 0.08);
+}
+.rep-battle-log-entry::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.8), rgba(52, 211, 153, 0.2));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.rep-battle-log-entry:hover::before {
+  opacity: 1;
+}
+
+/* Mission card — green glow on hover */
+.rep-mission-card-hover {
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.3s;
+}
+.rep-mission-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(52, 211, 153, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 20px rgba(52, 211, 153, 0.06);
+}
+
+/* Action card — icon scale on hover */
+.rep-action-hover {
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.rep-action-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border-color: rgba(139, 92, 246, 0.15);
+}
+.rep-action-icon-hover {
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.rep-action-hover:hover .rep-action-icon-hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.15);
+}
+
+/* Sale card hover */
+.rep-sale-hover {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.rep-sale-hover:hover {
+  transform: translateX(3px);
+  box-shadow: -3px 0 12px rgba(52, 211, 153, 0.06);
+}
+
+/* Shop card hover — dramatic lift */
+.rep-shop-hover {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+}
+.rep-shop-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+/* Leaderboard entry hover */
+.rep-lb-hover {
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.rep-lb-hover:hover {
+  transform: translateX(3px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+.rep-lb-podium-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Position Card Dramatic ───────────────────────────────────────── */
+
+.rep-position-dramatic {
+  position: relative;
+  overflow: hidden;
+}
+.rep-position-dramatic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(139, 92, 246, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Weapon Card Pulse ────────────────────────────────────────────── */
+
+.rep-weapon-pulse {
+  animation: repWeaponPulse 3s ease-in-out infinite;
+}
+@keyframes repWeaponPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.06); }
+}
+
+/* ── Arena Card ───────────────────────────────────────────────────── */
+
+.rep-arena-card {
+  position: relative;
+  overflow: hidden;
+}
+.rep-arena-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 80% 20%, rgba(245, 158, 11, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ── Profile Hero ─────────────────────────────────────────────────── */
+
+.rep-profile-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 32px 20px 24px;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.06) 0%, transparent 60%);
+  border: 1px solid rgba(139, 92, 246, 0.08);
+}
+.rep-profile-hero::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -30%;
+  right: -30%;
+  height: 200%;
+  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Mini Gauge for Profile Stats */
+.rep-mini-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.rep-mini-gauge-ring {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+.rep-mini-gauge-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.rep-mini-gauge-ring .track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 3.5;
+}
+.rep-mini-gauge-ring .fill {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rep-mini-gauge-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rep-mini-gauge-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--rep-text-muted);
+  font-weight: 600;
+}
+.rep-mini-gauge-value {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Sparkle on Hover ─────────────────────────────────────────────── */
+
+.rep-sparkle-hover {
+  position: relative;
+}
+.rep-sparkle-hover::before,
+.rep-sparkle-hover::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rep-accent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.rep-sparkle-hover::before {
+  top: 8px;
+  right: 8px;
+}
+.rep-sparkle-hover::after {
+  bottom: 8px;
+  left: 8px;
+}
+.rep-sparkle-hover:hover::before,
+.rep-sparkle-hover:hover::after {
+  animation: repSparkle 1.5s ease-in-out infinite;
+}
+.rep-sparkle-hover:hover::after {
+  animation-delay: 0.75s;
+}
+@keyframes repSparkle {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 0.7; transform: scale(1); }
+}
+
+/* ── Points Timeline Entry Hover ──────────────────────────────────── */
+
+.rep-timeline-entry {
+  transition: transform 0.2s, background-color 0.2s;
+}
+.rep-timeline-entry:hover {
+  transform: translateX(3px);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    REDUCED MOTION
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -2115,10 +2598,18 @@ body:has([data-rep]) > .noise {
   .rep-confetti-piece,
   .rep-success-particle,
   .rep-level-up-ring,
-  .rep-level-up-badge {
+  .rep-level-up-badge,
+  .rep-gradient-text,
+  .rep-gradient-text-gold,
+  .rep-hero-banner::after,
+  .rep-scan-card::after,
+  .rep-weapon-pulse,
+  .rep-sparkle-hover::before,
+  .rep-sparkle-hover::after {
     animation: none !important;
   }
-  .rep-gauge-fill {
+  .rep-gauge-fill,
+  .rep-mini-gauge-ring .fill {
     transition: none !important;
   }
 }

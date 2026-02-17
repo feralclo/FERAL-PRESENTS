@@ -222,10 +222,10 @@ export default function RepRewardsPage() {
       {/* Header with points balance */}
       <div className="flex items-center justify-between rep-slide-up">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Rewards</h1>
+          <h1 className="text-xl font-bold rep-gradient-text">Rewards</h1>
           <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow rep-balance-breathe">
+        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow rep-balance-breathe rep-scan-card">
           <div className="flex items-center gap-1.5 mb-1">
             <Zap size={12} className="text-primary" />
             <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
@@ -378,7 +378,7 @@ export default function RepRewardsPage() {
                   <Card
                     key={reward.id}
                     className={cn(
-                      "py-0 gap-0 overflow-hidden rep-card-lift",
+                      "py-0 gap-0 overflow-hidden rep-card-lift rep-shop-hover",
                       claimed ? "border-success/30" : "border-border/40",
                       glowClass
                     )}

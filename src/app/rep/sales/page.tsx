@@ -225,7 +225,7 @@ export default function RepSalesPage() {
       {/* Header */}
       <div className="flex items-center justify-between rep-slide-up">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Sales</h1>
+          <h1 className="text-xl font-bold rep-gradient-text">Sales</h1>
           <p className="text-sm text-muted-foreground">
             Orders placed with your discount code
           </p>
@@ -335,7 +335,7 @@ export default function RepSalesPage() {
                 {group.sales.map((sale, i) => (
                   <Card
                     key={sale.id}
-                    className="py-0 gap-0 rep-card-lift rep-slide-up"
+                    className="py-0 gap-0 rep-card-lift rep-slide-up rep-sale-hover"
                     style={{ animationDelay: `${i * 30}ms` }}
                   >
                     <CardContent className="px-4 py-3 flex items-center justify-between">

@@ -344,10 +344,12 @@ export default function RepProfilePage() {
         onChange={handlePhotoSelect}
       />
 
-      {/* ── Avatar + Identity ── */}
-      <div className="text-center rep-slide-up">
+      {/* ── Avatar + Identity — Player Card Hero ── */}
+      <div className="rep-profile-hero rep-slide-up">
+        <div className="text-center">
         {(() => {
           const tier = getTierFromLevel(profile.level);
+          const MINI_CIRC = 2 * Math.PI * 22;
           return (
             <>
               <button
@@ -386,31 +388,85 @@ export default function RepProfilePage() {
                 </div>
               </button>
 
-              <h1 className="mt-3 text-lg font-bold text-foreground">
+              <h1 className="mt-3 text-lg font-bold rep-gradient-text">
                 {profile.display_name || profile.first_name}
               </h1>
               <p className="text-xs text-muted-foreground">{profile.email}</p>
 
-              {/* Player stat strip */}
-              <div className="flex items-center justify-center gap-4 mt-3">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold rep-badge-shimmer"
-                    style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
-                  >
-                    <Zap size={10} />
-                    Lv.{profile.level}
-                  </span>
+              {/* Tier badge */}
+              <div className="flex items-center justify-center mt-2">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold rep-badge-shimmer"
+                  style={{ backgroundColor: `${tier.color}15`, color: tier.color, border: `1px solid ${tier.color}30` }}
+                >
+                  <Zap size={10} />
+                  Level {profile.level} — {tier.name}
+                </span>
+              </div>
+
+              {/* Mini stat gauges */}
+              <div className="flex items-center justify-center gap-6 mt-5">
+                <div className="rep-mini-gauge">
+                  <div className="rep-mini-gauge-ring">
+                    <svg viewBox="0 0 56 56">
+                      <circle className="track" cx="28" cy="28" r="22" />
+                      <circle
+                        className="fill"
+                        cx="28" cy="28" r="22"
+                        stroke="#8B5CF6"
+                        strokeDasharray={MINI_CIRC}
+                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.points_balance / Math.max(profile.points_balance, 100), 1))}
+                        style={{ filter: "drop-shadow(0 0 3px rgba(139, 92, 246, 0.4))" }}
+                      />
+                    </svg>
+                    <div className="rep-mini-gauge-center">
+                      <Zap size={14} className="text-primary" />
+                    </div>
+                  </div>
+                  <span className="rep-mini-gauge-value" style={{ color: "#8B5CF6" }}>{profile.points_balance}</span>
+                  <span className="rep-mini-gauge-label">XP</span>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <Zap size={10} className="text-primary" />
-                  <span className="font-mono font-bold text-foreground tabular-nums">{profile.points_balance}</span>
-                  <span>XP</span>
+
+                <div className="rep-mini-gauge">
+                  <div className="rep-mini-gauge-ring">
+                    <svg viewBox="0 0 56 56">
+                      <circle className="track" cx="28" cy="28" r="22" />
+                      <circle
+                        className="fill"
+                        cx="28" cy="28" r="22"
+                        stroke="#34D399"
+                        strokeDasharray={MINI_CIRC}
+                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.total_sales / Math.max(profile.total_sales, 20), 1))}
+                        style={{ filter: "drop-shadow(0 0 3px rgba(52, 211, 153, 0.4))" }}
+                      />
+                    </svg>
+                    <div className="rep-mini-gauge-center">
+                      <TrendingUp size={14} className="text-success" />
+                    </div>
+                  </div>
+                  <span className="rep-mini-gauge-value" style={{ color: "#34D399" }}>{profile.total_sales}</span>
+                  <span className="rep-mini-gauge-label">Sales</span>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <TrendingUp size={10} className="text-success" />
-                  <span className="font-mono font-bold text-foreground tabular-nums">{profile.total_sales}</span>
-                  <span>sold</span>
+
+                <div className="rep-mini-gauge">
+                  <div className="rep-mini-gauge-ring">
+                    <svg viewBox="0 0 56 56">
+                      <circle className="track" cx="28" cy="28" r="22" />
+                      <circle
+                        className="fill"
+                        cx="28" cy="28" r="22"
+                        stroke={tier.color}
+                        strokeDasharray={MINI_CIRC}
+                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.level / 10, 1))}
+                        style={{ filter: `drop-shadow(0 0 3px ${tier.color}66)` }}
+                      />
+                    </svg>
+                    <div className="rep-mini-gauge-center">
+                      <Trophy size={14} style={{ color: tier.color }} />
+                    </div>
+                  </div>
+                  <span className="rep-mini-gauge-value" style={{ color: tier.color }}>Lv.{profile.level}</span>
+                  <span className="rep-mini-gauge-label">Tier</span>
                 </div>
               </div>
             </>
@@ -443,11 +499,12 @@ export default function RepProfilePage() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* ── Discount Code ── */}
       {discountCode && (
-        <Card className="py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up" style={{ animationDelay: "50ms" }}>
+        <Card className="py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up rep-scan-card" style={{ animationDelay: "50ms" }}>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />

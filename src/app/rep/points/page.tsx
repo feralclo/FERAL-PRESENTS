@@ -203,7 +203,7 @@ export default function RepPointsPage() {
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
       {/* Header with hero gauge */}
       <div className="text-center rep-slide-up">
-        <h1 className="text-xl font-bold text-foreground mb-1">Points</h1>
+        <h1 className="text-xl font-bold rep-gradient-text mb-1">Points</h1>
         <p className="text-sm text-muted-foreground mb-4">Your points history</p>
         <HeroGauge value={myPoints} max={Math.max(totalEarned, myPoints, 100)} color="#8B5CF6" />
         <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold mt-2">Balance</p>
@@ -262,7 +262,7 @@ export default function RepPointsPage() {
               return (
                 <div
                   key={entry.id}
-                  className="relative flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-muted/20 transition-colors rep-slide-up"
+                  className="relative flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-muted/20 transition-colors rep-slide-up rep-timeline-entry"
                   style={{ animationDelay: `${120 + i * 25}ms` }}
                 >
                   {/* Timeline dot — larger with glow */}

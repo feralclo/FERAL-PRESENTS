@@ -121,7 +121,7 @@ export default function RepLeaderboardPage() {
         <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--rep-gold)]/10 mb-3" style={{ filter: "drop-shadow(0 0 12px rgba(245, 158, 11, 0.15))" }}>
           <Trophy size={24} className="text-[var(--rep-gold)]" />
         </div>
-        <h1 className="text-xl font-bold text-white">Leaderboard</h1>
+        <h1 className="text-xl font-bold rep-gradient-text-gold">Leaderboard</h1>
       </div>
 
       {/* Tab Bar */}
@@ -235,10 +235,10 @@ function AllTimeLeaderboard() {
     <div className="rep-fade-in">
       {/* Your Position Card — animated gradient border */}
       {myPosition && (
-        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-position-card">
+        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-position-card rep-position-dramatic">
           <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1.5">Your Position</p>
           <div className="flex items-center justify-center gap-3">
-            <p className="text-4xl font-bold font-mono text-[var(--rep-accent)]" style={{ textShadow: "0 0 24px rgba(139, 92, 246, 0.2)" }}>
+            <p className="text-4xl font-bold font-mono rep-gradient-text" style={{ textShadow: "0 0 24px rgba(139, 92, 246, 0.2)" }}>
               #{myPosition}
             </p>
             {myChange !== 0 && <PositionIndicator change={myChange} />}
@@ -246,75 +246,58 @@ function AllTimeLeaderboard() {
         </div>
       )}
 
-      {/* Podium — Top 3 */}
+      {/* Podium — Top 3 Visual */}
       {top3.length > 0 && (
-        <div className="mb-4 space-y-2">
-          {top3.map((entry, i) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => handleEntryClick(entry)}
-              className={cn(
-                "rep-leaderboard-item rep-card-lift w-full text-left flex items-center gap-3 rounded-2xl p-4 cursor-pointer active:scale-[0.98]",
-                PODIUM_BG[i],
-                i === 0 && "rep-gradient-border-gold overflow-hidden",
-                entry.id === myRepId && "ring-2 ring-[var(--rep-accent)]/40"
-              )}
-            >
-              {/* Inner bg for gradient border */}
-              {i === 0 && <div className="absolute inset-[1px] rounded-[inherit] bg-gradient-to-br from-[rgba(245,158,11,0.12)] to-[rgba(245,158,11,0.03)] z-[-1]" />}
+        <div className="mb-5">
+          <div className="rep-podium">
+            {/* Render in podium order: 2nd, 1st, 3rd */}
+            {[1, 0, 2].map((idx) => {
+              const entry = top3[idx];
+              if (!entry) return <div key={idx} className="rep-podium-col" />;
+              const barClass = `rep-podium-bar rep-podium-bar-${idx + 1}`;
+              const isMe = entry.id === myRepId;
 
-              {/* Medal */}
-              <div
-                className="rep-medal rep-medal-lg shrink-0"
-                style={{ color: MEDAL_COLORS[i], filter: `drop-shadow(0 0 6px ${MEDAL_COLORS[i]})` }}
-              >
-                {MEDAL_EMOJI[i]}
-              </div>
+              return (
+                <div key={entry.id} className="rep-podium-col rep-slide-up" style={{ animationDelay: `${idx * 80}ms` }}>
+                  {/* Avatar above podium */}
+                  <button
+                    type="button"
+                    onClick={() => handleEntryClick(entry)}
+                    className={cn("rep-podium-avatar", `rep-podium-avatar-${idx + 1}`, isMe && "ring-2 ring-[var(--rep-accent)]")}
+                  >
+                    {entry.photo_url ? (
+                      <img src={entry.photo_url} alt="" />
+                    ) : (
+                      <div className="rep-podium-avatar-placeholder">
+                        {(entry.display_name || entry.first_name || "?").charAt(0)}
+                      </div>
+                    )}
+                  </button>
 
-              {/* Avatar */}
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full overflow-hidden ring-2"
-                style={{ "--tw-ring-color": MEDAL_COLORS[i] } as React.CSSProperties}
-              >
-                {entry.photo_url ? (
-                  <img src={entry.photo_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-[var(--rep-accent)]/10 text-xs font-bold text-[var(--rep-accent)]">
-                    {(entry.display_name || entry.first_name || "?").charAt(0)}
-                  </div>
-                )}
-              </div>
-
-              {/* Name + Level */}
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold truncate ${
-                  entry.id === myRepId ? "text-[var(--rep-accent)]" : "text-white"
-                }`}>
-                  {entry.display_name || entry.first_name}
-                  {entry.id === myRepId && (
-                    <span className="ml-1.5 text-[10px] text-[var(--rep-accent)]/60">(YOU)</span>
-                  )}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-[var(--rep-accent)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[var(--rep-accent)]">
-                    Lv.{entry.level}
-                  </span>
-                  <span className="text-[10px] text-[var(--rep-text-muted)]">
-                    {entry.total_sales} sales
-                  </span>
-                  <PositionIndicator change={positionChanges[entry.id] || 0} />
+                  {/* Podium bar */}
+                  <button
+                    type="button"
+                    onClick={() => handleEntryClick(entry)}
+                    className={cn(barClass, "cursor-pointer")}
+                  >
+                    <div className="rep-podium-medal">{MEDAL_EMOJI[idx]}</div>
+                    <div className={cn("rep-podium-name", isMe && "text-[var(--rep-accent)]")}>
+                      {entry.display_name || entry.first_name}
+                      {isMe && <span className="text-[9px] opacity-60 ml-0.5">(You)</span>}
+                    </div>
+                    <div className="rep-podium-stat">
+                      Lv.{entry.level} · {entry.total_sales} sales
+                    </div>
+                    <div className="rep-podium-revenue">
+                      £{Number(entry.total_revenue).toFixed(0)}
+                    </div>
+                    <PositionIndicator change={positionChanges[entry.id] || 0} />
+                  </button>
+                  <div className="rep-podium-base" />
                 </div>
-              </div>
-
-              {/* Earned */}
-              <div className="text-right">
-                <p className="text-sm font-bold font-mono tabular-nums text-white">
-                  £{Number(entry.total_revenue).toFixed(0)}
-                </p>
-              </div>
-            </button>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -327,7 +310,7 @@ function AllTimeLeaderboard() {
               type="button"
               onClick={() => handleEntryClick(entry)}
               className={cn(
-                "rep-leaderboard-item rep-card-lift w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98]",
+                "rep-leaderboard-item rep-card-lift rep-lb-hover w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98]",
                 entry.id === myRepId
                   ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5"
                   : "border border-[var(--rep-border)] bg-[var(--rep-card)]"
@@ -654,10 +637,10 @@ function EventLeaderboardView({
 
       {/* Your position — animated gradient border */}
       {data.current_position && (
-        <div className="mb-4 rounded-2xl p-4 text-center rep-card-reveal rep-position-card">
+        <div className="mb-4 rounded-2xl p-4 text-center rep-card-reveal rep-position-card rep-position-dramatic">
           <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1">Your Position</p>
           <div className="flex items-center justify-center gap-2">
-            <p className="text-3xl font-bold font-mono text-[var(--rep-accent)]" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.2)" }}>
+            <p className="text-3xl font-bold font-mono rep-gradient-text" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.2)" }}>
               #{data.current_position}
             </p>
             {myChange !== 0 && <PositionIndicator change={myChange} />}
@@ -681,12 +664,12 @@ function EventLeaderboardView({
                 if (isMe) router.push("/rep/profile");
                 else router.push(`/rep/profile/${entry.id}`);
               }}
-              className={`rep-leaderboard-item w-full text-left rounded-2xl p-4 transition-colors cursor-pointer active:scale-[0.98] ${
+              className={`rep-leaderboard-item w-full text-left rounded-2xl p-4 cursor-pointer active:scale-[0.98] ${
                 isPodium
-                  ? `${PODIUM_BG[i]} ${isLive && !data.locked ? "rep-contested-border" : ""}`
+                  ? `${PODIUM_BG[i]} rep-lb-podium-hover ${isLive && !data.locked ? "rep-contested-border" : ""}`
                   : isMe
-                    ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5"
-                    : "border border-[var(--rep-border)] bg-[var(--rep-card)] hover:border-[var(--rep-accent)]/20"
+                    ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5 rep-lb-hover"
+                    : "border border-[var(--rep-border)] bg-[var(--rep-card)] rep-lb-hover"
               } ${isMe ? "ring-1 ring-[var(--rep-accent)]/30" : ""}`}
             >
               <div className="flex items-center gap-3">

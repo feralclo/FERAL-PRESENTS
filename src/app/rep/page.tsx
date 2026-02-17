@@ -278,8 +278,7 @@ export default function RepDashboardPage() {
       )}
 
       {/* ── Hero Player Card ── */}
-      <div className="relative rep-slide-up">
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-[var(--rep-accent)]/[0.04] via-transparent to-transparent pointer-events-none" />
+      <div className="relative rep-slide-up rep-hero-banner">
         <div className="text-center py-2">
           {/* Avatar with tier ring */}
           <div className={cn(
@@ -297,7 +296,7 @@ export default function RepDashboardPage() {
             )}
           </div>
 
-          <h1 className="text-xl font-bold text-foreground">
+          <h1 className="text-xl font-bold rep-gradient-text">
             Hey, {rep.display_name || rep.first_name}
           </h1>
 
@@ -351,7 +350,7 @@ export default function RepDashboardPage() {
       {data.discount_codes.length > 0 && (
         <div
           className={cn(
-            "rep-weapon-card rep-slide-up",
+            "rep-weapon-card rep-slide-up rep-weapon-pulse rep-scan-card",
             copyFlash && "rep-copy-flash"
           )}
           style={{ animationDelay: "50ms" }}
@@ -402,24 +401,22 @@ export default function RepDashboardPage() {
       {/* ── Stats Grid — Radial HUD Gauges ── */}
       <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <Link href="/rep/points">
-          <RadialGauge
+          <GaugeWithCounter
             value={rep.points_balance}
             max={data.next_level_points || rep.points_balance || 100}
             color="#8B5CF6"
             icon={Zap}
             label="XP"
-            displayValue={String(statsReady ? rep.points_balance : 0)}
             enabled={statsReady}
           />
         </Link>
         <Link href="/rep/sales">
-          <RadialGauge
+          <GaugeWithCounter
             value={rep.total_sales}
             max={maxSales}
             color="#F97316"
             icon={Flame}
             label="Sold"
-            displayValue={String(statsReady ? rep.total_sales : 0)}
             enabled={statsReady}
           />
         </Link>
@@ -447,7 +444,7 @@ export default function RepDashboardPage() {
           <div className="space-y-2">
             {data.active_events.map((event) => (
               <Link key={event.id} href="/rep/sales">
-                <div className="rep-mission-card">
+                <div className="rep-mission-card rep-mission-card-hover">
                   {/* Ambient event cover image */}
                   {event.cover_image && (
                     <div className="rep-mission-ambient">
@@ -485,9 +482,9 @@ export default function RepDashboardPage() {
       {/* ── Quick Actions ── */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "200ms" }}>
         <Link href="/rep/quests">
-          <Card className="py-0 gap-0 rep-card-lift" style={{ minHeight: "88px" }}>
+          <Card className="py-0 gap-0 rep-card-lift rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shrink-0 rep-action-icon-hover">
                 <Compass size={20} className="text-primary" />
               </div>
               <div className="min-w-0 flex-1">
@@ -506,9 +503,9 @@ export default function RepDashboardPage() {
           </Card>
         </Link>
         <Link href="/rep/rewards">
-          <Card className="py-0 gap-0 rep-card-lift" style={{ minHeight: "88px" }}>
+          <Card className="py-0 gap-0 rep-card-lift rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0 rep-action-icon-hover">
                 <Gift size={20} className="text-amber-400" />
               </div>
               <div className="min-w-0 flex-1">
@@ -542,7 +539,7 @@ export default function RepDashboardPage() {
             {data.recent_sales.map((sale, i) => (
               <Card
                 key={sale.id}
-                className="py-0 gap-0 rep-slide-up"
+                className="py-0 gap-0 rep-slide-up rep-battle-log-entry"
                 style={{ animationDelay: `${280 + i * 40}ms` }}
               >
                 <CardContent className="px-4 py-3 flex items-center justify-between">
@@ -581,11 +578,11 @@ export default function RepDashboardPage() {
       {/* ── Arena CTA (Leaderboard) ── */}
       <Link href="/rep/leaderboard">
         <Card
-          className="py-0 gap-0 border-transparent bg-[var(--rep-gold)]/5 rep-gradient-border-gold rep-card-lift rep-slide-up overflow-hidden"
+          className="py-0 gap-0 border-transparent bg-[var(--rep-gold)]/5 rep-gradient-border-gold rep-card-lift rep-slide-up overflow-hidden rep-arena-card rep-sparkle-hover"
           style={{ animationDelay: "300ms" }}
         >
           <div className="absolute inset-[1px] rounded-[inherit] bg-[var(--rep-card)] z-[-1]" />
-          <CardContent className="p-5 flex items-center justify-between">
+          <CardContent className="p-5 flex items-center justify-between relative z-[1]">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--rep-gold)]/15">
                 <Trophy size={22} className="text-[var(--rep-gold)]" style={{ filter: "drop-shadow(0 0 6px rgba(245, 158, 11, 0.4))" }} />
@@ -612,6 +609,28 @@ export default function RepDashboardPage() {
 function AnimatedNumber({ value, enabled }: { value: number; enabled: boolean }) {
   const display = useCountUp(value, 800, enabled);
   return <>{display}</>;
+}
+
+// ─── Gauge with Animated Counter ─────────────────────────────────────────────
+
+function GaugeWithCounter({
+  value, max, color, icon, label, enabled,
+}: {
+  value: number; max: number; color: string;
+  icon: typeof Zap; label: string; enabled: boolean;
+}) {
+  const animatedValue = useCountUp(enabled ? value : 0, 900, enabled);
+  return (
+    <RadialGauge
+      value={value}
+      max={max}
+      color={color}
+      icon={icon}
+      label={label}
+      displayValue={String(animatedValue)}
+      enabled={enabled}
+    />
+  );
 }
 
 // ─── Level Up Overlay ────────────────────────────────────────────────────────

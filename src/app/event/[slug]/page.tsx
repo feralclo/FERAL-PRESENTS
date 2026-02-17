@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { KompassEventPage } from "@/components/event/KompassEventPage";
-import { DynamicEventPage } from "@/components/event/DynamicEventPage";
+import { MidnightEventPage } from "@/components/midnight/MidnightEventPage";
 import { AuraEventPage } from "@/components/aura/AuraEventPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
@@ -110,5 +110,5 @@ export default async function EventPage({
   if (template === "aura") {
     return <AuraEventPage event={event} />;
   }
-  return <DynamicEventPage event={event} />;
+  return <MidnightEventPage event={event} />;
 }

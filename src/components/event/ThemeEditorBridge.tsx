@@ -43,11 +43,7 @@ export function ThemeEditorBridge() {
     // so previewing a non-active theme would render with wrong CSS scoping.
     const templateParam = params.get("template");
     if (templateParam && themeRoot) {
-      if (templateParam === "midnight") {
-        themeRoot.removeAttribute("data-theme");
-      } else {
-        themeRoot.setAttribute("data-theme", templateParam);
-      }
+      themeRoot.setAttribute("data-theme", templateParam);
     }
 
     // Disable link clicks and navigation inside the preview

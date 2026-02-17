@@ -35,7 +35,7 @@ src/
 │   ├── global-error.tsx       # Global error boundary
 │   ├── event/[slug]/          # Public event pages
 │   │   ├── layout.tsx         # Server Component: fetches event + settings + branding → CSS vars
-│   │   ├── page.tsx           # Routes to DynamicEventPage (Stripe) or legacy event page
+│   │   ├── page.tsx           # Routes to MidnightEventPage (default) or AuraEventPage
 │   │   ├── checkout/page.tsx  # NativeCheckout (Stripe Elements)
 │   │   ├── error.tsx          # Error boundary
 │   │   └── loading.tsx        # Loading skeleton
@@ -91,8 +91,14 @@ src/
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
 │   │   └── dashboard/         # ActivityFeed, FunnelChart, TopEventsTable
 │   ├── aura/                  # Aura theme components (full event page + checkout variant)
-│   ├── event/                 # DynamicEventPage, DynamicTicketWidget, EventHero, BottomBar,
-│   │                          # TeeModal, DiscountPopup, EngagementTracker, SocialProofToast
+│   ├── midnight/              # Midnight theme (default): MidnightEventPage, MidnightHero,
+│   │                          # MidnightTicketWidget, MidnightTicketCard, MidnightMerchModal,
+│   │                          # MidnightBottomBar, MidnightEventInfo, MidnightLineup,
+│   │                          # MidnightCartSummary, MidnightTierProgression, MidnightFooter,
+│   │                          # MidnightSocialProof, MidnightFloatingHearts
+│   ├── event/                 # Shared: DiscountPopup, EngagementTracker, ThemeEditorBridge,
+│   │                          # KompassEventPage (legacy). Old BEM components (DynamicEventPage,
+│   │                          # EventHero, TeeModal, etc.) retained but no longer routed
 │   ├── checkout/              # NativeCheckout, StripePaymentForm, ExpressCheckout,
 │   │                          # OrderConfirmation, OrderSummary, CheckoutTimer, LoadingScreen
 │   ├── landing/               # LandingPage, HeroSection, ParticleCanvas, EventsSection, etc.
@@ -150,7 +156,9 @@ src/
     ├── effects.css            # CRT scanlines + noise texture overlays
     ├── header.css             # Header, navigation, mobile menu
     ├── landing.css            # Hero, events grid, about pillars, contact form
-    ├── event.css              # Event pages, tickets, modals, bottom bar, minimal theme
+    ├── event.css              # Legacy: KompassEventPage + minimal theme only
+    ├── midnight.css           # Midnight theme: Tailwind v4 tokens + scoped reset
+    ├── midnight-effects.css   # Midnight effects: glass, metallic tiers, keyframes
     ├── aura.css               # Aura theme styles
     ├── aura-effects.css       # Aura theme effects
     ├── checkout-page.css      # Checkout + payment form
@@ -167,7 +175,7 @@ src/
 
 ### Payment System (Stripe)
 All events use Stripe for payment processing:
-- Dynamic event pages (`DynamicEventPage` / `AuraEventPage`) rendered from `events` table
+- Dynamic event pages (`MidnightEventPage` / `AuraEventPage`) rendered from `events` table
 - Ticket types stored in `ticket_types` table with pricing, capacity, tiers, merch links
 - Checkout via `NativeCheckout` or `AuraCheckout` → `StripePaymentForm` + `ExpressCheckout`
 - PaymentIntent flow: create → confirm → webhook creates order + tickets + email
@@ -183,7 +191,7 @@ Event pages route to different component trees based on the **active template**:
 event/[slug]/page.tsx
   → getActiveTemplate() reads from site_settings ({org_id}_themes)
   → template === "aura"    → AuraEventPage / AuraCheckout
-  → template === "midnight" → DynamicEventPage / NativeCheckout (default)
+  → template === "midnight" → MidnightEventPage / NativeCheckout (default)
 ```
 
 - Default template: `midnight` (falls back if no theme configured)
@@ -261,7 +269,7 @@ EventLayout [Server Component, force-dynamic]
   ↓
 EventPage [Server Component, force-dynamic]
   ├─ template === "aura"    → AuraEventPage
-  └─ template === "midnight" → DynamicEventPage (default)
+  └─ template === "midnight" → MidnightEventPage (default)
 ```
 
 ### Caching Strategy
@@ -578,13 +586,15 @@ Defaults defined in `base.css :root`, overridable per-tenant via branding system
 
 ## CSS Architecture
 
-### Two Separate CSS Worlds (CRITICAL)
+### CSS Areas
 | Area | CSS System | Entry Point |
 |------|-----------|-------------|
-| Public site (events, checkout, landing) | Hand-written CSS (`base.css`, `event.css`, etc.) | `app/layout.tsx` |
+| Public site (landing, legacy) | Hand-written CSS (`base.css`, `header.css`) | `app/layout.tsx` |
+| Event pages: Midnight | Tailwind v4 + effects layer (`midnight.css`, `midnight-effects.css`) | Imported by `MidnightEventPage` |
+| Event pages: Aura | Tailwind v4 (`aura.css`) | Imported by `AuraEventPage` |
 | Admin dashboard (`/admin/*`) | Tailwind v4 + shadcn/ui utilities | `app/admin/layout.tsx` via `tailwind.css` |
 
-**Isolation mechanism**: Admin layout renders `<div data-admin>`. All Tailwind preflight resets are scoped to `[data-admin]` via `@layer admin-reset` so they never affect public pages.
+**Isolation mechanism**: Admin layout renders `<div data-admin>`. All Tailwind preflight resets are scoped to `[data-admin]` via `@layer admin-reset` so they never affect public pages. Event themes are scoped via `[data-theme="themename"]` on the layout wrapper div.
 
 ### CSS Cascade Layer Rules (DO NOT BREAK)
 ```css
@@ -600,11 +610,11 @@ Defaults defined in `base.css :root`, overridable per-tenant via branding system
 - Move the utilities import into any `@layer` block
 - Add a global `*` reset that could override Tailwind classes
 
-### Rules for New CSS (Public Site)
+### Rules for New CSS
 1. **Component-level imports** — new components import their own CSS file
-2. **BEM naming** — `.block__element--modifier`
-3. **Use CSS custom properties** from `base.css :root` for all colors, fonts, spacing
-4. **No Tailwind on public pages** — public site uses hand-written CSS only
+2. **Use CSS custom properties** from `base.css :root` for all colors, fonts, spacing
+3. **Event themes use Tailwind + Radix** — All event page themes (Midnight, Aura, future themes) use Tailwind for layout/spacing/responsive, Radix UI primitives (via shadcn/ui) for interactive elements (Dialog, Tabs, etc.), and optional theme-specific CSS for visual effects. Each theme is scoped via `[data-theme="themename"]`.
+4. **Landing/legacy pages** — Hand-written BEM CSS only (`base.css`, `header.css`, `landing.css`)
 5. **Breakpoints**: `1024px` (tablet), `768px` (portrait), `480px` (phone)
 
 ---

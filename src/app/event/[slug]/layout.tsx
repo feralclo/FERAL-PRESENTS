@@ -126,12 +126,12 @@ export default async function EventLayout({
 
   const isAura = activeTemplate === "aura";
 
-  const dataThemeAttr = isAura ? "aura" : undefined;
+  const dataThemeAttr = isAura ? "aura" : "midnight";
 
   return (
     <div
       data-theme-root
-      {...(dataThemeAttr ? { "data-theme": dataThemeAttr } : {})}
+      data-theme={dataThemeAttr}
       className={themeClasses || undefined}
       style={cssVars as React.CSSProperties}
     >

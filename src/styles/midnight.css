@@ -1,0 +1,122 @@
+/*
+ * Midnight Theme — Cyberpunk dark theme with red accent
+ *
+ * Glassmorphic cards, metallic gradients, CRT-adjacent effects.
+ * Uses the same CSS token pattern as Aura: base.css injects --accent,
+ * --bg-dark, etc. as CSS variables, and @theme inline maps them to
+ * Tailwind's semantic tokens so all utilities Just Work.
+ *
+ * Branding overrides: The event layout injects --accent, --bg-dark,
+ * --card-bg, --text-primary, --font-mono, --font-sans as CSS variables.
+ * Theme tokens consume these via var() so admin branding changes work.
+ */
+
+@layer theme, midnight-reset;
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities";
+
+@theme inline {
+  /* ── shadcn semantic tokens (dark + red accent) ── */
+  --color-background: var(--bg-dark, #0e0e0e);
+  --color-foreground: var(--text-primary, #ffffff);
+  --color-card: var(--card-bg, #1a1a1a);
+  --color-card-foreground: var(--text-primary, #ffffff);
+  --color-primary: var(--accent, #ff0033);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1e1e24;
+  --color-secondary-foreground: var(--text-primary, #ffffff);
+  --color-muted: #1e1e24;
+  --color-muted-foreground: var(--text-secondary, #888888);
+  --color-accent: #1e1e24;
+  --color-accent-foreground: var(--text-primary, #ffffff);
+  --color-border: var(--card-border, #2a2a2a);
+  --color-input: var(--card-border, #2a2a2a);
+  --color-ring: var(--accent, #ff0033);
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+
+  /* ── Metallic palette ── */
+  --color-platinum: var(--platinum, #E5E4E2);
+  --color-platinum-light: var(--platinum-light, #F5F5F0);
+  --color-platinum-dark: var(--platinum-dark, #C0C0BC);
+  --color-valentine: var(--valentine, #E8365D);
+  --color-valentine-pink: var(--valentine-pink, #FF7EB3);
+  --color-valentine-light: var(--valentine-light, #FF5C8A);
+  --color-valentine-dark: var(--valentine-dark, #C41E3A);
+
+  /* ── Radii ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* ── Typography ── */
+  --font-display: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+  --font-body: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+  --font-mono: var(--font-mono, 'Space Mono', monospace);
+}
+
+/* ── Scoped reset so public site CSS doesn't leak in ── */
+@layer midnight-reset {
+  [data-theme="midnight"] {
+    font-family: var(--font-body);
+    color: var(--color-foreground);
+    background-color: var(--color-background);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+
+  [data-theme="midnight"] *,
+  [data-theme="midnight"] *::before,
+  [data-theme="midnight"] *::after {
+    border-color: var(--color-border);
+  }
+
+  [data-theme="midnight"] a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  [data-theme="midnight"] button {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  [data-theme="midnight"] input,
+  [data-theme="midnight"] textarea,
+  [data-theme="midnight"] select {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    margin: 0;
+  }
+
+  [data-theme="midnight"] img,
+  [data-theme="midnight"] svg {
+    display: inline;
+    max-width: initial;
+  }
+}
+
+/* ── Button shadow fix: shared Button hardcodes purple glow, override to match red primary ── */
+[data-theme="midnight"] [data-slot="button"][data-variant="default"] {
+  box-shadow: 0 1px 12px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+[data-theme="midnight"] [data-slot="button"][data-variant="default"]:hover {
+  box-shadow: 0 1px 20px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+/* ── Autofill fix for dark backgrounds ── */
+[data-theme="midnight"] input:-webkit-autofill,
+[data-theme="midnight"] input:-webkit-autofill:hover,
+[data-theme="midnight"] input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px var(--color-card) inset !important;
+  -webkit-text-fill-color: var(--color-foreground) !important;
+  caret-color: var(--color-foreground) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

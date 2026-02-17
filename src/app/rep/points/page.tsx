@@ -172,30 +172,34 @@ export default function RepPointsPage() {
           <h1 className="text-xl font-bold text-foreground">Points</h1>
           <p className="text-sm text-muted-foreground">Your points history</p>
         </div>
-        <div className="rounded-xl bg-primary/10 border border-primary/20 px-4 py-2.5 rep-glow">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Zap size={10} className="text-primary" />
+        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Zap size={12} className="text-primary" />
             <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
           </div>
-          <p className="text-lg font-bold font-mono text-primary tabular-nums">{myPoints}</p>
+          <p className="text-xl font-bold font-mono text-primary tabular-nums" style={{ textShadow: "0 0 16px rgba(139, 92, 246, 0.2)" }}>{myPoints}</p>
         </div>
       </div>
 
       {/* Earned / Spent summary */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "50ms" }}>
-        <Card className="py-0 gap-0">
+        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-green">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <ArrowUpRight size={12} className="text-success" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-success/15">
+                <ArrowUpRight size={12} className="text-success" />
+              </div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Earned</p>
             </div>
-            <p className="text-xl font-bold text-success font-mono tabular-nums">+{totalEarned}</p>
+            <p className="text-xl font-bold text-success font-mono tabular-nums" style={{ textShadow: "0 0 12px rgba(52, 211, 153, 0.15)" }}>+{totalEarned}</p>
           </CardContent>
         </Card>
-        <Card className="py-0 gap-0">
+        <Card className="py-0 gap-0 rep-stat-card">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <ArrowDownLeft size={12} className="text-muted-foreground" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-muted/30">
+                <ArrowDownLeft size={12} className="text-muted-foreground" />
+              </div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Spent</p>
             </div>
             <p className="text-xl font-bold text-muted-foreground font-mono tabular-nums">-{totalSpent}</p>
@@ -215,7 +219,7 @@ export default function RepPointsPage() {
       ) : (
         <div className="relative rep-slide-up" style={{ animationDelay: "100ms" }}>
           {/* Timeline line */}
-          <div className="absolute left-[23px] top-2 bottom-2 w-px bg-border" />
+          <div className="absolute left-[27px] top-2 bottom-2 w-px bg-border" />
 
           <div className="space-y-1">
             {entries.map((entry, i) => {
@@ -226,14 +230,15 @@ export default function RepPointsPage() {
               return (
                 <div
                   key={entry.id}
-                  className="relative flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-muted/20 transition-colors group"
+                  className="relative flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-muted/20 transition-colors rep-slide-up"
+                  style={{ animationDelay: `${120 + i * 25}ms` }}
                 >
-                  {/* Timeline dot */}
+                  {/* Timeline dot — larger with glow */}
                   <div className={cn(
-                    "relative z-10 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full ring-2 ring-background",
+                    "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-2 ring-background",
                     config.bgColor
                   )}>
-                    <Icon size={10} className={config.color} />
+                    <Icon size={13} className={config.color} />
                   </div>
 
                   {/* Content */}
@@ -257,14 +262,14 @@ export default function RepPointsPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2.5 shrink-0">
                       <span className={cn(
                         "text-sm font-bold font-mono tabular-nums",
-                        isPositive ? "text-success" : "text-muted-foreground"
-                      )}>
+                        isPositive ? "text-success" : "text-destructive"
+                      )} style={isPositive ? { textShadow: "0 0 8px rgba(52, 211, 153, 0.15)" } : undefined}>
                         {isPositive ? "+" : ""}{entry.points}
                       </span>
-                      <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums w-12 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-mono text-muted-foreground/50 tabular-nums w-12 text-right">
                         {entry.balance_after}
                       </span>
                     </div>

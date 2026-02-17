@@ -12,6 +12,9 @@ import {
   Instagram,
   Flame,
   User,
+  Zap,
+  Trophy,
+  TrendingUp,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +40,13 @@ interface RepProfile {
   level: number;
   points_balance: number;
   total_sales: number;
+}
+
+function getTierFromLevel(level: number): { name: string; ring: string; color: string } {
+  if (level >= 9) return { name: "Mythic", ring: "rep-avatar-ring-mythic", color: "#F59E0B" };
+  if (level >= 7) return { name: "Elite", ring: "rep-avatar-ring-elite", color: "#8B5CF6" };
+  if (level >= 4) return { name: "Pro", ring: "rep-avatar-ring-pro", color: "#38BDF8" };
+  return { name: "Starter", ring: "rep-avatar-ring-starter", color: "#94A3B8" };
 }
 
 // TikTok icon (not in lucide)
@@ -336,54 +346,86 @@ export default function RepProfilePage() {
 
       {/* ── Avatar + Identity ── */}
       <div className="text-center rep-slide-up">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="relative inline-block group"
-          aria-label="Change profile photo"
-        >
-          <div className={cn(
-            "h-24 w-24 rounded-full border-2 border-primary/20 overflow-hidden mx-auto transition-all duration-300",
-            "bg-primary/5 rep-glow",
-            uploading && "rep-photo-uploading"
-          )}>
-            {avatarSrc ? (
-              <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center">
-                <span className="text-3xl font-bold text-primary">
-                  {profile.first_name.charAt(0)}
-                </span>
-              </div>
-            )}
-          </div>
-          {/* Camera overlay */}
-          <div className={cn(
-            "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
-            uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
-          )}>
-            {uploading ? (
-              <Loader2 size={20} className="text-white animate-spin" />
-            ) : (
-              <Camera size={20} className="text-white" />
-            )}
-          </div>
-        </button>
+        {(() => {
+          const tier = getTierFromLevel(profile.level);
+          return (
+            <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="relative inline-block group"
+                aria-label="Change profile photo"
+              >
+                <div className={cn(
+                  "h-28 w-28 rounded-full overflow-hidden mx-auto transition-all duration-300 rep-avatar-ring",
+                  tier.ring,
+                  "bg-primary/5",
+                  uploading && "rep-photo-uploading"
+                )}>
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <span className="text-4xl font-bold text-primary">
+                        {profile.first_name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Camera overlay */}
+                <div className={cn(
+                  "absolute inset-0 rounded-full flex items-center justify-center bg-black/50 transition-opacity duration-200",
+                  uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-active:opacity-100"
+                )}>
+                  {uploading ? (
+                    <Loader2 size={20} className="text-white animate-spin" />
+                  ) : (
+                    <Camera size={20} className="text-white" />
+                  )}
+                </div>
+              </button>
 
-        <h1 className="mt-3 text-lg font-bold text-foreground">
-          {profile.display_name || profile.first_name}
-        </h1>
-        <p className="text-xs text-muted-foreground">{profile.email}</p>
+              <h1 className="mt-3 text-lg font-bold text-foreground">
+                {profile.display_name || profile.first_name}
+              </h1>
+              <p className="text-xs text-muted-foreground">{profile.email}</p>
+
+              {/* Player stat strip */}
+              <div className="flex items-center justify-center gap-4 mt-3">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold rep-badge-shimmer"
+                    style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
+                  >
+                    <Zap size={10} />
+                    Lv.{profile.level}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Zap size={10} className="text-primary" />
+                  <span className="font-mono font-bold text-foreground tabular-nums">{profile.points_balance}</span>
+                  <span>XP</span>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <TrendingUp size={10} className="text-success" />
+                  <span className="font-mono font-bold text-foreground tabular-nums">{profile.total_sales}</span>
+                  <span>sold</span>
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Social links (view mode) */}
         {(instagram || tiktok) && (
-          <div className="flex items-center justify-center gap-3 mt-3">
+          <div className="flex items-center justify-center gap-3 mt-4">
             {instagram && (
               <button
                 type="button"
                 onClick={() => openSocialProfile("instagram", instagram)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-card border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                style={{ background: "linear-gradient(135deg, rgba(131, 58, 180, 0.1), rgba(253, 29, 29, 0.08), rgba(252, 176, 69, 0.08))", border: "1px solid rgba(131, 58, 180, 0.2)" }}
               >
                 <Instagram size={13} />
                 @{instagram}
@@ -393,7 +435,7 @@ export default function RepProfilePage() {
               <button
                 type="button"
                 onClick={() => openSocialProfile("tiktok", tiktok)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-card border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-white/[0.15] transition-colors"
               >
                 <TikTokIcon size={13} />
                 @{tiktok}
@@ -406,15 +448,15 @@ export default function RepProfilePage() {
       {/* ── Discount Code ── */}
       {discountCode && (
         <Card className="py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up" style={{ animationDelay: "50ms" }}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />
               <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold">
                 Your Code
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-lg font-bold font-mono tracking-[3px] text-foreground flex-1">
+              <p className="text-2xl font-bold font-mono tracking-[4px] text-foreground flex-1" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.15)" }}>
                 {discountCode}
               </p>
               <Button size="sm" onClick={copyCode}>
@@ -422,6 +464,9 @@ export default function RepProfilePage() {
                 {copiedCode ? "Copied" : "Copy"}
               </Button>
             </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Share this code — every sale earns you points
+            </p>
           </CardContent>
         </Card>
       )}

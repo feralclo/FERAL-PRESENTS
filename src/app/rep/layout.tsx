@@ -220,9 +220,9 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
                       active
-                        ? "bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(139,92,246,0.15)]"
+                        ? "bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(139,92,246,0.15)] rep-nav-active-glow"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
                     )}
                   >
@@ -238,10 +238,10 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             <Link
               href="/rep/profile"
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-200",
+                "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all duration-200",
                 matchRoute(pathname, "/rep/profile")
-                  ? "bg-primary/15 border-primary/30 text-primary"
-                  : "bg-white/[0.04] border-white/[0.06] text-muted-foreground hover:text-foreground hover:border-white/[0.12]"
+                  ? "bg-primary/15 border-primary/40 text-primary shadow-[0_0_12px_rgba(139,92,246,0.2)]"
+                  : "bg-white/[0.04] border-white/[0.08] text-muted-foreground hover:text-foreground hover:border-white/[0.15]"
               )}
             >
               <User size={15} />
@@ -252,17 +252,21 @@ export default function RepLayout({ children }: { children: ReactNode }) {
 
       {/* Mobile top bar */}
       {showNav && (
-        <div className="flex md:hidden items-center justify-between px-5 pt-[max(env(safe-area-inset-top),16px)] pb-3">
-          <Link href="/rep" className="flex items-center gap-2.5">
-            {branding?.logo_url ? (
-              <img src={branding.logo_url} alt="" className="h-7 w-auto" />
-            ) : (
-              <span className="text-[15px] font-bold text-foreground">
-                {branding?.org_name || "Entry"}
-              </span>
-            )}
-          </Link>
-          <NotificationCenter />
+        <div className="relative md:hidden">
+          <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),16px)] pb-3">
+            <Link href="/rep" className="flex items-center gap-2.5">
+              {branding?.logo_url ? (
+                <img src={branding.logo_url} alt="" className="h-7 w-auto" />
+              ) : (
+                <span className="text-[15px] font-bold text-foreground">
+                  {branding?.org_name || "Entry"}
+                </span>
+              )}
+            </Link>
+            <NotificationCenter />
+          </div>
+          {/* Subtle gradient line */}
+          <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-[var(--rep-border)] to-transparent" />
         </div>
       )}
 
@@ -274,10 +278,10 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile bottom tab bar — floating pill */}
+      {/* Mobile bottom tab bar — gaming HUD */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
-          <nav className="flex items-center justify-around rounded-2xl border border-white/[0.08] bg-[#0c0c12]/90 backdrop-blur-2xl shadow-[0_-4px_32px_rgba(0,0,0,0.5)] py-2.5 pointer-events-auto">
+          <nav className="flex items-center justify-around rounded-2xl border border-white/[0.08] bg-[#0c0c12]/92 backdrop-blur-2xl shadow-[0_-4px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] py-2.5 pointer-events-auto">
             {MOBILE_NAV_ITEMS.map((item) => {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
@@ -286,31 +290,30 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "relative flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200",
+                    "relative flex flex-col items-center justify-center w-14 gap-1 transition-all duration-200",
                     active
                       ? "text-primary"
                       : "text-[#444455] active:text-[#666677]"
                   )}
                 >
-                  {/* Active dot indicator */}
-                  <span
-                    className={cn(
-                      "h-[3px] w-[3px] rounded-full bg-primary transition-all duration-200",
-                      active
-                        ? "opacity-100 scale-100"
-                        : "opacity-0 scale-0"
-                    )}
-                  />
+                  {/* Radial glow behind active icon */}
+                  {active && <span className="rep-nav-glow" />}
                   <Icon
                     size={21}
                     strokeWidth={active ? 2.5 : 1.5}
-                    className={active ? "drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]" : ""}
+                    className={cn(
+                      "relative z-10 transition-transform duration-200",
+                      active && "scale-110 drop-shadow-[0_0_8px_rgba(139,92,246,0.5)]"
+                    )}
                   />
                   <span
                     className={cn(
-                      "text-[9px] font-semibold tracking-wide",
-                      active ? "text-primary" : "text-[#444455]"
+                      "text-[9px] font-semibold tracking-wide relative z-10",
+                      active
+                        ? "text-primary"
+                        : "text-[#444455]"
                     )}
+                    style={active ? { textShadow: "0 0 8px rgba(139, 92, 246, 0.3)" } : undefined}
                   >
                     {item.label}
                   </span>

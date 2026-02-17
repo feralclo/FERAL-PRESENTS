@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Trophy,
@@ -39,21 +39,59 @@ interface DashboardData {
   active_quests: number;
   pending_rewards: number;
   active_events: { id: string; name: string; sales_count: number; revenue: number }[];
-  recent_sales: { id: string; order_number: string; total: number; created_at: string }[];
+  recent_sales: { id: string; order_number: string; total: number; created_at: string; points_earned?: number }[];
   discount_codes: { code: string }[];
 }
 
 const LEVEL_UP_STORAGE_KEY = "rep_last_level";
+
+function getTierFromLevel(level: number): { name: string; ring: string; color: string; textColor: string; bgColor: string } {
+  if (level >= 9) return { name: "Mythic", ring: "rep-avatar-ring-mythic", color: "#F59E0B", textColor: "text-amber-400", bgColor: "bg-amber-500/15" };
+  if (level >= 7) return { name: "Elite", ring: "rep-avatar-ring-elite", color: "#8B5CF6", textColor: "text-purple-400", bgColor: "bg-purple-500/15" };
+  if (level >= 4) return { name: "Pro", ring: "rep-avatar-ring-pro", color: "#38BDF8", textColor: "text-sky-400", bgColor: "bg-sky-500/15" };
+  return { name: "Starter", ring: "rep-avatar-ring-starter", color: "#94A3B8", textColor: "text-slate-400", bgColor: "bg-slate-500/15" };
+}
+
+/** Animate a number counting up from 0 to target */
+function useCountUp(target: number, duration: number = 800, enabled: boolean = true) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!enabled || target === 0) {
+      setValue(target);
+      return;
+    }
+
+    const start = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration, enabled]);
+
+  return value;
+}
 
 export default function RepDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copyFlash, setCopyFlash] = useState(false);
   const [loadKey, setLoadKey] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpInfo, setLevelUpInfo] = useState<{ level: number; name: string } | null>(null);
   const [xpAnimated, setXpAnimated] = useState(false);
+  const [statsReady, setStatsReady] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -89,8 +127,9 @@ export default function RepDashboardPage() {
           }
           localStorage.setItem(LEVEL_UP_STORAGE_KEY, String(currentLevel));
 
-          // Animate XP bar after load
+          // Animate XP bar and stats after load
           setTimeout(() => setXpAnimated(true), 300);
+          setTimeout(() => setStatsReady(true), 150);
         }
       } catch { setError("Failed to load dashboard — check your connection"); }
       setLoading(false);
@@ -101,7 +140,9 @@ export default function RepDashboardPage() {
     try {
       await navigator.clipboard.writeText(code);
       setCopiedCode(true);
+      setCopyFlash(true);
       setTimeout(() => setCopiedCode(false), 2000);
+      setTimeout(() => setCopyFlash(false), 400);
     } catch {
       /* clipboard not available */
     }
@@ -112,23 +153,23 @@ export default function RepDashboardPage() {
       <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
         {/* Welcome skeleton */}
         <div className="flex flex-col items-center">
-          <Skeleton className="h-16 w-16 rounded-full mb-3" />
+          <Skeleton className="h-24 w-24 rounded-full mb-3" />
           <Skeleton className="h-5 w-40 mb-2" />
           <Skeleton className="h-6 w-32 rounded-full" />
-          <Skeleton className="h-1.5 w-48 mt-3 rounded-full" />
+          <Skeleton className="h-2.5 w-48 mt-3 rounded-full" />
         </div>
         {/* Discount code skeleton */}
-        <Skeleton className="h-[100px] rounded-2xl" />
+        <Skeleton className="h-[110px] rounded-2xl" />
         {/* Stats skeleton */}
         <div className="grid grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[80px] rounded-2xl" />
+            <Skeleton key={i} className="h-[96px] rounded-2xl" />
           ))}
         </div>
         {/* Quick links skeleton */}
         <div className="grid grid-cols-2 gap-3">
-          <Skeleton className="h-[72px] rounded-2xl" />
-          <Skeleton className="h-[72px] rounded-2xl" />
+          <Skeleton className="h-[88px] rounded-2xl" />
+          <Skeleton className="h-[88px] rounded-2xl" />
         </div>
       </div>
     );
@@ -158,118 +199,114 @@ export default function RepDashboardPage() {
   }
 
   const rep = data.rep;
+  const tier = getTierFromLevel(rep.level);
   const levelRange = (data.next_level_points || 0) - data.current_level_points;
   const levelProgress = data.next_level_points && levelRange > 0
     ? ((rep.points_balance - data.current_level_points) / levelRange) * 100
     : 100;
+  const xpToGo = data.next_level_points ? data.next_level_points - rep.points_balance : 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
       {/* ── Level-Up Celebration Overlay ── */}
       {showLevelUp && levelUpInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm rep-level-up-overlay">
-          {/* Confetti */}
-          <div className="rep-confetti-container" aria-hidden>
-            {[...Array(20)].map((_, i) => {
-              const angle = (i / 20) * 360;
-              const distance = 80 + Math.random() * 120;
-              const cx = Math.cos((angle * Math.PI) / 180) * distance;
-              const cy = Math.sin((angle * Math.PI) / 180) * distance - 60;
-              const colors = ["#8B5CF6", "#34D399", "#F59E0B", "#F43F5E", "#38BDF8", "#A78BFA"];
-              return (
-                <div
-                  key={i}
-                  className="rep-confetti-piece"
-                  style={{
-                    "--cx": `${cx}px`,
-                    "--cy": `${cy}px`,
-                    "--cr": `${Math.random() * 720 - 360}deg`,
-                    backgroundColor: colors[i % colors.length],
-                    animationDelay: `${i * 30}ms`,
-                    borderRadius: i % 3 === 0 ? "50%" : "2px",
-                    width: `${6 + Math.random() * 6}px`,
-                    height: `${6 + Math.random() * 6}px`,
-                  } as React.CSSProperties}
-                />
-              );
-            })}
-          </div>
-
-          <div className="text-center z-10">
-            <div className="relative inline-block mb-6">
-              <div className="h-24 w-24 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto rep-level-up-ring">
-                <div className="rep-level-up-badge">
-                  <ArrowUp size={32} className="text-primary" />
-                </div>
-              </div>
-            </div>
-            <div className="rep-level-up-text">
-              <p className="text-[10px] uppercase tracking-[4px] text-primary font-bold mb-2">
-                Level Up!
-              </p>
-              <p className="text-4xl font-bold text-foreground mb-1 font-mono">
-                Lv.{levelUpInfo.level}
-              </p>
-              <p className="text-lg text-primary font-semibold">
-                {levelUpInfo.name}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowLevelUp(false)}
-              className="mt-8 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
+        <LevelUpOverlay
+          levelUpInfo={levelUpInfo}
+          onDismiss={() => setShowLevelUp(false)}
+        />
       )}
 
-      {/* ── Welcome + Level ── */}
-      <div className="text-center rep-slide-up">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 border border-primary/20 rep-glow mb-3 overflow-hidden">
-          {rep.photo_url ? (
-            <img src={rep.photo_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-2xl font-bold text-primary">
-              {rep.first_name.charAt(0)}
-            </span>
-          )}
-        </div>
-        <h1 className="text-xl font-bold text-foreground">
-          Hey, {rep.display_name || rep.first_name}
-        </h1>
-        <Badge className="mt-2 gap-1.5 px-4 py-1.5 rep-badge-shimmer">
-          <Zap size={12} />
-          Level {rep.level} — {data.level_name}
-        </Badge>
+      {/* ── Hero Player Card ── */}
+      <div className="relative rep-slide-up">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-[var(--rep-accent)]/[0.04] via-transparent to-transparent pointer-events-none" />
+        <div className="text-center py-2">
+          {/* Avatar with tier ring */}
+          <div className={cn(
+            "inline-flex h-24 w-24 items-center justify-center rounded-full overflow-hidden mx-auto mb-3 rep-avatar-ring",
+            tier.ring
+          )}>
+            {rep.photo_url ? (
+              <img src={rep.photo_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-primary/10">
+                <span className="text-3xl font-bold text-primary">
+                  {rep.first_name.charAt(0)}
+                </span>
+              </div>
+            )}
+          </div>
 
-        {/* XP progress */}
-        <div className="mt-3 mx-auto max-w-xs">
-          <Progress
-            value={xpAnimated ? Math.min(100, Math.max(0, levelProgress)) : 0}
-            className="h-1.5"
-            indicatorClassName="rep-xp-fill transition-all duration-1000 ease-out"
-          />
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            {data.next_level_points
-              ? `${rep.points_balance} / ${data.next_level_points} XP to next level`
-              : "Max level reached!"}
-          </p>
+          <h1 className="text-xl font-bold text-foreground">
+            Hey, {rep.display_name || rep.first_name}
+          </h1>
+
+          {/* Level badge + rank */}
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <Badge
+              className={cn(
+                "gap-1.5 px-4 py-1.5 rep-badge-shimmer border",
+              )}
+              style={{
+                backgroundColor: `${tier.color}15`,
+                borderColor: `${tier.color}30`,
+                color: tier.color,
+              }}
+            >
+              <Zap size={12} />
+              Level {rep.level} — {data.level_name}
+            </Badge>
+            {data.leaderboard_position && (
+              <span
+                className="text-sm font-bold font-mono tabular-nums"
+                style={{ color: tier.color }}
+              >
+                #{data.leaderboard_position}
+              </span>
+            )}
+          </div>
+
+          {/* XP progress bar */}
+          <div className="mt-4 mx-auto max-w-xs">
+            <Progress
+              value={xpAnimated ? Math.min(100, Math.max(0, levelProgress)) : 0}
+              className="h-2.5"
+              indicatorClassName="rep-xp-fill transition-all duration-1000 ease-out"
+            />
+            <div className="flex items-center justify-between mt-1.5">
+              <p className="text-[10px] text-muted-foreground font-mono tabular-nums">
+                {rep.points_balance} XP
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {data.next_level_points
+                  ? <span className="font-mono tabular-nums">{xpToGo} to go</span>
+                  : "Max level!"}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Discount Code (prominent) ── */}
+      {/* ── Discount Code (Hero Weapon Card) ── */}
       {data.discount_codes.length > 0 && (
-        <Card className="py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up" style={{ animationDelay: "50ms" }}>
+        <Card
+          className={cn(
+            "py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up",
+            copyFlash && "rep-copy-flash"
+          )}
+          style={{ animationDelay: "50ms" }}
+        >
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />
-              <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold">
+              <span
+                className="text-[9px] uppercase tracking-[2px] font-bold px-2 py-0.5 rounded-md"
+                style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
+              >
                 Your Code
-              </p>
+              </span>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-xl font-bold font-mono tracking-[3px] text-foreground flex-1">
+              <p className="text-2xl font-bold font-mono tracking-[4px] text-foreground flex-1" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.15)" }}>
                 {data.discount_codes[0].code}
               </p>
               <Button
@@ -287,153 +324,281 @@ export default function RepDashboardPage() {
         </Card>
       )}
 
-      {/* ── Stats Grid ── */}
+      {/* ── Stats Grid (Gaming HUD) ── */}
       <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <Link href="/rep/points">
-          <Card className="py-0 gap-0 border-border/40">
+          <Card className="py-0 gap-0 border-border/40 rep-stat-card rep-stat-glow-purple">
             <CardContent className="p-4">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Zap size={12} className="text-primary" />
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/15">
+                  <Zap size={12} className="text-primary" />
+                </div>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">XP</p>
               </div>
-              <p className="text-2xl font-bold text-foreground font-mono tabular-nums">{rep.points_balance}</p>
+              <p className="text-3xl font-bold text-foreground font-mono tabular-nums" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.1)" }}>
+                <AnimatedNumber value={rep.points_balance} enabled={statsReady} />
+              </p>
             </CardContent>
           </Card>
         </Link>
         <Link href="/rep/sales">
-          <Card className="py-0 gap-0 border-border/40">
+          <Card className="py-0 gap-0 border-border/40 rep-stat-card rep-stat-glow-orange">
             <CardContent className="p-4">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Flame size={12} className="text-orange-400" />
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-500/15">
+                  <Flame size={12} className="text-orange-400" />
+                </div>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sold</p>
               </div>
-              <p className="text-2xl font-bold text-foreground font-mono tabular-nums">{rep.total_sales}</p>
+              <p className="text-3xl font-bold text-foreground font-mono tabular-nums" style={{ textShadow: "0 0 20px rgba(249, 115, 22, 0.1)" }}>
+                <AnimatedNumber value={rep.total_sales} enabled={statsReady} />
+              </p>
             </CardContent>
           </Card>
         </Link>
         <Link href="/rep/leaderboard">
-          <Card className="py-0 gap-0 border-border/40">
+          <Card className="py-0 gap-0 border-border/40 rep-stat-card rep-stat-glow-gold">
             <CardContent className="p-4">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Trophy size={12} className="text-yellow-500" />
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/15">
+                  <Trophy size={12} className="text-yellow-500" />
+                </div>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Rank</p>
               </div>
-              <p className="text-2xl font-bold text-foreground font-mono tabular-nums">#{data.leaderboard_position || "—"}</p>
+              <p className="text-3xl font-bold text-foreground font-mono tabular-nums" style={{ textShadow: "0 0 20px rgba(245, 158, 11, 0.1)" }}>
+                #{data.leaderboard_position || "—"}
+              </p>
             </CardContent>
           </Card>
         </Link>
       </div>
 
-      {/* ── Active Campaigns / Events ── */}
+      {/* ── Active Missions ── */}
       {data.active_events.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Flame size={14} className="text-primary" />
-              <h2 className="text-sm font-semibold text-foreground">Active Campaigns</h2>
-            </div>
-            <Link href="/rep/sales" className="text-[11px] text-primary hover:underline flex items-center gap-0.5">
-              View all <ChevronRight size={12} />
-            </Link>
+          <div className="rep-section-header">
+            <Flame size={12} className="text-primary" />
+            Active Missions
           </div>
           <div className="space-y-2">
             {data.active_events.map((event) => (
-              <Card key={event.id} className="py-0 gap-0 hover:border-primary/20 transition-all duration-200">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{event.name}</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      {event.sales_count} ticket{event.sales_count !== 1 ? "s" : ""} sold
-                    </p>
-                  </div>
-                  <TrendingUp size={16} className="text-primary" />
-                </CardContent>
-              </Card>
+              <Link key={event.id} href="/rep/sales">
+                <Card className="py-0 gap-0 rep-card-lift">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="rep-live-dot shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{event.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[11px] text-muted-foreground">
+                            {event.sales_count} ticket{event.sales_count !== 1 ? "s" : ""}
+                          </span>
+                          {event.revenue > 0 && (
+                            <span className="text-[11px] font-mono text-success">
+                              £{Number(event.revenue).toFixed(0)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* ── Quick Links ── */}
+      {/* ── Quick Actions ── */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "200ms" }}>
         <Link href="/rep/quests">
-          <Card className="py-0 gap-0 hover:border-primary/20 transition-all duration-200">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Compass size={18} className="text-primary" />
+          <Card className="py-0 gap-0 rep-card-lift" style={{ minHeight: "88px" }}>
+            <CardContent className="p-4 flex items-center gap-3 h-full">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 shrink-0">
+                <Compass size={20} className="text-primary" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Side Quests</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground">Side Quests</p>
+                  {data.active_quests > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[9px] font-bold text-white rep-notification-badge">
+                      {data.active_quests}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-muted-foreground">{data.active_quests} active</p>
               </div>
+              <ChevronRight size={14} className="text-muted-foreground/40 shrink-0" />
             </CardContent>
           </Card>
         </Link>
         <Link href="/rep/rewards">
-          <Card className="py-0 gap-0 hover:border-primary/20 transition-all duration-200">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Gift size={18} className="text-primary" />
+          <Card className="py-0 gap-0 rep-card-lift" style={{ minHeight: "88px" }}>
+            <CardContent className="p-4 flex items-center gap-3 h-full">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 shrink-0">
+                <Gift size={20} className="text-amber-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Rewards</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground">Rewards</p>
+                  {data.pending_rewards > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white rep-notification-badge">
+                      {data.pending_rewards}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   {data.pending_rewards > 0 ? `${data.pending_rewards} pending` : "Shop & milestones"}
                 </p>
               </div>
+              <ChevronRight size={14} className="text-muted-foreground/40 shrink-0" />
             </CardContent>
           </Card>
         </Link>
       </div>
 
-      {/* ── Recent Sales ── */}
+      {/* ── Recent Activity (Battle Log) ── */}
       {data.recent_sales.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
-          <h2 className="text-sm font-semibold text-foreground mb-3">Recent Activity</h2>
+          <div className="rep-section-header">
+            <TrendingUp size={12} />
+            Recent Activity
+          </div>
           <div className="space-y-2">
-            {data.recent_sales.map((sale) => (
-              <Card key={sale.id} className="py-0 gap-0">
+            {data.recent_sales.map((sale, i) => (
+              <Card
+                key={sale.id}
+                className="py-0 gap-0 rep-slide-up"
+                style={{ animationDelay: `${280 + i * 40}ms` }}
+              >
                 <CardContent className="px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                      <TrendingUp size={14} className="text-success" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
+                      <Zap size={9} />+10
+                    </span>
+                    <p className="text-sm font-bold font-mono text-success tabular-nums">
+                      £{Number(sale.total).toFixed(2)}
                     </p>
                   </div>
-                  <p className="text-sm font-bold font-mono text-success">
-                    £{Number(sale.total).toFixed(2)}
-                  </p>
                 </CardContent>
               </Card>
             ))}
           </div>
+          <Link
+            href="/rep/sales"
+            className="flex items-center justify-center gap-1 mt-3 text-[11px] text-primary hover:underline"
+          >
+            View all sales <ChevronRight size={12} />
+          </Link>
         </div>
       )}
 
-      {/* ── Leaderboard CTA ── */}
+      {/* ── Arena CTA (Leaderboard) ── */}
       <Link href="/rep/leaderboard">
         <Card
-          className="py-0 gap-0 border-warning/20 bg-warning/5 hover:border-warning/30 transition-all duration-200 rep-card-hover rep-slide-up"
+          className="py-0 gap-0 border-transparent bg-[var(--rep-gold)]/5 rep-gradient-border-gold rep-card-lift rep-slide-up overflow-hidden"
           style={{ animationDelay: "300ms" }}
         >
+          <div className="absolute inset-[1px] rounded-[inherit] bg-[var(--rep-card)] z-[-1]" />
           <CardContent className="p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10">
-                <Trophy size={18} className="text-warning" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--rep-gold)]/15">
+                <Trophy size={22} className="text-[var(--rep-gold)]" style={{ filter: "drop-shadow(0 0 6px rgba(245, 158, 11, 0.4))" }} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Leaderboard</p>
+                <p className="text-sm font-semibold text-foreground">Arena</p>
                 <p className="text-[11px] text-muted-foreground">
                   {data.leaderboard_position
-                    ? `You're ranked #${data.leaderboard_position}`
+                    ? <>Ranked <span className="font-mono font-bold text-[var(--rep-gold)]">#{data.leaderboard_position}</span> — challenge your crew</>
                     : "See where you stand"}
                 </p>
               </div>
             </div>
-            <ChevronRight size={16} className="text-muted-foreground" />
+            <ChevronRight size={18} className="text-[var(--rep-gold)]/60 animate-[pulse_2s_ease-in-out_infinite]" />
           </CardContent>
         </Card>
       </Link>
+    </div>
+  );
+}
+
+// ─── Animated Number ─────────────────────────────────────────────────────────
+
+function AnimatedNumber({ value, enabled }: { value: number; enabled: boolean }) {
+  const display = useCountUp(value, 800, enabled);
+  return <>{display}</>;
+}
+
+// ─── Level Up Overlay ────────────────────────────────────────────────────────
+
+function LevelUpOverlay({ levelUpInfo, onDismiss }: { levelUpInfo: { level: number; name: string }; onDismiss: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm rep-level-up-overlay">
+      {/* Confetti */}
+      <div className="rep-confetti-container" aria-hidden>
+        {[...Array(20)].map((_, i) => {
+          const angle = (i / 20) * 360;
+          const distance = 80 + Math.random() * 120;
+          const cx = Math.cos((angle * Math.PI) / 180) * distance;
+          const cy = Math.sin((angle * Math.PI) / 180) * distance - 60;
+          const colors = ["#8B5CF6", "#34D399", "#F59E0B", "#F43F5E", "#38BDF8", "#A78BFA"];
+          return (
+            <div
+              key={i}
+              className="rep-confetti-piece"
+              style={{
+                "--cx": `${cx}px`,
+                "--cy": `${cy}px`,
+                "--cr": `${Math.random() * 720 - 360}deg`,
+                backgroundColor: colors[i % colors.length],
+                animationDelay: `${i * 30}ms`,
+                borderRadius: i % 3 === 0 ? "50%" : "2px",
+                width: `${6 + Math.random() * 6}px`,
+                height: `${6 + Math.random() * 6}px`,
+              } as React.CSSProperties}
+            />
+          );
+        })}
+      </div>
+
+      <div className="text-center z-10">
+        <div className="relative inline-block mb-6">
+          <div className="h-24 w-24 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto rep-level-up-ring">
+            <div className="rep-level-up-badge">
+              <ArrowUp size={32} className="text-primary" />
+            </div>
+          </div>
+        </div>
+        <div className="rep-level-up-text">
+          <p className="text-[10px] uppercase tracking-[4px] text-primary font-bold mb-2">
+            Level Up!
+          </p>
+          <p className="text-4xl font-bold text-foreground mb-1 font-mono">
+            Lv.{levelUpInfo.level}
+          </p>
+          <p className="text-lg text-primary font-semibold">
+            {levelUpInfo.name}
+          </p>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="mt-8 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Continue
+        </button>
+      </div>
     </div>
   );
 }

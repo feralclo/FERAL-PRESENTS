@@ -117,9 +117,9 @@ export default function RepLeaderboardPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
       {/* Header */}
-      <div className="text-center mb-5">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--rep-gold)]/10 mb-3">
-          <Trophy size={22} className="text-[var(--rep-gold)]" />
+      <div className="text-center mb-5 rep-slide-up">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--rep-gold)]/10 mb-3" style={{ filter: "drop-shadow(0 0 12px rgba(245, 158, 11, 0.15))" }}>
+          <Trophy size={24} className="text-[var(--rep-gold)]" />
         </div>
         <h1 className="text-xl font-bold text-white">Leaderboard</h1>
       </div>
@@ -155,8 +155,10 @@ function PositionIndicator({ change }: { change: number }) {
   const isUp = change > 0;
   return (
     <span className={cn(
-      "rep-position-indicator",
-      isUp ? "text-[var(--rep-success)]" : "text-[var(--rep-destructive)]"
+      "rep-position-indicator inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+      isUp
+        ? "text-[var(--rep-success)] bg-[var(--rep-success)]/10"
+        : "text-[var(--rep-destructive)] bg-[var(--rep-destructive)]/10"
     )}>
       {isUp ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
       {Math.abs(change)}
@@ -233,10 +235,10 @@ function AllTimeLeaderboard() {
     <div className="rep-fade-in">
       {/* Your Position Card */}
       {myPosition && (
-        <div className="mb-5 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-4 text-center">
-          <p className="text-xs text-[var(--rep-text-muted)] mb-1">Your Position</p>
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-3xl font-bold font-mono text-[var(--rep-accent)]">
+        <div className="mb-5 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-5 text-center rep-card-reveal">
+          <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1.5">Your Position</p>
+          <div className="flex items-center justify-center gap-3">
+            <p className="text-4xl font-bold font-mono text-[var(--rep-accent)]" style={{ textShadow: "0 0 24px rgba(139, 92, 246, 0.2)" }}>
               #{myPosition}
             </p>
             {myChange !== 0 && <PositionIndicator change={myChange} />}
@@ -252,14 +254,20 @@ function AllTimeLeaderboard() {
               key={entry.id}
               type="button"
               onClick={() => handleEntryClick(entry)}
-              className={`rep-leaderboard-item w-full text-left flex items-center gap-3 rounded-2xl p-4 transition-colors cursor-pointer active:scale-[0.98] ${PODIUM_BG[i]} ${
-                entry.id === myRepId ? "ring-2 ring-[var(--rep-accent)]/40" : ""
-              }`}
+              className={cn(
+                "rep-leaderboard-item rep-card-lift w-full text-left flex items-center gap-3 rounded-2xl p-4 cursor-pointer active:scale-[0.98]",
+                PODIUM_BG[i],
+                i === 0 && "rep-gradient-border-gold overflow-hidden",
+                entry.id === myRepId && "ring-2 ring-[var(--rep-accent)]/40"
+              )}
             >
+              {/* Inner bg for gradient border */}
+              {i === 0 && <div className="absolute inset-[1px] rounded-[inherit] bg-gradient-to-br from-[rgba(245,158,11,0.12)] to-[rgba(245,158,11,0.03)] z-[-1]" />}
+
               {/* Medal */}
               <div
                 className="rep-medal rep-medal-lg shrink-0"
-                style={{ color: MEDAL_COLORS[i] }}
+                style={{ color: MEDAL_COLORS[i], filter: `drop-shadow(0 0 6px ${MEDAL_COLORS[i]})` }}
               >
                 {MEDAL_EMOJI[i]}
               </div>
@@ -318,11 +326,12 @@ function AllTimeLeaderboard() {
               key={entry.id}
               type="button"
               onClick={() => handleEntryClick(entry)}
-              className={`rep-leaderboard-item w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 transition-colors cursor-pointer active:scale-[0.98] ${
+              className={cn(
+                "rep-leaderboard-item rep-card-lift w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98]",
                 entry.id === myRepId
                   ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5"
-                  : "border border-[var(--rep-border)] bg-[var(--rep-card)] hover:border-[var(--rep-accent)]/20"
-              }`}
+                  : "border border-[var(--rep-border)] bg-[var(--rep-card)]"
+              )}
             >
               {/* Rank */}
               <div className="w-7 text-center">
@@ -522,11 +531,12 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
 
         {/* Position rewards preview */}
         {event.position_rewards.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-[var(--rep-border)]">
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--rep-border)]">
             {event.position_rewards.map((pr, i) => (
               <span
                 key={pr.position}
                 className={`rep-reward-pill ${REWARD_PILL_STYLES[i] || "rep-reward-pill-bronze"}`}
+                style={i === 0 ? { boxShadow: "0 0 8px rgba(245, 158, 11, 0.15)" } : undefined}
               >
                 <Gift size={10} />
                 {ordinal(pr.position)}: {pr.reward_name}
@@ -638,10 +648,10 @@ function EventLeaderboardView({
 
       {/* Your position */}
       {data.current_position && (
-        <div className="mb-4 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-3 text-center">
-          <p className="text-xs text-[var(--rep-text-muted)]">Your Position</p>
+        <div className="mb-4 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-4 text-center rep-card-reveal">
+          <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1">Your Position</p>
           <div className="flex items-center justify-center gap-2">
-            <p className="text-2xl font-bold font-mono text-[var(--rep-accent)]">
+            <p className="text-3xl font-bold font-mono text-[var(--rep-accent)]" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.2)" }}>
               #{data.current_position}
             </p>
             {myChange !== 0 && <PositionIndicator change={myChange} />}

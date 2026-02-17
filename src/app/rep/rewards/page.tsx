@@ -225,12 +225,12 @@ export default function RepRewardsPage() {
           <h1 className="text-xl font-bold text-foreground">Rewards</h1>
           <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl bg-primary/10 border border-primary/20 px-4 py-2.5 rep-glow">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Zap size={10} className="text-primary" />
+        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Zap size={12} className="text-primary" />
             <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
           </div>
-          <p className="text-lg font-bold font-mono text-primary tabular-nums">{myPoints}</p>
+          <p className="text-xl font-bold font-mono text-primary tabular-nums" style={{ textShadow: "0 0 16px rgba(139, 92, 246, 0.2)" }}>{myPoints}</p>
         </div>
       </div>
 
@@ -278,8 +278,10 @@ export default function RepRewardsPage() {
                 <Card
                   key={reward.id}
                   className={cn(
-                    "py-0 gap-0 transition-all",
-                    claimed && "border-success/30 bg-success/5"
+                    "py-0 gap-0 rep-card-lift",
+                    claimed
+                      ? "border-success/30 bg-success/5 rep-reward-unlocked"
+                      : "border-border/40"
                   )}
                 >
                   <CardContent className="p-4">
@@ -296,7 +298,11 @@ export default function RepRewardsPage() {
                           "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl",
                           claimed ? "bg-success/10" : "bg-muted/30"
                         )}>
-                          {claimed ? <Check size={20} className="text-success" /> : <Lock size={20} className="text-muted-foreground" />}
+                          {claimed ? (
+                            <Check size={20} className="text-success" style={{ filter: "drop-shadow(0 0 6px rgba(52, 211, 153, 0.4))" }} />
+                          ) : (
+                            <Lock size={20} className="text-muted-foreground" />
+                          )}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
@@ -368,15 +374,15 @@ export default function RepRewardsPage() {
                   <Card
                     key={reward.id}
                     className={cn(
-                      "py-0 gap-0 overflow-hidden transition-all rep-card-hover",
-                      claimed && "border-success/30"
+                      "py-0 gap-0 overflow-hidden rep-card-lift",
+                      claimed ? "border-success/30" : "border-border/40"
                     )}
                   >
                     {reward.image_url && (
-                      <div className="relative h-28 bg-muted/20 flex items-center justify-center">
+                      <div className="relative h-32 bg-muted/20 flex items-center justify-center">
                         <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-3" />
                         {remaining !== null && remaining > 0 && remaining <= 5 && !claimed && (
-                          <span className="absolute top-2 right-2 text-[9px] font-bold text-warning bg-warning/15 border border-warning/20 px-1.5 py-0.5 rounded-full">
+                          <span className="absolute top-2 right-2 text-[9px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
                             {remaining} left
                           </span>
                         )}
@@ -396,11 +402,11 @@ export default function RepRewardsPage() {
                       </div>
 
                       {claimed ? (
-                        <div className="flex items-center gap-1.5 text-[11px] text-success font-medium">
-                          <Check size={12} /> Claimed
+                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-[11px] text-success font-medium">
+                          <Check size={12} style={{ filter: "drop-shadow(0 0 4px rgba(52, 211, 153, 0.4))" }} /> Claimed
                         </div>
                       ) : soldOut ? (
-                        <div className="text-[11px] text-muted-foreground font-medium">Sold out</div>
+                        <div className="text-[11px] text-muted-foreground font-medium text-center py-2">Sold out</div>
                       ) : (
                         <Button
                           size="sm"
@@ -443,7 +449,7 @@ export default function RepRewardsPage() {
               const imgUrl = reward?.image_url || productImg;
 
               return (
-                <Card key={claim.id} className="py-0 gap-0">
+                <Card key={claim.id} className="py-0 gap-0 rep-card-lift border-border/40">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       {imgUrl ? (

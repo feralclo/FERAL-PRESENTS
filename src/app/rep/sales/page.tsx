@@ -9,6 +9,7 @@ import {
   Filter,
   ChevronDown,
   RefreshCw,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -229,19 +230,23 @@ export default function RepSalesPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "50ms" }}>
-        <Card className="py-0 gap-0">
+        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-purple">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-2">
-              <ShoppingBag size={12} className="text-primary" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/15">
+                <ShoppingBag size={12} className="text-primary" />
+              </div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sales</p>
             </div>
             <p className="text-2xl font-bold text-foreground font-mono tabular-nums">{stats.count}</p>
           </CardContent>
         </Card>
-        <Card className="py-0 gap-0">
+        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-green">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-2">
-              <Banknote size={12} className="text-success" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-success/15">
+                <Banknote size={12} className="text-success" />
+              </div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Earned</p>
             </div>
             <p className="text-2xl font-bold text-success font-mono tabular-nums">
@@ -249,10 +254,12 @@ export default function RepSalesPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="py-0 gap-0">
+        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-blue">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-2">
-              <BarChart3 size={12} className="text-info" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-info/15">
+                <BarChart3 size={12} className="text-info" />
+              </div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Per Order</p>
             </div>
             <p className="text-2xl font-bold text-foreground font-mono tabular-nums">
@@ -279,18 +286,19 @@ export default function RepSalesPage() {
         <div className="space-y-5 rep-slide-up" style={{ animationDelay: "100ms" }}>
           {groups.map((group) => (
             <div key={group.label}>
-              <div className="flex items-center gap-3 mb-2">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  {group.label}
-                </p>
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-[10px] text-muted-foreground font-mono">
+              <div className="rep-section-header">
+                {group.label}
+                <span className="text-[10px] font-mono font-normal ml-auto">
                   {group.sales.length} sale{group.sales.length !== 1 ? "s" : ""}
                 </span>
               </div>
               <div className="space-y-2">
-                {group.sales.map((sale) => (
-                  <Card key={sale.id} className="py-0 gap-0 hover:border-primary/20 transition-all duration-200">
+                {group.sales.map((sale, i) => (
+                  <Card
+                    key={sale.id}
+                    className="py-0 gap-0 rep-card-lift rep-slide-up"
+                    style={{ animationDelay: `${i * 30}ms` }}
+                  >
                     <CardContent className="px-4 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success/10">
@@ -310,9 +318,14 @@ export default function RepSalesPage() {
                           </p>
                         </div>
                       </div>
-                      <p className="text-sm font-bold font-mono text-success tabular-nums shrink-0 ml-3">
-                        {getCurrencySymbol(sale.currency)}{Number(sale.total).toFixed(2)}
-                      </p>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
+                          <Zap size={9} />+10
+                        </span>
+                        <p className="text-sm font-bold font-mono text-success tabular-nums">
+                          {getCurrencySymbol(sale.currency)}{Number(sale.total).toFixed(2)}
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

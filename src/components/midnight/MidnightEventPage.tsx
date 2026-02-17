@@ -215,7 +215,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
         <div className="px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col min-w-0">
-              <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] uppercase text-foreground/40">
+              <span className="font-[family-name:var(--font-sans)] text-[10px] font-medium tracking-[0.06em] uppercase text-foreground/40">
                 {cart.totalQty} {cart.totalQty === 1 ? "ticket" : "tickets"}
               </span>
               <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.02em]">

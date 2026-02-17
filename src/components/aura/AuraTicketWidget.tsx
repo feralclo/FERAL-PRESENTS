@@ -501,9 +501,15 @@ export function AuraTicketWidget({
               <span>Secure checkout</span>
             </div>
 
-            {/* Express checkout */}
-            {isStripe && totalQty > 0 && (
-              <div className="w-full pt-1">
+            {/* Express checkout — always mounted, dimmed until tickets added */}
+            {isStripe && (
+              <div
+                className={`w-full pt-1 transition-opacity duration-300 ${
+                  totalQty > 0
+                    ? "opacity-100"
+                    : "opacity-50 pointer-events-none"
+                }`}
+              >
                 <div className="flex items-center gap-3 py-2">
                   <Separator className="flex-1 opacity-30" />
                   <span className="text-[11px] text-muted-foreground uppercase tracking-widest font-medium">

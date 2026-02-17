@@ -202,9 +202,16 @@ export function MidnightTicketWidget({
                 : `Checkout — ${currSymbol}${totalPrice.toFixed(2)}`}
             </Button>
 
-            {/* Express Checkout (Apple Pay / Google Pay) */}
-            {isStripe && totalQty > 0 && (
-              <div className="mt-0">
+            {/* Express Checkout (Apple Pay / Google Pay) — always mounted for
+                instant readiness. Dimmed + non-interactive until tickets added. */}
+            {isStripe && (
+              <div
+                className={`mt-0 transition-opacity duration-300 ${
+                  totalQty > 0
+                    ? "opacity-100"
+                    : "opacity-50 pointer-events-none"
+                }`}
+              >
                 <div className="flex items-center gap-3 py-3.5">
                   <Separator className="flex-1 opacity-30" />
                   <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] uppercase text-muted-foreground shrink-0">

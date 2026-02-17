@@ -41,6 +41,13 @@ function ExpressCheckoutInner({
   const elements = useElements();
   const [available, setAvailable] = useState(true);
 
+  // Sync Elements amount when cart total changes (e.g. ticket added/removed).
+  // Stripe requires amount > 0; use 50 (smallest-unit minimum) as floor.
+  useEffect(() => {
+    if (!elements) return;
+    elements.update({ amount: toSmallestUnit(amount) || 50 });
+  }, [elements, amount]);
+
   const handleClick = useCallback(
     (event: StripeExpressCheckoutElementClickEvent) => {
       event.resolve({
@@ -228,7 +235,7 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
   }
 
   const stripePromise = getStripeClient(stripeAccountId);
-  const amountInSmallest = toSmallestUnit(props.amount);
+  const amountInSmallest = toSmallestUnit(props.amount) || 50; // Stripe requires > 0
 
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",

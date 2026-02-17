@@ -593,7 +593,7 @@ function StripeCheckoutPage({
         colorDanger: "#ef4444",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         fontSizeBase: "16px", // ≥16px prevents iOS Safari auto-zoom on focus
-        borderRadius: "24px", // Pill-shape Express Checkout buttons; card fields use their own CSS
+        borderRadius: "12px", // Rounded Express Checkout buttons; card fields use their own CSS
       },
     },
     fonts: [
@@ -1118,7 +1118,7 @@ function SinglePageCheckoutForm({
                     googlePay: "plain",
                   },
                   buttonTheme: {
-                    applePay: "white-outline",
+                    applePay: "white",
                     googlePay: "white",
                   },
                   buttonHeight: 48,

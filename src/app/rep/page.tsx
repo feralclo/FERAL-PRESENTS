@@ -14,6 +14,7 @@ import {
   Flame,
   ArrowUp,
   X,
+  Share2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,7 @@ interface DashboardData {
   leaderboard_position: number | null;
   active_quests: number;
   pending_rewards: number;
-  active_events: { id: string; name: string; sales_count: number; revenue: number }[];
+  active_events: { id: string; name: string; sales_count: number; revenue: number; cover_image?: string }[];
   recent_sales: { id: string; order_number: string; total: number; created_at: string; points_earned?: number }[];
   discount_codes: { code: string }[];
 }
@@ -79,6 +80,53 @@ function useCountUp(target: number, duration: number = 800, enabled: boolean = t
   }, [target, duration, enabled]);
 
   return value;
+}
+
+// ─── SVG Radial Gauge ──────────────────────────────────────────────────────────
+
+const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 30; // r=30
+
+function RadialGauge({
+  value,
+  max,
+  color,
+  icon: Icon,
+  label,
+  displayValue,
+  enabled,
+}: {
+  value: number;
+  max: number;
+  color: string;
+  icon: typeof Zap;
+  label: string;
+  displayValue: string;
+  enabled: boolean;
+}) {
+  const percent = max > 0 ? Math.min(value / max, 1) : 0;
+  const offset = GAUGE_CIRCUMFERENCE * (1 - (enabled ? percent : 0));
+
+  return (
+    <div className="rep-gauge">
+      <div className="rep-gauge-accent" style={{ backgroundColor: color }} />
+      <svg className="rep-gauge-svg" viewBox="0 0 72 72">
+        <circle className="rep-gauge-track" cx="36" cy="36" r="30" />
+        <circle
+          className="rep-gauge-fill"
+          cx="36" cy="36" r="30"
+          stroke={color}
+          strokeDasharray={GAUGE_CIRCUMFERENCE}
+          strokeDashoffset={offset}
+          style={{ "--gauge-color": color } as React.CSSProperties}
+        />
+      </svg>
+      <div className="rep-gauge-center">
+        <Icon size={18} style={{ color, filter: `drop-shadow(0 0 4px ${color}40)` }} />
+      </div>
+      <p className="rep-gauge-label">{label}</p>
+      <p className="rep-gauge-value" style={{ color }}>{displayValue}</p>
+    </div>
+  );
 }
 
 export default function RepDashboardPage() {
@@ -148,6 +196,15 @@ export default function RepDashboardPage() {
     }
   };
 
+  const shareCode = async (code: string) => {
+    try {
+      await navigator.share({ text: `Use my code ${code} for a discount!` });
+    } catch {
+      // Fallback to copy
+      copyCode(code);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
@@ -159,11 +216,11 @@ export default function RepDashboardPage() {
           <Skeleton className="h-2.5 w-48 mt-3 rounded-full" />
         </div>
         {/* Discount code skeleton */}
-        <Skeleton className="h-[110px] rounded-2xl" />
+        <Skeleton className="h-[130px] rounded-2xl" />
         {/* Stats skeleton */}
         <div className="grid grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[96px] rounded-2xl" />
+            <Skeleton key={i} className="h-[160px] rounded-2xl" />
           ))}
         </div>
         {/* Quick links skeleton */}
@@ -205,6 +262,10 @@ export default function RepDashboardPage() {
     ? ((rep.points_balance - data.current_level_points) / levelRange) * 100
     : 100;
   const xpToGo = data.next_level_points ? data.next_level_points - rep.points_balance : 0;
+
+  // Gauge max values (for ring fill proportion)
+  const maxSales = Math.max(rep.total_sales, 50);
+  const maxRank = 20;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
@@ -286,29 +347,36 @@ export default function RepDashboardPage() {
         </div>
       </div>
 
-      {/* ── Discount Code (Hero Weapon Card) ── */}
+      {/* ── Weapon Card (Discount Code) ── */}
       {data.discount_codes.length > 0 && (
-        <Card
+        <div
           className={cn(
-            "py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up",
+            "rep-weapon-card rep-slide-up",
             copyFlash && "rep-copy-flash"
           )}
           style={{ animationDelay: "50ms" }}
         >
-          <CardContent className="p-5">
+          <div className="rep-weapon-grid" />
+          <div className="p-5" style={{ position: "relative", zIndex: 1 }}>
             <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />
               <span
                 className="text-[9px] uppercase tracking-[2px] font-bold px-2 py-0.5 rounded-md"
                 style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
               >
-                Your Code
+                Your Weapon
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <p className="text-2xl font-bold font-mono tracking-[4px] text-foreground flex-1" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.15)" }}>
-                {data.discount_codes[0].code}
-              </p>
+            <p
+              className="text-[28px] font-black font-mono tracking-[6px] text-foreground mb-1"
+              style={{ textShadow: "0 0 24px rgba(139, 92, 246, 0.2)" }}
+            >
+              {data.discount_codes[0].code}
+            </p>
+            <p className="text-[11px] text-muted-foreground mb-4">
+              Share this code — every sale earns you <span className="text-primary font-bold">+10 XP</span>
+            </p>
+            <div className="flex gap-2">
               <Button
                 size="sm"
                 onClick={() => copyCode(data.discount_codes[0].code)}
@@ -316,85 +384,89 @@ export default function RepDashboardPage() {
                 {copiedCode ? <Check size={12} /> : <Copy size={12} />}
                 {copiedCode ? "Copied" : "Copy"}
               </Button>
+              {typeof navigator !== "undefined" && "share" in navigator && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => shareCode(data.discount_codes[0].code)}
+                >
+                  <Share2 size={12} />
+                  Share
+                </Button>
+              )}
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Share this code — every sale earns you points
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* ── Stats Grid (Gaming HUD) ── */}
+      {/* ── Stats Grid — Radial HUD Gauges ── */}
       <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <Link href="/rep/points">
-          <Card className="py-0 gap-0 border-border/40 rep-stat-card rep-stat-glow-purple">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/15">
-                  <Zap size={12} className="text-primary" />
-                </div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">XP</p>
-              </div>
-              <p className="text-3xl font-bold text-foreground font-mono tabular-nums" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.1)" }}>
-                <AnimatedNumber value={rep.points_balance} enabled={statsReady} />
-              </p>
-            </CardContent>
-          </Card>
+          <RadialGauge
+            value={rep.points_balance}
+            max={data.next_level_points || rep.points_balance || 100}
+            color="#8B5CF6"
+            icon={Zap}
+            label="XP"
+            displayValue={String(statsReady ? rep.points_balance : 0)}
+            enabled={statsReady}
+          />
         </Link>
         <Link href="/rep/sales">
-          <Card className="py-0 gap-0 border-border/40 rep-stat-card rep-stat-glow-orange">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-500/15">
-                  <Flame size={12} className="text-orange-400" />
-                </div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sold</p>
-              </div>
-              <p className="text-3xl font-bold text-foreground font-mono tabular-nums" style={{ textShadow: "0 0 20px rgba(249, 115, 22, 0.1)" }}>
-                <AnimatedNumber value={rep.total_sales} enabled={statsReady} />
-              </p>
-            </CardContent>
-          </Card>
+          <RadialGauge
+            value={rep.total_sales}
+            max={maxSales}
+            color="#F97316"
+            icon={Flame}
+            label="Sold"
+            displayValue={String(statsReady ? rep.total_sales : 0)}
+            enabled={statsReady}
+          />
         </Link>
         <Link href="/rep/leaderboard">
-          <Card className="py-0 gap-0 border-border/40 rep-stat-card rep-stat-glow-gold">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/15">
-                  <Trophy size={12} className="text-yellow-500" />
-                </div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Rank</p>
-              </div>
-              <p className="text-3xl font-bold text-foreground font-mono tabular-nums" style={{ textShadow: "0 0 20px rgba(245, 158, 11, 0.1)" }}>
-                #{data.leaderboard_position || "—"}
-              </p>
-            </CardContent>
-          </Card>
+          <RadialGauge
+            value={data.leaderboard_position ? maxRank - data.leaderboard_position + 1 : 0}
+            max={maxRank}
+            color="#F59E0B"
+            icon={Trophy}
+            label="Rank"
+            displayValue={data.leaderboard_position ? `#${data.leaderboard_position}` : "—"}
+            enabled={statsReady}
+          />
         </Link>
       </div>
 
-      {/* ── Active Missions ── */}
+      {/* ── Active Missions (Battle Feed) ── */}
       {data.active_events.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>
-          <div className="rep-section-header">
-            <Flame size={12} className="text-primary" />
-            Active Missions
+          <div className="rep-hud-header">
+            <div className="rep-hud-header-diamond" />
+            <span className="rep-hud-header-text">Active Missions</span>
+            <div className="rep-hud-header-line" />
           </div>
           <div className="space-y-2">
             {data.active_events.map((event) => (
               <Link key={event.id} href="/rep/sales">
-                <Card className="py-0 gap-0 rep-card-lift">
-                  <CardContent className="p-4 flex items-center justify-between">
+                <div className="rep-mission-card">
+                  {/* Ambient event cover image */}
+                  {event.cover_image && (
+                    <div className="rep-mission-ambient">
+                      <img src={event.cover_image} alt="" />
+                    </div>
+                  )}
+                  <div className="rep-mission-content p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="rep-live-dot shrink-0" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{event.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] text-muted-foreground">
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <Flame size={10} className="text-orange-400" />
                             {event.sales_count} ticket{event.sales_count !== 1 ? "s" : ""}
                           </span>
                           {event.revenue > 0 && (
-                            <span className="text-[11px] font-mono text-success">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-success">
+                              <TrendingUp size={10} />
                               £{Number(event.revenue).toFixed(0)}
                             </span>
                           )}
@@ -402,8 +474,8 @@ export default function RepDashboardPage() {
                       </div>
                     </div>
                     <ChevronRight size={16} className="text-muted-foreground shrink-0" />
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </Link>
             ))}
           </div>
@@ -415,7 +487,7 @@ export default function RepDashboardPage() {
         <Link href="/rep/quests">
           <Card className="py-0 gap-0 rep-card-lift" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shrink-0">
                 <Compass size={20} className="text-primary" />
               </div>
               <div className="min-w-0 flex-1">
@@ -436,7 +508,7 @@ export default function RepDashboardPage() {
         <Link href="/rep/rewards">
           <Card className="py-0 gap-0 rep-card-lift" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0">
                 <Gift size={20} className="text-amber-400" />
               </div>
               <div className="min-w-0 flex-1">
@@ -461,9 +533,10 @@ export default function RepDashboardPage() {
       {/* ── Recent Activity (Battle Log) ── */}
       {data.recent_sales.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
-          <div className="rep-section-header">
-            <TrendingUp size={12} />
-            Recent Activity
+          <div className="rep-hud-header">
+            <div className="rep-hud-header-diamond" />
+            <span className="rep-hud-header-text">Recent Activity</span>
+            <div className="rep-hud-header-line" />
           </div>
           <div className="space-y-2">
             {data.recent_sales.map((sale, i) => (

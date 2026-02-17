@@ -10,12 +10,58 @@ import {
   ChevronDown,
   RefreshCw,
   Zap,
+  Flame,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+// ─── SVG Radial Gauge (same pattern as dashboard) ────────────────────────────
+
+const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 30;
+
+function SalesGauge({
+  value,
+  max,
+  color,
+  icon: Icon,
+  label,
+  displayValue,
+}: {
+  value: number;
+  max: number;
+  color: string;
+  icon: typeof Zap;
+  label: string;
+  displayValue: string;
+}) {
+  const percent = max > 0 ? Math.min(value / max, 1) : 0;
+  const offset = GAUGE_CIRCUMFERENCE * (1 - percent);
+
+  return (
+    <div className="rep-gauge">
+      <div className="rep-gauge-accent" style={{ backgroundColor: color }} />
+      <svg className="rep-gauge-svg" viewBox="0 0 72 72">
+        <circle className="rep-gauge-track" cx="36" cy="36" r="30" />
+        <circle
+          className="rep-gauge-fill"
+          cx="36" cy="36" r="30"
+          stroke={color}
+          strokeDasharray={GAUGE_CIRCUMFERENCE}
+          strokeDashoffset={offset}
+          style={{ "--gauge-color": color } as React.CSSProperties}
+        />
+      </svg>
+      <div className="rep-gauge-center">
+        <Icon size={18} style={{ color, filter: `drop-shadow(0 0 4px ${color}40)` }} />
+      </div>
+      <p className="rep-gauge-label">{label}</p>
+      <p className="rep-gauge-value" style={{ color }}>{displayValue}</p>
+    </div>
+  );
+}
 
 interface Sale {
   id: string;
@@ -228,52 +274,43 @@ export default function RepSalesPage() {
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats — Radial HUD Gauges */}
       <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "50ms" }}>
-        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-purple">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/15">
-                <ShoppingBag size={12} className="text-primary" />
-              </div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sales</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground font-mono tabular-nums">{stats.count}</p>
-          </CardContent>
-        </Card>
-        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-green">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-success/15">
-                <Banknote size={12} className="text-success" />
-              </div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Earned</p>
-            </div>
-            <p className="text-2xl font-bold text-success font-mono tabular-nums">
-              {currSymbol}{stats.revenue.toFixed(0)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-blue">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-info/15">
-                <BarChart3 size={12} className="text-info" />
-              </div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Per Order</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground font-mono tabular-nums">
-              {currSymbol}{stats.avgOrder.toFixed(0)}
-            </p>
-          </CardContent>
-        </Card>
+        <SalesGauge
+          value={stats.count}
+          max={Math.max(stats.count, 20)}
+          color="#8B5CF6"
+          icon={ShoppingBag}
+          label="Sales"
+          displayValue={String(stats.count)}
+        />
+        <SalesGauge
+          value={stats.revenue}
+          max={Math.max(stats.revenue, 500)}
+          color="#34D399"
+          icon={Banknote}
+          label="Earned"
+          displayValue={`${currSymbol}${stats.revenue.toFixed(0)}`}
+        />
+        <SalesGauge
+          value={stats.avgOrder}
+          max={Math.max(stats.avgOrder, 100)}
+          color="#38BDF8"
+          icon={BarChart3}
+          label="Avg"
+          displayValue={`${currSymbol}${stats.avgOrder.toFixed(0)}`}
+        />
       </div>
 
       {/* Sales Timeline */}
       {filteredSales.length === 0 ? (
         <div className="text-center py-16 rep-slide-up">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-            <TrendingUp size={22} className="text-primary" />
+          <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
+            <div className="rep-empty-ring" />
+            <div className="rep-empty-ring" />
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+              <TrendingUp size={22} className="text-primary/50" />
+            </div>
           </div>
           <p className="text-sm text-foreground font-medium mb-1">
             {filterEvent !== "all" ? "No sales for this event" : "No sales yet"}
@@ -286,11 +323,13 @@ export default function RepSalesPage() {
         <div className="space-y-5 rep-slide-up" style={{ animationDelay: "100ms" }}>
           {groups.map((group) => (
             <div key={group.label}>
-              <div className="rep-section-header">
-                {group.label}
-                <span className="text-[10px] font-mono font-normal ml-auto">
+              <div className="rep-hud-header">
+                <div className="rep-hud-header-diamond" />
+                <span className="rep-hud-header-text">{group.label}</span>
+                <span className="text-[10px] font-mono text-[var(--rep-text-muted)] ml-1">
                   {group.sales.length} sale{group.sales.length !== 1 ? "s" : ""}
                 </span>
+                <div className="rep-hud-header-line" />
               </div>
               <div className="space-y-2">
                 {group.sales.map((sale, i) => (

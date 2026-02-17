@@ -29,14 +29,17 @@ import { Button } from "@/components/ui/button";
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
   { href: "/rep/leaderboard", label: "Board", icon: Trophy },
-  { href: "/rep/quests", label: "Side Quests", icon: Compass },
+  { href: "/rep/quests", label: "Quests", icon: Compass },
   { href: "/rep/rewards", label: "Rewards", icon: Gift },
 ];
 
-const MOBILE_NAV_ITEMS = [
+// HUD bar: 2 left items, center hub (Quests), 2 right items
+const HUD_LEFT = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
   { href: "/rep/leaderboard", label: "Board", icon: Trophy },
-  { href: "/rep/quests", label: "Quests", icon: Compass },
+];
+const HUD_CENTER = { href: "/rep/quests", label: "Quests", icon: Compass };
+const HUD_RIGHT = [
   { href: "/rep/rewards", label: "Rewards", icon: Gift },
   { href: "/rep/profile", label: "Me", icon: User },
 ];
@@ -64,6 +67,13 @@ interface RepAuthState {
   firstName?: string;
 }
 
+interface RepStats {
+  xp: number;
+  level: number;
+  rank: number | null;
+  active_quests: number;
+}
+
 export default function RepLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -72,6 +82,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<RepAuthState>({
     status: isPublicPage ? "active" : "loading",
   });
+  const [repStats, setRepStats] = useState<RepStats | null>(null);
 
   /* Fetch org branding for tenant name/logo */
   useEffect(() => {
@@ -139,7 +150,11 @@ export default function RepLayout({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Active and verified
+        // Active and verified — store stats if available
+        if (json.stats) {
+          setRepStats(json.stats);
+        }
+
         setAuthState({ status: "active" });
       } catch {
         if (!cancelled) {
@@ -234,6 +249,20 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </nav>
           </div>
           <div className="flex items-center gap-3">
+            {/* Desktop stats strip */}
+            {repStats && (
+              <div className="flex items-center gap-2 mr-2">
+                <span className="rep-xp-pill">
+                  <Zap size={11} />
+                  {repStats.xp.toLocaleString()}
+                </span>
+                {repStats.rank && (
+                  <span className="text-[11px] font-bold font-mono text-[var(--rep-gold)] tabular-nums">
+                    #{repStats.rank}
+                  </span>
+                )}
+              </div>
+            )}
             <NotificationCenter />
             <Link
               href="/rep/profile"
@@ -250,7 +279,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         </header>
       )}
 
-      {/* Mobile top bar */}
+      {/* Mobile top bar — Status HUD */}
       {showNav && (
         <div className="relative md:hidden">
           <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),16px)] pb-3">
@@ -263,60 +292,126 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                 </span>
               )}
             </Link>
-            <NotificationCenter />
+            <div className="flex items-center gap-2">
+              {/* XP + Level pills */}
+              {repStats && (
+                <>
+                  <span className="rep-xp-pill">
+                    <Zap size={10} />
+                    {repStats.xp.toLocaleString()}
+                  </span>
+                  <span
+                    className="rep-level-pill"
+                    style={{
+                      backgroundColor: getLevelColor(repStats.level) + "15",
+                      color: getLevelColor(repStats.level),
+                      border: `1px solid ${getLevelColor(repStats.level)}30`,
+                    }}
+                  >
+                    Lv.{repStats.level}
+                  </span>
+                </>
+              )}
+              <NotificationCenter />
+            </div>
           </div>
-          {/* Subtle gradient line */}
-          <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-[var(--rep-border)] to-transparent" />
+          {/* Purple gradient edge line */}
+          <div className="rep-top-bar-line" />
         </div>
       )}
 
       {/* Main content */}
       <main className={cn(
-        showNav && "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6",
+        showNav && "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6",
         "rep-page-enter"
       )} key={pathname}>
         {children}
       </main>
 
-      {/* Mobile bottom tab bar — gaming HUD */}
+      {/* Mobile bottom nav — HUD Command Bar */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
-          <nav className="flex items-center justify-around rounded-2xl border border-white/[0.08] bg-[#0c0c12]/92 backdrop-blur-2xl shadow-[0_-4px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] py-2.5 pointer-events-auto">
-            {MOBILE_NAV_ITEMS.map((item) => {
+          <nav className="rep-hud-bar pointer-events-auto">
+            {/* Left items */}
+            {HUD_LEFT.map((item) => {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "relative flex flex-col items-center justify-center w-14 gap-1 transition-all duration-200",
-                    active
-                      ? "text-primary"
-                      : "text-[#444455] active:text-[#666677]"
+                <Link key={item.href} href={item.href} className="rep-hud-item">
+                  {active ? (
+                    <div className="rep-hud-item-active-bg">
+                      <Icon
+                        size={19}
+                        strokeWidth={2.5}
+                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
+                      />
+                    </div>
+                  ) : (
+                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
                   )}
-                >
-                  {/* Radial glow behind active icon */}
-                  {active && <span className="rep-nav-glow" />}
-                  <Icon
-                    size={21}
-                    strokeWidth={active ? 2.5 : 1.5}
-                    className={cn(
-                      "relative z-10 transition-transform duration-200",
-                      active && "scale-110 drop-shadow-[0_0_8px_rgba(139,92,246,0.5)]"
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "text-[9px] font-semibold tracking-wide relative z-10",
-                      active
-                        ? "text-primary"
-                        : "text-[#444455]"
-                    )}
-                    style={active ? { textShadow: "0 0 8px rgba(139, 92, 246, 0.3)" } : undefined}
-                  >
+                  <span className={cn(
+                    "text-[9px] font-semibold tracking-wide",
+                    active ? "text-primary" : "text-[#444455]"
+                  )}>
                     {item.label}
                   </span>
+                  {active && <span className="rep-hud-dot" />}
+                </Link>
+              );
+            })}
+
+            {/* Center hub — Quests */}
+            {(() => {
+              const active = matchRoute(pathname, HUD_CENTER.href);
+              const Icon = HUD_CENTER.icon;
+              return (
+                <Link
+                  href={HUD_CENTER.href}
+                  className={cn("rep-hud-hub", active && "rep-hud-hub-active")}
+                >
+                  <div className="rep-hud-hub-circle">
+                    <Icon size={24} strokeWidth={2} className="text-white" />
+                    {/* Quest count badge */}
+                    {repStats && repStats.active_quests > 0 && (
+                      <span className="rep-hud-badge">
+                        {repStats.active_quests > 9 ? "9+" : repStats.active_quests}
+                      </span>
+                    )}
+                  </div>
+                  <span className={cn(
+                    "rep-hud-hub-label",
+                    active ? "text-primary" : "text-[#444455]"
+                  )}>
+                    {HUD_CENTER.label}
+                  </span>
+                </Link>
+              );
+            })()}
+
+            {/* Right items */}
+            {HUD_RIGHT.map((item) => {
+              const active = matchRoute(pathname, item.href);
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href} className="rep-hud-item">
+                  {active ? (
+                    <div className="rep-hud-item-active-bg">
+                      <Icon
+                        size={19}
+                        strokeWidth={2.5}
+                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
+                      />
+                    </div>
+                  ) : (
+                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
+                  )}
+                  <span className={cn(
+                    "text-[9px] font-semibold tracking-wide",
+                    active ? "text-primary" : "text-[#444455]"
+                  )}>
+                    {item.label}
+                  </span>
+                  {active && <span className="rep-hud-dot" />}
                 </Link>
               );
             })}
@@ -325,6 +420,15 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       )}
     </div>
   );
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function getLevelColor(level: number): string {
+  if (level >= 9) return "#F59E0B";
+  if (level >= 7) return "#8B5CF6";
+  if (level >= 4) return "#38BDF8";
+  return "#94A3B8";
 }
 
 // ─── Notification Center ─────────────────────────────────────────────────────

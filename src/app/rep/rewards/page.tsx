@@ -225,7 +225,7 @@ export default function RepRewardsPage() {
           <h1 className="text-xl font-bold text-foreground">Rewards</h1>
           <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow">
+        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow rep-balance-breathe">
           <div className="flex items-center gap-1.5 mb-1">
             <Zap size={12} className="text-primary" />
             <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
@@ -370,12 +370,17 @@ export default function RepRewardsPage() {
                 const soldOut = reward.total_available != null && reward.total_claimed >= reward.total_available;
                 const remaining = reward.total_available != null ? reward.total_available - reward.total_claimed : null;
 
+                // Tier glow based on cost
+                const cost = reward.points_cost || 0;
+                const glowClass = claimed ? "" : cost >= 500 ? "rep-reward-glow-legendary" : cost >= 200 ? "rep-reward-glow-high" : cost >= 50 ? "rep-reward-glow-mid" : "rep-reward-glow-low";
+
                 return (
                   <Card
                     key={reward.id}
                     className={cn(
                       "py-0 gap-0 overflow-hidden rep-card-lift",
-                      claimed ? "border-success/30" : "border-border/40"
+                      claimed ? "border-success/30" : "border-border/40",
+                      glowClass
                     )}
                   >
                     {reward.image_url && (
@@ -684,8 +689,12 @@ function EmptyState({
 }) {
   return (
     <div className="text-center py-16">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-        <Icon size={22} className="text-primary" />
+      <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
+        <div className="rep-empty-ring" />
+        <div className="rep-empty-ring" />
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+          <Icon size={22} className="text-primary/50" />
+        </div>
       </div>
       <p className="text-sm text-foreground font-medium mb-1">{text}</p>
       <p className="text-xs text-muted-foreground">{sub}</p>

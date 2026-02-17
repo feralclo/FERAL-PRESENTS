@@ -233,9 +233,9 @@ function AllTimeLeaderboard() {
 
   return (
     <div className="rep-fade-in">
-      {/* Your Position Card */}
+      {/* Your Position Card — animated gradient border */}
       {myPosition && (
-        <div className="mb-5 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-5 text-center rep-card-reveal">
+        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-position-card">
           <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1.5">Your Position</p>
           <div className="flex items-center justify-center gap-3">
             <p className="text-4xl font-bold font-mono text-[var(--rep-accent)]" style={{ textShadow: "0 0 24px rgba(139, 92, 246, 0.2)" }}>
@@ -466,7 +466,13 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
         isLive ? "rep-event-live" : event.locked ? "rep-event-locked" : ""
       }`}
     >
-      <div className="p-4">
+      {/* Ambient cover image */}
+      {event.cover_image && (
+        <div className="rep-event-ambient">
+          <img src={event.cover_image} alt="" />
+        </div>
+      )}
+      <div className="p-4 relative z-[1]">
         {/* Event header */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
@@ -646,9 +652,9 @@ function EventLeaderboardView({
         )}
       </div>
 
-      {/* Your position */}
+      {/* Your position — animated gradient border */}
       {data.current_position && (
-        <div className="mb-4 rounded-2xl border border-[var(--rep-accent)]/20 bg-[var(--rep-accent)]/5 p-4 text-center rep-card-reveal">
+        <div className="mb-4 rounded-2xl p-4 text-center rep-card-reveal rep-position-card">
           <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1">Your Position</p>
           <div className="flex items-center justify-center gap-2">
             <p className="text-3xl font-bold font-mono text-[var(--rep-accent)]" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.2)" }}>
@@ -868,8 +874,12 @@ function LeaderboardSkeleton() {
 function EmptyLeaderboard() {
   return (
     <div className="text-center py-16">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-gold)]/10 mb-4">
-        <Trophy size={22} className="text-[var(--rep-gold)]" />
+      <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
+        <div className="rep-empty-ring" />
+        <div className="rep-empty-ring" />
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-gold)]/10">
+          <Trophy size={22} className="text-[var(--rep-gold)]/50" />
+        </div>
       </div>
       <p className="text-sm text-foreground font-medium mb-1">No entries yet</p>
       <p className="text-xs text-[var(--rep-text-muted)]">Be the first to make a sale!</p>

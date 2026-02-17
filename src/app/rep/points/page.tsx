@@ -17,6 +17,41 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
+// ─── Hero Radial Gauge ────────────────────────────────────────────────────────
+
+const HERO_CIRCUMFERENCE = 2 * Math.PI * 50;
+
+function HeroGauge({ value, max, color }: { value: number; max: number; color: string }) {
+  const percent = max > 0 ? Math.min(value / max, 1) : 0;
+  const offset = HERO_CIRCUMFERENCE * (1 - percent);
+
+  return (
+    <div className="rep-gauge rep-gauge-hero" style={{ background: "transparent", border: "none" }}>
+      <svg className="rep-gauge-svg" viewBox="0 0 120 120">
+        <circle className="rep-gauge-track" cx="60" cy="60" r="50" strokeWidth="6" />
+        <circle
+          className="rep-gauge-fill"
+          cx="60" cy="60" r="50"
+          stroke={color}
+          strokeDasharray={HERO_CIRCUMFERENCE}
+          strokeDashoffset={offset}
+          strokeWidth="6"
+          strokeLinecap="round"
+          style={{ "--gauge-color": color } as React.CSSProperties}
+        />
+      </svg>
+      <div className="rep-gauge-center" style={{ top: 0, width: 120, height: 120 }}>
+        <div className="text-center">
+          <Zap size={16} className="mx-auto mb-1" style={{ color }} />
+          <p className="text-2xl font-bold font-mono tabular-nums" style={{ color, textShadow: `0 0 16px ${color}40` }}>
+            {value}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface PointsEntry {
   id: string;
   points: number;
@@ -166,19 +201,12 @@ export default function RepPointsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
-      {/* Header with balance */}
-      <div className="flex items-center justify-between rep-slide-up">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Points</h1>
-          <p className="text-sm text-muted-foreground">Your points history</p>
-        </div>
-        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Zap size={12} className="text-primary" />
-            <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
-          </div>
-          <p className="text-xl font-bold font-mono text-primary tabular-nums" style={{ textShadow: "0 0 16px rgba(139, 92, 246, 0.2)" }}>{myPoints}</p>
-        </div>
+      {/* Header with hero gauge */}
+      <div className="text-center rep-slide-up">
+        <h1 className="text-xl font-bold text-foreground mb-1">Points</h1>
+        <p className="text-sm text-muted-foreground mb-4">Your points history</p>
+        <HeroGauge value={myPoints} max={Math.max(totalEarned, myPoints, 100)} color="#8B5CF6" />
+        <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold mt-2">Balance</p>
       </div>
 
       {/* Earned / Spent summary */}
@@ -210,8 +238,12 @@ export default function RepPointsPage() {
       {/* Points Timeline */}
       {entries.length === 0 ? (
         <div className="text-center py-16 rep-slide-up">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-            <Zap size={22} className="text-primary" />
+          <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
+            <div className="rep-empty-ring" />
+            <div className="rep-empty-ring" />
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+              <Zap size={22} className="text-primary/50" />
+            </div>
           </div>
           <p className="text-sm text-foreground font-medium mb-1">No points activity yet</p>
           <p className="text-xs text-muted-foreground">Earn points by making sales and completing quests</p>

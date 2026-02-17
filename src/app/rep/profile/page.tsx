@@ -42,11 +42,11 @@ interface RepProfile {
   total_sales: number;
 }
 
-function getTierFromLevel(level: number): { name: string; ring: string; color: string } {
-  if (level >= 9) return { name: "Mythic", ring: "rep-avatar-ring-mythic", color: "#F59E0B" };
-  if (level >= 7) return { name: "Elite", ring: "rep-avatar-ring-elite", color: "#8B5CF6" };
-  if (level >= 4) return { name: "Pro", ring: "rep-avatar-ring-pro", color: "#38BDF8" };
-  return { name: "Starter", ring: "rep-avatar-ring-starter", color: "#94A3B8" };
+function getTierFromLevel(level: number): { name: string; ring: string; color: string; profileRing: string } {
+  if (level >= 9) return { name: "Mythic", ring: "rep-avatar-ring-mythic", color: "#F59E0B", profileRing: "rep-profile-ring rep-profile-ring-mythic" };
+  if (level >= 7) return { name: "Elite", ring: "rep-avatar-ring-elite", color: "#8B5CF6", profileRing: "rep-profile-ring rep-profile-ring-elite" };
+  if (level >= 4) return { name: "Pro", ring: "rep-avatar-ring-pro", color: "#38BDF8", profileRing: "rep-profile-ring rep-profile-ring-pro" };
+  return { name: "Starter", ring: "rep-avatar-ring-starter", color: "#94A3B8", profileRing: "rep-profile-ring rep-profile-ring-starter" };
 }
 
 // TikTok icon (not in lucide)
@@ -354,7 +354,7 @@ export default function RepProfilePage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="relative inline-block group"
+                className={cn("relative inline-block group", tier.profileRing)}
                 aria-label="Change profile photo"
               >
                 <div className={cn(

@@ -74,6 +74,45 @@ export async function GET() {
       );
     }
 
+    // For active reps, include stats for the HUD top bar (no extra API call needed)
+    let stats: { xp: number; level: number; rank: number | null; active_quests: number } | undefined;
+    if (rep.status === "active") {
+      try {
+        // Fetch full rep record for points/level
+        const { data: fullRep } = await adminDb
+          .from(TABLES.REPS)
+          .select("points_balance, level")
+          .eq("id", rep.id)
+          .single();
+
+        // Get rank (position among active reps by total_sales desc)
+        const { data: rankData } = await adminDb
+          .from(TABLES.REPS)
+          .select("id")
+          .eq("org_id", ORG_ID)
+          .eq("status", "active")
+          .order("total_sales", { ascending: false });
+
+        const rankIndex = rankData?.findIndex((r: { id: string }) => r.id === rep.id) ?? -1;
+
+        // Count active quests assigned to this rep
+        const { count: questCount } = await adminDb
+          .from(TABLES.REP_QUESTS)
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", ORG_ID)
+          .eq("status", "active");
+
+        stats = {
+          xp: fullRep?.points_balance || 0,
+          level: fullRep?.level || 1,
+          rank: rankIndex >= 0 ? rankIndex + 1 : null,
+          active_quests: questCount || 0,
+        };
+      } catch {
+        // Stats are best-effort — don't fail the auth check
+      }
+    }
+
     return NextResponse.json({
       authenticated: true,
       rep: {
@@ -83,6 +122,7 @@ export async function GET() {
         status: rep.status,
         onboarding_completed: rep.onboarding_completed,
       },
+      ...(stats && { stats }),
     });
   } catch (err) {
     console.error("[auth-check] Error:", err);

@@ -1494,3 +1494,631 @@ body:has([data-rep]) > .noise {
   from { opacity: 0; transform: translateY(-20px) scale(0.9); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   HUD COMMAND BAR (Bottom Nav)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-hud-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(12, 12, 18, 0.94);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 -4px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 -1px 0 rgba(139, 92, 246, 0.08);
+  padding: 0 8px;
+  padding-bottom: 6px;
+  padding-top: 10px;
+  position: relative;
+}
+
+/* Regular nav items */
+.rep-hud-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  gap: 3px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  position: relative;
+  padding-bottom: 2px;
+}
+
+/* Active icon container */
+.rep-hud-item-active-bg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
+}
+
+/* Active glow dot beneath icon */
+.rep-hud-dot {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rep-accent);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+}
+
+/* Center hub button (Quests) */
+.rep-hud-hub {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -20px;
+  z-index: 2;
+  text-decoration: none;
+}
+
+.rep-hud-hub-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7C3AED, #8B5CF6);
+  box-shadow:
+    0 4px 20px rgba(139, 92, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+.rep-hud-hub-circle:active {
+  transform: scale(0.95);
+}
+
+/* Animated border glow when active */
+.rep-hud-hub-active .rep-hud-hub-circle {
+  box-shadow:
+    0 4px 24px rgba(139, 92, 246, 0.5),
+    0 0 40px rgba(139, 92, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  animation: hubGlow 2.5s ease-in-out infinite;
+}
+@keyframes hubGlow {
+  0%, 100% { box-shadow: 0 4px 24px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+  50% { box-shadow: 0 4px 32px rgba(139, 92, 246, 0.6), 0 0 60px rgba(139, 92, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+}
+
+/* Quest count badge on hub */
+.rep-hud-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #F43F5E;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 4px;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.4);
+  animation: badgeSpring 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes badgeSpring {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+.rep-hud-hub-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   STATUS HUD (Top Bar Pills)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-top-bar-line {
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.15), transparent);
+}
+
+.rep-xp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rep-accent);
+}
+
+.rep-level-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RADIAL HUD GAUGES
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-gauge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px 12px;
+  border-radius: 16px;
+  background: var(--rep-card);
+  border: 1px solid var(--rep-border);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rep-gauge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.rep-gauge-svg {
+  width: 72px;
+  height: 72px;
+  transform: rotate(-90deg);
+}
+
+.rep-gauge-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.04);
+  stroke-width: 5;
+}
+
+.rep-gauge-fill {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 0 4px var(--gauge-color));
+}
+
+.rep-gauge-center {
+  position: absolute;
+  top: 16px;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rep-gauge-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rep-text-muted);
+  margin-top: 8px;
+}
+
+.rep-gauge-value {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* Top accent stripe per gauge */
+.rep-gauge-accent {
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  opacity: 0.5;
+}
+
+/* Hero gauge (larger, for points page) */
+.rep-gauge-hero .rep-gauge-svg {
+  width: 120px;
+  height: 120px;
+}
+.rep-gauge-hero .rep-gauge-center {
+  width: 120px;
+  height: 120px;
+}
+.rep-gauge-hero .rep-gauge-fill {
+  stroke-width: 6;
+}
+.rep-gauge-hero .rep-gauge-track {
+  stroke-width: 6;
+}
+.rep-gauge-hero .rep-gauge-value {
+  font-size: 28px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   WEAPON CARD (Discount Code)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-weapon-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid transparent;
+}
+
+.rep-weapon-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.5),
+    rgba(139, 92, 246, 0.12),
+    rgba(167, 139, 250, 0.4),
+    rgba(139, 92, 246, 0.12),
+    rgba(139, 92, 246, 0.5)
+  );
+  background-size: 300% 300%;
+  animation: weaponBorderCycle 3s ease-in-out infinite;
+  z-index: 0;
+}
+
+.rep-weapon-card::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: var(--rep-card);
+  z-index: 0;
+}
+
+.rep-weapon-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes weaponBorderCycle {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Grid pattern overlay */
+.rep-weapon-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.03;
+  background-image:
+    linear-gradient(rgba(139, 92, 246, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 92, 246, 0.5) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MISSION CARDS (Active Events with Ambient Images)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-mission-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--rep-card);
+  border: 1px solid var(--rep-border);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rep-mission-card:hover {
+  border-color: rgba(52, 211, 153, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.rep-mission-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.rep-mission-ambient img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.15;
+  filter: blur(1px) brightness(0.8);
+}
+.rep-mission-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    var(--rep-card) 0%,
+    rgba(17, 17, 24, 0.7) 40%,
+    rgba(17, 17, 24, 0.5) 100%
+  );
+}
+
+.rep-mission-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HUD SECTION HEADERS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-hud-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.rep-hud-header-diamond {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  background: var(--rep-accent);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.rep-hud-header-text {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--rep-text-muted);
+  white-space: nowrap;
+}
+
+.rep-hud-header-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(139, 92, 246, 0.3), transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   UPGRADED TAB BAR
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-tab.active {
+  background: linear-gradient(135deg, var(--rep-accent), #7C3AED);
+  color: #fff;
+  box-shadow:
+    0 2px 12px rgba(139, 92, 246, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: tabActivate 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes tabActivate {
+  0% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EMPTY STATES (Pulsing Rings)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-empty-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rep-empty-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  animation: emptyRingPulse 3s ease-in-out infinite;
+}
+.rep-empty-ring:nth-child(2) {
+  inset: -16px;
+  animation-delay: 0.5s;
+}
+@keyframes emptyRingPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REWARD TIER GLOW (Shop Items)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-reward-glow-low {
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+.rep-reward-glow-mid {
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.15) !important;
+}
+.rep-reward-glow-high {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+.rep-reward-glow-legendary {
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.25) !important;
+  animation: rewardGlowLegendary 3s ease-in-out infinite;
+}
+@keyframes rewardGlowLegendary {
+  0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.1); }
+  50% { box-shadow: 0 0 32px rgba(245, 158, 11, 0.2); }
+}
+
+/* Breathing balance pill */
+.rep-balance-breathe {
+  animation: balanceBreathe 3s ease-in-out infinite;
+}
+@keyframes balanceBreathe {
+  0%, 100% { box-shadow: 0 0 12px rgba(139, 92, 246, 0.08); }
+  50% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.18); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEADERBOARD POSITION CARD GRADIENT BORDER
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-position-card {
+  position: relative;
+  overflow: hidden;
+  border-color: transparent !important;
+}
+.rep-position-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.5),
+    rgba(139, 92, 246, 0.12),
+    rgba(167, 139, 250, 0.4),
+    rgba(139, 92, 246, 0.12),
+    rgba(139, 92, 246, 0.5)
+  );
+  background-size: 300% 300%;
+  animation: gradientBorderPrimary 3s ease-in-out infinite;
+  z-index: -1;
+}
+.rep-position-card::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), var(--rep-card));
+  z-index: -1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EVENT CARD AMBIENT IMAGE
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-event-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.rep-event-ambient img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.12;
+  filter: blur(1px) brightness(0.7);
+}
+.rep-event-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    var(--rep-card) 30%,
+    rgba(17, 17, 24, 0.6) 100%
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROFILE ENHANCED TIER RING
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-profile-ring {
+  position: relative;
+}
+.rep-profile-ring::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  opacity: 0.3;
+  animation: profileRingPulse 3s ease-in-out infinite;
+}
+.rep-profile-ring-starter::after {
+  border-color: rgba(148, 163, 184, 0.3);
+}
+.rep-profile-ring-pro::after {
+  border-color: rgba(56, 189, 248, 0.3);
+}
+.rep-profile-ring-elite::after {
+  border-color: rgba(139, 92, 246, 0.3);
+}
+.rep-profile-ring-mythic::after {
+  border-color: rgba(245, 158, 11, 0.3);
+  animation: profileRingPulse 3s ease-in-out infinite, avatarMythicGlow 3s ease-in-out infinite;
+}
+@keyframes profileRingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.06); opacity: 0.6; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .rep-hud-hub-active .rep-hud-hub-circle,
+  .rep-hud-badge,
+  .rep-gauge-fill,
+  .rep-weapon-card::before,
+  .rep-balance-breathe,
+  .rep-position-card::before,
+  .rep-reward-glow-legendary,
+  .rep-profile-ring::after,
+  .rep-empty-ring,
+  .rep-quest-common,
+  .rep-quest-rare,
+  .rep-quest-epic,
+  .rep-quest-legendary,
+  .rep-quest-legendary::before,
+  .rep-badge-shimmer::after,
+  .rep-xp-fill::after,
+  .rep-avatar-ring-mythic,
+  .rep-nav-glow,
+  .rep-contested-border::before,
+  .rep-confetti-piece,
+  .rep-success-particle,
+  .rep-level-up-ring,
+  .rep-level-up-badge {
+    animation: none !important;
+  }
+  .rep-gauge-fill {
+    transition: none !important;
+  }
+}

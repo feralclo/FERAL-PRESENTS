@@ -299,7 +299,7 @@ export function MidnightTicketWidget({
           if (!open) setSizePopup(null);
         }}
       >
-        <DialogContent className="max-w-[360px] text-center rounded-2xl">
+        <DialogContent data-theme="midnight" className="max-w-[360px] text-center rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-[family-name:var(--font-sans)] text-sm font-bold tracking-[0.02em] uppercase text-platinum">
               Select Your Size

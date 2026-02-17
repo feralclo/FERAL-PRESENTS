@@ -424,11 +424,14 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
-   MERCH MODAL — Close button + viewer glow
+   MERCH MODAL — Close button
+   Note: data-theme="midnight" is on the DialogContent
+   itself (same element as .midnight-merch-dialog),
+   not a parent, so selectors use the compound form.
    ═══════════════════════════════════════════════ */
 
-/* Close button — bigger, visible, glass background */
-[data-theme="midnight"] .midnight-merch-dialog > button:last-child {
+/* Close button — bigger, visible, matches the frame */
+.midnight-merch-dialog > button:last-child {
   width: 36px;
   height: 36px;
   display: flex;
@@ -438,42 +441,19 @@ body:has([data-theme="midnight"]) .header {
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 10px;
   opacity: 1;
-  top: 10px;
-  right: 10px;
+  top: 12px;
+  right: 12px;
   transition: background 0.2s, border-color 0.2s;
 }
 
-[data-theme="midnight"] .midnight-merch-dialog > button:last-child:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(255, 255, 255, 0.18);
+.midnight-merch-dialog > button:last-child:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.20);
 }
 
-[data-theme="midnight"] .midnight-merch-dialog > button:last-child svg {
+.midnight-merch-dialog > button:last-child svg {
   width: 18px;
   height: 18px;
-}
-
-/* Viewer — subtle radial glow */
-[data-theme="midnight"] .midnight-merch-viewer {
-  background: radial-gradient(
-    ellipse at center,
-    color-mix(in srgb, var(--color-primary) 8%, transparent) 0%,
-    transparent 70%
-  );
-  position: relative;
-}
-
-[data-theme="midnight"] .midnight-merch-viewer::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse at center,
-    color-mix(in srgb, var(--color-primary) 12%, transparent) 0%,
-    transparent 60%
-  );
-  animation: glowPulse 3s ease-in-out infinite;
-  pointer-events: none;
 }
 
 
@@ -648,7 +628,6 @@ body:has([data-theme="midnight"]) .header {
 @media (prefers-reduced-motion: reduce) {
   [data-theme="midnight"] .midnight-metallic-platinum::after,
   [data-theme="midnight"] .midnight-metallic-obsidian::after,
-  [data-theme="midnight"] .midnight-merch-viewer::before,
   [data-theme="midnight"] .midnight-qty-pop,
   [data-theme="midnight"] .midnight-cta-ready,
   [data-theme="midnight"] .midnight-reveal-glow {

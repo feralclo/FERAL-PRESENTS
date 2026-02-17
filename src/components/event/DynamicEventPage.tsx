@@ -14,6 +14,7 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
+import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -26,24 +27,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const { trackViewContent: gtmTrackViewContent } = useDataLayer();
   const { settings } = useSettings();
   const branding = useBranding();
-
-  // Single scroll handler: transparent over hero, solid once past it.
-  // No hide-on-scroll — header stays visible to avoid janky bounce.
-  const [pastHero, setPastHero] = useState(false);
-  useEffect(() => {
-    let ticking = false;
-    function onScroll() {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        setPastHero(window.scrollY > window.innerHeight * 0.5);
-        ticking = false;
-      });
-    }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const headerHidden = useHeaderScroll();
 
   // Track PageView + ViewContent on mount (skip in editor preview)
   useEffect(() => {
@@ -123,11 +107,8 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
 
   return (
     <>
-      {/* Navigation — no announcement banner on event pages, no hide-on-scroll */}
-      <header
-        className={`header header--event${!pastHero ? " header--transparent" : ""}`}
-        id="header"
-      >
+      {/* Navigation — same as landing page, no announcement banner */}
+      <header className={`header${headerHidden ? " header--hidden" : ""}`} id="header">
         <Header />
       </header>
 

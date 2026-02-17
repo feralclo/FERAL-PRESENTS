@@ -23,21 +23,12 @@
   transform: translateY(-100%);
 }
 
-/* Event page header — no announcement banner, smooth bg transition */
-.header--event {
-  transition: transform var(--transition-base), background 0.4s ease, backdrop-filter 0.4s ease, border-color 0.4s ease;
-}
-
-/* Transparent header — floats over hero on event pages */
+/* Transparent header variant (available for themes that need it) */
 .header--transparent {
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border-bottom: 1px solid transparent;
-}
-
-.header--transparent .nav__logo-img {
-  height: 36px;
 }
 
 .nav {
@@ -260,11 +251,4 @@
     letter-spacing: 0.1em;
   }
 
-  .header--transparent .nav__logo-img {
-    height: 28px;
-  }
-
-  .header--event .nav {
-    height: 60px;
-  }
 }

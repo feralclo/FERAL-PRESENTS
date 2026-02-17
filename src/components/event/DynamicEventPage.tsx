@@ -14,7 +14,6 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
-import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import type { Event, TicketTypeRow } from "@/types/events";
 
 interface DynamicEventPageProps {
@@ -27,13 +26,19 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
   const { trackViewContent: gtmTrackViewContent } = useDataLayer();
   const { settings } = useSettings();
   const branding = useBranding();
-  const headerHidden = useHeaderScroll();
 
-  // Track whether user has scrolled past the hero for header transparency
+  // Single scroll handler: transparent over hero, solid once past it.
+  // No hide-on-scroll — header stays visible to avoid janky bounce.
   const [pastHero, setPastHero] = useState(false);
   useEffect(() => {
+    let ticking = false;
     function onScroll() {
-      setPastHero(window.scrollY > window.innerHeight * 0.6);
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setPastHero(window.scrollY > window.innerHeight * 0.5);
+        ticking = false;
+      });
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -118,32 +123,11 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
 
   return (
     <>
-      {/* Navigation */}
+      {/* Navigation — no announcement banner on event pages, no hide-on-scroll */}
       <header
-        className={`header${!pastHero ? " header--transparent" : ""}${headerHidden ? " header--hidden" : ""}`}
+        className={`header header--event${!pastHero ? " header--transparent" : ""}`}
         id="header"
       >
-        <div className="announcement-banner">
-          <span className="announcement-banner__shield">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
-                style={{ fill: "var(--text-primary, #fff)" }}
-              />
-              <path
-                d="M10 15.5l-3.5-3.5 1.41-1.41L10 12.67l5.59-5.59L17 8.5l-7 7z"
-                style={{ fill: "var(--accent, #ff0033)" }}
-              />
-            </svg>
-          </span>
-          <span className="announcement-banner__verified">
-            Official {branding.org_name || "FERAL"} ticket store
-          </span>
-        </div>
         <Header />
       </header>
 

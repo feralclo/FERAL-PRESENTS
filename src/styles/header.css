@@ -23,16 +23,17 @@
   transform: translateY(-100%);
 }
 
-/* Transparent header — floats over hero on event pages */
-.header--transparent {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 60%, transparent 100%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-bottom: none;
+/* Event page header — no announcement banner, smooth bg transition */
+.header--event {
+  transition: transform var(--transition-base), background 0.4s ease, backdrop-filter 0.4s ease, border-color 0.4s ease;
 }
 
-.header--transparent .announcement-banner {
-  display: none;
+/* Transparent header — floats over hero on event pages */
+.header--transparent {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 1px solid transparent;
 }
 
 .header--transparent .nav__logo-img {
@@ -261,5 +262,9 @@
 
   .header--transparent .nav__logo-img {
     height: 28px;
+  }
+
+  .header--event .nav {
+    height: 60px;
   }
 }

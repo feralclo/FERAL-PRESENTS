@@ -47,7 +47,7 @@ export function BottomBar({
             </span>
           ) : (
             <span className="bottom-bar__subtitle">
-              Incl. booking fee. No surprises.
+              Incl. fees
             </span>
           )}
         </div>

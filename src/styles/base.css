@@ -15,14 +15,14 @@
      These are overridden by tenant branding (injected server-side via event layout).
      The editor's ThemeEditorBridge also sets these via postMessage for live preview.
      All existing CSS consumes them through the palette aliases below. */
-  --accent: #D4A853;
-  --bg-dark: #0A0A0F;
-  --card-bg: #14141C;
-  --card-border: #1E1E2A;
-  --text-primary: #F0F0F5;
-  --text-secondary: #8A8A9A;
-  --text-muted: #55556A;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --accent: #ff0033;
+  --bg-dark: #0a0a0a;
+  --card-bg: #111113;
+  --card-border: #1e1e22;
+  --text-primary: #ffffff;
+  --text-secondary: #999999;
+  --text-muted: #555555;
+  --font-mono: 'Space Mono', monospace;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* ── Derived accent variables (auto-adapt when tenant overrides --accent) ── */
@@ -31,17 +31,16 @@
   --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
   --accent-subtle: color-mix(in srgb, var(--accent) 8%, transparent);
 
-  /* ── Surface & border tokens ── */
-  --bg-elevated: #12121A;
-  --surface-glass: rgba(20, 20, 30, 0.6);
-  --surface-hover: rgba(255, 255, 255, 0.04);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-medium: rgba(255, 255, 255, 0.12);
+  /* ── CTA tokens (white button, stable across branding overrides) ── */
+  --cta-bg: #fff;
+  --cta-text: #111;
+  --cta-hover: #f0f0f0;
+  --cta-active: #e5e5e5;
 
   /* ── Palette aliases (derive from theme variables) ──
      Existing CSS uses these names; they automatically pick up theme changes. */
   --black: #000000;
-  --white: #F0F0F5;
+  --white: #ffffff;
   --red: var(--accent);
   --red-dark: color-mix(in srgb, var(--accent) 80%, black);
   --red-glow: color-mix(in srgb, var(--accent) 30%, transparent);
@@ -67,7 +66,7 @@
   --valentine-pink: #ff7eb3;
   --valentine-glow: rgba(232, 54, 93, 0.4);
 
-  --banner-height: 30px;
+  --banner-height: 0px;
   --header-height: 80px;
   --container-max: 1200px;
   --transition-fast: 0.15s ease;
@@ -82,8 +81,8 @@
   --radius-xl: 20px;
 
   /* Shadow scale */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.5);
+  --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.7);
 }
 
 html {
@@ -117,7 +116,7 @@ img {
 
 ::selection {
   background: var(--accent);
-  color: var(--bg-dark);
+  color: var(--white);
 }
 
 .container {

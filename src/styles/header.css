@@ -23,6 +23,18 @@
   transform: translateY(-100%);
 }
 
+/* Transparent header — floats over hero on event pages */
+.header--transparent {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: none;
+}
+
+.header--transparent .announcement-banner {
+  display: none;
+}
+
 .nav {
   display: flex;
   align-items: center;
@@ -194,8 +206,9 @@
   justify-content: center;
   gap: 8px;
   padding: 7px 16px;
-  background: var(--red);
-  color: var(--white);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
   width: 100%;
 }
 
@@ -212,12 +225,11 @@
 }
 
 .announcement-banner__verified {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--white);
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 /* --- Responsive (header) --- */

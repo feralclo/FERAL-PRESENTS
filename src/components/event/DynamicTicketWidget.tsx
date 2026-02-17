@@ -319,7 +319,7 @@ export function DynamicTicketWidget({
       <aside className="event-tickets" id="tickets">
         <div className="event-tickets__box">
           <h3 className="event-tickets__heading">
-            Get Tickets<span className="text-red">_</span>
+            Select Tickets
           </h3>
           <p className="event-tickets__subtext">
             Tickets are not yet available for this event.
@@ -334,7 +334,7 @@ export function DynamicTicketWidget({
       <aside className="event-tickets" id="tickets">
         <div className="event-tickets__box">
           <h3 className="event-tickets__heading">
-            Get Tickets<span className="text-red">_</span>
+            Select Tickets
           </h3>
           <p className="event-tickets__subtext">
             Secure your entry. Limited availability.
@@ -382,13 +382,6 @@ export function DynamicTicketWidget({
                       className={`ticket-option ${tierClass}${qty > 0 ? " ticket-option--active" : ""}`}
                       data-ticket-id={tt.id}
                     >
-                      {tt.tier === "valentine" && (
-                        <div className="ticket-option__hearts">
-                          {[...Array(5)].map((_, i) => (
-                            <span key={i} className="ticket-option__heart">{"\u2665"}</span>
-                          ))}
-                        </div>
-                      )}
                       <div className="ticket-option__row">
                         <div className="ticket-option__info">
                           <span className="ticket-option__name">{tt.name}</span>

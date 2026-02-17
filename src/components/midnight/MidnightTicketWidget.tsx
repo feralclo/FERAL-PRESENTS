@@ -170,8 +170,8 @@ export function MidnightTicketWidget({
             <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[-0.01em] mb-1.5">
               Tickets
             </h3>
-            <p className="font-[family-name:var(--font-display)] text-xs tracking-[0.02em] text-muted-foreground/70 mb-6">
-              Limited availability
+            <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.12em] uppercase text-foreground/30 mb-6">
+              Select your tickets below
             </p>
 
             {/* Release progression bar */}

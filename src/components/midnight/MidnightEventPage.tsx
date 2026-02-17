@@ -9,6 +9,7 @@ import { useEventTracking } from "@/hooks/useEventTracking";
 import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
@@ -29,6 +30,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const tracking = useEventTracking();
   const { settings } = useSettings();
   const headerHidden = useHeaderScroll();
+  const revealRef = useScrollReveal();
 
   const cart = useCart({
     eventSlug: event.slug,
@@ -119,7 +121,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
         <Header />
       </header>
 
-      <main className="pt-[var(--header-height)] bg-background min-h-screen">
+      <main ref={revealRef as React.RefObject<HTMLElement>} className="pt-[var(--header-height)] bg-background min-h-screen">
         <MidnightHero
           title={event.name.toUpperCase()}
           date={dateDisplay}
@@ -135,28 +137,29 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
-                {/* Mobile section divider */}
-                <div className="lg:hidden order-[-2] mb-16 max-[480px]:mb-12">
+                {/* Mobile section divider — single gradient line */}
+                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-2">
                   <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent" />
-                  <div className="h-8 bg-gradient-to-b from-foreground/[0.02] to-transparent" />
                 </div>
 
                 {/* Lineup on mobile (above about) */}
                 {lineup.length > 0 && (
-                  <div className="lg:hidden order-[-1] mb-12 max-md:mb-10">
+                  <div className="lg:hidden order-[-1] mb-12 max-md:mb-10" data-reveal="1">
                     <MidnightLineup artists={lineup} />
                   </div>
                 )}
 
-                <MidnightEventInfo
-                  aboutText={event.about_text}
-                  detailsText={event.details_text}
-                  description={event.description}
-                />
+                <div data-reveal="2">
+                  <MidnightEventInfo
+                    aboutText={event.about_text}
+                    detailsText={event.details_text}
+                    description={event.description}
+                  />
+                </div>
 
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
-                  <div className="hidden lg:block mt-16">
+                  <div className="hidden lg:block mt-16" data-reveal="3">
                     <MidnightLineup artists={lineup} />
                   </div>
                 )}

@@ -637,6 +637,31 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
+   SCROLL REVEAL — Subtle entrance for content sections
+   Overrides base.css data-reveal (30px is too aggressive).
+   Midnight uses 12px translate for a softer, premium feel.
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] [data-reveal] {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="midnight"] [data-reveal].revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered delays for sequential sections */
+[data-theme="midnight"] [data-reveal="1"] { transition-delay: 0ms; }
+[data-theme="midnight"] [data-reveal="2"] { transition-delay: 120ms; }
+[data-theme="midnight"] [data-reveal="3"] { transition-delay: 240ms; }
+
+
+/* ═══════════════════════════════════════════════
    REDUCED MOTION — Accessibility
    ═══════════════════════════════════════════════ */
 
@@ -650,8 +675,14 @@ body:has([data-theme="midnight"]) .header {
   [data-theme="midnight"] .midnight-reveal-glow {
     animation: none;
   }
-  [data-theme="midnight"] .midnight-lineup-pill {
+  [data-theme="midnight"] .midnight-lineup-pill,
+  [data-theme="midnight"] [data-reveal] {
     transition: none;
+  }
+  /* Ensure revealed content is visible without animation */
+  [data-theme="midnight"] [data-reveal] {
+    opacity: 1;
+    transform: none;
   }
 }
 

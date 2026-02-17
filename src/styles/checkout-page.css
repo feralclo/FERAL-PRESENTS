@@ -1875,6 +1875,13 @@ html.checkout-active .noise {
    ======================================== */
 .feral-tickets__express {
   margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feral-tickets__express .express-checkout {
+  border-radius: 24px;
+  overflow: hidden;
 }
 
 .feral-tickets__express-error {

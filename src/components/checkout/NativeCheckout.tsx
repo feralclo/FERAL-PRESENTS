@@ -1093,8 +1093,8 @@ function SinglePageCheckoutForm({
                 }}
                 options={{
                   buttonType: {
-                    applePay: "plain",
-                    googlePay: "plain",
+                    applePay: "buy",
+                    googlePay: "buy",
                   },
                   buttonTheme: {
                     applePay: "white-outline",
@@ -1102,7 +1102,7 @@ function SinglePageCheckoutForm({
                   },
                   buttonHeight: 48,
                   layout: {
-                    maxColumns: 2,
+                    maxColumns: 1,
                     maxRows: 1,
                   },
                   paymentMethods: {

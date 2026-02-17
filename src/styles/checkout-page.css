@@ -1874,14 +1874,33 @@ html.checkout-active .noise {
    TICKET PAGE EXPRESS CHECKOUT
    ======================================== */
 .feral-tickets__express {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 4px;
 }
 
 .feral-tickets__express .express-checkout {
-  border-radius: 24px;
+  border-radius: 8px;
   overflow: hidden;
+}
+
+.feral-tickets__express-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.feral-tickets__express-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.feral-tickets__express-divider-text {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted, #555);
 }
 
 .feral-tickets__express-error {

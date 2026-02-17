@@ -19,7 +19,7 @@ import type {
 } from "@stripe/stripe-js";
 import { OrderConfirmation } from "./OrderConfirmation";
 import { CheckoutTimer } from "./CheckoutTimer";
-import { getStripeClient } from "@/lib/stripe/client";
+import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
@@ -237,6 +237,23 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   const symbol = getCurrencySymbol(event.currency);
   const isStripe = event.payment_method === "stripe";
 
+  // ── Stripe pre-initialization ─────────────────────────────────────────
+  // Start loading Stripe.js + account while the user is on the email capture
+  // page. By the time they click "Continue to Payment," both are resolved
+  // and StripeCheckoutPage renders immediately (no "Securing checkout..." spinner).
+  const [stripeReady, setStripeReady] = useState(false);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+
+  useEffect(() => {
+    if (!isStripe) return;
+
+    (async () => {
+      const accountId = await preloadStripeAccount();
+      setStripePromise(getStripeClient(accountId));
+      setStripeReady(true);
+    })();
+  }, [isStripe]);
+
   // Handle express checkout redirect from ticket page (?pi=xxx)
   useEffect(() => {
     if (piParam && !completedOrder) {
@@ -393,6 +410,8 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       capturedEmail={capturedEmail}
       onChangeEmail={() => setCapturedEmail("")}
       restoreData={restoreData}
+      stripeReady={stripeReady}
+      stripePromise={stripePromise}
     />
   );
 }
@@ -518,6 +537,8 @@ function StripeCheckoutPage({
   capturedEmail,
   onChangeEmail,
   restoreData,
+  stripeReady,
+  stripePromise,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -530,30 +551,10 @@ function StripeCheckoutPage({
   capturedEmail: string;
   onChangeEmail: () => void;
   restoreData?: RestoreData | null;
+  stripeReady: boolean;
+  stripePromise: Promise<Stripe | null> | null;
 }) {
-  const [stripeReady, setStripeReady] = useState(false);
-  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
-
-  // Load Stripe.js + fetch account config in parallel for speed
-  useEffect(() => {
-    // Pre-warm Stripe.js loading immediately
-    getStripeClient();
-
-    (async () => {
-      try {
-        const res = await fetch("/api/stripe/account");
-        const data = await res.json();
-        const acctId = data.stripe_account_id || undefined;
-        console.log("[Checkout] Stripe account:", acctId || "(platform — no connected account)");
-        setStripePromise(getStripeClient(acctId));
-      } catch {
-        console.log("[Checkout] Stripe account: (platform — fetch failed)");
-        setStripePromise(getStripeClient());
-      }
-      setStripeReady(true);
-    })();
-  }, []);
 
   if (!stripeReady || !stripePromise) {
     return (

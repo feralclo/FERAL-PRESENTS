@@ -526,6 +526,84 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* ── Express Checkout (Apple Pay / Google Pay) on ticket page ── */
+.feral-tickets__express {
+  margin-top: 0;
+}
+
+.express-checkout {
+  min-height: 48px;
+  width: 100%;
+  position: relative;
+}
+
+.feral-tickets__express .express-checkout {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Skeleton shimmer shown while Express Checkout loads */
+.express-checkout__skeleton {
+  width: 100%;
+  height: 48px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  position: relative;
+}
+
+.express-checkout__skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
+  animation: expressShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes expressShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Divider: — or — between checkout and Apple Pay */
+.feral-tickets__express-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 0;
+}
+
+.feral-tickets__express-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.feral-tickets__express-divider-text {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted, #555);
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.feral-tickets__express-error {
+  margin-top: 8px;
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #ef4444;
+  text-align: center;
+  padding: 8px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 8px;
+}
+
 /* Cart Summary (below checkout button) */
 .cart-summary {
   margin-top: 16px;
@@ -3626,7 +3704,8 @@ body:has(.bottom-bar) .footer {
   }
 
   .event-tickets {
-    position: static;
+    position: relative;
+    z-index: 10000;
     order: -1;
   }
 

@@ -20,6 +20,7 @@ import { MidnightTicketCard } from "./MidnightTicketCard";
 import { MidnightCartSummary } from "./MidnightCartSummary";
 import { MidnightTierProgression } from "./MidnightTierProgression";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
+import { MidnightCountdown } from "./MidnightCountdown";
 import type { UseCartResult } from "@/hooks/useCart";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
@@ -27,6 +28,7 @@ import type { Order } from "@/types/orders";
 interface MidnightTicketWidgetProps {
   eventSlug: string;
   eventId: string;
+  eventDate?: string;
   paymentMethod: string;
   currency: string;
   ticketTypes: TicketTypeRow[];
@@ -39,6 +41,7 @@ interface MidnightTicketWidgetProps {
 export function MidnightTicketWidget({
   eventSlug,
   eventId,
+  eventDate,
   paymentMethod,
   currency,
   ticketTypes,
@@ -119,6 +122,24 @@ export function MidnightTicketWidget({
     [ticketTypes, groupMap]
   );
 
+  // Dynamic availability text based on real inventory
+  const availabilityText = useMemo(() => {
+    const soldOutCount = ticketTypes.filter(
+      (tt) => tt.status === "active" && tt.capacity != null && tt.capacity > 0 && (tt.sold || 0) >= tt.capacity
+    ).length;
+    const activeCount = ticketTypes.filter((tt) => tt.status === "active").length;
+    if (soldOutCount > 0 && soldOutCount < activeCount) {
+      return `${soldOutCount} ${soldOutCount === 1 ? "tier" : "tiers"} sold out`;
+    }
+    const anyHot = ticketTypes.some((tt) => {
+      const cap = tt.capacity || 0;
+      const sold = tt.sold || 0;
+      return cap > 0 && (sold / cap) > 0.7;
+    });
+    if (anyHot) return "Selling fast";
+    return "Limited availability";
+  }, [ticketTypes]);
+
   // Size popup helpers
   const sizePopupTicket = sizePopup
     ? activeTypes.find((t) => t.id === sizePopup.ticketTypeId)
@@ -166,11 +187,14 @@ export function MidnightTicketWidget({
         <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-0 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-transparent p-0 gap-0">
           <CardContent className="p-8 max-lg:p-6 max-[480px]:p-4">
             {/* Section header */}
-            <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[-0.01em] mb-1.5">
-              Tickets
-            </h3>
+            <div className="flex items-start justify-between mb-1.5">
+              <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[-0.01em]">
+                Tickets
+              </h3>
+              {eventDate && <MidnightCountdown eventDate={eventDate} />}
+            </div>
             <p className="font-[family-name:var(--font-display)] text-xs tracking-[0.02em] text-muted-foreground/70 mb-6">
-              Limited availability
+              {availabilityText}
             </p>
 
             {/* Release progression bar */}
@@ -218,7 +242,7 @@ export function MidnightTicketWidget({
                 "w-full h-[52px] mt-5 text-sm max-[480px]:text-[13px] font-bold tracking-[0.02em] uppercase rounded-xl transition-all duration-300",
                 totalQty === 0
                   ? "bg-foreground/[0.04] text-foreground/25 border border-foreground/[0.06] hover:bg-foreground/[0.06] hover:text-foreground/35 shadow-none"
-                  : "",
+                  : "midnight-cta-shine",
                 ctaGlow ? "midnight-cta-ready" : "",
               )}
               variant={totalQty > 0 ? "default" : "ghost"}
@@ -227,7 +251,14 @@ export function MidnightTicketWidget({
             >
               {totalQty === 0
                 ? "Select tickets to continue"
-                : <>Checkout &mdash; <span key={totalPrice} className="midnight-qty-pop inline-block">{currSymbol}{totalPrice.toFixed(2)}</span></>}
+                : <>
+                    <span className="relative">
+                      Checkout &mdash; <span key={totalPrice} className="midnight-qty-pop inline-block">{currSymbol}{totalPrice.toFixed(2)}</span>
+                    </span>
+                    <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px] font-bold tabular-nums">
+                      {totalQty}
+                    </span>
+                  </>}
             </Button>
 
             {/* Express Checkout (Apple Pay / Google Pay) — always mounted

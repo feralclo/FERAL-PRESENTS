@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 interface MidnightLineupProps {
   artists: string[];
 }
@@ -21,11 +23,12 @@ export function MidnightLineup({ artists }: MidnightLineupProps) {
       </div>
 
       {/* Artist pills */}
-      <div className="flex flex-wrap gap-2.5 max-[480px]:gap-2">
-        {artists.map((artist) => (
+      <div className="flex flex-wrap gap-2.5 max-[480px]:gap-2" data-reveal>
+        {artists.map((artist, i) => (
           <span
             key={artist}
-            className="midnight-lineup-pill inline-block px-4 py-2 max-[480px]:px-3 max-[480px]:py-1.5 border border-foreground/[0.06] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[11px] tracking-[0.01em] text-foreground/50 cursor-default bg-foreground/[0.015]"
+            className="midnight-lineup-pill midnight-lineup-pill-stagger inline-block px-4 py-2 max-[480px]:px-3 max-[480px]:py-1.5 border border-foreground/[0.06] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[11px] tracking-[0.01em] text-foreground/50 cursor-default bg-foreground/[0.015] hover:scale-[1.03]"
+            style={{ "--stagger-delay": `${i * 30}ms` } as React.CSSProperties}
           >
             {artist}
           </span>

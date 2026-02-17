@@ -26,18 +26,31 @@ export function MidnightTierProgression({
         const soldOut = (tt.sold || 0) >= (tt.capacity || Infinity);
         const isActive = i === firstActiveIdx;
         const isNext = i > firstActiveIdx && !soldOut;
+        const capacity = tt.capacity || 0;
+        const sold = tt.sold || 0;
+        const fillPercent = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0;
 
         return (
           <div
             key={tt.id}
             className={cn(
-              "flex-1 p-2.5 max-[480px]:p-2 text-center rounded-lg transition-all duration-200 min-w-0",
+              "flex-1 p-2.5 max-[480px]:p-2 text-center rounded-lg transition-all duration-200 min-w-0 overflow-hidden relative",
               soldOut && "opacity-40 bg-foreground/[0.01]",
               isActive && "bg-primary/[0.05] border border-primary/25",
               isNext && "border border-dashed border-foreground/[0.05] opacity-45",
               !soldOut && !isActive && !isNext && "bg-foreground/[0.015] border border-foreground/[0.05]",
             )}
           >
+            {/* Fill bar */}
+            {capacity > 0 && (
+              <div
+                className={cn(
+                  "absolute bottom-0 left-0 h-[3px] transition-all duration-700 ease-out rounded-full",
+                  soldOut ? "bg-muted-foreground/30" : isActive ? "bg-primary/40" : "bg-foreground/10",
+                )}
+                style={{ width: `${fillPercent}%` }}
+              />
+            )}
             <span className="font-[family-name:var(--font-sans)] text-[9px] max-[480px]:text-[8px] font-semibold tracking-[0.04em] uppercase block mb-1 truncate text-muted-foreground">
               {isActive && <span className="text-foreground/90">{tt.name}</span>}
               {!isActive && tt.name}
@@ -59,7 +72,7 @@ export function MidnightTierProgression({
                 isNext && "bg-transparent text-muted-foreground",
               )}
             >
-              {soldOut ? "Sold Out" : isActive ? "On Sale" : "Upcoming"}
+              {soldOut ? "Sold Out" : isActive && fillPercent > 50 ? `${fillPercent}% sold` : isActive ? "On Sale" : "Upcoming"}
             </Badge>
           </div>
         );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -46,27 +46,51 @@ export function MidnightTicketCard({
   const isActive = qty > 0;
   const priceDisplay = `${currSymbol}${formatPrice(Number(tt.price))}`;
 
+  // Sold-out detection from real inventory
+  const capacity = tt.capacity || 0;
+  const sold = tt.sold || 0;
+  const isSoldOut = capacity > 0 && sold >= capacity;
+  const remaining = capacity > 0 ? capacity - sold : Infinity;
+  const fillPercent = capacity > 0 ? Math.round((sold / capacity) * 100) : 0;
+
   const hasMerchImages = tt.includes_merch && (
     (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.front ||
     (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.back
   );
 
+  // Card pulse on add-to-cart
+  const cardRef = useRef<HTMLDivElement>(null);
+  const PULSE_COLORS: Record<string, string> = {
+    platinum: "rgba(229, 228, 226, 0.4)",
+    valentine: "rgba(232, 54, 93, 0.4)",
+  };
+
   // Qty pop animation
   const qtyRef = useRef<HTMLSpanElement>(null);
   const prevQty = useRef(qty);
   useEffect(() => {
-    if (qty !== prevQty.current && qtyRef.current) {
-      qtyRef.current.classList.remove("midnight-qty-pop");
-      void qtyRef.current.offsetWidth;
-      qtyRef.current.classList.add("midnight-qty-pop");
+    if (qty !== prevQty.current) {
+      // Qty pop
+      if (qtyRef.current) {
+        qtyRef.current.classList.remove("midnight-qty-pop");
+        void qtyRef.current.offsetWidth;
+        qtyRef.current.classList.add("midnight-qty-pop");
+      }
+      // Card pulse on increase
+      if (qty > prevQty.current && cardRef.current) {
+        cardRef.current.classList.remove("midnight-card-pulse");
+        void cardRef.current.offsetWidth;
+        cardRef.current.classList.add("midnight-card-pulse");
+      }
       prevQty.current = qty;
     }
   }, [qty]);
 
   return (
     <div
+      ref={cardRef}
       role="article"
-      aria-label={`${tt.name} — ${priceDisplay}`}
+      aria-label={`${tt.name} — ${priceDisplay}${isSoldOut ? " — Sold Out" : ""}`}
       className={cn(
         "relative p-5 mb-2.5 rounded-xl transition-all duration-200",
         // Standard tier styling
@@ -76,9 +100,12 @@ export function MidnightTicketCard({
         // Metallic tier styling
         tierEffect,
         tierEffect && isActive && "midnight-active",
+        // Sold out
+        isSoldOut && "opacity-50 pointer-events-none",
         // Mobile
         "max-[480px]:p-4",
       )}
+      style={PULSE_COLORS[tier] ? { "--pulse-color": PULSE_COLORS[tier] } as React.CSSProperties : undefined}
       data-ticket-id={tt.id}
     >
       {/* Valentine floating hearts */}
@@ -110,24 +137,46 @@ export function MidnightTicketCard({
             TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
           )}
         >
-          {priceDisplay}
+          {isSoldOut ? <s>{priceDisplay}</s> : priceDisplay}
         </span>
       </div>
+
+      {/* Sold-out badge */}
+      {isSoldOut && (
+        <div className="mb-3">
+          <Badge variant="secondary" className="text-[9px] font-bold tracking-[1.5px] uppercase bg-foreground/[0.06] text-muted-foreground">
+            Sold Out
+          </Badge>
+        </div>
+      )}
+
+      {/* Scarcity text — only when real inventory data shows >80% sold */}
+      {!isSoldOut && fillPercent >= 80 && (
+        <p className={cn(
+          "font-[family-name:var(--font-mono)] text-[10px] tracking-[0.04em] mb-3",
+          fillPercent >= 95 ? "text-destructive midnight-scarcity-pulse" :
+          fillPercent >= 90 ? "text-warning" :
+          "text-foreground/70",
+        )}>
+          {remaining <= 5 ? `Last ${remaining}!` : `Only ${remaining} left`}
+        </p>
+      )}
 
       {/* Bottom row: view merch + qty controls */}
       <div className="relative z-[2] flex justify-between items-center">
         {tt.includes_merch ? (
           hasMerchImages ? (
-            <Badge
-              variant="outline"
+            <button
+              type="button"
+              aria-label={`View merch for ${tt.name}`}
               className={cn(
-                "cursor-pointer text-[10px] max-[480px]:text-[9px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase px-3 max-[480px]:px-2.5 py-2 max-[480px]:py-1.5 rounded-lg",
+                "inline-flex items-center text-[10px] max-[480px]:text-[9px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase px-3 max-[480px]:px-2.5 py-2 max-[480px]:py-1.5 rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 TIER_MERCH_BADGE_CLASSES[tier] || TIER_MERCH_BADGE_CLASSES.standard,
               )}
               onClick={() => onViewMerch?.(tt)}
             >
               View Merch
-            </Badge>
+            </button>
           ) : (
             <span className="font-[family-name:var(--font-sans)] text-[10px] font-medium tracking-[0.04em] uppercase text-muted-foreground/50">
               Includes merch

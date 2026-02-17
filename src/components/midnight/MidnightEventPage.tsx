@@ -9,6 +9,7 @@ import { useEventTracking } from "@/hooks/useEventTracking";
 import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { Button } from "@/components/ui/button";
 import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
@@ -32,6 +33,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const tracking = useEventTracking();
   const { settings } = useSettings();
   const headerHidden = useHeaderScroll();
+  useScrollReveal();
 
   const cart = useCart({
     eventSlug: event.slug,
@@ -86,6 +88,20 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     }
     prevCartLength.current = len;
   }, [cart.cartItems, showToast]);
+
+  // Checkout transition — fade out before navigation
+  const [navigatingOut, setNavigatingOut] = useState(false);
+  const handleCheckoutWithTransition = useCallback(() => {
+    if (cart.totalQty === 0) return;
+    setNavigatingOut(true);
+    setTimeout(() => cart.handleCheckout(), 300);
+  }, [cart.totalQty, cart.handleCheckout]);
+
+  // Wrap cart with transitioned checkout for the ticket widget
+  const cartWithTransition = useMemo(
+    () => ({ ...cart, handleCheckout: handleCheckoutWithTransition }),
+    [cart, handleCheckoutWithTransition]
+  );
 
   const handleViewMerch = useCallback((tt: TicketTypeRow) => {
     setTeeModalTicketType(tt);
@@ -151,6 +167,8 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           age={event.age_restriction || "18+"}
           bannerImage={heroImage}
           tag={event.tag_line || ""}
+          minPrice={cart.minPrice}
+          currSymbol={currSymbol}
         />
 
         <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10 pointer-events-none">
@@ -159,7 +177,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
                 {/* Mobile section divider */}
-                <div className="lg:hidden order-[-2] mb-16 max-[480px]:mb-12">
+                <div className="lg:hidden order-[-2] mb-16 max-[480px]:mb-12" data-reveal>
                   <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent" />
                   <div className="h-8 bg-gradient-to-b from-foreground/[0.02] to-transparent" />
                 </div>
@@ -171,11 +189,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                   </div>
                 )}
 
-                <MidnightEventInfo
-                  aboutText={event.about_text}
-                  detailsText={event.details_text}
-                  description={event.description}
-                />
+                <div data-reveal>
+                  <MidnightEventInfo
+                    aboutText={event.about_text}
+                    detailsText={event.details_text}
+                    description={event.description}
+                  />
+                </div>
 
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
@@ -190,10 +210,11 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 <MidnightTicketWidget
                   eventSlug={event.slug}
                   eventId={event.id}
+                  eventDate={event.date_start}
                   paymentMethod={event.payment_method}
                   currency={event.currency}
                   ticketTypes={event.ticket_types || []}
-                  cart={cart}
+                  cart={cartWithTransition}
                   ticketGroups={ticketGroups}
                   ticketGroupMap={ticketGroupMap}
                   onViewMerch={handleViewMerch}
@@ -208,9 +229,10 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
       {/* Fixed bottom bar — mobile checkout CTA */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar ${
           cart.totalQty > 0 ? "translate-y-0" : "translate-y-full"
         }`}
+        style={{ transition: "transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}
       >
         <div className="px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between gap-3">
@@ -225,13 +247,21 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
             <Button
               size="lg"
               className="px-8 text-sm font-bold tracking-[0.02em] rounded-xl shrink-0"
-              onClick={cart.handleCheckout}
+              onClick={handleCheckoutWithTransition}
             >
               Checkout
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Checkout transition overlay */}
+      {navigatingOut && (
+        <div
+          className="fixed inset-0 z-[9999] bg-background"
+          style={{ animation: "midnight-checkout-fadeout 300ms ease-out forwards" }}
+        />
+      )}
 
       {/* Merch Modal */}
       {teeModalTicketType && (
@@ -274,7 +304,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       {/* Engagement features */}
       <DiscountPopup />
       <EngagementTracker />
-      <MidnightSocialProof />
+      <MidnightSocialProof eventId={event.id} />
     </>
   );
 }

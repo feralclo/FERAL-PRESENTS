@@ -107,8 +107,7 @@ export function MidnightHero({
 
         <Button
           size="lg"
-          variant="outline"
-          className="midnight-hero-cta mt-7 max-md:mt-5 max-[480px]:mt-4 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.03em] rounded-xl bg-white/[0.06] border-white/[0.12] text-foreground/90 hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200"
+          className="midnight-hero-cta mt-7 max-md:mt-5 max-[480px]:mt-4 max-[480px]:w-full px-10 text-sm font-bold tracking-[0.04em] rounded-xl transition-all duration-200"
           onClick={() =>
             document
               .getElementById("tickets")

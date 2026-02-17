@@ -1,0 +1,283 @@
+/*
+ * Midnight Checkout — Visual continuity layer
+ *
+ * Scoped to [data-theme="midnight"]. Purely additive — does NOT modify
+ * the shared checkout-page.css. Maps hardcoded BEM colors to CSS
+ * variable references so the checkout feels like the same experience.
+ *
+ * Imported by NativeCheckout.tsx alongside checkout-page.css.
+ */
+
+
+/* ═══════════════════════════════════════════════
+   PAGE WRAPPER — Match midnight background
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .checkout-page {
+  background: var(--color-background);
+}
+
+[data-theme="midnight"] .checkout-page,
+[data-theme="midnight"] .checkout-page html,
+[data-theme="midnight"] .checkout-page body {
+  color: var(--color-foreground);
+}
+
+
+/* ═══════════════════════════════════════════════
+   HEADER — Aligned with midnight nav
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .checkout-header {
+  background: rgba(10, 10, 12, 0.94);
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+
+/* ═══════════════════════════════════════════════
+   FORM WRAPPER — Glass card treatment
+   ═══════════════════════════════════════════════ */
+
+@media (min-width: 960px) {
+  [data-theme="midnight"] .checkout-layout__main .native-checkout__inner {
+    background: linear-gradient(
+      165deg,
+      rgba(24, 24, 28, 0.4) 0%,
+      rgba(16, 16, 20, 0.55) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════
+   SECTION HEADINGS — Midnight mono font
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .native-checkout__heading {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+
+/* ═══════════════════════════════════════════════
+   INPUT FIELDS — Darker, match midnight cards
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .native-checkout__input {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="midnight"] .native-checkout__input:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+[data-theme="midnight"] .native-checkout__input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* Stripe card fields */
+[data-theme="midnight"] .card-fields__number-wrapper .StripeElement,
+[data-theme="midnight"] .card-fields__expiry .StripeElement,
+[data-theme="midnight"] .card-fields__cvc-wrapper .StripeElement {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="midnight"] .card-fields__number-wrapper .StripeElement--focus,
+[data-theme="midnight"] .card-fields__expiry .StripeElement--focus,
+[data-theme="midnight"] .card-fields__cvc-wrapper .StripeElement--focus {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+
+/* ═══════════════════════════════════════════════
+   PAY BUTTON — Primary accent instead of white
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .native-checkout__submit {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  transition: all 0.2s ease;
+}
+
+[data-theme="midnight"] .native-checkout__submit:hover {
+  background: color-mix(in srgb, var(--color-primary) 85%, white);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+[data-theme="midnight"] .native-checkout__submit:active {
+  background: color-mix(in srgb, var(--color-primary) 75%, white);
+}
+
+[data-theme="midnight"] .native-checkout__submit:disabled {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+
+
+/* ═══════════════════════════════════════════════
+   EMAIL CAPTURE — Match midnight feel
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .email-capture__heading {
+  font-family: var(--font-sans), 'Inter', sans-serif;
+}
+
+[data-theme="midnight"] .email-capture__summary {
+  background: rgba(14, 14, 18, 0.6);
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+
+/* ═══════════════════════════════════════════════
+   PAYMENT OPTIONS — Subtle accent on active
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .payment-options {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="midnight"] .payment-option--active {
+  background: color-mix(in srgb, var(--color-primary) 3%, transparent);
+}
+
+[data-theme="midnight"] .payment-option__radio--checked {
+  border-color: var(--color-primary);
+}
+
+[data-theme="midnight"] .payment-option__radio--checked::after {
+  background: var(--color-primary);
+}
+
+
+/* ═══════════════════════════════════════════════
+   ORDER SUMMARY — Glass treatment on desktop
+   ═══════════════════════════════════════════════ */
+
+@media (min-width: 960px) {
+  [data-theme="midnight"] .order-summary-desktop {
+    background: linear-gradient(
+      165deg,
+      rgba(24, 24, 28, 0.3) 0%,
+      rgba(16, 16, 20, 0.4) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
+    padding: 24px;
+  }
+}
+
+/* Total row accent */
+[data-theme="midnight"] .order-summary__row--total span:last-child {
+  color: var(--color-primary);
+}
+
+/* Price font in order items */
+[data-theme="midnight"] .order-item__price {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+}
+
+[data-theme="midnight"] .order-item__name {
+  font-family: var(--font-sans), 'Inter', sans-serif;
+}
+
+
+/* ═══════════════════════════════════════════════
+   CONFIRMATION — Success accent
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .order-confirmation__check {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+[data-theme="midnight"] .order-confirmation__title {
+  font-family: var(--font-mono), 'Space Mono', monospace;
+}
+
+[data-theme="midnight"] .order-confirmation__btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+[data-theme="midnight"] .order-confirmation__btn--primary:hover {
+  background: color-mix(in srgb, var(--color-primary) 85%, white);
+}
+
+
+/* ═══════════════════════════════════════════════
+   DISCOUNT CODE — Match theme
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .discount-code__input {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="midnight"] .discount-code__input:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+[data-theme="midnight"] .discount-code__apply-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+
+/* ═══════════════════════════════════════════════
+   CHECKOUT TIMER — Use primary for urgent state
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .checkout-timer__progress {
+  background: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+
+/* ═══════════════════════════════════════════════
+   PAGE TRANSITION — Fade in on load
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .checkout-page {
+  animation: midnight-checkout-fadein 400ms ease-out;
+}
+
+@keyframes midnight-checkout-fadein {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+
+/* ═══════════════════════════════════════════════
+   LAYOUT DIVIDER — Subtle on midnight
+   ═══════════════════════════════════════════════ */
+
+@media (min-width: 960px) {
+  [data-theme="midnight"] .checkout-layout-wrap {
+    background: linear-gradient(to right,
+      transparent calc(50% + 220px),
+      rgba(255, 255, 255, 0.03) calc(50% + 220px),
+      rgba(255, 255, 255, 0.03) calc(50% + 221px),
+      transparent calc(50% + 221px)
+    );
+  }
+}
+
+
+/* ═══════════════════════════════════════════════
+   REDUCED MOTION — Disable transition animation
+   ═══════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="midnight"] .checkout-page {
+    animation: none;
+  }
+}

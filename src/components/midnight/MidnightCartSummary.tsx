@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/stripe/config";
 
@@ -24,12 +25,16 @@ export function MidnightCartSummary({
   currSymbol,
 }: MidnightCartSummaryProps) {
   const isEmpty = totalQty === 0;
+  const [expanded, setExpanded] = useState(false);
+  const MAX_VISIBLE = 3;
+  const hasOverflow = items.length > MAX_VISIBLE;
+  const visibleItems = expanded ? items : items.slice(0, MAX_VISIBLE);
 
   return (
     <div
       className="mt-5 overflow-hidden transition-all duration-300 ease-out"
       style={{
-        maxHeight: isEmpty ? 0 : 400,
+        maxHeight: isEmpty ? 0 : 600,
         opacity: isEmpty ? 0 : 1,
       }}
     >
@@ -46,7 +51,7 @@ export function MidnightCartSummary({
 
         {/* Line items */}
         <div className="flex flex-col">
-          {items.map((item, i) => (
+          {visibleItems.map((item, i) => (
             <div
               key={i}
               className={`px-4 py-3 ${i > 0 ? "border-t border-foreground/[0.03]" : ""}`}
@@ -76,12 +81,23 @@ export function MidnightCartSummary({
           ))}
         </div>
 
+        {/* Expand/collapse toggle */}
+        {hasOverflow && (
+          <button
+            type="button"
+            className="w-full px-4 py-2 text-center font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] uppercase text-primary/60 hover:text-primary/80 transition-colors border-t border-foreground/[0.03]"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? "Show less" : `+${items.length - MAX_VISIBLE} more`}
+          </button>
+        )}
+
         {/* Footer total */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-foreground/[0.05]">
           <span className="font-[family-name:var(--font-sans)] text-[11px] font-semibold tracking-[0.08em] uppercase text-foreground/50">
             Total
           </span>
-          <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground tracking-[0.5px]">
+          <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-primary tracking-[0.5px]">
             {currSymbol}{totalPrice.toFixed(2)}
           </span>
         </div>

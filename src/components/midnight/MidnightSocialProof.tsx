@@ -2,34 +2,44 @@
 
 import { useState, useEffect, useRef } from "react";
 
+interface MidnightSocialProofProps {
+  eventId: string;
+}
+
 /**
- * Subtle "Last ticket sold X min ago" social proof indicator.
- * Appears after popup is dismissed with staggered delay.
+ * "Last ticket sold X min ago" social proof — powered by real order data.
+ * Fetches from /api/events/[id]/recent-activity. Shows nothing if no
+ * recent orders exist. Appears after popup is dismissed with staggered delay.
  */
-export function MidnightSocialProof() {
+export function MidnightSocialProof({ eventId }: MidnightSocialProofProps) {
   const [visible, setVisible] = useState(false);
-  const [minutesAgo, setMinutesAgo] = useState(0);
+  const [timeText, setTimeText] = useState<string | null>(null);
   const shownRef = useRef(false);
 
   useEffect(() => {
-    // Generate weighted random time
-    const weights = [
-      { min: 2, max: 5, weight: 0.45 },
-      { min: 5, max: 12, weight: 0.35 },
-      { min: 12, max: 20, weight: 0.15 },
-      { min: 20, max: 35, weight: 0.05 },
-    ];
+    let cancelled = false;
 
-    let rand = Math.random();
-    let mins = 4;
-    for (const w of weights) {
-      if (rand < w.weight) {
-        mins = w.min + Math.floor(Math.random() * (w.max - w.min));
-        break;
-      }
-      rand -= w.weight;
-    }
-    setMinutesAgo(mins);
+    fetch(`/api/events/${eventId}/recent-activity`)
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return;
+        if (!data.last_order_at) return;
+
+        const diffMs = Date.now() - new Date(data.last_order_at).getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+
+        if (diffMins > 60) return;
+
+        const text = diffMins <= 1 ? "just now" : `${diffMins} min ago`;
+        setTimeText(text);
+      })
+      .catch(() => {/* silently fail */});
+
+    return () => { cancelled = true; };
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!timeText) return;
 
     const pageLoadTime = Date.now();
     const MIN_DELAY = 45000;
@@ -84,9 +94,9 @@ export function MidnightSocialProof() {
       if (hideTimer) clearTimeout(hideTimer);
       clearTimeout(fallbackTimer);
     };
-  }, []);
+  }, [timeText]);
 
-  const timeText = minutesAgo === 1 ? "1 min ago" : `${minutesAgo} min ago`;
+  if (!timeText) return null;
 
   return (
     <div

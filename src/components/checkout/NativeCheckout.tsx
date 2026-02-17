@@ -32,6 +32,7 @@ import { SETTINGS_KEYS } from "@/lib/constants";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { CheckoutServiceUnavailable } from "./CheckoutServiceUnavailable";
 import "@/styles/checkout-page.css";
+import "@/styles/midnight-checkout.css";
 
 /* ================================================================
    TYPES

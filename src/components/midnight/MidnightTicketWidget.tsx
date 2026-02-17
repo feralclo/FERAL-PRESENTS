@@ -135,10 +135,10 @@ export function MidnightTicketWidget({
         id="tickets"
       >
         <Card className="glass rounded-2xl p-8 max-lg:rounded-none max-lg:p-6 max-lg:shadow-none max-lg:bg-transparent max-lg:border-0">
-          <h3 className="font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.15em] uppercase mb-2">
+          <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[-0.01em] mb-2">
             Tickets
           </h3>
-          <p className="font-[family-name:var(--font-display)] text-sm text-muted-foreground">
+          <p className="font-[family-name:var(--font-sans)] text-sm text-muted-foreground">
             Tickets are not yet available for this event.
           </p>
         </Card>
@@ -166,7 +166,7 @@ export function MidnightTicketWidget({
         <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-0 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-transparent p-0 gap-0">
           <CardContent className="p-8 max-lg:p-6 max-[480px]:p-4">
             {/* Section header */}
-            <h3 className="font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.15em] uppercase mb-1.5">
+            <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[-0.01em] mb-1.5">
               Tickets
             </h3>
             <p className="font-[family-name:var(--font-display)] text-xs tracking-[0.02em] text-muted-foreground/70 mb-6">
@@ -285,11 +285,11 @@ export function MidnightTicketWidget({
       >
         <DialogContent className="max-w-[360px] text-center rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="font-[family-name:var(--font-mono)] text-xs font-bold tracking-[2px] uppercase text-platinum">
+            <DialogTitle className="font-[family-name:var(--font-sans)] text-sm font-bold tracking-[0.02em] uppercase text-platinum">
               Select Your Size
             </DialogTitle>
             {sizePopupTicket && (
-              <DialogDescription className="font-[family-name:var(--font-mono)] text-[10px] tracking-[1px]">
+              <DialogDescription className="font-[family-name:var(--font-sans)] text-xs text-muted-foreground">
                 {sizePopupTicket.name}
               </DialogDescription>
             )}
@@ -308,7 +308,7 @@ export function MidnightTicketWidget({
           <DialogFooter>
             <Button
               size="lg"
-              className="w-full midnight-metallic-cta font-[family-name:var(--font-mono)] text-[11px] tracking-[2px] uppercase rounded-xl"
+              className="w-full midnight-metallic-cta font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.06em] uppercase rounded-xl"
               onClick={handleSizeConfirm}
             >
               Add to Cart

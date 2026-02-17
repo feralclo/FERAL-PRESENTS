@@ -10,6 +10,8 @@ interface MidnightHeroProps {
   age: string;
   bannerImage: string;
   tag?: string;
+  minPrice?: number;
+  currSymbol?: string;
 }
 
 export function MidnightHero({
@@ -20,6 +22,8 @@ export function MidnightHero({
   age,
   bannerImage,
   tag,
+  minPrice,
+  currSymbol,
 }: MidnightHeroProps) {
   return (
     <section className="midnight-hero midnight-hero-glass-border relative flex items-end justify-center text-center overflow-hidden bg-background">
@@ -64,7 +68,7 @@ export function MidnightHero({
       {/* Content — large cinematic typography */}
       <div className="relative z-[2] w-full max-w-[900px] px-6 pb-14 max-md:px-5 max-md:pb-9 max-[480px]:px-4 max-[480px]:pb-7">
         {tag && (
-          <div className="inline-flex items-center gap-2.5 font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.18em] uppercase text-foreground/50 mb-6 max-md:mb-4 max-[480px]:text-[9px]">
+          <div className="inline-flex items-center gap-2.5 font-[family-name:var(--font-mono)] text-[10px] font-medium tracking-[0.18em] uppercase text-foreground/50 mb-6 max-md:mb-4 max-[480px]:text-[9px]">
             <span
               className="w-1.5 h-1.5 rounded-full bg-primary"
               style={{
@@ -95,10 +99,15 @@ export function MidnightHero({
           </div>
         )}
 
+        {minPrice != null && minPrice > 0 && currSymbol && (
+          <p className="mt-7 max-md:mt-5 max-[480px]:mt-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.12em] uppercase text-foreground/40">
+            From {currSymbol}{minPrice % 1 === 0 ? minPrice : minPrice.toFixed(2)}
+          </p>
+        )}
+
         <Button
           size="lg"
-          variant="outline"
-          className="mt-9 max-md:mt-7 max-[480px]:mt-6 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.03em] rounded-xl bg-white/[0.06] border-white/[0.12] text-foreground/90 backdrop-blur-sm hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200"
+          className="midnight-hero-cta mt-4 max-md:mt-3 max-[480px]:mt-3 max-[480px]:w-full px-10 text-sm font-bold tracking-[0.04em] rounded-xl transition-all duration-200"
           onClick={() =>
             document
               .getElementById("tickets")
@@ -106,6 +115,9 @@ export function MidnightHero({
           }
         >
           Get Tickets
+          <svg className="ml-2 w-4 h-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </Button>
       </div>
     </section>

@@ -89,7 +89,7 @@ export function MidnightTicketCard({
         <div className="flex-1 min-w-0 mr-4">
           <span
             className={cn(
-              "font-[family-name:var(--font-mono)] text-sm max-[480px]:text-[13px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase block mb-1.5",
+              "font-[family-name:var(--font-sans)] text-sm max-[480px]:text-[13px] font-semibold tracking-[0.04em] uppercase block mb-1.5",
               TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
             )}
           >
@@ -129,7 +129,7 @@ export function MidnightTicketCard({
               View Merch
             </Badge>
           ) : (
-            <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[1.5px] uppercase text-muted-foreground/50">
+            <span className="font-[family-name:var(--font-sans)] text-[10px] font-medium tracking-[0.04em] uppercase text-muted-foreground/50">
               Includes merch
             </span>
           )

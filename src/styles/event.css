@@ -4,8 +4,9 @@
    social proof, countdown, theme system
    ============================================ */
 
+/* Push content below the fixed header so nothing hides behind it */
 .event-page {
-  padding-top: 0;
+  padding-top: var(--header-height);
 }
 
 /* Suppress CRT effects on event pages */
@@ -17,7 +18,7 @@ body:has(.event-page) > .noise {
 /* ── Hero Section ── */
 .event-hero {
   position: relative;
-  min-height: 80vh;
+  min-height: calc(100svh - var(--header-height));
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -59,7 +60,7 @@ body:has(.event-page) > .noise {
   width: 100%;
   height: 100%;
   background:
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.15) 20%, rgba(0, 0, 0, 0.3) 40%, rgba(0, 0, 0, 0.7) 75%, var(--bg-dark) 100%);
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.05) 30%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.7) 75%, var(--bg-dark) 100%);
   z-index: 1;
 }
 
@@ -3672,7 +3673,7 @@ body:has(.event-page) > .noise {
 
 @media (max-width: 768px) {
   .event-hero {
-    min-height: 85svh;
+    min-height: calc(100svh - var(--header-height));
     padding: 0 0 24px;
   }
 
@@ -3708,8 +3709,8 @@ body:has(.event-page) > .noise {
 
 @media (max-width: 480px) {
   .event-hero {
-    min-height: 75svh;
-    padding: 0 0 14px;
+    min-height: calc(100svh - var(--header-height));
+    padding: 0 0 20px;
   }
 
   .event-hero__badge {

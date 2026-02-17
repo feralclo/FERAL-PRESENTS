@@ -10,23 +10,27 @@ body:has(.event-page) > .noise {
   display: none !important;
 }
 
+/* Push content below the fixed header */
+.event-page {
+  padding-top: var(--header-height);
+}
+
 /* ═══════════════════════════════════════════════
-   HERO — Full-viewport cinematic image section
+   HERO — Contained banner with CTA
    ═══════════════════════════════════════════════ */
 
 .event-hero {
   position: relative;
-  min-height: 100svh;
+  height: clamp(480px, 65vh, 750px);
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  padding: var(--header-height) 24px 100px;
+  align-items: flex-end;
+  justify-content: center;
   text-align: center;
   overflow: hidden;
+  background: #111;
 }
 
-/* Background image layer */
+/* Background image */
 .event-hero__bg {
   position: absolute;
   inset: 0;
@@ -46,30 +50,30 @@ body:has(.event-page) > .noise {
   opacity: 1;
 }
 
-/* Gradient overlay — light at top for header, clear middle, strong bottom fade */
+/* Gradient — transparent top, smooth fade to bg at bottom */
 .event-hero__overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0.35) 0%,
-    rgba(0, 0, 0, 0) 25%,
-    rgba(0, 0, 0, 0) 45%,
-    rgba(0, 0, 0, 0.5) 70%,
+    transparent 0%,
+    transparent 35%,
+    rgba(0, 0, 0, 0.55) 70%,
     var(--bg-dark) 100%
   );
   z-index: 1;
 }
 
-/* Content — centered, constrained width */
+/* Content block — centered at bottom */
 .event-hero__content {
   position: relative;
   z-index: 2;
   max-width: 800px;
   width: 100%;
+  padding: 0 24px 48px;
 }
 
-/* Tag badge */
+/* Tag */
 .event-hero__tag {
   display: inline-flex;
   align-items: center;
@@ -80,7 +84,7 @@ body:has(.event-page) > .noise {
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .event-hero__tag-dot {
@@ -95,13 +99,13 @@ body:has(.event-page) > .noise {
 /* Title */
 .event-hero__title {
   font-family: var(--font-sans);
-  font-size: clamp(3rem, 8vw, 6rem);
+  font-size: clamp(2.5rem, 7vw, 5rem);
   font-weight: 800;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   line-height: 0.95;
   color: #fff;
   text-wrap: balance;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 /* Primary meta — date · venue */
@@ -109,17 +113,17 @@ body:has(.event-page) > .noise {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
   letter-spacing: 0.01em;
+  margin-bottom: 8px;
 }
 
-.event-hero__meta-dot {
+.event-hero__dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -132,42 +136,48 @@ body:has(.event-page) > .noise {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   font-family: var(--font-sans);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.01em;
 }
 
-.event-hero__sub-dot {
+.event-hero__sub-sep {
   opacity: 0.5;
 }
 
-/* Scroll indicator */
-.event-hero__scroll {
-  position: absolute;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
+/* CTA button — matches checkout primary button */
+.event-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 32px;
+  padding: 14px 40px;
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 10px;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
-.event-hero__scroll-line {
-  width: 1px;
-  height: 48px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), transparent);
-  animation: heroScrollLine 2s ease-in-out infinite;
+.event-hero__cta:hover {
+  background: var(--cta-hover);
+}
+
+.event-hero__cta:active {
+  background: var(--cta-active);
+  transform: scale(0.98);
 }
 
 @keyframes heroTagPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
-}
-
-@keyframes heroScrollLine {
-  0% { opacity: 0; transform: scaleY(0); transform-origin: top; }
-  50% { opacity: 1; transform: scaleY(1); transform-origin: top; }
-  100% { opacity: 0; transform: scaleY(1); transform-origin: top; }
 }
 
 
@@ -271,6 +281,7 @@ body:has(.event-page) > .noise {
   position: sticky;
   top: calc(var(--header-height) + 24px);
   z-index: 50;
+  scroll-margin-top: calc(var(--header-height) + 24px);
 }
 
 .event-tickets__box {
@@ -3435,18 +3446,15 @@ body:has(.event-page) > .noise {
 
 /* Compact hero section - centered */
 .theme-minimal .event-hero {
+  height: auto;
   padding: 24px 0 20px;
   background: linear-gradient(180deg, #0e0e0e 0%, #0a0a0a 100%);
-  min-height: auto;
   text-align: center;
 }
 
 .theme-minimal .event-hero__content {
   text-align: center;
-}
-
-.theme-minimal .event-hero__scroll {
-  display: none;
+  padding-bottom: 24px;
 }
 
 /* Hide topbar and release tag */
@@ -3461,7 +3469,6 @@ body:has(.event-page) > .noise {
   letter-spacing: 3px;
 }
 
-/* Title spacing (no red line) */
 .theme-minimal .event-hero__title::after {
   display: none;
 }
@@ -3474,6 +3481,12 @@ body:has(.event-page) > .noise {
 
 .theme-minimal .event-hero__sub {
   font-size: 11px;
+}
+
+.theme-minimal .event-hero__cta {
+  margin-top: 16px;
+  padding: 10px 28px;
+  font-size: 12px;
 }
 
 /* ===== MINIMAL LINEUP - Clean, impactful, properly sized ===== */
@@ -3600,6 +3613,7 @@ body:has(.event-page) > .noise {
 
   .theme-minimal .event-hero__meta {
     gap: 8px;
+    font-size: 11px;
   }
 
   /* Mobile lineup - condensed to 2 lines */
@@ -3678,26 +3692,30 @@ body:has(.event-page) > .noise {
 
 @media (max-width: 768px) {
   .event-hero {
-    min-height: 100svh;
-    padding: var(--header-height) 20px 72px;
+    height: clamp(380px, 55vh, 560px);
+  }
+
+  .event-hero__content {
+    padding: 0 20px 36px;
   }
 
   .event-hero__title {
-    font-size: clamp(2.2rem, 10vw, 3.5rem);
+    font-size: clamp(2rem, 9vw, 3rem);
     margin-bottom: 20px;
   }
 
   .event-hero__meta {
     font-size: 14px;
-    gap: 14px;
+    gap: 12px;
   }
 
   .event-hero__sub {
     font-size: 12px;
   }
 
-  .event-hero__scroll {
-    display: none;
+  .event-hero__cta {
+    padding: 12px 32px;
+    font-size: 13px;
   }
 
   .event-content {
@@ -3715,26 +3733,37 @@ body:has(.event-page) > .noise {
 
 @media (max-width: 480px) {
   .event-hero {
-    padding: var(--header-height) 16px 56px;
+    height: clamp(320px, 50vh, 480px);
+  }
+
+  .event-hero__content {
+    padding: 0 16px 28px;
   }
 
   .event-hero__title {
-    font-size: clamp(1.8rem, 9vw, 2.8rem);
+    font-size: clamp(1.6rem, 8vw, 2.4rem);
     margin-bottom: 16px;
   }
 
   .event-hero__tag {
     font-size: 9px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
   .event-hero__meta {
-    gap: 10px;
+    gap: 8px;
     font-size: 13px;
   }
 
   .event-hero__sub {
     font-size: 11px;
+  }
+
+  .event-hero__cta {
+    width: 100%;
+    padding: 14px 24px;
+    margin-top: 24px;
+    border-radius: 8px;
   }
 
   .event-info__artist-name {

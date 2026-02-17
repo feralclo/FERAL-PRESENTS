@@ -55,21 +55,21 @@ export function EventHero({
 
         <div className="event-hero__meta">
           <span>{date}</span>
-          <span className="event-hero__meta-dot" />
+          <span className="event-hero__dot" />
           <span>{location}</span>
         </div>
 
         {(doors || age) && (
           <div className="event-hero__sub">
             {doors && <span>Doors {doors}</span>}
-            {doors && age && <span className="event-hero__sub-dot">&middot;</span>}
+            {doors && age && <span className="event-hero__sub-sep">&middot;</span>}
             {age && <span>{age}</span>}
           </div>
         )}
-      </div>
 
-      <div className="event-hero__scroll">
-        <div className="event-hero__scroll-line" />
+        <a href="#tickets" className="event-hero__cta">
+          Get Tickets
+        </a>
       </div>
     </section>
   );

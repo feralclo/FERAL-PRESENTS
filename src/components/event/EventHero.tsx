@@ -34,46 +34,42 @@ export function EventHero({
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={imgSrc}
-            alt={title}
-            className={`event-hero__bg-img${imgLoaded ? " event-hero__bg-img--loaded" : ""}`}
+            alt=""
+            className={`event-hero__img${imgLoaded ? " loaded" : ""}`}
             onError={() => setImgFailed(true)}
             onLoad={() => setImgLoaded(true)}
           />
         )}
-        <div className="event-hero__gradient" />
+        <div className="event-hero__overlay" />
       </div>
-      <div className="container">
-        <div className="event-hero__content">
-          {tag && (
-            <div className="event-hero__badge">
-              <span className="event-hero__badge-dot" />
-              <span className="event-hero__badge-text">{tag}</span>
-            </div>
-          )}
 
-          <h1 className="event-hero__title">{title}</h1>
-
-          <div className="event-hero__meta">
-            <div className="event-hero__meta-row">
-              <span className="event-hero__meta-item">
-                <span className="event-hero__meta-label">Date</span>
-                <span className="event-hero__meta-value">{date}</span>
-              </span>
-              <span className="event-hero__meta-divider" />
-              <span className="event-hero__meta-item">
-                <span className="event-hero__meta-label">Venue</span>
-                <span className="event-hero__meta-value">{location}</span>
-              </span>
-            </div>
-            {(doors || age) && (
-              <div className="event-hero__meta-secondary">
-                {doors && <span>Doors {doors}</span>}
-                {doors && age && <span className="event-hero__meta-sep" />}
-                {age && <span>{age}</span>}
-              </div>
-            )}
+      <div className="event-hero__content">
+        {tag && (
+          <div className="event-hero__tag">
+            <span className="event-hero__tag-dot" />
+            {tag}
           </div>
+        )}
+
+        <h1 className="event-hero__title">{title}</h1>
+
+        <div className="event-hero__meta">
+          <span>{date}</span>
+          <span className="event-hero__meta-dot" />
+          <span>{location}</span>
         </div>
+
+        {(doors || age) && (
+          <div className="event-hero__sub">
+            {doors && <span>Doors {doors}</span>}
+            {doors && age && <span className="event-hero__sub-dot">&middot;</span>}
+            {age && <span>{age}</span>}
+          </div>
+        )}
+      </div>
+
+      <div className="event-hero__scroll">
+        <div className="event-hero__scroll-line" />
       </div>
     </section>
   );

@@ -10,193 +10,199 @@ body:has(.event-page) > .noise {
   display: none !important;
 }
 
-/* ── Hero Section ── */
-/* Full-bleed cinematic hero — pulls behind fixed header for edge-to-edge feel */
+/* ═══════════════════════════════════════════════
+   HERO — Full-viewport cinematic image section
+   ═══════════════════════════════════════════════ */
+
 .event-hero {
   position: relative;
   min-height: 100svh;
-  margin-top: calc(-1 * var(--header-height));
-  padding-top: var(--header-height);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding-bottom: 64px;
+  align-items: center;
+  padding: var(--header-height) 24px 100px;
+  text-align: center;
   overflow: hidden;
 }
 
+/* Background image layer */
 .event-hero__bg {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   z-index: 0;
 }
 
-.event-hero__bg-img {
-  position: absolute;
-  top: 0;
-  left: 0;
+.event-hero__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center center;
-  z-index: 0;
+  object-position: center;
   opacity: 0;
-  transition: opacity 0.6s ease;
+  transition: opacity 0.8s ease;
 }
 
-.event-hero__bg-img--loaded {
+.event-hero__img.loaded {
   opacity: 1;
 }
 
-/* Cinematic gradient — clear zone in middle lets image breathe */
-.event-hero__gradient {
+/* Gradient overlay — light at top for header, clear middle, strong bottom fade */
+.event-hero__overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.5) 0%,
-    rgba(0, 0, 0, 0.1) 20%,
-    transparent 40%,
-    rgba(0, 0, 0, 0.4) 65%,
-    rgba(0, 0, 0, 0.85) 85%,
+    180deg,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0) 25%,
+    rgba(0, 0, 0, 0) 45%,
+    rgba(0, 0, 0, 0.5) 70%,
     var(--bg-dark) 100%
   );
   z-index: 1;
 }
 
-/* Left-aligned content block — editorial feel on wide screens */
+/* Content — centered, constrained width */
 .event-hero__content {
   position: relative;
-  z-index: 4;
-  max-width: 680px;
+  z-index: 2;
+  max-width: 800px;
+  width: 100%;
 }
 
-/* Badge — pill tag (e.g. "ON SALE NOW") */
-.event-hero__badge {
+/* Tag badge */
+.event-hero__tag {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 100px;
-  margin-bottom: 20px;
-}
-
-.event-hero__badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-  animation: livePulse 1.5s ease-in-out infinite;
-}
-
-.event-hero__badge-text {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--text-secondary);
-}
-
-/* Title — bolder, larger, balanced wrapping */
-.event-hero__title {
-  font-family: var(--font-sans);
-  font-size: clamp(2.5rem, 6vw + 0.5rem, 5rem);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.0;
-  margin-bottom: 28px;
-  color: var(--text-primary);
-  text-wrap: balance;
-}
-
-/* Two-tier metadata system */
-.event-hero__meta-row {
-  display: flex;
-  align-items: baseline;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.event-hero__meta-item {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.event-hero__meta-label {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 24px;
 }
 
-.event-hero__meta-value {
+.event-hero__tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  animation: heroTagPulse 2s ease-in-out infinite;
+}
+
+/* Title */
+.event-hero__title {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  color: #fff;
+  text-wrap: balance;
+  margin-bottom: 28px;
+}
+
+/* Primary meta — date · venue */
+.event-hero__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-family: var(--font-sans);
+  font-size: 16px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.01em;
 }
 
-.event-hero__meta-divider {
-  width: 1px;
-  height: 16px;
-  background: rgba(255, 255, 255, 0.15);
-  align-self: center;
+.event-hero__meta-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
 }
 
-.event-hero__meta-secondary {
+/* Secondary meta — doors · age */
+.event-hero__sub {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  margin-top: 12px;
   font-family: var(--font-sans);
   font-size: 13px;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.01em;
 }
 
-.event-hero__meta-sep {
+.event-hero__sub-dot {
+  opacity: 0.5;
+}
+
+/* Scroll indicator */
+.event-hero__scroll {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.event-hero__scroll-line {
   width: 1px;
-  height: 12px;
-  background: rgba(255, 255, 255, 0.12);
+  height: 48px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), transparent);
+  animation: heroScrollLine 2s ease-in-out infinite;
+}
+
+@keyframes heroTagPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes heroScrollLine {
+  0% { opacity: 0; transform: scaleY(0); transform-origin: top; }
+  50% { opacity: 1; transform: scaleY(1); transform-origin: top; }
+  100% { opacity: 0; transform: scaleY(1); transform-origin: top; }
 }
 
 
-/* Event Content Area */
+/* ═══════════════════════════════════════════════
+   CONTENT — Two-column layout below the hero
+   ═══════════════════════════════════════════════ */
+
 .event-content {
-  padding: 48px 0;
+  padding: 64px 0;
 }
 
 .event-content__grid {
   display: grid;
-  grid-template-columns: 1fr 430px;
-  gap: 60px;
+  grid-template-columns: 1fr 420px;
+  gap: 80px;
 }
 
 .event-info__section {
-  margin-bottom: 48px;
+  margin-bottom: 56px;
+}
+
+.event-info__section:last-child {
+  margin-bottom: 0;
 }
 
 .event-info__heading {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.15em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  margin-bottom: 24px;
-  padding-bottom: 12px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .event-info__heading::before {
@@ -208,16 +214,16 @@ body:has(.event-page) > .noise {
 }
 
 .event-info__az {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.2);
   font-weight: 400;
   letter-spacing: 0.05em;
 }
 
 .event-info__text {
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.9;
-  color: var(--gray-text);
+  font-size: 16px;
+  line-height: 1.85;
+  color: rgba(255, 255, 255, 0.6);
   letter-spacing: 0.01em;
 }
 
@@ -225,31 +231,31 @@ body:has(.event-page) > .noise {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 0;
+  gap: 4px 0;
 }
 
 .event-info__artist {
   display: inline-flex;
   align-items: center;
-  padding: 6px 0;
+  padding: 8px 0;
   cursor: default;
 }
 
 .event-info__artist:not(:last-child)::after {
   content: '\00b7';
-  margin: 0 12px;
-  color: var(--text-muted);
-  font-size: 20px;
+  margin: 0 14px;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 18px;
   line-height: 1;
 }
 
 .event-info__artist-name {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--text-primary);
-  transition: color var(--transition-fast);
+  color: #fff;
+  transition: color 0.15s ease;
 }
 
 .event-info__artist:hover .event-info__artist-name {
@@ -3371,13 +3377,13 @@ body:has(.event-page) > .noise {
   z-index: 0;
 }
 
-.theme-minimal.has-cover-image .event-hero__bg-img {
+.theme-minimal.has-cover-image .event-hero__img {
   filter: blur(var(--cover-blur, 0px));
   /* slight scale prevents white edges when blur is applied */
   transform: scale(1.02);
   opacity: 1;
   object-fit: cover;
-  object-position: center center;
+  object-position: center;
   width: 100%;
   height: 100%;
 }
@@ -3439,6 +3445,10 @@ body:has(.event-page) > .noise {
   text-align: center;
 }
 
+.theme-minimal .event-hero__scroll {
+  display: none;
+}
+
 /* Hide topbar and release tag */
 .theme-minimal .event-hero__topbar {
   display: none;
@@ -3448,9 +3458,6 @@ body:has(.event-page) > .noise {
 .theme-minimal .event-hero__title {
   font-size: clamp(28px, 5vw, 44px);
   margin-bottom: 8px;
-  margin-left: auto;
-  margin-right: auto;
-  text-align: center;
   letter-spacing: 3px;
 }
 
@@ -3460,25 +3467,13 @@ body:has(.event-page) > .noise {
 }
 
 /* Meta — centered for minimal theme */
-.theme-minimal .event-hero__meta-row {
-  justify-content: center;
-  gap: 8px 24px;
-}
-
-.theme-minimal .event-hero__meta-label {
-  color: var(--red);
-  opacity: 0.9;
-  font-size: 9px;
-  letter-spacing: 2px;
-}
-
-.theme-minimal .event-hero__meta-value {
-  color: #fff;
+.theme-minimal .event-hero__meta {
   font-size: 12px;
+  gap: 12px;
 }
 
-.theme-minimal .event-hero__meta-secondary {
-  justify-content: center;
+.theme-minimal .event-hero__sub {
+  font-size: 11px;
 }
 
 /* ===== MINIMAL LINEUP - Clean, impactful, properly sized ===== */
@@ -3603,8 +3598,8 @@ body:has(.event-page) > .noise {
     margin: 10px auto 12px;
   }
 
-  .theme-minimal .event-hero__meta-row {
-    gap: 8px 16px;
+  .theme-minimal .event-hero__meta {
+    gap: 8px;
   }
 
   /* Mobile lineup - condensed to 2 lines */
@@ -3681,117 +3676,73 @@ body:has(.event-page) > .noise {
   }
 }
 
-@media (max-width: 1024px) {
-  .event-hero__title {
-    font-size: clamp(2rem, 5vw + 0.5rem, 3.5rem);
-  }
-
-  .event-hero__content {
-    max-width: 100%;
-  }
-
-  .event-hero__meta-row {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .event-hero__meta-divider {
-    display: none;
-  }
-}
-
 @media (max-width: 768px) {
-  .event-page {
-    padding-top: var(--header-height);
-  }
-
   .event-hero {
-    min-height: calc(100svh - var(--header-height));
-    margin-top: 0;
-    padding-top: 0;
-    padding-bottom: 32px;
+    min-height: 100svh;
+    padding: var(--header-height) 20px 72px;
   }
 
   .event-hero__title {
-    font-size: clamp(1.8rem, 7vw, 2.8rem);
+    font-size: clamp(2.2rem, 10vw, 3.5rem);
     margin-bottom: 20px;
   }
 
-  .event-hero__meta-label {
-    font-size: 9px;
-  }
-
-  .event-hero__meta-value {
+  .event-hero__meta {
     font-size: 14px;
+    gap: 14px;
   }
 
-  .event-hero__meta-secondary {
+  .event-hero__sub {
     font-size: 12px;
   }
 
+  .event-hero__scroll {
+    display: none;
+  }
+
   .event-content {
-    padding: 32px 0 60px;
+    padding: 40px 0 60px;
   }
 
   .event-info__section {
-    margin-bottom: 32px;
-  }
-
-  .event-info__lineup {
-    gap: 10px 0;
-  }
-
-  .event-info__artist {
-    padding: 4px 0;
+    margin-bottom: 40px;
   }
 
   .event-info__artist-name {
-    font-size: 15px;
+    font-size: 16px;
   }
 }
 
 @media (max-width: 480px) {
   .event-hero {
-    padding-bottom: 24px;
-  }
-
-  .event-hero__content {
-    text-align: center;
-  }
-
-  .event-hero__badge {
-    padding: 5px 10px;
-    margin-bottom: 14px;
-  }
-
-  .event-hero__badge-text {
-    font-size: 11px;
+    padding: var(--header-height) 16px 56px;
   }
 
   .event-hero__title {
-    font-size: clamp(1.5rem, 7vw, 2.2rem);
-    margin-bottom: 14px;
+    font-size: clamp(1.8rem, 9vw, 2.8rem);
+    margin-bottom: 16px;
   }
 
-  .event-hero__meta-row {
-    align-items: center;
+  .event-hero__tag {
+    font-size: 9px;
+    margin-bottom: 16px;
   }
 
-  .event-hero__meta-item {
-    justify-content: center;
+  .event-hero__meta {
+    gap: 10px;
+    font-size: 13px;
   }
 
-  .event-hero__meta-secondary {
-    justify-content: center;
-    font-size: 12px;
+  .event-hero__sub {
+    font-size: 11px;
   }
 
   .event-info__artist-name {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .event-info__artist:not(:last-child)::after {
-    margin: 0 8px;
+    margin: 0 10px;
     font-size: 16px;
   }
 }

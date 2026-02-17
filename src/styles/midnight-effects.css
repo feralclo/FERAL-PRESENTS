@@ -359,6 +359,46 @@ body:has([data-theme="midnight"]) .header {
   animation: midnight-cta-ready 600ms ease-out;
 }
 
+/* Express Checkout — Premium glass enclosure
+   The Apple Pay / Google Pay button sits inside this container.
+   Creates a "jewel case" effect: subtle gradient glass with
+   ambient light bleeding from the top edge. The white Stripe
+   button appears to float inside a lit display. */
+[data-theme="midnight"] .midnight-express-glass {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.015) 50%,
+    rgba(255, 255, 255, 0.025) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    /* Inner top highlight — light hitting glass edge */
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    /* Inner bottom — subtle depth */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+    /* Ambient glow — soft diffused light around the container */
+    0 0 24px rgba(255, 255, 255, 0.03),
+    /* Depth shadow */
+    0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Ambient halo — ultra-soft glow behind the glass */
+[data-theme="midnight"] .midnight-express-glass::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 22px;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(255, 255, 255, 0.04) 0%,
+    transparent 70%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
 /* Express Checkout reveal — one-shot border glow */
 @keyframes midnight-reveal-glow {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 35%, transparent); }

@@ -176,8 +176,8 @@ function ExpressCheckoutInner({
             googlePay: "plain",
           },
           buttonTheme: {
-            applePay: "black",
-            googlePay: "black",
+            applePay: "white",
+            googlePay: "white",
           },
           buttonHeight: 48,
           layout: {

@@ -242,29 +242,34 @@ export function MidnightTicketWidget({
               <div
                 className={`mt-0 overflow-hidden transition-all duration-500 ease-out ${
                   totalQty > 0
-                    ? "opacity-100 max-h-[200px]"
+                    ? "opacity-100 max-h-[300px]"
                     : "opacity-0 max-h-0 pointer-events-none"
                 }`}
               >
+                {/* Divider — gradient lines with quiet label */}
                 {expressAvailable && (
-                  <div className="flex items-center gap-3 py-4">
-                    <Separator className="flex-1 opacity-20" />
-                    <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40 shrink-0">
-                      or pay with
+                  <div className="flex items-center gap-3 pt-5 pb-4">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+                    <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.2em] uppercase text-white/20 shrink-0">
+                      or
                     </span>
-                    <Separator className="flex-1 opacity-20" />
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
                   </div>
                 )}
-                <div className="rounded-xl overflow-hidden">
-                  <ExpressCheckout
-                    eventId={eventId}
-                    currency={currency}
-                    amount={totalPrice}
-                    items={expressItems}
-                    onSuccess={handleExpressSuccess}
-                    onError={setExpressError}
-                    onAvailable={() => setExpressAvailable(true)}
-                  />
+
+                {/* Glass enclosure — premium container for express checkout */}
+                <div className="midnight-express-glass rounded-2xl p-3">
+                  <div className="rounded-xl overflow-hidden">
+                    <ExpressCheckout
+                      eventId={eventId}
+                      currency={currency}
+                      amount={totalPrice}
+                      items={expressItems}
+                      onSuccess={handleExpressSuccess}
+                      onError={setExpressError}
+                      onAvailable={() => setExpressAvailable(true)}
+                    />
+                  </div>
                 </div>
                 {expressError && (
                   <div className="mt-2.5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.5px] text-destructive text-center p-2.5 bg-destructive/[0.05] border border-destructive/10 rounded-xl">

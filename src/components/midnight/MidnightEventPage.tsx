@@ -132,13 +132,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           tag={event.tag_line || ""}
         />
 
-        {/* Hero-to-content bridge — smooth visual transition on mobile/tablet */}
-        <div className="lg:hidden">
-          <div className="h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-          <div className="h-6 max-[480px]:h-5" />
-        </div>
-
-        <section className="pt-16 pb-16 max-lg:pt-0 max-md:pb-10">
+        <section className="relative z-10 pt-16 pb-16 max-lg:-mt-10 max-lg:pt-0 max-md:pb-10">
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-20 max-lg:gap-8">
               {/* Left: Event Info — on mobile, show below tickets */}
@@ -170,19 +164,25 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 )}
               </div>
 
-              {/* Right: Ticket Widget — on mobile, show first */}
+              {/* Right: Ticket Widget — on mobile, rises as a sheet from the hero */}
               <div className="max-lg:order-1">
-                <MidnightTicketWidget
-                  eventSlug={event.slug}
-                  eventId={event.id}
-                  paymentMethod={event.payment_method}
-                  currency={event.currency}
-                  ticketTypes={event.ticket_types || []}
-                  cart={cart}
-                  ticketGroups={ticketGroups}
-                  ticketGroupMap={ticketGroupMap}
-                  onViewMerch={handleViewMerch}
-                />
+                <div className="lg:contents max-lg:relative max-lg:rounded-t-3xl max-lg:overflow-hidden">
+                  {/* Mobile: gradient sheet blends hero into ticket card */}
+                  <div className="lg:hidden h-8 max-[480px]:h-6 bg-gradient-to-b from-transparent to-card relative">
+                    <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+                  </div>
+                  <MidnightTicketWidget
+                    eventSlug={event.slug}
+                    eventId={event.id}
+                    paymentMethod={event.payment_method}
+                    currency={event.currency}
+                    ticketTypes={event.ticket_types || []}
+                    cart={cart}
+                    ticketGroups={ticketGroups}
+                    ticketGroupMap={ticketGroupMap}
+                    onViewMerch={handleViewMerch}
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -135,7 +135,7 @@ export function MidnightTicketWidget({
         className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[calc(var(--header-height,80px)+24px)] max-lg:relative"
         id="tickets"
       >
-        <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-x-0 max-lg:border-t-0 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-card p-0 gap-0">
+        <Card className="glass rounded-2xl max-lg:rounded-none max-lg:border-x-0 max-lg:border-t max-lg:border-t-primary/15 max-lg:shadow-none max-lg:backdrop-blur-0 max-lg:bg-card p-0 gap-0">
           <CardContent className="p-7 max-lg:p-6 max-[480px]:p-4">
             <h3 className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[4px] uppercase mb-2">
               Get Tickets<span className="text-primary">_</span>

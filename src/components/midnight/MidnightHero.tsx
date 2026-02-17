@@ -43,13 +43,13 @@ export function MidnightHero({
         <div
           className="absolute inset-0 z-[1]"
           style={{
-            background: "linear-gradient(180deg, transparent 0%, transparent 35%, rgba(0,0,0,0.55) 70%, var(--color-background) 100%)",
+            background: "linear-gradient(180deg, transparent 0%, transparent 50%, rgba(0,0,0,0.6) 78%, var(--color-background) 100%)",
           }}
         />
       </div>
 
       {/* Content */}
-      <div className="relative z-[2] w-full max-w-[800px] px-6 pb-12 max-md:px-5 max-md:pb-9 max-[480px]:px-4 max-[480px]:pb-7">
+      <div className="relative z-[2] w-full max-w-[800px] px-6 pb-12 max-md:px-5 max-md:pb-7 max-[480px]:px-4 max-[480px]:pb-5">
         {tag && (
           <div className="inline-flex items-center gap-2 font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/60 mb-5 max-[480px]:text-[9px] max-[480px]:mb-3.5">
             <span

@@ -1,0 +1,69 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+interface MidnightCartToastProps {
+  message: string | null;
+}
+
+export function MidnightCartToast({ message }: MidnightCartToastProps) {
+  const [visible, setVisible] = useState(false);
+  const [displayMessage, setDisplayMessage] = useState("");
+  const [exiting, setExiting] = useState(false);
+
+  useEffect(() => {
+    if (!message) return;
+    setDisplayMessage(message);
+    setExiting(false);
+    setVisible(true);
+
+    const dismissTimer = setTimeout(() => {
+      setExiting(true);
+    }, 2200);
+
+    const removeTimer = setTimeout(() => {
+      setVisible(false);
+      setExiting(false);
+    }, 2500);
+
+    return () => {
+      clearTimeout(dismissTimer);
+      clearTimeout(removeTimer);
+    };
+  }, [message]);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className="fixed bottom-20 right-4 max-md:right-3 max-md:bottom-16 z-[998] pointer-events-none"
+      style={{
+        animation: exiting
+          ? "midnight-toast-out 300ms ease-in forwards"
+          : "midnight-toast-in 300ms ease-out forwards",
+      }}
+    >
+      <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg bg-card/95 border border-primary/25 backdrop-blur-sm shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          className="text-primary shrink-0"
+        >
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M5 8l2 2 4-4"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="font-[family-name:var(--font-mono)] text-[11px] font-semibold tracking-[0.5px] text-foreground/90 whitespace-nowrap">
+          {displayMessage}
+        </span>
+      </div>
+    </div>
+  );
+}

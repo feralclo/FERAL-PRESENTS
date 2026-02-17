@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/stripe/config";
 import type { TicketTypeRow } from "@/types/events";
 
 interface MidnightTierProgressionProps {
@@ -46,7 +47,7 @@ export function MidnightTierProgression({
                 soldOut ? "line-through text-muted-foreground" : "text-foreground",
               )}
             >
-              {currSymbol}{Number(tt.price) % 1 === 0 ? Number(tt.price) : Number(tt.price).toFixed(2)}
+              {currSymbol}{formatPrice(Number(tt.price))}
             </span>
             <Badge
               variant={isActive ? "default" : "secondary"}

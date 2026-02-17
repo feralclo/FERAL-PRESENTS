@@ -54,22 +54,24 @@ body:has([data-theme="midnight"]) .header {
 /* Vignette — radial edge darkening for framed depth */
 [data-theme="midnight"] .midnight-hero-vignette {
   background: radial-gradient(
-    ellipse 75% 65% at 50% 45%,
-    transparent 45%,
-    rgba(0, 0, 0, 0.4) 100%
+    ellipse 65% 55% at 50% 45%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.55) 100%
   );
 }
 
-/* Glass reflection — subtle diagonal highlight on the "glass surface" */
+/* Glass reflection — diagonal highlight band on the "glass surface" */
 [data-theme="midnight"] .midnight-hero-reflection {
   background: linear-gradient(
     115deg,
     transparent 0%,
-    transparent 40%,
-    rgba(255, 255, 255, 0.04) 44%,
-    rgba(255, 255, 255, 0.07) 46%,
-    rgba(255, 255, 255, 0.04) 48%,
-    transparent 52%,
+    transparent 36%,
+    rgba(255, 255, 255, 0.03) 40%,
+    rgba(255, 255, 255, 0.06) 44%,
+    rgba(255, 255, 255, 0.10) 47%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.03) 54%,
+    transparent 58%,
     transparent 100%
   );
 }
@@ -80,6 +82,23 @@ body:has([data-theme="midnight"]) .header {
     inset 0 0 100px 20px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Glass border — premium framed panel on desktop, full-bleed on mobile */
+[data-theme="midnight"] .midnight-hero-glass-border {
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  [data-theme="midnight"] .midnight-hero-glass-border {
+    border-radius: 16px;
+    margin-left: 24px;
+    margin-right: 24px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+      0 8px 40px rgba(0, 0, 0, 0.6);
+  }
 }
 
 
@@ -333,6 +352,46 @@ body:has([data-theme="midnight"]) .header {
   50% { filter: drop-shadow(0 0 8px rgba(229, 228, 226, 1)); }
 }
 
+/* Qty counter pop — brief scale bounce on +/- tap */
+@keyframes midnight-qty-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+[data-theme="midnight"] .midnight-qty-pop {
+  animation: midnight-qty-pop 200ms ease-out;
+}
+
+/* Checkout CTA glow pulse — one-shot when cart becomes non-empty */
+@keyframes midnight-cta-ready {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 50%, transparent); }
+  50% { box-shadow: 0 0 20px 4px color-mix(in srgb, var(--color-primary) 40%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+[data-theme="midnight"] .midnight-cta-ready {
+  animation: midnight-cta-ready 600ms ease-out;
+}
+
+/* Express Checkout reveal glow — one-shot border glow on first appearance */
+@keyframes midnight-reveal-glow {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 40%, transparent); }
+  50% { box-shadow: 0 0 16px 2px color-mix(in srgb, var(--color-primary) 25%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+[data-theme="midnight"] .midnight-reveal-glow {
+  animation: midnight-reveal-glow 800ms ease-out;
+}
+
+/* Cart toast entrance */
+@keyframes midnight-toast-in {
+  0% { transform: translateY(100%) scale(0.95); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes midnight-toast-out {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(100%) scale(0.95); opacity: 0; }
+}
+
 
 /* ═══════════════════════════════════════════════
    MERCH VIEWER — Radial glow for merch modal
@@ -455,7 +514,10 @@ body:has([data-theme="midnight"]) .header {
   [data-theme="midnight"] .midnight-metallic-platinum::after,
   [data-theme="midnight"] .midnight-metallic-obsidian::after,
   [data-theme="midnight"] .midnight-merch-viewer::before,
-  [data-theme="midnight"] .midnight-diamond-icon::before {
+  [data-theme="midnight"] .midnight-diamond-icon::before,
+  [data-theme="midnight"] .midnight-qty-pop,
+  [data-theme="midnight"] .midnight-cta-ready,
+  [data-theme="midnight"] .midnight-reveal-glow {
     animation: none;
   }
   [data-theme="midnight"] .midnight-lineup-pill {

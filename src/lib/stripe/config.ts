@@ -71,3 +71,13 @@ export function getCurrencySymbol(currency: string): string {
       return currency.toUpperCase();
   }
 }
+
+/**
+ * Format a price for display (e.g., "26" or "26.50").
+ * Drops decimal places when the price is a whole number.
+ */
+export function formatPrice(price: number, currency?: string): string {
+  const symbol = currency ? getCurrencySymbol(currency) : "";
+  const display = price % 1 === 0 ? String(price) : price.toFixed(2);
+  return `${symbol}${display}`;
+}

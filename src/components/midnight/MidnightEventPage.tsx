@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
@@ -15,6 +15,7 @@ import { MidnightLineup } from "./MidnightLineup";
 import { MidnightTicketWidget } from "./MidnightTicketWidget";
 import { MidnightMerchModal } from "./MidnightMerchModal";
 
+import { MidnightCartToast } from "./MidnightCartToast";
 import { MidnightSocialProof } from "./MidnightSocialProof";
 import { MidnightFooter } from "./MidnightFooter";
 import type { Event, TicketTypeRow } from "@/types/events";
@@ -65,6 +66,26 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
 
+  // Toast state — unique key triggers re-render of toast component
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastCounter = useRef(0);
+  const showToast = useCallback((msg: string) => {
+    toastCounter.current += 1;
+    setToastMessage(`${msg}\x00${toastCounter.current}`);
+  }, []);
+
+  // Watch cart items for additions → trigger toast
+  const prevCartLength = useRef(0);
+  useEffect(() => {
+    const len = cart.cartItems.length;
+    if (len > prevCartLength.current && cart.cartItems.length > 0) {
+      const newest = cart.cartItems[cart.cartItems.length - 1];
+      const sizeInfo = newest.size ? ` (Size ${newest.size})` : "";
+      showToast(`${newest.name}${sizeInfo} added`);
+    }
+    prevCartLength.current = len;
+  }, [cart.cartItems, showToast]);
+
   const handleViewMerch = useCallback((tt: TicketTypeRow) => {
     setTeeModalTicketType(tt);
     setTeeModalOpen(true);
@@ -102,8 +123,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     event.cover_image ||
     `/api/media/event_${event.id}_banner`;
 
-  const currSymbol =
-    event.currency === "GBP" ? "\u00a3" : event.currency === "EUR" ? "\u20ac" : "$";
+  const currSymbol = cart.currSymbol;
 
   const lineup = event.lineup || [];
 
@@ -146,10 +166,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 {/* Lineup moves above About on mobile via order */}
                 {lineup.length > 0 && (
                   <div className="lg:hidden order-[-1] mb-10 max-md:mb-8">
-                    <MidnightLineup
-                      artists={lineup}
-                      onArtistClick={() => tracking.trackEngagement("click_lineup")}
-                    />
+                    <MidnightLineup artists={lineup} />
                   </div>
                 )}
 
@@ -162,10 +179,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
                   <div className="hidden lg:block mt-14">
-                    <MidnightLineup
-                      artists={lineup}
-                      onArtistClick={() => tracking.trackEngagement("click_lineup")}
-                    />
+                    <MidnightLineup artists={lineup} />
                   </div>
                 )}
               </div>
@@ -225,6 +239,9 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
         />
       )}
+
+      {/* Cart feedback toast */}
+      <MidnightCartToast message={toastMessage} />
 
       {/* Engagement features */}
       <DiscountPopup />

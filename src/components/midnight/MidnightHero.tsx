@@ -22,13 +22,19 @@ export function MidnightHero({
   tag,
 }: MidnightHeroProps) {
   return (
-    <section className="midnight-hero relative flex items-end justify-center text-center overflow-hidden bg-background">
+    <section className="midnight-hero midnight-hero-glass-border relative flex items-end justify-center text-center overflow-hidden bg-background">
       {/* Background image via CSS — avoids iOS Safari <img> + object-fit
-          compositor bug that causes "pop and enlarge" during scroll */}
+          compositor bug that causes "pop and enlarge" during scroll.
+          scale(1.05) prevents edge gaps on varied aspect ratios.
+          saturate(1.15) enriches colours through the glass overlays. */}
       {bannerImage && (
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${bannerImage})` }}
+          style={{
+            backgroundImage: `url(${bannerImage})`,
+            filter: "saturate(1.15)",
+            transform: "scale(1.05)",
+          }}
         />
       )}
 
@@ -44,8 +50,8 @@ export function MidnightHero({
               rgba(0,0,0,0.05) 15%,
               transparent 30%,
               transparent 50%,
-              rgba(0,0,0,0.35) 65%,
-              rgba(0,0,0,0.65) 82%,
+              rgba(0,0,0,0.4) 65%,
+              rgba(0,0,0,0.7) 82%,
               var(--color-background) 100%
             )`,
           }}

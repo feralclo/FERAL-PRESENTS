@@ -2,10 +2,9 @@
 
 interface MidnightLineupProps {
   artists: string[];
-  onArtistClick?: () => void;
 }
 
-export function MidnightLineup({ artists, onArtistClick }: MidnightLineupProps) {
+export function MidnightLineup({ artists }: MidnightLineupProps) {
   if (artists.length === 0) return null;
 
   return (
@@ -27,7 +26,6 @@ export function MidnightLineup({ artists, onArtistClick }: MidnightLineupProps) 
           <span
             key={artist}
             className="midnight-lineup-pill inline-block px-3.5 py-1.5 max-[480px]:px-2.5 max-[480px]:py-1 border border-foreground/[0.08] rounded-full font-[family-name:var(--font-mono)] text-[13px] max-[480px]:text-[11px] tracking-[0.5px] text-foreground/60 cursor-default bg-foreground/[0.02]"
-            onClick={onArtistClick}
           >
             {artist}
           </span>

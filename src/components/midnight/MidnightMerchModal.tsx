@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
 
@@ -214,19 +215,12 @@ export function MidnightMerchModal({
               <span className="block font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-muted-foreground text-center mb-3 max-md:mb-2.5">
                 Select Size
               </span>
-              <div className="flex justify-center gap-1.5 max-md:gap-1 flex-wrap">
-                {sizes.map((size) => (
-                  <Button
-                    key={size}
-                    variant={selectedSize === size ? "default" : "outline"}
-                    className={`min-w-[44px] max-md:min-w-[40px] h-10 max-md:h-[38px] px-2.5 font-[family-name:var(--font-mono)] text-[11px] max-md:text-[10px] font-bold tracking-[1px]
-                      ${selectedSize === size ? "bg-platinum/20 border-platinum text-platinum shadow-[0_0_15px_rgba(229,228,226,0.3)]" : "hover:bg-platinum/10 hover:border-platinum/40 hover:text-platinum"}`}
-                    onClick={() => setSelectedSize(size)}
-                  >
-                    {size}
-                  </Button>
-                ))}
-              </div>
+              <MidnightSizeSelector
+                sizes={sizes}
+                selectedSize={selectedSize}
+                onSelect={(s) => setSelectedSize(s as TeeSize)}
+                variant="platinum"
+              />
             </div>
           </div>
 

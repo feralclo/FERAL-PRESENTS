@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import { preloadStripe } from "@/lib/stripe/client";
 import { MidnightTicketCard } from "./MidnightTicketCard";
 import { MidnightCartSummary } from "./MidnightCartSummary";
 import { MidnightTierProgression } from "./MidnightTierProgression";
+import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import type { UseCartResult } from "@/hooks/useCart";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
@@ -48,6 +49,11 @@ export function MidnightTicketWidget({
   const isStripe = paymentMethod === "stripe";
   const [expressError, setExpressError] = useState("");
 
+  // Track first item → glow animations
+  const hadItemsBefore = useRef(false);
+  const [ctaGlow, setCtaGlow] = useState(false);
+  const [expressRevealed, setExpressRevealed] = useState(false);
+
   const {
     activeTypes,
     quantities,
@@ -63,6 +69,20 @@ export function MidnightTicketWidget({
     handleSizeConfirm,
     handleCheckout,
   } = cart;
+
+  // Detect first item added → trigger one-shot CTA glow + express reveal
+  useEffect(() => {
+    if (totalQty > 0 && !hadItemsBefore.current) {
+      hadItemsBefore.current = true;
+      setCtaGlow(true);
+      if (isStripe) setExpressRevealed(true);
+      const timer = setTimeout(() => setCtaGlow(false), 600);
+      return () => clearTimeout(timer);
+    }
+    if (totalQty === 0) {
+      hadItemsBefore.current = false;
+    }
+  }, [totalQty, isStripe]);
 
   // Pre-warm Stripe.js + account fetch while user browses tickets.
   // By the time they tap "add," both are cached — Express Checkout
@@ -193,28 +213,29 @@ export function MidnightTicketWidget({
 
             {/* Checkout Button */}
             <Button
-              className="w-full h-12 mt-4 text-[0.85rem] max-[480px]:text-[0.8rem] font-bold tracking-[0.02em] uppercase"
+              className={`w-full h-12 mt-4 text-[0.85rem] max-[480px]:text-[0.8rem] font-bold tracking-[0.02em] uppercase ${ctaGlow ? "midnight-cta-ready" : ""}`}
               disabled={totalQty === 0}
               onClick={handleCheckout}
             >
               {totalQty === 0
                 ? "Select tickets to continue"
-                : `Checkout — ${currSymbol}${totalPrice.toFixed(2)}`}
+                : <>Checkout — <span key={totalPrice} className="midnight-qty-pop inline-block">{currSymbol}{totalPrice.toFixed(2)}</span></>}
             </Button>
 
             {/* Express Checkout (Apple Pay / Google Pay) — always mounted for
-                instant readiness. Dimmed + non-interactive until tickets added. */}
+                instant readiness. Hidden until first item added, then reveals
+                with smooth expand animation. */}
             {isStripe && (
               <div
-                className={`mt-0 transition-opacity duration-300 ${
+                className={`mt-0 overflow-hidden transition-all duration-500 ease-out ${
                   totalQty > 0
-                    ? "opacity-100"
-                    : "opacity-50 pointer-events-none"
-                }`}
+                    ? "opacity-100 max-h-[200px]"
+                    : "opacity-0 max-h-0 pointer-events-none"
+                } ${expressRevealed && totalQty > 0 ? "midnight-reveal-glow rounded-lg" : ""}`}
               >
                 <div className="flex items-center gap-3 py-3.5">
                   <Separator className="flex-1 opacity-30" />
-                  <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] uppercase text-muted-foreground shrink-0">
+                  <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.15em] uppercase text-muted-foreground/80 shrink-0">
                     or
                   </span>
                   <Separator className="flex-1 opacity-30" />
@@ -266,21 +287,16 @@ export function MidnightTicketWidget({
               </DialogDescription>
             )}
           </DialogHeader>
-          <div className="flex justify-center gap-1.5 flex-wrap my-4">
-            {sizePopupSizes.map((size) => (
-              <Button
-                key={size}
-                variant={sizePopup?.selectedSize === size ? "default" : "outline"}
-                className="min-w-[42px] h-11 font-[family-name:var(--font-mono)] text-xs font-bold tracking-[1px]"
-                onClick={() =>
-                  setSizePopup((prev) =>
-                    prev ? { ...prev, selectedSize: size } : prev
-                  )
-                }
-              >
-                {size}
-              </Button>
-            ))}
+          <div className="my-4">
+            <MidnightSizeSelector
+              sizes={sizePopupSizes}
+              selectedSize={sizePopup?.selectedSize || "M"}
+              onSelect={(size) =>
+                setSizePopup((prev) =>
+                  prev ? { ...prev, selectedSize: size } : prev
+                )
+              }
+            />
           </div>
           <DialogFooter>
             <Button

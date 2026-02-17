@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef } from "react";
+import { getCurrencySymbol } from "@/lib/stripe/config";
 import type { TicketTypeRow } from "@/types/events";
 import type { TrafficEventType } from "@/types/analytics";
 
@@ -35,7 +36,7 @@ export interface UseCartResult {
   /** Total price in cart */
   totalPrice: number;
   /** Cart line items (for display + parent notification) */
-  cartItems: { name: string; qty: number; size?: string }[];
+  cartItems: { name: string; qty: number; size?: string; unitPrice: number }[];
   /** Items formatted for Express Checkout */
   expressItems: { ticket_type_id: string; qty: number; merch_size?: string }[];
   /** Minimum price across active types */
@@ -62,7 +63,7 @@ export function useCart({
   currency,
   tracking,
 }: UseCartParams): UseCartResult {
-  const currSymbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
+  const currSymbol = getCurrencySymbol(currency);
   const interactFired = useRef(false);
 
   const activeTypes = useMemo(
@@ -218,16 +219,17 @@ export function useCart({
   }, [activeTypes, quantities, merchSizes]);
 
   const cartItems = useMemo(() => {
-    const items: { name: string; qty: number; size?: string }[] = [];
+    const items: { name: string; qty: number; size?: string; unitPrice: number }[] = [];
     for (const tt of activeTypes) {
       const qty = quantities[tt.id] || 0;
       if (qty <= 0) continue;
+      const price = Number(tt.price);
       if (tt.includes_merch && merchSizes[tt.id]) {
         for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-          if (sQty > 0) items.push({ name: tt.name, qty: sQty, size });
+          if (sQty > 0) items.push({ name: tt.name, qty: sQty, size, unitPrice: price });
         }
       } else {
-        items.push({ name: tt.name, qty });
+        items.push({ name: tt.name, qty, unitPrice: price });
       }
     }
     return items;

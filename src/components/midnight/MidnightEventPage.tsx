@@ -9,6 +9,7 @@ import { useEventTracking } from "@/hooks/useEventTracking";
 import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { Button } from "@/components/ui/button";
 import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
@@ -32,6 +33,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const tracking = useEventTracking();
   const { settings } = useSettings();
   const headerHidden = useHeaderScroll();
+  useScrollReveal();
 
   const cart = useCart({
     eventSlug: event.slug,
@@ -151,6 +153,8 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           age={event.age_restriction || "18+"}
           bannerImage={heroImage}
           tag={event.tag_line || ""}
+          minPrice={cart.minPrice}
+          currSymbol={currSymbol}
         />
 
         <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10 pointer-events-none">
@@ -208,14 +212,15 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
       {/* Fixed bottom bar — mobile checkout CTA */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar ${
           cart.totalQty > 0 ? "translate-y-0" : "translate-y-full"
         }`}
+        style={{ transition: "transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}
       >
         <div className="px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col min-w-0">
-              <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] uppercase text-foreground/40">
+              <span className="font-[family-name:var(--font-sans)] text-[10px] font-medium tracking-[0.06em] uppercase text-foreground/40">
                 {cart.totalQty} {cart.totalQty === 1 ? "ticket" : "tickets"}
               </span>
               <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.02em]">

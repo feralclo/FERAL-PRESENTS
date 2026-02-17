@@ -11,7 +11,7 @@ export function MidnightLineup({ artists }: MidnightLineupProps) {
     <div>
       {/* Section header */}
       <div className="flex items-center gap-3 mb-7 max-[480px]:mb-5">
-        <h2 className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] font-bold tracking-[0.25em] uppercase text-foreground/30">
+        <h2 className="font-[family-name:var(--font-sans)] text-xs max-[480px]:text-[11px] font-semibold tracking-[0.15em] uppercase text-foreground/30">
           Lineup
         </h2>
         <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-primary/60 border border-primary/20 rounded-full px-2.5 py-0.5 uppercase">
@@ -21,11 +21,12 @@ export function MidnightLineup({ artists }: MidnightLineupProps) {
       </div>
 
       {/* Artist pills */}
-      <div className="flex flex-wrap gap-2.5 max-[480px]:gap-2">
-        {artists.map((artist) => (
+      <div className="flex flex-wrap gap-2.5 max-[480px]:gap-2" data-reveal>
+        {artists.map((artist, i) => (
           <span
             key={artist}
-            className="midnight-lineup-pill inline-block px-4 py-2 max-[480px]:px-3 max-[480px]:py-1.5 border border-foreground/[0.06] rounded-lg font-[family-name:var(--font-mono)] text-[13px] max-[480px]:text-[11px] tracking-[0.3px] text-foreground/50 cursor-default bg-foreground/[0.015]"
+            style={{ "--stagger-delay": `${i * 30}ms` } as React.CSSProperties}
+            className="midnight-lineup-pill midnight-lineup-pill-stagger inline-block px-4 py-2 max-[480px]:px-3 max-[480px]:py-1.5 border border-foreground/[0.06] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[11px] tracking-[0.01em] text-foreground/50 cursor-default bg-foreground/[0.015]"
           >
             {artist}
           </span>

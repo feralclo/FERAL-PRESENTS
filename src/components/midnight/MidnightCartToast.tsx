@@ -36,6 +36,8 @@ export function MidnightCartToast({ message }: MidnightCartToastProps) {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       className="fixed bottom-24 right-4 max-md:right-3 max-md:bottom-[88px] z-[998] pointer-events-none"
       style={{
         animation: exiting
@@ -60,7 +62,7 @@ export function MidnightCartToast({ message }: MidnightCartToastProps) {
             strokeLinejoin="round"
           />
         </svg>
-        <span className="font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.3px] text-foreground/80 whitespace-nowrap">
+        <span className="font-[family-name:var(--font-sans)] text-[11px] font-medium tracking-[0.01em] text-foreground/80 whitespace-nowrap">
           {displayMessage}
         </span>
       </div>

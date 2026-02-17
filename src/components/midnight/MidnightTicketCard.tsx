@@ -44,38 +44,64 @@ export function MidnightTicketCard({
   const tier = tt.tier || "standard";
   const tierEffect = TIER_EFFECT[tier] || "";
   const isActive = qty > 0;
+  const isSoldOut = tt.capacity != null && tt.capacity > 0 && (tt.sold || 0) >= tt.capacity;
   const priceDisplay = `${currSymbol}${formatPrice(Number(tt.price))}`;
+
+  // Scarcity calculation from real inventory data
+  const capacity = tt.capacity || 0;
+  const sold = tt.sold || 0;
+  const remaining = capacity - sold;
+  const percentSold = capacity > 0 ? (sold / capacity) * 100 : 0;
+  const scarcity = !isSoldOut && capacity > 0
+    ? percentSold >= 95 ? { text: `Last ${remaining}!`, color: "text-red-400", pulse: true }
+    : percentSold >= 90 ? { text: `Only ${remaining} left`, color: "text-amber-400", pulse: false }
+    : percentSold >= 80 ? { text: `Only ${remaining} left`, color: "text-foreground/70", pulse: false }
+    : null
+    : null;
 
   const hasMerchImages = tt.includes_merch && (
     (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.front ||
     (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.back
   );
 
-  // Qty pop animation
+  // Qty pop animation + card pulse on add
   const qtyRef = useRef<HTMLSpanElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const prevQty = useRef(qty);
   useEffect(() => {
-    if (qty !== prevQty.current && qtyRef.current) {
-      qtyRef.current.classList.remove("midnight-qty-pop");
-      void qtyRef.current.offsetWidth;
-      qtyRef.current.classList.add("midnight-qty-pop");
+    if (qty !== prevQty.current) {
+      if (qtyRef.current) {
+        qtyRef.current.classList.remove("midnight-qty-pop");
+        void qtyRef.current.offsetWidth;
+        qtyRef.current.classList.add("midnight-qty-pop");
+      }
+      // Card pulse on add (not remove)
+      if (qty > prevQty.current && cardRef.current) {
+        cardRef.current.classList.remove("midnight-card-pulse");
+        void cardRef.current.offsetWidth;
+        cardRef.current.classList.add("midnight-card-pulse");
+      }
       prevQty.current = qty;
     }
   }, [qty]);
 
   return (
     <div
+      ref={cardRef}
       role="article"
       aria-label={`${tt.name} — ${priceDisplay}`}
+      style={{ "--pulse-color": tier === "platinum" ? "var(--color-platinum)" : tier === "valentine" ? "var(--color-valentine)" : "var(--color-primary)" } as React.CSSProperties}
       className={cn(
         "relative p-5 mb-2.5 rounded-xl transition-all duration-200",
         // Standard tier styling
         !tierEffect && "bg-foreground/[0.025] border border-foreground/[0.06]",
-        !tierEffect && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
-        !tierEffect && isActive && "border-primary/30 bg-primary/[0.03]",
+        !tierEffect && !isSoldOut && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
+        !tierEffect && isActive && !isSoldOut && "border-primary/30 bg-primary/[0.03]",
         // Metallic tier styling
         tierEffect,
-        tierEffect && isActive && "midnight-active",
+        tierEffect && isActive && !isSoldOut && "midnight-active",
+        // Sold-out styling
+        isSoldOut && "opacity-50 pointer-events-none",
         // Mobile
         "max-[480px]:p-4",
       )}
@@ -89,7 +115,7 @@ export function MidnightTicketCard({
         <div className="flex-1 min-w-0 mr-4">
           <span
             className={cn(
-              "font-[family-name:var(--font-mono)] text-sm max-[480px]:text-[13px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase block mb-1.5",
+              "font-[family-name:var(--font-sans)] text-sm max-[480px]:text-[13px] font-semibold tracking-[0.04em] uppercase block mb-1.5",
               TIER_TEXT_CLASSES[tier] || TIER_TEXT_CLASSES.standard,
             )}
           >
@@ -104,32 +130,41 @@ export function MidnightTicketCard({
             {tt.description || "Standard entry"}
           </span>
         </div>
-        <span
-          className={cn(
-            "relative z-[2] font-[family-name:var(--font-mono)] text-base max-[480px]:text-[14px] font-bold tracking-[0.5px] shrink-0 mt-0.5",
-            TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
+        <div className="relative z-[2] flex flex-col items-end shrink-0 mt-0.5">
+          <span
+            className={cn(
+              "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[14px] font-bold tracking-[0.5px]",
+              isSoldOut && "line-through text-muted-foreground",
+              !isSoldOut && (TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard),
+            )}
+          >
+            {priceDisplay}
+          </span>
+          {isSoldOut && (
+            <Badge variant="secondary" className="mt-1.5 text-[8px] font-bold tracking-[1.5px] uppercase px-2 py-0.5 bg-foreground/[0.06] text-muted-foreground border-none">
+              Sold Out
+            </Badge>
           )}
-        >
-          {priceDisplay}
-        </span>
+        </div>
       </div>
 
       {/* Bottom row: view merch + qty controls */}
       <div className="relative z-[2] flex justify-between items-center">
         {tt.includes_merch ? (
           hasMerchImages ? (
-            <Badge
-              variant="outline"
+            <button
+              type="button"
               className={cn(
-                "cursor-pointer text-[10px] max-[480px]:text-[9px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase px-3 max-[480px]:px-2.5 py-2 max-[480px]:py-1.5 rounded-lg",
+                "inline-flex items-center border text-[10px] max-[480px]:text-[9px] font-bold tracking-[1.5px] max-[480px]:tracking-[1px] uppercase px-3 max-[480px]:px-2.5 py-2 max-[480px]:py-1.5 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 TIER_MERCH_BADGE_CLASSES[tier] || TIER_MERCH_BADGE_CLASSES.standard,
               )}
               onClick={() => onViewMerch?.(tt)}
+              aria-label={`View merch included with ${tt.name}`}
             >
               View Merch
-            </Badge>
+            </button>
           ) : (
-            <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[1.5px] uppercase text-muted-foreground/50">
+            <span className="font-[family-name:var(--font-sans)] text-[10px] font-medium tracking-[0.04em] uppercase text-muted-foreground/50">
               Includes merch
             </span>
           )

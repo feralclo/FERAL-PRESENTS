@@ -36,7 +36,7 @@ export function MidnightCartSummary({
       <div className="bg-foreground/[0.015] border border-foreground/[0.05] rounded-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.04]">
-          <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/60">
+          <span className="font-[family-name:var(--font-sans)] text-[11px] font-semibold tracking-[0.08em] uppercase text-foreground/60">
             Your Order
           </span>
           <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] uppercase text-muted-foreground/60">
@@ -78,7 +78,7 @@ export function MidnightCartSummary({
 
         {/* Footer total */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-foreground/[0.05]">
-          <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/50">
+          <span className="font-[family-name:var(--font-sans)] text-[11px] font-semibold tracking-[0.08em] uppercase text-foreground/50">
             Total
           </span>
           <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground tracking-[0.5px]">

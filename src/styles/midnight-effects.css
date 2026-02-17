@@ -104,6 +104,21 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
+   HERO CTA — Magnetic glow button
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .midnight-hero-cta {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 35%, transparent);
+  animation: midnight-hero-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes midnight-hero-glow {
+  0%, 100% { box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 30%, transparent); }
+  50% { box-shadow: 0 0 32px color-mix(in srgb, var(--color-primary) 45%, transparent); }
+}
+
+
+/* ═══════════════════════════════════════════════
    GLASSMORPHISM — Refined frosted surface
    ═══════════════════════════════════════════════ */
 
@@ -349,6 +364,17 @@ body:has([data-theme="midnight"]) .header {
   animation: midnight-qty-pop 160ms ease-out;
 }
 
+/* Card pulse — border glow on add-to-cart. Tier-colored. */
+@keyframes midnight-card-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pulse-color, var(--color-primary)) 40%, transparent); }
+  50% { box-shadow: 0 0 18px 3px color-mix(in srgb, var(--pulse-color, var(--color-primary)) 25%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+[data-theme="midnight"] .midnight-card-pulse {
+  animation: midnight-card-pulse 400ms ease-out;
+}
+
+
 /* CTA glow — one-shot when cart becomes non-empty */
 @keyframes midnight-cta-ready {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 50%, transparent); }
@@ -369,6 +395,28 @@ body:has([data-theme="midnight"]) .header {
   animation: midnight-reveal-glow 800ms ease-out;
 }
 
+/* CTA shine — continuous sweep when items in cart */
+@keyframes midnight-cta-shine {
+  0% { left: -50%; }
+  100% { left: 150%; }
+}
+[data-theme="midnight"] .midnight-cta-shine {
+  position: relative;
+  overflow: hidden;
+}
+[data-theme="midnight"] .midnight-cta-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -50%;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: midnight-cta-shine 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+
 /* Cart toast slide */
 @keyframes midnight-toast-in {
   0% { transform: translateY(12px); opacity: 0; }
@@ -379,9 +427,10 @@ body:has([data-theme="midnight"]) .header {
   100% { transform: translateY(12px); opacity: 0; }
 }
 
-/* Bottom bar slide */
+/* Bottom bar bounce — gentle overshoot */
 @keyframes midnight-bar-in {
   0% { transform: translateY(100%); }
+  70% { transform: translateY(-4px); }
   100% { transform: translateY(0); }
 }
 
@@ -498,6 +547,20 @@ body:has([data-theme="midnight"]) .header {
   color: var(--color-foreground);
   background: color-mix(in srgb, var(--color-primary) 4%, transparent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 8%, transparent);
+  transform: scale(1.03);
+}
+
+/* Stagger fade-in for lineup pills on scroll reveal */
+[data-theme="midnight"] .midnight-lineup-pill-stagger {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+  transition-delay: var(--stagger-delay, 0ms);
+}
+
+[data-theme="midnight"] .revealed .midnight-lineup-pill-stagger {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 
@@ -510,6 +573,7 @@ body:has([data-theme="midnight"]) .header {
   backdrop-filter: blur(20px) saturate(130%);
   -webkit-backdrop-filter: blur(20px) saturate(130%);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 -1px 12px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 
@@ -524,11 +588,20 @@ body:has([data-theme="midnight"]) .header {
   [data-theme="midnight"] .midnight-diamond-icon::before,
   [data-theme="midnight"] .midnight-qty-pop,
   [data-theme="midnight"] .midnight-cta-ready,
-  [data-theme="midnight"] .midnight-reveal-glow {
+  [data-theme="midnight"] .midnight-reveal-glow,
+  [data-theme="midnight"] .midnight-hero-cta,
+  [data-theme="midnight"] .midnight-card-pulse,
+  [data-theme="midnight"] .midnight-cta-shine,
+  [data-theme="midnight"] .midnight-scarcity-pulse {
     animation: none;
   }
-  [data-theme="midnight"] .midnight-lineup-pill {
+  [data-theme="midnight"] .midnight-lineup-pill,
+  [data-theme="midnight"] .midnight-lineup-pill-stagger {
     transition: none;
+  }
+  [data-theme="midnight"] [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 

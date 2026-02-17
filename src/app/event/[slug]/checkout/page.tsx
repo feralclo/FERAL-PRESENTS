@@ -5,6 +5,7 @@ import { AuraCheckout } from "@/components/aura/AuraCheckout";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 
 /** Always fetch fresh data — admin changes must appear immediately */
 export const dynamic = "force-dynamic";
@@ -66,7 +67,7 @@ export default async function CheckoutRoute({
           .eq("status", "abandoned")
           .single();
 
-        if (cart) {
+        if (cart && !isRestrictedCheckoutEmail(cart.email)) {
           // Reconstruct cart param string from items
           // Format matches existing: ticketTypeId:qty:size,ticketTypeId:qty
           const cartParam = (cart.items as { ticket_type_id: string; qty: number; merch_size?: string }[])

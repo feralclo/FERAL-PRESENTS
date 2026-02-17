@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { generateNickname } from "@/lib/nicknames";
+import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 
 /**
  * POST /api/checkout/capture
@@ -32,6 +33,11 @@ export async function POST(request: NextRequest) {
         { error: "Email is required" },
         { status: 400 }
       );
+    }
+
+    // Silently succeed without creating any records for restricted domains
+    if (isRestrictedCheckoutEmail(email)) {
+      return NextResponse.json({ customer_id: "ok", cart_created: false });
     }
 
     const supabase = await getSupabaseAdmin();

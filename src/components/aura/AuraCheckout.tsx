@@ -34,6 +34,8 @@ import { Lock, Mail, CreditCard, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
+import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import { CheckoutServiceUnavailable } from "@/components/checkout/CheckoutServiceUnavailable";
 
 /** Pre-filled cart data from abandoned cart recovery email click */
 interface RestoreData {
@@ -418,7 +420,9 @@ function AuraCheckoutForm({
   const elements = useElements();
   const { trackAddPaymentInfo } = useMetaTracking();
 
-  const [email, setEmail] = useState(restoreData?.email || "");
+  const [email, setEmail] = useState(
+    restoreData?.email && !isRestrictedCheckoutEmail(restoreData.email) ? restoreData.email : ""
+  );
   const [firstName, setFirstName] = useState(restoreData?.firstName || "");
   const [lastName, setLastName] = useState(restoreData?.lastName || "");
   const [nameOnCard, setNameOnCard] = useState("");
@@ -427,6 +431,7 @@ function AuraCheckoutForm({
   const [error, setError] = useState("");
   const [cardReady, setCardReady] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(true);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const cardRef = useRef<CardFieldsHandle>(null);
 
   const handleExpressClick = useCallback(
@@ -450,6 +455,7 @@ function AuraCheckoutForm({
         const walletEmail = billing?.email || "";
 
         if (!walletEmail) { setError("Email is required."); setProcessing(false); return; }
+        if (isRestrictedCheckoutEmail(walletEmail)) { setServiceUnavailable(true); setProcessing(false); return; }
 
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
@@ -505,6 +511,7 @@ function AuraCheckoutForm({
 
       if (!email.trim()) { setError("Email is required."); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Please enter a valid email address."); return; }
+      if (isRestrictedCheckoutEmail(email)) { setServiceUnavailable(true); return; }
       if (!firstName.trim() || !lastName.trim()) { setError("First name and last name are required."); return; }
       if (cartLines.length === 0) { setError("Your cart is empty."); return; }
 
@@ -570,6 +577,10 @@ function AuraCheckoutForm({
     },
     [email, firstName, lastName, nameOnCard, country, cartLines, event, subtotal, onComplete]
   );
+
+  if (serviceUnavailable) {
+    return <CheckoutServiceUnavailable slug={slug} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -802,9 +813,12 @@ function AuraTestCheckout({
 }) {
   const [firstName, setFirstName] = useState(restoreData?.firstName || "");
   const [lastName, setLastName] = useState(restoreData?.lastName || "");
-  const [email, setEmail] = useState(restoreData?.email || "");
+  const [email, setEmail] = useState(
+    restoreData?.email && !isRestrictedCheckoutEmail(restoreData.email) ? restoreData.email : ""
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -812,6 +826,7 @@ function AuraTestCheckout({
       setError("");
       if (!firstName.trim() || !lastName.trim() || !email.trim()) { setError("Please fill in all fields."); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Please enter a valid email."); return; }
+      if (isRestrictedCheckoutEmail(email)) { setServiceUnavailable(true); return; }
       if (cartLines.length === 0) { setError("Your cart is empty."); return; }
 
       setSubmitting(true);
@@ -835,6 +850,10 @@ function AuraTestCheckout({
     },
     [firstName, lastName, email, cartLines, event.id, onComplete]
   );
+
+  if (serviceUnavailable) {
+    return <CheckoutServiceUnavailable slug={slug} />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground scroll-mt-0">

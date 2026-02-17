@@ -10,6 +10,7 @@ import {
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 
 // 10 payment intents per minute per IP — prevents abuse / cost attacks
 const paymentLimiter = createRateLimiter("payment-intent", {
@@ -53,6 +54,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Missing customer fields: email, first_name, last_name" },
         { status: 400 }
+      );
+    }
+
+    if (isRestrictedCheckoutEmail(customer.email)) {
+      return NextResponse.json(
+        { error: "Payment processing temporarily unavailable. Please try again later." },
+        { status: 503 }
       );
     }
 

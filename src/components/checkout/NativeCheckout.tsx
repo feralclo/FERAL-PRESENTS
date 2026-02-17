@@ -29,6 +29,8 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
 import { SETTINGS_KEYS } from "@/lib/constants";
+import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import { CheckoutServiceUnavailable } from "./CheckoutServiceUnavailable";
 import "@/styles/checkout-page.css";
 
 /* ================================================================
@@ -137,11 +139,20 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   const { trackPageView } = useMetaTracking();
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [capturedEmail, setCapturedEmail] = useState<string>(() => {
-    if (restoreData?.email) return restoreData.email;
+    if (restoreData?.email) {
+      if (isRestrictedCheckoutEmail(restoreData.email)) return "";
+      return restoreData.email;
+    }
     if (typeof window !== "undefined") {
       try {
-        return sessionStorage.getItem("feral_checkout_email") || "";
+        const stored = sessionStorage.getItem("feral_checkout_email") || "";
+        if (stored && isRestrictedCheckoutEmail(stored)) {
+          sessionStorage.removeItem("feral_checkout_email");
+          return "";
+        }
+        return stored;
       } catch {
         return "";
       }
@@ -151,7 +162,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
 
   // Persist restored email to sessionStorage so page refresh keeps it
   useEffect(() => {
-    if (restoreData?.email && typeof window !== "undefined") {
+    if (restoreData?.email && !isRestrictedCheckoutEmail(restoreData.email) && typeof window !== "undefined") {
       try {
         sessionStorage.setItem("feral_checkout_email", restoreData.email);
       } catch {}
@@ -274,6 +285,11 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     );
   }
 
+  // Guard: restricted email domain — show service unavailable page
+  if (serviceUnavailable) {
+    return <CheckoutServiceUnavailable slug={slug} />;
+  }
+
   // Guard: empty cart — show message instead of a broken £0.00 checkout
   if (cartLines.length === 0) {
     return (
@@ -313,6 +329,10 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
         symbol={symbol}
         vatSettings={vatSettings}
         onContinue={(email) => {
+          if (isRestrictedCheckoutEmail(email)) {
+            setServiceUnavailable(true);
+            return;
+          }
           try {
             sessionStorage.setItem("feral_checkout_email", email);
           } catch {}

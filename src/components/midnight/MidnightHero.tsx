@@ -110,7 +110,7 @@ export function MidnightHero({
         <Button
           size="lg"
           variant="outline"
-          className="mt-7 max-md:mt-5 max-[480px]:mt-4 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.03em] rounded-xl bg-white/[0.06] border-white/[0.12] text-foreground/90 hover:bg-white/[0.1] hover:border-white/[0.2] transition-all duration-200"
+          className="mt-7 max-md:mt-5 max-[480px]:mt-4 max-[480px]:w-full px-10 h-12 text-sm font-bold tracking-[0.04em] uppercase rounded-xl bg-white/[0.10] border-white/[0.15] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_20px_rgba(255,255,255,0.04)] hover:bg-white/[0.16] hover:border-white/[0.25] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_0_28px_rgba(255,255,255,0.06)] active:scale-[0.97] transition-all duration-200"
           onClick={() =>
             document
               .getElementById("tickets")
@@ -118,7 +118,7 @@ export function MidnightHero({
           }
         >
           Get Tickets
-          <svg className="ml-2 w-4 h-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="ml-2 w-4 h-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
         </Button>

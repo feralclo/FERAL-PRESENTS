@@ -72,7 +72,7 @@ export function MidnightTicketCard({
         // Standard tier styling
         !tierEffect && "bg-foreground/[0.025] border border-foreground/[0.06]",
         !tierEffect && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
-        !tierEffect && isActive && "border-foreground/[0.15] bg-foreground/[0.04]",
+        !tierEffect && isActive && "border-foreground/[0.15] bg-foreground/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_16px_rgba(255,255,255,0.02)]",
         // Metallic tier styling
         tierEffect,
         tierEffect && isActive && "midnight-active",
@@ -137,13 +137,13 @@ export function MidnightTicketCard({
           <span />
         )}
 
-        {/* Quantity stepper — compact pill */}
-        <div className="relative z-[2] flex items-center gap-1 bg-foreground/[0.03] rounded-lg border border-foreground/[0.06] p-0.5">
+        {/* Quantity stepper — 44px min touch target (Apple HIG) */}
+        <div className="relative z-[2] flex items-center gap-1 bg-foreground/[0.03] rounded-xl border border-foreground/[0.06] p-0.5">
           <Button
             variant="ghost"
             size="icon"
             className={cn(
-              "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base max-[480px]:text-[15px] rounded-md touch-manipulation hover:bg-foreground/[0.06]",
+              "w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg max-[480px]:text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
               TIER_BUTTON_CLASSES[tier],
             )}
             onClick={() => onRemove(tt)}
@@ -154,7 +154,7 @@ export function MidnightTicketCard({
           <span
             ref={qtyRef}
             className={cn(
-              "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[15px] font-bold min-w-7 max-[480px]:min-w-6 text-center tabular-nums",
+              "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[15px] font-bold min-w-8 max-[480px]:min-w-7 text-center tabular-nums",
               isActive
                 ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
                 : "text-foreground/60",
@@ -166,7 +166,7 @@ export function MidnightTicketCard({
             variant="ghost"
             size="icon"
             className={cn(
-              "w-9 h-9 max-[480px]:w-8 max-[480px]:h-8 text-base max-[480px]:text-[15px] rounded-md touch-manipulation hover:bg-foreground/[0.06]",
+              "w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg max-[480px]:text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
               TIER_BUTTON_CLASSES[tier],
             )}
             onClick={() => onAdd(tt)}

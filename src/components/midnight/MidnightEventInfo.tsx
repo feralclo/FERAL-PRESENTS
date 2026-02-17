@@ -26,11 +26,11 @@ export function MidnightEventInfo({
     <div>
       {sections.map((section, i) => (
         <div key={section.title} className={i > 0 ? "mt-16 max-md:mt-12" : ""}>
-          <h2 className="font-[family-name:var(--font-sans)] text-xs font-semibold tracking-[0.15em] uppercase mb-8 pb-4 border-b border-foreground/[0.05] text-foreground/40">
+          <h2 className="font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.18em] uppercase mb-7 pb-4 border-b border-foreground/[0.08] text-foreground/60">
             {section.title}
           </h2>
-          <div className={section.title === "About" ? "border-l-2 border-primary/20 pl-5" : ""}>
-            <p className="font-[family-name:var(--font-display)] text-base max-md:text-[15px] leading-[1.95] text-foreground/65 tracking-[0.01em] whitespace-pre-line">
+          <div className={section.title === "About" ? "border-l-2 border-primary/35 pl-6" : ""}>
+            <p className="font-[family-name:var(--font-display)] text-base max-md:text-[15px] leading-[1.95] text-foreground/75 tracking-[0.01em] whitespace-pre-line">
               {section.content}
             </p>
           </div>

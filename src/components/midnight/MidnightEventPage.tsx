@@ -14,7 +14,7 @@ import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
 import { MidnightTicketWidget } from "./MidnightTicketWidget";
 import { MidnightMerchModal } from "./MidnightMerchModal";
-import { MidnightBottomBar } from "./MidnightBottomBar";
+
 import { MidnightSocialProof } from "./MidnightSocialProof";
 import { MidnightFooter } from "./MidnightFooter";
 import type { Event, TicketTypeRow } from "@/types/events";
@@ -132,15 +132,15 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           tag={event.tag_line || ""}
         />
 
-        <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10">
-          <div className="max-w-[1200px] mx-auto px-6 max-md:px-0">
+        <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10 pointer-events-none">
+          <div className="max-w-[1200px] mx-auto px-6 max-md:px-0 pointer-events-auto">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-20 max-lg:flex max-lg:flex-col">
                 {/* Mobile section divider — accent glow transition from ticket card */}
-                <div className="lg:hidden order-[-2] mb-10 max-[480px]:mb-8">
+                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-12">
                   <div className="h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
-                  <div className="h-6 bg-gradient-to-b from-primary/[0.04] to-transparent" />
+                  <div className="h-10 bg-gradient-to-b from-primary/[0.04] to-transparent" />
                 </div>
 
                 {/* Lineup moves above About on mobile via order */}
@@ -225,18 +225,6 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
         />
       )}
-
-      {/* Bottom bar — mobile only */}
-      <MidnightBottomBar
-        fromPrice={`${currSymbol}${cart.minPrice.toFixed(2)}`}
-        cartTotal={cart.totalQty > 0 ? `${currSymbol}${cart.totalPrice.toFixed(2)}` : undefined}
-        cartQty={cart.totalQty}
-        cartItems={cart.cartItems}
-        onBuyNow={() =>
-          document.getElementById("tickets")?.scrollIntoView({ behavior: "smooth", block: "start" })
-        }
-        onCheckout={cart.totalQty > 0 ? cart.handleCheckout : undefined}
-      />
 
       {/* Engagement features */}
       <DiscountPopup />

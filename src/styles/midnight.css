@@ -109,7 +109,7 @@
    between sections stays consistent because it's defined here, not
    on individual components. */
 [data-theme="midnight"] {
-  --midnight-section-gap: 48px;
+  --midnight-section-gap: 56px;
   --midnight-hero-overlap: 80px;
   --midnight-content-px: 24px;
 }
@@ -123,7 +123,7 @@
 
 @media (max-width: 480px) {
   [data-theme="midnight"] {
-    --midnight-section-gap: 40px;
+    --midnight-section-gap: 48px;
     --midnight-content-px: 16px;
   }
 }

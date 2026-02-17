@@ -153,7 +153,7 @@ export function MidnightMerchModal({
                     key={img.view}
                     className={`font-[family-name:var(--font-sans)] text-[10px] font-semibold tracking-[0.08em] uppercase px-5 py-2 border rounded-md transition-all
                       ${activeView === img.view
-                        ? "bg-primary/10 border-primary/30 text-foreground"
+                        ? "bg-foreground/[0.08] border-foreground/[0.15] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                         : "bg-foreground/[0.03] border-foreground/[0.06] text-muted-foreground/60 hover:bg-foreground/[0.06] hover:text-muted-foreground"
                       }`}
                     onClick={() => setActiveView(img.view)}
@@ -221,12 +221,12 @@ export function MidnightMerchModal({
           </div>
 
           {/* Cart controls — sticky on mobile */}
-          <div className="p-5 max-md:p-4 max-md:pb-[calc(16px+env(safe-area-inset-bottom))] bg-foreground/[0.02] border-t border-foreground/[0.05] flex flex-col md:flex-row items-center justify-between gap-4 max-md:sticky max-md:bottom-0 max-md:bg-[rgba(10,10,12,0.95)] max-md:backdrop-blur-[16px]">
+          <div className="p-5 max-md:p-4 max-md:pb-[calc(16px+env(safe-area-inset-bottom))] bg-foreground/[0.02] border-t border-foreground/[0.05] flex flex-col md:flex-row items-center justify-between gap-4 max-md:sticky max-md:bottom-0 max-md:bg-[rgba(10,10,12,0.97)] will-change-transform">
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
                 size="icon"
-                className="w-10 h-10 text-lg bg-platinum/8 border-platinum/25 text-platinum hover:bg-platinum/15 hover:border-platinum/50 rounded-lg"
+                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-platinum/8 border-platinum/25 text-platinum hover:bg-platinum/15 hover:border-platinum/50 rounded-xl active:scale-[0.92] transition-transform duration-100"
                 onClick={() => setQty(Math.max(1, qty - 1))}
               >
                 &minus;
@@ -237,7 +237,7 @@ export function MidnightMerchModal({
               <Button
                 variant="outline"
                 size="icon"
-                className="w-10 h-10 text-lg bg-platinum/8 border-platinum/25 text-platinum hover:bg-platinum/15 hover:border-platinum/50 rounded-lg"
+                className="w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg bg-platinum/8 border-platinum/25 text-platinum hover:bg-platinum/15 hover:border-platinum/50 rounded-xl active:scale-[0.92] transition-transform duration-100"
                 onClick={() => setQty(qty + 1)}
               >
                 +
@@ -248,7 +248,7 @@ export function MidnightMerchModal({
               onClick={handleAdd}
             >
               Add to Cart &mdash; {currencySymbol}
-              {(price * qty).toFixed(0)}
+              {(price * qty).toFixed(2)}
             </Button>
           </div>
         </DialogContent>

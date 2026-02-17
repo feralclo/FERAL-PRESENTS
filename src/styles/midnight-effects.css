@@ -367,6 +367,22 @@ body:has([data-theme="midnight"]) > .noise {
 
 
 /* ═══════════════════════════════════════════════
+   LINEUP PILLS — Artist name tags with hover glow
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .midnight-lineup-pill {
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme="midnight"] .midnight-lineup-pill:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  color: var(--color-foreground);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+
+/* ═══════════════════════════════════════════════
    REDUCED MOTION — Accessibility
    ═══════════════════════════════════════════════ */
 
@@ -376,6 +392,9 @@ body:has([data-theme="midnight"]) > .noise {
   [data-theme="midnight"] .midnight-merch-viewer::before,
   [data-theme="midnight"] .midnight-diamond-icon::before {
     animation: none;
+  }
+  [data-theme="midnight"] .midnight-lineup-pill {
+    transition: none;
   }
 }
 

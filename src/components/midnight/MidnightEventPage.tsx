@@ -132,7 +132,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           tag={event.tag_line || ""}
         />
 
-        <section className="py-16 max-md:py-10">
+        {/* Hero-to-content bridge — smooth visual transition on mobile/tablet */}
+        <div className="lg:hidden">
+          <div className="h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+          <div className="h-6 max-[480px]:h-5" />
+        </div>
+
+        <section className="pt-16 pb-16 max-lg:pt-0 max-md:pb-10">
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-20 max-lg:gap-8">
               {/* Left: Event Info — on mobile, show below tickets */}

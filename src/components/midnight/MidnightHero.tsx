@@ -85,11 +85,15 @@ export function MidnightHero({
 
         {/* CTA */}
         <Button
-          asChild
           size="lg"
           className="mt-8 max-md:mt-6 max-[480px]:mt-6 max-[480px]:w-full px-10 text-sm font-semibold tracking-[0.02em] rounded-[10px]"
+          onClick={() =>
+            document
+              .getElementById("tickets")
+              ?.scrollIntoView({ behavior: "smooth" })
+          }
         >
-          <a href="#tickets">Get Tickets</a>
+          Get Tickets
         </Button>
       </div>
     </section>

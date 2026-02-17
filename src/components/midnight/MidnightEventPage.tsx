@@ -137,6 +137,12 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-20 max-lg:flex max-lg:flex-col">
+                {/* Mobile section divider — accent glow transition from ticket card */}
+                <div className="lg:hidden order-[-2] mb-6 max-[480px]:mb-5">
+                  <div className="h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+                  <div className="h-6 bg-gradient-to-b from-primary/[0.04] to-transparent" />
+                </div>
+
                 {/* Lineup moves above About on mobile via order */}
                 {lineup.length > 0 && (
                   <div className="lg:hidden order-[-1] mb-10 max-md:mb-8">

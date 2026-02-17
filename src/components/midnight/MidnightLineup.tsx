@@ -12,13 +12,13 @@ export function MidnightLineup({ artists, onArtistClick }: MidnightLineupProps) 
     <div>
       {/* Section header with accent badge */}
       <div className="flex items-center gap-3 mb-6 max-[480px]:mb-5">
-        <h2 className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.25em] uppercase text-foreground/40">
+        <h2 className="font-[family-name:var(--font-mono)] text-xs max-[480px]:text-[11px] font-bold tracking-[0.25em] uppercase text-foreground/60">
           Lineup
         </h2>
-        <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.12em] text-primary/70 border border-primary/25 rounded-full px-2 py-0.5 uppercase">
+        <span className="font-[family-name:var(--font-mono)] text-[10px] max-[480px]:text-[9px] tracking-[0.12em] text-primary/80 border border-primary/30 rounded-full px-2.5 py-0.5 uppercase">
           A &mdash; Z
         </span>
-        <div className="flex-1 h-px bg-foreground/[0.06]" />
+        <div className="flex-1 h-px bg-foreground/[0.08]" />
       </div>
 
       {/* Artist pills */}

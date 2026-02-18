@@ -322,13 +322,13 @@ export function MidnightTicketWidget({
             />
           </div>
           <DialogFooter>
-            <Button
-              size="lg"
-              className="w-full midnight-metallic-cta font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.06em] uppercase rounded-xl"
+            <button
+              type="button"
+              className="w-full h-11 bg-white text-[#0a0a0c] font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.06em] uppercase rounded-xl active:scale-[0.98] transition-transform duration-150 cursor-pointer"
               onClick={handleSizeConfirm}
             >
               Add to Cart
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

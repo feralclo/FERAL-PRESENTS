@@ -7,7 +7,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
@@ -135,8 +134,8 @@ export function MidnightMerchModal({
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="md:grid md:grid-cols-[1.1fr_1fr]">
 
-              {/* Image area — clean, no glow */}
-              <div className="relative bg-[rgba(255,255,255,0.02)]">
+              {/* Image area */}
+              <div className="relative bg-[rgba(255,255,255,0.015)]">
                 <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-11 max-md:pb-2 min-h-[280px] max-md:min-h-[220px] max-[380px]:min-h-[160px]">
                   {images.length > 0 ? (
                     images.map((img) => (
@@ -158,7 +157,7 @@ export function MidnightMerchModal({
                   )}
                 </div>
 
-                {/* Dot navigation for front/back */}
+                {/* Dot navigation */}
                 {images.length > 1 && (
                   <div className="flex justify-center gap-2.5 pb-4 max-md:pb-3">
                     {images.map((img) => (
@@ -179,25 +178,25 @@ export function MidnightMerchModal({
               </div>
 
               {/* Product info */}
-              <div className="p-5 max-md:px-5 max-md:py-4 md:border-l border-[rgba(255,255,255,0.06)] flex flex-col justify-center">
+              <div className="p-6 max-md:px-5 max-md:py-5 md:border-l border-[rgba(255,255,255,0.06)] flex flex-col max-md:items-center">
                 {/* Product name */}
-                <h3 className="font-[family-name:var(--font-sans)] text-[15px] font-bold tracking-[0.02em] uppercase text-white/90 mb-1">
+                <h3 className="font-[family-name:var(--font-sans)] text-[15px] font-bold tracking-[0.02em] uppercase text-white/90 mb-1.5 max-md:text-center">
                   {title}
                 </h3>
 
                 {/* Price */}
-                <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-white tracking-[0.02em] mb-2">
+                <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-white tracking-[0.02em] mb-1.5">
                   {currencySymbol}{price.toFixed(2)}
                 </span>
 
-                {/* VIP inclusion info */}
-                <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.06em] text-white/25 mb-5 max-md:mb-4">
+                {/* VIP inclusion */}
+                <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.06em] text-white/25 mb-6 max-md:mb-5 max-md:text-center">
                   {vipText}
                 </p>
 
                 {/* Description — desktop only */}
                 {description && (
-                  <p className="hidden md:block font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-white/35 mb-5">
+                  <p className="hidden md:block font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-white/30 mb-6">
                     {description}
                   </p>
                 )}
@@ -207,42 +206,42 @@ export function MidnightMerchModal({
                   sizes={sizes}
                   selectedSize={selectedSize}
                   onSelect={(s) => setSelectedSize(s as TeeSize)}
-                  variant="platinum"
                 />
+
+                {/* Qty stepper — centered, subtle */}
+                <div className="flex items-center justify-center gap-3 mt-5 max-md:mt-4">
+                  <button
+                    type="button"
+                    className="w-9 h-9 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                    onClick={() => setQty(Math.max(1, qty - 1))}
+                  >
+                    &minus;
+                  </button>
+                  <span className="font-[family-name:var(--font-mono)] text-sm font-bold min-w-[24px] text-center tabular-nums text-white/70">
+                    {qty}
+                  </span>
+                  <button
+                    type="button"
+                    className="w-9 h-9 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                    onClick={() => setQty(qty + 1)}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
             </div>
           </div>
 
-          {/* ── CTA bar — always visible, outside scroll ── */}
-          <div className="shrink-0 px-5 py-4 max-md:px-4 max-md:py-3.5 bg-[rgba(255,255,255,0.02)] border-t border-[rgba(255,255,255,0.06)] flex items-center gap-3">
-            {/* Compact qty stepper */}
-            <div className="flex items-center gap-1.5 shrink-0 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] rounded-lg px-1 py-1">
-              <button
-                type="button"
-                className="w-8 h-8 flex items-center justify-center text-sm text-white/40 hover:text-white/70 rounded-md hover:bg-[rgba(255,255,255,0.06)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
-                onClick={() => setQty(Math.max(1, qty - 1))}
-              >
-                &minus;
-              </button>
-              <span className="font-[family-name:var(--font-mono)] text-sm font-bold min-w-[24px] text-center tabular-nums text-white/80">
-                {qty}
-              </span>
-              <button
-                type="button"
-                className="w-8 h-8 flex items-center justify-center text-sm text-white/40 hover:text-white/70 rounded-md hover:bg-[rgba(255,255,255,0.06)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
-                onClick={() => setQty(qty + 1)}
-              >
-                +
-              </button>
-            </div>
-            {/* Add to cart */}
-            <Button
-              className="midnight-metallic-cta flex-1 h-12 max-md:h-11 font-[family-name:var(--font-sans)] text-xs max-md:text-[11px] font-bold tracking-[0.04em] uppercase rounded-xl"
+          {/* ── CTA — full width, clean, no gradient ── */}
+          <div className="shrink-0 px-5 py-4 max-md:px-4 max-md:py-3.5 border-t border-[rgba(255,255,255,0.06)]">
+            <button
+              type="button"
+              className="w-full h-12 max-md:h-11 bg-white text-[#0a0a0c] font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl active:scale-[0.98] transition-transform duration-150 cursor-pointer"
               onClick={handleAdd}
             >
               Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>

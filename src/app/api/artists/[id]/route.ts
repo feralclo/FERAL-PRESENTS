@@ -16,7 +16,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, description, instagram_handle, image } = body;
+    const { name, description, instagram_handle, image, video_url } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -40,6 +40,7 @@ export async function PUT(
         description: description || null,
         instagram_handle: instagram_handle || null,
         image: image || null,
+        video_url: video_url || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

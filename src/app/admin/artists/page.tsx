@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Mic2, Plus, Loader2, Pencil, Trash2, Search } from "lucide-react";
+import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video } from "lucide-react";
 import type { Artist } from "@/types/artists";
 
 export default function ArtistsPage() {
@@ -40,6 +40,12 @@ export default function ArtistsPage() {
   const [formDescription, setFormDescription] = useState("");
   const [formInstagram, setFormInstagram] = useState("");
   const [formImage, setFormImage] = useState("");
+  const [formVideoUrl, setFormVideoUrl] = useState("");
+
+  // Video upload state
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Delete dialog
   const [deleteTarget, setDeleteTarget] = useState<Artist | null>(null);
@@ -67,6 +73,7 @@ export default function ArtistsPage() {
     setFormDescription("");
     setFormInstagram("");
     setFormImage("");
+    setFormVideoUrl("");
     setDialogOpen(true);
   }, []);
 
@@ -76,6 +83,7 @@ export default function ArtistsPage() {
     setFormDescription(artist.description || "");
     setFormInstagram(artist.instagram_handle || "");
     setFormImage(artist.image || "");
+    setFormVideoUrl(artist.video_url || "");
     setDialogOpen(true);
   }, []);
 
@@ -88,6 +96,7 @@ export default function ArtistsPage() {
       description: formDescription.trim() || null,
       instagram_handle: formInstagram.trim().replace(/^@/, "") || null,
       image: formImage.trim() || null,
+      video_url: formVideoUrl.trim() || null,
     };
 
     try {
@@ -110,7 +119,69 @@ export default function ArtistsPage() {
       // ignore
     }
     setSaving(false);
-  }, [formName, formDescription, formInstagram, formImage, editingArtist, loadArtists]);
+  }, [formName, formDescription, formInstagram, formImage, formVideoUrl, editingArtist, loadArtists]);
+
+  const handleVideoUpload = useCallback(async (file: File) => {
+    setVideoUploading(true);
+    setVideoProgress(0);
+    try {
+      // 1. Get signed upload URL from our API
+      const res = await fetch("/api/upload-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+        }),
+      });
+      const { signedUrl, token, publicUrl, error } = await res.json();
+      if (error) throw new Error(error);
+
+      // 2. Upload file directly to Supabase Storage via signed URL
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          setVideoProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload failed: ${xhr.status}`));
+        };
+        xhr.onerror = () => reject(new Error("Upload failed"));
+        xhr.open("PUT", signedUrl);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.setRequestHeader("x-upsert", "true");
+        if (token) xhr.setRequestHeader("x-supabase-upload-token", token);
+        xhr.send(file);
+      });
+
+      // 3. Set the public URL
+      setFormVideoUrl(publicUrl);
+    } catch (e) {
+      console.error("Video upload failed:", e);
+      alert("Video upload failed. Please try again.");
+    }
+    setVideoUploading(false);
+    setVideoProgress(0);
+  }, []);
+
+  const handleVideoFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 50 * 1024 * 1024) {
+        alert("File too large. Maximum size is 50MB.");
+        return;
+      }
+      handleVideoUpload(file);
+      // Reset input so the same file can be re-selected
+      e.target.value = "";
+    },
+    [handleVideoUpload]
+  );
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -191,7 +262,7 @@ export default function ArtistsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Instagram</TableHead>
-                  <TableHead className="hidden sm:table-cell">Description</TableHead>
+                  <TableHead className="hidden sm:table-cell">Video</TableHead>
                   <TableHead className="w-[100px]" />
                 </TableRow>
               </TableHeader>
@@ -220,8 +291,15 @@ export default function ArtistsPage() {
                         ? `@${artist.instagram_handle}`
                         : "—"}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground max-w-[200px] truncate">
-                      {artist.description || "—"}
+                    <TableCell className="hidden sm:table-cell">
+                      {artist.video_url ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-primary">
+                          <Video size={12} />
+                          Uploaded
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -308,6 +386,66 @@ export default function ArtistsPage() {
               <p className="text-[10px] text-muted-foreground/60">
                 Optional artist photo
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Video</Label>
+              {formVideoUrl ? (
+                <div className="space-y-2">
+                  <div className="relative rounded-lg overflow-hidden bg-black/50 border border-border">
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video
+                      src={formVideoUrl}
+                      className="w-full max-h-[160px] object-contain"
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormVideoUrl("")}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 border border-white/20 rounded-md flex items-center justify-center text-white/70 hover:bg-black/80 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/60 truncate">
+                    {formVideoUrl}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    onChange={handleVideoFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => videoInputRef.current?.click()}
+                    disabled={videoUploading}
+                    className="w-full"
+                  >
+                    {videoUploading ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Uploading... {videoProgress}%
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={14} />
+                        Upload Video
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    MP4, WebM, or MOV. Max 50MB.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

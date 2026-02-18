@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const body = await request.json();
-    const { name, description, instagram_handle, image } = body;
+    const { name, description, instagram_handle, image, video_url } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         instagram_handle: instagram_handle || null,
         image: image || null,
+        video_url: video_url || null,
       })
       .select()
       .single();

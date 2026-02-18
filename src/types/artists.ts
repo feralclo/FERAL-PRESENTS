@@ -5,6 +5,7 @@ export interface Artist {
   description?: string | null;
   instagram_handle?: string | null;
   image?: string | null;
+  video_url?: string | null;
   created_at: string;
   updated_at: string;
 }

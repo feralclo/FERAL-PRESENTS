@@ -113,7 +113,7 @@ export function MidnightArtistModal({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         data-theme="midnight"
-        className="midnight-artist-dialog max-w-[380px] p-0 gap-0 rounded-2xl overflow-hidden"
+        className="midnight-artist-dialog max-w-[380px] p-0 gap-0 rounded-2xl overflow-y-auto overflow-x-hidden"
       >
         <DialogTitle className="sr-only">{artist.name}</DialogTitle>
         <DialogDescription className="sr-only">
@@ -133,7 +133,7 @@ export function MidnightArtistModal({
               >
                 <div
                   className="relative w-full"
-                  style={{ aspectRatio: "4 / 5", maxHeight: "380px" }}
+                  style={{ aspectRatio: "4 / 5", maxHeight: "320px" }}
                 >
                   {hasMuxVideo ? (
                     <MuxPlayer
@@ -256,7 +256,7 @@ export function MidnightArtistModal({
             <div className="mb-5">
               <div
                 className="relative rounded-2xl overflow-hidden border border-foreground/[0.10]"
-                style={{ aspectRatio: "4 / 5", maxHeight: "380px" }}
+                style={{ aspectRatio: "4 / 5", maxHeight: "320px" }}
               >
                 {artist.image ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
@@ -321,11 +321,13 @@ export function MidnightArtistModal({
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.07] to-transparent mb-4" />
 
-          {/* Bio */}
+          {/* Bio — capped height to keep dialog compact on all phones */}
           {artist.description && (
-            <p className="font-[family-name:var(--font-sans)] text-[14px] max-[380px]:text-[13px] leading-relaxed text-foreground/60">
-              {artist.description}
-            </p>
+            <div className="max-h-[120px] overflow-y-auto">
+              <p className="font-[family-name:var(--font-sans)] text-[13px] max-[380px]:text-[12px] leading-relaxed text-foreground/60">
+                {artist.description}
+              </p>
+            </div>
           )}
         </div>
       </DialogContent>

@@ -189,7 +189,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
                 {/* Mobile section divider — single gradient line */}
-                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-2">
+                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-6 max-[480px]:pt-5">
                   <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent" />
                 </div>
 

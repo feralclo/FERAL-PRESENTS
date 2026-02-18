@@ -132,7 +132,7 @@ export function MidnightTicketWidget({
   if (activeTypes.length === 0) {
     return (
       <aside
-        className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[calc(var(--header-height,80px)+24px)] max-lg:scroll-mt-[var(--header-height,80px)] max-lg:relative [overflow-anchor:none]"
+        className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[var(--header-height,80px)] max-lg:scroll-mt-[calc(var(--header-height,80px)-20px)] max-lg:relative [overflow-anchor:none]"
         id="tickets"
       >
         <Card className="glass rounded-2xl p-8 max-lg:rounded-none max-lg:p-6 max-lg:shadow-none max-lg:bg-transparent max-lg:border-0">
@@ -160,7 +160,7 @@ export function MidnightTicketWidget({
   return (
     <>
       <aside
-        className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[calc(var(--header-height,80px)+24px)] max-lg:scroll-mt-[var(--header-height,80px)] max-lg:relative [overflow-anchor:none]"
+        className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[var(--header-height,80px)] max-lg:scroll-mt-[calc(var(--header-height,80px)-20px)] max-lg:relative [overflow-anchor:none]"
         id="tickets"
       >
         {/* Desktop: glass card. Mobile: transparent — tickets float on page bg */}

@@ -187,7 +187,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0 pointer-events-auto">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)] max-lg:gap-0">
               {/* Left: Event Info — on mobile, show below tickets */}
-              <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col max-lg:relative max-lg:z-[1]">
+              <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
                 {/* Mobile content zone — full-width dark premium section */}
                 <div className="midnight-content-zone max-lg:mx-[calc(-1*var(--midnight-content-px))] max-lg:px-[var(--midnight-content-px)] max-lg:pt-10 max-[480px]:pt-8 max-lg:pb-6">
                   {/* Lineup on mobile (above about) */}

@@ -825,6 +825,45 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
+   ARTIST MODAL — Swipe navigation transitions
+   ═══════════════════════════════════════════════ */
+
+/* Premium slide — exit/enter animation on navigate */
+.midnight-artist-swipe {
+  transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 300ms ease-out;
+}
+
+/* Snap-back — rubber-band release with overshoot */
+.midnight-artist-snapback {
+  transition: transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 250ms ease-out;
+}
+
+/* During drag — kill transitions for raw 1:1 tracking */
+.midnight-artist-dragging {
+  transition: none !important;
+}
+
+/* Dot indicator — pill expansion on active */
+.midnight-artist-dot {
+  transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 200ms ease;
+}
+
+/* Swipe hint — one-shot nudge to teach swipeability */
+@keyframes midnight-swipe-hint {
+  0% { transform: translateX(0); }
+  40% { transform: translateX(-8px); }
+  100% { transform: translateX(0); }
+}
+
+.midnight-swipe-hint {
+  animation: midnight-swipe-hint 600ms cubic-bezier(0.16, 1, 0.3, 1) 400ms both;
+}
+
+
+/* ═══════════════════════════════════════════════
    SCROLL REVEAL — Subtle entrance for content sections
    Overrides base.css data-reveal (30px is too aggressive).
    Midnight uses 12px translate for a softer, premium feel.
@@ -864,6 +903,14 @@ html.checkout-active .noise {
   [data-theme="midnight"] .midnight-lineup-pill,
   [data-theme="midnight"] [data-reveal] {
     transition: none;
+  }
+  .midnight-artist-swipe,
+  .midnight-artist-snapback,
+  .midnight-artist-dot {
+    transition: none;
+  }
+  .midnight-swipe-hint {
+    animation: none;
   }
   /* Ensure revealed content is visible without animation */
   [data-theme="midnight"] [data-reveal] {

@@ -88,15 +88,6 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     return map;
   }, [event.event_artists]);
 
-  // Artist modal state
-  const [artistModalOpen, setArtistModalOpen] = useState(false);
-  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
-
-  const handleArtistClick = useCallback((artist: Artist) => {
-    setSelectedArtist(artist);
-    setArtistModalOpen(true);
-  }, []);
-
   // Merch modal state
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
@@ -157,6 +148,26 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     const fallback = event.lineup || [];
     return isAlphabetical ? [...fallback].sort((a, b) => a.localeCompare(b)) : fallback;
   }, [event.event_artists, event.lineup, isAlphabetical]);
+
+  // Ordered list of artists that have profiles (clickable in lineup)
+  const artistsWithProfiles = useMemo(() => {
+    const result: Artist[] = [];
+    for (const name of lineup) {
+      const profile = artistProfiles.get(name);
+      if (profile) result.push(profile);
+    }
+    return result;
+  }, [lineup, artistProfiles]);
+
+  // Artist modal state — index-based for swipe navigation
+  const [artistModalOpen, setArtistModalOpen] = useState(false);
+  const [selectedArtistIndex, setSelectedArtistIndex] = useState(0);
+
+  const handleArtistClick = useCallback((artist: Artist) => {
+    const idx = artistsWithProfiles.findIndex((a) => a.id === artist.id);
+    setSelectedArtistIndex(idx >= 0 ? idx : 0);
+    setArtistModalOpen(true);
+  }, [artistsWithProfiles]);
 
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
   const ticketGroupMap =
@@ -306,9 +317,11 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
       {/* Artist Profile Modal */}
       <MidnightArtistModal
-        artist={selectedArtist}
+        artists={artistsWithProfiles}
+        currentIndex={selectedArtistIndex}
         isOpen={artistModalOpen}
         onClose={() => setArtistModalOpen(false)}
+        onNavigate={setSelectedArtistIndex}
       />
 
       {/* Engagement features */}

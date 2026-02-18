@@ -58,6 +58,7 @@ export default function ArtistsPage() {
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStatus, setVideoStatus] = useState("");
   const [previewError, setPreviewError] = useState(false);
+  const [videoError, setVideoError] = useState("");
   const [videoDragging, setVideoDragging] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -89,6 +90,7 @@ export default function ArtistsPage() {
     setFormInstagram("");
     setFormImage("");
     setFormVideoUrl("");
+    setVideoError("");
     setDialogOpen(true);
   }, []);
 
@@ -98,6 +100,7 @@ export default function ArtistsPage() {
     setFormDescription(artist.description || "");
     setFormInstagram(artist.instagram_handle || "");
     setFormImage(artist.image || "");
+    setVideoError("");
     setFormVideoUrl(artist.video_url || "");
     setDialogOpen(true);
   }, []);
@@ -137,14 +140,17 @@ export default function ArtistsPage() {
   }, [formName, formDescription, formInstagram, formImage, formVideoUrl, editingArtist, loadArtists]);
 
   const handleVideoUpload = useCallback(async (file: File) => {
+    setVideoError("");
+
     if (!file.type.startsWith("video/")) {
-      alert("Please select a video file.");
+      setVideoError("That doesn't look like a video file. Please try an MP4, MOV, or WebM.");
       return;
     }
 
     const MAX_FILE_SIZE = 200 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      alert(`File is ${Math.round(file.size / 1024 / 1024)}MB — maximum is 200MB.`);
+      const sizeMB = Math.round(file.size / 1024 / 1024);
+      setVideoError(`Your video is ${sizeMB}MB — the maximum is 200MB. Try compressing it or trimming the length.`);
       return;
     }
 
@@ -237,7 +243,7 @@ export default function ArtistsPage() {
     } catch (e) {
       console.error("Video upload failed:", e);
       const msg = e instanceof Error ? e.message : "Unknown error";
-      alert(`Video upload failed: ${msg}`);
+      setVideoError(`Upload failed — ${msg}. Please try again.`);
       setVideoStatus("");
     }
 
@@ -619,6 +625,18 @@ export default function ArtistsPage() {
                         <span className="inline-flex items-center rounded-md bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground">
                           16:9 landscape
                         </span>
+                      </div>
+                    </div>
+                  )}
+                  {videoError && (
+                    <div className="mt-2 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/[0.06] px-3.5 py-3">
+                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-destructive/15 mt-px">
+                        <X size={10} className="text-destructive" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-medium text-destructive leading-snug">
+                          {videoError}
+                        </p>
                       </div>
                     </div>
                   )}

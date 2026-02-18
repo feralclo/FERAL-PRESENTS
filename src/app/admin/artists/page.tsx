@@ -124,6 +124,13 @@ export default function ArtistsPage() {
   }, [formName, formDescription, formInstagram, formImage, formVideoUrl, editingArtist, loadArtists]);
 
   const handleVideoUpload = useCallback(async (file: File) => {
+    // 50MB limit on Supabase free plan
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`File is ${Math.round(file.size / 1024 / 1024)}MB — max is 50MB. Compress the video or use a shorter clip.`);
+      return;
+    }
+
     setVideoUploading(true);
     setVideoProgress(10); // Show initial progress
 
@@ -380,14 +387,19 @@ export default function ArtistsPage() {
               <Label>Video</Label>
               {formVideoUrl ? (
                 <div className="space-y-1.5">
-                  <div className="relative rounded-lg overflow-hidden bg-black border border-border" style={{ maxHeight: "140px" }}>
+                  <div className="flex items-center gap-2 text-xs text-primary mb-1">
+                    <Video size={12} />
+                    Video uploaded
+                  </div>
+                  <div className="relative rounded-lg overflow-hidden bg-black border border-border">
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video
-                      src={formVideoUrl}
-                      className="w-full object-cover"
-                      style={{ maxHeight: "140px" }}
+                      src={`${formVideoUrl}#t=0.1`}
+                      className="w-full"
+                      style={{ maxHeight: "160px" }}
                       muted
                       playsInline
+                      controls
                       preload="metadata"
                     />
                     <button

@@ -85,6 +85,7 @@ export function MidnightArtistModal({
     if (!video) return;
 
     if (video.paused) {
+      video.currentTime = 0; // Start from beginning on first play
       video.play();
       setIsPlaying(true);
 
@@ -170,7 +171,7 @@ export function MidnightArtistModal({
                       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                       <video
                         ref={videoRef}
-                        src={artist.video_url!}
+                        src={`${artist.video_url!}#t=0.1`}
                         className="absolute inset-0 w-full h-full object-cover"
                         playsInline
                         muted

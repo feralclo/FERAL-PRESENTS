@@ -50,6 +50,7 @@ export function MidnightArtistModal({
   const pendingRef = useRef<number | null>(null);
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lockRef = useRef<"h" | "v" | null>(null);
+  const fromSwipeRef = useRef(false);
 
   // Callback ref — guarantees touch listener attaches after Radix portal mount
   const [cardEl, setCardEl] = useState<HTMLDivElement | null>(null);
@@ -59,6 +60,19 @@ export function MidnightArtistModal({
   const multi = artists.length > 1;
   const CARD_W = 380;
   const GAP = 20;
+
+  // ── Preload next artist's video after current settles ──
+  const [preloadNext, setPreloadNext] = useState(false);
+  const nextArtist = canGoNext ? artists[currentIndex + 1] : null;
+  const nextHasMuxVideo = !!nextArtist?.video_url && isMuxPlaybackId(nextArtist.video_url);
+
+  useEffect(() => {
+    setPreloadNext(false);
+    if (!isOpen || !nextHasMuxVideo || phase !== "idle") return;
+    // Wait for current video to start loading before preloading next
+    const t = setTimeout(() => setPreloadNext(true), 2500);
+    return () => clearTimeout(t);
+  }, [isOpen, nextHasMuxVideo, phase, currentIndex]);
 
   // ── Reset on artist change / modal close ──
   useEffect(() => {
@@ -138,6 +152,7 @@ export function MidnightArtistModal({
     (idx: number, dir: "left" | "right") => {
       if (idx < 0 || idx >= artists.length || phase !== "idle") return;
       pendingRef.current = idx;
+      fromSwipeRef.current = false;
       setExitDir(dir);
       setPhase("pre-exit");
     },
@@ -145,10 +160,12 @@ export function MidnightArtistModal({
   );
 
   // Swipe-triggered navigation (skip pre-exit — cards already at drag positions)
+  // Uses faster transition since user's finger already moved the card partway.
   const navigateFromSwipe = useCallback(
     (idx: number, dir: "left" | "right") => {
       if (idx < 0 || idx >= artists.length) return;
       pendingRef.current = idx;
+      fromSwipeRef.current = true;
       setExitDir(dir);
       setPhase("exiting");
     },
@@ -340,7 +357,7 @@ export function MidnightArtistModal({
   // Transition class
   let txClass = "";
   if (phase === "dragging") txClass = "midnight-artist-dragging";
-  else if (phase === "exiting") txClass = "midnight-artist-swipe";
+  else if (phase === "exiting") txClass = fromSwipeRef.current ? "midnight-artist-swipe-fast" : "midnight-artist-swipe";
   else if (phase === "snapping") txClass = "midnight-artist-snapback";
   else if (phase === "hint-out") txClass = "midnight-artist-hint";
   else if (phase === "hint-back") txClass = "midnight-artist-snapback";
@@ -448,7 +465,6 @@ export function MidnightArtistModal({
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           {...({
                             autoPlay: "any",
-                            poster: getMuxThumbnailUrl(artist.video_url!),
                             style: {
                               width: "100%",
                               height: "100%",
@@ -860,6 +876,27 @@ export function MidnightArtistModal({
                 <polyline points="9,6 15,12 9,18" />
               </svg>
             </button>
+          )}
+
+          {/* Hidden preloader — buffers next artist's video while viewing current */}
+          {preloadNext && nextArtist && nextHasMuxVideo && (
+            <div
+              style={{ position: "absolute", left: -9999, width: 1, height: 1, opacity: 0, pointerEvents: "none" as const }}
+              aria-hidden="true"
+            >
+              <MuxPlayer
+                playbackId={nextArtist.video_url!}
+                streamType="on-demand"
+                preload="auto"
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                {...({
+                  autoPlay: false,
+                  muted: true,
+                  style: { width: 1, height: 1 },
+                  "--controls": "none",
+                } as any)}
+              />
+            </div>
           )}
         </div>
       </DialogContent>

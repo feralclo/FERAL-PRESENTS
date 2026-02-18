@@ -826,6 +826,13 @@ html.checkout-active .noise {
   will-change: transform;
 }
 
+/* Fast slide — for swipe-triggered navigation where the user's finger
+   already moved the card partway. Shorter duration = consistent velocity. */
+.midnight-artist-swipe-fast {
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
 /* Snap-back — rubber-band release with overshoot */
 .midnight-artist-snapback {
   transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -915,6 +922,7 @@ html.checkout-active .noise {
     transition: none;
   }
   .midnight-artist-swipe,
+  .midnight-artist-swipe-fast,
   .midnight-artist-snapback,
   .midnight-artist-hint {
     transition: none;

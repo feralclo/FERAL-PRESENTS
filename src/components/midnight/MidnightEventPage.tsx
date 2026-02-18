@@ -359,48 +359,18 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 }
 
 /**
- * Prefetch Mux HLS manifests + first video segments into browser cache.
- * When MuxPlayer initializes later, it finds data already cached →
- * near-instant playback. Runs at idle priority — zero impact on page load.
+ * Lightweight preload — fetch HLS master manifest + thumbnail only.
+ * Manifests are ~1KB, thumbnails ~20KB. No segment fetching here —
+ * that would compete with MuxPlayer for bandwidth and cause video
+ * freezes. The actual video prebuffering happens via a hidden
+ * MuxPlayer instance in the artist modal.
  */
 async function preloadMuxVideo(playbackId: string) {
   try {
-    // Thumbnail — instant poster when modal opens
     const img = new Image();
     img.src = getMuxThumbnailUrl(playbackId);
-
-    // 1. Fetch master manifest
-    const masterUrl = getMuxStreamUrl(playbackId);
-    const masterResp = await fetch(masterUrl);
-    const masterText = await masterResp.text();
-
-    // 2. Parse rendition URLs (different quality levels)
-    const lines = masterText.split("\n");
-    const base = masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1);
-    const renditions: string[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith("#EXT-X-STREAM-INF:")) {
-        const url = lines[i + 1]?.trim();
-        if (url) renditions.push(url.startsWith("http") ? url : base + url);
-      }
-    }
-
-    // 3. Fetch each rendition manifest + its first segment.
-    //    Covers all quality levels so whichever MuxPlayer picks → cache hit.
-    await Promise.allSettled(
-      renditions.map(async (rUrl) => {
-        const rResp = await fetch(rUrl);
-        const rText = await rResp.text();
-        const rBase = rUrl.substring(0, rUrl.lastIndexOf("/") + 1);
-        for (const line of rText.split("\n")) {
-          if (line.startsWith("#") || !line.trim()) continue;
-          const segUrl = line.startsWith("http") ? line.trim() : rBase + line.trim();
-          fetch(segUrl).catch(() => {});
-          break; // Only first segment per rendition
-        }
-      })
-    );
+    await fetch(getMuxStreamUrl(playbackId));
   } catch {
-    // Best-effort — preloading failure is silent
+    // Best-effort — silent fail
   }
 }

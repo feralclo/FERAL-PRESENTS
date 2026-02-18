@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,10 @@ import {
   Type,
   Timer,
   Sparkles,
-  ExternalLink,
   BarChart3,
+  Plus,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════
@@ -74,7 +77,7 @@ function MasterToggle({
           <div>
             <div className="flex items-center gap-2.5">
               <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-foreground">
-                Discount Popup
+                Popup
               </h2>
               <Badge
                 variant={enabled ? "success" : "destructive"}
@@ -86,7 +89,7 @@ function MasterToggle({
             <p className="mt-1 text-xs text-muted-foreground">
               {enabled
                 ? "Popup is showing on event pages"
-                : "Enable to show the discount popup on event pages"}
+                : "Enable to show the popup on event pages"}
             </p>
           </div>
         </div>
@@ -105,6 +108,217 @@ function MasterToggle({
           <div className="absolute -bottom-2 -right-8 h-16 w-16 rounded-full bg-emerald-500/3" />
         </>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CODE VALIDATION — checks if the discount code is valid
+   ═══════════════════════════════════════════════════════════ */
+function CodeValidator({ code }: { code: string }) {
+  const [status, setStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!code.trim()) {
+      setStatus("idle");
+      return;
+    }
+
+    setStatus("checking");
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/discounts/validate?code=${encodeURIComponent(code.trim())}`);
+        const json = await res.json();
+        setStatus(json.valid ? "valid" : "invalid");
+      } catch {
+        setStatus("invalid");
+      }
+    }, 500);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [code]);
+
+  if (status === "idle" || status === "checking") return null;
+
+  return (
+    <span className="mt-1 flex items-center gap-1 text-[10px]">
+      {status === "valid" ? (
+        <>
+          <CheckCircle2 size={10} className="text-emerald-400" />
+          <span className="text-emerald-400">Active</span>
+        </>
+      ) : (
+        <>
+          <AlertTriangle size={10} className="text-amber-400" />
+          <span className="text-amber-400">Code not found</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CREATE DISCOUNT INLINE — create a new discount code
+   ═══════════════════════════════════════════════════════════ */
+function CreatePopupDiscount({
+  onCreated,
+}: {
+  onCreated: (code: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [percent, setPercent] = useState(10);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleCreate = async () => {
+    if (!code.trim()) {
+      setError("Enter a discount code");
+      return;
+    }
+    if (percent < 1 || percent > 100) {
+      setError("Percentage must be 1\u2013100");
+      return;
+    }
+
+    setCreating(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/discounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: code.trim().toUpperCase(),
+          description: `Popup discount (${percent}% off)`,
+          type: "percentage",
+          value: percent,
+          status: "active",
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Failed to create discount");
+        setCreating(false);
+        return;
+      }
+
+      setSuccess(true);
+      onCreated(code.trim().toUpperCase());
+
+      setTimeout(() => {
+        setOpen(false);
+        setSuccess(false);
+        setCode("");
+        setPercent(10);
+      }, 1200);
+    } catch {
+      setError("Network error");
+    }
+    setCreating(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+      >
+        <Plus size={12} />
+        Create New Discount Code
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="overflow-hidden rounded-lg border transition-all"
+      style={{
+        borderColor: success ? "rgba(16,185,129,0.3)" : "rgba(139,92,246,0.2)",
+        background: success ? "rgba(16,185,129,0.04)" : "rgba(139,92,246,0.04)",
+      }}
+    >
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
+            {success ? "Discount Created" : "New Discount Code"}
+          </span>
+          {!success && (
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setError(null); }}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+
+        {success ? (
+          <div className="mt-2 flex items-center gap-2 text-sm text-emerald-400">
+            <CheckCircle2 size={14} />
+            <span className="font-mono font-bold">{code.toUpperCase()}</span> — {percent}% off
+          </div>
+        ) : (
+          <>
+            <div className="mt-3 grid grid-cols-5 gap-3">
+              <div className="col-span-3">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Code
+                </Label>
+                <Input
+                  className="mt-1 font-mono text-xs"
+                  value={code}
+                  onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(null); }}
+                  placeholder="POPUP10"
+                  disabled={creating}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Discount %
+                </Label>
+                <Input
+                  className="mt-1 font-mono text-xs"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={percent}
+                  onChange={(e) => setPercent(Number(e.target.value))}
+                  disabled={creating}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <p className="mt-2 text-[11px] text-red-400">{error}</p>
+            )}
+
+            <Button
+              size="sm"
+              className="mt-3 w-full gap-1.5"
+              onClick={handleCreate}
+              disabled={creating}
+            >
+              {creating ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <CheckCircle2 size={12} />
+              )}
+              Create &amp; Apply
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -184,7 +398,7 @@ export default function PopupConfigPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-lg font-bold uppercase tracking-wider text-foreground">
-                Discount Popup
+                Popup
               </h1>
               {settings.enabled && (
                 <Badge variant="success" className="gap-1 text-[9px] font-bold uppercase">
@@ -197,8 +411,8 @@ export default function PopupConfigPage() {
             </p>
           </div>
 
-          {/* Save status */}
-          <div className="flex items-center gap-2">
+          {/* Save status + Analytics button */}
+          <div className="flex items-center gap-3">
             {saving && (
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
@@ -217,6 +431,12 @@ export default function PopupConfigPage() {
                 Save failed
               </span>
             )}
+            <Link href="/admin/popup/">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <BarChart3 size={13} />
+                Analytics
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -245,15 +465,25 @@ export default function PopupConfigPage() {
                 <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Discount Code
                 </Label>
-                <Input
-                  className="mt-1.5 font-mono"
-                  value={settings.discount_code}
-                  onChange={(e) => update({ discount_code: e.target.value.toUpperCase() })}
-                  placeholder="FERALRAVER10"
-                />
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Input
+                    className="font-mono"
+                    value={settings.discount_code}
+                    onChange={(e) => update({ discount_code: e.target.value.toUpperCase() })}
+                    placeholder="FERALRAVER10"
+                  />
+                </div>
+                <CodeValidator code={settings.discount_code} />
                 <p className="mt-1 text-[10px] text-muted-foreground/40">
                   Must match an active code in the Discounts system
                 </p>
+
+                {/* Inline discount creation */}
+                <div className="mt-3">
+                  <CreatePopupDiscount
+                    onCreated={(code) => update({ discount_code: code })}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -444,16 +674,6 @@ export default function PopupConfigPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Link to analytics */}
-          <Link
-            href="/admin/popup/"
-            className="inline-flex items-center gap-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
-          >
-            <BarChart3 size={13} />
-            View popup analytics
-            <ExternalLink size={11} />
-          </Link>
         </div>
       )}
     </div>

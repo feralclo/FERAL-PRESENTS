@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
           email: normalizedEmail,
           first_name: first_name || null,
           last_name: last_name || null,
+          source: "checkout",
           total_orders: 0,
           total_spent: 0,
         })

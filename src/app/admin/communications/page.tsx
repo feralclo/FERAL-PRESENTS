@@ -257,7 +257,7 @@ export default function CommunicationsPage() {
           status={abandonedCartEnabled || popupEnabled ? "live" : "coming-soon"}
           templates={[
             { name: "Abandoned Cart", href: "/admin/communications/marketing/abandoned-cart/", active: abandonedCartEnabled, icon: ShoppingCart },
-            { name: "Discount Popup", href: "/admin/communications/marketing/popup/", active: popupEnabled, icon: Tag },
+            { name: "Popup", href: "/admin/communications/marketing/popup/", active: popupEnabled, icon: Tag },
           ]}
         />
       </div>

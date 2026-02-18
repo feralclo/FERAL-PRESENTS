@@ -42,8 +42,8 @@ export default function MarketingPage() {
       icon: ShoppingCart,
     },
     {
-      name: "Discount Popup",
-      description: "Capture emails with a timed discount offer \u2014 3-screen popup with code reveal on event pages",
+      name: "Popup",
+      description: "Capture emails with a timed discount offer on event pages",
       href: "/admin/communications/marketing/popup/",
       active: popupActive,
       icon: Tag,

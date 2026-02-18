@@ -164,6 +164,13 @@ export function MidnightDiscountPopup() {
         identifyInKlaviyo(email);
       }
 
+      // Capture customer in Entry backend (fire-and-forget)
+      fetch("/api/popup/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      }).catch(() => {});
+
       trackPopupEvent("conversions", page);
 
       try {
@@ -256,7 +263,7 @@ export function MidnightDiscountPopup() {
               "absolute top-3 right-3 z-10",
               "flex h-10 w-10 items-center justify-center rounded-full",
               "bg-white/[0.06] border border-white/[0.08]",
-              "text-white/40 hover:text-white/70 hover:bg-white/[0.10]",
+              "text-white/40 hover:text-white/80 hover:bg-white/[0.12] hover:border-white/[0.15]",
               "transition-all duration-200 cursor-pointer",
               "touch-manipulation"
             )}
@@ -326,7 +333,7 @@ export function MidnightDiscountPopup() {
                 <span className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20">
                   Expires in
                 </span>
-                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-[var(--accent,#ff0033)]">
+                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-white/60">
                   {timerDisplay}
                 </span>
               </div>
@@ -361,7 +368,7 @@ export function MidnightDiscountPopup() {
 
               {/* Error */}
               {emailError && (
-                <p className="font-[family-name:var(--font-sans)] text-[12px] text-[var(--accent,#ff0033)] mb-3">
+                <p className="font-[family-name:var(--font-sans)] text-[12px] text-red-400 mb-3">
                   {emailError}
                 </p>
               )}
@@ -405,7 +412,7 @@ export function MidnightDiscountPopup() {
                 <span className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20">
                   Expires in
                 </span>
-                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-[var(--accent,#ff0033)]">
+                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-white/60">
                   {timerDisplay}
                 </span>
               </div>
@@ -438,18 +445,17 @@ export function MidnightDiscountPopup() {
                 Here&apos;s your exclusive discount code
               </p>
 
-              {/* Code container — glass with accent border */}
+              {/* Code container — glass */}
               <div
                 className={cn(
                   "w-full py-4 px-5 rounded-xl mb-4",
-                  "bg-white/[0.04] border border-[var(--accent,#ff0033)]/20",
-                  "shadow-[0_0_20px_rgba(var(--accent-rgb,255,0,51),0.06)]"
+                  "bg-white/[0.04] border border-white/[0.12]"
                 )}
               >
                 <p className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20 mb-2">
                   Your Code
                 </p>
-                <p className="font-[family-name:var(--font-mono)] text-[20px] font-bold tracking-[0.08em] text-[var(--accent,#ff0033)]">
+                <p className="font-[family-name:var(--font-mono)] text-[20px] font-bold tracking-[0.10em] text-white">
                   {config.discount_code}
                 </p>
               </div>
@@ -459,7 +465,7 @@ export function MidnightDiscountPopup() {
                 <span className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20">
                   Code expires in
                 </span>
-                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-[var(--accent,#ff0033)]">
+                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-white/60">
                   24:00:00
                 </span>
               </div>

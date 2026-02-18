@@ -96,6 +96,7 @@ export interface Customer {
   total_spent: number;
   first_order_at?: string;
   last_order_at?: string;
+  source?: string;
   notes?: string;
   created_at: string;
   updated_at: string;

@@ -258,11 +258,14 @@ function buildCustomerTimeline(
   const fmt = (d: string) => formatDateTime(d);
 
   const isDiscoverer = customer.total_orders === 0;
+  const isPopupSource = customer.source === "popup";
   entries.push({
-    label: isDiscoverer ? "Discoverer captured" : "Customer created",
-    detail: isDiscoverer
-      ? `${customer.nickname || customer.email} entered the funnel`
-      : `${customer.first_name || ""} ${customer.last_name || ""} joined the movement`.trim(),
+    label: isPopupSource ? "Captured via popup" : isDiscoverer ? "Discoverer captured" : "Customer created",
+    detail: isPopupSource
+      ? `${customer.nickname || customer.email} entered via discount popup`
+      : isDiscoverer
+        ? `${customer.nickname || customer.email} entered the funnel`
+        : `${customer.first_name || ""} ${customer.last_name || ""} joined the movement`.trim(),
     time: fmt(customer.created_at),
     icon: isDiscoverer ? Target : UserPlus,
     sortDate: new Date(customer.created_at),
@@ -1434,6 +1437,11 @@ export default function CustomerProfilePage() {
                   {customer.total_orders > 2 && (
                     <Badge variant="secondary" className="text-[10px] font-semibold">
                       <Repeat size={10} /> Loyal
+                    </Badge>
+                  )}
+                  {customer.source === "popup" && (
+                    <Badge variant="info" className="text-[10px] font-semibold">
+                      Via Popup
                     </Badge>
                   )}
                 </div>

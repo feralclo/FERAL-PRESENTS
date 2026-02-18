@@ -818,6 +818,17 @@ function SinglePageCheckoutForm({
           return;
         }
 
+        trackAddPaymentInfo(
+          {
+            content_ids: cartLines.map((l) => l.ticket_type_id),
+            content_type: "product",
+            value: totalAmount,
+            currency: event.currency || "GBP",
+            num_items: totalQty,
+          },
+          { em: walletEmail.toLowerCase(), fn: walletFirstName, ln: walletLastName }
+        );
+
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -896,7 +907,7 @@ function SinglePageCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty]
   );
 
   const handleSubmit = useCallback(

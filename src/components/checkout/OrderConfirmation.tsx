@@ -60,6 +60,7 @@ export function OrderConfirmation({
         em: customer.email || undefined,
         fn: customer.first_name || undefined,
         ln: customer.last_name || undefined,
+        ph: customer.phone || undefined,
         external_id: order.customer_id || undefined,
       } : undefined
     );

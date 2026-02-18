@@ -45,7 +45,7 @@ src/
 │   │                          # settings, health). Layout: sidebar + Entry-branded shell
 │   └── api/                   # 85 endpoints — see API Routes section for full list
 ├── components/
-│   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
+│   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, ArtistLineupEditor, TierSelector
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
 │   │   └── dashboard/         # ActivityFeed, FunnelChart, TopEventsTable
 │   ├── aura/                  # Aura theme components (full event page + checkout variant)
@@ -53,7 +53,7 @@ src/
 │   │                          # MidnightTicketWidget, MidnightTicketCard, MidnightMerchModal,
 │   │                          # MidnightBottomBar, MidnightEventInfo, MidnightLineup,
 │   │                          # MidnightCartSummary, MidnightTierProgression, MidnightFooter,
-│   │                          # MidnightSocialProof, MidnightFloatingHearts
+│   │                          # MidnightArtistModal, MidnightSocialProof, MidnightFloatingHearts
 │   ├── event/                 # Shared: DiscountPopup, EngagementTracker, ThemeEditorBridge,
 │   │                          # KompassEventPage (legacy). Old BEM components (DynamicEventPage,
 │   │                          # EventHero, TeeModal, etc.) retained but no longer routed
@@ -86,7 +86,7 @@ src/
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications
 │   ├── klaviyo.ts, meta.ts    # Marketing integrations
 │   └── utils.ts               # cn() helper (clsx + tailwind-merge)
-├── types/                     # TypeScript types per domain (settings, events, orders, tickets,
+├── types/                     # TypeScript types per domain (settings, events, artists, orders, tickets,
 │                              # products, discounts, reps, email, analytics, marketing)
 └── styles/
     ├── base.css               # Reset, CSS variables, typography, reveal animations
@@ -262,6 +262,8 @@ EventPage [Server Component, force-dynamic]
 | `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in, checked_in_at |
 | `discounts` | Discount codes | code, type (percentage/fixed), value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at, min_order_amount |
 | `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |
+| `artists` | Reusable artist catalog per org | name, description, instagram_handle, image |
+| `event_artists` | Event↔Artist junction (many-to-many, ordered) | event_id (FK→events, CASCADE), artist_id (FK→artists, CASCADE), sort_order, UNIQUE(event_id, artist_id) |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 
@@ -309,7 +311,8 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Stripe
 ### Standard CRUD Groups
 | Group | Routes | Operations |
 |-------|--------|------------|
-| Events | `/api/events`, `/api/events/[id]` | GET/POST/PUT/DELETE + ticket types |
+| Events | `/api/events`, `/api/events/[id]`, `/api/events/[id]/artists` | GET/POST/PUT/DELETE + ticket types + artist lineup |
+| Artists | `/api/artists`, `/api/artists/[id]` | GET (list + search)/POST/PUT/DELETE |
 | Merch | `/api/merch`, `/api/merch/[id]`, `/api/merch/[id]/linked-tickets` | GET/POST/PUT/DELETE |
 | Customers | `/api/customers` | GET (list + search) |
 | Guest List | `/api/guest-list`, `/api/guest-list/[eventId]` | POST/GET/PUT/DELETE |

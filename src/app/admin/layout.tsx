@@ -36,6 +36,7 @@ import {
   Tags,
   UsersRound,
   ShoppingCart,
+  Mic2,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -58,6 +59,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/admin/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/events/", label: "Events", icon: CalendarDays },
+      { href: "/admin/artists/", label: "Artists", icon: Mic2 },
     ],
   },
   {

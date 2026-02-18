@@ -17,14 +17,16 @@ import { MidnightTicketWidget } from "./MidnightTicketWidget";
 import { MidnightMerchModal } from "./MidnightMerchModal";
 import { normalizeMerchImages } from "@/lib/merch-images";
 
+import { MidnightArtistModal } from "./MidnightArtistModal";
 import { MidnightFooter } from "./MidnightFooter";
 import type { Event, TicketTypeRow } from "@/types/events";
+import type { Artist, EventArtist } from "@/types/artists";
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
 
 interface MidnightEventPageProps {
-  event: Event & { ticket_types: TicketTypeRow[] };
+  event: Event & { ticket_types: TicketTypeRow[]; event_artists?: EventArtist[] };
 }
 
 export function MidnightEventPage({ event }: MidnightEventPageProps) {
@@ -72,6 +74,29 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     });
   }, [event.ticket_types]);
 
+  // Artist profiles — build a name→Artist map for the lineup component
+  const artistProfiles = useMemo(() => {
+    const map = new Map<string, Artist>();
+    const eventArtists = event.event_artists;
+    if (eventArtists && eventArtists.length > 0) {
+      for (const ea of eventArtists) {
+        if (ea.artist) {
+          map.set(ea.artist.name, ea.artist);
+        }
+      }
+    }
+    return map;
+  }, [event.event_artists]);
+
+  // Artist modal state
+  const [artistModalOpen, setArtistModalOpen] = useState(false);
+  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+
+  const handleArtistClick = useCallback((artist: Artist) => {
+    setSelectedArtist(artist);
+    setArtistModalOpen(true);
+  }, []);
+
   // Merch modal state
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
@@ -115,7 +140,17 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
   const currSymbol = cart.currSymbol;
 
-  const lineup = event.lineup || [];
+  // Derive lineup: prefer event_artists (sorted), fall back to events.lineup
+  const lineup = useMemo(() => {
+    const ea = event.event_artists;
+    if (ea && ea.length > 0) {
+      return ea
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((e) => e.artist?.name)
+        .filter(Boolean) as string[];
+    }
+    return event.lineup || [];
+  }, [event.event_artists, event.lineup]);
 
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
   const ticketGroupMap =
@@ -155,7 +190,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 {/* Lineup on mobile (above about) */}
                 {lineup.length > 0 && (
                   <div className="lg:hidden order-[-1] mb-12 max-md:mb-10" data-reveal="1">
-                    <MidnightLineup artists={lineup} />
+                    <MidnightLineup artists={lineup} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}
 
@@ -170,7 +205,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
                   <div className="hidden lg:block mt-16" data-reveal="3">
-                    <MidnightLineup artists={lineup} />
+                    <MidnightLineup artists={lineup} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}
               </div>
@@ -262,6 +297,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
         />
       )}
+
+      {/* Artist Profile Modal */}
+      <MidnightArtistModal
+        artist={selectedArtist}
+        isOpen={artistModalOpen}
+        onClose={() => setArtistModalOpen(false)}
+      />
 
       {/* Engagement features */}
       <DiscountPopup />

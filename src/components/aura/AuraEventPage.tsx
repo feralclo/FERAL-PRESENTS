@@ -20,12 +20,13 @@ import { AuraMerchModal } from "./AuraMerchModal";
 import { AuraFooter } from "./AuraFooter";
 import { AuraSocialProof } from "./AuraSocialProof";
 import type { Event, TicketTypeRow } from "@/types/events";
+import type { EventArtist } from "@/types/artists";
 
 import "@/styles/aura.css";
 import "@/styles/aura-effects.css";
 
 interface AuraEventPageProps {
-  event: Event & { ticket_types: TicketTypeRow[] };
+  event: Event & { ticket_types: TicketTypeRow[]; event_artists?: EventArtist[] };
 }
 
 const CURR_SYMBOL: Record<string, string> = { GBP: "\u00A3", EUR: "\u20AC", USD: "$" };
@@ -183,15 +184,21 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
         </section>
 
         {/* Lineup */}
-        {event.lineup && event.lineup.length > 0 && (
-          <>
-            <Separator className="my-10" />
-            <section id="lineup" className="scroll-mt-20">
-              <h2 className="text-lg font-semibold tracking-tight mb-5">Lineup</h2>
-              <AuraLineup artists={event.lineup} />
-            </section>
-          </>
-        )}
+        {(() => {
+          const ea = event.event_artists;
+          const lineup = ea && ea.length > 0
+            ? ea.sort((a, b) => a.sort_order - b.sort_order).map((e) => e.artist?.name).filter(Boolean) as string[]
+            : event.lineup || [];
+          return lineup.length > 0 ? (
+            <>
+              <Separator className="my-10" />
+              <section id="lineup" className="scroll-mt-20">
+                <h2 className="text-lg font-semibold tracking-tight mb-5">Lineup</h2>
+                <AuraLineup artists={lineup} />
+              </section>
+            </>
+          ) : null;
+        })()}
 
         <Separator className="my-10" />
 

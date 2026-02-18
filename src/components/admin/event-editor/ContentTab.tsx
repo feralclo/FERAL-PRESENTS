@@ -4,10 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ArtistLineupEditor } from "@/components/admin/ArtistLineupEditor";
 import { LineupTagInput } from "@/components/admin/LineupTagInput";
 import type { TabProps } from "./types";
+import type { EventArtist } from "@/types/artists";
 
-export function ContentTab({ event, updateEvent }: TabProps) {
+interface ContentTabProps extends TabProps {
+  eventArtists: EventArtist[];
+  onEventArtistsChange: (eventArtists: EventArtist[]) => void;
+}
+
+export function ContentTab({
+  event,
+  updateEvent,
+  eventArtists,
+  onEventArtistsChange,
+}: ContentTabProps) {
   return (
     <div className="space-y-6">
       {/* Hero Content */}
@@ -58,16 +70,28 @@ export function ContentTab({ event, updateEvent }: TabProps) {
         </CardContent>
       </Card>
 
-      {/* Lineup */}
+      {/* Lineup — Artist Catalog */}
       <Card className="py-0 gap-0">
         <CardHeader className="px-6 pt-5 pb-4">
           <CardTitle className="text-sm">Lineup</CardTitle>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <LineupTagInput
-            lineup={event.lineup || []}
-            onChange={(lineup) => updateEvent("lineup", lineup)}
+        <CardContent className="px-6 pb-6 space-y-4">
+          <ArtistLineupEditor
+            eventArtists={eventArtists}
+            onChange={onEventArtistsChange}
           />
+          {/* Legacy tag input — hidden when using artist catalog, shown as fallback */}
+          {eventArtists.length === 0 && (
+            <div className="pt-2 border-t border-border/50">
+              <p className="text-[10px] text-muted-foreground/60 mb-2">
+                Or add names manually (legacy mode):
+              </p>
+              <LineupTagInput
+                lineup={event.lineup || []}
+                onChange={(lineup) => updateEvent("lineup", lineup)}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

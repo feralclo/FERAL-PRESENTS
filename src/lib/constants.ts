@@ -30,6 +30,8 @@ export const TABLES = {
   REP_EVENT_POSITION_REWARDS: "rep_event_position_rewards",
   REP_NOTIFICATIONS: "rep_notifications",
   ABANDONED_CARTS: "abandoned_carts",
+  ARTISTS: "artists",
+  EVENT_ARTISTS: "event_artists",
 } as const;
 
 // Settings keys stored in site_settings table

@@ -26,6 +26,7 @@ import { SettingsTab } from "@/components/admin/event-editor/SettingsTab";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { EventSettings } from "@/types/settings";
+import type { EventArtist } from "@/types/artists";
 
 export default function EventEditorPage() {
   const params = useParams();
@@ -40,6 +41,7 @@ export default function EventEditorPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [eventArtists, setEventArtists] = useState<EventArtist[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -77,6 +79,15 @@ export default function EventEditorPage() {
       if (sd?.data) {
         const s = sd.data as EventSettings;
         setSettings(s);
+      }
+
+      // Load event artists
+      try {
+        const artistRes = await fetch(`/api/events/${data.id}/artists`);
+        const artistJson = await artistRes.json();
+        if (artistJson.data) setEventArtists(artistJson.data);
+      } catch {
+        // ignore — event_artists may not exist yet
       }
 
       setLoading(false);
@@ -193,6 +204,37 @@ export default function EventEditorPage() {
         setTicketTypes(types.sort((a, b) => a.sort_order - b.sort_order));
         setDeletedTypeIds([]);
 
+        // Save event artists
+        if (eventArtists.length > 0) {
+          try {
+            const artistRes = await fetch(`/api/events/${event.id}/artists`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                artists: eventArtists.map((ea, i) => ({
+                  artist_id: ea.artist_id,
+                  sort_order: i,
+                })),
+              }),
+            });
+            const artistJson = await artistRes.json();
+            if (artistJson.data) setEventArtists(artistJson.data);
+          } catch {
+            // event_artists save failed — non-critical
+          }
+        } else {
+          // Clear event artists if none
+          try {
+            await fetch(`/api/events/${event.id}/artists`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ artists: [] }),
+            });
+          } catch {
+            // ignore
+          }
+        }
+
         if (event.cover_image && !json.data.cover_image) {
           setSaveMsg(
             "Saved, but image may not have persisted. Try a smaller image."
@@ -209,7 +251,7 @@ export default function EventEditorPage() {
 
     setSaving(false);
     setTimeout(() => setSaveMsg(""), 4000);
-  }, [event, ticketTypes, deletedTypeIds, settings, slug]);
+  }, [event, ticketTypes, deletedTypeIds, settings, eventArtists, slug]);
 
   const handleDelete = useCallback(async () => {
     if (!event) return;
@@ -305,7 +347,12 @@ export default function EventEditorPage() {
         </TabsContent>
 
         <TabsContent value="content" className="mt-6">
-          <ContentTab event={event} updateEvent={updateEvent} />
+          <ContentTab
+            event={event}
+            updateEvent={updateEvent}
+            eventArtists={eventArtists}
+            onEventArtistsChange={setEventArtists}
+          />
         </TabsContent>
 
         <TabsContent value="design" className="mt-6">

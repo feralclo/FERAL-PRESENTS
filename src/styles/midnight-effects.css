@@ -476,6 +476,49 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
+   ARTIST PROFILE DIALOG — Focus ring suppression
+   Same pattern as merch dialog (lesson #6).
+   ═══════════════════════════════════════════════ */
+
+.midnight-artist-dialog,
+.midnight-artist-dialog * {
+  outline: none !important;
+}
+.midnight-artist-dialog *:focus,
+.midnight-artist-dialog:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+/* Close button — same treatment as merch dialog */
+.midnight-artist-dialog > button:last-child {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  opacity: 1;
+  top: 12px;
+  right: 12px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.midnight-artist-dialog > button:last-child:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.20);
+}
+
+.midnight-artist-dialog > button:last-child svg {
+  width: 18px;
+  height: 18px;
+}
+
+
+/* ═══════════════════════════════════════════════
    METALLIC CTA — Platinum gradient button
    ═══════════════════════════════════════════════ */
 

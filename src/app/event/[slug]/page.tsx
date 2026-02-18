@@ -19,7 +19,7 @@ async function getEventFromDB(slug: string) {
 
     const { data } = await supabase
       .from(TABLES.EVENTS)
-      .select("*, ticket_types(*, product:products(*))")
+      .select("*, ticket_types(*, product:products(*)), event_artists(*, artist:artists(*))")
       .eq("slug", slug)
       .eq("org_id", ORG_ID)
       .single();

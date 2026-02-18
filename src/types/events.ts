@@ -36,6 +36,8 @@ export interface Event {
   platform_fee_percent?: number;
   created_at: string;
   updated_at: string;
+  /** Joined event_artists with artist profiles (populated when fetched with join) */
+  event_artists?: import("./artists").EventArtist[];
 }
 
 export interface TicketTypeRow {

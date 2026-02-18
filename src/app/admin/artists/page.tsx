@@ -169,7 +169,6 @@ export default function ArtistsPage() {
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
         body: file,
-        headers: { "Content-Type": file.type },
       });
       if (!uploadRes.ok) throw new Error("Upload to Mux failed");
 

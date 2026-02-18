@@ -81,6 +81,8 @@ export function DiscountPopup({
 
     const timer = setTimeout(() => {
       if (!isDismissed()) {
+        // Don't interrupt if a dialog (e.g. merch modal) is already open
+        if (document.querySelector('[data-slot="dialog-overlay"]')) return;
         setIsOpen(true);
         trackPopupEvent("impressions", page);
       }
@@ -89,6 +91,8 @@ export function DiscountPopup({
     // Desktop: exit intent
     function handleMouseLeave(e: MouseEvent) {
       if (e.clientY <= 0 && !isDismissed()) {
+        // Don't interrupt if a dialog is already open
+        if (document.querySelector('[data-slot="dialog-overlay"]')) return;
         setIsOpen(true);
         trackPopupEvent("impressions", page);
         document.removeEventListener("mouseout", handleMouseLeave);

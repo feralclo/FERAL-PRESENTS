@@ -1,9 +1,23 @@
 /**
  * Image compression and processing utilities.
  * Extracted from the event editor for reuse across admin pages.
+ *
+ * PNGs with transparency are preserved as PNG to avoid black backgrounds.
+ * All other images are compressed to JPEG for smaller file sizes.
  */
 
-/** Compress an image file to JPEG at a given max width and quality */
+/** Check if a canvas has any transparent pixels */
+function hasTransparency(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
+  const data = ctx.getImageData(0, 0, w, h).data;
+  // Sample every 50th pixel for speed — enough to detect transparency
+  for (let i = 3; i < data.length; i += 200) {
+    if (data[i] < 250) return true;
+  }
+  return false;
+}
+
+/** Compress an image file at a given max width and quality.
+ *  Preserves PNG format when the source has transparency. */
 export function compressImage(
   file: File,
   maxWidth: number,
@@ -26,7 +40,14 @@ export function compressImage(
           canvas.width = w;
           canvas.height = h;
           ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", quality));
+
+          // If the source is PNG and has transparency, keep it as PNG
+          const isPng = file.type === "image/png";
+          if (isPng && hasTransparency(ctx, w, h)) {
+            resolve(canvas.toDataURL("image/png"));
+          } else {
+            resolve(canvas.toDataURL("image/jpeg", quality));
+          }
         } catch {
           resolve(null);
         }
@@ -39,13 +60,16 @@ export function compressImage(
   });
 }
 
-/** Process an image file with progressive compression to stay under ~600KB */
+/** Process an image file with progressive compression to stay under ~600KB.
+ *  PNG limit is higher (1.2MB) since they don't compress as aggressively. */
 export async function processImageFile(file: File): Promise<string | null> {
   if (file.size > 10 * 1024 * 1024) {
     alert("Image too large. Maximum is 10MB.");
     return null;
   }
-  const MAX_LEN = 800 * 1024; // ~600KB binary as base64
+  const isPng = file.type === "image/png";
+  const MAX_LEN = isPng ? 1600 * 1024 : 800 * 1024;
+
   let result = await compressImage(file, 1600, 0.8);
   if (result && result.length > MAX_LEN) {
     result = await compressImage(file, 1200, 0.65);

@@ -55,7 +55,9 @@ export default function ArtistsPage() {
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoStatus, setVideoStatus] = useState("");
   const [previewError, setPreviewError] = useState(false);
+  const [videoDragging, setVideoDragging] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
 
   // Delete dialog
   const [deleteTarget, setDeleteTarget] = useState<Artist | null>(null);
@@ -226,6 +228,39 @@ export default function ArtistsPage() {
       handleVideoUpload(file);
       // Reset input so the same file can be re-selected
       e.target.value = "";
+    },
+    [handleVideoUpload]
+  );
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes("Files")) setVideoDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setVideoDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current = 0;
+      setVideoDragging(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file && file.type.startsWith("video/")) {
+        handleVideoUpload(file);
+      }
     },
     [handleVideoUpload]
   );
@@ -439,8 +474,8 @@ export default function ArtistsPage() {
                   </div>
                   <div className="relative rounded-lg overflow-hidden bg-black border border-border">
                     {isMuxPlaybackId(formVideoUrl) ? (
-                      /* Mux video — use MuxPlayer for HLS (native <video> can't play .m3u8 on Chrome/Firefox) */
-                      <div style={{ maxHeight: "160px", overflow: "hidden", display: previewError ? "none" : undefined }}>
+                      /* Mux video — MuxPlayer renders at native aspect ratio */
+                      <div style={{ display: previewError ? "none" : undefined }}>
                         <MuxPlayer
                           playbackId={formVideoUrl}
                           streamType="on-demand"
@@ -450,7 +485,8 @@ export default function ArtistsPage() {
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           {...{ style: {
                             width: "100%",
-                            maxHeight: "160px",
+                            maxHeight: "280px",
+                            "--controls": "none",
                             "--media-object-fit": "contain",
                           } } as any}
                         />
@@ -461,7 +497,7 @@ export default function ArtistsPage() {
                       <video
                         src={formVideoUrl}
                         className="w-full"
-                        style={{ maxHeight: "160px", display: previewError ? "none" : undefined }}
+                        style={{ maxHeight: "280px", objectFit: "contain", display: previewError ? "none" : undefined }}
                         muted
                         playsInline
                         controls
@@ -492,29 +528,58 @@ export default function ArtistsPage() {
                     onChange={handleVideoFileChange}
                     className="hidden"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => videoInputRef.current?.click()}
-                    disabled={videoUploading}
-                    className="w-full"
-                  >
-                    {videoUploading ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
+                  {videoUploading ? (
+                    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-secondary/30 px-4 py-6">
+                      <Loader2 size={20} className="animate-spin text-primary" />
+                      <span className="text-xs text-muted-foreground">
                         {videoStatus || "Uploading..."}{videoProgress > 0 && videoProgress < 100 ? ` ${videoProgress}%` : ""}
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={14} />
-                        Upload Video
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    Any video format, automatically converted for web. Max 200MB.
-                  </p>
+                      </span>
+                      {videoProgress > 0 && (
+                        <div className="w-full max-w-[200px] h-1 rounded-full bg-border overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${videoProgress}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => videoInputRef.current?.click()}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") videoInputRef.current?.click(); }}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                      className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 cursor-pointer transition-all duration-150 ${
+                        videoDragging
+                          ? "border-primary bg-primary/[0.06] scale-[1.01]"
+                          : "border-border/60 bg-secondary/20 hover:border-border hover:bg-secondary/40"
+                      }`}
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+                        videoDragging ? "bg-primary/15 text-primary" : "bg-muted/30 text-muted-foreground"
+                      }`}>
+                        <Upload size={16} />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs font-medium text-foreground/80">
+                          {videoDragging ? "Drop video here" : "Drag & drop or click to upload"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                          Max 200MB &middot; Auto-converted for web
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          4:5 portrait
+                          <span className="text-[8px] opacity-60">best</span>
+                        </span>
+                        <span className="inline-flex items-center rounded-md bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground">
+                          16:9 landscape
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

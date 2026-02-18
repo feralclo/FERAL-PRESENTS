@@ -40,9 +40,7 @@ export function MidnightArtistModal({
 
   // ── Video state ──
   const [videoError, setVideoError] = useState(false);
-  const [showNameOverlay, setShowNameOverlay] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const nameOverlayTimeout = useRef<NodeJS.Timeout>(undefined);
   const videoWrapperRef = useRef<HTMLDivElement>(null);
 
   // ── Swipe state ──
@@ -65,7 +63,6 @@ export function MidnightArtistModal({
   // ── Reset on artist change / modal close ──
   useEffect(() => {
     if (!isOpen) {
-      setShowNameOverlay(false);
       setPhase("idle");
       setDragOffset(0);
       touchRef.current = null;
@@ -120,22 +117,6 @@ export function MidnightArtistModal({
       if (el) el.removeEventListener("volumechange", handleVol);
     };
   }, [isOpen, artist?.id, artist?.video_url]);
-
-  const handlePlay = useCallback(() => {
-    setShowNameOverlay(true);
-    if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
-    nameOverlayTimeout.current = setTimeout(
-      () => setShowNameOverlay(false),
-      3000
-    );
-  }, []);
-
-  useEffect(
-    () => () => {
-      if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
-    },
-    []
-  );
 
   const toggleMute = useCallback(() => {
     const mux = videoWrapperRef.current?.querySelector(
@@ -410,6 +391,7 @@ export function MidnightArtistModal({
             className={`${cardVisual} ${txClass} relative`}
             style={{
               transform: `translateX(${currentX}px)`,
+              willChange: "transform",
               background: cardBg,
               touchAction: "pan-y",
               boxShadow: cardShadow,
@@ -462,11 +444,11 @@ export function MidnightArtistModal({
                           streamType="on-demand"
                           loop
                           preload="auto"
-                          onPlay={handlePlay}
                           onError={() => setVideoError(true)}
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           {...({
                             autoPlay: "any",
+                            poster: getMuxThumbnailUrl(artist.video_url!),
                             style: {
                               width: "100%",
                               height: "100%",
@@ -487,55 +469,9 @@ export function MidnightArtistModal({
                           autoPlay
                           loop
                           preload="auto"
-                          onPlay={handlePlay}
                           onError={() => setVideoError(true)}
                         />
                       )}
-
-                      {/* ── Premium name reveal ── */}
-                      <div
-                        className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-500 ${
-                          showNameOverlay ? "opacity-100" : "opacity-0"
-                        }`}
-                      >
-                        <div
-                          className="absolute inset-0 transition-opacity duration-1000"
-                          style={{
-                            background:
-                              "radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 75%)",
-                            opacity: showNameOverlay ? 1 : 0,
-                          }}
-                        />
-                        <div className="relative flex flex-col items-center gap-3">
-                          <div
-                            className={`h-px bg-gradient-to-r from-transparent via-white/50 to-transparent transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                              showNameOverlay
-                                ? "w-14 opacity-100 duration-700"
-                                : "w-0 opacity-0 duration-300"
-                            }`}
-                          />
-                          <h3
-                            className={`font-[family-name:var(--font-sans)] text-[17px] max-[380px]:text-[15px] font-semibold uppercase text-white transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                              showNameOverlay
-                                ? "opacity-100 translate-y-0 tracking-[0.16em] duration-800 delay-100"
-                                : "opacity-0 translate-y-1 tracking-[0.3em] duration-300"
-                            }`}
-                            style={{
-                              textShadow:
-                                "0 0 40px rgba(255,255,255,0.2), 0 0 80px rgba(255,255,255,0.08), 0 2px 12px rgba(0,0,0,0.9)",
-                            }}
-                          >
-                            {artist.name}
-                          </h3>
-                          <div
-                            className={`h-px bg-gradient-to-r from-transparent via-white/50 to-transparent transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                              showNameOverlay
-                                ? "w-14 opacity-100 duration-700 delay-75"
-                                : "w-0 opacity-0 duration-300"
-                            }`}
-                          />
-                        </div>
-                      </div>
 
                       {/* ── Mute toggle ── */}
                       <button
@@ -775,6 +711,7 @@ export function MidnightArtistModal({
               className={`absolute top-0 left-0 ${cardVisual} ${txClass} pointer-events-none`}
               style={{
                 transform: `translateX(${adjX}px)`,
+                willChange: "transform",
                 background: cardBg,
                 boxShadow: cardShadow,
               }}

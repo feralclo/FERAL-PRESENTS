@@ -160,9 +160,8 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     return result;
   }, [lineup, artistProfiles]);
 
-  // Preload artist video manifests + thumbnails after page settles.
-  // HLS manifests are ~1-2KB each — this warms the browser cache so
-  // videos start near-instantly when the modal opens.
+  // Preload artist videos — fetch HLS manifests + first segments into
+  // browser cache so MuxPlayer finds data ready when the modal opens.
   useEffect(() => {
     if (artistsWithProfiles.length === 0) return;
     const videos = artistsWithProfiles.filter(
@@ -181,13 +180,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
         : clearTimeout;
 
     const id = idle(() => {
-      for (const a of videos) {
-        // Prefetch HLS manifest (tiny — browser caches it)
-        fetch(getMuxStreamUrl(a.video_url!), { priority: "low" as RequestPriority }).catch(() => {});
-        // Preload thumbnail so adjacent card previews are instant
-        const img = new Image();
-        img.src = getMuxThumbnailUrl(a.video_url!);
-      }
+      for (const a of videos) preloadMuxVideo(a.video_url!);
     });
 
     return () => cancel(id as number);
@@ -363,4 +356,51 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       <EngagementTracker />
     </>
   );
+}
+
+/**
+ * Prefetch Mux HLS manifests + first video segments into browser cache.
+ * When MuxPlayer initializes later, it finds data already cached →
+ * near-instant playback. Runs at idle priority — zero impact on page load.
+ */
+async function preloadMuxVideo(playbackId: string) {
+  try {
+    // Thumbnail — instant poster when modal opens
+    const img = new Image();
+    img.src = getMuxThumbnailUrl(playbackId);
+
+    // 1. Fetch master manifest
+    const masterUrl = getMuxStreamUrl(playbackId);
+    const masterResp = await fetch(masterUrl);
+    const masterText = await masterResp.text();
+
+    // 2. Parse rendition URLs (different quality levels)
+    const lines = masterText.split("\n");
+    const base = masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1);
+    const renditions: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].startsWith("#EXT-X-STREAM-INF:")) {
+        const url = lines[i + 1]?.trim();
+        if (url) renditions.push(url.startsWith("http") ? url : base + url);
+      }
+    }
+
+    // 3. Fetch each rendition manifest + its first segment.
+    //    Covers all quality levels so whichever MuxPlayer picks → cache hit.
+    await Promise.allSettled(
+      renditions.map(async (rUrl) => {
+        const rResp = await fetch(rUrl);
+        const rText = await rResp.text();
+        const rBase = rUrl.substring(0, rUrl.lastIndexOf("/") + 1);
+        for (const line of rText.split("\n")) {
+          if (line.startsWith("#") || !line.trim()) continue;
+          const segUrl = line.startsWith("http") ? line.trim() : rBase + line.trim();
+          fetch(segUrl).catch(() => {});
+          break; // Only first segment per rendition
+        }
+      })
+    );
+  } catch {
+    // Best-effort — preloading failure is silent
+  }
 }

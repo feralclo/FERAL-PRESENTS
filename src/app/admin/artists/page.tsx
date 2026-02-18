@@ -27,6 +27,7 @@ import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import type { Artist } from "@/types/artists";
 
@@ -152,18 +153,17 @@ export default function ArtistsPage() {
     setVideoStatus("Preparing upload...");
 
     try {
-      // Step 1: Get a signed upload token from our API
-      const signedRes = await fetch("/api/upload-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
-      });
-      const signedData = await signedRes.json();
-      if (!signedRes.ok) throw new Error(signedData.error || "Failed to prepare upload");
+      // Step 1: Get the user's session token for authenticated upload
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase not configured");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated — please refresh and try again");
 
-      const { token, path, publicUrl } = signedData;
+      // Generate a unique storage path
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
+      const storagePath = `artists/${Date.now()}_${safeName}`;
 
-      // Step 2: Upload via TUS resumable protocol (handles large files in 6MB chunks)
+      // Step 2: Upload via TUS resumable protocol (6MB chunks, auto-retry)
       const tusEndpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
 
       setVideoStatus("Uploading...");
@@ -173,17 +173,16 @@ export default function ArtistsPage() {
           endpoint: tusEndpoint,
           retryDelays: [0, 3000, 5000, 10000, 20000],
           headers: {
-            // apikey identifies the project; x-signature authorizes the upload
+            authorization: `Bearer ${session.access_token}`,
             apikey: SUPABASE_ANON_KEY,
             "x-upsert": "true",
-            "x-signature": token,
           },
           uploadDataDuringCreation: true,
           removeFingerprintOnSuccess: true,
           chunkSize: 6 * 1024 * 1024, // 6MB chunks (Supabase requirement)
           metadata: {
             bucketName: "artist-media",
-            objectName: path,
+            objectName: storagePath,
             contentType: file.type,
             cacheControl: "3600",
           },
@@ -192,7 +191,6 @@ export default function ArtistsPage() {
             reject(new Error(error.message || "Upload failed"));
           },
           onProgress: (bytesUploaded, bytesTotal) => {
-            // Upload is 0–70% of total progress (processing is 70–100%)
             const pct = Math.round((bytesUploaded / bytesTotal) * 70);
             setVideoProgress(pct);
             const mbUp = (bytesUploaded / 1024 / 1024).toFixed(0);
@@ -215,6 +213,9 @@ export default function ArtistsPage() {
       });
 
       setVideoProgress(70);
+
+      // Build the public URL for Mux to ingest from
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/artist-media/${storagePath}`;
 
       // Step 3: Tell Mux to ingest the video from the Supabase URL
       setVideoStatus("Processing video...");

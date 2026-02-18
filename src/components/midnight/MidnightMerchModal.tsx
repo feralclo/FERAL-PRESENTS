@@ -21,6 +21,8 @@ interface MidnightMerchModalProps {
   merchPrice?: number;
   currencySymbol?: string;
   availableSizes?: string[];
+  ticketName?: string;
+  ticketDescription?: string;
   vipBadge?: string;
 }
 
@@ -34,6 +36,8 @@ export function MidnightMerchModal({
   merchPrice,
   currencySymbol = "\u00a3",
   availableSizes,
+  ticketName,
+  ticketDescription,
   vipBadge,
 }: MidnightMerchModalProps) {
   const images = useMemo(() => {
@@ -50,8 +54,12 @@ export function MidnightMerchModal({
   const title = merchName || "Event Merch";
   const description = merchDescription || "";
   const price = merchPrice ?? 0;
-  const vipText = vipBadge || "Includes VIP Tickets";
   const sizes = (availableSizes || TEE_SIZES) as TeeSize[];
+
+  // Build the inclusion headline
+  const inclusionHeadline = ticketName
+    ? `Includes ${ticketName} + T-Shirt`
+    : vipBadge || "Includes Event Ticket + T-Shirt";
 
   const [activeView, setActiveView] = useState("back");
   const [selectedSize, setSelectedSize] = useState<TeeSize>(
@@ -185,21 +193,31 @@ export function MidnightMerchModal({
                 </h3>
 
                 {/* Price */}
-                <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-white tracking-[0.02em] mb-1.5">
+                <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-white tracking-[0.02em] mb-4 max-md:mb-3.5">
                   {currencySymbol}{price.toFixed(2)}
                 </span>
 
-                {/* VIP inclusion */}
-                <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.06em] text-white/25 mb-6 max-md:mb-5 max-md:text-center">
-                  {vipText}
-                </p>
-
-                {/* Description — desktop only */}
-                {description && (
-                  <p className="hidden md:block font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-white/30 mb-6">
-                    {description}
+                {/* What's included — glass container */}
+                <div className="w-full rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] p-4 max-md:p-3.5 mb-5 max-md:mb-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  {/* Headline — prominent */}
+                  <p className="font-[family-name:var(--font-sans)] text-[12px] font-bold tracking-[0.02em] text-white/80 mb-1 max-md:text-center">
+                    {inclusionHeadline}
                   </p>
-                )}
+
+                  {/* Ticket description — what VIP includes */}
+                  {ticketDescription && (
+                    <p className="font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-white/30 max-md:text-center">
+                      {ticketDescription}
+                    </p>
+                  )}
+
+                  {/* Merch description fallback (if no ticket description) */}
+                  {!ticketDescription && description && (
+                    <p className="font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-white/30 max-md:text-center">
+                      {description}
+                    </p>
+                  )}
+                </div>
 
                 {/* Size selector */}
                 <MidnightSizeSelector
@@ -233,11 +251,11 @@ export function MidnightMerchModal({
             </div>
           </div>
 
-          {/* ── CTA — full width, clean, no gradient ── */}
+          {/* ── CTA — frosted glass, premium ── */}
           <div className="shrink-0 px-5 py-4 max-md:px-4 max-md:py-3.5 border-t border-[rgba(255,255,255,0.06)]">
             <button
               type="button"
-              className="w-full h-12 max-md:h-11 bg-white text-[#0a0a0c] font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl active:scale-[0.98] transition-transform duration-150 cursor-pointer"
+              className="w-full h-12 max-md:h-11 bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.18)] text-white font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.18)] hover:border-[rgba(255,255,255,0.25)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_24px_rgba(255,255,255,0.05)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
               onClick={handleAdd}
             >
               Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}

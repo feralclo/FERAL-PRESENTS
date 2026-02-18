@@ -247,6 +247,8 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
               ? teeModalTicketType.product.sizes
               : teeModalTicketType.merch_sizes
           }
+          ticketName={teeModalTicketType.name}
+          ticketDescription={teeModalTicketType.description}
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
         />
       )}

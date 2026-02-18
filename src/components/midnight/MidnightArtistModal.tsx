@@ -114,7 +114,8 @@ export function MidnightArtistModal({
                       preload="auto"
                       onPlay={handlePlay}
                       onError={() => setVideoError(true)}
-                      style={{
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      {...{ style: {
                         width: "100%",
                         height: "100%",
                         position: "absolute",
@@ -122,7 +123,7 @@ export function MidnightArtistModal({
                         "--controls": "none",
                         "--media-object-fit": "cover",
                         "--media-object-position": "center",
-                      } as React.CSSProperties}
+                      } } as any}
                     />
                   ) : (
                     /* Legacy direct URL fallback */

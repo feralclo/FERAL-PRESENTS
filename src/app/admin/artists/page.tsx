@@ -47,6 +47,7 @@ export default function ArtistsPage() {
   // Video upload state
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStatus, setVideoStatus] = useState("");
   const [previewError, setPreviewError] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,7 +126,6 @@ export default function ArtistsPage() {
   }, [formName, formDescription, formInstagram, formImage, formVideoUrl, editingArtist, loadArtists]);
 
   const handleVideoUpload = useCallback(async (file: File) => {
-    // Accept any video format — the platform handles compatibility on playback
     if (!file.type.startsWith("video/")) {
       alert("Please select a video file.");
       return;
@@ -139,22 +139,41 @@ export default function ArtistsPage() {
     }
 
     setVideoUploading(true);
-    setVideoProgress(10);
+    setVideoProgress(0);
+    setVideoStatus("Checking compatibility...");
 
     try {
+      // Step 1: Test if the browser can play this video natively
+      const { canBrowserPlayVideo } = await import("@/lib/video");
+      const canPlay = await canBrowserPlayVideo(file);
+
+      let uploadFile = file;
+
+      if (!canPlay) {
+        // Step 2: Transcode to H.264 MP4 for universal playback
+        setVideoStatus("Optimizing for web playback...");
+        setVideoProgress(0);
+
+        const { transcodeToMP4 } = await import("@/lib/video");
+        uploadFile = await transcodeToMP4(file, (p) => setVideoProgress(p));
+      }
+
+      // Step 3: Upload to Supabase storage
+      setVideoStatus("Uploading...");
+      setVideoProgress(canPlay ? 30 : 0);
+
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error("Supabase not configured");
 
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
+      const safeName = uploadFile.name
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .toLowerCase();
       const path = `artists/${Date.now()}_${safeName}`;
 
-      setVideoProgress(30);
-
-      // Upload directly via Supabase client (uses authenticated session + RLS)
       const { error } = await supabase.storage
         .from("artist-media")
-        .upload(path, file, {
-          contentType: file.type,
+        .upload(path, uploadFile, {
+          contentType: uploadFile.type,
           upsert: true,
         });
 
@@ -162,7 +181,6 @@ export default function ArtistsPage() {
 
       setVideoProgress(90);
 
-      // Get the public URL
       const { data: publicUrlData } = supabase.storage
         .from("artist-media")
         .getPublicUrl(path);
@@ -170,6 +188,7 @@ export default function ArtistsPage() {
       setFormVideoUrl(publicUrlData.publicUrl);
       setPreviewError(false);
       setVideoProgress(100);
+      setVideoStatus("Done!");
     } catch (e) {
       console.error("Video upload failed:", e);
       const msg = e instanceof Error ? e.message : "Unknown error";
@@ -178,6 +197,7 @@ export default function ArtistsPage() {
 
     setVideoUploading(false);
     setVideoProgress(0);
+    setVideoStatus("");
   }, []);
 
   const handleVideoFileChange = useCallback(
@@ -413,7 +433,7 @@ export default function ArtistsPage() {
                     />
                     {previewError && (
                       <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-                        Preview unavailable — video may use an unsupported codec (use H.264 MP4)
+                        Preview not available in this browser — video will still be delivered to users
                       </div>
                     )}
                     <button
@@ -445,7 +465,7 @@ export default function ArtistsPage() {
                     {videoUploading ? (
                       <>
                         <Loader2 size={14} className="animate-spin" />
-                        Uploading... {videoProgress}%
+                        {videoStatus}{videoProgress > 0 ? ` ${videoProgress}%` : ""}
                       </>
                     ) : (
                       <>
@@ -455,7 +475,7 @@ export default function ArtistsPage() {
                     )}
                   </Button>
                   <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    Any video format. Max 200MB.
+                    Any video format — automatically optimized for web. Max 200MB.
                   </p>
                 </div>
               )}

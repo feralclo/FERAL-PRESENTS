@@ -31,7 +31,9 @@ import type { VatSettings } from "@/types/settings";
 import { SETTINGS_KEYS } from "@/lib/constants";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { CheckoutServiceUnavailable } from "./CheckoutServiceUnavailable";
-import "@/styles/checkout-page.css";
+
+import "@/styles/midnight.css";
+import "@/styles/midnight-effects.css";
 
 /* ================================================================
    TYPES
@@ -127,6 +129,36 @@ const CARD_ELEMENT_STYLE = {
     color: "#ef4444",
   },
 };
+
+/* ================================================================
+   SVG ICONS — reusable inline icons
+   ================================================================ */
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function EmailIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 /* ================================================================
    MAIN CHECKOUT COMPONENT
@@ -238,9 +270,6 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   const isStripe = event.payment_method === "stripe";
 
   // ── Stripe pre-initialization ─────────────────────────────────────────
-  // Start loading Stripe.js + account while the user is on the email capture
-  // page. By the time they click "Continue to Payment," both are resolved
-  // and StripeCheckoutPage renders immediately (no "Securing checkout..." spinner).
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
 
@@ -278,11 +307,11 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   // Show loading for express redirect
   if (piParam && !completedOrder) {
     return (
-      <div className="checkout-page">
+      <div className="midnight-checkout min-h-screen flex flex-col">
         <CheckoutHeader slug={slug} />
-        <div className="stripe-payment-loading" style={{ minHeight: "60vh" }}>
-          <div className="stripe-payment-loading__spinner" />
-          <span className="stripe-payment-loading__text">
+        <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 gap-4" style={{ minHeight: "60vh" }}>
+          <div className="w-6 h-6 border-2 border-white/[0.08] border-t-white rounded-full midnight-spinner" />
+          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[2px] uppercase text-foreground/35">
             Confirming your order...
           </span>
         </div>
@@ -302,39 +331,36 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     );
   }
 
-  // Guard: restricted email domain — show service unavailable page
+  // Guard: restricted email domain
   if (serviceUnavailable) {
     return <CheckoutServiceUnavailable slug={slug} />;
   }
 
-  // Guard: empty cart — show message instead of a broken £0.00 checkout
+  // Guard: empty cart
   if (cartLines.length === 0) {
     return (
-      <div className="checkout-page">
+      <div className="midnight-checkout min-h-screen flex flex-col">
         <CheckoutHeader slug={slug} />
-        <div className="native-checkout">
-          <div className="native-checkout__inner" style={{ textAlign: "center", paddingTop: "48px" }}>
-            <h2 className="native-checkout__heading" style={{ borderBottom: "none" }}>
-              Your cart is empty
-            </h2>
-            <p style={{ color: "#888", fontSize: "14px", marginTop: "12px", marginBottom: "24px" }}>
-              No tickets selected. Head back to pick your tickets.
-            </p>
-            <a
-              href={`/event/${slug}/#tickets`}
-              className="native-checkout__submit"
-              style={{ display: "block", textDecoration: "none", textAlign: "center", maxWidth: "320px", margin: "0 auto" }}
-            >
-              BROWSE TICKETS
-            </a>
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 text-center">
+          <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold">
+            Your cart is empty
+          </h2>
+          <p className="text-foreground/50 text-sm mt-3 mb-6">
+            No tickets selected. Head back to pick your tickets.
+          </p>
+          <a
+            href={`/event/${slug}/#tickets`}
+            className="inline-block w-full max-w-[320px] bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-[10px] text-center no-underline transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99]"
+          >
+            BROWSE TICKETS
+          </a>
         </div>
         <CheckoutFooter />
       </div>
     );
   }
 
-  // Email capture gate — collect email before showing payment form
+  // Email capture gate
   if (!capturedEmail && cartLines.length > 0) {
     return (
       <EmailCapture
@@ -355,7 +381,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           } catch {}
           setCapturedEmail(email);
 
-          // Fire-and-forget: create customer + abandoned cart in backend
+          // Fire-and-forget: create customer + abandoned cart
           fetch("/api/checkout/capture", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -378,7 +404,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     );
   }
 
-  // Test mode checkout (no Stripe)
+  // Test mode checkout
   if (!isStripe) {
     return (
       <TestModeCheckout
@@ -417,7 +443,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
 }
 
 /* ================================================================
-   DISCOUNT CODE INPUT — shared between mobile and desktop summaries
+   DISCOUNT CODE INPUT
    ================================================================ */
 
 function DiscountCodeInput({
@@ -471,17 +497,19 @@ function DiscountCodeInput({
 
   if (discount) {
     return (
-      <div className="discount-code discount-code--applied">
-        <div className="discount-code__applied">
-          <div className="discount-code__applied-info">
-            <svg className="discount-code__tag-icon" viewBox="0 0 24 24" fill="none">
+      <div className="mb-4">
+        <div className="flex items-center justify-between bg-[rgba(78,203,113,0.06)] border border-dashed border-[rgba(78,203,113,0.25)] rounded-lg py-2.5 px-3.5">
+          <div className="flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 shrink-0 text-[#4ecb71]" viewBox="0 0 24 24" fill="none">
               <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <circle cx="7" cy="7" r="1" fill="currentColor"/>
             </svg>
-            <span className="discount-code__applied-code">{discount.code}</span>
+            <span className="font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[1.5px] text-[#4ecb71]">
+              {discount.code}
+            </span>
           </div>
           <button
-            className="discount-code__remove"
+            className="text-foreground/40 text-xl leading-none p-2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center transition-colors duration-150 hover:text-foreground"
             onClick={onRemove}
             type="button"
             aria-label="Remove discount"
@@ -494,11 +522,11 @@ function DiscountCodeInput({
   }
 
   return (
-    <div className="discount-code">
-      <div className="discount-code__form">
+    <div className="mb-4">
+      <div className="flex gap-2">
         <input
           type="text"
-          className="discount-code__input"
+          className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-mono)] text-base tracking-[1px] uppercase py-[11px] px-3.5 outline-none transition-colors duration-150 placeholder:text-foreground/35 placeholder:normal-case placeholder:tracking-normal placeholder:font-[family-name:var(--font-sans)] focus:border-white/[0.30]"
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="Discount code"
@@ -506,7 +534,7 @@ function DiscountCodeInput({
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleApply())}
         />
         <button
-          className="discount-code__apply-btn"
+          className="bg-white/[0.10] border border-white/[0.25] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-[13px] font-semibold py-3 px-5 min-h-[44px] whitespace-nowrap transition-all duration-150 hover:bg-white/[0.18] hover:border-white/[0.40] disabled:opacity-30 disabled:cursor-not-allowed touch-manipulation"
           onClick={handleApply}
           disabled={loading || !code.trim()}
           type="button"
@@ -514,7 +542,9 @@ function DiscountCodeInput({
           {loading ? "\u2026" : "Apply"}
         </button>
       </div>
-      {error && <div className="discount-code__error">{error}</div>}
+      {error && (
+        <div className="font-[family-name:var(--font-sans)] text-xs text-destructive mt-2">{error}</div>
+      )}
     </div>
   );
 }
@@ -522,7 +552,6 @@ function DiscountCodeInput({
 /* ================================================================
    STRIPE CHECKOUT PAGE
    Two-column on desktop (form left, order summary right).
-   Collapsible order summary on mobile.
    ================================================================ */
 
 function StripeCheckoutPage({
@@ -558,11 +587,11 @@ function StripeCheckoutPage({
 
   if (!stripeReady || !stripePromise) {
     return (
-      <div className="checkout-page">
+      <div className="midnight-checkout min-h-screen flex flex-col">
         <CheckoutHeader slug={slug} />
-        <div className="stripe-payment-loading" style={{ minHeight: "60vh" }}>
-          <div className="stripe-payment-loading__spinner" />
-          <span className="stripe-payment-loading__text">
+        <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 gap-4" style={{ minHeight: "60vh" }}>
+          <div className="w-6 h-6 border-2 border-white/[0.08] border-t-white rounded-full midnight-spinner" />
+          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[2px] uppercase text-foreground/35">
             Securing checkout...
           </span>
         </div>
@@ -573,16 +602,14 @@ function StripeCheckoutPage({
   const discountAmount = appliedDiscount?.amount || 0;
   const afterDiscount = Math.max(subtotal - discountAmount, 0);
   const vatBreakdown = calculateCheckoutVat(afterDiscount, vatSettings);
-  // VAT-exclusive: add VAT on top. VAT-inclusive: total unchanged.
   const total = vatBreakdown && !vatSettings?.prices_include_vat
     ? vatBreakdown.gross
     : afterDiscount;
   const amountInSmallest = toSmallestUnit(total);
 
-  // Shared Elements options — single context for Express + Card elements
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",
-    amount: amountInSmallest || 100, // Stripe requires > 0; server enforces the real amount
+    amount: amountInSmallest || 100,
     currency: event.currency.toLowerCase(),
     appearance: {
       theme: "night",
@@ -592,8 +619,8 @@ function StripeCheckoutPage({
         colorText: "#ffffff",
         colorDanger: "#ef4444",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        fontSizeBase: "16px", // ≥16px prevents iOS Safari auto-zoom on focus
-        borderRadius: "12px", // Rounded Express Checkout buttons; card fields use their own CSS
+        fontSizeBase: "16px",
+        borderRadius: "12px",
       },
     },
     fonts: [
@@ -605,10 +632,8 @@ function StripeCheckoutPage({
   };
 
   return (
-    <div className="checkout-page">
+    <div className="midnight-checkout min-h-screen flex flex-col">
       <CheckoutHeader slug={slug} />
-
-      {/* Reservation timer */}
       <CheckoutTimer active={true} />
 
       {/* Mobile: always-visible order summary */}
@@ -623,9 +648,9 @@ function StripeCheckoutPage({
         vatSettings={vatSettings}
       />
 
-      <div className="checkout-layout-wrap">
-        <div className="checkout-layout">
-          <div className="checkout-layout__main">
+      <div className="flex-1 relative lg:bg-[linear-gradient(to_right,transparent_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+221px),transparent_calc(50%+221px))]">
+        <div className="flex flex-col lg:flex-row max-w-[1200px] mx-auto w-full">
+          <div className="flex-1 min-w-0 lg:pr-8">
             <Elements stripe={stripePromise} options={elementsOptions}>
               <SinglePageCheckoutForm
                 slug={slug}
@@ -646,7 +671,7 @@ function StripeCheckoutPage({
           </div>
 
           {/* Desktop: sidebar order summary */}
-          <aside className="checkout-layout__sidebar">
+          <aside className="hidden lg:block w-[360px] shrink-0 pl-8 pt-8 sticky top-24 self-start">
             <OrderSummaryDesktop
               cartLines={cartLines}
               symbol={symbol}
@@ -668,8 +693,6 @@ function StripeCheckoutPage({
 
 /* ================================================================
    SINGLE-PAGE CHECKOUT FORM
-   Inside outer Elements context (mode: "payment") for Express.
-   Card fields use a nested Elements context for individual elements.
    ================================================================ */
 
 function SinglePageCheckoutForm({
@@ -706,7 +729,6 @@ function SinglePageCheckoutForm({
   const { trackAddPaymentInfo } = useMetaTracking();
   const { trackEngagement } = useTraffic();
 
-  // Form state — pre-fill from restore data (abandoned cart recovery)
   const [email, setEmail] = useState(capturedEmail);
   const [firstName, setFirstName] = useState(restoreData?.firstName || "");
   const [lastName, setLastName] = useState(restoreData?.lastName || "");
@@ -721,8 +743,6 @@ function SinglePageCheckoutForm({
   const cardRef = useRef<CardFieldsHandle>(null);
   const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
-  // Capture customer name on blur — updates customer record + abandoned cart
-  // Debounced so rapid field switching doesn't fire multiple requests
   const captureNameOnBlur = useCallback(() => {
     if (nameCaptureTimer.current) clearTimeout(nameCaptureTimer.current);
     nameCaptureTimer.current = setTimeout(() => {
@@ -751,15 +771,12 @@ function SinglePageCheckoutForm({
     }, 500);
   }, [firstName, lastName, capturedEmail, email, event.id, event.currency, cartLines, subtotal]);
 
-  // Sync Elements amount when total changes (e.g. discount code applied/removed)
-  // without remounting — preserves any card details the user already entered
   useEffect(() => {
     if (!elements) return;
     const amountInSmallest = toSmallestUnit(totalAmount) || 100;
     elements.update({ amount: amountInSmallest });
   }, [elements, totalAmount]);
 
-  // Handle Express Checkout click — configure wallet sheet
   const handleExpressClick = useCallback(
     (event: StripeExpressCheckoutElementClickEvent) => {
       event.resolve({
@@ -770,7 +787,6 @@ function SinglePageCheckoutForm({
     []
   );
 
-  // Handle Express Checkout confirm — create PI, confirm, create order
   const handleExpressConfirm = useCallback(
     async (expressEvent: StripeExpressCheckoutElementConfirmEvent) => {
       if (!stripe || !elements) return;
@@ -779,7 +795,6 @@ function SinglePageCheckoutForm({
       setError("");
 
       try {
-        // Extract customer data from wallet
         const billing = expressEvent.billingDetails;
         const nameParts = (billing?.name || "").split(" ");
         const walletFirstName = nameParts[0] || "";
@@ -793,7 +808,6 @@ function SinglePageCheckoutForm({
           return;
         }
 
-        // 1. Create PaymentIntent
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -821,7 +835,6 @@ function SinglePageCheckoutForm({
           return;
         }
 
-        // 2. Confirm payment
         const { error: confirmError } = await stripe.confirmPayment({
           elements,
           clientSecret: data.client_secret,
@@ -837,7 +850,6 @@ function SinglePageCheckoutForm({
           return;
         }
 
-        // 3. Create order
         const orderRes = await fetch("/api/stripe/confirm-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -877,14 +889,12 @@ function SinglePageCheckoutForm({
     [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode]
   );
 
-  // Handle form submission (card or Klarna)
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
 
       setError("");
 
-      // Validate customer fields
       if (!email.trim()) {
         setError("Email is required.");
         return;
@@ -902,7 +912,6 @@ function SinglePageCheckoutForm({
         return;
       }
 
-      // Track AddPaymentInfo — user submitted the checkout form with payment details
       trackAddPaymentInfo(
         {
           content_ids: cartLines.map((l) => l.ticket_type_id),
@@ -918,7 +927,6 @@ function SinglePageCheckoutForm({
       trackEngagement("payment_processing");
 
       try {
-        // 1. Create PaymentIntent
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -947,7 +955,6 @@ function SinglePageCheckoutForm({
         }
 
         if (paymentMethod === "card") {
-          // 2a. Confirm card payment via CardFields handle
           if (!cardRef.current) {
             setError("Card form not ready. Please try again.");
             setProcessing(false);
@@ -981,7 +988,6 @@ function SinglePageCheckoutForm({
             return;
           }
         } else {
-          // 2b. Confirm Klarna payment (redirects to Klarna)
           const stripeInstance = await stripePromise;
           if (!stripeInstance) {
             setError("Payment system not ready. Please try again.");
@@ -1011,11 +1017,9 @@ function SinglePageCheckoutForm({
             setProcessing(false);
             return;
           }
-          // User has been redirected to Klarna — nothing more to do
           return;
         }
 
-        // 3. Confirm order (card path only — Klarna confirms via redirect)
         const orderRes = await fetch("/api/stripe/confirm-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1073,40 +1077,33 @@ function SinglePageCheckoutForm({
     ]
   );
 
-  const isReady =
-    paymentMethod === "card" ? cardReady : true;
+  const isReady = paymentMethod === "card" ? cardReady : true;
 
   return (
-    <div className="native-checkout">
-      <div className="native-checkout__inner">
+    <div className="max-w-[620px] mx-auto py-8 px-6 pb-[max(48px,env(safe-area-inset-bottom))]">
+      <div className="w-full">
         {/* ── EXPRESS CHECKOUT ── */}
         <div
-          className="express-checkout-section"
+          className="mb-1"
           style={{ display: expressAvailable ? "block" : "none" }}
         >
           {expressLoaded && (
-            <div className="express-checkout__label">Express checkout</div>
+            <div className="express-checkout__label font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.2em] uppercase text-foreground/25 text-center mb-3">
+              Express checkout
+            </div>
           )}
-          <div className="express-checkout">
+          <div className="express-checkout min-h-[48px] w-full relative">
             {!expressLoaded && (
-              <div className="express-checkout__skeleton" />
+              <div className="express-checkout__skeleton midnight-skeleton-shimmer w-full h-12 rounded-xl bg-white/[0.03] overflow-hidden relative" />
             )}
             <div
-              className="express-checkout__element"
+              className="express-checkout__element transition-opacity duration-200"
               style={{ opacity: expressLoaded ? 1 : 0 }}
             >
               <ExpressCheckoutElement
                 onClick={handleExpressClick}
                 onConfirm={handleExpressConfirm}
                 onReady={({ availablePaymentMethods: methods }) => {
-                  // Debug: helps diagnose which wallets Stripe detects for this account
-                  console.log("[Express Checkout] Available:", methods);
-                  if (methods) {
-                    console.log("[Express Checkout] Apple Pay:", methods.applePay ? "YES" : "NO");
-                    console.log("[Express Checkout] Google Pay:", methods.googlePay ? "YES" : "NO");
-                  } else {
-                    console.log("[Express Checkout] No wallet methods available");
-                  }
                   setExpressLoaded(true);
                   if (!methods) {
                     setExpressAvailable(false);
@@ -1142,30 +1139,33 @@ function SinglePageCheckoutForm({
 
         {/* ── DIVIDER ── */}
         {expressAvailable && (
-          <div className="checkout-divider">
-            <span className="checkout-divider__line" />
-            <span className="checkout-divider__text">or pay with card</span>
-            <span className="checkout-divider__line" />
+          <div className="checkout-divider flex items-center gap-4 py-6">
+            <span className="checkout-divider__line flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+            <span className="checkout-divider__text font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.2em] uppercase text-foreground/20 whitespace-nowrap">
+              or pay with card
+            </span>
+            <span className="checkout-divider__line flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
           </div>
         )}
 
         {/* ── CHECKOUT FORM ── */}
-        <form onSubmit={handleSubmit} className="native-checkout__form">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Contact */}
-          <div className="native-checkout__section">
-            <h2 className="native-checkout__heading">Contact</h2>
+          <div className="flex flex-col gap-4">
+            <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
+              Contact
+            </h2>
             {capturedEmail ? (
-              <div className="native-checkout__email-display">
-                <div className="native-checkout__email-display-info">
-                  <svg className="native-checkout__email-display-icon" viewBox="0 0 24 24" fill="none">
-                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                    <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="native-checkout__email-display-value">{email}</span>
+              <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                  <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                    {email}
+                  </span>
                 </div>
                 <button
                   type="button"
-                  className="native-checkout__email-display-change"
+                  className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
                   onClick={onChangeEmail}
                 >
                   Change
@@ -1177,7 +1177,7 @@ function SinglePageCheckoutForm({
                 <input
                   id="checkout-email"
                   type="email"
-                  className="native-checkout__input"
+                  className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email"
@@ -1185,11 +1185,8 @@ function SinglePageCheckoutForm({
                   autoComplete="email"
                   autoFocus
                 />
-                <p className="native-checkout__email-hint">
-                  <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                    <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                <p className="flex items-center gap-1.5 -mt-2 font-[family-name:var(--font-sans)] text-xs text-foreground/40 tracking-[0.2px]">
+                  <EmailIcon className="w-3.5 h-3.5 text-foreground/35 shrink-0" />
                   Your tickets will be sent to this email
                 </p>
               </>
@@ -1197,15 +1194,17 @@ function SinglePageCheckoutForm({
           </div>
 
           {/* Customer Details */}
-          <div className="native-checkout__section">
-            <h2 className="native-checkout__heading">Details</h2>
-            <div className="native-checkout__row">
+          <div className="flex flex-col gap-4">
+            <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
+              Details
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="checkout-first-name" className="sr-only">First name</label>
                 <input
                   id="checkout-first-name"
                   type="text"
-                  className="native-checkout__input"
+                  className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   onBlur={captureNameOnBlur}
@@ -1219,7 +1218,7 @@ function SinglePageCheckoutForm({
                 <input
                   id="checkout-last-name"
                   type="text"
-                  className="native-checkout__input"
+                  className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   onBlur={captureNameOnBlur}
@@ -1232,79 +1231,78 @@ function SinglePageCheckoutForm({
           </div>
 
           {/* Payment */}
-          <div className="native-checkout__section">
-            <h2 className="native-checkout__heading">Payment Details</h2>
-            <p className="native-checkout__subtitle">
-              <svg className="native-checkout__subtitle-lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
-                <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+          <div className="flex flex-col gap-4">
+            <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
+              Payment Details
+            </h2>
+            <p className="flex items-center gap-1.5 font-[family-name:var(--font-sans)] text-xs text-foreground/40 tracking-[0.2px] m-0">
+              <LockIcon className="w-3.5 h-3.5 text-foreground/35 shrink-0" />
               All transactions are secure and encrypted.
             </p>
 
-            {/* ── UNIFIED PAYMENT OPTIONS CONTAINER ── */}
-            <div className="payment-options">
+            {/* Payment options accordion */}
+            <div className="border border-white/[0.10] rounded-lg overflow-hidden">
               {/* Card option */}
               <div
-                className={`payment-option${paymentMethod === "card" ? " payment-option--active" : ""}`}
+                className={`cursor-pointer transition-colors duration-150 ${paymentMethod === "card" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
                 onClick={() => { if (paymentMethod !== "card") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
-                role="button"
+                role="radio"
+                aria-checked={paymentMethod === "card"}
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
               >
-                <div className="payment-option__header">
-                  <span className={`payment-option__radio${paymentMethod === "card" ? " payment-option__radio--checked" : ""}`} />
-                  <span className="payment-option__title">Credit / Debit Card</span>
-                  <span className="payment-option__icons">
-                    {/* Visa */}
-                    <span className="payment-option__card-badge" style={{ background: "#1A1F71" }}>
-                      <svg viewBox="0 0 32 20" fill="none" aria-label="Visa">
+                <div className="flex items-center gap-3 py-3.5 px-4">
+                  <span className={`w-[18px] h-[18px] border-2 rounded-full shrink-0 relative transition-colors duration-200 ${paymentMethod === "card" ? "border-white midnight-radio--checked" : "border-white/20"}`} />
+                  <span className={`flex-1 font-[family-name:var(--font-sans)] text-sm font-medium tracking-[0.2px] whitespace-nowrap transition-colors duration-150 ${paymentMethod === "card" ? "text-foreground" : "text-foreground/50"}`}>
+                    Credit / Debit Card
+                  </span>
+                  <span className="flex items-center gap-[5px] shrink-0">
+                    <span className="inline-flex items-center justify-center w-[34px] h-[22px] rounded-[3px] shrink-0 overflow-hidden" style={{ background: "#1A1F71" }}>
+                      <svg viewBox="0 0 32 20" fill="none" aria-label="Visa" className="w-full h-full block">
                         <text x="16" y="13.5" textAnchor="middle" fill="#fff" fontSize="8.5" fontWeight="700" fontStyle="italic" fontFamily="Arial,sans-serif">VISA</text>
                       </svg>
                     </span>
-                    {/* Mastercard */}
-                    <span className="payment-option__card-badge" style={{ background: "#252525" }}>
-                      <svg viewBox="0 0 32 20" fill="none" aria-label="Mastercard">
+                    <span className="inline-flex items-center justify-center w-[34px] h-[22px] rounded-[3px] shrink-0 overflow-hidden" style={{ background: "#252525" }}>
+                      <svg viewBox="0 0 32 20" fill="none" aria-label="Mastercard" className="w-full h-full block">
                         <circle cx="12.5" cy="10" r="6" fill="#EB001B"/>
                         <circle cx="19.5" cy="10" r="6" fill="#F79E1B"/>
                         <path d="M16 5.4a6 6 0 010 9.2 6 6 0 000-9.2z" fill="#FF5F00"/>
                       </svg>
                     </span>
-                    {/* Amex */}
-                    <span className="payment-option__card-badge" style={{ background: "#2557D6" }}>
-                      <svg viewBox="0 0 32 20" fill="none" aria-label="Amex">
+                    <span className="inline-flex items-center justify-center w-[34px] h-[22px] rounded-[3px] shrink-0 overflow-hidden" style={{ background: "#2557D6" }}>
+                      <svg viewBox="0 0 32 20" fill="none" aria-label="Amex" className="w-full h-full block">
                         <text x="16" y="13" textAnchor="middle" fill="#fff" fontSize="7" fontWeight="700" fontFamily="Arial,sans-serif">AMEX</text>
                       </svg>
                     </span>
-                    <span className="payment-option__more">+2</span>
+                    <span className="inline-flex items-center justify-center min-w-[26px] h-[22px] px-1 bg-white/[0.06] border border-white/[0.10] rounded-[3px] font-[family-name:var(--font-sans)] text-[10px] font-semibold text-foreground/40 leading-none">
+                      +2
+                    </span>
                   </span>
                 </div>
 
                 {/* Card content — collapsible */}
-                <div className={`payment-option__content${paymentMethod === "card" ? " payment-option__content--open" : ""}`}>
+                <div className={`midnight-collapse${paymentMethod === "card" ? " midnight-collapse--open" : ""}`}>
                   <CardFields
                     ref={cardRef}
                     onReady={() => setCardReady(true)}
                   />
 
-                  {/* Name on card */}
                   <label htmlFor="checkout-cc-name" className="sr-only">Name on card</label>
                   <input
                     id="checkout-cc-name"
                     type="text"
-                    className="native-checkout__input payment-option__name-input"
+                    className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30] mt-3"
                     value={nameOnCard}
                     onChange={(e) => setNameOnCard(e.target.value)}
                     placeholder="Name on card"
                     autoComplete="cc-name"
                   />
 
-                  {/* Country */}
-                  <div className="payment-option__select-wrapper">
+                  <div className="relative mt-3">
                     <label htmlFor="checkout-country" className="sr-only">Country</label>
                     <select
                       id="checkout-country"
-                      className="native-checkout__input payment-option__country-select"
+                      className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 pr-11 outline-none transition-colors duration-150 focus:border-white/[0.30] appearance-none cursor-pointer"
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
                       autoComplete="country"
@@ -1315,44 +1313,43 @@ function SinglePageCheckoutForm({
                         </option>
                       ))}
                     </select>
-                    <svg className="payment-option__select-chevron" viewBox="0 0 24 24" fill="none">
-                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <ChevronIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/50 pointer-events-none" />
                   </div>
                 </div>
               </div>
 
               {/* Klarna option */}
               <div
-                className={`payment-option${paymentMethod === "klarna" ? " payment-option--active" : ""}`}
+                className={`cursor-pointer transition-colors duration-150 border-t border-white/[0.08] ${paymentMethod === "klarna" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
                 onClick={() => { if (paymentMethod !== "klarna") { setPaymentMethod("klarna"); trackEngagement("payment_method_selected"); } }}
-                role="button"
+                role="radio"
+                aria-checked={paymentMethod === "klarna"}
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter") { setPaymentMethod("klarna"); trackEngagement("payment_method_selected"); } }}
               >
-                <div className="payment-option__header">
-                  <span className={`payment-option__radio${paymentMethod === "klarna" ? " payment-option__radio--checked" : ""}`} />
-                  <span className="payment-option__title">Klarna</span>
-                  <span className="payment-option__card-badge payment-option__card-badge--klarna" style={{ background: "#FFB3C7" }}>
-                    <svg viewBox="0 0 32 20" fill="none" aria-label="Klarna">
+                <div className="flex items-center gap-3 py-3.5 px-4">
+                  <span className={`w-[18px] h-[18px] border-2 rounded-full shrink-0 relative transition-colors duration-200 ${paymentMethod === "klarna" ? "border-white midnight-radio--checked" : "border-white/20"}`} />
+                  <span className={`flex-1 font-[family-name:var(--font-sans)] text-sm font-medium tracking-[0.2px] whitespace-nowrap transition-colors duration-150 ${paymentMethod === "klarna" ? "text-foreground" : "text-foreground/50"}`}>
+                    Klarna
+                  </span>
+                  <span className="inline-flex items-center justify-center w-11 h-[22px] rounded-[3px] shrink-0 overflow-hidden ml-auto" style={{ background: "#FFB3C7" }}>
+                    <svg viewBox="0 0 32 20" fill="none" aria-label="Klarna" className="w-full h-full block">
                       <text x="16" y="13" textAnchor="middle" fill="#0A0B09" fontSize="6.5" fontWeight="800" fontFamily="Arial,sans-serif">Klarna</text>
                     </svg>
                   </span>
                 </div>
 
-                {/* Klarna content — collapsible */}
-                <div className={`payment-option__content${paymentMethod === "klarna" ? " payment-option__content--open" : ""}`}>
-                  <div className="klarna-detail">
-                    <p className="klarna-detail__headline">
+                <div className={`midnight-collapse${paymentMethod === "klarna" ? " midnight-collapse--open" : ""}`}>
+                  <div className="py-0.5">
+                    <p className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/80 leading-relaxed m-0 mb-1.5">
                       Pay in 30 days or 3 interest-free payments of{" "}
-                      <strong>{symbol}{(subtotal / 3).toFixed(2)}</strong>
+                      <strong className="text-foreground font-semibold">{symbol}{(totalAmount / 3).toFixed(2)}</strong>
                     </p>
-                    <p className="klarna-detail__terms">
+                    <p className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/40 leading-snug m-0 mb-3.5">
                       18+, T&amp;Cs apply. Credit subject to status.
                     </p>
-                    <div className="klarna-detail__redirect">
-                      {/* Redirect / external link icon */}
-                      <svg className="klarna-detail__redirect-icon" viewBox="0 0 24 24" fill="none">
+                    <div className="flex items-start gap-2.5 py-2.5 px-3 bg-white/[0.025] border border-white/[0.06] rounded-lg">
+                      <svg className="w-5 h-5 text-foreground/40 shrink-0 mt-px" viewBox="0 0 24 24" fill="none">
                         <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.5"/>
                         <rect x="6" y="8" width="12" height="9" rx="1" fill="currentColor" opacity="0.15"/>
                         <rect x="6" y="6" width="12" height="2.5" rx="0.5" fill="currentColor" opacity="0.3"/>
@@ -1360,7 +1357,7 @@ function SinglePageCheckoutForm({
                         <circle cx="9.8" cy="7.2" r="0.6" fill="currentColor"/>
                         <circle cx="11.6" cy="7.2" r="0.6" fill="currentColor"/>
                       </svg>
-                      <span className="klarna-detail__redirect-text">
+                      <span className="font-[family-name:var(--font-sans)] text-xs text-foreground/50 leading-relaxed">
                         After submission, you will be redirected to securely complete next steps.
                       </span>
                     </div>
@@ -1371,12 +1368,16 @@ function SinglePageCheckoutForm({
           </div>
 
           {/* Error */}
-          {error && <div className="native-checkout__error">{error}</div>}
+          {error && (
+            <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
+              {error}
+            </div>
+          )}
 
           {/* Pay Button */}
           <button
             type="submit"
-            className="native-checkout__submit"
+            className="w-full bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-[10px] transition-all duration-150 mt-2 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99] disabled:bg-white/[0.08] disabled:text-foreground/35 disabled:cursor-not-allowed touch-manipulation"
             disabled={processing || !isReady || !stripe}
           >
             {processing
@@ -1387,29 +1388,8 @@ function SinglePageCheckoutForm({
           </button>
 
           {/* Trust Signal */}
-          <div className="checkout-trust">
-            <svg
-              className="checkout-trust__lock"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect
-                x="5"
-                y="11"
-                width="14"
-                height="10"
-                rx="2"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M8 11V7a4 4 0 018 0v4"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
+          <div className="flex items-center justify-center gap-1.5 pt-0 font-[family-name:var(--font-sans)] text-[11px] tracking-[0.1px] text-foreground/40">
+            <LockIcon className="w-[13px] h-[13px] text-foreground/40 shrink-0" />
             <span>Secured by Stripe &middot; End-to-end encrypted</span>
           </div>
         </form>
@@ -1420,8 +1400,6 @@ function SinglePageCheckoutForm({
 
 /* ================================================================
    CARD FIELDS — Individual Stripe card elements with custom UI
-   Renders card number, expiry, CVC with custom placeholders and layout.
-   Uses forwardRef + useImperativeHandle to expose confirmPayment.
    ================================================================ */
 
 const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
@@ -1467,9 +1445,9 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
     );
 
     return (
-      <div className="card-fields">
+      <div className="flex flex-col gap-3">
         {/* Card Number */}
-        <div className="card-fields__number-wrapper">
+        <div className="midnight-card-number relative">
           <CardNumberElement
             onReady={() => setNumberReady(true)}
             options={{
@@ -1479,33 +1457,12 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
               disableLink: true,
             }}
           />
-          <svg
-            className="card-fields__lock-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="5"
-              y="11"
-              width="14"
-              height="10"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            />
-            <path
-              d="M8 11V7a4 4 0 018 0v4"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
+          <LockIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-foreground/35 pointer-events-none z-[1]" />
         </div>
 
-        {/* Expiry + CVC row (side by side on desktop, stacked on mobile) */}
-        <div className="card-fields__row">
-          <div className="card-fields__expiry">
+        {/* Expiry + CVC */}
+        <div className="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+          <div>
             <CardExpiryElement
               onReady={() => setExpiryReady(true)}
               options={{
@@ -1514,7 +1471,7 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
               }}
             />
           </div>
-          <div className="card-fields__cvc-wrapper">
+          <div className="midnight-card-cvc relative">
             <CardCvcElement
               onReady={() => setCvcReady(true)}
               options={{
@@ -1522,12 +1479,10 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
                 placeholder: "Security code",
               }}
             />
-            {/* Shield/CVC icon */}
             <svg
-              className="card-fields__cvc-icon"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-foreground/35 pointer-events-none z-[1]"
               viewBox="0 0 24 24"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
             >
               <path
                 d="M12 2L4 6v5c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"
@@ -1552,7 +1507,6 @@ const CardFields = forwardRef<CardFieldsHandle, { onReady: () => void }>(
 
 /* ================================================================
    TEST MODE CHECKOUT
-   For events with payment_method="test" — no Stripe.
    ================================================================ */
 
 function TestModeCheckout({
@@ -1585,7 +1539,6 @@ function TestModeCheckout({
   const [error, setError] = useState("");
   const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
-  // Capture customer name on blur — updates customer record + abandoned cart
   const captureNameOnBlur = useCallback(() => {
     if (nameCaptureTimer.current) clearTimeout(nameCaptureTimer.current);
     nameCaptureTimer.current = setTimeout(() => {
@@ -1670,13 +1623,10 @@ function TestModeCheckout({
   );
 
   return (
-    <div className="checkout-page">
+    <div className="midnight-checkout min-h-screen flex flex-col">
       <CheckoutHeader slug={slug} />
-
-      {/* Reservation timer */}
       <CheckoutTimer active={true} />
 
-      {/* Mobile: always-visible order summary */}
       <OrderSummaryMobile
         cartLines={cartLines}
         symbol={symbol}
@@ -1685,106 +1635,105 @@ function TestModeCheckout({
         vatSettings={vatSettings}
       />
 
-      <div className="checkout-layout-wrap">
-        <div className="checkout-layout">
-          <div className="checkout-layout__main">
-            <div className="native-checkout">
-              <div className="native-checkout__inner">
-                <form onSubmit={handleSubmit} className="native-checkout__form">
-                  <div className="native-checkout__section">
-                    <h2 className="native-checkout__heading">Your Details</h2>
-                    {capturedEmail ? (
-                      <div className="native-checkout__email-display">
-                        <div className="native-checkout__email-display-info">
-                          <svg className="native-checkout__email-display-icon" viewBox="0 0 24 24" fill="none">
-                            <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                            <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          <span className="native-checkout__email-display-value">{email}</span>
-                        </div>
-                        <button
-                          type="button"
-                          className="native-checkout__email-display-change"
-                          onClick={onChangeEmail}
-                        >
-                          Change
-                        </button>
+      <div className="flex-1 relative lg:bg-[linear-gradient(to_right,transparent_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+221px),transparent_calc(50%+221px))]">
+        <div className="flex flex-col lg:flex-row max-w-[1200px] mx-auto w-full">
+          <div className="flex-1 min-w-0 lg:pr-8">
+            <div className="max-w-[620px] mx-auto py-8 px-6 pb-[max(48px,env(safe-area-inset-bottom))]">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-4">
+                  <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
+                    Your Details
+                  </h2>
+                  {capturedEmail ? (
+                    <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                        <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                          {email}
+                        </span>
                       </div>
-                    ) : (
-                      <>
-                        <label htmlFor="test-email" className="sr-only">Email</label>
-                        <input
-                          id="test-email"
-                          type="email"
-                          className="native-checkout__input"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="Email"
-                          required
-                          autoComplete="email"
-                          autoFocus
-                        />
-                        <p className="native-checkout__email-hint">
-                          <svg className="native-checkout__email-hint-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                            <path d="M2 7l10 7 10-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          Your tickets will be sent to this email
-                        </p>
-                      </>
-                    )}
-                    <div className="native-checkout__row">
-                      <div>
-                        <label htmlFor="test-first-name" className="sr-only">First name</label>
-                        <input
-                          id="test-first-name"
-                          type="text"
-                          className="native-checkout__input"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          onBlur={captureNameOnBlur}
-                          placeholder="First name"
-                          required
-                          autoComplete="given-name"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="test-last-name" className="sr-only">Last name</label>
-                        <input
-                          id="test-last-name"
-                          type="text"
-                          className="native-checkout__input"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          onBlur={captureNameOnBlur}
-                          placeholder="Last name"
-                          required
-                          autoComplete="family-name"
-                        />
-                      </div>
+                      <button
+                        type="button"
+                        className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
+                        onClick={onChangeEmail}
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <label htmlFor="test-email" className="sr-only">Email</label>
+                      <input
+                        id="test-email"
+                        type="email"
+                        className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Email"
+                        required
+                        autoComplete="email"
+                        autoFocus
+                      />
+                      <p className="flex items-center gap-1.5 -mt-2 font-[family-name:var(--font-sans)] text-xs text-foreground/40 tracking-[0.2px]">
+                        <EmailIcon className="w-3.5 h-3.5 text-foreground/35 shrink-0" />
+                        Your tickets will be sent to this email
+                      </p>
+                    </>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="test-first-name" className="sr-only">First name</label>
+                      <input
+                        id="test-first-name"
+                        type="text"
+                        className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        onBlur={captureNameOnBlur}
+                        placeholder="First name"
+                        required
+                        autoComplete="given-name"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="test-last-name" className="sr-only">Last name</label>
+                      <input
+                        id="test-last-name"
+                        type="text"
+                        className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        onBlur={captureNameOnBlur}
+                        placeholder="Last name"
+                        required
+                        autoComplete="family-name"
+                      />
                     </div>
                   </div>
+                </div>
 
-                  {error && <div className="native-checkout__error">{error}</div>}
-
-                  <button
-                    type="submit"
-                    className="native-checkout__submit"
-                    disabled={submitting}
-                  >
-                    {submitting ? "Processing..." : "PAY NOW"}
-                  </button>
-
-                  <div className="native-checkout__test-badge">
-                    TEST MODE — No real payment will be processed
+                {error && (
+                  <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
+                    {error}
                   </div>
-                </form>
-              </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-[10px] transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99] disabled:bg-white/[0.08] disabled:text-foreground/35 disabled:cursor-not-allowed touch-manipulation"
+                  disabled={submitting}
+                >
+                  {submitting ? "Processing..." : "PAY NOW"}
+                </button>
+
+                <div className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-[#ffc107] text-center py-2.5 bg-[rgba(255,193,7,0.06)] border border-dashed border-[rgba(255,193,7,0.2)] rounded-lg">
+                  TEST MODE — No real payment will be processed
+                </div>
+              </form>
             </div>
           </div>
 
-          {/* Desktop: sidebar order summary */}
-          <aside className="checkout-layout__sidebar">
+          <aside className="hidden lg:block w-[360px] shrink-0 pl-8 pt-8 sticky top-24 self-start">
             <OrderSummaryDesktop
               cartLines={cartLines}
               symbol={symbol}
@@ -1803,9 +1752,6 @@ function TestModeCheckout({
 
 /* ================================================================
    EMAIL CAPTURE PAGE
-   Shown before the payment form to capture the customer's email.
-   Matches checkout branding. No additional Meta tracking events fired
-   here — InitiateCheckout already fired from the ticket widget.
    ================================================================ */
 
 function EmailCapture({
@@ -1832,7 +1778,6 @@ function EmailCapture({
   const [summaryOpen, setSummaryOpen] = useState(false);
   const { trackEngagement } = useTraffic();
 
-  // Suppress scanlines on this page too
   useEffect(() => {
     document.documentElement.classList.add("checkout-active");
     return () => document.documentElement.classList.remove("checkout-active");
@@ -1859,78 +1804,72 @@ function EmailCapture({
   );
 
   return (
-    <div className="checkout-page">
+    <div className="midnight-checkout min-h-screen flex flex-col">
       <CheckoutHeader slug={slug} />
-
-      {/* Reservation timer */}
       <CheckoutTimer active={true} />
 
-      {/* Collapsible order summary — keeps CTA visible */}
-      <div className="email-capture__summary">
+      {/* Collapsible order summary */}
+      <div className="border-b border-white/[0.06] bg-[rgba(20,20,20,0.4)] w-full">
         <button
           type="button"
-          className="email-capture__summary-toggle"
+          className="flex items-center justify-between w-full max-w-[1200px] mx-auto py-3.5 px-6 bg-transparent touch-manipulation"
           onClick={() => setSummaryOpen((o) => !o)}
         >
-          <span className="email-capture__summary-toggle-left">
-            <svg className="email-capture__summary-toggle-icon" viewBox="0 0 24 24" fill="none">
+          <span className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-foreground/50 shrink-0" viewBox="0 0 24 24" fill="none">
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
             </svg>
-            <span className="email-capture__summary-toggle-label">
+            <span className="font-[family-name:var(--font-sans)] text-[13px] font-medium text-foreground/50">
               Order summary ({cartLines.length} {cartLines.length === 1 ? "item" : "items"})
             </span>
           </span>
-          <span className="email-capture__summary-toggle-right">
-            <span className="email-capture__summary-toggle-total">{symbol}{subtotal.toFixed(2)}</span>
-            <svg
-              className={`email-capture__summary-toggle-chevron${summaryOpen ? " email-capture__summary-toggle-chevron--open" : ""}`}
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+          <span className="flex items-center gap-2">
+            <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">
+              {symbol}{subtotal.toFixed(2)}
+            </span>
+            <ChevronIcon className={`w-4 h-4 text-foreground/50 transition-transform duration-250 ${summaryOpen ? "rotate-180" : ""}`} />
           </span>
         </button>
-        <div className={`email-capture__summary-content${summaryOpen ? " email-capture__summary-content--open" : ""}`}>
-          <div className="email-capture__summary-inner">
+        <div className={`midnight-summary-collapse${summaryOpen ? " midnight-summary-collapse--open" : ""}`}>
+          <div className="max-w-[1200px] mx-auto px-6 pb-4">
             <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
           </div>
         </div>
       </div>
 
-      <div className="email-capture">
-        <div className="email-capture__inner">
-          <div className="email-capture__icon">
-            <svg viewBox="0 0 66 66" fill="none" className="email-capture__icon-svg">
+      {/* Email capture form */}
+      <div className="flex-1 flex items-center justify-center py-12 px-6">
+        <div className="max-w-[440px] w-full text-center">
+          <div className="relative w-16 h-16 mx-auto mb-7 drop-shadow-[0_2px_8px_rgba(255,255,255,0.08)]">
+            <svg viewBox="0 0 66 66" fill="none" className="w-full h-full">
               <path fill="#ffffff" d="M 33.011719 8.5625 C 33.160156 8.5625 33.269531 8.558594 33.335938 8.550781 C 35.378906 8.324219 36.777344 7.265625 37.535156 5.371094 C 37.636719 5.117188 37.726562 4.65625 37.808594 3.984375 C 37.878906 3.40625 37.992188 2.996094 38.152344 2.757812 C 38.542969 2.15625 39.164062 1.855469 40.015625 1.855469 C 43.054688 1.847656 46.144531 1.84375 49.285156 1.847656 C 50.269531 1.851562 50.957031 2.207031 51.355469 2.914062 C 51.527344 3.222656 51.613281 3.683594 51.613281 4.289062 C 51.609375 22.871094 51.605469 35.164062 51.605469 41.167969 C 51.605469 41.25 51.535156 41.320312 51.453125 41.320312 C 39.59375 41.3125 33.445312 41.3125 33.011719 41.3125 C 32.578125 41.3125 26.429688 41.3125 14.570312 41.316406 C 14.484375 41.316406 14.414062 41.246094 14.414062 41.164062 L 14.414062 4.285156 C 14.414062 3.679688 14.5 3.222656 14.675781 2.910156 C 15.070312 2.203125 15.761719 1.847656 16.742188 1.84375 C 19.886719 1.84375 22.972656 1.84375 26.011719 1.851562 C 26.863281 1.855469 27.484375 2.15625 27.878906 2.753906 C 28.035156 2.996094 28.148438 3.402344 28.21875 3.980469 C 28.300781 4.65625 28.390625 5.117188 28.492188 5.371094 C 29.25 7.265625 30.652344 8.324219 32.691406 8.550781 C 32.757812 8.558594 32.867188 8.5625 33.011719 8.5625 Z" />
               <path fill="#ffffff" d="M 33.007812 45.449219 C 38.574219 45.449219 44.351562 45.445312 50.34375 45.4375 C 50.734375 45.4375 51.113281 45.449219 51.480469 45.476562 C 51.550781 45.480469 51.601562 45.539062 51.601562 45.609375 L 51.601562 62.242188 C 51.601562 62.277344 51.601562 62.3125 51.589844 62.347656 C 51.304688 63.355469 50.566406 63.863281 49.378906 63.875 C 49.359375 63.875 46.253906 63.875 40.058594 63.871094 C 39.121094 63.871094 38.195312 63.394531 37.886719 62.449219 C 37.78125 62.121094 37.792969 61.496094 37.710938 61.105469 C 37.257812 58.996094 35.960938 57.707031 33.816406 57.238281 C 33.546875 57.179688 33.277344 57.152344 33.007812 57.152344 C 32.738281 57.152344 32.46875 57.179688 32.199219 57.242188 C 30.054688 57.707031 28.757812 58.996094 28.304688 61.105469 C 28.222656 61.496094 28.238281 62.121094 28.128906 62.449219 C 27.820312 63.394531 26.898438 63.871094 25.957031 63.871094 C 19.765625 63.875 16.65625 63.878906 16.636719 63.878906 C 15.449219 63.867188 14.710938 63.359375 14.425781 62.351562 C 14.417969 62.316406 14.414062 62.28125 14.414062 62.246094 L 14.410156 45.613281 C 14.410156 45.542969 14.460938 45.484375 14.53125 45.480469 C 14.902344 45.453125 15.28125 45.4375 15.671875 45.4375 C 21.660156 45.445312 27.4375 45.449219 33.007812 45.449219 Z" />
             </svg>
-            {/* Ticket count overlay — positioned on the upper body of the ticket */}
             <span
-              className="email-capture__icon-qty"
+              className="absolute top-[33%] left-1/2 -translate-x-1/2 -translate-y-1/2 font-[family-name:var(--font-mono)] text-sm font-bold text-[#111] leading-none pointer-events-none"
               style={totalQty >= 100 ? { fontSize: "9px" } : totalQty >= 10 ? { fontSize: "11px" } : undefined}
             >
               {totalQty}
             </span>
           </div>
 
-          <h1 className="email-capture__heading">
+          <h1 className="font-[family-name:var(--font-sans)] text-2xl font-semibold tracking-[-0.3px] text-foreground leading-snug m-0 mb-2.5">
             Secure your tickets
           </h1>
 
-          <p className="email-capture__subtext">
+          <p className="font-[family-name:var(--font-sans)] text-sm text-foreground/40 leading-relaxed m-0 mb-8">
             Your tickets and confirmation will be sent here
           </p>
 
-          <form onSubmit={handleSubmit} className="email-capture__form">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <label htmlFor="capture-email" className="sr-only">
               Email address
             </label>
             <input
               id="capture-email"
               type="email"
-              className="native-checkout__input email-capture__input"
+              className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30] text-center"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
@@ -1939,21 +1878,22 @@ function EmailCapture({
               autoFocus
             />
 
-            {error && <div className="native-checkout__error">{error}</div>}
+            {error && (
+              <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
+                {error}
+              </div>
+            )}
 
             <button
               type="submit"
-              className="native-checkout__submit email-capture__submit"
+              className="w-full bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-[10px] transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99] touch-manipulation"
             >
               CONTINUE TO PAYMENT
             </button>
           </form>
 
-          <p className="email-capture__trust">
-            <svg className="email-capture__trust-icon" viewBox="0 0 24 24" fill="none">
-              <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2"/>
-              <path d="M8 11V7a4 4 0 018 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+          <p className="flex items-center justify-center gap-1.5 mt-5 font-[family-name:var(--font-sans)] text-xs text-foreground/35">
+            <LockIcon className="w-3.5 h-3.5 text-foreground/25 shrink-0" />
             Your information is secure and won&rsquo;t be shared
           </p>
         </div>
@@ -1972,9 +1912,9 @@ function CheckoutHeader({ slug }: { slug: string }) {
   const branding = useBranding();
 
   return (
-    <div className="checkout-header">
-      <a href={`/event/${slug}/`} className="checkout-header__back">
-        <span className="checkout-header__back-arrow">&larr;</span>
+    <div className="bg-[rgba(0,0,0,0.9)] backdrop-blur-[16px] border-b border-white/[0.04] px-6 h-20 flex items-center justify-center sticky top-0 z-[100]">
+      <a href={`/event/${slug}/`} className="absolute left-6 top-1/2 -translate-y-1/2 font-[family-name:var(--font-mono)] text-[10px] tracking-[1px] uppercase text-foreground/35 no-underline transition-colors duration-150 flex items-center gap-1.5 hover:text-foreground">
+        <span className="text-sm leading-none">&larr;</span>
         <span>Back</span>
       </a>
       <a href={`/event/${slug}/`}>
@@ -1982,42 +1922,19 @@ function CheckoutHeader({ slug }: { slug: string }) {
         <img
           src={branding.logo_url || "/images/FERAL%20LOGO.svg"}
           alt={branding.org_name || "FERAL PRESENTS"}
-          className="checkout-header__logo"
+          className="h-[52px] w-auto block"
           style={branding.logo_width ? { width: branding.logo_width } : undefined}
         />
       </a>
-      <div className="checkout-header__secure">
-        <svg
-          className="checkout-header__lock"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <rect
-            x="5"
-            y="11"
-            width="14"
-            height="10"
-            rx="2"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-          <path
-            d="M8 11V7a4 4 0 018 0v4"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center">
+        <LockIcon className="w-4 h-4 text-foreground/20" />
       </div>
     </div>
   );
 }
 
 /* ================================================================
-   ORDER SUMMARY — MOBILE (collapsible, Shopify-style)
-   Shows "Order summary [chevron] .... £total" toggle bar.
-   Expands to show items + subtotal + total.
+   ORDER SUMMARY — MOBILE
    ================================================================ */
 
 function OrderSummaryMobile({
@@ -2047,10 +1964,10 @@ function OrderSummaryMobile({
     : afterDiscount;
 
   return (
-    <div className="order-summary-mobile">
-      <div className="order-summary-mobile__content">
+    <div className="border-b border-white/[0.06] bg-[rgba(20,20,20,0.4)] lg:hidden">
+      <div className="max-w-[1200px] mx-auto py-4 px-6 pb-5">
         <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
-        <div className="order-summary__divider" />
+        <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent my-5" />
         {event && onApplyDiscount && onRemoveDiscount && (
           <DiscountCodeInput
             eventId={event.id}
@@ -2060,45 +1977,23 @@ function OrderSummaryMobile({
             onRemove={onRemoveDiscount}
           />
         )}
-        <div className="order-summary__totals">
-          <div className="order-summary__row">
-            <span>Subtotal</span>
-            <span>{symbol}{subtotal.toFixed(2)}</span>
-          </div>
-          {discount && (
-            <div className="order-summary__row order-summary__row--discount">
-              <span>Discount ({discount.code})</span>
-              <span>-{symbol}{discountAmt.toFixed(2)}</span>
-            </div>
-          )}
-          {vatBreakdown && vatSettings?.prices_include_vat && (
-            <div className="order-summary__row order-summary__row--vat">
-              <span>Includes VAT ({vatSettings.vat_rate}%)</span>
-              <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
-            </div>
-          )}
-          {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
-            <div className="order-summary__row">
-              <span>VAT ({vatSettings.vat_rate}%)</span>
-              <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
-            </div>
-          )}
-          <div className="order-summary__row order-summary__row--total">
-            <span>Total</span>
-            <span>
-              <span className="order-summary__currency">{event?.currency || "GBP"}</span>
-              {" "}{symbol}{total.toFixed(2)}
-            </span>
-          </div>
-        </div>
+        <OrderTotals
+          symbol={symbol}
+          subtotal={subtotal}
+          discount={discount}
+          discountAmt={discountAmt}
+          vatBreakdown={vatBreakdown}
+          vatSettings={vatSettings}
+          total={total}
+          currency={event?.currency}
+        />
       </div>
     </div>
   );
 }
 
 /* ================================================================
-   ORDER SUMMARY — DESKTOP (sticky sidebar)
-   Always visible, shows items + subtotal + total.
+   ORDER SUMMARY — DESKTOP
    ================================================================ */
 
 function OrderSummaryDesktop({
@@ -2128,9 +2023,9 @@ function OrderSummaryDesktop({
     : afterDiscount;
 
   return (
-    <div className="order-summary-desktop">
+    <div className="pb-8">
       <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
-      <div className="order-summary__divider" />
+      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent my-5" />
       {event && onApplyDiscount && onRemoveDiscount && (
         <DiscountCodeInput
           eventId={event.id}
@@ -2140,36 +2035,73 @@ function OrderSummaryDesktop({
           onRemove={onRemoveDiscount}
         />
       )}
-      <div className="order-summary__totals">
-        <div className="order-summary__row">
-          <span>Subtotal</span>
-          <span>{symbol}{subtotal.toFixed(2)}</span>
+      <OrderTotals
+        symbol={symbol}
+        subtotal={subtotal}
+        discount={discount}
+        discountAmt={discountAmt}
+        vatBreakdown={vatBreakdown}
+        vatSettings={vatSettings}
+        total={total}
+        currency={event?.currency}
+      />
+    </div>
+  );
+}
+
+/* ================================================================
+   ORDER TOTALS — shared between mobile and desktop summaries
+   ================================================================ */
+
+function OrderTotals({
+  symbol,
+  subtotal,
+  discount,
+  discountAmt,
+  vatBreakdown,
+  vatSettings,
+  total,
+  currency,
+}: {
+  symbol: string;
+  subtotal: number;
+  discount?: DiscountInfo | null;
+  discountAmt: number;
+  vatBreakdown: ReturnType<typeof calculateCheckoutVat>;
+  vatSettings?: VatSettings | null;
+  total: number;
+  currency?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-[13px] text-foreground/50">
+        <span>Subtotal</span>
+        <span>{symbol}{subtotal.toFixed(2)}</span>
+      </div>
+      {discount && (
+        <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-[13px] text-[#4ecb71]">
+          <span>Discount ({discount.code})</span>
+          <span>-{symbol}{discountAmt.toFixed(2)}</span>
         </div>
-        {discount && (
-          <div className="order-summary__row order-summary__row--discount">
-            <span>Discount ({discount.code})</span>
-            <span>-{symbol}{discountAmt.toFixed(2)}</span>
-          </div>
-        )}
-        {vatBreakdown && vatSettings?.prices_include_vat && (
-          <div className="order-summary__row order-summary__row--vat">
-            <span>Includes VAT ({vatSettings.vat_rate}%)</span>
-            <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
-          </div>
-        )}
-        {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
-          <div className="order-summary__row">
-            <span>VAT ({vatSettings.vat_rate}%)</span>
-            <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
-          </div>
-        )}
-        <div className="order-summary__row order-summary__row--total">
-          <span>Total</span>
-          <span>
-            <span className="order-summary__currency">{event?.currency || "GBP"}</span>
-            {" "}{symbol}{total.toFixed(2)}
-          </span>
+      )}
+      {vatBreakdown && vatSettings?.prices_include_vat && (
+        <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-xs text-foreground/50">
+          <span>Includes VAT ({vatSettings.vat_rate}%)</span>
+          <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
         </div>
+      )}
+      {vatBreakdown && vatSettings && !vatSettings.prices_include_vat && (
+        <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-[13px] text-foreground/50">
+          <span>VAT ({vatSettings.vat_rate}%)</span>
+          <span>{symbol}{vatBreakdown.vat.toFixed(2)}</span>
+        </div>
+      )}
+      <div className="flex items-center justify-between font-[family-name:var(--font-sans)] text-base font-semibold text-foreground pt-2.5 border-t border-white/[0.06]">
+        <span>Total</span>
+        <span>
+          <span className="text-[11px] text-foreground/40 font-normal tracking-[0.5px]">{currency || "GBP"}</span>
+          {" "}{symbol}{total.toFixed(2)}
+        </span>
       </div>
     </div>
   );
@@ -2177,8 +2109,6 @@ function OrderSummaryDesktop({
 
 /* ================================================================
    ORDER ITEMS — shared between mobile and desktop summaries
-   Each cart line renders as a ticket card. Lines with merch_size
-   show the ticket info PLUS a nested merch sub-item below.
    ================================================================ */
 
 function OrderItems({
@@ -2193,7 +2123,6 @@ function OrderItems({
   const getTicketType = (id: string): TicketTypeRow | undefined =>
     event?.ticket_types?.find((t) => t.id === id);
 
-  // Format event date
   const eventDate = event?.date_start
     ? new Date(event.date_start).toLocaleDateString("en-GB", {
         weekday: "short",
@@ -2210,10 +2139,10 @@ function OrderItems({
       })
     : null);
 
-  const eventMeta = [eventDate, event?.venue_name].filter(Boolean).join(" · ");
+  const eventMeta = [eventDate, event?.venue_name].filter(Boolean).join(" \u00B7 ");
 
   return (
-    <div className="order-items">
+    <div className="flex flex-col">
       {cartLines.map((line, i) => {
         const tt = getTicketType(line.ticket_type_id);
         const hasMerch = !!line.merch_size;
@@ -2222,50 +2151,63 @@ function OrderItems({
           || (tt?.merch_type ? `${event?.name || ""} ${tt.merch_type}` : null);
 
         return (
-          <div key={i} className="order-item">
+          <div key={i} className={i > 0 ? "border-t border-white/[0.06] mt-3.5 pt-3.5" : ""}>
             {/* Ticket row */}
-            <div className="order-item__ticket">
-              <div className="order-item__ticket-icon">
-                <img src="/images/ticketicon.svg" alt="" draggable={false} />
-                <span className="order-item__ticket-qty">{line.qty}</span>
+            <div className="flex items-start gap-2.5">
+              <div className="relative w-12 h-12 shrink-0 ml-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/ticketicon.svg" alt="" draggable={false} className="w-full h-full object-contain object-[center_top] drop-shadow-[0_2px_4px_rgba(0,0,0,0.55)]" />
+                <span className="absolute top-[33%] left-1/2 -translate-x-1/2 -translate-y-1/2 font-[family-name:var(--font-mono)] text-[13px] font-bold text-foreground leading-none">
+                  {line.qty}
+                </span>
               </div>
-              <div className="order-item__info">
-                <span className="order-item__name">{line.name}</span>
+              <div className="flex-1 min-w-0 flex flex-col gap-0.5 pt-0.5">
+                <span className="font-[family-name:var(--font-sans)] text-[13px] font-semibold text-foreground leading-snug overflow-hidden text-ellipsis whitespace-nowrap">
+                  {line.name}
+                </span>
                 {event?.name && (
-                  <span className="order-item__event">{event.name}</span>
+                  <span className="font-[family-name:var(--font-sans)] text-[11px] font-medium text-foreground/60 leading-snug overflow-hidden text-ellipsis whitespace-nowrap">
+                    {event.name}
+                  </span>
                 )}
                 {eventMeta && (
-                  <span className="order-item__meta">{eventMeta}</span>
+                  <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35 leading-snug">
+                    {eventMeta}
+                  </span>
                 )}
                 {eventTime && (
-                  <span className="order-item__meta">Doors {eventTime}</span>
+                  <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35 leading-snug">
+                    Doors {eventTime}
+                  </span>
                 )}
               </div>
-              <span className="order-item__price">
+              <span className="shrink-0 font-[family-name:var(--font-mono)] text-[13px] font-semibold text-foreground pt-0.5">
                 {symbol}{(line.price * line.qty).toFixed(2)}
               </span>
             </div>
 
             {/* Merch sub-item */}
             {hasMerch && (
-              <div className="order-item__merch">
-                <div className="order-item__merch-thumb">
+              <div className="flex items-center gap-3 mt-2.5 pl-[62px]">
+                <div className="w-11 h-11 shrink-0 bg-white/[0.03] border border-white/[0.06] rounded-md overflow-hidden flex items-center justify-center">
                   {merchImg ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={merchImg} alt="" className="order-item__merch-img" />
+                    <img src={merchImg} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <svg viewBox="0 0 24 24" fill="none" className="order-item__merch-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-foreground/25">
                       <path d="M12 3l-2 3h4l-2-3zM6 6h12l1 3H5l1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                       <path d="M5 9h14v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="1.2"/>
                     </svg>
                   )}
                 </div>
-                <div className="order-item__merch-info">
-                  <span className="order-item__merch-label">Included merch</span>
-                  <span className="order-item__merch-name">
+                <div className="flex-1 min-w-0 flex flex-col gap-px">
+                  <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[1px] uppercase text-foreground/35 leading-none">
+                    Included merch
+                  </span>
+                  <span className="font-[family-name:var(--font-sans)] text-xs font-medium text-foreground/80 leading-snug overflow-hidden text-ellipsis whitespace-nowrap">
                     {merchName || line.name}
                   </span>
-                  <span className="order-item__merch-size">
+                  <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/40">
                     Size: {line.merch_size}
                   </span>
                 </div>
@@ -2283,13 +2225,11 @@ function CheckoutFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="footer">
-      <div className="container">
-        <div className="footer__inner">
-          <span className="footer__copy">
-            &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
-          </span>
-        </div>
+    <footer className="py-8 px-6">
+      <div className="max-w-[1200px] mx-auto text-center">
+        <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/20">
+          &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
+        </span>
       </div>
     </footer>
   );

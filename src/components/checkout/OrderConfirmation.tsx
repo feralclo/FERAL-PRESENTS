@@ -6,7 +6,9 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { useBranding } from "@/hooks/useBranding";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import type { Order } from "@/types/orders";
-import "@/styles/checkout-page.css";
+
+import "@/styles/midnight.css";
+import "@/styles/midnight-effects.css";
 
 interface OrderConfirmationProps {
   order: Order;
@@ -163,11 +165,14 @@ export function OrderConfirmation({
   };
 
   return (
-    <>
+    <div className="midnight-checkout min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="checkout-header">
-        <a href={`/event/${slug}/`} className="checkout-header__back">
-          <span className="checkout-header__back-arrow">&larr;</span>
+      <div className="bg-[rgba(0,0,0,0.9)] backdrop-blur-[16px] border-b border-white/[0.04] px-6 max-sm:px-4 h-20 max-sm:h-[68px] flex items-center justify-center sticky top-0 z-[100]">
+        <a
+          href={`/event/${slug}/`}
+          className="absolute left-6 max-sm:left-4 top-1/2 -translate-y-1/2 font-[family-name:var(--font-mono)] text-[10px] tracking-[1px] uppercase text-foreground/35 no-underline transition-colors duration-150 flex items-center gap-1.5 hover:text-foreground"
+        >
+          <span className="text-sm leading-none">&larr;</span>
           <span>Event Page</span>
         </a>
         <a href={`/event/${slug}/`}>
@@ -175,57 +180,66 @@ export function OrderConfirmation({
           <img
             src={branding.logo_url || "/images/FERAL%20LOGO.svg"}
             alt={branding.org_name || "FERAL PRESENTS"}
-            className="checkout-header__logo"
+            className="h-[52px] max-sm:h-10 w-auto block"
+            style={branding.logo_width ? { width: branding.logo_width } : undefined}
           />
         </a>
-        <div className="checkout-header__secure">
-          <span style={{ color: "#4ecb71", fontWeight: 700 }}>CONFIRMED</span>
+        <div className="absolute right-6 max-sm:right-4 top-1/2 -translate-y-1/2 flex items-center">
+          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[1.5px] uppercase text-[#4ecb71] font-bold">
+            Confirmed
+          </span>
         </div>
       </div>
 
       {/* Confirmation Content */}
-      <div className="order-confirmation">
-        <div className="order-confirmation__inner">
+      <div className="flex-1">
+        <div className="max-w-[560px] mx-auto px-6 max-sm:px-4 pt-8 pb-12">
           {/* Success Header */}
-          <div className="order-confirmation__success">
-            <div className="order-confirmation__check">&#10003;</div>
-            <h1 className="order-confirmation__title">Order Confirmed</h1>
-            <p className="order-confirmation__subtitle">
-              Your tickets for <strong>{eventName}</strong> are ready
+          <div className="text-center pt-8 pb-6">
+            <div className="w-16 h-16 rounded-full bg-[rgba(78,203,113,0.12)] text-[#4ecb71] text-[32px] flex items-center justify-center mx-auto mb-5">
+              &#10003;
+            </div>
+            <h1 className="font-[family-name:var(--font-mono)] text-xl font-bold tracking-[2px] uppercase text-foreground mb-2 m-0">
+              Order Confirmed
+            </h1>
+            <p className="font-[family-name:var(--font-sans)] text-sm text-foreground/50 leading-relaxed m-0">
+              Your tickets for <strong className="text-foreground/70">{eventName}</strong> are ready
             </p>
           </div>
 
           {/* Order Info */}
-          <div className="order-confirmation__info">
-            <div className="order-confirmation__info-row">
-              <span className="order-confirmation__info-label">
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-5 mb-6">
+            <div className="flex items-center justify-between py-2">
+              <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/35">
                 Order Number
               </span>
-              <span className="order-confirmation__info-value">
+              <span className="font-[family-name:var(--font-mono)] text-xs tracking-[1px] text-foreground">
                 {order.order_number}
               </span>
             </div>
-            <div className="order-confirmation__info-row">
-              <span className="order-confirmation__info-label">Total</span>
-              <span className="order-confirmation__info-value order-confirmation__info-value--price">
+            <div className="flex items-center justify-between py-2 border-t border-white/[0.04]">
+              <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/35">
+                Total
+              </span>
+              <span className="font-[family-name:var(--font-mono)] text-base tracking-[1px] text-foreground font-bold">
                 {symbol}{Number(order.total).toFixed(2)}
               </span>
             </div>
             {vatMeta && (
-              <div className="order-confirmation__info-row">
-                <span className="order-confirmation__info-label">
+              <div className="flex items-center justify-between py-2 border-t border-white/[0.04]">
+                <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/35">
                   {vatMeta.inclusive ? `Includes VAT (${vatMeta.rate}%)` : `VAT (${vatMeta.rate}%)`}
                 </span>
-                <span className="order-confirmation__info-value">
+                <span className="font-[family-name:var(--font-mono)] text-xs tracking-[1px] text-foreground">
                   {symbol}{vatMeta.amount.toFixed(2)}
                 </span>
               </div>
             )}
-            <div className="order-confirmation__info-row">
-              <span className="order-confirmation__info-label">
+            <div className="flex items-center justify-between py-2 border-t border-white/[0.04]">
+              <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/35">
                 Payment Reference
               </span>
-              <span className="order-confirmation__info-value">
+              <span className="font-[family-name:var(--font-mono)] text-xs tracking-[1px] text-foreground">
                 {order.payment_ref}
               </span>
             </div>
@@ -233,29 +247,32 @@ export function OrderConfirmation({
 
           {/* Tickets */}
           {order.tickets && order.tickets.length > 0 && (
-            <div className="order-confirmation__tickets">
-              <h2 className="order-confirmation__section-title">
+            <div className="mb-6">
+              <h2 className="font-[family-name:var(--font-mono)] text-[11px] tracking-[3px] uppercase text-foreground mb-4 pb-3 border-b border-white/[0.06] m-0">
                 Your Tickets
               </h2>
               {order.tickets.map((ticket) => (
-                <div key={ticket.id} className="order-confirmation__ticket">
-                  <div className="order-confirmation__ticket-info">
-                    <div className="order-confirmation__ticket-type">
+                <div
+                  key={ticket.id}
+                  className="flex items-center justify-between gap-4 max-sm:flex-col max-sm:text-center bg-white/[0.02] border border-white/[0.06] rounded-lg p-4 mb-2"
+                >
+                  <div className="min-w-0">
+                    <div className="font-[family-name:var(--font-mono)] text-xs font-bold tracking-[1px] uppercase text-foreground mb-1.5">
                       {ticket.ticket_type?.name || "Ticket"}
                     </div>
-                    <div className="order-confirmation__ticket-code">
+                    <div className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[2px] text-foreground mb-1">
                       {ticket.ticket_code}
                     </div>
                     {ticket.merch_size && (
-                      <div className="order-confirmation__ticket-size">
+                      <div className="font-[family-name:var(--font-mono)] text-[10px] tracking-[1px] text-foreground/50 mb-1">
                         Size: {ticket.merch_size}
                       </div>
                     )}
-                    <div className="order-confirmation__ticket-holder">
+                    <div className="font-[family-name:var(--font-sans)] text-xs text-foreground/35">
                       {ticket.holder_first_name} {ticket.holder_last_name}
                     </div>
                   </div>
-                  <div className="order-confirmation__ticket-qr">
+                  <div className="shrink-0">
                     {qrCodes[ticket.ticket_code] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -263,9 +280,10 @@ export function OrderConfirmation({
                         alt={`QR Code: ${ticket.ticket_code}`}
                         width={140}
                         height={140}
+                        className="block rounded max-sm:mx-auto"
                       />
                     ) : (
-                      <div className="order-confirmation__qr-loading">
+                      <div className="w-[140px] h-[140px] flex items-center justify-center bg-white/[0.04] rounded font-[family-name:var(--font-mono)] text-[9px] tracking-[1px] text-foreground/25">
                         Loading QR...
                       </div>
                     )}
@@ -276,10 +294,11 @@ export function OrderConfirmation({
           )}
 
           {/* Actions */}
-          <div className="order-confirmation__actions">
+          <div className="flex flex-col gap-2.5">
             <button
+              type="button"
               onClick={handleDownloadPDF}
-              className="order-confirmation__btn order-confirmation__btn--primary"
+              className="block w-full font-[family-name:var(--font-sans)] text-sm font-semibold tracking-[0.2px] text-center py-4 px-6 border-none cursor-pointer transition-all duration-150 bg-white text-[#0e0e0e] rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.2)] hover:bg-[#f0f0f0] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] active:bg-[#e5e5e5] active:translate-y-0 disabled:bg-white/[0.08] disabled:text-foreground/35 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
               disabled={downloading}
             >
               {downloading ? "Generating PDF..." : "Download Tickets (PDF)"}
@@ -287,11 +306,12 @@ export function OrderConfirmation({
 
             {/* Wallet Pass Buttons */}
             {(walletPassEnabled?.apple || walletPassEnabled?.google) && (
-              <div className="order-confirmation__wallet-buttons">
+              <div className="flex gap-2 w-full">
                 {walletPassEnabled.apple && (
                   <button
+                    type="button"
                     onClick={handleAddToAppleWallet}
-                    className="order-confirmation__btn order-confirmation__btn--wallet"
+                    className="flex-1 block font-[-apple-system,'Helvetica_Neue',Arial,sans-serif] text-[13px] font-semibold tracking-[0.2px] text-center py-4 px-6 border border-white/[0.15] cursor-pointer transition-all duration-150 bg-white/[0.04] text-foreground rounded-lg no-underline hover:bg-white/[0.08] hover:border-white/[0.25] disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={walletDownloading === "apple"}
                   >
                     {walletDownloading === "apple" ? "Adding..." : "Add to Apple Wallet"}
@@ -302,7 +322,7 @@ export function OrderConfirmation({
                     href={googleWalletUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="order-confirmation__btn order-confirmation__btn--wallet"
+                    className="flex-1 block font-[-apple-system,'Helvetica_Neue',Arial,sans-serif] text-[13px] font-semibold tracking-[0.2px] text-center py-4 px-6 border border-white/[0.15] cursor-pointer transition-all duration-150 bg-white/[0.04] text-foreground rounded-lg no-underline hover:bg-white/[0.08] hover:border-white/[0.25]"
                     onClick={() => trackEngagement("wallet_google")}
                   >
                     Save to Google Wallet
@@ -313,7 +333,7 @@ export function OrderConfirmation({
 
             <a
               href={`/event/${slug}/`}
-              className="order-confirmation__btn order-confirmation__btn--secondary"
+              className="block w-full font-[family-name:var(--font-sans)] text-sm font-semibold tracking-[0.2px] text-center py-4 px-6 transition-all duration-150 bg-transparent text-foreground/50 border border-white/[0.15] rounded-lg no-underline hover:text-foreground hover:border-white/[0.30]"
             >
               Back to Event
             </a>
@@ -321,15 +341,14 @@ export function OrderConfirmation({
         </div>
       </div>
 
-      <footer className="footer">
-        <div className="container">
-          <div className="footer__inner">
-            <span className="footer__copy">
-              &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
-            </span>
-          </div>
+      {/* Footer */}
+      <footer className="py-8 px-6">
+        <div className="max-w-[1200px] mx-auto text-center">
+          <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/20">
+            &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
+          </span>
         </div>
       </footer>
-    </>
+    </div>
   );
 }

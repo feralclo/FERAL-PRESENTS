@@ -599,6 +599,154 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
+   CHECKOUT — Stripe Element Containers
+   Stripe injects .StripeElement class names that
+   can't be styled with Tailwind. These provide the
+   glass input treatment matching our input fields.
+   ═══════════════════════════════════════════════ */
+
+[data-theme="midnight"] .midnight-checkout .StripeElement {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  padding: 15px 16px;
+  transition: border-color 0.15s ease;
+}
+
+[data-theme="midnight"] .midnight-checkout .StripeElement--focus {
+  border-color: rgba(255, 255, 255, 0.30);
+}
+
+[data-theme="midnight"] .midnight-checkout .StripeElement--invalid {
+  border-color: rgba(239, 68, 68, 0.50);
+}
+
+/* Card number field: extra right padding for lock icon */
+[data-theme="midnight"] .midnight-checkout .midnight-card-number .StripeElement {
+  padding-right: 48px;
+}
+
+/* CVC field: extra right padding for shield icon */
+[data-theme="midnight"] .midnight-checkout .midnight-card-cvc .StripeElement {
+  padding-right: 44px;
+}
+
+/* Payment option collapsible — CSS transition for max-height */
+[data-theme="midnight"] .midnight-checkout .midnight-collapse {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease,
+    padding 0.3s ease;
+  padding: 0 16px;
+}
+
+[data-theme="midnight"] .midnight-checkout .midnight-collapse--open {
+  max-height: 500px;
+  opacity: 1;
+  padding: 4px 16px 18px;
+}
+
+/* Order summary collapsible */
+[data-theme="midnight"] .midnight-checkout .midnight-summary-collapse {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease;
+}
+
+[data-theme="midnight"] .midnight-checkout .midnight-summary-collapse--open {
+  max-height: 600px;
+  opacity: 1;
+}
+
+/* Payment radio indicator — checked inner dot */
+[data-theme="midnight"] .midnight-checkout .midnight-radio--checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* Checkout spinner */
+@keyframes midnight-spin {
+  to { transform: rotate(360deg); }
+}
+
+[data-theme="midnight"] .midnight-checkout .midnight-spinner {
+  animation: midnight-spin 0.8s linear infinite;
+}
+
+/* Express checkout skeleton shimmer */
+@keyframes midnight-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+[data-theme="midnight"] .midnight-checkout .midnight-skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
+  animation: midnight-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Country select option backgrounds */
+[data-theme="midnight"] .midnight-checkout select option {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+/* Autofill overrides for checkout — extends midnight.css base autofill fix */
+[data-theme="midnight"] .midnight-checkout input:-webkit-autofill,
+[data-theme="midnight"] .midnight-checkout input:-webkit-autofill:hover,
+[data-theme="midnight"] .midnight-checkout input:-webkit-autofill:focus,
+[data-theme="midnight"] .midnight-checkout select:-webkit-autofill,
+[data-theme="midnight"] .midnight-checkout select:-webkit-autofill:hover,
+[data-theme="midnight"] .midnight-checkout select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset;
+  -webkit-text-fill-color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #fff;
+}
+
+/* Timer progress bar color states */
+[data-theme="midnight"] .midnight-timer-urgent {
+  background: #f59e0b;
+}
+
+[data-theme="midnight"] .midnight-timer-expired {
+  background: #ef4444;
+}
+
+/* Timer icon pulse when urgent */
+@keyframes midnight-timer-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+[data-theme="midnight"] .midnight-timer-pulse {
+  animation: midnight-timer-pulse 2s ease-in-out infinite;
+}
+
+/* Suppress scanlines on checkout */
+html.checkout-active .scanlines,
+html.checkout-active .noise {
+  display: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════
    BOTTOM BAR — Fixed mobile checkout CTA
    ═══════════════════════════════════════════════ */
 

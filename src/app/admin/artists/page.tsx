@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video } from "lucide-react";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Artist } from "@/types/artists";
 
 export default function ArtistsPage() {
@@ -124,9 +125,9 @@ export default function ArtistsPage() {
   }, [formName, formDescription, formInstagram, formImage, formVideoUrl, editingArtist, loadArtists]);
 
   const handleVideoUpload = useCallback(async (file: File) => {
-    // Validate file type — only formats that play in all browsers
-    if (!["video/mp4", "video/webm"].includes(file.type)) {
-      alert("Please upload an MP4 or WebM file. MOV and other formats may not play in browsers.");
+    // Accept any video format — the platform handles compatibility on playback
+    if (!file.type.startsWith("video/")) {
+      alert("Please select a video file.");
       return;
     }
 
@@ -137,76 +138,38 @@ export default function ArtistsPage() {
       return;
     }
 
-    // Detect QuickTime files disguised as .mp4 (common from iPhone/macOS recordings).
-    // These won't play in Chrome or Firefox — only Safari supports QuickTime containers.
-    // Check the ftyp box in the first 12 bytes to identify the real container format.
-    try {
-      const header = await file.slice(0, 12).arrayBuffer();
-      const bytes = new Uint8Array(header);
-      if (
-        bytes.length >= 12 &&
-        bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70 // "ftyp"
-      ) {
-        const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]).trim();
-        if (brand === "qt" || brand === "MQTL") {
-          alert(
-            "This video uses QuickTime format (common from iPhone/macOS recordings) " +
-            "and won't play in Chrome or Firefox.\n\n" +
-            "To fix: re-export as H.264 MP4 using a free converter like HandBrake or VLC " +
-            "(File → Convert → Profile: H.264 + MP3 MP4)."
-          );
-          return;
-        }
-      }
-    } catch {
-      // Header check failed — continue with upload, frontend will catch playback issues
-    }
-
     setVideoUploading(true);
-    setVideoProgress(0);
+    setVideoProgress(10);
 
     try {
-      // Step 1: Get signed upload URL from server (uses service role, bypasses RLS)
-      const res = await fetch("/api/upload-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
-      });
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase not configured");
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Server error (${res.status})`);
-      }
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
+      const path = `artists/${Date.now()}_${safeName}`;
 
-      const { signedUrl, publicUrl } = await res.json();
+      setVideoProgress(30);
 
-      // Step 2: Upload directly to Supabase storage with real progress tracking
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", signedUrl);
-        xhr.setRequestHeader("Content-Type", file.type);
-
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable) {
-            setVideoProgress(Math.round((e.loaded / e.total) * 100));
-          }
+      // Upload directly via Supabase client (uses authenticated session + RLS)
+      const { error } = await supabase.storage
+        .from("artist-media")
+        .upload(path, file, {
+          contentType: file.type,
+          upsert: true,
         });
 
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed (${xhr.status})`));
-          }
-        });
+      if (error) throw new Error(error.message);
 
-        xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
-        xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")));
-        xhr.send(file);
-      });
+      setVideoProgress(90);
 
-      // Step 3: Set the public URL
-      setFormVideoUrl(publicUrl);
+      // Get the public URL
+      const { data: publicUrlData } = supabase.storage
+        .from("artist-media")
+        .getPublicUrl(path);
+
+      setFormVideoUrl(publicUrlData.publicUrl);
+      setPreviewError(false);
+      setVideoProgress(100);
     } catch (e) {
       console.error("Video upload failed:", e);
       const msg = e instanceof Error ? e.message : "Unknown error";
@@ -467,7 +430,7 @@ export default function ArtistsPage() {
                   <input
                     ref={videoInputRef}
                     type="file"
-                    accept="video/mp4,video/webm"
+                    accept="video/*"
                     onChange={handleVideoFileChange}
                     className="hidden"
                   />
@@ -492,7 +455,7 @@ export default function ArtistsPage() {
                     )}
                   </Button>
                   <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    MP4 (H.264) recommended for best browser support. WebM also works. Max 200MB.
+                    Any video format. Max 200MB.
                   </p>
                 </div>
               )}

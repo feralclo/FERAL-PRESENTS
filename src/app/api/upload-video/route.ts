@@ -27,18 +27,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const allowedTypes = [
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
-
-    if (!allowedTypes.includes(contentType)) {
+    // Accept any video or image type — the bucket MIME whitelist is the final gate
+    if (!contentType.startsWith("video/") && !contentType.startsWith("image/")) {
       return NextResponse.json(
-        { error: "Unsupported file type. Allowed: mp4, webm, mov, jpg, png, webp" },
+        { error: "File must be a video or image" },
         { status: 400 }
       );
     }

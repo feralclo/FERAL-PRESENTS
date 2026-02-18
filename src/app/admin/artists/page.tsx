@@ -47,6 +47,7 @@ export default function ArtistsPage() {
   // Video upload state
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStatus, setVideoStatus] = useState("");
   const [previewError, setPreviewError] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -139,20 +140,43 @@ export default function ArtistsPage() {
 
     setVideoUploading(true);
     setVideoProgress(0);
+    setVideoStatus("Checking format...");
 
     try {
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error("Supabase not configured");
 
-      const safeName = file.name
+      // Test if browser can play this video natively
+      const { canBrowserPlayVideo } = await import("@/lib/video");
+      const canPlay = await canBrowserPlayVideo(file);
+
+      let uploadFile = file;
+
+      // If browser can't play it (e.g. QuickTime/HEVC), transcode to H.264 MP4
+      if (!canPlay) {
+        setVideoStatus("Converting to web format...");
+        try {
+          const { transcodeToMP4 } = await import("@/lib/video");
+          uploadFile = await transcodeToMP4(file, (p) => setVideoProgress(p));
+        } catch (transcodeErr) {
+          // Transcoding failed — upload the original anyway.
+          // It may not play in all browsers, but the upload shouldn't fail.
+          console.warn("Transcoding failed, uploading original:", transcodeErr);
+        }
+      }
+
+      setVideoStatus("Uploading...");
+      setVideoProgress(0);
+
+      const safeName = uploadFile.name
         .replace(/[^a-zA-Z0-9._-]/g, "_")
         .toLowerCase();
       const path = `artists/${Date.now()}_${safeName}`;
 
       const { error } = await supabase.storage
         .from("artist-media")
-        .upload(path, file, {
-          contentType: file.type,
+        .upload(path, uploadFile, {
+          contentType: uploadFile.type,
           upsert: true,
         });
 
@@ -165,10 +189,12 @@ export default function ArtistsPage() {
       setFormVideoUrl(publicUrlData.publicUrl);
       setPreviewError(false);
       setVideoProgress(100);
+      setVideoStatus("");
     } catch (e) {
       console.error("Video upload failed:", e);
       const msg = e instanceof Error ? e.message : "Unknown error";
       alert(`Video upload failed: ${msg}`);
+      setVideoStatus("");
     }
 
     setVideoUploading(false);
@@ -440,7 +466,7 @@ export default function ArtistsPage() {
                     {videoUploading ? (
                       <>
                         <Loader2 size={14} className="animate-spin" />
-                        Uploading...
+                        {videoStatus || "Uploading..."}{videoProgress > 0 && videoProgress < 100 ? ` ${videoProgress}%` : ""}
                       </>
                     ) : (
                       <>
@@ -450,7 +476,7 @@ export default function ArtistsPage() {
                     )}
                   </Button>
                   <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    Any video format. Max 200MB. For best results, use MP4 (H.264).
+                    Any video format, automatically converted for web. Max 200MB.
                   </p>
                 </div>
               )}

@@ -15,6 +15,7 @@ import {
   Receipt,
   ShoppingCart,
   Smartphone,
+  Tag,
 } from "lucide-react";
 
 /* ── Stat card ── */
@@ -143,6 +144,7 @@ export default function CommunicationsPage() {
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [walletEnabled, setWalletEnabled] = useState(false);
   const [abandonedCartEnabled, setAbandonedCartEnabled] = useState(false);
+  const [popupEnabled, setPopupEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/email/status")
@@ -168,6 +170,13 @@ export default function CommunicationsPage() {
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.enabled) setAbandonedCartEnabled(true);
+      })
+      .catch(() => {});
+
+    fetch("/api/settings?key=feral_popup")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data?.enabled) setPopupEnabled(true);
       })
       .catch(() => {});
   }, []);
@@ -245,9 +254,10 @@ export default function CommunicationsPage() {
           title="Marketing"
           description="Campaigns and automated sequences"
           icon={Megaphone}
-          status={abandonedCartEnabled ? "live" : "coming-soon"}
+          status={abandonedCartEnabled || popupEnabled ? "live" : "coming-soon"}
           templates={[
             { name: "Abandoned Cart", href: "/admin/communications/marketing/abandoned-cart/", active: abandonedCartEnabled, icon: ShoppingCart },
+            { name: "Discount Popup", href: "/admin/communications/marketing/popup/", active: popupEnabled, icon: Tag },
           ]}
         />
       </div>

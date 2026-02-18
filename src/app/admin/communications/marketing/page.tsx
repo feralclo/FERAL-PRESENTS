@@ -10,10 +10,12 @@ import {
   ShoppingCart,
   Sparkles,
   Power,
+  Tag,
 } from "lucide-react";
 
 export default function MarketingPage() {
   const [automationActive, setAutomationActive] = useState(false);
+  const [popupActive, setPopupActive] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings?key=feral_abandoned_cart_automation")
@@ -22,15 +24,29 @@ export default function MarketingPage() {
         if (json?.data?.enabled) setAutomationActive(true);
       })
       .catch(() => {});
+
+    fetch("/api/settings?key=feral_popup")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data?.enabled) setPopupActive(true);
+      })
+      .catch(() => {});
   }, []);
 
   const automations = [
     {
       name: "Abandoned Cart",
-      description: "Recover lost sales — automatically email customers who added tickets but didn\u2019t complete checkout",
+      description: "Recover lost sales \u2014 automatically email customers who added tickets but didn\u2019t complete checkout",
       href: "/admin/communications/marketing/abandoned-cart/",
       active: automationActive,
       icon: ShoppingCart,
+    },
+    {
+      name: "Discount Popup",
+      description: "Capture emails with a timed discount offer \u2014 3-screen popup with code reveal on event pages",
+      href: "/admin/communications/marketing/popup/",
+      active: popupActive,
+      icon: Tag,
     },
   ];
 

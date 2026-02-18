@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { DiscountPopup } from "@/components/event/DiscountPopup";
+import { MidnightDiscountPopup } from "./MidnightDiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { isEditorPreview } from "@/components/event/ThemeEditorBridge";
 import { useEventTracking } from "@/hooks/useEventTracking";
@@ -352,7 +352,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       />
 
       {/* Engagement features */}
-      <DiscountPopup />
+      <MidnightDiscountPopup />
       <EngagementTracker />
     </>
   );

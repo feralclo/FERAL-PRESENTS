@@ -23,7 +23,7 @@ export function MidnightEventInfo({
   if (sections.length === 0) return null;
 
   return (
-    <div className="rounded-xl bg-foreground/[0.02] border border-foreground/[0.05] px-5 py-6 max-[480px]:px-4 max-[480px]:py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+    <div>
       {sections.map((section, i) => (
         <div key={section.title} className={i > 0 ? "mt-8 max-md:mt-6 pt-8 max-md:pt-6 border-t border-foreground/[0.04]" : ""}>
           <h2 className="font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.18em] uppercase mb-7 pb-4 border-b border-foreground/[0.06] text-foreground/60">

@@ -189,24 +189,32 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
                 {/* Mobile section divider — double-rule with depth */}
-                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-4">
+                <div className="lg:hidden order-[-2] mb-10 max-[480px]:mb-8 pt-4">
                   <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.10] to-transparent" />
                   <div className="h-px mt-2 bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent" />
                 </div>
 
-                {/* Lineup on mobile (above about) */}
-                {lineup.length > 0 && (
-                  <div className="lg:hidden order-[-1] mb-12 max-md:mb-10" data-reveal="1">
-                    <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
-                  </div>
-                )}
+                {/* Mobile content panel — lineup + event info in one cohesive surface */}
+                <div className="max-lg:rounded-xl max-lg:bg-foreground/[0.02] max-lg:border max-lg:border-foreground/[0.05] max-lg:p-5 max-[480px]:p-4 max-lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                  {/* Lineup on mobile (above about) */}
+                  {lineup.length > 0 && (
+                    <div className="lg:hidden mb-8 max-md:mb-6" data-reveal="1">
+                      <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
+                    </div>
+                  )}
 
-                <div data-reveal="2">
-                  <MidnightEventInfo
-                    aboutText={event.about_text}
-                    detailsText={event.details_text}
-                    description={event.description}
-                  />
+                  {/* Lineup/info separator on mobile */}
+                  {lineup.length > 0 && (
+                    <div className="lg:hidden h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent mb-8 max-md:mb-6" />
+                  )}
+
+                  <div data-reveal="2">
+                    <MidnightEventInfo
+                      aboutText={event.about_text}
+                      detailsText={event.details_text}
+                      description={event.description}
+                    />
+                  </div>
                 </div>
 
                 {/* Desktop lineup */}

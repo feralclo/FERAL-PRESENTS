@@ -24,15 +24,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mux needs the exact origin for CORS on the upload URL
-    const body = await request.json().catch(() => ({}));
-    const origin = body.origin || request.headers.get("origin") || "https://feral-presents.vercel.app";
-
     const upload = await mux.video.uploads.create({
       new_asset_settings: {
         playback_policy: ["public"],
       },
-      cors_origin: origin,
+      cors_origin: "*",
     });
 
     return NextResponse.json({

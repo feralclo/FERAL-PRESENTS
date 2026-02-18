@@ -153,6 +153,15 @@ function EmailIcon({ className }: { className?: string }) {
   );
 }
 
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ChevronIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none">
@@ -192,15 +201,35 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     }
     return "";
   });
+  const [capturedFirstName, setCapturedFirstName] = useState<string>(() => {
+    if (restoreData?.firstName) return restoreData.firstName;
+    if (typeof window !== "undefined") {
+      try { return sessionStorage.getItem("feral_checkout_first_name") || ""; } catch { return ""; }
+    }
+    return "";
+  });
+  const [capturedLastName, setCapturedLastName] = useState<string>(() => {
+    if (restoreData?.lastName) return restoreData.lastName;
+    if (typeof window !== "undefined") {
+      try { return sessionStorage.getItem("feral_checkout_last_name") || ""; } catch { return ""; }
+    }
+    return "";
+  });
 
-  // Persist restored email to sessionStorage so page refresh keeps it
+  // Persist restored data to sessionStorage so page refresh keeps it
   useEffect(() => {
     if (restoreData?.email && !isRestrictedCheckoutEmail(restoreData.email) && typeof window !== "undefined") {
       try {
         sessionStorage.setItem("feral_checkout_email", restoreData.email);
       } catch {}
     }
-  }, [restoreData?.email]);
+    if (restoreData?.firstName && typeof window !== "undefined") {
+      try { sessionStorage.setItem("feral_checkout_first_name", restoreData.firstName); } catch {}
+    }
+    if (restoreData?.lastName && typeof window !== "undefined") {
+      try { sessionStorage.setItem("feral_checkout_last_name", restoreData.lastName); } catch {}
+    }
+  }, [restoreData?.email, restoreData?.firstName, restoreData?.lastName]);
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
   const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
 
@@ -381,15 +410,21 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
         totalQty={totalQty}
         symbol={symbol}
         vatSettings={vatSettings}
-        onContinue={(email) => {
+        initialFirstName={capturedFirstName}
+        initialLastName={capturedLastName}
+        onContinue={({ email, firstName, lastName }) => {
           if (isRestrictedCheckoutEmail(email)) {
             setServiceUnavailable(true);
             return;
           }
           try {
             sessionStorage.setItem("feral_checkout_email", email);
+            sessionStorage.setItem("feral_checkout_first_name", firstName);
+            sessionStorage.setItem("feral_checkout_last_name", lastName);
           } catch {}
           setCapturedEmail(email);
+          setCapturedFirstName(firstName);
+          setCapturedLastName(lastName);
 
           // Fire-and-forget: create customer + abandoned cart
           fetch("/api/checkout/capture", {
@@ -397,6 +432,8 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
+              first_name: firstName,
+              last_name: lastName,
               event_id: event.id,
               items: cartLines.map((l) => ({
                 ticket_type_id: l.ticket_type_id,
@@ -427,7 +464,18 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
         vatSettings={vatSettings}
         onComplete={setCompletedOrder}
         capturedEmail={capturedEmail}
-        onChangeEmail={() => setCapturedEmail("")}
+        capturedFirstName={capturedFirstName}
+        capturedLastName={capturedLastName}
+        onChangeEmail={() => {
+          setCapturedEmail("");
+          setCapturedFirstName("");
+          setCapturedLastName("");
+          try {
+            sessionStorage.removeItem("feral_checkout_email");
+            sessionStorage.removeItem("feral_checkout_first_name");
+            sessionStorage.removeItem("feral_checkout_last_name");
+          } catch {}
+        }}
       />
     );
   }
@@ -444,7 +492,18 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       vatSettings={vatSettings}
       onComplete={setCompletedOrder}
       capturedEmail={capturedEmail}
-      onChangeEmail={() => setCapturedEmail("")}
+      capturedFirstName={capturedFirstName}
+      capturedLastName={capturedLastName}
+      onChangeEmail={() => {
+        setCapturedEmail("");
+        setCapturedFirstName("");
+        setCapturedLastName("");
+        try {
+          sessionStorage.removeItem("feral_checkout_email");
+          sessionStorage.removeItem("feral_checkout_first_name");
+          sessionStorage.removeItem("feral_checkout_last_name");
+        } catch {}
+      }}
       restoreData={restoreData}
       stripeReady={stripeReady}
       stripePromise={stripePromise}
@@ -574,6 +633,8 @@ function StripeCheckoutPage({
   vatSettings,
   onComplete,
   capturedEmail,
+  capturedFirstName,
+  capturedLastName,
   onChangeEmail,
   restoreData,
   stripeReady,
@@ -588,6 +649,8 @@ function StripeCheckoutPage({
   vatSettings: VatSettings | null;
   onComplete: (order: Order) => void;
   capturedEmail: string;
+  capturedFirstName: string;
+  capturedLastName: string;
   onChangeEmail: () => void;
   restoreData?: RestoreData | null;
   stripeReady: boolean;
@@ -674,6 +737,8 @@ function StripeCheckoutPage({
                 discountCode={appliedDiscount?.code || null}
                 totalAmount={total}
                 capturedEmail={capturedEmail}
+                capturedFirstName={capturedFirstName}
+                capturedLastName={capturedLastName}
                 onChangeEmail={onChangeEmail}
                 restoreData={restoreData}
               />
@@ -717,6 +782,8 @@ function SinglePageCheckoutForm({
   discountCode,
   totalAmount,
   capturedEmail,
+  capturedFirstName,
+  capturedLastName,
   onChangeEmail,
   restoreData,
 }: {
@@ -731,6 +798,8 @@ function SinglePageCheckoutForm({
   discountCode: string | null;
   totalAmount: number;
   capturedEmail: string;
+  capturedFirstName: string;
+  capturedLastName: string;
   onChangeEmail: () => void;
   restoreData?: RestoreData | null;
 }) {
@@ -740,8 +809,8 @@ function SinglePageCheckoutForm({
   const { trackEngagement } = useTraffic();
 
   const [email, setEmail] = useState(capturedEmail);
-  const [firstName, setFirstName] = useState(restoreData?.firstName || "");
-  const [lastName, setLastName] = useState(restoreData?.lastName || "");
+  const [firstName, setFirstName] = useState(capturedFirstName || restoreData?.firstName || "");
+  const [lastName, setLastName] = useState(capturedLastName || restoreData?.lastName || "");
   const [nameOnCard, setNameOnCard] = useState("");
   const [country, setCountry] = useState(event.currency === "EUR" ? "BE" : "GB");
   const [processing, setProcessing] = useState(false);
@@ -1158,29 +1227,93 @@ function SinglePageCheckoutForm({
           </div>
         )}
 
+        {/* ── Step indicator ── */}
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
+          <div className="w-5 h-[3px] rounded-full bg-white/60" />
+        </div>
+
         {/* ── CHECKOUT FORM ── */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Contact */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
               Contact
             </h2>
-            {capturedEmail ? (
-              <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
-                  <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {email}
-                  </span>
+            {capturedEmail && capturedFirstName && capturedLastName ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                    <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {email}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
+                    onClick={onChangeEmail}
+                  >
+                    Change
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
-                  onClick={onChangeEmail}
-                >
-                  Change
-                </button>
+                <div className="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <UserIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                    <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {firstName} {lastName}
+                    </span>
+                  </div>
+                </div>
               </div>
+            ) : capturedEmail ? (
+              <>
+                <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                    <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {email}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
+                    onClick={onChangeEmail}
+                  >
+                    Change
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="checkout-first-name" className="sr-only">First name</label>
+                    <input
+                      id="checkout-first-name"
+                      type="text"
+                      className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      onBlur={captureNameOnBlur}
+                      placeholder="First name"
+                      required
+                      autoComplete="given-name"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="checkout-last-name" className="sr-only">Last name</label>
+                    <input
+                      id="checkout-last-name"
+                      type="text"
+                      className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      onBlur={captureNameOnBlur}
+                      placeholder="Last name"
+                      required
+                      autoComplete="family-name"
+                    />
+                  </div>
+                </div>
+              </>
             ) : (
               <>
                 <label htmlFor="checkout-email" className="sr-only">Email</label>
@@ -1199,45 +1332,38 @@ function SinglePageCheckoutForm({
                   <EmailIcon className="w-3.5 h-3.5 text-foreground/35 shrink-0" />
                   Your tickets will be sent to this email
                 </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="checkout-first-name" className="sr-only">First name</label>
+                    <input
+                      id="checkout-first-name"
+                      type="text"
+                      className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      onBlur={captureNameOnBlur}
+                      placeholder="First name"
+                      required
+                      autoComplete="given-name"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="checkout-last-name" className="sr-only">Last name</label>
+                    <input
+                      id="checkout-last-name"
+                      type="text"
+                      className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      onBlur={captureNameOnBlur}
+                      placeholder="Last name"
+                      required
+                      autoComplete="family-name"
+                    />
+                  </div>
+                </div>
               </>
             )}
-          </div>
-
-          {/* Customer Details */}
-          <div className="flex flex-col gap-4">
-            <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
-              Details
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="checkout-first-name" className="sr-only">First name</label>
-                <input
-                  id="checkout-first-name"
-                  type="text"
-                  className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  onBlur={captureNameOnBlur}
-                  placeholder="First name"
-                  required
-                  autoComplete="given-name"
-                />
-              </div>
-              <div>
-                <label htmlFor="checkout-last-name" className="sr-only">Last name</label>
-                <input
-                  id="checkout-last-name"
-                  type="text"
-                  className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  onBlur={captureNameOnBlur}
-                  placeholder="Last name"
-                  required
-                  autoComplete="family-name"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Payment */}
@@ -1529,6 +1655,8 @@ function TestModeCheckout({
   vatSettings,
   onComplete,
   capturedEmail,
+  capturedFirstName,
+  capturedLastName,
   onChangeEmail,
 }: {
   slug: string;
@@ -1540,10 +1668,12 @@ function TestModeCheckout({
   vatSettings: VatSettings | null;
   onComplete: (order: Order) => void;
   capturedEmail: string;
+  capturedFirstName: string;
+  capturedLastName: string;
   onChangeEmail: () => void;
 }) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState(capturedFirstName || "");
+  const [lastName, setLastName] = useState(capturedLastName || "");
   const [email, setEmail] = useState(capturedEmail);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -1649,27 +1779,91 @@ function TestModeCheckout({
         <div className="flex flex-col lg:flex-row max-w-[1200px] mx-auto w-full">
           <div className="flex-1 min-w-0 lg:pr-8">
             <div className="max-w-[620px] mx-auto py-8 px-6 pb-[max(48px,env(safe-area-inset-bottom))]">
+              {/* ── Step indicator ── */}
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
+                <div className="w-5 h-[3px] rounded-full bg-white/60" />
+              </div>
+
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                   <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
                     Your Details
                   </h2>
-                  {capturedEmail ? (
-                    <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
-                        <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {email}
-                        </span>
+                  {capturedEmail && capturedFirstName && capturedLastName ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                          <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                            {email}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
+                          onClick={onChangeEmail}
+                        >
+                          Change
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
-                        onClick={onChangeEmail}
-                      >
-                        Change
-                      </button>
+                      <div className="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <UserIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                          <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                            {firstName} {lastName}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                  ) : capturedEmail ? (
+                    <>
+                      <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-lg py-3.5 px-4">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <EmailIcon className="w-4 h-4 text-foreground/35 shrink-0" />
+                          <span className="font-[family-name:var(--font-sans)] text-sm text-foreground/80 overflow-hidden text-ellipsis whitespace-nowrap">
+                            {email}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/50 shrink-0 py-1 px-2 transition-colors duration-150 hover:text-foreground hover:underline touch-manipulation"
+                          onClick={onChangeEmail}
+                        >
+                          Change
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="test-first-name" className="sr-only">First name</label>
+                          <input
+                            id="test-first-name"
+                            type="text"
+                            className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            onBlur={captureNameOnBlur}
+                            placeholder="First name"
+                            required
+                            autoComplete="given-name"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="test-last-name" className="sr-only">Last name</label>
+                          <input
+                            id="test-last-name"
+                            type="text"
+                            className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            onBlur={captureNameOnBlur}
+                            placeholder="Last name"
+                            required
+                            autoComplete="family-name"
+                          />
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <label htmlFor="test-email" className="sr-only">Email</label>
@@ -1688,38 +1882,38 @@ function TestModeCheckout({
                         <EmailIcon className="w-3.5 h-3.5 text-foreground/35 shrink-0" />
                         Your tickets will be sent to this email
                       </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="test-first-name" className="sr-only">First name</label>
+                          <input
+                            id="test-first-name"
+                            type="text"
+                            className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            onBlur={captureNameOnBlur}
+                            placeholder="First name"
+                            required
+                            autoComplete="given-name"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="test-last-name" className="sr-only">Last name</label>
+                          <input
+                            id="test-last-name"
+                            type="text"
+                            className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            onBlur={captureNameOnBlur}
+                            placeholder="Last name"
+                            required
+                            autoComplete="family-name"
+                          />
+                        </div>
+                      </div>
                     </>
                   )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label htmlFor="test-first-name" className="sr-only">First name</label>
-                      <input
-                        id="test-first-name"
-                        type="text"
-                        className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        onBlur={captureNameOnBlur}
-                        placeholder="First name"
-                        required
-                        autoComplete="given-name"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="test-last-name" className="sr-only">Last name</label>
-                      <input
-                        id="test-last-name"
-                        type="text"
-                        className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30]"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        onBlur={captureNameOnBlur}
-                        placeholder="Last name"
-                        required
-                        autoComplete="family-name"
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 {error && (
@@ -1772,6 +1966,8 @@ function EmailCapture({
   totalQty,
   symbol,
   vatSettings,
+  initialFirstName,
+  initialLastName,
   onContinue,
 }: {
   slug: string;
@@ -1781,9 +1977,18 @@ function EmailCapture({
   totalQty: number;
   symbol: string;
   vatSettings: VatSettings | null;
-  onContinue: (email: string) => void;
+  initialFirstName?: string;
+  initialLastName?: string;
+  onContinue: (data: { email: string; firstName: string; lastName: string }) => void;
 }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      try { return sessionStorage.getItem("feral_checkout_email") || ""; } catch { return ""; }
+    }
+    return "";
+  });
+  const [firstName, setFirstName] = useState(() => initialFirstName || "");
+  const [lastName, setLastName] = useState(() => initialLastName || "");
   const [error, setError] = useState("");
   const { trackEngagement } = useTraffic();
 
@@ -1805,11 +2010,19 @@ function EmailCapture({
         setError("Please enter a valid email address.");
         return;
       }
+      if (!firstName.trim() || !lastName.trim()) {
+        setError("Please enter your first and last name.");
+        return;
+      }
 
       trackEngagement("email_captured");
-      onContinue(email.trim().toLowerCase());
+      onContinue({
+        email: email.trim().toLowerCase(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
     },
-    [email, trackEngagement, onContinue]
+    [email, firstName, lastName, trackEngagement, onContinue]
   );
 
   // Event metadata for context
@@ -1869,16 +2082,22 @@ function EmailCapture({
             </div>
           </div>
 
-          {/* ── Email capture section ────────────────────────────── */}
-          <div className="mt-8 max-sm:mt-7">
+          {/* ── Step indicator ────────────────────────────────────── */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-5 h-[3px] rounded-full bg-white/60" />
+            <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
+          </div>
+
+          {/* ── Your details section ─────────────────────────────── */}
+          <div className="mt-6 max-sm:mt-5">
             <h1 className="font-[family-name:var(--font-sans)] text-lg font-semibold tracking-[-0.2px] text-foreground leading-snug m-0 mb-1.5">
-              Where should we send your tickets?
+              Your details
             </h1>
             <p className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/40 leading-relaxed m-0 mb-5">
-              Your tickets and confirmation will be emailed here
+              We&rsquo;ll send your tickets and confirmation to this email
             </p>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               <label htmlFor="capture-email" className="sr-only">
                 Email address
               </label>
@@ -1897,6 +2116,35 @@ function EmailCapture({
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="capture-first-name" className="sr-only">First name</label>
+                  <input
+                    id="capture-first-name"
+                    type="text"
+                    className="w-full bg-white/[0.04] border border-white/[0.10] rounded-xl text-foreground font-[family-name:var(--font-sans)] text-base py-4 px-4 outline-none transition-colors duration-150 placeholder:text-foreground/30 focus:border-white/[0.30] focus:bg-white/[0.06]"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="First name"
+                    required
+                    autoComplete="given-name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="capture-last-name" className="sr-only">Last name</label>
+                  <input
+                    id="capture-last-name"
+                    type="text"
+                    className="w-full bg-white/[0.04] border border-white/[0.10] rounded-xl text-foreground font-[family-name:var(--font-sans)] text-base py-4 px-4 outline-none transition-colors duration-150 placeholder:text-foreground/30 focus:border-white/[0.30] focus:bg-white/[0.06]"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last name"
+                    required
+                    autoComplete="family-name"
+                  />
+                </div>
+              </div>
+
               {error && (
                 <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
                   {error}
@@ -1905,7 +2153,7 @@ function EmailCapture({
 
               <button
                 type="submit"
-                className="w-full bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-xl transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99] touch-manipulation"
+                className="w-full bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-xl transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99] touch-manipulation mt-0.5"
               >
                 Continue to payment
               </button>

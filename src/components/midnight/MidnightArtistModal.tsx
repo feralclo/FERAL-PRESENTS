@@ -56,29 +56,38 @@ export function MidnightArtistModal({
 }: MidnightArtistModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showNameOverlay, setShowNameOverlay] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [showNameOverlay, setShowNameOverlay] = useState(false);
   const nameOverlayTimeout = useRef<NodeJS.Timeout>(undefined);
 
-  // Reset state when artist changes or modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setIsPlaying(false);
-      setShowNameOverlay(false);
-      setVideoError(false);
-      if (nameOverlayTimeout.current) {
-        clearTimeout(nameOverlayTimeout.current);
-      }
-    }
-  }, [isOpen, artist?.id]);
-
-  // Pause video when modal closes
+  // Reset all video state when modal opens/closes or artist changes
   useEffect(() => {
     if (!isOpen && videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-  }, [isOpen]);
+    setIsPlaying(false);
+    setVideoReady(false);
+    setVideoError(false);
+    setShowNameOverlay(false);
+    if (nameOverlayTimeout.current) {
+      clearTimeout(nameOverlayTimeout.current);
+    }
+  }, [isOpen, artist?.id]);
+
+  // When metadata loads, seek to 0.1s to display first frame
+  // (more reliable than #t= URL fragment across browsers)
+  const handleLoadedMetadata = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0.1;
+    }
+  }, []);
+
+  // Video has enough data to display the current frame
+  const handleCanPlay = useCallback(() => {
+    setVideoReady(true);
+  }, []);
 
   const handleVideoTap = useCallback(() => {
     const video = videoRef.current;
@@ -86,7 +95,9 @@ export function MidnightArtistModal({
 
     if (video.paused) {
       video.currentTime = 0; // Start from beginning on first play
-      video.play();
+      video.play().catch(() => {
+        // Autoplay rejected — user needs to interact first (edge case)
+      });
       setIsPlaying(true);
 
       // Show name overlay briefly on play
@@ -136,84 +147,124 @@ export function MidnightArtistModal({
                   background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
                 }}
               >
-                {/* Video — CSS crops to max 4:5 (object-fit: cover).
+                {/* Video viewport — CSS crops to max 4:5 (object-fit: cover).
                     Wider ratios (16:9, etc.) display at native ratio.
                     Taller ratios (9:16) get center-cropped to 4:5. */}
                 <div
-                  className="relative w-full cursor-pointer"
+                  className={`relative w-full ${videoReady && !videoError ? "cursor-pointer" : ""}`}
                   style={{
                     aspectRatio: "4 / 5",
                     maxHeight: "380px",
                   }}
-                  onClick={!videoError ? handleVideoTap : undefined}
+                  onClick={videoReady && !videoError ? handleVideoTap : undefined}
                 >
-                  {videoError ? (
-                    /* Fallback when video can't play — show poster or dark placeholder */
-                    <>
+                  {/* Video element — hidden until ready, removed on error */}
+                  {!videoError && (
+                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                    <video
+                      ref={videoRef}
+                      src={artist.video_url!}
+                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                        videoReady ? "opacity-100" : "opacity-0"
+                      }`}
+                      playsInline
+                      muted
+                      preload="metadata"
+                      poster={artist.image || undefined}
+                      onLoadedMetadata={handleLoadedMetadata}
+                      onCanPlay={handleCanPlay}
+                      onEnded={handleVideoEnded}
+                      onError={handleVideoError}
+                    />
+                  )}
+
+                  {/* Loading skeleton — visible while video metadata loads */}
+                  {!videoReady && !videoError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-foreground/[0.04]">
+                      <div className="w-14 h-14 rounded-full bg-foreground/[0.06] flex items-center justify-center animate-pulse">
+                        <svg
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="ml-1 text-foreground/20"
+                        >
+                          <polygon points="5,3 19,12 5,21" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error state — clearly visible fallback */}
+                  {videoError && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
                       {artist.image ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={artist.image}
-                          alt={artist.name}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover brightness-[0.3]"
                         />
                       ) : (
-                        <div className="absolute inset-0 bg-foreground/[0.03]" />
+                        <div className="absolute inset-0 bg-foreground/[0.05]" />
                       )}
-                      <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
-                        <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-                          {artist.name}
-                        </h3>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                      <video
-                        ref={videoRef}
-                        src={`${artist.video_url!}#t=0.1`}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        playsInline
-                        muted
-                        preload="metadata"
-                        poster={artist.image || undefined}
-                        onEnded={handleVideoEnded}
-                        onError={handleVideoError}
-                      />
-
-                      {/* Play button overlay — fades out when playing */}
-                      <div
-                        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${
-                          isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
-                        }`}
-                      >
-                        <div className="w-14 h-14 rounded-full bg-black/40 border border-white/15 backdrop-blur-sm flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.4)]">
+                      <div className="relative z-10 flex flex-col items-center gap-2.5">
+                        <div className="w-12 h-12 rounded-full bg-black/30 border border-foreground/[0.08] flex items-center justify-center">
                           <svg
-                            width="22"
-                            height="22"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
-                            fill="white"
-                            className="ml-1"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-foreground/25"
                           >
-                            <polygon points="5,3 19,12 5,21" />
+                            <rect x="2" y="2" width="20" height="20" rx="2" />
+                            <path d="M10 9l5 3-5 3V9z" />
                           </svg>
                         </div>
+                        <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35 tracking-[0.01em]">
+                          Video unavailable
+                        </span>
                       </div>
-
-                      {/* Artist name overlay — appears briefly on play */}
-                      <div
-                        className={`absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/20 to-transparent transition-all duration-700 ${
-                          showNameOverlay
-                            ? "opacity-100 translate-y-0"
-                            : "opacity-0 translate-y-2"
-                        }`}
-                      >
-                        <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-                          {artist.name}
-                        </h3>
-                      </div>
-                    </>
+                    </div>
                   )}
+
+                  {/* Play button overlay — fades out when playing */}
+                  {videoReady && (
+                    <div
+                      className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${
+                        isPlaying ? "opacity-0 pointer-events-none" : "opacity-100 cursor-pointer"
+                      }`}
+                    >
+                      <div className="w-14 h-14 rounded-full bg-black/40 border border-white/15 backdrop-blur-sm flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.4)]">
+                        <svg
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="white"
+                          className="ml-1"
+                        >
+                          <polygon points="5,3 19,12 5,21" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Artist name overlay — appears briefly on play */}
+                  <div
+                    className={`absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/20 to-transparent transition-all duration-700 ${
+                      showNameOverlay
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-2"
+                    }`}
+                  >
+                    <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+                      {artist.name}
+                    </h3>
+                  </div>
 
                   {/* Subtle glass rim highlight (top edge) */}
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent" />

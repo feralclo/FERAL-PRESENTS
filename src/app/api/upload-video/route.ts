@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate a unique path: artists/{timestamp}_{filename}
-    const ext = filename.split(".").pop() || "mp4";
     const safeName = filename
       .replace(/[^a-zA-Z0-9._-]/g, "_")
       .toLowerCase();

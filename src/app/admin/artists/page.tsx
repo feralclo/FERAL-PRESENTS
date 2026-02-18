@@ -27,7 +27,7 @@ import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
-import { SUPABASE_URL } from "@/lib/constants";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
 import type { Artist } from "@/types/artists";
 
 // Mux Player — dynamic import to avoid SSR issues (Web Component)
@@ -164,9 +164,7 @@ export default function ArtistsPage() {
       const { token, path, publicUrl } = signedData;
 
       // Step 2: Upload via TUS resumable protocol (handles large files in 6MB chunks)
-      // Direct storage hostname gives better upload performance
-      const storageHost = SUPABASE_URL.replace(".supabase.co", ".supabase.co");
-      const tusEndpoint = `${storageHost}/storage/v1/upload/resumable`;
+      const tusEndpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
 
       setVideoStatus("Uploading...");
 
@@ -175,7 +173,10 @@ export default function ArtistsPage() {
           endpoint: tusEndpoint,
           retryDelays: [0, 3000, 5000, 10000, 20000],
           headers: {
+            // apikey identifies the project; x-signature authorizes the upload
+            apikey: SUPABASE_ANON_KEY,
             "x-upsert": "true",
+            "x-signature": token,
           },
           uploadDataDuringCreation: true,
           removeFingerprintOnSuccess: true,
@@ -201,14 +202,10 @@ export default function ArtistsPage() {
           onSuccess: () => resolve(),
           onShouldRetry: (err) => {
             const status = err.originalResponse?.getStatus();
-            // Don't retry on auth errors
             if (status === 403 || status === 401) return false;
             return true;
           },
         });
-
-        // Use signed token for auth (no service key exposed to browser)
-        upload.options.headers!["x-signature"] = token;
 
         // Check for previous uploads to resume
         upload.findPreviousUploads().then((previousUploads) => {

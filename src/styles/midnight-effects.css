@@ -835,6 +835,12 @@ html.checkout-active .noise {
   transition: none !important;
 }
 
+/* Hint nudge — smooth deceleration like a finger pushing */
+.midnight-artist-hint {
+  transition: transform 500ms cubic-bezier(0.25, 1, 0.5, 1),
+              opacity 300ms ease-out;
+}
+
 /* Card shadow transition (smooth lift on drag start/end) */
 .midnight-artist-card {
   transition: box-shadow 300ms ease;
@@ -906,7 +912,8 @@ html.checkout-active .noise {
     transition: none;
   }
   .midnight-artist-swipe,
-  .midnight-artist-snapback {
+  .midnight-artist-snapback,
+  .midnight-artist-hint {
     transition: none;
   }
   .midnight-artist-edge-hint,

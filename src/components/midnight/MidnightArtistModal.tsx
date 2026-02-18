@@ -11,7 +11,7 @@ import {
 import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Artist } from "@/types/artists";
 
-// One-shot edge hint — shows once per session
+// One-shot swipe hint — shows once per session
 let hasShownEdgeHint = false;
 
 // Mux Player — dynamic import to avoid SSR issues (it's a Web Component)
@@ -27,7 +27,7 @@ interface MidnightArtistModalProps {
   onNavigate: (index: number) => void;
 }
 
-type SwipePhase = "idle" | "dragging" | "snapping" | "pre-exit" | "exiting";
+type SwipePhase = "idle" | "dragging" | "snapping" | "pre-exit" | "exiting" | "hint-out" | "hint-back";
 
 export function MidnightArtistModal({
   artists,
@@ -53,9 +53,6 @@ export function MidnightArtistModal({
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lockRef = useRef<"h" | "v" | null>(null);
 
-  // Swipe affordance — edge glow + arrow pulse on first open
-  const [showEdgeHint, setShowEdgeHint] = useState(false);
-
   // Callback ref — guarantees touch listener attaches after Radix portal mount
   const [cardEl, setCardEl] = useState<HTMLDivElement | null>(null);
 
@@ -80,16 +77,23 @@ export function MidnightArtistModal({
     setIsMuted(true);
   }, [artist?.id, isOpen]);
 
-  // ── Swipe affordance — edge glow on first open with multiple artists ──
+  // ── Swipe hint — physically nudge card left to show next artist peeking ──
   useEffect(() => {
-    if (isOpen && multi && !hasShownEdgeHint) {
+    if (isOpen && multi && canGoNext && !hasShownEdgeHint && phase === "idle") {
       hasShownEdgeHint = true;
       // Delay until open animation settles
-      const t = setTimeout(() => setShowEdgeHint(true), 400);
-      return () => clearTimeout(t);
+      const t = setTimeout(() => {
+        setDragOffset(-50);
+        setPhase("hint-out");
+      }, 600);
+      // Safety: return to idle even if transitionEnd doesn't fire (reduced-motion)
+      const safety = setTimeout(() => {
+        setPhase(p => (p === "hint-out" || p === "hint-back") ? "idle" : p);
+        setDragOffset(d => d !== 0 ? 0 : d);
+      }, 3000);
+      return () => { clearTimeout(t); clearTimeout(safety); };
     }
-    if (!isOpen) setShowEdgeHint(false);
-  }, [isOpen, multi]);
+  }, [isOpen, multi, canGoNext, phase]);
 
   // ── Video sync (MuxPlayer muted state) ──
   useEffect(() => {
@@ -197,6 +201,14 @@ export function MidnightArtistModal({
         setPhase("idle");
         setDragOffset(0);
       } else if (phase === "snapping") {
+        setPhase("idle");
+      } else if (phase === "hint-out") {
+        // Brief pause at peek position, then snap back
+        setTimeout(() => {
+          setDragOffset(0);
+          setPhase("hint-back");
+        }, 250);
+      } else if (phase === "hint-back") {
         setPhase("idle");
       }
     },
@@ -307,6 +319,10 @@ export function MidnightArtistModal({
       adjIdx = currentIndex - 1;
       adjArtist = artists[adjIdx];
     }
+  } else if (phase === "hint-out" || phase === "hint-back") {
+    // Hint always peeks at the next artist
+    adjIdx = currentIndex + 1;
+    adjArtist = artists[adjIdx] ?? null;
   }
 
   // Current card position
@@ -326,6 +342,8 @@ export function MidnightArtistModal({
   } else if (phase === "exiting") {
     currentX = exitDir === "left" ? -(CARD_W + GAP) : CARD_W + GAP;
     currentOpacity = 0;
+  } else if (phase === "hint-out") {
+    currentX = dragOffset; // -50
   }
 
   // Adjacent card position
@@ -339,6 +357,10 @@ export function MidnightArtistModal({
     adjX = exitDir === "left" ? CARD_W + GAP : -(CARD_W + GAP);
   } else if (phase === "exiting") {
     adjX = 0;
+  } else if (phase === "hint-out") {
+    adjX = CARD_W + GAP + dragOffset; // peeks in from right
+  } else if (phase === "hint-back") {
+    adjX = CARD_W + GAP; // slides back off-screen right
   }
 
   // Transition class
@@ -346,10 +368,12 @@ export function MidnightArtistModal({
   if (phase === "dragging") txClass = "midnight-artist-dragging";
   else if (phase === "exiting") txClass = "midnight-artist-swipe";
   else if (phase === "snapping") txClass = "midnight-artist-snapback";
+  else if (phase === "hint-out") txClass = "midnight-artist-hint";
+  else if (phase === "hint-back") txClass = "midnight-artist-snapback";
 
   const showAdj =
     adjArtist !== null &&
-    (phase === "dragging" || phase === "pre-exit" || phase === "exiting");
+    (phase === "dragging" || phase === "pre-exit" || phase === "exiting" || phase === "hint-out" || phase === "hint-back");
 
   if (!artist) return null;
 
@@ -732,7 +756,7 @@ export function MidnightArtistModal({
                       canGoNext
                         ? "bg-white/[0.06] border border-white/[0.10] text-white/50 hover:bg-white/[0.10] hover:text-white/70 cursor-pointer active:scale-90"
                         : "text-white/[0.08] cursor-default"
-                    } ${showEdgeHint && canGoNext ? "midnight-artist-nav-hint" : "transition-all"}`}
+                    } transition-all`}
                     disabled={!canGoNext}
                     aria-label="Next artist"
                   >
@@ -753,16 +777,6 @@ export function MidnightArtistModal({
               )}
             </div>
 
-            {/* ── Edge glow hint — suggests "swipe right for more" ── */}
-            {showEdgeHint && multi && (
-              <div
-                className="absolute top-0 right-0 bottom-0 w-10 pointer-events-none z-20 midnight-artist-edge-hint"
-                style={{
-                  background:
-                    "linear-gradient(to left, rgba(255,255,255,0.07), transparent)",
-                }}
-              />
-            )}
           </div>
 
           {/* ═══ ADJACENT CARD — preview that slides in during drag/transition ═══ */}
@@ -776,35 +790,39 @@ export function MidnightArtistModal({
               }}
             >
               <div className="px-6 pt-7 pb-5 max-[380px]:px-5 max-[380px]:pt-6 max-[380px]:pb-4">
-                {/* Video placeholder — Mux thumbnail (freeze frame) or fallback */}
+                {/* Video placeholder — matches current card's glass frame treatment */}
                 {adjHasVideo && (
                   <div className="mb-5">
                     <div
-                      className="relative rounded-2xl overflow-hidden border border-foreground/[0.10]"
+                      className="relative rounded-2xl overflow-hidden border border-foreground/[0.10] shadow-[0_0_30px_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.06)]"
                       style={{
-                        aspectRatio: "4 / 5",
-                        maxHeight: "320px",
                         background:
                           "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
                       }}
                     >
-                      {adjThumbnail ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={adjThumbnail}
-                          alt=""
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : adjArtist.image ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={adjArtist.image}
-                          alt=""
-                          className="absolute inset-0 w-full h-full object-cover opacity-60"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-foreground/[0.03]" />
-                      )}
+                      <div
+                        className="relative w-full"
+                        style={{ aspectRatio: "4 / 5", maxHeight: "320px" }}
+                      >
+                        {adjThumbnail ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={adjThumbnail}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : adjArtist.image ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={adjArtist.image}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover opacity-60"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-foreground/[0.03]" />
+                        )}
+                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none z-10" />
+                      </div>
                     </div>
                   </div>
                 )}

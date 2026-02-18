@@ -22,6 +22,9 @@ export interface EventSettings {
   // Map ticket_type ID → group name (null = default ungrouped section)
   ticket_group_map?: Record<string, string | null>;
 
+  /** Show sticky checkout bar on mobile (default: true) */
+  sticky_checkout_bar?: boolean;
+
   // Any additional dynamic fields
   [key: string]: unknown;
 }

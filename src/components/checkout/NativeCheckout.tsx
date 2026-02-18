@@ -185,7 +185,16 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           sessionStorage.removeItem("feral_checkout_email");
           return "";
         }
-        return stored;
+        if (stored) return stored;
+        // Fall back to popup email — if the user already entered their email
+        // in the discount popup, skip the email capture gate
+        const popupEmail = sessionStorage.getItem("feral_popup_email") || "";
+        if (popupEmail && !isRestrictedCheckoutEmail(popupEmail)) {
+          // Promote to checkout email so it persists correctly
+          sessionStorage.setItem("feral_checkout_email", popupEmail);
+          return popupEmail;
+        }
+        return "";
       } catch {
         return "";
       }
@@ -201,6 +210,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       } catch {}
     }
   }, [restoreData?.email]);
+
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
   const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
 
@@ -287,6 +297,37 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   const totalQty = cartLines.reduce((sum, l) => sum + l.qty, 0);
   const symbol = getCurrencySymbol(event.currency);
   const isStripe = event.payment_method === "stripe";
+
+  // Fire capture API when popup email was used to skip the email gate.
+  // The normal EmailCapture onContinue handler fires this, but when we
+  // skip the gate entirely we need to fire it ourselves.
+  useEffect(() => {
+    if (!capturedEmail || cartLines.length === 0) return;
+    try {
+      const alreadyCaptured = sessionStorage.getItem("feral_checkout_captured");
+      if (alreadyCaptured) return;
+      const popupEmail = sessionStorage.getItem("feral_popup_email");
+      if (!popupEmail || popupEmail !== capturedEmail) return;
+      sessionStorage.setItem("feral_checkout_captured", "1");
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: capturedEmail,
+          event_id: event.id,
+          items: cartLines.map((l) => ({
+            ticket_type_id: l.ticket_type_id,
+            qty: l.qty,
+            name: l.name,
+            price: l.price,
+            merch_size: l.merch_size,
+          })),
+          subtotal,
+          currency: event.currency || "GBP",
+        }),
+      }).catch(() => {});
+    } catch {}
+  }, [capturedEmail, cartLines, subtotal, event.id, event.currency]);
 
   // ── Stripe pre-initialization ─────────────────────────────────────────
   const [stripeReady, setStripeReady] = useState(false);

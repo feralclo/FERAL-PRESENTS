@@ -347,9 +347,10 @@ export function MidnightTicketWidget({
                 {!codeOpen ? (
                   <button
                     type="button"
-                    className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-foreground/25 hover:text-foreground/40 transition-colors duration-200 cursor-pointer bg-transparent border-0 p-0"
+                    className="inline-flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/40 hover:text-foreground/60 border-b border-dashed border-foreground/15 hover:border-foreground/30 transition-colors duration-200 cursor-pointer bg-transparent border-t-0 border-x-0 p-0 pb-px"
                     onClick={() => setCodeOpen(true)}
                   >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
                     Have a code?
                   </button>
                 ) : (

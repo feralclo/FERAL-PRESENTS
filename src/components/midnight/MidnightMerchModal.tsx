@@ -56,10 +56,8 @@ export function MidnightMerchModal({
   const price = merchPrice ?? 0;
   const sizes = (availableSizes || TEE_SIZES) as TeeSize[];
 
-  // Build the inclusion headline
-  const inclusionHeadline = ticketName
-    ? `Includes ${ticketName} + T-Shirt`
-    : vipBadge || "Includes Event Ticket + T-Shirt";
+  // The ticket name IS the bundle name — no hardcoded merch type suffix
+  const bundleName = ticketName || vipBadge || "";
 
   const [activeView, setActiveView] = useState("back");
   const [selectedSize, setSelectedSize] = useState<TeeSize>(
@@ -295,22 +293,26 @@ export function MidnightMerchModal({
                   </span>
                 </div>
 
-                {/* What's included — compact glass container */}
-                <div className="w-full rounded-lg bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] p-3 max-md:p-2.5 mb-4 max-md:mb-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                  <p className="font-[family-name:var(--font-sans)] text-[11px] font-bold tracking-[0.02em] text-white/80 max-md:text-center">
-                    {inclusionHeadline}
+                {/* What's included — ticket bundle info */}
+                {bundleName && (
+                  <div className="w-full rounded-lg bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] p-3 max-md:p-2.5 mb-3 max-md:mb-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <p className="font-[family-name:var(--font-sans)] text-[11px] font-bold tracking-[0.02em] text-white/80 max-md:text-center">
+                      {bundleName}
+                    </p>
+                    {ticketDescription && (
+                      <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/30 mt-0.5 max-md:text-center">
+                        {ticketDescription}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Merch description — about the physical product */}
+                {description && (
+                  <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/35 mb-3 max-md:mb-2.5 max-md:text-center">
+                    {description}
                   </p>
-                  {ticketDescription && (
-                    <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/30 mt-0.5 max-md:text-center">
-                      {ticketDescription}
-                    </p>
-                  )}
-                  {!ticketDescription && description && (
-                    <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/30 mt-0.5 max-md:text-center">
-                      {description}
-                    </p>
-                  )}
-                </div>
+                )}
 
                 {/* Size selector */}
                 <MidnightSizeSelector

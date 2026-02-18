@@ -1775,7 +1775,6 @@ function EmailCapture({
 }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [summaryOpen, setSummaryOpen] = useState(false);
   const { trackEngagement } = useTraffic();
 
   useEffect(() => {
@@ -1803,99 +1802,110 @@ function EmailCapture({
     [email, trackEngagement, onContinue]
   );
 
+  // Event metadata for context
+  const eventDate = event.date_start
+    ? new Date(event.date_start).toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    : null;
+  const eventTime = event.doors_time || null;
+  const eventVenue = event.venue_name || null;
+
   return (
     <div className="midnight-checkout min-h-screen flex flex-col">
       <CheckoutHeader slug={slug} />
       <CheckoutTimer active={true} />
 
-      {/* Collapsible order summary */}
-      <div className="border-b border-white/[0.06] bg-[rgba(20,20,20,0.4)] w-full">
-        <button
-          type="button"
-          className="flex items-center justify-between w-full max-w-[1200px] mx-auto py-3.5 px-6 bg-transparent touch-manipulation"
-          onClick={() => setSummaryOpen((o) => !o)}
-        >
-          <span className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-foreground/50 shrink-0" viewBox="0 0 24 24" fill="none">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-            </svg>
-            <span className="font-[family-name:var(--font-sans)] text-[13px] font-medium text-foreground/50">
-              Order summary ({cartLines.length} {cartLines.length === 1 ? "item" : "items"})
-            </span>
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">
-              {symbol}{subtotal.toFixed(2)}
-            </span>
-            <ChevronIcon className={`w-4 h-4 text-foreground/50 transition-transform duration-250 ${summaryOpen ? "rotate-180" : ""}`} />
-          </span>
-        </button>
-        <div className={`midnight-summary-collapse${summaryOpen ? " midnight-summary-collapse--open" : ""}`}>
-          <div className="max-w-[1200px] mx-auto px-6 pb-4">
-            <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
-          </div>
-        </div>
-      </div>
+      {/* Main content — vertically centered */}
+      <div className="flex-1 flex items-start lg:items-center justify-center py-8 max-sm:py-6 px-5">
+        <div className="max-w-[460px] w-full">
 
-      {/* Email capture form */}
-      <div className="flex-1 flex items-center justify-center py-12 px-6">
-        <div className="max-w-[440px] w-full text-center">
-          <div className="relative w-16 h-16 mx-auto mb-7 drop-shadow-[0_2px_8px_rgba(255,255,255,0.08)]">
-            <svg viewBox="0 0 66 66" fill="none" className="w-full h-full">
-              <path fill="#ffffff" d="M 33.011719 8.5625 C 33.160156 8.5625 33.269531 8.558594 33.335938 8.550781 C 35.378906 8.324219 36.777344 7.265625 37.535156 5.371094 C 37.636719 5.117188 37.726562 4.65625 37.808594 3.984375 C 37.878906 3.40625 37.992188 2.996094 38.152344 2.757812 C 38.542969 2.15625 39.164062 1.855469 40.015625 1.855469 C 43.054688 1.847656 46.144531 1.84375 49.285156 1.847656 C 50.269531 1.851562 50.957031 2.207031 51.355469 2.914062 C 51.527344 3.222656 51.613281 3.683594 51.613281 4.289062 C 51.609375 22.871094 51.605469 35.164062 51.605469 41.167969 C 51.605469 41.25 51.535156 41.320312 51.453125 41.320312 C 39.59375 41.3125 33.445312 41.3125 33.011719 41.3125 C 32.578125 41.3125 26.429688 41.3125 14.570312 41.316406 C 14.484375 41.316406 14.414062 41.246094 14.414062 41.164062 L 14.414062 4.285156 C 14.414062 3.679688 14.5 3.222656 14.675781 2.910156 C 15.070312 2.203125 15.761719 1.847656 16.742188 1.84375 C 19.886719 1.84375 22.972656 1.84375 26.011719 1.851562 C 26.863281 1.855469 27.484375 2.15625 27.878906 2.753906 C 28.035156 2.996094 28.148438 3.402344 28.21875 3.980469 C 28.300781 4.65625 28.390625 5.117188 28.492188 5.371094 C 29.25 7.265625 30.652344 8.324219 32.691406 8.550781 C 32.757812 8.558594 32.867188 8.5625 33.011719 8.5625 Z" />
-              <path fill="#ffffff" d="M 33.007812 45.449219 C 38.574219 45.449219 44.351562 45.445312 50.34375 45.4375 C 50.734375 45.4375 51.113281 45.449219 51.480469 45.476562 C 51.550781 45.480469 51.601562 45.539062 51.601562 45.609375 L 51.601562 62.242188 C 51.601562 62.277344 51.601562 62.3125 51.589844 62.347656 C 51.304688 63.355469 50.566406 63.863281 49.378906 63.875 C 49.359375 63.875 46.253906 63.875 40.058594 63.871094 C 39.121094 63.871094 38.195312 63.394531 37.886719 62.449219 C 37.78125 62.121094 37.792969 61.496094 37.710938 61.105469 C 37.257812 58.996094 35.960938 57.707031 33.816406 57.238281 C 33.546875 57.179688 33.277344 57.152344 33.007812 57.152344 C 32.738281 57.152344 32.46875 57.179688 32.199219 57.242188 C 30.054688 57.707031 28.757812 58.996094 28.304688 61.105469 C 28.222656 61.496094 28.238281 62.121094 28.128906 62.449219 C 27.820312 63.394531 26.898438 63.871094 25.957031 63.871094 C 19.765625 63.875 16.65625 63.878906 16.636719 63.878906 C 15.449219 63.867188 14.710938 63.359375 14.425781 62.351562 C 14.417969 62.316406 14.414062 62.28125 14.414062 62.246094 L 14.410156 45.613281 C 14.410156 45.542969 14.460938 45.484375 14.53125 45.480469 C 14.902344 45.453125 15.28125 45.4375 15.671875 45.4375 C 21.660156 45.445312 27.4375 45.449219 33.007812 45.449219 Z" />
-            </svg>
-            <span
-              className="absolute top-[33%] left-1/2 -translate-x-1/2 -translate-y-1/2 font-[family-name:var(--font-mono)] text-sm font-bold text-[#111] leading-none pointer-events-none"
-              style={totalQty >= 100 ? { fontSize: "9px" } : totalQty >= 10 ? { fontSize: "11px" } : undefined}
-            >
-              {totalQty}
-            </span>
+          {/* ── Order summary glass card ─────────────────────────── */}
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 max-sm:p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_24px_rgba(255,255,255,0.02),0_4px_20px_rgba(0,0,0,0.25)]">
+
+            {/* Event context */}
+            <div className="mb-5">
+              <h2 className="font-[family-name:var(--font-sans)] text-[15px] font-semibold text-foreground tracking-[-0.01em] leading-snug m-0">
+                {event.name}
+              </h2>
+              {(eventDate || eventVenue) && (
+                <p className="font-[family-name:var(--font-sans)] text-xs text-foreground/40 mt-1 m-0">
+                  {[eventDate, eventVenue, eventTime ? `Doors ${eventTime}` : null].filter(Boolean).join(" \u00B7 ")}
+                </p>
+              )}
+            </div>
+
+            {/* Gradient divider */}
+            <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+
+            {/* Cart items */}
+            <div className="py-4">
+              <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+            </div>
+
+            {/* Gradient divider */}
+            <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+
+            {/* Total */}
+            <div className="flex items-center justify-between pt-4">
+              <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
+                Total
+              </span>
+              <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
+                {symbol}{subtotal.toFixed(2)}
+              </span>
+            </div>
           </div>
 
-          <h1 className="font-[family-name:var(--font-sans)] text-2xl font-semibold tracking-[-0.3px] text-foreground leading-snug m-0 mb-2.5">
-            Secure your tickets
-          </h1>
+          {/* ── Email capture section ────────────────────────────── */}
+          <div className="mt-8 max-sm:mt-7">
+            <h1 className="font-[family-name:var(--font-sans)] text-lg font-semibold tracking-[-0.2px] text-foreground leading-snug m-0 mb-1.5">
+              Where should we send your tickets?
+            </h1>
+            <p className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/40 leading-relaxed m-0 mb-5">
+              Your tickets and confirmation will be emailed here
+            </p>
 
-          <p className="font-[family-name:var(--font-sans)] text-sm text-foreground/40 leading-relaxed m-0 mb-8">
-            Your tickets and confirmation will be sent here
-          </p>
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <label htmlFor="capture-email" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="capture-email"
-              type="email"
-              className="w-full bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-sans)] text-base py-[15px] px-4 outline-none transition-colors duration-150 placeholder:text-foreground/35 focus:border-white/[0.30] text-center"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
-              required
-              autoComplete="email"
-              autoFocus
-            />
-
-            {error && (
-              <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
-                {error}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+              <label htmlFor="capture-email" className="sr-only">
+                Email address
+              </label>
+              <div className="relative">
+                <EmailIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-foreground/25 pointer-events-none" />
+                <input
+                  id="capture-email"
+                  type="email"
+                  className="w-full bg-white/[0.04] border border-white/[0.10] rounded-xl text-foreground font-[family-name:var(--font-sans)] text-base py-4 pl-11 pr-4 outline-none transition-colors duration-150 placeholder:text-foreground/30 focus:border-white/[0.30] focus:bg-white/[0.06]"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  required
+                  autoComplete="email"
+                  autoFocus
+                />
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="w-full bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-[10px] transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99] touch-manipulation"
-            >
-              CONTINUE TO PAYMENT
-            </button>
-          </form>
+              {error && (
+                <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">
+                  {error}
+                </div>
+              )}
 
-          <p className="flex items-center justify-center gap-1.5 mt-5 font-[family-name:var(--font-sans)] text-xs text-foreground/35">
-            <LockIcon className="w-3.5 h-3.5 text-foreground/25 shrink-0" />
-            Your information is secure and won&rsquo;t be shared
-          </p>
+              <button
+                type="submit"
+                className="w-full bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-xl transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99] touch-manipulation"
+              >
+                Continue to payment
+              </button>
+            </form>
+
+            <p className="flex items-center justify-center gap-1.5 mt-4 font-[family-name:var(--font-sans)] text-[11px] text-foreground/30">
+              <LockIcon className="w-3 h-3 text-foreground/20 shrink-0" />
+              Secure checkout &mdash; your info won&rsquo;t be shared
+            </p>
+          </div>
         </div>
       </div>
 

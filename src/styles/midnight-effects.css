@@ -551,7 +551,7 @@ body:has([data-theme="midnight"]) .header {
   transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-[data-theme="midnight"] .midnight-lineup-pill:hover {
+[data-theme="midnight"] button.midnight-lineup-pill:hover {
   border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
   color: var(--color-foreground);
   background: color-mix(in srgb, var(--color-primary) 4%, transparent);

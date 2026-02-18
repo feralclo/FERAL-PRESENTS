@@ -27,11 +27,11 @@ export function MidnightLineup({
           Lineup
         </h2>
         {isAlphabetical && (
-          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-[var(--accent)] border border-[var(--accent)]/20 rounded-full px-2.5 py-0.5 uppercase">
+          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-[var(--accent)]/80 border border-[var(--accent)]/15 bg-[var(--accent)]/[0.04] rounded-full px-2.5 py-0.5 uppercase">
             A &mdash; Z
           </span>
         )}
-        <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.08] to-transparent" />
+        <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.10] to-transparent" />
       </div>
 
       {/* Artist pills */}
@@ -46,7 +46,7 @@ export function MidnightLineup({
                 key={artist}
                 type="button"
                 onClick={() => onArtistClick?.(profile)}
-                className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.10] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/70 cursor-pointer bg-foreground/[0.03] hover:bg-foreground/[0.08] hover:border-foreground/[0.18] transition-all duration-200"
+                className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.10] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/80 cursor-pointer bg-foreground/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_8px_rgba(255,255,255,0.02)] hover:bg-foreground/[0.08] hover:border-foreground/[0.18] transition-all duration-200"
               >
                 {artist}
               </button>
@@ -56,7 +56,7 @@ export function MidnightLineup({
           return (
             <span
               key={artist}
-              className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.10] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/70 cursor-default bg-foreground/[0.03]"
+              className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.08] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/60 cursor-default bg-foreground/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
             >
               {artist}
             </span>

@@ -188,9 +188,10 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
-                {/* Mobile section divider — single gradient line */}
-                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-2">
-                  <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent" />
+                {/* Mobile section divider — double-rule with depth */}
+                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-4">
+                  <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.10] to-transparent" />
+                  <div className="h-px mt-2 bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent" />
                 </div>
 
                 {/* Lineup on mobile (above about) */}

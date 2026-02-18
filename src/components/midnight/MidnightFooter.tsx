@@ -8,7 +8,7 @@ export function MidnightFooter() {
   return (
     <footer className="py-10 px-6 max-md:py-8 max-md:px-4">
       <div className="max-w-[1200px] mx-auto">
-        <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent mb-8 max-md:mb-6" />
+        <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-8 max-md:mb-6" />
         <div className="flex items-center justify-between">
           <span
             data-branding="copyright"

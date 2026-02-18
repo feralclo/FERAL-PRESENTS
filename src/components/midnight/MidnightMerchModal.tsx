@@ -143,7 +143,7 @@ export function MidnightMerchModal({
             <div className="md:grid md:grid-cols-[1.1fr_1fr]">
 
               {/* Image area */}
-              <div className="relative bg-[rgba(255,255,255,0.015)]">
+              <div className="relative">
                 <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-8 max-md:pb-1.5 min-h-[280px] max-md:min-h-[170px] max-[380px]:min-h-[140px]">
                   {images.length > 0 ? (
                     images.map((img) => (

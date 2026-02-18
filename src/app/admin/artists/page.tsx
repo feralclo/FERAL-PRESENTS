@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video, CheckCircle2 } from "lucide-react";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import * as UpChunk from "@mux/upchunk";
 import type { Artist } from "@/types/artists";
 
 /** Convert a stored video_url value to a playable URL */
@@ -153,7 +154,7 @@ export default function ArtistsPage() {
     setVideoStatus("Preparing upload...");
 
     try {
-      // Step 1: Get a Mux direct upload URL (pass origin for CORS)
+      // Step 1: Get a Mux direct upload URL
       const createRes = await fetch("/api/mux/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,16 +165,29 @@ export default function ArtistsPage() {
 
       const { uploadUrl, uploadId } = createData;
 
-      // Step 2: Upload file directly to Mux
-      setVideoStatus("Uploading to Mux...");
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
+      // Step 2: Upload via Mux's UpChunk (handles chunking, CORS, retries)
+      setVideoStatus("Uploading...");
+      await new Promise<void>((resolve, reject) => {
+        const upload = UpChunk.createUpload({
+          endpoint: uploadUrl,
+          file,
+          chunkSize: 5120, // 5MB chunks
+        });
+
+        upload.on("progress", (e: { detail: number }) => {
+          setVideoProgress(Math.round(e.detail));
+          setVideoStatus(`Uploading... ${Math.round(e.detail)}%`);
+        });
+
+        upload.on("success", () => resolve());
+        upload.on("error", (e: { detail: { message: string } }) => {
+          reject(new Error(e.detail.message || "Upload failed"));
+        });
       });
-      if (!uploadRes.ok) throw new Error("Upload to Mux failed");
 
       // Step 3: Poll for processing completion
-      setVideoStatus("Processing...");
+      setVideoStatus("Processing video...");
+      setVideoProgress(0);
       const playbackId = await pollMuxStatus(uploadId);
 
       setFormVideoUrl(playbackId);

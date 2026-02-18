@@ -3,22 +3,22 @@ import { requireAuth } from "@/lib/auth";
 import { getMuxClient } from "@/lib/mux";
 
 /**
- * GET /api/mux/status?uploadId=xxx — Check Mux upload/asset status.
+ * GET /api/mux/status?assetId=xxx — Check Mux asset processing status.
  *
  * Returns the playback ID once the asset is ready.
- * Client polls this every 2s after uploading.
+ * Client polls this every 3s after creating the asset.
  *
  * Returns: { status: string, playbackId?: string }
- *   status: "waiting" | "processing" | "ready" | "errored"
+ *   status: "processing" | "ready" | "errored"
  */
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
 
-    const uploadId = request.nextUrl.searchParams.get("uploadId");
-    if (!uploadId) {
-      return NextResponse.json({ error: "uploadId required" }, { status: 400 });
+    const assetId = request.nextUrl.searchParams.get("assetId");
+    if (!assetId) {
+      return NextResponse.json({ error: "assetId required" }, { status: 400 });
     }
 
     const mux = getMuxClient();
@@ -26,23 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Mux not configured" }, { status: 503 });
     }
 
-    // Check the upload to get the asset ID
-    const upload = await mux.video.uploads.retrieve(uploadId);
-
-    if (upload.status === "waiting") {
-      return NextResponse.json({ status: "waiting" });
-    }
-
-    if (upload.status === "errored" || upload.status === "timed_out" || upload.status === "cancelled") {
-      return NextResponse.json({ status: "errored" });
-    }
-
-    // Upload complete — check the asset
-    if (!upload.asset_id) {
-      return NextResponse.json({ status: "processing" });
-    }
-
-    const asset = await mux.video.assets.retrieve(upload.asset_id);
+    const asset = await mux.video.assets.retrieve(assetId);
 
     if (asset.status === "preparing") {
       return NextResponse.json({ status: "processing" });

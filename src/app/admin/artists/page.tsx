@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video, CheckCircle2 } from "lucide-react";
 import { ImageUpload } from "@/components/admin/ImageUpload";
-import * as UpChunk from "@mux/upchunk";
 import type { Artist } from "@/types/artists";
 
 /** Convert a stored video_url value to a playable URL */
@@ -154,41 +153,43 @@ export default function ArtistsPage() {
     setVideoStatus("Preparing upload...");
 
     try {
-      // Step 1: Get a Mux direct upload URL
-      const createRes = await fetch("/api/mux/upload", {
+      // Step 1: Get a Supabase signed upload URL
+      const signedRes = await fetch("/api/upload-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origin: window.location.origin }),
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
       });
-      const createData = await createRes.json();
-      if (!createRes.ok) throw new Error(createData.error || "Failed to create upload");
+      const signedData = await signedRes.json();
+      if (!signedRes.ok) throw new Error(signedData.error || "Failed to prepare upload");
 
-      const { uploadUrl, uploadId } = createData;
+      const { signedUrl, token, publicUrl } = signedData;
 
-      // Step 2: Upload via Mux's UpChunk (handles chunking, CORS, retries)
+      // Step 2: Upload directly to Supabase Storage (bypasses Vercel body limit)
       setVideoStatus("Uploading...");
-      await new Promise<void>((resolve, reject) => {
-        const upload = UpChunk.createUpload({
-          endpoint: uploadUrl,
-          file,
-          chunkSize: 5120, // 5MB chunks
-        });
-
-        upload.on("progress", (e: { detail: number }) => {
-          setVideoProgress(Math.round(e.detail));
-          setVideoStatus(`Uploading... ${Math.round(e.detail)}%`);
-        });
-
-        upload.on("success", () => resolve());
-        upload.on("error", (e: { detail: { message: string } }) => {
-          reject(new Error(e.detail.message || "Upload failed"));
-        });
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+          "x-upsert": "true",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: file,
       });
+      if (!uploadRes.ok) throw new Error("Upload to storage failed");
+      setVideoProgress(50);
 
-      // Step 3: Poll for processing completion
+      // Step 3: Tell Mux to ingest the video from the Supabase URL
       setVideoStatus("Processing video...");
-      setVideoProgress(0);
-      const playbackId = await pollMuxStatus(uploadId);
+      const muxRes = await fetch("/api/mux/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrl: publicUrl }),
+      });
+      const muxData = await muxRes.json();
+      if (!muxRes.ok) throw new Error(muxData.error || "Failed to start processing");
+
+      // Step 4: Poll until Mux finishes transcoding
+      const playbackId = await pollMuxStatus(muxData.assetId);
 
       setFormVideoUrl(playbackId);
       setPreviewError(false);
@@ -205,11 +206,11 @@ export default function ArtistsPage() {
     setVideoProgress(0);
   }, []);
 
-  /** Poll Mux status every 2s until asset is ready */
-  const pollMuxStatus = useCallback(async (uploadId: string): Promise<string> => {
-    for (let i = 0; i < 60; i++) { // Max 2 minutes
-      await new Promise((r) => setTimeout(r, 2000));
-      const res = await fetch(`/api/mux/status?uploadId=${uploadId}`);
+  /** Poll Mux status every 3s until asset is ready */
+  const pollMuxStatus = useCallback(async (assetId: string): Promise<string> => {
+    for (let i = 0; i < 60; i++) { // Max 3 minutes
+      await new Promise((r) => setTimeout(r, 3000));
+      const res = await fetch(`/api/mux/status?assetId=${assetId}`);
       const data = await res.json();
 
       if (data.status === "ready" && data.playbackId) {
@@ -218,8 +219,7 @@ export default function ArtistsPage() {
       if (data.status === "errored") {
         throw new Error("Mux processing failed");
       }
-      // Still processing — continue polling
-      setVideoStatus("Processing...");
+      setVideoStatus("Processing video...");
     }
     throw new Error("Processing timed out");
   }, []);

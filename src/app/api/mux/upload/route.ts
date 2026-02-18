@@ -3,13 +3,13 @@ import { requireAuth } from "@/lib/auth";
 import { getMuxClient } from "@/lib/mux";
 
 /**
- * POST /api/mux/upload — Create a Mux direct upload URL.
+ * POST /api/mux/upload — Create a Mux asset from a URL.
  *
- * The client uploads directly to Mux (browser → Mux), bypassing our server.
- * Mux handles all transcoding automatically.
+ * The video is already uploaded to Supabase Storage. This tells Mux
+ * to download it server-to-server — no CORS, no browser upload issues.
  *
- * Body: { origin: string } — the browser origin for CORS
- * Returns: { uploadUrl: string, uploadId: string }
+ * Body: { videoUrl: string } — the public URL of the uploaded video
+ * Returns: { assetId: string }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -24,16 +24,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const upload = await mux.video.uploads.create({
-      new_asset_settings: {
-        playback_policy: ["public"],
-      },
-      cors_origin: "*",
+    const body = await request.json().catch(() => ({}));
+    const { videoUrl } = body;
+
+    if (!videoUrl) {
+      return NextResponse.json(
+        { error: "videoUrl is required" },
+        { status: 400 },
+      );
+    }
+
+    // Tell Mux to download and process the video from the URL
+    const asset = await mux.video.assets.create({
+      inputs: [{ url: videoUrl }],
+      playback_policies: ["public"],
     });
 
     return NextResponse.json({
-      uploadUrl: upload.url,
-      uploadId: upload.id,
+      assetId: asset.id,
     });
   } catch (e) {
     console.error("[mux/upload] Error:", e);

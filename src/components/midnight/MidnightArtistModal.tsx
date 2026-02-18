@@ -9,6 +9,18 @@ import {
 } from "@/components/ui/dialog";
 import type { Artist } from "@/types/artists";
 
+/** Convert a stored video_url value to a playable URL */
+function getVideoSrc(videoUrl: string): string {
+  if (videoUrl.startsWith("http")) return videoUrl;
+  return `https://stream.mux.com/${videoUrl}/medium.mp4`;
+}
+
+/** Get Mux thumbnail from a playback ID */
+function getVideoThumbnail(videoUrl: string): string | undefined {
+  if (videoUrl.startsWith("http")) return undefined;
+  return `https://image.mux.com/${videoUrl}/thumbnail.jpg?time=1`;
+}
+
 interface MidnightArtistModalProps {
   artist: Artist | null;
   isOpen: boolean;
@@ -163,14 +175,14 @@ export function MidnightArtistModal({
                     /* eslint-disable-next-line jsx-a11y/media-has-caption */
                     <video
                       ref={videoRef}
-                      src={artist.video_url!}
+                      src={getVideoSrc(artist.video_url!)}
                       className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
                         videoReady ? "opacity-100" : "opacity-0"
                       }`}
                       playsInline
                       muted
                       preload="metadata"
-                      poster={artist.image || undefined}
+                      poster={getVideoThumbnail(artist.video_url!) || artist.image || undefined}
                       onLoadedMetadata={handleLoadedMetadata}
                       onCanPlay={handleCanPlay}
                       onEnded={handleVideoEnded}

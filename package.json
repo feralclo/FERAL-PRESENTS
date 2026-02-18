@@ -8,12 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "postinstall": "bash scripts/download-ffmpeg.sh"
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.1",
+    "@mux/mux-node": "^12.8.1",
     "@stripe/react-stripe-js": "^5.6.0",
     "@stripe/stripe-js": "^8.7.0",
     "@supabase/ssr": "^0.6.1",

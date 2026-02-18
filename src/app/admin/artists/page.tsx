@@ -22,10 +22,21 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video } from "lucide-react";
+import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video, CheckCircle2 } from "lucide-react";
 import { ImageUpload } from "@/components/admin/ImageUpload";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Artist } from "@/types/artists";
+
+/** Convert a stored video_url value to a playable URL */
+function getVideoSrc(videoUrl: string): string {
+  if (videoUrl.startsWith("http")) return videoUrl; // Legacy Supabase URL
+  return `https://stream.mux.com/${videoUrl}/medium.mp4`; // Mux playback ID
+}
+
+/** Get Mux thumbnail from a playback ID */
+function getVideoThumbnail(videoUrl: string): string | undefined {
+  if (videoUrl.startsWith("http")) return undefined;
+  return `https://image.mux.com/${videoUrl}/thumbnail.jpg?time=1`;
+}
 
 export default function ArtistsPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -131,7 +142,6 @@ export default function ArtistsPage() {
       return;
     }
 
-    // 200MB — matches Supabase bucket limit
     const MAX_FILE_SIZE = 200 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
       alert(`File is ${Math.round(file.size / 1024 / 1024)}MB — maximum is 200MB.`);
@@ -140,53 +150,30 @@ export default function ArtistsPage() {
 
     setVideoUploading(true);
     setVideoProgress(0);
-    setVideoStatus("Checking format...");
+    setVideoStatus("Preparing upload...");
 
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) throw new Error("Supabase not configured");
+      // Step 1: Get a Mux direct upload URL
+      const createRes = await fetch("/api/mux/upload", { method: "POST" });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "Failed to create upload");
 
-      // Test if browser can play this video natively
-      const { canBrowserPlayVideo } = await import("@/lib/video");
-      const canPlay = await canBrowserPlayVideo(file);
+      const { uploadUrl, uploadId } = createData;
 
-      let uploadFile = file;
+      // Step 2: Upload file directly to Mux
+      setVideoStatus("Uploading to Mux...");
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error("Upload to Mux failed");
 
-      // If browser can't play it (e.g. QuickTime/HEVC), transcode to H.264 MP4
-      if (!canPlay) {
-        setVideoStatus("Converting to web format...");
-        try {
-          const { transcodeToMP4 } = await import("@/lib/video");
-          uploadFile = await transcodeToMP4(file, (p) => setVideoProgress(p));
-        } catch (transcodeErr) {
-          // Transcoding failed — upload the original anyway.
-          // It may not play in all browsers, but the upload shouldn't fail.
-          console.warn("Transcoding failed, uploading original:", transcodeErr);
-        }
-      }
+      // Step 3: Poll for processing completion
+      setVideoStatus("Processing...");
+      const playbackId = await pollMuxStatus(uploadId);
 
-      setVideoStatus("Uploading...");
-      setVideoProgress(0);
-
-      const safeName = uploadFile.name
-        .replace(/[^a-zA-Z0-9._-]/g, "_")
-        .toLowerCase();
-      const path = `artists/${Date.now()}_${safeName}`;
-
-      const { error } = await supabase.storage
-        .from("artist-media")
-        .upload(path, uploadFile, {
-          contentType: uploadFile.type,
-          upsert: true,
-        });
-
-      if (error) throw new Error(error.message);
-
-      const { data: publicUrlData } = supabase.storage
-        .from("artist-media")
-        .getPublicUrl(path);
-
-      setFormVideoUrl(publicUrlData.publicUrl);
+      setFormVideoUrl(playbackId);
       setPreviewError(false);
       setVideoProgress(100);
       setVideoStatus("");
@@ -199,6 +186,25 @@ export default function ArtistsPage() {
 
     setVideoUploading(false);
     setVideoProgress(0);
+  }, []);
+
+  /** Poll Mux status every 2s until asset is ready */
+  const pollMuxStatus = useCallback(async (uploadId: string): Promise<string> => {
+    for (let i = 0; i < 60; i++) { // Max 2 minutes
+      await new Promise((r) => setTimeout(r, 2000));
+      const res = await fetch(`/api/mux/status?uploadId=${uploadId}`);
+      const data = await res.json();
+
+      if (data.status === "ready" && data.playbackId) {
+        return data.playbackId;
+      }
+      if (data.status === "errored") {
+        throw new Error("Mux processing failed");
+      }
+      // Still processing — continue polling
+      setVideoStatus("Processing...");
+    }
+    throw new Error("Processing timed out");
   }, []);
 
   const handleVideoFileChange = useCallback(
@@ -416,25 +422,26 @@ export default function ArtistsPage() {
               {formVideoUrl ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 text-xs text-primary mb-1">
-                    <Video size={12} />
-                    Video uploaded
+                    <CheckCircle2 size={12} />
+                    Video ready
                   </div>
                   <div className="relative rounded-lg overflow-hidden bg-black border border-border">
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video
-                      src={formVideoUrl}
+                      src={getVideoSrc(formVideoUrl)}
                       className="w-full"
                       style={{ maxHeight: "160px", display: previewError ? "none" : undefined }}
                       muted
                       playsInline
                       controls
                       preload="metadata"
+                      poster={getVideoThumbnail(formVideoUrl)}
                       onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1; }}
                       onError={() => setPreviewError(true)}
                     />
                     {previewError && (
                       <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-                        Preview not available in this browser — video will still be delivered to users
+                        Video saved — preview loading
                       </div>
                     )}
                     <button

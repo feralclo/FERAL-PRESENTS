@@ -169,7 +169,6 @@ export default function ArtistsPage() {
         xhr.onerror = () => reject(new Error("Upload failed"));
         xhr.open("PUT", signedUrl);
         xhr.setRequestHeader("Content-Type", optimized.type);
-        xhr.setRequestHeader("x-upsert", "true");
         if (token) xhr.setRequestHeader("x-supabase-upload-token", token);
         xhr.send(optimized);
       });

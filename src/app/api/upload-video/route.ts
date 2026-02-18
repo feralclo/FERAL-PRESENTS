@@ -58,10 +58,10 @@ export async function POST(request: NextRequest) {
       .toLowerCase();
     const path = `artists/${Date.now()}_${safeName}`;
 
-    // Create signed upload URL (expires in 10 minutes)
+    // Create signed upload URL (expires in 10 minutes, upsert enabled)
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .createSignedUploadUrl(path);
+      .createSignedUploadUrl(path, { upsert: true });
 
     if (error) {
       console.error("[upload-video] Signed URL error:", error.message);

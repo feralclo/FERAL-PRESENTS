@@ -27,7 +27,7 @@ interface MidnightArtistModalProps {
   onNavigate: (index: number) => void;
 }
 
-type SwipePhase = "idle" | "dragging" | "snapping" | "pre-exit" | "exiting" | "hint-out" | "hint-back";
+type SwipePhase = "idle" | "dragging" | "snapping" | "pre-exit" | "exiting" | "hint-out" | "hint-back" | "crossfade-out" | "crossfade-in";
 
 export function MidnightArtistModal({
   artists,
@@ -89,8 +89,10 @@ export function MidnightArtistModal({
   }, [artist?.id, isOpen]);
 
   // ── Swipe hint — physically nudge card left to show next artist peeking ──
+  // Desktop has visible arrow buttons, so hint is mobile-only.
   useEffect(() => {
-    if (isOpen && multi && canGoNext && !hasShownEdgeHint && phase === "idle") {
+    const isTouch = typeof window !== "undefined" && "ontouchstart" in window;
+    if (isTouch && isOpen && multi && canGoNext && !hasShownEdgeHint && phase === "idle") {
       hasShownEdgeHint = true;
       // Delay until open animation settles
       const t = setTimeout(() => {
@@ -147,11 +149,20 @@ export function MidnightArtistModal({
     }
   }, []);
 
-  // ── Navigation (button/keyboard — uses pre-exit for 2-frame setup) ──
+  // ── Navigation (button/keyboard) ──
+  // Desktop: quick crossfade (no sliding — arrows provide context).
+  // Mobile: slide animation via pre-exit → exiting.
   const navigateTo = useCallback(
     (idx: number, dir: "left" | "right") => {
       if (idx < 0 || idx >= artists.length || phase !== "idle") return;
       pendingRef.current = idx;
+
+      const isDesktop = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+      if (isDesktop) {
+        setPhase("crossfade-out");
+        return;
+      }
+
       fromSwipeRef.current = false;
       setExitDir(dir);
       setPhase("pre-exit");
@@ -181,18 +192,45 @@ export function MidnightArtistModal({
     [canGoNext, currentIndex, navigateTo]
   );
 
-  // ── Pre-exit → exiting (2-frame setup for button/keyboard nav) ──
+  // ── Pre-exit → exiting (2-frame setup for mobile slide nav) ──
   useEffect(() => {
     if (phase !== "pre-exit") return;
     const id = requestAnimationFrame(() => setPhase("exiting"));
     return () => cancelAnimationFrame(id);
   }, [phase]);
 
+  // ── Crossfade safety (reduced-motion kills transitions → transitionEnd won't fire) ──
+  useEffect(() => {
+    if (phase !== "crossfade-out") return;
+    const t = setTimeout(() => {
+      if (pendingRef.current !== null) {
+        onNavigate(pendingRef.current);
+        pendingRef.current = null;
+      }
+      setPhase("idle");
+    }, 300);
+    return () => clearTimeout(t);
+  }, [phase, onNavigate]);
+
   // ── Transition end → commit navigation ──
   const handleTransitionEnd = useCallback(
     (e: React.TransitionEvent) => {
-      if (e.propertyName !== "transform" || e.target !== e.currentTarget)
+      if (e.target !== e.currentTarget) return;
+
+      // Crossfade: listen for opacity transitions (desktop nav)
+      if (e.propertyName === "opacity") {
+        if (phase === "crossfade-out" && pendingRef.current !== null) {
+          onNavigate(pendingRef.current);
+          pendingRef.current = null;
+          setPhase("crossfade-in");
+        } else if (phase === "crossfade-in") {
+          setPhase("idle");
+        }
         return;
+      }
+
+      // Slide: listen for transform transitions (mobile swipe)
+      if (e.propertyName !== "transform") return;
       if (phase === "exiting" && pendingRef.current !== null) {
         onNavigate(pendingRef.current);
         pendingRef.current = null;
@@ -201,7 +239,6 @@ export function MidnightArtistModal({
       } else if (phase === "snapping") {
         setPhase("idle");
       } else if (phase === "hint-out") {
-        // Brief pause at peek position, then snap back
         setTimeout(() => {
           setDragOffset(0);
           setPhase("hint-back");
@@ -361,6 +398,10 @@ export function MidnightArtistModal({
   else if (phase === "snapping") txClass = "midnight-artist-snapback";
   else if (phase === "hint-out") txClass = "midnight-artist-hint";
   else if (phase === "hint-back") txClass = "midnight-artist-snapback";
+  else if (phase === "crossfade-out" || phase === "crossfade-in") txClass = "midnight-artist-crossfade";
+
+  // Card opacity — only used for desktop crossfade (mobile uses transform only)
+  const cardOpacity = phase === "crossfade-out" ? 0 : 1;
 
   const showAdj =
     adjArtist !== null &&
@@ -408,6 +449,7 @@ export function MidnightArtistModal({
             className={`${cardVisual} ${txClass} relative`}
             style={{
               transform: `translateX(${currentX}px)`,
+              opacity: cardOpacity,
               willChange: "transform",
               background: cardBg,
               touchAction: "pan-y",

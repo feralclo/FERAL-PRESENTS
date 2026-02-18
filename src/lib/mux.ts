@@ -30,7 +30,7 @@ export function getMuxStreamUrl(playbackId: string): string {
  * Construct a Mux thumbnail URL from a playback ID.
  */
 export function getMuxThumbnailUrl(playbackId: string): string {
-  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=1`;
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0`;
 }
 
 /**

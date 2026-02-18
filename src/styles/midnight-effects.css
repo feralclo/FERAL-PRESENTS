@@ -845,6 +845,12 @@ html.checkout-active .noise {
   will-change: transform;
 }
 
+/* Desktop crossfade — quick opacity swap for button/keyboard nav.
+   No sliding — arrow buttons provide directional context. */
+.midnight-artist-crossfade {
+  transition: opacity 120ms ease;
+}
+
 /* Hint nudge — smooth deceleration like a finger pushing */
 .midnight-artist-hint {
   transition: transform 450ms cubic-bezier(0.25, 1, 0.5, 1);
@@ -924,7 +930,8 @@ html.checkout-active .noise {
   .midnight-artist-swipe,
   .midnight-artist-swipe-fast,
   .midnight-artist-snapback,
-  .midnight-artist-hint {
+  .midnight-artist-hint,
+  .midnight-artist-crossfade {
     transition: none;
   }
   .midnight-artist-edge-hint,

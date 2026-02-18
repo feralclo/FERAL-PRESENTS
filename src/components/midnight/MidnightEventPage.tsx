@@ -185,33 +185,27 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
         <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10 pointer-events-none">
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0 pointer-events-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)] max-lg:gap-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
-                {/* Mobile content zone — full-width dark premium section */}
-                <div className="midnight-content-zone max-lg:mx-[calc(-1*var(--midnight-content-px))] max-lg:px-[var(--midnight-content-px)] max-lg:pt-10 max-[480px]:pt-8 max-lg:pb-6">
-                  {/* Lineup on mobile (above about) */}
-                  {lineup.length > 0 && (
-                    <div className="lg:hidden mb-12 max-md:mb-10" data-reveal="1">
-                      <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
-                    </div>
-                  )}
+                {/* Mobile section divider — single gradient line */}
+                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-2">
+                  <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent" />
+                </div>
 
-                  {/* Lineup/info separator on mobile */}
-                  {lineup.length > 0 && (
-                    <div className="lg:hidden mb-12 max-md:mb-10">
-                      <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent" />
-                      <div className="h-px mt-1.5 bg-gradient-to-r from-transparent via-foreground/[0.03] to-transparent" />
-                    </div>
-                  )}
-
-                  <div data-reveal="2">
-                    <MidnightEventInfo
-                      aboutText={event.about_text}
-                      detailsText={event.details_text}
-                      description={event.description}
-                    />
+                {/* Lineup on mobile (above about) */}
+                {lineup.length > 0 && (
+                  <div className="lg:hidden order-[-1] mb-12 max-md:mb-10" data-reveal="1">
+                    <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
+                )}
+
+                <div data-reveal="2">
+                  <MidnightEventInfo
+                    aboutText={event.about_text}
+                    detailsText={event.details_text}
+                    description={event.description}
+                  />
                 </div>
 
                 {/* Desktop lineup */}

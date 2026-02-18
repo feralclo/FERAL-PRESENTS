@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video } from "lucide-react";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Artist } from "@/types/artists";
 
 export default function ArtistsPage() {
@@ -124,46 +125,42 @@ export default function ArtistsPage() {
 
   const handleVideoUpload = useCallback(async (file: File) => {
     setVideoUploading(true);
-    setVideoProgress(0);
+    setVideoProgress(10); // Show initial progress
 
     try {
-      // 1. Get signed upload URL from our API
-      const res = await fetch("/api/upload-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: file.name,
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase not configured");
+
+      // Generate unique path
+      const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
+      const path = `artists/${Date.now()}_${safeName}`;
+
+      setVideoProgress(30);
+
+      // Upload directly via Supabase client (uses authenticated session)
+      const { error } = await supabase.storage
+        .from("artist-media")
+        .upload(path, file, {
           contentType: file.type,
-        }),
-      });
-      const { signedUrl, token, publicUrl, error } = await res.json();
-      if (error) throw new Error(error);
+          upsert: true,
+        });
 
-      // 2. Upload directly to Supabase Storage with progress tracking
-      const xhr = new XMLHttpRequest();
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          setVideoProgress(Math.round((e.loaded / e.total) * 100));
-        }
-      });
+      if (error) throw new Error(error.message);
 
-      await new Promise<void>((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Upload failed: ${xhr.status}`));
-        };
-        xhr.onerror = () => reject(new Error("Upload failed"));
-        xhr.open("PUT", signedUrl);
-        xhr.setRequestHeader("Content-Type", file.type);
-        if (token) xhr.setRequestHeader("x-supabase-upload-token", token);
-        xhr.send(file);
-      });
+      setVideoProgress(90);
 
-      // 3. Set the public URL
-      setFormVideoUrl(publicUrl);
+      // Get the public URL
+      const { data: publicUrlData } = supabase.storage
+        .from("artist-media")
+        .getPublicUrl(path);
+
+      setFormVideoUrl(publicUrlData.publicUrl);
+      setVideoProgress(100);
     } catch (e) {
       console.error("Video upload failed:", e);
-      alert("Video upload failed. Please try again.");
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      alert(`Video upload failed: ${msg}`);
     }
     setVideoUploading(false);
     setVideoProgress(0);

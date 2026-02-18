@@ -144,7 +144,7 @@ export function MidnightMerchModal({
 
               {/* Image area */}
               <div className="relative bg-[rgba(255,255,255,0.015)]">
-                <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-11 max-md:pb-2 min-h-[280px] max-md:min-h-[220px] max-[380px]:min-h-[160px]">
+                <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-8 max-md:pb-1.5 min-h-[280px] max-md:min-h-[170px] max-[380px]:min-h-[140px]">
                   {images.length > 0 ? (
                     images.map((img) => (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -152,14 +152,14 @@ export function MidnightMerchModal({
                         key={img.view}
                         src={img.src}
                         alt={img.alt}
-                        className={`max-w-[300px] max-md:max-w-[220px] max-[380px]:max-w-[170px] max-h-[320px] max-md:max-h-[240px] max-[380px]:max-h-[180px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
+                        className={`max-w-[300px] max-md:max-w-[200px] max-[380px]:max-w-[160px] max-h-[320px] max-md:max-h-[200px] max-[380px]:max-h-[160px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
                           activeView === img.view ? "block opacity-100" : "hidden opacity-0"
                         }`}
                         onClick={() => openFullscreen(img.view)}
                       />
                     ))
                   ) : (
-                    <div className="w-[160px] h-[160px] rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] flex items-center justify-center">
+                    <div className="w-[140px] h-[140px] rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] flex items-center justify-center">
                       <span className="font-[family-name:var(--font-mono)] text-[10px] text-[rgba(255,255,255,0.2)] uppercase tracking-[0.1em]">No image</span>
                     </div>
                   )}
@@ -167,7 +167,7 @@ export function MidnightMerchModal({
 
                 {/* Dot navigation */}
                 {images.length > 1 && (
-                  <div className="flex justify-center gap-2.5 pb-4 max-md:pb-3">
+                  <div className="flex justify-center gap-2.5 pb-3 max-md:pb-2">
                     {images.map((img) => (
                       <button
                         key={img.view}
@@ -186,34 +186,29 @@ export function MidnightMerchModal({
               </div>
 
               {/* Product info */}
-              <div className="p-6 max-md:px-5 max-md:py-5 md:border-l border-[rgba(255,255,255,0.06)] flex flex-col max-md:items-center">
-                {/* Product name */}
-                <h3 className="font-[family-name:var(--font-sans)] text-[15px] font-bold tracking-[0.02em] uppercase text-white/90 mb-1.5 max-md:text-center">
-                  {title}
-                </h3>
+              <div className="p-6 max-md:px-4 max-md:py-3.5 md:border-l border-[rgba(255,255,255,0.06)] flex flex-col max-md:items-center">
+                {/* Title + Price row on mobile */}
+                <div className="flex max-md:items-center max-md:justify-between max-md:w-full md:flex-col md:items-start gap-1 mb-3 max-md:mb-2.5">
+                  <h3 className="font-[family-name:var(--font-sans)] text-[15px] max-md:text-[14px] font-bold tracking-[0.02em] uppercase text-white/90">
+                    {title}
+                  </h3>
+                  <span className="font-[family-name:var(--font-mono)] text-lg max-md:text-base font-bold text-white tracking-[0.02em] shrink-0">
+                    {currencySymbol}{price.toFixed(2)}
+                  </span>
+                </div>
 
-                {/* Price */}
-                <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-white tracking-[0.02em] mb-4 max-md:mb-3.5">
-                  {currencySymbol}{price.toFixed(2)}
-                </span>
-
-                {/* What's included — glass container */}
-                <div className="w-full rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] p-4 max-md:p-3.5 mb-5 max-md:mb-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                  {/* Headline — prominent */}
-                  <p className="font-[family-name:var(--font-sans)] text-[12px] font-bold tracking-[0.02em] text-white/80 mb-1 max-md:text-center">
+                {/* What's included — compact glass container */}
+                <div className="w-full rounded-lg bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] p-3 max-md:p-2.5 mb-4 max-md:mb-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <p className="font-[family-name:var(--font-sans)] text-[11px] font-bold tracking-[0.02em] text-white/80 max-md:text-center">
                     {inclusionHeadline}
                   </p>
-
-                  {/* Ticket description — what VIP includes */}
                   {ticketDescription && (
-                    <p className="font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-white/30 max-md:text-center">
+                    <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/30 mt-0.5 max-md:text-center">
                       {ticketDescription}
                     </p>
                   )}
-
-                  {/* Merch description fallback (if no ticket description) */}
                   {!ticketDescription && description && (
-                    <p className="font-[family-name:var(--font-sans)] text-[11px] leading-relaxed text-white/30 max-md:text-center">
+                    <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/30 mt-0.5 max-md:text-center">
                       {description}
                     </p>
                   )}
@@ -225,41 +220,44 @@ export function MidnightMerchModal({
                   selectedSize={selectedSize}
                   onSelect={(s) => setSelectedSize(s as TeeSize)}
                 />
-
-                {/* Qty stepper — centered, subtle */}
-                <div className="flex items-center justify-center gap-3 mt-5 max-md:mt-4">
-                  <button
-                    type="button"
-                    className="w-9 h-9 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
-                    onClick={() => setQty(Math.max(1, qty - 1))}
-                  >
-                    &minus;
-                  </button>
-                  <span className="font-[family-name:var(--font-mono)] text-sm font-bold min-w-[24px] text-center tabular-nums text-white/70">
-                    {qty}
-                  </span>
-                  <button
-                    type="button"
-                    className="w-9 h-9 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
-                    onClick={() => setQty(qty + 1)}
-                  >
-                    +
-                  </button>
-                </div>
               </div>
 
             </div>
           </div>
 
-          {/* ── CTA — frosted glass, premium ── */}
-          <div className="shrink-0 px-5 py-4 max-md:px-4 max-md:py-3.5 border-t border-[rgba(255,255,255,0.06)]">
-            <button
-              type="button"
-              className="w-full h-12 max-md:h-11 bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.18)] text-white font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.18)] hover:border-[rgba(255,255,255,0.25)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_24px_rgba(255,255,255,0.05)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
-              onClick={handleAdd}
-            >
-              Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}
-            </button>
+          {/* ── CTA bar — qty stepper + frosted glass button ── */}
+          <div className="shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.06)]">
+            <div className="flex items-center gap-3">
+              {/* Qty stepper — compact */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                  onClick={() => setQty(Math.max(1, qty - 1))}
+                >
+                  &minus;
+                </button>
+                <span className="font-[family-name:var(--font-mono)] text-sm font-bold min-w-[20px] text-center tabular-nums text-white/70">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                  onClick={() => setQty(qty + 1)}
+                >
+                  +
+                </button>
+              </div>
+
+              {/* CTA button */}
+              <button
+                type="button"
+                className="flex-1 h-11 bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.18)] text-white font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.18)] hover:border-[rgba(255,255,255,0.25)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_24px_rgba(255,255,255,0.05)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                onClick={handleAdd}
+              >
+                Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

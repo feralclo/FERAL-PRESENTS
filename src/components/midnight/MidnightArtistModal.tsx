@@ -320,28 +320,21 @@ export function MidnightArtistModal({
       adjArtist = artists[adjIdx];
     }
   } else if (phase === "hint-out" || phase === "hint-back") {
-    // Hint always peeks at the next artist
     adjIdx = currentIndex + 1;
     adjArtist = artists[adjIdx] ?? null;
   }
 
-  // Current card position
+  // Current card position — no opacity fade, just slide (like iOS)
   let currentX = 0;
-  let currentOpacity = 1;
 
   if (phase === "dragging") {
     currentX = dragOffset;
-    const atEdge =
-      (dragOffset > 0 && !canGoPrev) || (dragOffset < 0 && !canGoNext);
-    currentOpacity =
-      1 - (Math.abs(dragOffset) / CARD_W) * (atEdge ? 0.4 : 0.15);
   } else if (phase === "snapping") {
     currentX = 0;
   } else if (phase === "pre-exit") {
     currentX = 0;
   } else if (phase === "exiting") {
     currentX = exitDir === "left" ? -(CARD_W + GAP) : CARD_W + GAP;
-    currentOpacity = 0;
   } else if (phase === "hint-out") {
     currentX = dragOffset; // -50
   }
@@ -386,14 +379,12 @@ export function MidnightArtistModal({
     ? getMuxThumbnailUrl(adjArtist!.video_url!)
     : null;
 
-  // Shared card visual treatment
+  // Shared card visual treatment — constant shadow (no pop between states)
   const cardVisual =
     "w-full rounded-2xl overflow-hidden border border-white/[0.08]";
   const cardBg = "#0d0d0d";
   const cardShadow =
     "0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02)";
-  const cardShadowActive =
-    "0 30px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)";
 
   return (
     <Dialog
@@ -419,10 +410,9 @@ export function MidnightArtistModal({
             className={`${cardVisual} ${txClass} relative`}
             style={{
               transform: `translateX(${currentX}px)`,
-              opacity: currentOpacity,
               background: cardBg,
               touchAction: "pan-y",
-              boxShadow: phase === "dragging" ? cardShadowActive : cardShadow,
+              boxShadow: cardShadow,
             }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}

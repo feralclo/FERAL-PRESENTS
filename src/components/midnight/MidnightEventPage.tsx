@@ -19,6 +19,7 @@ import { normalizeMerchImages } from "@/lib/merch-images";
 
 import { MidnightArtistModal } from "./MidnightArtistModal";
 import { MidnightFooter } from "./MidnightFooter";
+import { isMuxPlaybackId, getMuxStreamUrl, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Artist, EventArtist } from "@/types/artists";
 
@@ -158,6 +159,39 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     }
     return result;
   }, [lineup, artistProfiles]);
+
+  // Preload artist video manifests + thumbnails after page settles.
+  // HLS manifests are ~1-2KB each — this warms the browser cache so
+  // videos start near-instantly when the modal opens.
+  useEffect(() => {
+    if (artistsWithProfiles.length === 0) return;
+    const videos = artistsWithProfiles.filter(
+      (a) => a.video_url && isMuxPlaybackId(a.video_url)
+    );
+    if (videos.length === 0) return;
+
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 2000);
+
+    const cancel =
+      typeof cancelIdleCallback === "function"
+        ? cancelIdleCallback
+        : clearTimeout;
+
+    const id = idle(() => {
+      for (const a of videos) {
+        // Prefetch HLS manifest (tiny — browser caches it)
+        fetch(getMuxStreamUrl(a.video_url!), { priority: "low" as RequestPriority }).catch(() => {});
+        // Preload thumbnail so adjacent card previews are instant
+        const img = new Image();
+        img.src = getMuxThumbnailUrl(a.video_url!);
+      }
+    });
+
+    return () => cancel(id as number);
+  }, [artistsWithProfiles]);
 
   // Artist modal state — index-based for swipe navigation
   const [artistModalOpen, setArtistModalOpen] = useState(false);

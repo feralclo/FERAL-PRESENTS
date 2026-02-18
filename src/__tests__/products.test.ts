@@ -42,7 +42,7 @@ interface MockProduct {
   id: string;
   name: string;
   description?: string;
-  images: { front?: string; back?: string };
+  images: string[] | { front?: string; back?: string };
   sizes: string[];
 }
 
@@ -53,7 +53,7 @@ interface MockTicketType {
   product?: MockProduct;
   merch_name?: string;
   merch_description?: string;
-  merch_images?: { front?: string; back?: string };
+  merch_images?: string[] | { front?: string; back?: string };
   merch_sizes?: string[];
 }
 
@@ -164,6 +164,38 @@ describe("Product resolution", () => {
     expect(merch.images).toEqual({});
     expect(merch.sizes).toEqual([]);
   });
+
+  it("resolves from linked product with string[] images (new format)", () => {
+    const tt: MockTicketType = {
+      id: "tt-6",
+      includes_merch: true,
+      product_id: "prod-2",
+      product: {
+        id: "prod-2",
+        name: "Multi-image Hoodie",
+        images: ["img1", "img2", "img3"],
+        sizes: ["M", "L"],
+      },
+    };
+
+    const merch = resolveMerch(tt, "Test Event");
+    expect(merch.name).toBe("Multi-image Hoodie");
+    expect(merch.images).toEqual(["img1", "img2", "img3"]);
+  });
+
+  it("resolves inline merch with string[] images (new format)", () => {
+    const tt: MockTicketType = {
+      id: "tt-7",
+      includes_merch: true,
+      merch_name: "New Array Merch",
+      merch_images: ["front_new", "back_new"],
+      merch_sizes: ["S", "M"],
+    };
+
+    const merch = resolveMerch(tt, "Test Event");
+    expect(merch.name).toBe("New Array Merch");
+    expect(merch.images).toEqual(["front_new", "back_new"]);
+  });
 });
 
 // ─── Product data shape ────────────────────────────────────────────────
@@ -213,6 +245,25 @@ describe("Product data shape", () => {
     expect(product.sizes).toHaveLength(0);
     expect(product.price).toBe(0);
     expect(product.status).toBe("draft");
+  });
+
+  it("validates product with string[] images (new format)", () => {
+    const product = {
+      id: "prod-3",
+      org_id: "feral",
+      name: "Multi-image Hoodie",
+      type: "Hoodie",
+      sizes: ["M", "L"],
+      price: 45.0,
+      images: ["img_front", "img_back", "img_detail"],
+      status: "active",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+
+    expect(product.images).toBeInstanceOf(Array);
+    expect(product.images).toHaveLength(3);
+    expect(product.images[0]).toBe("img_front");
   });
 
   it("handles the confirm-order merch_name resolution", () => {

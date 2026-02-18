@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { hasMerchImages } from "@/lib/merch-images";
 import { formatPrice } from "@/lib/stripe/config";
 import { MidnightFloatingHearts } from "./MidnightFloatingHearts";
 import {
@@ -46,10 +47,10 @@ export function MidnightTicketCard({
   const isActive = qty > 0;
   const priceDisplay = `${currSymbol}${formatPrice(Number(tt.price))}`;
 
-  const hasMerchImages = tt.includes_merch && (
-    (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.front ||
-    (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.back
-  );
+  const merchImgs = tt.includes_merch
+    ? (tt.product_id && tt.product ? tt.product.images : tt.merch_images)
+    : null;
+  const hasMerch = hasMerchImages(merchImgs);
 
   // Qty pop animation
   const qtyRef = useRef<HTMLSpanElement>(null);
@@ -117,7 +118,7 @@ export function MidnightTicketCard({
       {/* Bottom row: view merch + qty controls */}
       <div className="relative z-[2] flex justify-between items-center">
         {tt.includes_merch ? (
-          hasMerchImages ? (
+          hasMerch ? (
             <Badge
               variant="outline"
               className={cn(

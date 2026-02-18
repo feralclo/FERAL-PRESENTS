@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
             merch_sizes?: string[];
             merch_name?: string;
             merch_description?: string;
-            merch_images?: Record<string, string>;
+            merch_images?: string[] | Record<string, string>;
             sort_order?: number;
             min_per_order?: number;
             max_per_order?: number;

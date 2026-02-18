@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
+import { normalizeMerchImages } from "@/lib/merch-images";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
 
@@ -17,7 +18,7 @@ interface MidnightMerchModalProps {
   onAddToCart: (size: TeeSize, qty: number) => void;
   merchName?: string;
   merchDescription?: string;
-  merchImages?: { front?: string; back?: string };
+  merchImages?: string[] | { front?: string; back?: string };
   merchPrice?: number;
   currencySymbol?: string;
   availableSizes?: string[];
@@ -41,14 +42,10 @@ export function MidnightMerchModal({
   vipBadge,
 }: MidnightMerchModalProps) {
   const images = useMemo(() => {
-    const imgs: { view: string; src: string; alt: string }[] = [];
-    if (merchImages?.back) {
-      imgs.push({ view: "back", src: merchImages.back, alt: `${merchName || "Merch"} Back` });
-    }
-    if (merchImages?.front) {
-      imgs.push({ view: "front", src: merchImages.front, alt: `${merchName || "Merch"} Front` });
-    }
-    return imgs;
+    return normalizeMerchImages(merchImages).map((src, i) => ({
+      src,
+      alt: `${merchName || "Merch"} ${i + 1}`,
+    }));
   }, [merchImages, merchName]);
 
   const title = merchName || "Event Merch";
@@ -59,7 +56,7 @@ export function MidnightMerchModal({
   // The ticket name IS the bundle name — no hardcoded merch type suffix
   const bundleName = ticketName || vipBadge || "";
 
-  const [activeView, setActiveView] = useState("back");
+  const [activeIndex, setActiveIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<TeeSize>(
     sizes.includes("M" as TeeSize) ? ("M" as TeeSize) : sizes[0]
   );
@@ -71,14 +68,10 @@ export function MidnightMerchModal({
   const mainTouchStartX = useRef(0);
   const fsTouchStartX = useRef(0);
 
-  // Active image index in main view
-  const activeIndex = images.findIndex((img) => img.view === activeView);
-
+  // Reset active index when images change
   useEffect(() => {
-    if (images.length > 0) {
-      setActiveView(images[0].view);
-    }
-  }, [images]);
+    setActiveIndex(0);
+  }, [images.length]);
 
   // Fullscreen keyboard navigation
   useEffect(() => {
@@ -114,15 +107,14 @@ export function MidnightMerchModal({
     (e: React.TouchEvent) => {
       const delta = e.changedTouches[0].clientX - mainTouchStartX.current;
       if (Math.abs(delta) > 50 && images.length > 1) {
-        const idx = images.findIndex((img) => img.view === activeView);
-        if (delta < 0 && idx < images.length - 1) {
-          setActiveView(images[idx + 1].view);
-        } else if (delta > 0 && idx > 0) {
-          setActiveView(images[idx - 1].view);
+        if (delta < 0 && activeIndex < images.length - 1) {
+          setActiveIndex(activeIndex + 1);
+        } else if (delta > 0 && activeIndex > 0) {
+          setActiveIndex(activeIndex - 1);
         }
       }
     },
-    [images, activeView]
+    [images.length, activeIndex]
   );
 
   // Fullscreen swipe handlers
@@ -151,26 +143,25 @@ export function MidnightMerchModal({
   }, [selectedSize, qty, onAddToCart, onClose]);
 
   const openFullscreen = useCallback(
-    (view: string) => {
-      const idx = images.findIndex((img) => img.view === view);
+    (idx: number) => {
       setFullscreenIndex(idx >= 0 ? idx : 0);
       setFullscreenOpen(true);
     },
-    [images]
+    []
   );
 
   // Navigation helpers for main view
   const goNext = useCallback(() => {
     if (activeIndex < images.length - 1) {
-      setActiveView(images[activeIndex + 1].view);
+      setActiveIndex(activeIndex + 1);
     }
-  }, [activeIndex, images]);
+  }, [activeIndex, images.length]);
 
   const goPrev = useCallback(() => {
     if (activeIndex > 0) {
-      setActiveView(images[activeIndex - 1].view);
+      setActiveIndex(activeIndex - 1);
     }
-  }, [activeIndex, images]);
+  }, [activeIndex]);
 
   // Chevron SVG shared between views
   const ChevronLeft = (
@@ -209,16 +200,16 @@ export function MidnightMerchModal({
               >
                 <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-8 max-md:pb-1.5 min-h-[280px] max-md:min-h-[170px] max-[380px]:min-h-[140px]">
                   {images.length > 0 ? (
-                    images.map((img) => (
+                    images.map((img, i) => (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
-                        key={img.view}
+                        key={`${img.src}-${i}`}
                         src={img.src}
                         alt={img.alt}
                         className={`max-w-[300px] max-md:max-w-[200px] max-[380px]:max-w-[160px] max-h-[320px] max-md:max-h-[200px] max-[380px]:max-h-[160px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
-                          activeView === img.view ? "block opacity-100" : "hidden opacity-0"
+                          activeIndex === i ? "block opacity-100" : "hidden opacity-0"
                         }`}
-                        onClick={() => openFullscreen(img.view)}
+                        onClick={() => openFullscreen(i)}
                       />
                     ))
                   ) : (
@@ -257,17 +248,17 @@ export function MidnightMerchModal({
                 {/* Dot navigation */}
                 {images.length > 1 && (
                   <div className="flex justify-center gap-2.5 pb-3 max-md:pb-2">
-                    {images.map((img) => (
+                    {images.map((_, i) => (
                       <button
-                        key={img.view}
+                        key={i}
                         type="button"
                         className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
-                          activeView === img.view
+                          activeIndex === i
                             ? "bg-white/60 scale-125"
                             : "bg-white/15 hover:bg-white/30"
                         }`}
-                        onClick={() => setActiveView(img.view)}
-                        aria-label={`View ${img.view}`}
+                        onClick={() => setActiveIndex(i)}
+                        aria-label={`View image ${i + 1}`}
                       />
                     ))}
                   </div>

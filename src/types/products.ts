@@ -16,7 +16,7 @@ export interface Product {
   type: ProductType;
   sizes: string[];
   price: number;
-  images: { front?: string; back?: string };
+  images: string[] | { front?: string; back?: string };
   status: ProductStatus;
   sku?: string;
   created_at: string;

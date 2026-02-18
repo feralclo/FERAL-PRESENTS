@@ -15,6 +15,7 @@ import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
 import { MidnightTicketWidget } from "./MidnightTicketWidget";
 import { MidnightMerchModal } from "./MidnightMerchModal";
+import { normalizeMerchImages } from "@/lib/merch-images";
 
 import { MidnightFooter } from "./MidnightFooter";
 import type { Event, TicketTypeRow } from "@/types/events";
@@ -67,8 +68,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     (event.ticket_types || []).forEach((tt) => {
       if (!tt.includes_merch) return;
       const imgs = tt.product_id && tt.product ? tt.product.images : tt.merch_images;
-      if (imgs?.front) { const i = new Image(); i.src = imgs.front; }
-      if (imgs?.back) { const i = new Image(); i.src = imgs.back; }
+      normalizeMerchImages(imgs).forEach((src) => { const i = new Image(); i.src = src; });
     });
   }, [event.ticket_types]);
 

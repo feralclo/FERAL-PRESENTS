@@ -1,3 +1,4 @@
+import { hasMerchImages } from "@/lib/merch-images";
 import type { TicketTypeRow } from "@/types/events";
 
 /** Tier → CSS class mapping for visual styling */
@@ -56,7 +57,7 @@ export function TicketCard({
       </div>
       <div className="ticket-option__bottom">
         {tt.includes_merch ? (
-          (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.front || (tt.product_id && tt.product ? tt.product.images : tt.merch_images)?.back ? (
+          hasMerchImages(tt.product_id && tt.product ? tt.product.images : tt.merch_images) ? (
             <span
               className="ticket-option__view-tee"
               onClick={() => onViewMerch?.(tt)}

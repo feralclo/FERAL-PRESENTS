@@ -24,7 +24,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ImageUpload } from "@/components/admin/ImageUpload";
+import { MerchImageGallery } from "@/components/admin/MerchImageGallery";
 import {
   ArrowLeft,
   Loader2,
@@ -398,24 +398,11 @@ export default function MerchEditorPage() {
               <CardTitle className="text-sm">Images</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
-              <div className="grid grid-cols-2 gap-6">
-                <ImageUpload
-                  label="Front"
-                  value={product.images?.front || ""}
-                  onChange={(v) =>
-                    update("images", { ...product.images, front: v })
-                  }
-                  uploadKey={`product_${id}_front`}
-                />
-                <ImageUpload
-                  label="Back"
-                  value={product.images?.back || ""}
-                  onChange={(v) =>
-                    update("images", { ...product.images, back: v })
-                  }
-                  uploadKey={`product_${id}_back`}
-                />
-              </div>
+              <MerchImageGallery
+                images={product.images}
+                onChange={(imgs) => update("images", imgs)}
+                uploadKeyPrefix={`product_${id}`}
+              />
             </CardContent>
           </Card>
         </div>

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ShoppingCart, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { normalizeMerchImages } from "@/lib/merch-images";
 
 interface AuraMerchModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ interface AuraMerchModalProps {
   onAddToCart: (size: string, qty: number) => void;
   merchName: string;
   merchDescription?: string;
-  merchImages?: { front?: string; back?: string };
+  merchImages?: string[] | { front?: string; back?: string };
   merchPrice: number;
   currencySymbol: string;
   availableSizes?: string[];
@@ -39,33 +40,28 @@ export function AuraMerchModal({
   vipBadge,
 }: AuraMerchModalProps) {
   const [selectedSize, setSelectedSize] = useState("M");
-  const [activeImage, setActiveImage] = useState<"front" | "back">("front");
+  const [activeIndex, setActiveIndex] = useState(0);
 
   // Reset when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedSize(availableSizes.includes("M") ? "M" : availableSizes[0] || "M");
-      setActiveImage("front");
+      setActiveIndex(0);
     }
   }, [isOpen, availableSizes]);
 
   const images = useMemo(() => {
-    const list: { key: string; src: string }[] = [];
-    if (merchImages?.front) list.push({ key: "front", src: merchImages.front });
-    if (merchImages?.back) list.push({ key: "back", src: merchImages.back });
-    return list;
+    return normalizeMerchImages(merchImages).map((src, i) => ({ key: String(i), src }));
   }, [merchImages]);
 
-  const currentImage = images.find((img) => img.key === activeImage) || images[0];
-  const currentIndex = images.findIndex((img) => img.key === activeImage);
+  const currentImage = images[activeIndex] || images[0];
 
   const navImage = useCallback(
     (dir: 1 | -1) => {
       if (images.length <= 1) return;
-      const next = (currentIndex + dir + images.length) % images.length;
-      setActiveImage(images[next].key as "front" | "back");
+      setActiveIndex((prev) => (prev + dir + images.length) % images.length);
     },
-    [images, currentIndex]
+    [images.length]
   );
 
   const handleAdd = () => {
@@ -108,12 +104,12 @@ export function AuraMerchModal({
             {/* Dots */}
             {images.length > 1 && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                {images.map((img) => (
+                {images.map((_, i) => (
                   <button
-                    key={img.key}
-                    onClick={() => setActiveImage(img.key as "front" | "back")}
+                    key={i}
+                    onClick={() => setActiveIndex(i)}
                     className={`h-1.5 rounded-full transition-all ${
-                      img.key === activeImage
+                      i === activeIndex
                         ? "w-4 bg-primary"
                         : "w-1.5 bg-muted-foreground/30"
                     }`}

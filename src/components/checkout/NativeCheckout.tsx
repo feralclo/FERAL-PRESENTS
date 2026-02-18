@@ -30,6 +30,7 @@ import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
 import { SETTINGS_KEYS } from "@/lib/constants";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import { normalizeMerchImages } from "@/lib/merch-images";
 import { CheckoutServiceUnavailable } from "./CheckoutServiceUnavailable";
 
 import "@/styles/midnight.css";
@@ -243,8 +244,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     (event.ticket_types || []).forEach((tt) => {
       if (!tt.includes_merch) return;
       const imgs = tt.product_id && tt.product ? tt.product.images : tt.merch_images;
-      if (imgs?.front) { const i = new Image(); i.src = imgs.front; }
-      if (imgs?.back) { const i = new Image(); i.src = imgs.back; }
+      normalizeMerchImages(imgs).forEach((src) => { const i = new Image(); i.src = src; });
     });
   }, [event.ticket_types]);
 
@@ -2167,7 +2167,7 @@ function OrderItems({
         const tt = getTicketType(line.ticket_type_id);
         const hasMerch = !!line.merch_size;
         const imgs = tt?.product_id && tt?.product ? tt.product.images : tt?.merch_images;
-        const merchImg = hasMerch ? (imgs?.front || null) : null;
+        const merchImg = hasMerch ? (normalizeMerchImages(imgs)[0] || null) : null;
         const merchName = tt?.product_id && tt?.product
           ? tt.product.name
           : (tt?.merch_name || (tt?.merch_type ? `${event?.name || ""} ${tt.merch_type}` : null));

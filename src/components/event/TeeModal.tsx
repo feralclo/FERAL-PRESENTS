@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { normalizeMerchImages } from "@/lib/merch-images";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
 
@@ -12,8 +13,8 @@ interface TeeModalProps {
   merchName?: string;
   /** Merch description copy */
   merchDescription?: string;
-  /** Front/back image URLs */
-  merchImages?: { front?: string; back?: string };
+  /** Merch image URLs (string[] or legacy {front, back}) */
+  merchImages?: string[] | { front?: string; back?: string };
   /** Price per item for the "Add to Cart" button */
   merchPrice?: number;
   /** Currency symbol (default: "£") */
@@ -36,24 +37,13 @@ export function TeeModal({
   availableSizes,
   vipBadge,
 }: TeeModalProps) {
-  // Build image array from props
+  // Build image array from props (handles both legacy {front,back} and string[])
   const images = useMemo(() => {
-    const imgs: { view: string; src: string; alt: string }[] = [];
-    if (merchImages?.back) {
-      imgs.push({
-        view: "back",
-        src: merchImages.back,
-        alt: `${merchName || "Merch"} Back`,
-      });
-    }
-    if (merchImages?.front) {
-      imgs.push({
-        view: "front",
-        src: merchImages.front,
-        alt: `${merchName || "Merch"} Front`,
-      });
-    }
-    return imgs;
+    return normalizeMerchImages(merchImages).map((src, i) => ({
+      view: String(i),
+      src,
+      alt: `${merchName || "Merch"} ${i + 1}`,
+    }));
   }, [merchImages, merchName]);
 
   const title = merchName || "Event Merch";

@@ -5,6 +5,7 @@ import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useSettings } from "@/hooks/useSettings";
 import { useBranding } from "@/hooks/useBranding";
 import { isEditorPreview } from "@/components/event/ThemeEditorBridge";
+import { normalizeMerchImages } from "@/lib/merch-images";
 import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { Separator } from "@/components/ui/separator";
@@ -120,12 +121,11 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
     return {
       name: teeModalTicketType.merch_name || product?.name || "Merchandise",
       description: teeModalTicketType.merch_description || product?.description || "",
-      images: {
-        front: (teeModalTicketType.merch_images as { front?: string; back?: string })?.front
-          || (product?.images as string[])?.[0],
-        back: (teeModalTicketType.merch_images as { front?: string; back?: string })?.back
-          || (product?.images as string[])?.[1],
-      },
+      images: normalizeMerchImages(
+        teeModalTicketType.product_id && product
+          ? product.images
+          : teeModalTicketType.merch_images
+      ),
       price: teeModalTicketType.price,
       sizes: teeModalTicketType.merch_sizes || product?.sizes || ["XS", "S", "M", "L", "XL", "XXL"],
     };

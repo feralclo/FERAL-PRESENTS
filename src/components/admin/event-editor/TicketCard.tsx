@@ -20,7 +20,8 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { TierSelector, type TierValue } from "@/components/admin/TierSelector";
-import { ImageUpload } from "@/components/admin/ImageUpload";
+import { MerchImageGallery } from "@/components/admin/MerchImageGallery";
+import { normalizeMerchImages } from "@/lib/merch-images";
 import { toDatetimeLocal, fromDatetimeLocal } from "@/lib/date-utils";
 import { ChevronDown, GripVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -316,14 +317,16 @@ export function TicketCard({
                     </div>
                   )}
 
-                  {linkedProduct && (
+                  {linkedProduct && (() => {
+                    const primaryImg = normalizeMerchImages(linkedProduct.images)[0];
+                    return (
                     <div className="flex items-center gap-3 rounded-md border border-primary/15 bg-primary/5 p-3">
-                      {linkedProduct.images?.front && (
+                      {primaryImg && (
                         <img
                           src={
-                            linkedProduct.images.front.startsWith("data:")
-                              ? linkedProduct.images.front
-                              : `/api/media/${linkedProduct.images.front}`
+                            primaryImg.startsWith("data:")
+                              ? primaryImg
+                              : `/api/media/${primaryImg}`
                           }
                           alt={linkedProduct.name}
                           className="h-10 w-10 rounded object-cover shrink-0 bg-background/50"
@@ -339,7 +342,8 @@ export function TicketCard({
                         </p>
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Inline merch fields (fallback) */}
                   {!ticket.product_id && (
@@ -397,48 +401,14 @@ export function TicketCard({
                           placeholder="One-time drop. Never again..."
                         />
                       </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <ImageUpload
-                          label="Merch Image — Front"
-                          value={
-                            (
-                              ticket.merch_images as {
-                                front?: string;
-                                back?: string;
-                              } | undefined
-                            )?.front || ""
-                          }
-                          onChange={(v) =>
-                            onUpdate(index, "merch_images", {
-                              ...((ticket.merch_images as Record<
-                                string,
-                                string
-                              >) || {}),
-                              front: v,
-                            })
-                          }
-                          uploadKey={`merch_${cardId}_front`}
-                        />
-                        <ImageUpload
-                          label="Merch Image — Back"
-                          value={
-                            (
-                              ticket.merch_images as {
-                                front?: string;
-                                back?: string;
-                              } | undefined
-                            )?.back || ""
-                          }
-                          onChange={(v) =>
-                            onUpdate(index, "merch_images", {
-                              ...((ticket.merch_images as Record<
-                                string,
-                                string
-                              >) || {}),
-                              back: v,
-                            })
-                          }
-                          uploadKey={`merch_${cardId}_back`}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Merch Images
+                        </span>
+                        <MerchImageGallery
+                          images={ticket.merch_images}
+                          onChange={(imgs) => onUpdate(index, "merch_images", imgs)}
+                          uploadKeyPrefix={`merch_${cardId}`}
                         />
                       </div>
                     </>

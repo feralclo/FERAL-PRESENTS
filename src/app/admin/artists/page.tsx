@@ -23,6 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import type { Artist } from "@/types/artists";
 
 export default function ArtistsPage() {
@@ -388,26 +389,22 @@ export default function ArtistsPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Image URL</Label>
-              <Input
-                value={formImage}
-                onChange={(e) => setFormImage(e.target.value)}
-                placeholder="https://... or /api/media/..."
-              />
-              <p className="text-[10px] text-muted-foreground/60">
-                Optional artist photo
-              </p>
-            </div>
+            <ImageUpload
+              label="Artist Profile Pic"
+              value={formImage}
+              onChange={setFormImage}
+              uploadKey={editingArtist ? `artist_${editingArtist.id}_photo` : `artist_new_${Date.now()}_photo`}
+            />
             <div className="space-y-2">
               <Label>Video</Label>
               {formVideoUrl ? (
-                <div className="space-y-2">
-                  <div className="relative rounded-lg overflow-hidden bg-black/50 border border-border">
+                <div className="space-y-1.5">
+                  <div className="relative rounded-lg overflow-hidden bg-black border border-border" style={{ maxHeight: "140px" }}>
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video
                       src={formVideoUrl}
-                      className="w-full max-h-[160px] object-contain"
+                      className="w-full object-cover"
+                      style={{ maxHeight: "140px" }}
                       muted
                       playsInline
                       preload="metadata"
@@ -415,14 +412,11 @@ export default function ArtistsPage() {
                     <button
                       type="button"
                       onClick={() => setFormVideoUrl("")}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 border border-white/20 rounded-md flex items-center justify-center text-white/70 hover:bg-black/80 hover:text-white transition-colors cursor-pointer"
+                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/70 border border-white/20 rounded-md flex items-center justify-center text-white/70 hover:bg-black/90 hover:text-white transition-colors cursor-pointer"
                     >
                       <X size={12} />
                     </button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground/60 truncate">
-                    {formVideoUrl}
-                  </p>
                 </div>
               ) : (
                 <div>

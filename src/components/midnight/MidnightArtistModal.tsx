@@ -111,7 +111,7 @@ export function MidnightArtistModal({
 
   if (!artist) return null;
 
-  const hasVideo = !!artist.video_url && !videoError;
+  const hasVideo = !!artist.video_url;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -141,57 +141,78 @@ export function MidnightArtistModal({
                 <div
                   className="relative w-full cursor-pointer"
                   style={{
-                    // 4:5 = 125% max height ratio. The video will fill this
-                    // container with object-fit: cover, center-cropping taller content.
                     aspectRatio: "4 / 5",
                     maxHeight: "380px",
                   }}
-                  onClick={handleVideoTap}
+                  onClick={!videoError ? handleVideoTap : undefined}
                 >
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <video
-                    ref={videoRef}
-                    src={artist.video_url!}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    playsInline
-                    muted
-                    preload="metadata"
-                    poster={artist.image || undefined}
-                    onEnded={handleVideoEnded}
-                    onError={handleVideoError}
-                  />
+                  {videoError ? (
+                    /* Fallback when video can't play — show poster or dark placeholder */
+                    <>
+                      {artist.image ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={artist.image}
+                          alt={artist.name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-foreground/[0.03]" />
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
+                        <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+                          {artist.name}
+                        </h3>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                      <video
+                        ref={videoRef}
+                        src={artist.video_url!}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        playsInline
+                        muted
+                        preload="metadata"
+                        poster={artist.image || undefined}
+                        onEnded={handleVideoEnded}
+                        onError={handleVideoError}
+                      />
 
-                  {/* Play button overlay — fades out when playing */}
-                  <div
-                    className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${
-                      isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
-                    }`}
-                  >
-                    <div className="w-14 h-14 rounded-full bg-black/40 border border-white/15 backdrop-blur-sm flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.4)]">
-                      <svg
-                        width="22"
-                        height="22"
-                        viewBox="0 0 24 24"
-                        fill="white"
-                        className="ml-1"
+                      {/* Play button overlay — fades out when playing */}
+                      <div
+                        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${
+                          isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
+                        }`}
                       >
-                        <polygon points="5,3 19,12 5,21" />
-                      </svg>
-                    </div>
-                  </div>
+                        <div className="w-14 h-14 rounded-full bg-black/40 border border-white/15 backdrop-blur-sm flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.4)]">
+                          <svg
+                            width="22"
+                            height="22"
+                            viewBox="0 0 24 24"
+                            fill="white"
+                            className="ml-1"
+                          >
+                            <polygon points="5,3 19,12 5,21" />
+                          </svg>
+                        </div>
+                      </div>
 
-                  {/* Artist name overlay — appears briefly on play */}
-                  <div
-                    className={`absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/20 to-transparent transition-all duration-700 ${
-                      showNameOverlay
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-2"
-                    }`}
-                  >
-                    <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-                      {artist.name}
-                    </h3>
-                  </div>
+                      {/* Artist name overlay — appears briefly on play */}
+                      <div
+                        className={`absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/20 to-transparent transition-all duration-700 ${
+                          showNameOverlay
+                            ? "opacity-100 translate-y-0"
+                            : "opacity-0 translate-y-2"
+                        }`}
+                      >
+                        <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+                          {artist.name}
+                        </h3>
+                      </div>
+                    </>
+                  )}
 
                   {/* Subtle glass rim highlight (top edge) */}
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent" />

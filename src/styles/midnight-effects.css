@@ -430,6 +430,15 @@ body:has([data-theme="midnight"]) .header {
    not a parent, so selectors use the compound form.
    ═══════════════════════════════════════════════ */
 
+/* Kill focus outlines on mouse click — keeps keyboard focus-visible for a11y.
+   Covers the dialog, all buttons inside it, and the fullscreen zoom overlay. */
+.midnight-merch-dialog:focus:not(:focus-visible),
+.midnight-merch-dialog *:focus:not(:focus-visible),
+.midnight-fs-overlay *:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 /* Close button — bigger, visible, matches the frame */
 .midnight-merch-dialog > button:last-child {
   width: 36px;

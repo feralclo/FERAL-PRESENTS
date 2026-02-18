@@ -106,6 +106,14 @@ export function MidnightMerchModal({
     }
   }, [fullscreenOpen]);
 
+  // Preload images so they're cached before the modal opens
+  useEffect(() => {
+    images.forEach((img) => {
+      const preload = new Image();
+      preload.src = img.src;
+    });
+  }, [images]);
+
   // Main view swipe handlers
   const onMainTouchStart = useCallback((e: React.TouchEvent) => {
     mainTouchStartX.current = e.touches[0].clientX;
@@ -357,7 +365,7 @@ export function MidnightMerchModal({
            the fullscreen X also closes the parent merch modal. */}
       {fullscreenOpen && (
         <div
-          className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
+          className="midnight-fs-overlay fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
           onClick={() => setFullscreenOpen(false)}
           onTouchStart={onFsTouchStart}
           onTouchEnd={onFsTouchEnd}

@@ -185,17 +185,11 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
         <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10 pointer-events-none">
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0 pointer-events-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)] max-lg:gap-6">
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
-                {/* Mobile section divider — double-rule with depth */}
-                <div className="lg:hidden order-[-2] mb-10 max-[480px]:mb-8 pt-4">
-                  <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.10] to-transparent" />
-                  <div className="h-px mt-2 bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent" />
-                </div>
-
-                {/* Mobile content panel — lineup + event info in one cohesive surface */}
-                <div className="max-lg:rounded-xl max-lg:bg-foreground/[0.02] max-lg:border max-lg:border-foreground/[0.05] max-lg:p-5 max-[480px]:p-4 max-lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                {/* Mobile content zone — full-width dark premium section */}
+                <div className="midnight-content-zone max-lg:mx-[calc(-1*var(--midnight-content-px))] max-lg:px-[var(--midnight-content-px)] max-lg:pt-10 max-[480px]:pt-8 max-lg:pb-6">
                   {/* Lineup on mobile (above about) */}
                   {lineup.length > 0 && (
                     <div className="lg:hidden mb-8 max-md:mb-6" data-reveal="1">

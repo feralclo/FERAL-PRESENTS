@@ -46,7 +46,7 @@ export function MidnightLineup({
                 key={artist}
                 type="button"
                 onClick={() => onArtistClick?.(profile)}
-                className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.10] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/80 cursor-pointer bg-foreground/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_8px_rgba(255,255,255,0.02)] hover:bg-foreground/[0.08] hover:border-foreground/[0.18] transition-all duration-200"
+                className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.12] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/85 cursor-pointer bg-foreground/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_4px_rgba(0,0,0,0.3)] hover:bg-foreground/[0.10] hover:border-foreground/[0.20] transition-all duration-200"
               >
                 {artist}
               </button>
@@ -56,7 +56,7 @@ export function MidnightLineup({
           return (
             <span
               key={artist}
-              className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.08] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/60 cursor-default bg-foreground/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+              className="midnight-lineup-pill inline-block px-4 py-2.5 max-[480px]:px-3.5 max-[480px]:py-2 border border-foreground/[0.06] rounded-lg font-[family-name:var(--font-sans)] text-[13px] max-[480px]:text-[12px] tracking-[0.01em] text-foreground/55 cursor-default bg-foreground/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
             >
               {artist}
             </span>

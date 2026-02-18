@@ -22,12 +22,12 @@ export function MidnightLineup({
   return (
     <div>
       {/* Section header */}
-      <div className="flex items-center gap-3 mb-7 max-[480px]:mb-5">
-        <h2 className="font-[family-name:var(--font-sans)] text-xs max-[480px]:text-[11px] font-bold tracking-[0.18em] uppercase text-foreground/60">
+      <div className="flex items-center gap-3 mb-8 max-[480px]:mb-6">
+        <h2 className="font-[family-name:var(--font-sans)] text-sm max-[480px]:text-xs font-bold tracking-[0.18em] uppercase text-foreground/70">
           Lineup
         </h2>
         {isAlphabetical && (
-          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-[var(--accent)]/80 border border-[var(--accent)]/15 bg-[var(--accent)]/[0.04] rounded-full px-2.5 py-0.5 uppercase">
+          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-[var(--accent)] border border-[var(--accent)]/20 bg-[var(--accent)]/[0.06] rounded-full px-2.5 py-0.5 uppercase">
             A &mdash; Z
           </span>
         )}

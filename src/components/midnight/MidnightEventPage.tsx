@@ -192,14 +192,17 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 <div className="midnight-content-zone max-lg:mx-[calc(-1*var(--midnight-content-px))] max-lg:px-[var(--midnight-content-px)] max-lg:pt-10 max-[480px]:pt-8 max-lg:pb-6">
                   {/* Lineup on mobile (above about) */}
                   {lineup.length > 0 && (
-                    <div className="lg:hidden mb-8 max-md:mb-6" data-reveal="1">
+                    <div className="lg:hidden mb-12 max-md:mb-10" data-reveal="1">
                       <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                     </div>
                   )}
 
                   {/* Lineup/info separator on mobile */}
                   {lineup.length > 0 && (
-                    <div className="lg:hidden h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent mb-8 max-md:mb-6" />
+                    <div className="lg:hidden mb-12 max-md:mb-10">
+                      <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent" />
+                      <div className="h-px mt-1.5 bg-gradient-to-r from-transparent via-foreground/[0.03] to-transparent" />
+                    </div>
                   )}
 
                   <div data-reveal="2">

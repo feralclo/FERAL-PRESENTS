@@ -162,17 +162,22 @@ export default function ArtistsPage() {
       const { signedUrl, token, publicUrl } = signedData;
 
       // Step 2: Upload directly to Supabase Storage (bypasses Vercel body limit)
+      // The signed URL already contains the auth token — do NOT send Authorization header
+      // (Bearer token would be misinterpreted as a JWT and rejected for large files)
       setVideoStatus("Uploading...");
       const uploadRes = await fetch(signedUrl, {
         method: "PUT",
         headers: {
           "Content-Type": file.type,
           "x-upsert": "true",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: file,
       });
-      if (!uploadRes.ok) throw new Error("Upload to storage failed");
+      if (!uploadRes.ok) {
+        let detail = `${uploadRes.status} ${uploadRes.statusText}`;
+        try { const errBody = await uploadRes.json(); detail = errBody.error || errBody.message || detail; } catch { /* ignore */ }
+        throw new Error(`Storage upload failed: ${detail}`);
+      }
       setVideoProgress(50);
 
       // Step 3: Tell Mux to ingest the video from the Supabase URL

@@ -40,8 +40,17 @@ export function MidnightArtistModal({
 
   // ── Video state ──
   const [videoError, setVideoError] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Synchronous reset — ensures thumbnail overlay is visible on the FIRST
+  // render with a new artist (before paint). No flash of stale state.
+  const lastArtistIdRef = useRef(artist?.id);
+  if (artist?.id !== lastArtistIdRef.current) {
+    lastArtistIdRef.current = artist?.id;
+    if (videoReady) setVideoReady(false);
+  }
 
   // ── Swipe state ──
   const [phase, setPhase] = useState<SwipePhase>("idle");
@@ -507,6 +516,7 @@ export function MidnightArtistModal({
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           {...({
                             autoPlay: "any",
+                            onPlaying: () => setVideoReady(true),
                             style: {
                               width: "100%",
                               height: "100%",
@@ -527,7 +537,22 @@ export function MidnightArtistModal({
                           autoPlay
                           loop
                           preload="auto"
+                          onPlaying={() => setVideoReady(true)}
                           onError={() => setVideoError(true)}
+                        />
+                      )}
+
+                      {/* Thumbnail overlay — masks MuxPlayer initialization jank.
+                          Shows the exact first frame (time=0) on top of the player.
+                          Fades out only when the video is genuinely playing. */}
+                      {hasMuxVideo && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={getMuxThumbnailUrl(artist.video_url!)}
+                          alt=""
+                          className={`absolute inset-0 w-full h-full object-cover z-[5] transition-opacity duration-300 ${
+                            videoReady ? "opacity-0 pointer-events-none" : "opacity-100"
+                          }`}
                         />
                       )}
 

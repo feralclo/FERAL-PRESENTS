@@ -153,8 +153,12 @@ export default function ArtistsPage() {
     setVideoStatus("Preparing upload...");
 
     try {
-      // Step 1: Get a Mux direct upload URL
-      const createRes = await fetch("/api/mux/upload", { method: "POST" });
+      // Step 1: Get a Mux direct upload URL (pass origin for CORS)
+      const createRes = await fetch("/api/mux/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origin: window.location.origin }),
+      });
       const createData = await createRes.json();
       if (!createRes.ok) throw new Error(createData.error || "Failed to create upload");
 

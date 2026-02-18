@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getMuxClient } from "@/lib/mux";
 
@@ -8,9 +8,10 @@ import { getMuxClient } from "@/lib/mux";
  * The client uploads directly to Mux (browser → Mux), bypassing our server.
  * Mux handles all transcoding automatically.
  *
+ * Body: { origin: string } — the browser origin for CORS
  * Returns: { uploadUrl: string, uploadId: string }
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
@@ -23,11 +24,15 @@ export async function POST() {
       );
     }
 
+    // Mux needs the exact origin for CORS on the upload URL
+    const body = await request.json().catch(() => ({}));
+    const origin = body.origin || request.headers.get("origin") || "https://feral-presents.vercel.app";
+
     const upload = await mux.video.uploads.create({
       new_asset_settings: {
         playback_policy: ["public"],
       },
-      cors_origin: "*",
+      cors_origin: origin,
     });
 
     return NextResponse.json({

@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
 import { Separator } from "@/components/ui/separator";
+import { TikTokIcon } from "@/components/rep";
+import { openSocialProfile } from "@/lib/rep-social";
 
 interface PublicProfile {
   id: string;
@@ -30,42 +32,6 @@ interface PublicProfile {
   leaderboard_position: number | null;
   joined_at: string;
   is_self: boolean;
-}
-
-function TikTokIcon({ size = 16, className }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.8a8.19 8.19 0 0 0 3.76.96V6.32a4.85 4.85 0 0 1-.01.37Z" />
-    </svg>
-  );
-}
-
-function openSocialProfile(platform: "instagram" | "tiktok", username: string) {
-  const schemes: Record<string, string> = {
-    instagram: `instagram://user?username=${username}`,
-    tiktok: `snssdk1233://user/profile/${username}`,
-  };
-  const webUrls: Record<string, string> = {
-    instagram: `https://instagram.com/${username}`,
-    tiktok: `https://tiktok.com/@${username}`,
-  };
-
-  window.location.href = schemes[platform];
-
-  const timer = setTimeout(() => {
-    window.open(webUrls[platform], "_blank", "noopener");
-  }, 1500);
-
-  const onVisibility = () => {
-    if (document.hidden) {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisibility);
-    }
-  };
-  document.addEventListener("visibilitychange", onVisibility);
-  setTimeout(() => {
-    document.removeEventListener("visibilitychange", onVisibility);
-  }, 2000);
 }
 
 export default function PublicRepProfilePage() {
@@ -144,7 +110,7 @@ export default function PublicRepProfilePage() {
 
       {/* ── Avatar + Identity ── */}
       <div className="text-center rep-slide-up">
-        <div className="h-24 w-24 rounded-full border-2 border-primary/20 overflow-hidden mx-auto bg-primary/5 rep-glow">
+        <div className="h-24 w-24 rounded-full border-2 border-primary/20 overflow-hidden mx-auto bg-primary/5 shadow-[0_0_12px_rgba(139,92,246,0.08)]">
           {profile.photo_url ? (
             <img src={profile.photo_url} alt="" className="h-full w-full object-cover" />
           ) : (

@@ -24,6 +24,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { TikTokIcon } from "@/components/rep";
+import { getTierFromLevel } from "@/lib/rep-tiers";
+import { openSocialProfile } from "@/lib/rep-social";
 import { cn } from "@/lib/utils";
 
 interface RepProfile {
@@ -40,22 +43,6 @@ interface RepProfile {
   level: number;
   points_balance: number;
   total_sales: number;
-}
-
-function getTierFromLevel(level: number): { name: string; ring: string; color: string; profileRing: string } {
-  if (level >= 9) return { name: "Mythic", ring: "rep-avatar-ring-mythic", color: "#F59E0B", profileRing: "rep-profile-ring rep-profile-ring-mythic" };
-  if (level >= 7) return { name: "Elite", ring: "rep-avatar-ring-elite", color: "#8B5CF6", profileRing: "rep-profile-ring rep-profile-ring-elite" };
-  if (level >= 4) return { name: "Pro", ring: "rep-avatar-ring-pro", color: "#38BDF8", profileRing: "rep-profile-ring rep-profile-ring-pro" };
-  return { name: "Starter", ring: "rep-avatar-ring-starter", color: "#94A3B8", profileRing: "rep-profile-ring rep-profile-ring-starter" };
-}
-
-// TikTok icon (not in lucide)
-function TikTokIcon({ size = 16, className }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.8a8.19 8.19 0 0 0 3.76.96V6.32a4.85 4.85 0 0 1-.01.37Z" />
-    </svg>
-  );
 }
 
 /**
@@ -87,43 +74,6 @@ function processProfileImage(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
-}
-
-/**
- * Open social profile in native app (iOS deep link) with web fallback.
- * Does not navigate away from the portal.
- */
-function openSocialProfile(platform: "instagram" | "tiktok", username: string) {
-  const schemes: Record<string, string> = {
-    instagram: `instagram://user?username=${username}`,
-    tiktok: `snssdk1233://user/profile/${username}`,
-  };
-  const webUrls: Record<string, string> = {
-    instagram: `https://instagram.com/${username}`,
-    tiktok: `https://tiktok.com/@${username}`,
-  };
-
-  // Try native app scheme
-  window.location.href = schemes[platform];
-
-  // If we're still here after 1.5s, the app didn't open — use web fallback
-  const timer = setTimeout(() => {
-    window.open(webUrls[platform], "_blank", "noopener");
-  }, 1500);
-
-  // If the native app opened, the page becomes hidden — cancel fallback
-  const onVisibility = () => {
-    if (document.hidden) {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisibility);
-    }
-  };
-  document.addEventListener("visibilitychange", onVisibility);
-
-  // Clean up listener after fallback fires
-  setTimeout(() => {
-    document.removeEventListener("visibilitychange", onVisibility);
-  }, 2000);
 }
 
 export default function RepProfilePage() {
@@ -406,68 +356,38 @@ export default function RepProfilePage() {
 
               {/* Mini stat gauges */}
               <div className="flex items-center justify-center gap-6 mt-5">
-                <div className="rep-mini-gauge">
-                  <div className="rep-mini-gauge-ring">
-                    <svg viewBox="0 0 56 56">
-                      <circle className="track" cx="28" cy="28" r="22" />
-                      <circle
-                        className="fill"
-                        cx="28" cy="28" r="22"
-                        stroke="#8B5CF6"
-                        strokeDasharray={MINI_CIRC}
-                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.points_balance / Math.max(profile.points_balance, 100), 1))}
-                        style={{ filter: "drop-shadow(0 0 3px rgba(139, 92, 246, 0.4))" }}
-                      />
-                    </svg>
-                    <div className="rep-mini-gauge-center">
-                      <Zap size={14} className="text-primary" />
+                {[
+                  { icon: Zap, iconClass: "text-primary", color: "#8B5CF6", value: String(profile.points_balance), label: "XP", percent: Math.min(profile.points_balance / Math.max(profile.points_balance, 100), 1) },
+                  { icon: TrendingUp, iconClass: "text-success", color: "#34D399", value: String(profile.total_sales), label: "Sales", percent: Math.min(profile.total_sales / Math.max(profile.total_sales, 20), 1) },
+                  { icon: Trophy, iconClass: "", color: tier.color, value: `Lv.${profile.level}`, label: "Tier", percent: Math.min(profile.level / 10, 1) },
+                ].map((g) => {
+                  const GIcon = g.icon;
+                  return (
+                    <div key={g.label} className="flex flex-col items-center gap-1">
+                      <div className="relative" style={{ width: 56, height: 56 }}>
+                        <svg className="-rotate-90 w-full h-full" viewBox="0 0 56 56">
+                          <circle fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={3.5} cx="28" cy="28" r="22" />
+                          <circle
+                            fill="none"
+                            stroke={g.color}
+                            strokeWidth={3.5}
+                            strokeLinecap="round"
+                            cx="28" cy="28" r="22"
+                            strokeDasharray={MINI_CIRC}
+                            strokeDashoffset={MINI_CIRC * (1 - g.percent)}
+                            className="transition-[stroke-dashoffset] duration-1000 ease-out"
+                            style={{ filter: `drop-shadow(0 0 3px ${g.color}66)` }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <GIcon size={14} className={g.iconClass} style={!g.iconClass ? { color: g.color } : undefined} />
+                        </div>
+                      </div>
+                      <span className="text-[13px] font-bold font-mono tabular-nums" style={{ color: g.color }}>{g.value}</span>
+                      <span className="text-[9px] uppercase tracking-[1px] text-muted-foreground font-semibold">{g.label}</span>
                     </div>
-                  </div>
-                  <span className="rep-mini-gauge-value" style={{ color: "#8B5CF6" }}>{profile.points_balance}</span>
-                  <span className="rep-mini-gauge-label">XP</span>
-                </div>
-
-                <div className="rep-mini-gauge">
-                  <div className="rep-mini-gauge-ring">
-                    <svg viewBox="0 0 56 56">
-                      <circle className="track" cx="28" cy="28" r="22" />
-                      <circle
-                        className="fill"
-                        cx="28" cy="28" r="22"
-                        stroke="#34D399"
-                        strokeDasharray={MINI_CIRC}
-                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.total_sales / Math.max(profile.total_sales, 20), 1))}
-                        style={{ filter: "drop-shadow(0 0 3px rgba(52, 211, 153, 0.4))" }}
-                      />
-                    </svg>
-                    <div className="rep-mini-gauge-center">
-                      <TrendingUp size={14} className="text-success" />
-                    </div>
-                  </div>
-                  <span className="rep-mini-gauge-value" style={{ color: "#34D399" }}>{profile.total_sales}</span>
-                  <span className="rep-mini-gauge-label">Sales</span>
-                </div>
-
-                <div className="rep-mini-gauge">
-                  <div className="rep-mini-gauge-ring">
-                    <svg viewBox="0 0 56 56">
-                      <circle className="track" cx="28" cy="28" r="22" />
-                      <circle
-                        className="fill"
-                        cx="28" cy="28" r="22"
-                        stroke={tier.color}
-                        strokeDasharray={MINI_CIRC}
-                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.level / 10, 1))}
-                        style={{ filter: `drop-shadow(0 0 3px ${tier.color}66)` }}
-                      />
-                    </svg>
-                    <div className="rep-mini-gauge-center">
-                      <Trophy size={14} style={{ color: tier.color }} />
-                    </div>
-                  </div>
-                  <span className="rep-mini-gauge-value" style={{ color: tier.color }}>Lv.{profile.level}</span>
-                  <span className="rep-mini-gauge-label">Tier</span>
-                </div>
+                  );
+                })}
               </div>
             </>
           );

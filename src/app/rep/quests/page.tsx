@@ -6,6 +6,9 @@ import {
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
   Camera, Share2, Sparkles, Zap, ChevronRight,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/rep";
+import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -316,14 +319,14 @@ export default function RepQuestsPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
         <div className="flex flex-col items-center gap-3 pt-2">
-          <div className="h-12 w-12 rounded-2xl bg-[var(--rep-surface)] animate-pulse" />
-          <div className="h-6 w-24 rounded bg-[var(--rep-surface)] animate-pulse" />
-          <div className="h-4 w-48 rounded bg-[var(--rep-surface)] animate-pulse" />
+          <div className="h-12 w-12 rounded-2xl bg-secondary animate-pulse" />
+          <div className="h-6 w-24 rounded bg-secondary animate-pulse" />
+          <div className="h-4 w-48 rounded bg-secondary animate-pulse" />
         </div>
-        <div className="h-10 rounded-xl bg-[var(--rep-surface)] animate-pulse" />
+        <div className="h-10 rounded-xl bg-secondary animate-pulse" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[160px] rounded-2xl bg-[var(--rep-surface)] animate-pulse" />
+            <div key={i} className="h-[160px] rounded-2xl bg-secondary animate-pulse" />
           ))}
         </div>
       </div>
@@ -337,11 +340,11 @@ export default function RepQuestsPage() {
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 mb-4">
             <Compass size={22} className="text-red-400" />
           </div>
-          <p className="text-sm text-white font-medium mb-1">Failed to load quests</p>
-          <p className="text-xs text-[var(--rep-text-muted)] mb-4">{error}</p>
+          <p className="text-sm text-foreground font-medium mb-1">Failed to load quests</p>
+          <p className="text-xs text-muted-foreground mb-4">{error}</p>
           <button
             onClick={() => { setError(""); setLoading(true); loadQuests(); }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--rep-border)] px-4 py-2 text-xs text-[var(--rep-text-muted)] hover:border-[var(--rep-accent)]/50 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
           >
             Try again
           </button>
@@ -356,17 +359,17 @@ export default function RepQuestsPage() {
     <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col items-center text-center pt-2">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/20 mb-3">
-          <Compass size={22} className="text-[var(--rep-accent)]" />
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 mb-3">
+          <Compass size={22} className="text-primary" />
         </div>
-        <h1 className="text-xl font-bold text-white">Side Quests</h1>
-        <p className="text-sm text-[var(--rep-text-muted)] mt-1">
+        <h1 className="text-xl font-bold text-foreground">Side Quests</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Complete tasks to earn bonus points
         </p>
         {totalAvailableXP > 0 && (
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--rep-accent)]/10 border border-[var(--rep-accent)]/15 px-4 py-1.5">
-            <Zap size={13} className="text-[var(--rep-accent)]" />
-            <span className="text-xs font-bold text-[var(--rep-accent)]">{totalAvailableXP} XP available</span>
+          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/15 px-4 py-1.5">
+            <Zap size={13} className="text-primary" />
+            <span className="text-xs font-bold text-primary">{totalAvailableXP} XP available</span>
           </div>
         )}
       </div>
@@ -378,38 +381,39 @@ export default function RepQuestsPage() {
         </div>
       )}
 
-      {/* Tab bar — uses rep-tab-bar for consistency with leaderboard/rewards */}
-      <div className="rep-tab-bar">
-        <button
-          onClick={() => setTab("active")}
-          className={`rep-tab ${tab === "active" ? "active" : ""}`}
-        >
-          Active
-          {activeQuests.length > 0 && (
-            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-bold min-w-[18px]">{activeQuests.length}</span>
-          )}
-        </button>
-        <button
-          onClick={() => setTab("completed")}
-          className={`rep-tab ${tab === "completed" ? "active" : ""}`}
-        >
-          Completed
-          {completedQuests.length > 0 && (
-            <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-bold min-w-[18px]">{completedQuests.length}</span>
-          )}
-        </button>
+      {/* Tab bar */}
+      <div className="flex gap-0.5 bg-secondary rounded-xl p-[3px] border border-border">
+        {([
+          { id: "active" as const, label: "Active", count: activeQuests.length },
+          { id: "completed" as const, label: "Completed", count: completedQuests.length },
+        ]).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
+              "hover:text-foreground",
+              tab === t.id && "bg-primary text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)]"
+            )}
+          >
+            {t.label}
+            {t.count > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-bold min-w-[18px]">{t.count}</span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Quest Cards */}
       {displayQuests.length === 0 ? (
         <div className="text-center py-16">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-accent)]/10 mb-4">
-            <Compass size={22} className="text-[var(--rep-accent)]" />
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+            <Compass size={22} className="text-primary" />
           </div>
-          <p className="text-sm text-white font-medium mb-1">
+          <p className="text-sm text-foreground font-medium mb-1">
             {tab === "active" ? "No active quests" : "No completed quests"}
           </p>
-          <p className="text-xs text-[var(--rep-text-muted)]">
+          <p className="text-xs text-muted-foreground">
             {tab === "active" ? "Check back soon for new quests" : "Complete quests to earn bonus points"}
           </p>
         </div>
@@ -442,7 +446,7 @@ export default function RepQuestsPage() {
                 {/* Card content */}
                 <div className="rep-quest-glass">
                   {/* ═══ Art zone — badges float over the image ═══ */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div className="flex justify-between items-center">
                     <span className={tier.badgeClass}>{tier.label}</span>
                     <span className={tier.xpBadgeClass}>+{quest.points_reward} XP</span>
                   </div>
@@ -452,26 +456,26 @@ export default function RepQuestsPage() {
 
                   {/* ═══ Info zone — centered, on the dark gradient ═══ */}
                   {expiry?.urgent && (
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", margin: "0 auto 8px", padding: "4px 12px", borderRadius: "8px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                    <div className="inline-flex items-center gap-1.5 mx-auto mb-2 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
                       <Clock size={11} className="text-amber-400" />
-                      <span style={{ fontSize: "11px", fontWeight: 500, color: "#FBBF24" }}>{expiry.text}</span>
+                      <span className="text-[11px] font-medium text-amber-400">{expiry.text}</span>
                     </div>
                   )}
 
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: "2px" }}>
-                    <QuestTypeIcon size={13} style={{ opacity: 0.5 }} />
-                    <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>{quest.title}</h3>
+                  <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                    <QuestTypeIcon size={13} className="opacity-50" />
+                    <h3 className="text-base font-extrabold text-foreground tracking-tight">{quest.title}</h3>
                   </div>
                   {quest.description && (
-                    <p style={{ fontSize: "12px", color: "var(--rep-text-muted)", lineHeight: 1.5, marginBottom: "10px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{quest.description}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mb-2.5 line-clamp-2">{quest.description}</p>
                   )}
 
                   {/* Progress bar for repeatable quests */}
                   {isRepeatable && (
-                    <div style={{ marginBottom: "10px", textAlign: "left" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                        <span style={{ fontSize: "10px", color: "var(--rep-text-muted)" }}>Progress</span>
-                        <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--rep-text-muted)" }}>
+                    <div className="mb-2.5 text-left">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-[10px] text-muted-foreground">Progress</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground">
                           {approvedCount}/{quest.max_completions}
                         </span>
                       </div>
@@ -486,7 +490,7 @@ export default function RepQuestsPage() {
 
                   {/* Status badges */}
                   {hasSubs && (
-                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px", marginBottom: "10px" }}>
+                    <div className="flex flex-wrap justify-center gap-1.5 mb-2.5">
                       {subs.pending > 0 && (
                         <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
                           <Clock size={10} /> {subs.pending} pending
@@ -518,14 +522,14 @@ export default function RepQuestsPage() {
 
                   {/* Non-urgent expiry */}
                   {expiry && !expiry.urgent && (
-                    <p style={{ fontSize: "10px", color: "var(--rep-text-muted)", marginTop: "8px" }}>{expiry.text}</p>
+                    <p className="text-[10px] text-muted-foreground mt-2">{expiry.text}</p>
                   )}
 
                   {/* History toggle */}
                   {hasSubs && (
                     <button
                       onClick={() => toggleSubmissions(quest.id)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: "4px", margin: "8px auto 0", padding: "4px 0", background: "none", border: "none", cursor: "pointer", fontSize: "11px", color: "var(--rep-text-muted)", transition: "color 0.2s" }}
+                      className="inline-flex items-center gap-1 mt-2 mx-auto py-1 bg-transparent border-none cursor-pointer text-[11px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
                     >
                       {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       {isExpanded ? "Hide history" : "View history"}
@@ -534,61 +538,60 @@ export default function RepQuestsPage() {
 
                   {/* Expanded submissions */}
                   {isExpanded && (
-                    <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.08)", textAlign: "left" }}>
+                    <div className="mt-3 pt-3 border-t border-white/[0.08] text-left">
                       {loadingSubs === quest.id ? (
-                        <div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
-                          <div className="animate-spin" style={{ width: "16px", height: "16px", border: "2px solid var(--rep-accent)", borderTopColor: "transparent", borderRadius: "50%" }} />
+                        <div className="flex justify-center py-4">
+                          <Loader2 size={16} className="animate-spin text-primary" />
                         </div>
                       ) : !questSubmissions[quest.id]?.length ? (
-                        <p style={{ fontSize: "12px", color: "var(--rep-text-muted)", textAlign: "center", padding: "12px 0" }}>No submissions yet</p>
+                        <p className="text-xs text-muted-foreground text-center py-3">No submissions yet</p>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <div className="flex flex-col gap-2">
                           {questSubmissions[quest.id].map((sub) => (
                             <div
                               key={sub.id}
-                              style={{ borderRadius: "10px", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.05)", padding: "12px" }}
+                              className="rounded-[10px] bg-black/25 border border-white/5 p-3"
                             >
-                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                                <span style={{ fontSize: "10px", color: "var(--rep-text-muted)" }}>
+                              <div className="flex justify-between mb-1.5">
+                                <span className="text-[10px] text-muted-foreground">
                                   {formatDate(sub.created_at)}
                                 </span>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-                                  sub.status === "approved"
-                                    ? "bg-emerald-500/10 text-emerald-400"
-                                    : sub.status === "rejected"
-                                    ? "bg-red-500/10 text-red-400"
+                                <span className={cn(
+                                  "text-[10px] font-semibold px-2 py-0.5 rounded-md",
+                                  sub.status === "approved" ? "bg-emerald-500/10 text-emerald-400"
+                                    : sub.status === "rejected" ? "bg-red-500/10 text-red-400"
                                     : "bg-amber-500/10 text-amber-400"
-                                }`}>
+                                )}>
                                   {sub.status}
                                   {sub.status === "approved" && sub.points_awarded > 0 && (
                                     <span className="ml-1">+{sub.points_awarded} pts</span>
                                   )}
                                 </span>
                               </div>
-                              <div style={{ fontSize: "12px", color: "var(--rep-text-muted)" }}>
+                              <div className="text-xs text-muted-foreground">
                                 {sub.proof_type === "screenshot" && sub.proof_url && (
-                                  <img src={sub.proof_url} alt="Proof" style={{ maxHeight: "80px", borderRadius: "6px", marginTop: "4px" }} />
+                                  <img src={sub.proof_url} alt="Proof" className="max-h-20 rounded-md mt-1" />
                                 )}
                                 {(sub.proof_type === "tiktok_link" || sub.proof_type === "instagram_link" || sub.proof_type === "url") && (sub.proof_url || sub.proof_text) && (
                                   <a
                                     href={sub.proof_url || sub.proof_text || "#"}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    style={{ color: "var(--rep-accent)", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                    className="text-primary inline-flex items-center gap-1"
                                   >
                                     <ExternalLink size={10} />
                                     {sub.proof_type === "tiktok_link" ? "TikTok" : sub.proof_type === "instagram_link" ? "Instagram" : "Link"}
                                   </a>
                                 )}
                                 {sub.proof_type === "text" && sub.proof_text && (
-                                  <p style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginTop: "2px" }}>{sub.proof_text}</p>
+                                  <p className="line-clamp-2 mt-0.5">{sub.proof_text}</p>
                                 )}
                               </div>
                               {sub.status === "rejected" && sub.rejection_reason && (
-                                <div style={{ marginTop: "8px", borderRadius: "6px", background: "rgba(244,63,94,0.05)", border: "1px solid rgba(244,63,94,0.1)", padding: "8px 10px" }}>
-                                  <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
-                                    <AlertCircle size={10} className="text-red-400" style={{ marginTop: "2px", flexShrink: 0 }} />
-                                    <p style={{ fontSize: "10px", color: "#F43F5E" }}>{sub.rejection_reason}</p>
+                                <div className="mt-2 rounded-md bg-destructive/5 border border-destructive/10 px-2.5 py-2">
+                                  <div className="flex items-start gap-1.5">
+                                    <AlertCircle size={10} className="text-destructive mt-0.5 shrink-0" />
+                                    <p className="text-[10px] text-destructive">{sub.rejection_reason}</p>
                                   </div>
                                 </div>
                               )}
@@ -611,26 +614,26 @@ export default function RepQuestsPage() {
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4"
           onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
         >
-          <div className="w-full max-w-md rounded-2xl border border-[var(--rep-border)] bg-[var(--rep-bg)] p-6">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-bold text-white">Submit Proof</h3>
+              <h3 className="text-lg font-bold text-foreground">Submit Proof</h3>
               <button
                 onClick={() => { if (!submitting) setSubmitQuestId(null); }}
-                className="text-[var(--rep-text-muted)] hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X size={18} />
               </button>
             </div>
             {submitQuest && (
-              <p className="text-xs text-[var(--rep-text-muted)] mb-4 line-clamp-1">{submitQuest.title}</p>
+              <p className="text-xs text-muted-foreground mb-4 line-clamp-1">{submitQuest.title}</p>
             )}
 
             {submitted ? (
               <div className="text-center py-6">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--rep-success)]/10 mb-3">
-                  <Check size={20} className="text-[var(--rep-success)]" />
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-3">
+                  <Check size={20} className="text-success" />
                 </div>
-                <p className="text-sm text-white font-medium">Submitted for review!</p>
+                <p className="text-sm text-foreground font-medium">Submitted for review!</p>
               </div>
             ) : (
               <>
@@ -643,11 +646,12 @@ export default function RepQuestsPage() {
                       <button
                         key={pt}
                         onClick={() => { setProofType(pt); setProofText(""); setUploadedUrl(""); }}
-                        className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors border",
                           proofType === pt
-                            ? "bg-[var(--rep-accent)]/10 text-[var(--rep-accent)] border border-[var(--rep-accent)]/30"
-                            : "bg-[var(--rep-surface)] text-[var(--rep-text-muted)] border border-[var(--rep-border)]"
-                        }`}
+                            ? "bg-primary/10 text-primary border-primary/30"
+                            : "bg-secondary text-muted-foreground border-border"
+                        )}
                       >
                         <Icon size={12} />
                         {config.label}
@@ -661,7 +665,7 @@ export default function RepQuestsPage() {
                   <textarea
                     value={proofText}
                     onChange={(e) => setProofText(e.target.value)}
-                    className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors resize-none"
+                    className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors resize-none"
                     placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
                     rows={4}
                     autoFocus
@@ -669,8 +673,8 @@ export default function RepQuestsPage() {
                 ) : proofType === "screenshot" ? (
                   <div className="space-y-3">
                     {uploadedUrl ? (
-                      <div className="relative rounded-xl overflow-hidden border border-[var(--rep-border)]">
-                        <img src={uploadedUrl} alt="Proof" className="w-full max-h-48 object-contain bg-[var(--rep-surface)]" />
+                      <div className="relative rounded-xl overflow-hidden border border-border">
+                        <img src={uploadedUrl} alt="Proof" className="w-full max-h-48 object-contain bg-secondary" />
                         <button
                           onClick={() => { setUploadedUrl(""); setProofText(""); }}
                           className="absolute top-2 right-2 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
@@ -679,13 +683,13 @@ export default function RepQuestsPage() {
                         </button>
                       </div>
                     ) : (
-                      <label className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[var(--rep-border)] bg-[var(--rep-surface)] py-8 cursor-pointer transition-colors hover:border-[var(--rep-accent)]/50 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+                      <label className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-secondary py-8 cursor-pointer transition-colors hover:border-primary/50 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
                         {uploading ? (
-                          <Loader2 size={20} className="animate-spin text-[var(--rep-accent)]" />
+                          <Loader2 size={20} className="animate-spin text-primary" />
                         ) : (
-                          <Upload size={20} className="text-[var(--rep-text-muted)]" />
+                          <Upload size={20} className="text-muted-foreground" />
                         )}
-                        <span className="text-xs text-[var(--rep-text-muted)]">
+                        <span className="text-xs text-muted-foreground">
                           {uploading ? "Uploading..." : "Tap to upload a screenshot"}
                         </span>
                         <input
@@ -699,11 +703,11 @@ export default function RepQuestsPage() {
                         />
                       </label>
                     )}
-                    <p className="text-[10px] text-center text-[var(--rep-text-muted)]">or paste a URL</p>
+                    <p className="text-[10px] text-center text-muted-foreground">or paste a URL</p>
                     <input
                       value={uploadedUrl ? "" : proofText}
                       onChange={(e) => { setProofText(e.target.value); setUploadedUrl(""); }}
-                      className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
+                      className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors"
                       placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
                       disabled={!!uploadedUrl}
                     />
@@ -713,7 +717,7 @@ export default function RepQuestsPage() {
                   <input
                     value={proofText}
                     onChange={(e) => setProofText(e.target.value)}
-                    className="w-full rounded-xl border border-[var(--rep-border)] bg-[var(--rep-surface)] px-4 py-3 text-sm text-white placeholder:text-[var(--rep-text-muted)]/50 focus:border-[var(--rep-accent)] focus:outline-none transition-colors"
+                    className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors"
                     placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
                     autoFocus
                   />
@@ -734,7 +738,7 @@ export default function RepQuestsPage() {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || (!proofText.trim() && !uploadedUrl)}
-                  className="w-full mt-4 rounded-xl bg-[var(--rep-accent)] px-4 py-3 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+                  className="w-full mt-4 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
                 >
                   {submitting ? (
                     <span className="flex items-center justify-center gap-2">

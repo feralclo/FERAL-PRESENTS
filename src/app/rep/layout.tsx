@@ -4,7 +4,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import "@/styles/tailwind.css";
-import "@/styles/rep-portal.css";
+import "@/styles/rep-effects.css";
 import {
   LayoutDashboard,
   Trophy,
@@ -17,14 +17,13 @@ import {
   Loader2,
   Bell,
   Zap,
-  ShoppingCart,
   Star,
   ArrowUp,
   CheckCircle2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { getTierFromLevel } from "@/lib/rep-tiers";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -208,6 +207,8 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  const tier = repStats ? getTierFromLevel(repStats.level) : null;
+
   return (
     <div data-admin data-rep className="min-h-screen bg-background text-foreground">
       {/* Desktop top nav */}
@@ -250,14 +251,14 @@ export default function RepLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             {/* Desktop stats strip */}
-            {repStats && (
+            {repStats && tier && (
               <div className="flex items-center gap-2 mr-2">
-                <span className="rep-xp-pill">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-[11px] font-bold tabular-nums text-primary">
                   <Zap size={11} />
                   {repStats.xp.toLocaleString()}
                 </span>
                 {repStats.rank && (
-                  <span className="text-[11px] font-bold font-mono text-[var(--rep-gold)] tabular-nums">
+                  <span className="text-[11px] font-bold font-mono tabular-nums" style={{ color: tier.color }}>
                     #{repStats.rank}
                   </span>
                 )}
@@ -294,18 +295,18 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </Link>
             <div className="flex items-center gap-2">
               {/* XP + Level pills */}
-              {repStats && (
+              {repStats && tier && (
                 <>
-                  <span className="rep-xp-pill">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-[11px] font-bold tabular-nums text-primary">
                     <Zap size={10} />
                     {repStats.xp.toLocaleString()}
                   </span>
                   <span
-                    className="rep-level-pill"
+                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums"
                     style={{
-                      backgroundColor: getLevelColor(repStats.level) + "15",
-                      color: getLevelColor(repStats.level),
-                      border: `1px solid ${getLevelColor(repStats.level)}30`,
+                      backgroundColor: tier.color + "15",
+                      color: tier.color,
+                      border: `1px solid ${tier.color}30`,
                     }}
                   >
                     Lv.{repStats.level}
@@ -316,7 +317,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           {/* Purple gradient edge line */}
-          <div className="rep-top-bar-line" />
+          <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         </div>
       )}
 
@@ -331,15 +332,19 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       {/* Mobile bottom nav — HUD Command Bar */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
-          <nav className="rep-hud-bar pointer-events-auto">
+          <nav className="flex items-end justify-around rounded-[20px] border border-white/[0.06] bg-[rgba(12,12,18,0.94)] backdrop-blur-[24px] saturate-[1.4] shadow-[0_-4px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04),0_-1px_0_rgba(139,92,246,0.08)] px-2 pb-1.5 pt-2.5 relative pointer-events-auto">
             {/* Left items */}
             {HUD_LEFT.map((item) => {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href} className="rep-hud-item">
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
+                >
                   {active ? (
-                    <div className="rep-hud-item-active-bg">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
                       <Icon
                         size={19}
                         strokeWidth={2.5}
@@ -355,7 +360,9 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   )}>
                     {item.label}
                   </span>
-                  {active && <span className="rep-hud-dot" />}
+                  {active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                  )}
                 </Link>
               );
             })}
@@ -367,19 +374,22 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               return (
                 <Link
                   href={HUD_CENTER.href}
-                  className={cn("rep-hud-hub", active && "rep-hud-hub-active")}
+                  className={cn(
+                    "relative flex flex-col items-center -mt-5 z-[2] no-underline",
+                    active && "rep-hud-hub-active"
+                  )}
                 >
-                  <div className="rep-hud-hub-circle">
+                  <div className="flex items-center justify-center w-[52px] h-[52px] rounded-full bg-gradient-to-br from-[#7C3AED] to-[#8B5CF6] shadow-[0_4px_20px_rgba(139,92,246,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] transition-transform duration-200 active:scale-95 relative rep-hud-hub-circle">
                     <Icon size={24} strokeWidth={2} className="text-white" />
                     {/* Quest count badge */}
                     {repStats && repStats.active_quests > 0 && (
-                      <span className="rep-hud-badge">
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-white text-[9px] font-bold px-1 shadow-[0_2px_8px_rgba(244,63,94,0.4)] animate-[badgeSpring_0.4s_cubic-bezier(0.34,1.56,0.64,1)]">
                         {repStats.active_quests > 9 ? "9+" : repStats.active_quests}
                       </span>
                     )}
                   </div>
                   <span className={cn(
-                    "rep-hud-hub-label",
+                    "text-[9px] font-semibold tracking-wide mt-1",
                     active ? "text-primary" : "text-[#444455]"
                   )}>
                     {HUD_CENTER.label}
@@ -393,9 +403,13 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href} className="rep-hud-item">
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
+                >
                   {active ? (
-                    <div className="rep-hud-item-active-bg">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
                       <Icon
                         size={19}
                         strokeWidth={2.5}
@@ -411,7 +425,9 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   )}>
                     {item.label}
                   </span>
-                  {active && <span className="rep-hud-dot" />}
+                  {active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                  )}
                 </Link>
               );
             })}
@@ -420,15 +436,6 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       )}
     </div>
   );
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function getLevelColor(level: number): string {
-  if (level >= 9) return "#F59E0B";
-  if (level >= 7) return "#8B5CF6";
-  if (level >= 4) return "#38BDF8";
-  return "#94A3B8";
 }
 
 // ─── Notification Center ─────────────────────────────────────────────────────

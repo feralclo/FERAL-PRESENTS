@@ -168,7 +168,7 @@ export default function RepJoinPage() {
           {BOOT_LINES.slice(0, visibleLines).map((line, i) => (
             <p
               key={i}
-              className="rep-boot-line font-mono text-[13px] text-[var(--rep-text-muted)]"
+              className="rep-boot-line font-mono text-[13px] text-muted-foreground"
               style={{ animationDelay: `${i * 50}ms` }}
             >
               <span className="text-primary mr-2">&gt;</span>
@@ -316,7 +316,7 @@ export default function RepJoinPage() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rep-input"
+              className="h-14 rounded-2xl bg-secondary"
               placeholder="First name"
               autoComplete="given-name"
             />
@@ -334,7 +334,7 @@ export default function RepJoinPage() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rep-input"
+              className="h-14 rounded-2xl bg-secondary"
               placeholder="Last name"
               autoComplete="family-name"
             />
@@ -354,7 +354,7 @@ export default function RepJoinPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rep-input"
+              className="h-14 rounded-2xl bg-secondary"
               placeholder="your@email.com"
               autoComplete="email"
             />
@@ -374,7 +374,7 @@ export default function RepJoinPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rep-input"
+              className="h-14 rounded-2xl bg-secondary"
               placeholder="••••••"
               autoComplete="new-password"
             />
@@ -388,14 +388,14 @@ export default function RepJoinPage() {
               Got Instagram?
             </h2>
             <p className="text-sm text-muted-foreground mb-6">Optional — skip if you don&apos;t use it</p>
-            <div className="rep-social-wrap">
-              <span className="rep-at">@</span>
+            <div className="relative">
+              <span className="absolute left-[18px] top-1/2 -translate-y-1/2 text-base text-muted-foreground pointer-events-none">@</span>
               <Input
                 ref={inputRef}
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value.replace("@", ""))}
                 onKeyDown={handleKeyDown}
-                className="rep-input"
+                className="h-14 rounded-2xl bg-secondary pl-9"
                 placeholder="yourhandle"
               />
             </div>
@@ -409,14 +409,14 @@ export default function RepJoinPage() {
               On TikTok?
             </h2>
             <p className="text-sm text-muted-foreground mb-6">Optional</p>
-            <div className="rep-social-wrap">
-              <span className="rep-at">@</span>
+            <div className="relative">
+              <span className="absolute left-[18px] top-1/2 -translate-y-1/2 text-base text-muted-foreground pointer-events-none">@</span>
               <Input
                 ref={inputRef}
                 value={tiktok}
                 onChange={(e) => setTiktok(e.target.value.replace("@", ""))}
                 onKeyDown={handleKeyDown}
-                className="rep-input"
+                className="h-14 rounded-2xl bg-secondary pl-9"
                 placeholder="yourhandle"
               />
             </div>
@@ -436,7 +436,7 @@ export default function RepJoinPage() {
               value={dob}
               onChange={(e) => setDob(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rep-input"
+              className="h-14 rounded-2xl bg-secondary"
             />
           </>
         );
@@ -456,7 +456,11 @@ export default function RepJoinPage() {
                     setGender(opt.value);
                     setTimeout(advance, 300);
                   }}
-                  className={`rep-choice-tile ${gender === opt.value ? "selected" : ""}`}
+                  className={cn(
+                    "rounded-[14px] border border-border bg-secondary px-5 py-3.5 text-sm font-medium text-muted-foreground text-center transition-all duration-200",
+                    "hover:border-primary/40 hover:text-foreground hover:bg-primary/5",
+                    gender === opt.value && "border-primary bg-primary/10 text-foreground shadow-[0_0_20px_rgba(139,92,246,0.1)]"
+                  )}
                 >
                   {opt.label}
                 </button>

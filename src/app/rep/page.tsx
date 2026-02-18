@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Trophy,
@@ -12,8 +12,6 @@ import {
   Copy,
   Check,
   Flame,
-  ArrowUp,
-  X,
   Share2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +19,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RadialGauge, HudSectionHeader, LevelUpOverlay } from "@/components/rep";
+import { getTierFromLevel } from "@/lib/rep-tiers";
+import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
 
 interface DashboardData {
@@ -45,89 +46,6 @@ interface DashboardData {
 }
 
 const LEVEL_UP_STORAGE_KEY = "rep_last_level";
-
-function getTierFromLevel(level: number): { name: string; ring: string; color: string; textColor: string; bgColor: string } {
-  if (level >= 9) return { name: "Mythic", ring: "rep-avatar-ring-mythic", color: "#F59E0B", textColor: "text-amber-400", bgColor: "bg-amber-500/15" };
-  if (level >= 7) return { name: "Elite", ring: "rep-avatar-ring-elite", color: "#8B5CF6", textColor: "text-purple-400", bgColor: "bg-purple-500/15" };
-  if (level >= 4) return { name: "Pro", ring: "rep-avatar-ring-pro", color: "#38BDF8", textColor: "text-sky-400", bgColor: "bg-sky-500/15" };
-  return { name: "Starter", ring: "rep-avatar-ring-starter", color: "#94A3B8", textColor: "text-slate-400", bgColor: "bg-slate-500/15" };
-}
-
-/** Animate a number counting up from 0 to target */
-function useCountUp(target: number, duration: number = 800, enabled: boolean = true) {
-  const [value, setValue] = useState(0);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!enabled || target === 0) {
-      setValue(target);
-      return;
-    }
-
-    const start = performance.now();
-    const animate = (now: number) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(eased * target));
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      }
-    };
-    rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [target, duration, enabled]);
-
-  return value;
-}
-
-// ─── SVG Radial Gauge ──────────────────────────────────────────────────────────
-
-const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 30; // r=30
-
-function RadialGauge({
-  value,
-  max,
-  color,
-  icon: Icon,
-  label,
-  displayValue,
-  enabled,
-}: {
-  value: number;
-  max: number;
-  color: string;
-  icon: typeof Zap;
-  label: string;
-  displayValue: string;
-  enabled: boolean;
-}) {
-  const percent = max > 0 ? Math.min(value / max, 1) : 0;
-  const offset = GAUGE_CIRCUMFERENCE * (1 - (enabled ? percent : 0));
-
-  return (
-    <div className="rep-gauge">
-      <div className="rep-gauge-accent" style={{ backgroundColor: color }} />
-      <svg className="rep-gauge-svg" viewBox="0 0 72 72">
-        <circle className="rep-gauge-track" cx="36" cy="36" r="30" />
-        <circle
-          className="rep-gauge-fill"
-          cx="36" cy="36" r="30"
-          stroke={color}
-          strokeDasharray={GAUGE_CIRCUMFERENCE}
-          strokeDashoffset={offset}
-          style={{ "--gauge-color": color } as React.CSSProperties}
-        />
-      </svg>
-      <div className="rep-gauge-center">
-        <Icon size={18} style={{ color, filter: `drop-shadow(0 0 4px ${color}40)` }} />
-      </div>
-      <p className="rep-gauge-label">{label}</p>
-      <p className="rep-gauge-value" style={{ color }}>{displayValue}</p>
-    </div>
-  );
-}
 
 export default function RepDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -272,7 +190,7 @@ export default function RepDashboardPage() {
       {/* ── Level-Up Celebration Overlay ── */}
       {showLevelUp && levelUpInfo && (
         <LevelUpOverlay
-          levelUpInfo={levelUpInfo}
+          newLevel={levelUpInfo.level}
           onDismiss={() => setShowLevelUp(false)}
         />
       )}
@@ -356,7 +274,7 @@ export default function RepDashboardPage() {
           style={{ animationDelay: "50ms" }}
         >
           <div className="rep-weapon-grid" />
-          <div className="p-5" style={{ position: "relative", zIndex: 1 }}>
+          <div className="relative z-[1] p-5">
             <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />
               <span
@@ -422,13 +340,12 @@ export default function RepDashboardPage() {
         </Link>
         <Link href="/rep/leaderboard">
           <RadialGauge
-            value={data.leaderboard_position ? maxRank - data.leaderboard_position + 1 : 0}
+            value={statsReady ? (data.leaderboard_position ? maxRank - data.leaderboard_position + 1 : 0) : 0}
             max={maxRank}
             color="#F59E0B"
             icon={Trophy}
             label="Rank"
             displayValue={data.leaderboard_position ? `#${data.leaderboard_position}` : "—"}
-            enabled={statsReady}
           />
         </Link>
       </div>
@@ -436,11 +353,7 @@ export default function RepDashboardPage() {
       {/* ── Active Missions (Battle Feed) ── */}
       {data.active_events.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>
-          <div className="rep-hud-header">
-            <div className="rep-hud-header-diamond" />
-            <span className="rep-hud-header-text">Active Missions</span>
-            <div className="rep-hud-header-line" />
-          </div>
+          <HudSectionHeader label="Active Missions" />
           <div className="space-y-2">
             {data.active_events.map((event) => (
               <Link key={event.id} href="/rep/sales">
@@ -482,7 +395,7 @@ export default function RepDashboardPage() {
       {/* ── Quick Actions ── */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "200ms" }}>
         <Link href="/rep/quests">
-          <Card className="py-0 gap-0 rep-card-lift rep-action-hover" style={{ minHeight: "88px" }}>
+          <Card className="py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shrink-0 rep-action-icon-hover">
                 <Compass size={20} className="text-primary" />
@@ -503,7 +416,7 @@ export default function RepDashboardPage() {
           </Card>
         </Link>
         <Link href="/rep/rewards">
-          <Card className="py-0 gap-0 rep-card-lift rep-action-hover" style={{ minHeight: "88px" }}>
+          <Card className="py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0 rep-action-icon-hover">
                 <Gift size={20} className="text-amber-400" />
@@ -530,11 +443,7 @@ export default function RepDashboardPage() {
       {/* ── Recent Activity (Battle Log) ── */}
       {data.recent_sales.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
-          <div className="rep-hud-header">
-            <div className="rep-hud-header-diamond" />
-            <span className="rep-hud-header-text">Recent Activity</span>
-            <div className="rep-hud-header-line" />
-          </div>
+          <HudSectionHeader label="Recent Activity" />
           <div className="space-y-2">
             {data.recent_sales.map((sale, i) => (
               <Card
@@ -578,37 +487,30 @@ export default function RepDashboardPage() {
       {/* ── Arena CTA (Leaderboard) ── */}
       <Link href="/rep/leaderboard">
         <Card
-          className="py-0 gap-0 border-transparent bg-[var(--rep-gold)]/5 rep-gradient-border-gold rep-card-lift rep-slide-up overflow-hidden rep-arena-card rep-sparkle-hover"
+          className="py-0 gap-0 border-transparent bg-warning/5 rep-gradient-border-gold hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 rep-slide-up overflow-hidden rep-arena-card rep-sparkle-hover"
           style={{ animationDelay: "300ms" }}
         >
-          <div className="absolute inset-[1px] rounded-[inherit] bg-[var(--rep-card)] z-[-1]" />
+          <div className="absolute inset-[1px] rounded-[inherit] bg-card z-[-1]" />
           <CardContent className="p-5 flex items-center justify-between relative z-[1]">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--rep-gold)]/15">
-                <Trophy size={22} className="text-[var(--rep-gold)]" style={{ filter: "drop-shadow(0 0 6px rgba(245, 158, 11, 0.4))" }} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/15">
+                <Trophy size={22} className="text-warning" style={{ filter: "drop-shadow(0 0 6px rgba(245, 158, 11, 0.4))" }} />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Arena</p>
                 <p className="text-[11px] text-muted-foreground">
                   {data.leaderboard_position
-                    ? <>Ranked <span className="font-mono font-bold text-[var(--rep-gold)]">#{data.leaderboard_position}</span> — challenge your crew</>
+                    ? <>Ranked <span className="font-mono font-bold text-warning">#{data.leaderboard_position}</span> — challenge your crew</>
                     : "See where you stand"}
                 </p>
               </div>
             </div>
-            <ChevronRight size={18} className="text-[var(--rep-gold)]/60 animate-[pulse_2s_ease-in-out_infinite]" />
+            <ChevronRight size={18} className="text-warning/60 animate-[pulse_2s_ease-in-out_infinite]" />
           </CardContent>
         </Card>
       </Link>
     </div>
   );
-}
-
-// ─── Animated Number ─────────────────────────────────────────────────────────
-
-function AnimatedNumber({ value, enabled }: { value: number; enabled: boolean }) {
-  const display = useCountUp(value, 800, enabled);
-  return <>{display}</>;
 }
 
 // ─── Gauge with Animated Counter ─────────────────────────────────────────────
@@ -622,75 +524,12 @@ function GaugeWithCounter({
   const animatedValue = useCountUp(enabled ? value : 0, 900, enabled);
   return (
     <RadialGauge
-      value={value}
+      value={enabled ? value : 0}
       max={max}
       color={color}
       icon={icon}
       label={label}
       displayValue={String(animatedValue)}
-      enabled={enabled}
     />
-  );
-}
-
-// ─── Level Up Overlay ────────────────────────────────────────────────────────
-
-function LevelUpOverlay({ levelUpInfo, onDismiss }: { levelUpInfo: { level: number; name: string }; onDismiss: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm rep-level-up-overlay">
-      {/* Confetti */}
-      <div className="rep-confetti-container" aria-hidden>
-        {[...Array(20)].map((_, i) => {
-          const angle = (i / 20) * 360;
-          const distance = 80 + Math.random() * 120;
-          const cx = Math.cos((angle * Math.PI) / 180) * distance;
-          const cy = Math.sin((angle * Math.PI) / 180) * distance - 60;
-          const colors = ["#8B5CF6", "#34D399", "#F59E0B", "#F43F5E", "#38BDF8", "#A78BFA"];
-          return (
-            <div
-              key={i}
-              className="rep-confetti-piece"
-              style={{
-                "--cx": `${cx}px`,
-                "--cy": `${cy}px`,
-                "--cr": `${Math.random() * 720 - 360}deg`,
-                backgroundColor: colors[i % colors.length],
-                animationDelay: `${i * 30}ms`,
-                borderRadius: i % 3 === 0 ? "50%" : "2px",
-                width: `${6 + Math.random() * 6}px`,
-                height: `${6 + Math.random() * 6}px`,
-              } as React.CSSProperties}
-            />
-          );
-        })}
-      </div>
-
-      <div className="text-center z-10">
-        <div className="relative inline-block mb-6">
-          <div className="h-24 w-24 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto rep-level-up-ring">
-            <div className="rep-level-up-badge">
-              <ArrowUp size={32} className="text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="rep-level-up-text">
-          <p className="text-[10px] uppercase tracking-[4px] text-primary font-bold mb-2">
-            Level Up!
-          </p>
-          <p className="text-4xl font-bold text-foreground mb-1 font-mono">
-            Lv.{levelUpInfo.level}
-          </p>
-          <p className="text-lg text-primary font-semibold">
-            {levelUpInfo.name}
-          </p>
-        </div>
-        <button
-          onClick={onDismiss}
-          className="mt-8 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Continue
-        </button>
-      </div>
-    </div>
   );
 }

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -235,7 +236,7 @@ export default function RepRewardsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="rep-tab-bar rep-slide-up" style={{ animationDelay: "50ms" }}>
+      <div className="flex gap-0.5 bg-secondary rounded-xl p-[3px] border border-border rep-slide-up" style={{ animationDelay: "50ms" }}>
         {[
           { id: "earned" as TabId, label: "Earned", count: milestoneRewards.length },
           { id: "shop" as TabId, label: "Shop", count: shopRewards.length },
@@ -244,7 +245,11 @@ export default function RepRewardsPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={cn("rep-tab", tab === t.id && "active")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
+              "hover:text-foreground",
+              tab === t.id && "bg-primary text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)]"
+            )}
           >
             {t.label}
             {t.count > 0 && (
@@ -270,7 +275,7 @@ export default function RepRewardsPage() {
       {tab === "earned" && (
         <div className="space-y-3 rep-slide-up">
           {milestoneRewards.length === 0 ? (
-            <EmptyState icon={Target} text="No milestones yet" sub="Milestones will appear as the team sets them up" />
+            <EmptyState icon={Target} title="No milestones yet" subtitle="Milestones will appear as the team sets them up" />
           ) : (
             milestoneRewards.map((reward) => {
               const claimed = hasClaimed(reward);
@@ -278,7 +283,7 @@ export default function RepRewardsPage() {
                 <Card
                   key={reward.id}
                   className={cn(
-                    "py-0 gap-0 rep-card-lift",
+                    "py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250",
                     claimed
                       ? "border-success/30 bg-success/5 rep-reward-unlocked"
                       : "border-border/40"
@@ -361,7 +366,7 @@ export default function RepRewardsPage() {
       {tab === "shop" && (
         <div className="rep-slide-up">
           {shopRewards.length === 0 ? (
-            <EmptyState icon={ShoppingCart} text="Shop is empty" sub="Rewards will appear here when they're available" />
+            <EmptyState icon={ShoppingCart} title="Shop is empty" subtitle="Rewards will appear here when they're available" />
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {shopRewards.map((reward) => {
@@ -378,7 +383,7 @@ export default function RepRewardsPage() {
                   <Card
                     key={reward.id}
                     className={cn(
-                      "py-0 gap-0 overflow-hidden rep-card-lift rep-shop-hover",
+                      "py-0 gap-0 overflow-hidden hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)]",
                       claimed ? "border-success/30" : "border-border/40",
                       glowClass
                     )}
@@ -444,7 +449,7 @@ export default function RepRewardsPage() {
       {tab === "history" && (
         <div className="space-y-2 rep-slide-up">
           {claims.length === 0 ? (
-            <EmptyState icon={Clock} text="No claim history" sub="Your reward claims will show up here" />
+            <EmptyState icon={Clock} title="No claim history" subtitle="Your reward claims will show up here" />
           ) : (
             claims.map((claim) => {
               const config = CLAIM_STATUS_CONFIG[claim.status] || CLAIM_STATUS_CONFIG.claimed;
@@ -454,7 +459,7 @@ export default function RepRewardsPage() {
               const imgUrl = reward?.image_url || productImg;
 
               return (
-                <Card key={claim.id} className="py-0 gap-0 rep-card-lift border-border/40">
+                <Card key={claim.id} className="py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 border-border/40">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       {imgUrl ? (
@@ -532,7 +537,7 @@ export default function RepRewardsPage() {
       )}
 
       {rewards.length === 0 && claims.length === 0 && (
-        <EmptyState icon={Gift} text="No rewards yet" sub="Rewards will appear here once they're set up" />
+        <EmptyState icon={Gift} title="No rewards yet" subtitle="Rewards will appear here once they're set up" />
       )}
 
       {/* ── Confirmation Modal ── */}
@@ -676,28 +681,3 @@ export default function RepRewardsPage() {
   );
 }
 
-// ─── Empty State ────────────────────────────────────────────────────────────
-
-function EmptyState({
-  icon: Icon,
-  text,
-  sub,
-}: {
-  icon: typeof Gift;
-  text: string;
-  sub: string;
-}) {
-  return (
-    <div className="text-center py-16">
-      <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
-        <div className="rep-empty-ring" />
-        <div className="rep-empty-ring" />
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-          <Icon size={22} className="text-primary/50" />
-        </div>
-      </div>
-      <p className="text-sm text-foreground font-medium mb-1">{text}</p>
-      <p className="text-xs text-muted-foreground">{sub}</p>
-    </div>
-  );
-}

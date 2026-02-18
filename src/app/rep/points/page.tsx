@@ -15,6 +15,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 // ─── Hero Radial Gauge ────────────────────────────────────────────────────────
@@ -26,21 +27,27 @@ function HeroGauge({ value, max, color }: { value: number; max: number; color: s
   const offset = HERO_CIRCUMFERENCE * (1 - percent);
 
   return (
-    <div className="rep-gauge rep-gauge-hero" style={{ background: "transparent", border: "none" }}>
-      <svg className="rep-gauge-svg" viewBox="0 0 120 120">
-        <circle className="rep-gauge-track" cx="60" cy="60" r="50" strokeWidth="6" />
+    <div className="relative inline-flex items-center justify-center" style={{ width: 120, height: 120 }}>
+      <svg className="-rotate-90" viewBox="0 0 120 120" width={120} height={120}>
         <circle
-          className="rep-gauge-fill"
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.04)"
+          strokeWidth={6}
           cx="60" cy="60" r="50"
+        />
+        <circle
+          fill="none"
           stroke={color}
           strokeDasharray={HERO_CIRCUMFERENCE}
           strokeDashoffset={offset}
-          strokeWidth="6"
+          strokeWidth={6}
           strokeLinecap="round"
-          style={{ "--gauge-color": color } as React.CSSProperties}
+          cx="60" cy="60" r="50"
+          className="transition-[stroke-dashoffset] duration-1000 ease-out"
+          style={{ filter: `drop-shadow(0 0 6px ${color})` }}
         />
       </svg>
-      <div className="rep-gauge-center" style={{ top: 0, width: 120, height: 120 }}>
+      <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
           <Zap size={16} className="mx-auto mb-1" style={{ color }} />
           <p className="text-2xl font-bold font-mono tabular-nums" style={{ color, textShadow: `0 0 16px ${color}40` }}>
@@ -237,16 +244,12 @@ export default function RepPointsPage() {
 
       {/* Points Timeline */}
       {entries.length === 0 ? (
-        <div className="text-center py-16 rep-slide-up">
-          <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
-            <div className="rep-empty-ring" />
-            <div className="rep-empty-ring" />
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-              <Zap size={22} className="text-primary/50" />
-            </div>
-          </div>
-          <p className="text-sm text-foreground font-medium mb-1">No points activity yet</p>
-          <p className="text-xs text-muted-foreground">Earn points by making sales and completing quests</p>
+        <div className="rep-slide-up">
+          <EmptyState
+            icon={Zap}
+            title="No points activity yet"
+            subtitle="Earn points by making sales and completing quests"
+          />
         </div>
       ) : (
         <div className="relative rep-slide-up" style={{ animationDelay: "100ms" }}>

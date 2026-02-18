@@ -185,7 +185,7 @@ export default function RepRewardsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-6 w-28 mb-2" />
@@ -219,19 +219,19 @@ export default function RepRewardsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* Header with points balance */}
       <div className="flex items-center justify-between rep-slide-up">
         <div>
-          <h1 className="text-xl font-bold rep-gradient-text">Rewards</h1>
+          <h1 className="text-xl font-bold text-foreground">Rewards</h1>
           <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow rep-balance-breathe rep-scan-card">
+        <div className="rounded-xl rep-surface-2 border-primary/15 px-5 py-3">
           <div className="flex items-center gap-1.5 mb-1">
             <Zap size={12} className="text-primary" />
-            <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
+            <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
           </div>
-          <p className="text-xl font-bold font-mono text-primary tabular-nums" style={{ textShadow: "0 0 16px rgba(139, 92, 246, 0.2)" }}>{myPoints}</p>
+          <p className="text-xl font-bold font-mono text-primary tabular-nums">{myPoints}</p>
         </div>
       </div>
 
@@ -248,7 +248,7 @@ export default function RepRewardsPage() {
             className={cn(
               "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
               "hover:text-foreground",
-              tab === t.id && "bg-primary text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)]"
+              tab === t.id && "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
             )}
           >
             {t.label}
@@ -283,7 +283,7 @@ export default function RepRewardsPage() {
                 <Card
                   key={reward.id}
                   className={cn(
-                    "py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250",
+                    "py-0 gap-0",
                     claimed
                       ? "border-success/30 bg-success/5 rep-reward-unlocked"
                       : "border-border/40"
@@ -314,13 +314,13 @@ export default function RepRewardsPage() {
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-medium text-foreground">{reward.name}</h3>
                           {claimed && (
-                            <Badge variant="default" className="bg-success/15 text-success border-success/20 text-[9px] px-1.5 py-0">
+                            <Badge variant="default" className="bg-success/15 text-success border-success/20 text-[10px] px-1.5 py-0">
                               Unlocked
                             </Badge>
                           )}
                         </div>
                         {reward.description && (
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{reward.description}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{reward.description}</p>
                         )}
                         {reward.milestones && reward.milestones.length > 0 && (
                           <div className="mt-3 space-y-2.5">
@@ -333,7 +333,7 @@ export default function RepRewardsPage() {
                                       m.achieved ? "bg-success" : "bg-border"
                                     )} />
                                     <span className={cn(
-                                      "text-[11px]",
+                                      "text-xs",
                                       m.achieved ? "text-success font-medium" : "text-muted-foreground"
                                     )}>
                                       {m.title}
@@ -383,7 +383,7 @@ export default function RepRewardsPage() {
                   <Card
                     key={reward.id}
                     className={cn(
-                      "py-0 gap-0 overflow-hidden hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)]",
+                      "py-0 gap-0 overflow-hidden rep-shop-hover",
                       claimed ? "border-success/30" : "border-border/40",
                       glowClass
                     )}
@@ -392,7 +392,7 @@ export default function RepRewardsPage() {
                       <div className="relative h-32 bg-muted/20 flex items-center justify-center">
                         <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-3" />
                         {remaining !== null && remaining > 0 && remaining <= 5 && !claimed && (
-                          <span className="absolute top-2 right-2 text-[9px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
+                          <span className="absolute top-2 right-2 text-[10px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
                             {remaining} left
                           </span>
                         )}
@@ -412,15 +412,15 @@ export default function RepRewardsPage() {
                       </div>
 
                       {claimed ? (
-                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-[11px] text-success font-medium">
+                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-xs text-success font-medium">
                           <Check size={12} style={{ filter: "drop-shadow(0 0 4px rgba(52, 211, 153, 0.4))" }} /> Claimed
                         </div>
                       ) : soldOut ? (
-                        <div className="text-[11px] text-muted-foreground font-medium text-center py-2">Sold out</div>
+                        <div className="text-xs text-muted-foreground font-medium text-center py-2">Sold out</div>
                       ) : (
                         <Button
                           size="sm"
-                          className="w-full text-[11px]"
+                          className="w-full text-xs"
                           disabled={!canAfford || claimingId === reward.id}
                           onClick={() => setConfirmReward(reward)}
                         >
@@ -459,7 +459,7 @@ export default function RepRewardsPage() {
               const imgUrl = reward?.image_url || productImg;
 
               return (
-                <Card key={claim.id} className="py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 border-border/40">
+                <Card key={claim.id} className="py-0 gap-0 border-border/40">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       {imgUrl ? (
@@ -478,7 +478,7 @@ export default function RepRewardsPage() {
                               {reward?.name || "Reward"}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <Badge variant={config.variant} className="text-[9px] px-1.5 py-0 gap-1">
+                              <Badge variant={config.variant} className="text-[10px] px-1.5 py-0 gap-1">
                                 <StatusIcon size={9} />
                                 {config.label}
                               </Badge>
@@ -513,10 +513,10 @@ export default function RepRewardsPage() {
                               )}
                             </p>
                             {reward?.custom_value && (
-                              <p className="text-[11px] text-foreground/80 mt-1">{reward.custom_value}</p>
+                              <p className="text-xs text-foreground/80 mt-1">{reward.custom_value}</p>
                             )}
                             {reward?.product?.name && (
-                              <p className="text-[11px] text-foreground/80 mt-1">Product: {reward.product.name}</p>
+                              <p className="text-xs text-foreground/80 mt-1">Product: {reward.product.name}</p>
                             )}
                             {claim.notes && (
                               <p className="text-[10px] text-muted-foreground mt-1 italic">&ldquo;{claim.notes}&rdquo;</p>
@@ -564,7 +564,7 @@ export default function RepRewardsPage() {
               <div>
                 <p className="text-sm font-medium text-foreground">{confirmReward.name}</p>
                 {confirmReward.description && (
-                  <p className="text-[11px] text-muted-foreground line-clamp-2">{confirmReward.description}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{confirmReward.description}</p>
                 )}
               </div>
             </div>

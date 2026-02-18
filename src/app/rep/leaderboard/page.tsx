@@ -116,10 +116,10 @@ export default function RepLeaderboardPage() {
   const [tab, setTab] = useState<"all-time" | "events">("all-time");
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
       {/* Header */}
       <div className="text-center mb-5 rep-slide-up">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-warning/10 mb-3 drop-shadow-[0_0_12px_rgba(245,158,11,0.15)]">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-warning/10 mb-3">
           <Trophy size={24} className="text-warning" />
         </div>
         <h1 className="text-xl font-bold rep-gradient-text-gold">Leaderboard</h1>
@@ -138,7 +138,7 @@ export default function RepLeaderboardPage() {
             className={cn(
               "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
               "hover:text-foreground",
-              tab === t.id && "bg-primary text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)]"
+              tab === t.id && "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
             )}
           >
             {t.label}
@@ -239,10 +239,10 @@ function AllTimeLeaderboard() {
     <div className="rep-fade-in">
       {/* Your Position Card — animated gradient border */}
       {myPosition && (
-        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-position-card rep-position-dramatic">
+        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-surface-2 border-primary/12">
           <p className="text-[10px] uppercase tracking-[2px] text-muted-foreground font-semibold mb-1.5">Your Position</p>
           <div className="flex items-center justify-center gap-3">
-            <p className="text-4xl font-bold font-mono rep-gradient-text drop-shadow-[0_0_24px_rgba(139,92,246,0.2)]">
+            <p className="text-4xl font-bold font-mono text-foreground">
               #{myPosition}
             </p>
             {myChange !== 0 && <PositionIndicator change={myChange} />}
@@ -314,7 +314,7 @@ function AllTimeLeaderboard() {
               type="button"
               onClick={() => handleEntryClick(entry)}
               className={cn(
-                "rep-leaderboard-item rep-lb-hover w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98] hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-250",
+                "rep-leaderboard-item rep-lb-hover w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-colors duration-200",
                 entry.id === myRepId
                   ? "border-2 border-primary/30 bg-primary/5"
                   : "border border-border bg-card"
@@ -485,7 +485,7 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
             </div>
             <h3 className="text-sm font-semibold text-foreground truncate">{event.event_name}</h3>
             {event.event_date && (
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {formatEventDate(event.event_date)}
               </p>
             )}

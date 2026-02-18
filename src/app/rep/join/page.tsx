@@ -187,7 +187,7 @@ export default function RepJoinPage() {
       <div className="flex min-h-screen flex-col items-center justify-center px-6">
         <div className="text-center max-w-sm rep-fade-in">
           <div className="mb-8">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[4px] text-primary">
+            <span className="font-mono text-xs font-bold uppercase tracking-[4px] text-primary">
               Entry Reps
             </span>
           </div>

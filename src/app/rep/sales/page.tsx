@@ -132,7 +132,7 @@ export default function RepSalesPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
         <div>
           <Skeleton className="h-6 w-24 mb-2" />
           <Skeleton className="h-4 w-48" />
@@ -154,7 +154,7 @@ export default function RepSalesPage() {
 
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
         <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
             <TrendingUp size={22} className="text-destructive" />
@@ -175,11 +175,11 @@ export default function RepSalesPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between rep-slide-up">
         <div>
-          <h1 className="text-xl font-bold rep-gradient-text">Sales</h1>
+          <h1 className="text-xl font-bold text-foreground">Sales</h1>
           <p className="text-sm text-muted-foreground">
             Orders placed with your discount code
           </p>
@@ -203,7 +203,7 @@ export default function RepSalesPage() {
           <button
             onClick={() => setFilterEvent("all")}
             className={cn(
-              "rounded-full px-3 py-1.5 text-[11px] font-medium border transition-all",
+              "rounded-full px-3 py-1.5 text-xs font-medium border transition-all",
               filterEvent === "all"
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border text-muted-foreground hover:border-primary/30"
@@ -216,7 +216,7 @@ export default function RepSalesPage() {
               key={event.id}
               onClick={() => setFilterEvent(event.id)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-[11px] font-medium border transition-all",
+                "rounded-full px-3 py-1.5 text-xs font-medium border transition-all",
                 filterEvent === event.id
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-primary/30"
@@ -274,11 +274,10 @@ export default function RepSalesPage() {
                 extra={`${group.sales.length} sale${group.sales.length !== 1 ? "s" : ""}`}
               />
               <div className="space-y-2">
-                {group.sales.map((sale, i) => (
+                {group.sales.map((sale) => (
                   <Card
                     key={sale.id}
-                    className="py-0 gap-0 rep-slide-up hover:-translate-y-0.5 transition-transform"
-                    style={{ animationDelay: `${i * 30}ms` }}
+                    className="py-0 gap-0"
                   >
                     <CardContent className="px-4 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
@@ -289,7 +288,7 @@ export default function RepSalesPage() {
                           <div className="flex items-center gap-2">
                             <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
                             {sale.status === "refunded" && (
-                              <Badge variant="destructive" className="text-[8px] px-1 py-0">Refunded</Badge>
+                              <Badge variant="destructive" className="text-[10px] px-1 py-0">Refunded</Badge>
                             )}
                           </div>
                           <p className="text-[10px] text-muted-foreground truncate">

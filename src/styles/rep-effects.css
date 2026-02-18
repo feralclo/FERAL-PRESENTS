@@ -12,6 +12,32 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   CARD DEPTH SYSTEM
+   Three elevation levels for consistent surface hierarchy.
+   No backdrop-filter (jank in in-app browsers).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Recessed — timeline items, list entries, inline info */
+.rep-surface-0 {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Standard — most cards, stat cards, sale entries */
+.rep-surface-1 {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Elevated — hero cards, weapon card, position card, modals */
+.rep-surface-2 {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    AVATAR TIER RINGS
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -34,12 +60,7 @@ body:has([data-rep]) > .noise {
 }
 .rep-avatar-ring-mythic {
   border-color: rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.2);
-  animation: avatarMythicGlow 3s ease-in-out infinite;
-}
-@keyframes avatarMythicGlow {
-  0%, 100% { box-shadow: 0 0 24px rgba(245, 158, 11, 0.2); }
-  50% { box-shadow: 0 0 36px rgba(245, 158, 11, 0.35), 0 0 60px rgba(245, 158, 11, 0.1); }
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -56,18 +77,12 @@ body:has([data-rep]) > .noise {
   border-radius: 50%;
   border: 2px solid transparent;
   opacity: 0.3;
-  animation: profileRingPulse 3s ease-in-out infinite;
 }
 .rep-profile-ring-starter::after { border-color: rgba(148, 163, 184, 0.3); }
 .rep-profile-ring-pro::after { border-color: rgba(56, 189, 248, 0.3); }
 .rep-profile-ring-elite::after { border-color: rgba(139, 92, 246, 0.3); }
 .rep-profile-ring-mythic::after {
   border-color: rgba(245, 158, 11, 0.3);
-  animation: profileRingPulse 3s ease-in-out infinite, avatarMythicGlow 3s ease-in-out infinite;
-}
-@keyframes profileRingPulse {
-  0%, 100% { transform: scale(1); opacity: 0.3; }
-  50% { transform: scale(1.06); opacity: 0.6; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -75,24 +90,24 @@ body:has([data-rep]) > .noise {
    ══════════════════════════════════════════════════════════════════════ */
 
 .rep-stat-glow-purple {
-  box-shadow: inset 0 1px 0 rgba(139, 92, 246, 0.12);
-  border-top: 2px solid rgba(139, 92, 246, 0.25);
+  box-shadow: inset 0 1px 0 rgba(139, 92, 246, 0.08);
+  border-top: 2px solid rgba(139, 92, 246, 0.15);
 }
 .rep-stat-glow-orange {
-  box-shadow: inset 0 1px 0 rgba(249, 115, 22, 0.12);
-  border-top: 2px solid rgba(249, 115, 22, 0.25);
+  box-shadow: inset 0 1px 0 rgba(249, 115, 22, 0.08);
+  border-top: 2px solid rgba(249, 115, 22, 0.15);
 }
 .rep-stat-glow-gold {
-  box-shadow: inset 0 1px 0 rgba(245, 158, 11, 0.12);
-  border-top: 2px solid rgba(245, 158, 11, 0.25);
+  box-shadow: inset 0 1px 0 rgba(245, 158, 11, 0.08);
+  border-top: 2px solid rgba(245, 158, 11, 0.15);
 }
 .rep-stat-glow-green {
-  box-shadow: inset 0 1px 0 rgba(52, 211, 153, 0.12);
-  border-top: 2px solid rgba(52, 211, 153, 0.25);
+  box-shadow: inset 0 1px 0 rgba(52, 211, 153, 0.08);
+  border-top: 2px solid rgba(52, 211, 153, 0.15);
 }
 .rep-stat-glow-blue {
-  box-shadow: inset 0 1px 0 rgba(56, 189, 248, 0.12);
-  border-top: 2px solid rgba(56, 189, 248, 0.25);
+  box-shadow: inset 0 1px 0 rgba(56, 189, 248, 0.08);
+  border-top: 2px solid rgba(56, 189, 248, 0.15);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -137,23 +152,15 @@ body:has([data-rep]) > .noise {
 
 .rep-gradient-text {
   background: linear-gradient(135deg, #C4B5FD, #8B5CF6, #7C3AED, #A78BFA);
-  background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: repGradientShift 4s ease-in-out infinite;
 }
 .rep-gradient-text-gold {
   background: linear-gradient(135deg, #FDE68A, #F59E0B, #D97706, #FBBF24);
-  background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: repGradientShift 4s ease-in-out infinite;
-}
-@keyframes repGradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -246,14 +253,8 @@ body:has([data-rep]) > .noise {
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.5), rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.4), rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.5));
-  background-size: 300% 300%;
-  animation: gradientBorderGold 3s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(245, 158, 11, 0.08), rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.35));
   z-index: -1;
-}
-@keyframes gradientBorderGold {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
 }
 
 .rep-gradient-border-primary {
@@ -264,14 +265,8 @@ body:has([data-rep]) > .noise {
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.4), rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.5));
-  background-size: 300% 300%;
-  animation: gradientBorderPrimary 3s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.25), rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.35));
   z-index: -1;
-}
-@keyframes gradientBorderPrimary {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -319,12 +314,7 @@ body:has([data-rep]) > .noise {
   height: 40px;
   border-radius: 12px;
   background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
-  animation: navGlowPulse 2.5s ease-in-out infinite;
   pointer-events: none;
-}
-@keyframes navGlowPulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -395,13 +385,7 @@ body:has([data-rep]) > .noise {
   inset: -2px;
   border-radius: inherit;
   background: linear-gradient(135deg, var(--color-primary), rgba(139, 92, 246, 0.4), var(--color-primary));
-  background-size: 200% 200%;
-  animation: btnPulse 2s ease-in-out infinite;
   z-index: -1;
-}
-@keyframes btnPulse {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -456,15 +440,9 @@ body:has([data-rep]) > .noise {
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, var(--color-primary), rgba(139, 92, 246, 0.3), var(--color-primary));
-  background-size: 200% 200%;
-  animation: borderPulse 4s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.3));
   z-index: -1;
-  opacity: 0.7;
-}
-@keyframes borderPulse {
-  0%, 100% { background-position: 0% 50%; opacity: 0.5; }
-  50% { background-position: 100% 50%; opacity: 0.7; }
+  opacity: 0.6;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -472,47 +450,32 @@ body:has([data-rep]) > .noise {
    ══════════════════════════════════════════════════════════════════════ */
 
 .rep-quest-common {
-  border-color: rgba(50, 50, 65, 0.5);
-  animation: repSlideUp 0.4s ease-out both, questGlowCommon 5s ease-in-out 0.5s infinite;
+  border-color: rgba(255, 255, 255, 0.06);
+  animation: repSlideUp 0.4s ease-out both;
 }
 .rep-quest-common:hover {
-  border-color: rgba(102, 102, 128, 0.4);
-  transform: translateY(-2px);
-}
-@keyframes questGlowCommon {
-  0%, 100% { box-shadow: 0 0 8px rgba(102, 102, 128, 0.06); }
-  50% { box-shadow: 0 0 22px rgba(102, 102, 128, 0.14), 0 0 40px rgba(102, 102, 128, 0.04); }
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .rep-quest-rare {
-  border-color: rgba(56, 189, 248, 0.18);
-  animation: repSlideUp 0.4s ease-out both, questGlowRare 4s ease-in-out 0.5s infinite;
+  border-color: rgba(56, 189, 248, 0.15);
+  animation: repSlideUp 0.4s ease-out both;
 }
 .rep-quest-rare:hover {
-  border-color: rgba(56, 189, 248, 0.35);
-  transform: translateY(-2px);
-}
-@keyframes questGlowRare {
-  0%, 100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.08), 0 0 25px rgba(56, 189, 248, 0.03); }
-  50% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.2), 0 0 50px rgba(56, 189, 248, 0.08); }
+  border-color: rgba(56, 189, 248, 0.25);
 }
 
 .rep-quest-epic {
-  border-color: rgba(139, 92, 246, 0.22);
-  animation: repSlideUp 0.4s ease-out both, questGlowEpic 3.5s ease-in-out 0.5s infinite;
+  border-color: rgba(139, 92, 246, 0.20);
+  animation: repSlideUp 0.4s ease-out both;
 }
 .rep-quest-epic:hover {
-  border-color: rgba(139, 92, 246, 0.4);
-  transform: translateY(-2px);
-}
-@keyframes questGlowEpic {
-  0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.1), 0 0 35px rgba(139, 92, 246, 0.04); }
-  50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.25), 0 0 60px rgba(139, 92, 246, 0.1); }
+  border-color: rgba(139, 92, 246, 0.30);
 }
 
 .rep-quest-legendary {
   border-color: transparent;
-  animation: repSlideUp 0.4s ease-out both, questGlowLegendary 3s ease-in-out 0.5s infinite;
+  animation: repSlideUp 0.4s ease-out both;
 }
 .rep-quest-legendary::before {
   content: "";
@@ -521,11 +484,11 @@ body:has([data-rep]) > .noise {
   border-radius: inherit;
   background: linear-gradient(
     135deg,
-    rgba(245, 158, 11, 0.6),
-    rgba(245, 158, 11, 0.15),
-    rgba(251, 191, 36, 0.5),
-    rgba(245, 158, 11, 0.15),
-    rgba(245, 158, 11, 0.6)
+    rgba(245, 158, 11, 0.5),
+    rgba(245, 158, 11, 0.12),
+    rgba(251, 191, 36, 0.4),
+    rgba(245, 158, 11, 0.12),
+    rgba(245, 158, 11, 0.5)
   );
   background-size: 300% 300%;
   animation: legendaryBorderPulse 3s ease-in-out infinite;
@@ -540,142 +503,49 @@ body:has([data-rep]) > .noise {
   z-index: -1;
 }
 .rep-quest-legendary:hover {
-  transform: translateY(-2px);
-}
-@keyframes questGlowLegendary {
-  0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.1), 0 0 50px rgba(245, 158, 11, 0.05); }
-  50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.28), 0 0 70px rgba(245, 158, 11, 0.12); }
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12);
 }
 @keyframes legendaryBorderPulse {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
 
-/* ── Quest CTA buttons (tier-themed) ── */
+/* ── Quest CTA buttons (unified glass) ── */
 .rep-quest-cta {
   position: relative;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-foreground);
+  border-color: rgba(255, 255, 255, 0.12);
+  transition: background 0.2s, border-color 0.2s;
 }
-.rep-quest-cta-common {
-  background: rgba(255, 255, 255, 0.06);
-  color: #b0b0c0;
-  border-color: rgba(255, 255, 255, 0.08);
+.rep-quest-cta:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
 }
-.rep-quest-cta-common:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.15);
-}
-.rep-quest-cta-rare {
-  background: rgba(56, 189, 248, 0.1);
-  color: #38BDF8;
-  border-color: rgba(56, 189, 248, 0.2);
-}
-.rep-quest-cta-rare:hover {
-  background: rgba(56, 189, 248, 0.18);
-  border-color: rgba(56, 189, 248, 0.35);
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.12);
-}
-.rep-quest-cta-epic {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.1));
-  color: #c4b5fd;
-  border-color: rgba(139, 92, 246, 0.25);
-}
-.rep-quest-cta-epic:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.15));
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.15);
-  color: #fff;
-}
-.rep-quest-cta-epic::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
-  animation: shimmer 3s ease-in-out infinite;
-}
-.rep-quest-cta-legendary {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.15));
-  color: #FCD34D;
-  border-color: rgba(245, 158, 11, 0.3);
-  text-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
-}
-.rep-quest-cta-legendary:hover {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(251, 191, 36, 0.25));
-  border-color: rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 28px rgba(245, 158, 11, 0.18);
-  color: #fff;
-}
-.rep-quest-cta-legendary::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.1) 50%, transparent 65%);
-  animation: shimmer 2.5s ease-in-out infinite;
-}
+/* Keep tier class names as no-ops for backwards compat */
+.rep-quest-cta-common,
+.rep-quest-cta-rare,
+.rep-quest-cta-epic,
+.rep-quest-cta-legendary {}
 
-/* ── Quest action button (smaller, tier-themed) ── */
+/* ── Quest action button (unified glass) ── */
 .rep-quest-action {
   position: relative;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-foreground);
+  border-color: rgba(255, 255, 255, 0.12);
+  transition: background 0.2s, border-color 0.2s;
 }
-.rep-quest-action-common {
-  background: rgba(255, 255, 255, 0.06);
-  color: #b0b0c0;
-  border-color: rgba(255, 255, 255, 0.08);
+.rep-quest-action:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
 }
-.rep-quest-action-common:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.15);
-}
-.rep-quest-action-rare {
-  background: rgba(56, 189, 248, 0.1);
-  color: #38BDF8;
-  border-color: rgba(56, 189, 248, 0.2);
-}
-.rep-quest-action-rare:hover {
-  background: rgba(56, 189, 248, 0.18);
-  border-color: rgba(56, 189, 248, 0.35);
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.1);
-}
-.rep-quest-action-epic {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.1));
-  color: #c4b5fd;
-  border-color: rgba(139, 92, 246, 0.25);
-}
-.rep-quest-action-epic:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.15));
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.12);
-  color: #fff;
-}
-.rep-quest-action-epic::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
-  animation: shimmer 3s ease-in-out infinite;
-}
-.rep-quest-action-legendary {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.15));
-  color: #FCD34D;
-  border-color: rgba(245, 158, 11, 0.3);
-  text-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
-}
-.rep-quest-action-legendary:hover {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(251, 191, 36, 0.25));
-  border-color: rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.15);
-  color: #fff;
-}
-.rep-quest-action-legendary::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.1) 50%, transparent 65%);
-  animation: shimmer 2.5s ease-in-out infinite;
-}
+.rep-quest-action-common,
+.rep-quest-action-rare,
+.rep-quest-action-epic,
+.rep-quest-action-legendary {}
 
 /* ── Quest tier badge (tiny label) ── */
 .rep-tier-badge {
@@ -841,62 +711,14 @@ body:has([data-rep]) > .noise {
    WEAPON CARD (Discount Code)
    ══════════════════════════════════════════════════════════════════════ */
 
+/* Weapon card now uses rep-surface-2. Keep class for backwards compat. */
 .rep-weapon-card {
   position: relative;
   overflow: hidden;
 }
-.rep-weapon-card::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(139, 92, 246, 0.5),
-    rgba(139, 92, 246, 0.12),
-    rgba(167, 139, 250, 0.4),
-    rgba(139, 92, 246, 0.12),
-    rgba(139, 92, 246, 0.5)
-  );
-  background-size: 300% 300%;
-  animation: weaponBorderCycle 3s ease-in-out infinite;
-  z-index: 0;
-}
-.rep-weapon-card::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background: var(--color-card);
-  z-index: 0;
-}
-.rep-weapon-card > * {
-  position: relative;
-  z-index: 1;
-}
-@keyframes weaponBorderCycle {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-.rep-weapon-grid {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.03;
-  background-image:
-    linear-gradient(rgba(139, 92, 246, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(139, 92, 246, 0.5) 1px, transparent 1px);
-  background-size: 24px 24px;
-  pointer-events: none;
-}
-
+.rep-weapon-grid,
 .rep-weapon-pulse {
-  animation: repWeaponPulse 3s ease-in-out infinite;
-}
-@keyframes repWeaponPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.06); }
+  /* Removed — no longer in use */
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -959,24 +781,9 @@ body:has([data-rep]) > .noise {
   border-color: rgba(217, 119, 6, 0.25);
 }
 
-/* Contested / live event pulsing border */
+/* Live event border — static */
 .rep-contested-border {
-  position: relative;
-}
-.rep-contested-border::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #F59E0B, rgba(245, 158, 11, 0.2), var(--color-primary), rgba(139, 92, 246, 0.2), #F59E0B);
-  background-size: 300% 300%;
-  animation: contestedPulse 3s ease-in-out infinite;
-  z-index: -1;
-  opacity: 0.6;
-}
-@keyframes contestedPulse {
-  0%, 100% { background-position: 0% 50%; opacity: 0.4; }
-  50% { background-position: 100% 50%; opacity: 0.7; }
+  border-color: rgba(52, 211, 153, 0.20) !important;
 }
 
 .rep-live-dot {
@@ -1018,41 +825,16 @@ body:has([data-rep]) > .noise {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Position card gradient border */
+/* Position card — static border */
 .rep-position-card {
   position: relative;
   overflow: hidden;
-  border-color: transparent !important;
-}
-.rep-position-card::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(139, 92, 246, 0.12), rgba(167, 139, 250, 0.4), rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.5));
-  background-size: 300% 300%;
-  animation: gradientBorderPrimary 3s ease-in-out infinite;
-  z-index: -1;
-}
-.rep-position-card::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), var(--color-card));
-  z-index: -1;
+  border-color: rgba(139, 92, 246, 0.12) !important;
 }
 
 .rep-position-dramatic {
   position: relative;
   overflow: hidden;
-}
-.rep-position-dramatic::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 30%, rgba(139, 92, 246, 0.06) 0%, transparent 60%);
-  pointer-events: none;
 }
 
 /* Event card ambient image */
@@ -1087,21 +869,16 @@ body:has([data-rep]) > .noise {
   box-shadow: 0 0 0 rgba(0, 0, 0, 0);
 }
 .rep-reward-glow-mid {
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.08);
-  border-color: rgba(56, 189, 248, 0.15) !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.05);
+  border-color: rgba(56, 189, 248, 0.12) !important;
 }
 .rep-reward-glow-high {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.12);
-  border-color: rgba(139, 92, 246, 0.2) !important;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.15) !important;
 }
 .rep-reward-glow-legendary {
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.15);
-  border-color: rgba(245, 158, 11, 0.25) !important;
-  animation: rewardGlowLegendary 3s ease-in-out infinite;
-}
-@keyframes rewardGlowLegendary {
-  0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.1); }
-  50% { box-shadow: 0 0 32px rgba(245, 158, 11, 0.2); }
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.18) !important;
 }
 
 .rep-reward-locked {
@@ -1117,13 +894,8 @@ body:has([data-rep]) > .noise {
   100% { transform: scale(1); filter: brightness(1); }
 }
 
-.rep-balance-breathe {
-  animation: balanceBreathe 3s ease-in-out infinite;
-}
-@keyframes balanceBreathe {
-  0%, 100% { box-shadow: 0 0 12px rgba(139, 92, 246, 0.08); }
-  50% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.18); }
-}
+/* Balance breathe — removed loop, static now */
+.rep-balance-breathe {}
 
 /* ══════════════════════════════════════════════════════════════════════
    LEVEL-UP CELEBRATION
@@ -1278,58 +1050,20 @@ body:has([data-rep]) > .noise {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.06) 0%, transparent 70%);
   pointer-events: none;
-}
-.rep-hero-banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(139, 92, 246, 0.04) 50%, transparent 60%);
-  background-size: 200% 200%;
-  animation: repHeroShine 6s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes repHeroShine {
-  0%, 100% { background-position: 200% 200%; }
-  50% { background-position: -100% -100%; }
 }
 
+/* Scan card — removed scan line animation */
 .rep-scan-card {
   overflow: hidden;
   position: relative;
 }
-.rep-scan-card::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
-  opacity: 0;
-  animation: repScanDown 5s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes repScanDown {
-  0% { top: -1px; opacity: 0; }
-  5% { opacity: 0.3; }
-  95% { opacity: 0.3; }
-  100% { top: 100%; opacity: 0; }
-}
 
+/* Profile hero — removed radial gradient */
 .rep-profile-hero {
   position: relative;
   overflow: hidden;
-}
-.rep-profile-hero::before {
-  content: '';
-  position: absolute;
-  top: -60%;
-  left: -30%;
-  right: -30%;
-  height: 200%;
-  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.04) 0%, transparent 60%);
-  pointer-events: none;
 }
 
 .rep-arena-card {
@@ -1367,57 +1101,16 @@ body:has([data-rep]) > .noise {
   pointer-events: none;
 }
 
-.rep-sparkle-hover {
-  position: relative;
-}
-.rep-sparkle-hover::before,
-.rep-sparkle-hover::after {
-  content: '';
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
-}
-.rep-sparkle-hover::before { top: 8px; right: 8px; }
-.rep-sparkle-hover::after { bottom: 8px; left: 8px; }
-.rep-sparkle-hover:hover::before,
-.rep-sparkle-hover:hover::after {
-  animation: repSparkle 1.5s ease-in-out infinite;
-}
-.rep-sparkle-hover:hover::after {
-  animation-delay: 0.75s;
-}
-@keyframes repSparkle {
-  0%, 100% { opacity: 0; transform: scale(0); }
-  50% { opacity: 0.7; transform: scale(1); }
-}
+/* Sparkle hover — removed */
+.rep-sparkle-hover {}
 
 .rep-battle-log-entry {
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: background-color 0.2s;
 }
 .rep-battle-log-entry:hover {
-  transform: translateX(4px);
-  box-shadow: -4px 0 12px rgba(52, 211, 153, 0.08);
-}
-.rep-battle-log-entry::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(180deg, rgba(52, 211, 153, 0.8), rgba(52, 211, 153, 0.2));
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.rep-battle-log-entry:hover::before {
-  opacity: 1;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* Photo upload pulse */
@@ -1447,17 +1140,12 @@ body:has([data-rep]) > .noise {
    HUD COMMAND BAR (Bottom Nav)
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Active glow on hub center button */
+/* Active glow on hub center button — static */
 .rep-hud-hub-active .rep-hud-hub-circle {
   box-shadow:
-    0 4px 24px rgba(139, 92, 246, 0.5),
-    0 0 40px rgba(139, 92, 246, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  animation: hubGlow 2.5s ease-in-out infinite;
-}
-@keyframes hubGlow {
-  0%, 100% { box-shadow: 0 4px 24px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
-  50% { box-shadow: 0 4px 32px rgba(139, 92, 246, 0.6), 0 0 60px rgba(139, 92, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+    0 4px 24px rgba(139, 92, 246, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 /* Badge spring animation */
@@ -1476,21 +1164,8 @@ body:has([data-rep]) > .noise {
    EMPTY STATE RINGS
    ══════════════════════════════════════════════════════════════════════ */
 
-.rep-empty-ring {
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 1px solid rgba(139, 92, 246, 0.1);
-  animation: emptyRingPulse 3s ease-in-out infinite;
-}
-.rep-empty-ring:nth-child(2) {
-  inset: -16px;
-  animation-delay: 0.5s;
-}
-@keyframes emptyRingPulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.05); }
-}
+/* Empty ring — removed (EmptyState uses rep-surface-1 now) */
+.rep-empty-ring { display: none; }
 
 /* ══════════════════════════════════════════════════════════════════════
    RESPONSIVE — Mobile-specific behavior
@@ -1543,18 +1218,17 @@ body:has([data-rep]) > .noise {
    ══════════════════════════════════════════════════════════════════════ */
 
 .rep-stat-card {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.2s;
 }
 .rep-stat-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(139, 92, 246, 0.2);
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
 .rep-timeline-entry {
-  transition: transform 0.2s, background-color 0.2s;
+  transition: background-color 0.2s;
 }
 .rep-timeline-entry:hover {
-  transform: translateX(3px);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1605,19 +1279,17 @@ body:has([data-rep]) > .noise {
   border: 1px solid var(--color-border);
   border-radius: 16px;
   overflow: hidden;
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
   cursor: pointer;
 }
 .rep-event-card:hover {
-  border-color: rgba(139, 92, 246, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 .rep-event-card.rep-event-live {
-  border-color: rgba(52, 211, 153, 0.3);
+  border-color: rgba(52, 211, 153, 0.20);
 }
 .rep-event-card.rep-event-locked {
-  border-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.15);
   opacity: 0.85;
 }
 
@@ -1691,8 +1363,8 @@ body:has([data-rep]) > .noise {
 
 /* ── Quest progress bar ── */
 .rep-quest-progress {
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
   margin-top: 8px;
@@ -1717,24 +1389,20 @@ body:has([data-rep]) > .noise {
   border-radius: 16px;
   background: var(--color-card);
   border: 1px solid var(--color-border);
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 .rep-mission-card:hover {
-  border-color: rgba(52, 211, 153, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.10);
 }
 .rep-mission-content {
   position: relative;
   z-index: 1;
 }
 .rep-mission-card-hover {
-  transition: transform 0.25s, border-color 0.25s, box-shadow 0.3s;
+  transition: border-color 0.2s;
 }
 .rep-mission-card-hover:hover {
-  transform: translateY(-2px);
-  border-color: rgba(52, 211, 153, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 20px rgba(52, 211, 153, 0.06);
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1742,39 +1410,30 @@ body:has([data-rep]) > .noise {
    ══════════════════════════════════════════════════════════════════════ */
 
 .rep-action-hover {
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition: border-color 0.2s;
 }
 .rep-action-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border-color: rgba(139, 92, 246, 0.15);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 .rep-action-icon-hover {
-  transition: transform 0.25s, box-shadow 0.25s;
-}
-.rep-action-hover:hover .rep-action-icon-hover {
-  transform: scale(1.08);
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.15);
+  /* No hover scale */
 }
 
 .rep-shop-hover {
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+  transition: border-color 0.2s;
 }
 .rep-shop-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .rep-lb-hover {
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition: background-color 0.2s;
 }
 .rep-lb-hover:hover {
-  transform: translateX(3px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.02);
 }
 .rep-lb-podium-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  /* Keep podium stable */
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1865,7 +1524,7 @@ body:has([data-rep]) > .noise {
 .rep-podium-col:first-child .rep-podium-avatar {
   width: 56px;
   height: 56px;
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
   border: 2px solid rgba(245, 158, 11, 0.4);
 }
 .rep-podium-col:nth-child(2) .rep-podium-avatar {
@@ -1916,40 +1575,36 @@ body:has([data-rep]) > .noise {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rep-hud-hub-active .rep-hud-hub-circle,
-  .rep-weapon-card::before,
-  .rep-balance-breathe,
-  .rep-position-card::before,
-  .rep-reward-glow-legendary,
-  .rep-profile-ring::after,
-  .rep-empty-ring,
-  .rep-quest-common,
-  .rep-quest-rare,
-  .rep-quest-epic,
-  .rep-quest-legendary,
+  /* Kill remaining animations (legendary border, shimmer, xp, celebrations) */
   .rep-quest-legendary::before,
   .rep-badge-shimmer::after,
+  .rep-tier-badge-legendary::after,
+  .rep-xp-badge-epic::after,
+  .rep-xp-badge-legendary::after,
   .rep-xp-fill::after,
-  .rep-avatar-ring-mythic,
-  .rep-nav-glow,
-  .rep-contested-border::before,
   .rep-confetti-piece,
   .rep-success-particle,
   .rep-level-up-ring,
   .rep-level-up-badge,
-  .rep-gradient-text,
-  .rep-gradient-text-gold,
-  .rep-hero-banner::after,
-  .rep-scan-card::after,
-  .rep-weapon-pulse,
-  .rep-sparkle-hover::before,
-  .rep-sparkle-hover::after {
+  .rep-level-up-overlay,
+  .rep-cursor {
     animation: none !important;
   }
+  /* Entrance animations: instant appearance */
   .rep-fade-in,
   .rep-slide-up,
   .rep-page-enter,
-  .rep-card-reveal {
+  .rep-card-reveal,
+  .rep-quest-common,
+  .rep-quest-rare,
+  .rep-quest-epic,
+  .rep-quest-legendary,
+  .rep-leaderboard-item,
+  .rep-boot-line,
+  .rep-step-in,
+  .rep-wizard-step,
+  .rep-celebrate,
+  .rep-title-reveal {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

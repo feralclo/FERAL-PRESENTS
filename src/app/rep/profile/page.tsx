@@ -338,7 +338,7 @@ export default function RepProfilePage() {
                 </div>
               </button>
 
-              <h1 className="mt-3 text-lg font-bold rep-gradient-text">
+              <h1 className="mt-3 text-lg font-bold text-foreground">
                 {profile.display_name || profile.first_name}
               </h1>
               <p className="text-xs text-muted-foreground">{profile.email}</p>
@@ -346,7 +346,7 @@ export default function RepProfilePage() {
               {/* Tier badge */}
               <div className="flex items-center justify-center mt-2">
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold rep-badge-shimmer"
+                  className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold", tier.name === "Mythic" && "rep-badge-shimmer")}
                   style={{ backgroundColor: `${tier.color}15`, color: tier.color, border: `1px solid ${tier.color}30` }}
                 >
                   <Zap size={10} />
@@ -376,7 +376,7 @@ export default function RepProfilePage() {
                             strokeDasharray={MINI_CIRC}
                             strokeDashoffset={MINI_CIRC * (1 - g.percent)}
                             className="transition-[stroke-dashoffset] duration-1000 ease-out"
-                            style={{ filter: `drop-shadow(0 0 3px ${g.color}66)` }}
+                            style={{ filter: `drop-shadow(0 0 2px ${g.color}40)` }}
                           />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -384,7 +384,7 @@ export default function RepProfilePage() {
                         </div>
                       </div>
                       <span className="text-[13px] font-bold font-mono tabular-nums" style={{ color: g.color }}>{g.value}</span>
-                      <span className="text-[9px] uppercase tracking-[1px] text-muted-foreground font-semibold">{g.label}</span>
+                      <span className="text-[10px] uppercase tracking-[1px] text-muted-foreground font-semibold">{g.label}</span>
                     </div>
                   );
                 })}
@@ -424,7 +424,7 @@ export default function RepProfilePage() {
 
       {/* ── Discount Code ── */}
       {discountCode && (
-        <Card className="py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up rep-scan-card" style={{ animationDelay: "50ms" }}>
+        <Card className="py-0 gap-0 rep-surface-2 border-primary/15 rep-slide-up" style={{ animationDelay: "50ms" }}>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />
@@ -433,7 +433,7 @@ export default function RepProfilePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-2xl font-bold font-mono tracking-[4px] text-foreground flex-1" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.15)" }}>
+              <p className="text-2xl font-bold font-mono tracking-[4px] text-foreground flex-1">
                 {discountCode}
               </p>
               <Button size="sm" onClick={copyCode}>
@@ -441,7 +441,7 @@ export default function RepProfilePage() {
                 {copiedCode ? "Copied" : "Copy"}
               </Button>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Share this code — every sale earns you points
             </p>
           </CardContent>
@@ -458,7 +458,7 @@ export default function RepProfilePage() {
 
           {/* Display Name */}
           <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Display Name
             </Label>
             <Input
@@ -474,7 +474,7 @@ export default function RepProfilePage() {
 
           {/* Phone */}
           <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Phone
             </Label>
             <Input
@@ -490,12 +490,12 @@ export default function RepProfilePage() {
 
           {/* Socials */}
           <div className="space-y-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Socials
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Instagram size={11} /> Instagram
                 </Label>
                 <div className="relative">
@@ -510,7 +510,7 @@ export default function RepProfilePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <TikTokIcon size={11} /> TikTok
                 </Label>
                 <div className="relative">
@@ -531,7 +531,7 @@ export default function RepProfilePage() {
 
           {/* Bio */}
           <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Bio
             </Label>
             <Textarea

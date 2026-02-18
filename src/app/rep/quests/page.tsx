@@ -317,7 +317,7 @@ export default function RepQuestsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
         <div className="flex flex-col items-center gap-3 pt-2">
           <div className="h-12 w-12 rounded-2xl bg-secondary animate-pulse" />
           <div className="h-6 w-24 rounded bg-secondary animate-pulse" />
@@ -335,7 +335,7 @@ export default function RepQuestsPage() {
 
   if (error && quests.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
         <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 mb-4">
             <Compass size={22} className="text-red-400" />
@@ -356,7 +356,7 @@ export default function RepQuestsPage() {
   const displayQuests = tab === "active" ? activeQuests : completedQuests;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col items-center text-center pt-2">
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 mb-3">
@@ -393,7 +393,7 @@ export default function RepQuestsPage() {
             className={cn(
               "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
               "hover:text-foreground",
-              tab === t.id && "bg-primary text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)]"
+              tab === t.id && "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
             )}
           >
             {t.label}
@@ -458,7 +458,7 @@ export default function RepQuestsPage() {
                   {expiry?.urgent && (
                     <div className="inline-flex items-center gap-1.5 mx-auto mb-2 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
                       <Clock size={11} className="text-amber-400" />
-                      <span className="text-[11px] font-medium text-amber-400">{expiry.text}</span>
+                      <span className="text-xs font-medium text-amber-400">{expiry.text}</span>
                     </div>
                   )}
 
@@ -529,7 +529,7 @@ export default function RepQuestsPage() {
                   {hasSubs && (
                     <button
                       onClick={() => toggleSubmissions(quest.id)}
-                      className="inline-flex items-center gap-1 mt-2 mx-auto py-1 bg-transparent border-none cursor-pointer text-[11px] text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                      className="inline-flex items-center gap-1 mt-2 mx-auto py-1 bg-transparent border-none cursor-pointer text-xs text-muted-foreground transition-colors duration-200 hover:text-foreground"
                     >
                       {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       {isExpanded ? "Hide history" : "View history"}

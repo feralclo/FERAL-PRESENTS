@@ -253,12 +253,12 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             {/* Desktop stats strip */}
             {repStats && tier && (
               <div className="flex items-center gap-2 mr-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-[11px] font-bold tabular-nums text-primary">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-bold tabular-nums text-primary">
                   <Zap size={11} />
                   {repStats.xp.toLocaleString()}
                 </span>
                 {repStats.rank && (
-                  <span className="text-[11px] font-bold font-mono tabular-nums" style={{ color: tier.color }}>
+                  <span className="text-xs font-bold font-mono tabular-nums" style={{ color: tier.color }}>
                     #{repStats.rank}
                   </span>
                 )}
@@ -297,12 +297,12 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               {/* XP + Level pills */}
               {repStats && tier && (
                 <>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-[11px] font-bold tabular-nums text-primary">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-bold tabular-nums text-primary">
                     <Zap size={10} />
                     {repStats.xp.toLocaleString()}
                   </span>
                   <span
-                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums"
+                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums"
                     style={{
                       backgroundColor: tier.color + "15",
                       color: tier.color,
@@ -646,7 +646,7 @@ function NotificationCenter() {
                         </span>
                       </div>
                       {n.body && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {n.body}
                         </p>
                       )}

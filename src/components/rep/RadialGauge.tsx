@@ -37,17 +37,11 @@ export function RadialGauge({
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center rounded-2xl bg-card border border-border transition-all duration-250",
-        "hover:-translate-y-0.5 hover:shadow-lg",
+        "relative flex flex-col items-center rounded-2xl rep-surface-1",
         isHero ? "p-6" : "px-2 pt-4 pb-3",
         className,
       )}
     >
-      {/* Top accent stripe */}
-      <div
-        className="absolute top-0 left-4 right-4 h-0.5 rounded-b opacity-50"
-        style={{ backgroundColor: color }}
-      />
 
       <svg
         className="-rotate-90"
@@ -73,7 +67,7 @@ export function RadialGauge({
           strokeDasharray={GAUGE_CIRCUMFERENCE}
           strokeDashoffset={offset}
           className="transition-[stroke-dashoffset] duration-1200 ease-out"
-          style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+          style={{ filter: `drop-shadow(0 0 3px ${color}60)` }}
         />
       </svg>
 
@@ -88,7 +82,7 @@ export function RadialGauge({
       >
         <Icon
           size={isHero ? 24 : 18}
-          style={{ color, filter: `drop-shadow(0 0 4px ${color}40)` }}
+          style={{ color }}
         />
       </div>
 

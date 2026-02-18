@@ -125,7 +125,7 @@ export default function RepDashboardPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
         {/* Welcome skeleton */}
         <div className="flex flex-col items-center">
           <Skeleton className="h-24 w-24 rounded-full mb-3" />
@@ -186,7 +186,7 @@ export default function RepDashboardPage() {
   const maxRank = 20;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* ── Level-Up Celebration Overlay ── */}
       {showLevelUp && levelUpInfo && (
         <LevelUpOverlay
@@ -214,7 +214,7 @@ export default function RepDashboardPage() {
             )}
           </div>
 
-          <h1 className="text-xl font-bold rep-gradient-text">
+          <h1 className="text-xl font-bold text-foreground">
             Hey, {rep.display_name || rep.first_name}
           </h1>
 
@@ -222,7 +222,8 @@ export default function RepDashboardPage() {
           <div className="flex items-center justify-center gap-2 mt-2">
             <Badge
               className={cn(
-                "gap-1.5 px-4 py-1.5 rep-badge-shimmer border",
+                "gap-1.5 px-4 py-1.5 border",
+                tier.name === "Mythic" && "rep-badge-shimmer",
               )}
               style={{
                 backgroundColor: `${tier.color}15`,
@@ -268,17 +269,16 @@ export default function RepDashboardPage() {
       {data.discount_codes.length > 0 && (
         <div
           className={cn(
-            "rep-weapon-card rep-slide-up rep-weapon-pulse rep-scan-card",
+            "rep-surface-2 rounded-2xl border-primary/15 rep-slide-up",
             copyFlash && "rep-copy-flash"
           )}
           style={{ animationDelay: "50ms" }}
         >
-          <div className="rep-weapon-grid" />
-          <div className="relative z-[1] p-5">
+          <div className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />
               <span
-                className="text-[9px] uppercase tracking-[2px] font-bold px-2 py-0.5 rounded-md"
+                className="text-[10px] uppercase tracking-[2px] font-bold px-2 py-0.5 rounded-md"
                 style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
               >
                 Your Weapon
@@ -286,11 +286,10 @@ export default function RepDashboardPage() {
             </div>
             <p
               className="text-[28px] font-black font-mono tracking-[6px] text-foreground mb-1"
-              style={{ textShadow: "0 0 24px rgba(139, 92, 246, 0.2)" }}
             >
               {data.discount_codes[0].code}
             </p>
-            <p className="text-[11px] text-muted-foreground mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Share this code — every sale earns you <span className="text-primary font-bold">+10 XP</span>
             </p>
             <div className="flex gap-2">
@@ -370,12 +369,12 @@ export default function RepDashboardPage() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{event.name}</p>
                         <div className="flex items-center gap-3 mt-0.5">
-                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                             <Flame size={10} className="text-orange-400" />
                             {event.sales_count} ticket{event.sales_count !== 1 ? "s" : ""}
                           </span>
                           {event.revenue > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-success">
+                            <span className="inline-flex items-center gap-1 text-xs font-mono text-success">
                               <TrendingUp size={10} />
                               £{Number(event.revenue).toFixed(0)}
                             </span>
@@ -395,9 +394,9 @@ export default function RepDashboardPage() {
       {/* ── Quick Actions ── */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "200ms" }}>
         <Link href="/rep/quests">
-          <Card className="py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 rep-action-hover" style={{ minHeight: "88px" }}>
+          <Card className="py-0 gap-0 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shrink-0 rep-action-icon-hover">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shrink-0">
                 <Compass size={20} className="text-primary" />
               </div>
               <div className="min-w-0 flex-1">
@@ -409,16 +408,16 @@ export default function RepDashboardPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">{data.active_quests} active</p>
+                <p className="text-xs text-muted-foreground">{data.active_quests} active</p>
               </div>
               <ChevronRight size={14} className="text-muted-foreground/40 shrink-0" />
             </CardContent>
           </Card>
         </Link>
         <Link href="/rep/rewards">
-          <Card className="py-0 gap-0 hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 rep-action-hover" style={{ minHeight: "88px" }}>
+          <Card className="py-0 gap-0 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0 rep-action-icon-hover">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0">
                 <Gift size={20} className="text-amber-400" />
               </div>
               <div className="min-w-0 flex-1">
@@ -430,7 +429,7 @@ export default function RepDashboardPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {data.pending_rewards > 0 ? `${data.pending_rewards} pending` : "Shop & milestones"}
                 </p>
               </div>
@@ -445,11 +444,10 @@ export default function RepDashboardPage() {
         <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
           <HudSectionHeader label="Recent Activity" />
           <div className="space-y-2">
-            {data.recent_sales.map((sale, i) => (
+            {data.recent_sales.map((sale) => (
               <Card
                 key={sale.id}
-                className="py-0 gap-0 rep-slide-up rep-battle-log-entry"
-                style={{ animationDelay: `${280 + i * 40}ms` }}
+                className="py-0 gap-0 rep-battle-log-entry"
               >
                 <CardContent className="px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
@@ -477,7 +475,7 @@ export default function RepDashboardPage() {
           </div>
           <Link
             href="/rep/sales"
-            className="flex items-center justify-center gap-1 mt-3 text-[11px] text-primary hover:underline"
+            className="flex items-center justify-center gap-1 mt-3 text-xs text-primary hover:underline"
           >
             View all sales <ChevronRight size={12} />
           </Link>
@@ -487,25 +485,24 @@ export default function RepDashboardPage() {
       {/* ── Arena CTA (Leaderboard) ── */}
       <Link href="/rep/leaderboard">
         <Card
-          className="py-0 gap-0 border-transparent bg-warning/5 rep-gradient-border-gold hover:-translate-y-[3px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] active:-translate-y-px transition-all duration-250 rep-slide-up overflow-hidden rep-arena-card rep-sparkle-hover"
+          className="py-0 gap-0 rep-surface-1 border-warning/15 rep-slide-up"
           style={{ animationDelay: "300ms" }}
         >
-          <div className="absolute inset-[1px] rounded-[inherit] bg-card z-[-1]" />
-          <CardContent className="p-5 flex items-center justify-between relative z-[1]">
+          <CardContent className="p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/15">
-                <Trophy size={22} className="text-warning" style={{ filter: "drop-shadow(0 0 6px rgba(245, 158, 11, 0.4))" }} />
+                <Trophy size={22} className="text-warning" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Arena</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {data.leaderboard_position
                     ? <>Ranked <span className="font-mono font-bold text-warning">#{data.leaderboard_position}</span> — challenge your crew</>
                     : "See where you stand"}
                 </p>
               </div>
             </div>
-            <ChevronRight size={18} className="text-warning/60 animate-[pulse_2s_ease-in-out_infinite]" />
+            <ChevronRight size={18} className="text-warning/60" />
           </CardContent>
         </Card>
       </Link>

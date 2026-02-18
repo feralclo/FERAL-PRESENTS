@@ -7,18 +7,14 @@ interface EmptyStateProps {
 }
 
 /**
- * Empty state with pulsing rings, icon, title, and subtitle.
- * Used by Sales, Points, Leaderboard, Rewards, Quests.
+ * Empty state with icon, title, and subtitle.
+ * Wrapped in rep-surface-1 for subtle containment.
  */
 export function EmptyState({ icon: Icon, title, subtitle }: EmptyStateProps) {
   return (
-    <div className="text-center py-16">
-      <div className="relative inline-flex h-14 w-14 items-center justify-center mx-auto mb-4">
-        <div className="rep-empty-ring" />
-        <div className="rep-empty-ring" />
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-          <Icon size={22} className="text-primary/50" />
-        </div>
+    <div className="rep-surface-1 rounded-2xl text-center py-12 px-4">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mx-auto mb-4">
+        <Icon size={22} className="text-primary/50" />
       </div>
       <p className="text-sm text-foreground font-medium mb-1">{title}</p>
       {subtitle && (

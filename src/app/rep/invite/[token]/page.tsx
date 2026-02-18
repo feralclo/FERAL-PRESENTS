@@ -434,7 +434,7 @@ export default function RepInvitePage() {
       <div className="w-full max-w-md">
         {/* Greeting */}
         {repInfo?.first_name && step === 0 && (
-          <p className="text-[11px] text-primary font-mono uppercase tracking-[3px] mb-6 rep-fade-in">
+          <p className="text-xs text-primary font-mono uppercase tracking-[3px] mb-6 rep-fade-in">
             Hey {repInfo.first_name}
           </p>
         )}

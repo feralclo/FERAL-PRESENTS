@@ -8,8 +8,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { isMuxPlaybackId } from "@/lib/mux";
+import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Artist } from "@/types/artists";
+
+// One-shot edge hint — shows once per session
+let hasShownEdgeHint = false;
 
 // Mux Player — dynamic import to avoid SSR issues (it's a Web Component)
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
@@ -50,6 +53,9 @@ export function MidnightArtistModal({
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lockRef = useRef<"h" | "v" | null>(null);
 
+  // Swipe affordance — edge glow + arrow pulse on first open
+  const [showEdgeHint, setShowEdgeHint] = useState(false);
+
   // Callback ref — guarantees touch listener attaches after Radix portal mount
   const [cardEl, setCardEl] = useState<HTMLDivElement | null>(null);
 
@@ -73,6 +79,17 @@ export function MidnightArtistModal({
     setVideoError(false);
     setIsMuted(true);
   }, [artist?.id, isOpen]);
+
+  // ── Swipe affordance — edge glow on first open with multiple artists ──
+  useEffect(() => {
+    if (isOpen && multi && !hasShownEdgeHint) {
+      hasShownEdgeHint = true;
+      // Delay until open animation settles
+      const t = setTimeout(() => setShowEdgeHint(true), 400);
+      return () => clearTimeout(t);
+    }
+    if (!isOpen) setShowEdgeHint(false);
+  }, [isOpen, multi]);
 
   // ── Video sync (MuxPlayer muted state) ──
   useEffect(() => {
@@ -339,6 +356,11 @@ export function MidnightArtistModal({
   const hasVideo = !!artist.video_url;
   const hasMuxVideo = hasVideo && isMuxPlaybackId(artist.video_url!);
   const adjHasVideo = !!adjArtist?.video_url;
+  const adjIsMux =
+    adjHasVideo && isMuxPlaybackId(adjArtist!.video_url!);
+  const adjThumbnail = adjIsMux
+    ? getMuxThumbnailUrl(adjArtist!.video_url!)
+    : null;
 
   // Shared card visual treatment
   const cardVisual =
@@ -706,11 +728,11 @@ export function MidnightArtistModal({
                   <button
                     type="button"
                     onClick={goNext}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center touch-manipulation ${
                       canGoNext
                         ? "bg-white/[0.06] border border-white/[0.10] text-white/50 hover:bg-white/[0.10] hover:text-white/70 cursor-pointer active:scale-90"
                         : "text-white/[0.08] cursor-default"
-                    }`}
+                    } ${showEdgeHint && canGoNext ? "midnight-artist-nav-hint" : "transition-all"}`}
                     disabled={!canGoNext}
                     aria-label="Next artist"
                   >
@@ -730,6 +752,17 @@ export function MidnightArtistModal({
                 </div>
               )}
             </div>
+
+            {/* ── Edge glow hint — suggests "swipe right for more" ── */}
+            {showEdgeHint && multi && (
+              <div
+                className="absolute top-0 right-0 bottom-0 w-10 pointer-events-none z-20 midnight-artist-edge-hint"
+                style={{
+                  background:
+                    "linear-gradient(to left, rgba(255,255,255,0.07), transparent)",
+                }}
+              />
+            )}
           </div>
 
           {/* ═══ ADJACENT CARD — preview that slides in during drag/transition ═══ */}
@@ -743,7 +776,7 @@ export function MidnightArtistModal({
               }}
             >
               <div className="px-6 pt-7 pb-5 max-[380px]:px-5 max-[380px]:pt-6 max-[380px]:pb-4">
-                {/* Video placeholder (static image — not a live player) */}
+                {/* Video placeholder — Mux thumbnail (freeze frame) or fallback */}
                 {adjHasVideo && (
                   <div className="mb-5">
                     <div
@@ -755,7 +788,14 @@ export function MidnightArtistModal({
                           "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
                       }}
                     >
-                      {adjArtist.image ? (
+                      {adjThumbnail ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={adjThumbnail}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : adjArtist.image ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={adjArtist.image}

@@ -32,6 +32,11 @@ export function MidnightLineup({
           </span>
         )}
         <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.12] to-transparent" />
+        {artistProfiles && artistProfiles.size > 0 && (
+          <span className="font-[family-name:var(--font-sans)] text-[10px] max-[480px]:text-[9px] tracking-[0.04em] text-foreground/25 whitespace-nowrap">
+            tap to explore
+          </span>
+        )}
       </div>
 
       {/* Artist pills */}

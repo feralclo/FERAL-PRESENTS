@@ -840,6 +840,29 @@ html.checkout-active .noise {
   transition: box-shadow 300ms ease;
 }
 
+/* ── Swipe affordance: edge glow + nav arrow pulse ── */
+
+/* Right edge glow — fades in and out once to suggest "swipe right" */
+@keyframes midnight-edge-hint {
+  0%   { opacity: 0; }
+  35%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.midnight-artist-edge-hint {
+  animation: midnight-edge-hint 1.4s ease 0.1s both;
+}
+
+/* Nav arrow pulse — draws eye to the right arrow */
+@keyframes midnight-nav-pulse {
+  0%, 100% { transform: scale(1); border-color: rgba(255,255,255,0.10); background: rgba(255,255,255,0.06); }
+  50%      { transform: scale(1.2); border-color: rgba(255,255,255,0.30); background: rgba(255,255,255,0.12); }
+}
+
+.midnight-artist-nav-hint {
+  animation: midnight-nav-pulse 500ms ease 0.3s 2 both;
+}
+
 
 /* ═══════════════════════════════════════════════
    SCROLL REVEAL — Subtle entrance for content sections
@@ -885,6 +908,10 @@ html.checkout-active .noise {
   .midnight-artist-swipe,
   .midnight-artist-snapback {
     transition: none;
+  }
+  .midnight-artist-edge-hint,
+  .midnight-artist-nav-hint {
+    animation: none;
   }
   /* Ensure revealed content is visible without animation */
   [data-theme="midnight"] [data-reveal] {

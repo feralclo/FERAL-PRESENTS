@@ -37,6 +37,7 @@ export async function POST() {
     });
   } catch (e) {
     console.error("[mux/upload] Error:", e);
-    return NextResponse.json({ error: "Failed to create upload" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: `Mux error: ${msg}` }, { status: 500 });
   }
 }

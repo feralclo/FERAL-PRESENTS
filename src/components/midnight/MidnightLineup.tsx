@@ -23,15 +23,15 @@ export function MidnightLineup({
     <div>
       {/* Section header */}
       <div className="flex items-center gap-3 mb-8 max-[480px]:mb-6">
-        <h2 className="font-[family-name:var(--font-sans)] text-sm max-[480px]:text-xs font-bold tracking-[0.18em] uppercase text-foreground/70">
+        <h2 className="font-[family-name:var(--font-sans)] text-sm max-[480px]:text-xs font-bold tracking-[0.2em] uppercase text-foreground/90">
           Lineup
         </h2>
         {isAlphabetical && (
-          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-[var(--accent)] border border-[var(--accent)]/20 bg-[var(--accent)]/[0.06] rounded-full px-2.5 py-0.5 uppercase">
+          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-[var(--accent)] border border-[var(--accent)]/25 bg-[var(--accent)]/[0.08] rounded-full px-2.5 py-0.5 uppercase">
             A &mdash; Z
           </span>
         )}
-        <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.10] to-transparent" />
+        <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.12] to-transparent" />
       </div>
 
       {/* Artist pills */}

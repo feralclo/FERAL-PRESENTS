@@ -69,7 +69,12 @@ export function MidnightMerchModal({
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
 
-  const touchStartX = useRef(0);
+  // Touch refs for swipe detection
+  const mainTouchStartX = useRef(0);
+  const fsTouchStartX = useRef(0);
+
+  // Active image index in main view
+  const activeIndex = images.findIndex((img) => img.view === activeView);
 
   useEffect(() => {
     if (images.length > 0) {
@@ -77,6 +82,7 @@ export function MidnightMerchModal({
     }
   }, [images]);
 
+  // Fullscreen keyboard navigation
   useEffect(() => {
     if (!fullscreenOpen) return;
     function onKey(e: KeyboardEvent) {
@@ -92,13 +98,42 @@ export function MidnightMerchModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreenOpen, images.length]);
 
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
+  // Lock body scroll when fullscreen is open
+  useEffect(() => {
+    if (fullscreenOpen) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [fullscreenOpen]);
+
+  // Main view swipe handlers
+  const onMainTouchStart = useCallback((e: React.TouchEvent) => {
+    mainTouchStartX.current = e.touches[0].clientX;
   }, []);
 
-  const onTouchEnd = useCallback(
+  const onMainTouchEnd = useCallback(
     (e: React.TouchEvent) => {
-      const delta = e.changedTouches[0].clientX - touchStartX.current;
+      const delta = e.changedTouches[0].clientX - mainTouchStartX.current;
+      if (Math.abs(delta) > 50 && images.length > 1) {
+        const idx = images.findIndex((img) => img.view === activeView);
+        if (delta < 0 && idx < images.length - 1) {
+          setActiveView(images[idx + 1].view);
+        } else if (delta > 0 && idx > 0) {
+          setActiveView(images[idx - 1].view);
+        }
+      }
+    },
+    [images, activeView]
+  );
+
+  // Fullscreen swipe handlers
+  const onFsTouchStart = useCallback((e: React.TouchEvent) => {
+    fsTouchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const onFsTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const delta = e.changedTouches[0].clientX - fsTouchStartX.current;
       if (Math.abs(delta) > 50) {
         if (delta < 0) {
           setFullscreenIndex((i) => (i + 1) % images.length);
@@ -125,6 +160,31 @@ export function MidnightMerchModal({
     [images]
   );
 
+  // Navigation helpers for main view
+  const goNext = useCallback(() => {
+    if (activeIndex < images.length - 1) {
+      setActiveView(images[activeIndex + 1].view);
+    }
+  }, [activeIndex, images]);
+
+  const goPrev = useCallback(() => {
+    if (activeIndex > 0) {
+      setActiveView(images[activeIndex - 1].view);
+    }
+  }, [activeIndex, images]);
+
+  // Chevron SVG shared between views
+  const ChevronLeft = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15,18 9,12 15,6" />
+    </svg>
+  );
+  const ChevronRight = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9,6 15,12 9,18" />
+    </svg>
+  );
+
   return (
     <>
       {/* ── Product modal ─────────────────────── */}
@@ -142,8 +202,12 @@ export function MidnightMerchModal({
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="md:grid md:grid-cols-[1.1fr_1fr]">
 
-              {/* Image area */}
-              <div className="relative bg-white/[0.04]">
+              {/* Image area — with swipe + nav arrows */}
+              <div
+                className="relative bg-white/[0.04]"
+                onTouchStart={onMainTouchStart}
+                onTouchEnd={onMainTouchEnd}
+              >
                 <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-8 max-md:pb-1.5 min-h-[280px] max-md:min-h-[170px] max-[380px]:min-h-[140px]">
                   {images.length > 0 ? (
                     images.map((img) => (
@@ -164,6 +228,32 @@ export function MidnightMerchModal({
                     </div>
                   )}
                 </div>
+
+                {/* Navigation arrows — only when multiple images */}
+                {images.length > 1 && (
+                  <>
+                    {activeIndex > 0 && (
+                      <button
+                        type="button"
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 border border-white/10 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
+                        onClick={goPrev}
+                        aria-label="Previous image"
+                      >
+                        {ChevronLeft}
+                      </button>
+                    )}
+                    {activeIndex < images.length - 1 && (
+                      <button
+                        type="button"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 border border-white/10 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
+                        onClick={goNext}
+                        aria-label="Next image"
+                      >
+                        {ChevronRight}
+                      </button>
+                    )}
+                  </>
+                )}
 
                 {/* Dot navigation */}
                 {images.length > 1 && (
@@ -262,59 +352,75 @@ export function MidnightMerchModal({
         </DialogContent>
       </Dialog>
 
-      {/* ── Fullscreen image zoom ─────────────── */}
-      <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
-        <DialogContent
-          data-theme="midnight"
-          className="midnight-merch-dialog max-w-[90vw] max-h-[90vh] p-0 bg-black/97 border-none flex items-center justify-center cursor-zoom-out rounded-2xl"
+      {/* ── Fullscreen image zoom — simple overlay, NOT a Radix Dialog ──
+           Using a plain overlay avoids the double-dialog bug where closing
+           the fullscreen X also closes the parent merch modal. */}
+      {fullscreenOpen && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
           onClick={() => setFullscreenOpen(false)}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
+          onTouchStart={onFsTouchStart}
+          onTouchEnd={onFsTouchEnd}
         >
-          <DialogTitle className="sr-only">Image zoom</DialogTitle>
-          <DialogDescription className="sr-only">Fullscreen image view</DialogDescription>
+          {/* Close button */}
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-20 w-9 h-9 bg-white/8 border border-white/12 rounded-lg flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFullscreenOpen(false);
+            }}
+            aria-label="Close zoom"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
 
-          {images.length > 1 && (
-            <>
-              <button
-                type="button"
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFullscreenIndex((fullscreenIndex - 1 + images.length) % images.length);
-                }}
-                aria-label="Previous"
-              >
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="15,18 9,12 15,6" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFullscreenIndex((fullscreenIndex + 1) % images.length);
-                }}
-                aria-label="Next"
-              >
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="9,6 15,12 9,18" />
-                </svg>
-              </button>
-            </>
+          {/* Navigation arrows */}
+          {images.length > 1 && fullscreenIndex > 0 && (
+            <button
+              type="button"
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFullscreenIndex(fullscreenIndex - 1);
+              }}
+              aria-label="Previous"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="15,18 9,12 15,6" />
+              </svg>
+            </button>
+          )}
+          {images.length > 1 && fullscreenIndex < images.length - 1 && (
+            <button
+              type="button"
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFullscreenIndex(fullscreenIndex + 1);
+              }}
+              aria-label="Next"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9,6 15,12 9,18" />
+              </svg>
+            </button>
           )}
 
+          {/* Zoomed image — click to close */}
           {images[fullscreenIndex] && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={images[fullscreenIndex].src}
               alt={images[fullscreenIndex].alt}
-              className="max-w-[85vw] max-h-[85vh] object-contain"
-              onClick={(e) => e.stopPropagation()}
+              className="max-w-[85vw] max-h-[85vh] object-contain cursor-zoom-out"
             />
           )}
 
+          {/* Dot indicators */}
           {images.length > 1 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
               {images.map((_, i) => (
@@ -331,8 +437,8 @@ export function MidnightMerchModal({
               ))}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </>
   );
 }

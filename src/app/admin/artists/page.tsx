@@ -46,7 +46,6 @@ export default function ArtistsPage() {
   // Video upload state
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
-  const [videoStage, setVideoStage] = useState<"idle" | "optimizing" | "uploading">("idle");
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Delete dialog
@@ -126,34 +125,21 @@ export default function ArtistsPage() {
   const handleVideoUpload = useCallback(async (file: File) => {
     setVideoUploading(true);
     setVideoProgress(0);
-    setVideoStage("optimizing");
 
     try {
-      // 1. Compress video client-side (skips if < 8MB)
-      const { compressVideo } = await import("@/lib/video-compress");
-      const optimized = await compressVideo(file, (percent, stage) => {
-        if (stage === "loading" || stage === "compressing") {
-          setVideoStage("optimizing");
-          setVideoProgress(percent);
-        }
-      });
-
-      // 2. Get signed upload URL from our API
-      setVideoStage("uploading");
-      setVideoProgress(0);
-
+      // 1. Get signed upload URL from our API
       const res = await fetch("/api/upload-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          filename: optimized.name,
-          contentType: optimized.type,
+          filename: file.name,
+          contentType: file.type,
         }),
       });
       const { signedUrl, token, publicUrl, error } = await res.json();
       if (error) throw new Error(error);
 
-      // 3. Upload compressed file directly to Supabase Storage
+      // 2. Upload directly to Supabase Storage with progress tracking
       const xhr = new XMLHttpRequest();
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
@@ -168,12 +154,12 @@ export default function ArtistsPage() {
         };
         xhr.onerror = () => reject(new Error("Upload failed"));
         xhr.open("PUT", signedUrl);
-        xhr.setRequestHeader("Content-Type", optimized.type);
+        xhr.setRequestHeader("Content-Type", file.type);
         if (token) xhr.setRequestHeader("x-supabase-upload-token", token);
-        xhr.send(optimized);
+        xhr.send(file);
       });
 
-      // 4. Set the public URL
+      // 3. Set the public URL
       setFormVideoUrl(publicUrl);
     } catch (e) {
       console.error("Video upload failed:", e);
@@ -181,7 +167,6 @@ export default function ArtistsPage() {
     }
     setVideoUploading(false);
     setVideoProgress(0);
-    setVideoStage("idle");
   }, []);
 
   const handleVideoFileChange = useCallback(
@@ -422,7 +407,7 @@ export default function ArtistsPage() {
                   <input
                     ref={videoInputRef}
                     type="file"
-                    accept="video/mp4,video/webm,video/quicktime"
+                    accept="video/mp4,video/webm"
                     onChange={handleVideoFileChange}
                     className="hidden"
                   />
@@ -437,9 +422,7 @@ export default function ArtistsPage() {
                     {videoUploading ? (
                       <>
                         <Loader2 size={14} className="animate-spin" />
-                        {videoStage === "optimizing"
-                          ? `Optimizing... ${videoProgress}%`
-                          : `Uploading... ${videoProgress}%`}
+                        Uploading... {videoProgress}%
                       </>
                     ) : (
                       <>
@@ -449,7 +432,7 @@ export default function ArtistsPage() {
                     )}
                   </Button>
                   <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    MP4, WebM, or MOV. Auto-optimized for web.
+                    MP4 or WebM only. MOV files won&apos;t play in browsers.
                   </p>
                 </div>
               )}

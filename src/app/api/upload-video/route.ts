@@ -7,8 +7,8 @@ const BUCKET = "artist-media";
 /**
  * POST /api/upload-video — Get a signed upload URL for Supabase Storage.
  *
- * The client compresses the video (FFmpeg WASM), then uploads directly to
- * the signed URL (browser → Supabase), bypassing Vercel's 4.5MB body limit.
+ * The client uploads directly to the signed URL (browser → Supabase),
+ * bypassing Vercel's 4.5MB body limit.
  *
  * Body: { filename: string, contentType: string }
  * Returns: { signedUrl: string, publicUrl: string, path: string }

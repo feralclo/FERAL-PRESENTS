@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
   Dialog,
@@ -22,35 +22,6 @@ interface MidnightArtistModalProps {
   onClose: () => void;
 }
 
-/**
- * Detect if the user is on a mobile device (for Instagram deep-linking).
- */
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-}
-
-/**
- * Open Instagram — native app on mobile, new tab on desktop.
- */
-function openInstagram(handle: string) {
-  const webUrl = `https://instagram.com/${handle}`;
-
-  if (isMobileDevice()) {
-    const appUrl = `instagram://user?username=${handle}`;
-    const start = Date.now();
-    window.location.href = appUrl;
-
-    setTimeout(() => {
-      if (Date.now() - start < 2000) {
-        window.open(webUrl, "_blank", "noopener,noreferrer");
-      }
-    }, 1500);
-  } else {
-    window.open(webUrl, "_blank", "noopener,noreferrer");
-  }
-}
-
 export function MidnightArtistModal({
   artist,
   isOpen,
@@ -58,14 +29,79 @@ export function MidnightArtistModal({
 }: MidnightArtistModalProps) {
   const [videoError, setVideoError] = useState(false);
   const [showNameOverlay, setShowNameOverlay] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const nameOverlayTimeout = useRef<NodeJS.Timeout>(undefined);
+  const videoWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Reset state when artist changes or modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowNameOverlay(false);
+      return;
+    }
+    setVideoError(false);
+    setIsMuted(true);
+  }, [artist?.id, isOpen]);
+
+  // Sync muted state from MuxPlayer once it mounts
+  useEffect(() => {
+    if (!isOpen || !artist?.video_url) return;
+
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let el: HTMLElement | null = null;
+
+    const handleVolumeChange = () => {
+      if (el) setIsMuted((el as unknown as HTMLMediaElement).muted ?? true);
+    };
+
+    const setup = (): boolean => {
+      el = videoWrapperRef.current?.querySelector("mux-player") ?? null;
+      if (!el) return false;
+      setIsMuted((el as unknown as HTMLMediaElement).muted ?? true);
+      el.addEventListener("volumechange", handleVolumeChange);
+      return true;
+    };
+
+    // Dynamic import means the element may not be in DOM yet — poll briefly
+    if (!setup()) {
+      interval = setInterval(() => {
+        if (setup()) clearInterval(interval);
+      }, 200);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (el) el.removeEventListener("volumechange", handleVolumeChange);
+    };
+  }, [isOpen, artist?.id, artist?.video_url]);
 
   const handlePlay = useCallback(() => {
     setShowNameOverlay(true);
     if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
     nameOverlayTimeout.current = setTimeout(() => {
       setShowNameOverlay(false);
-    }, 2200);
+    }, 3000);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
+    };
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const el = videoWrapperRef.current?.querySelector("mux-player") as unknown as HTMLMediaElement | null;
+    if (el) {
+      el.muted = !el.muted;
+      setIsMuted(el.muted);
+    }
+    // Legacy <video> fallback
+    const vid = videoWrapperRef.current?.querySelector("video");
+    if (vid) {
+      vid.muted = !vid.muted;
+      setIsMuted(vid.muted);
+    }
   }, []);
 
   if (!artist) return null;
@@ -87,7 +123,7 @@ export function MidnightArtistModal({
         <div className="px-6 pt-7 pb-6 max-[380px]:px-5 max-[380px]:pt-6 max-[380px]:pb-5">
           {/* ── Video section ── */}
           {hasVideo && !videoError && (
-            <div className="mb-5">
+            <div className="mb-5" ref={videoWrapperRef}>
               {/* Glass frame container */}
               <div
                 className="relative rounded-2xl overflow-hidden border border-foreground/[0.10] shadow-[0_0_30px_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.06)]"
@@ -97,31 +133,29 @@ export function MidnightArtistModal({
               >
                 <div
                   className="relative w-full"
-                  style={{
-                    aspectRatio: "4 / 5",
-                    maxHeight: "380px",
-                  }}
+                  style={{ aspectRatio: "4 / 5", maxHeight: "380px" }}
                 >
                   {hasMuxVideo ? (
                     <MuxPlayer
                       playbackId={artist.video_url!}
                       streamType="on-demand"
-                      autoPlay="muted"
-                      muted
                       loop
-                      preload="metadata"
+                      preload="auto"
                       onPlay={handlePlay}
                       onError={() => setVideoError(true)}
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      {...{ style: {
-                        width: "100%",
-                        height: "100%",
-                        position: "absolute",
-                        inset: 0,
-                        "--controls": "none",
-                        "--media-object-fit": "cover",
-                        "--media-object-position": "center",
-                      } } as any}
+                      {...{
+                        autoPlay: "any",
+                        style: {
+                          width: "100%",
+                          height: "100%",
+                          position: "absolute",
+                          inset: 0,
+                          "--controls": "none",
+                          "--media-object-fit": "cover",
+                          "--media-object-position": "center",
+                        },
+                      } as any}
                     />
                   ) : (
                     /* Legacy direct URL fallback */
@@ -130,28 +164,87 @@ export function MidnightArtistModal({
                       src={artist.video_url!}
                       className="absolute inset-0 w-full h-full object-cover"
                       playsInline
-                      muted
                       autoPlay
                       loop
-                      preload="metadata"
+                      preload="auto"
+                      onPlay={handlePlay}
                       onError={() => setVideoError(true)}
                     />
                   )}
 
-                  {/* Artist name overlay — appears briefly on play */}
+                  {/* ── Premium name reveal — dead center ── */}
                   <div
-                    className={`absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/20 to-transparent transition-all duration-700 pointer-events-none z-10 ${
-                      showNameOverlay
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-2"
+                    className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 transition-opacity duration-500 ${
+                      showNameOverlay ? "opacity-100" : "opacity-0"
                     }`}
                   >
-                    <h3 className="font-[family-name:var(--font-sans)] text-lg font-bold tracking-[0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-                      {artist.name}
-                    </h3>
+                    {/* Radial vignette for contrast */}
+                    <div
+                      className="absolute inset-0 transition-opacity duration-1000"
+                      style={{
+                        background: "radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 75%)",
+                        opacity: showNameOverlay ? 1 : 0,
+                      }}
+                    />
+
+                    <div className="relative flex flex-col items-center gap-3">
+                      {/* Top accent line — sweeps out from center */}
+                      <div
+                        className={`h-px bg-gradient-to-r from-transparent via-white/50 to-transparent transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                          showNameOverlay
+                            ? "w-14 opacity-100 duration-700"
+                            : "w-0 opacity-0 duration-300"
+                        }`}
+                      />
+
+                      {/* Artist name — tracks in from wide spacing */}
+                      <h3
+                        className={`font-[family-name:var(--font-sans)] text-[17px] max-[380px]:text-[15px] font-semibold uppercase text-white transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                          showNameOverlay
+                            ? "opacity-100 translate-y-0 tracking-[0.16em] duration-800 delay-100"
+                            : "opacity-0 translate-y-1 tracking-[0.3em] duration-300"
+                        }`}
+                        style={{
+                          textShadow: "0 0 40px rgba(255,255,255,0.2), 0 0 80px rgba(255,255,255,0.08), 0 2px 12px rgba(0,0,0,0.9)",
+                        }}
+                      >
+                        {artist.name}
+                      </h3>
+
+                      {/* Bottom accent line — sweeps out slightly after */}
+                      <div
+                        className={`h-px bg-gradient-to-r from-transparent via-white/50 to-transparent transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                          showNameOverlay
+                            ? "w-14 opacity-100 duration-700 delay-75"
+                            : "w-0 opacity-0 duration-300"
+                        }`}
+                      />
+                    </div>
                   </div>
 
-                  {/* Subtle glass rim highlight (top edge) */}
+                  {/* ── Mute / Unmute toggle ── */}
+                  <button
+                    type="button"
+                    onClick={toggleMute}
+                    className="absolute bottom-3 right-3 z-20 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-md bg-black/35 border border-white/[0.10] hover:bg-black/55 hover:border-white/[0.18] active:scale-[0.92] touch-manipulation"
+                    aria-label={isMuted ? "Unmute" : "Mute"}
+                  >
+                    {isMuted ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/75">
+                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                        <line x1="23" y1="9" x2="17" y2="15" />
+                        <line x1="17" y1="9" x2="23" y2="15" />
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/75">
+                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Glass rim highlight (top edge) */}
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none z-10" />
                 </div>
               </div>
@@ -192,26 +285,34 @@ export function MidnightArtistModal({
             </div>
           )}
 
-          {/* ── Artist header — image + name (only show image if no video) ── */}
-          <div className={`flex items-center gap-4 ${hasVideo ? "mb-3" : "mb-4"}`}>
-            {!hasVideo && (
-              artist.image ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={artist.image}
-                  alt={artist.name}
-                  className="w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16 rounded-full object-cover border border-foreground/[0.08] shrink-0"
-                />
-              ) : (
-                <div className="w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16 rounded-full bg-foreground/[0.05] border border-foreground/[0.08] flex items-center justify-center shrink-0">
-                  <span className="font-[family-name:var(--font-sans)] text-xl font-bold text-foreground/30">
-                    {artist.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )
+          {/* ── Artist identity: profile pic + name ── */}
+          <div className={`flex items-center gap-3 ${hasVideo ? "mb-3" : "mb-4"}`}>
+            {artist.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={artist.image}
+                alt={artist.name}
+                className={`rounded-full object-cover border border-foreground/[0.08] shrink-0 ${
+                  hasVideo
+                    ? "w-9 h-9"
+                    : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
+                }`}
+              />
+            ) : (
+              <div className={`rounded-full bg-foreground/[0.05] border border-foreground/[0.08] flex items-center justify-center shrink-0 ${
+                hasVideo
+                  ? "w-9 h-9"
+                  : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
+              }`}>
+                <span className={`font-[family-name:var(--font-sans)] font-bold text-foreground/30 ${
+                  hasVideo ? "text-xs" : "text-xl"
+                }`}>
+                  {artist.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
             )}
             <h3 className={`font-[family-name:var(--font-sans)] font-bold tracking-[0.01em] text-foreground/90 leading-tight ${
-              hasVideo ? "text-base" : "text-lg max-[380px]:text-base"
+              hasVideo ? "text-[15px]" : "text-lg max-[380px]:text-base"
             }`}>
               {artist.name}
             </h3>
@@ -222,31 +323,9 @@ export function MidnightArtistModal({
 
           {/* Bio */}
           {artist.description && (
-            <p className="font-[family-name:var(--font-sans)] text-[14px] max-[380px]:text-[13px] leading-relaxed text-foreground/60 mb-5">
+            <p className="font-[family-name:var(--font-sans)] text-[14px] max-[380px]:text-[13px] leading-relaxed text-foreground/60">
               {artist.description}
             </p>
-          )}
-
-          {/* Instagram link — deep links to app on mobile */}
-          {artist.instagram_handle && (
-            <button
-              type="button"
-              onClick={() => openInstagram(artist.instagram_handle!)}
-              className="flex items-center justify-center gap-2.5 w-full h-11 rounded-xl bg-foreground/[0.06] border border-foreground/[0.10] text-foreground/70 hover:bg-foreground/[0.10] hover:border-foreground/[0.16] hover:text-foreground/90 transition-all duration-200 cursor-pointer"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-              </svg>
-              <span className="font-[family-name:var(--font-sans)] text-[13px] font-medium tracking-[0.01em]">
-                @{artist.instagram_handle}
-              </span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
-                <line x1="7" y1="17" x2="17" y2="7" />
-                <polyline points="7,7 17,7 17,17" />
-              </svg>
-            </button>
           )}
         </div>
       </DialogContent>

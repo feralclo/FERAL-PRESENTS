@@ -492,6 +492,14 @@ body:has([data-theme="midnight"]) .header {
   --tw-ring-shadow: 0 0 #0000 !important;
 }
 
+/* Hide scrollbar on artist bio — content still scrollable */
+.midnight-artist-bio {
+  scrollbar-width: none;
+}
+.midnight-artist-bio::-webkit-scrollbar {
+  display: none;
+}
+
 /* Close button — same treatment as merch dialog */
 .midnight-artist-dialog > button:last-child {
   width: 36px;

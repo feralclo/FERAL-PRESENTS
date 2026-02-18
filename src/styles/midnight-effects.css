@@ -477,9 +477,20 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
-   ARTIST PROFILE DIALOG — Focus ring suppression
-   Same pattern as merch dialog (lesson #6).
+   ARTIST PROFILE DIALOG — Transparent shell
+   DialogContent is invisible; visual card is inside.
+   Cards swipe as full visual units (bg, border, shadow).
    ═══════════════════════════════════════════════ */
+
+.midnight-artist-dialog {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  max-width: 500px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+}
 
 .midnight-artist-dialog,
 .midnight-artist-dialog * {
@@ -492,38 +503,9 @@ body:has([data-theme="midnight"]) .header {
   --tw-ring-shadow: 0 0 #0000 !important;
 }
 
-/* Hide scrollbar on artist bio — content still scrollable */
-.midnight-artist-bio {
-  scrollbar-width: none;
-}
-.midnight-artist-bio::-webkit-scrollbar {
-  display: none;
-}
-
-/* Close button — same treatment as merch dialog */
+/* Hide default Radix close button — custom one lives inside the card */
 .midnight-artist-dialog > button:last-child {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 10px;
-  opacity: 1;
-  top: 12px;
-  right: 12px;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.midnight-artist-dialog > button:last-child:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.20);
-}
-
-.midnight-artist-dialog > button:last-child svg {
-  width: 18px;
-  height: 18px;
+  display: none !important;
 }
 
 
@@ -853,21 +835,9 @@ html.checkout-active .noise {
   transition: none !important;
 }
 
-/* Dot indicator — pill expansion on active */
-.midnight-artist-dot {
-  transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1),
-              background-color 200ms ease;
-}
-
-/* Swipe hint — one-shot nudge to teach swipeability */
-@keyframes midnight-swipe-hint {
-  0% { transform: translateX(0); }
-  40% { transform: translateX(-8px); }
-  100% { transform: translateX(0); }
-}
-
-.midnight-swipe-hint {
-  animation: midnight-swipe-hint 600ms cubic-bezier(0.16, 1, 0.3, 1) 400ms both;
+/* Card shadow transition (smooth lift on drag start/end) */
+.midnight-artist-card {
+  transition: box-shadow 300ms ease;
 }
 
 
@@ -913,12 +883,8 @@ html.checkout-active .noise {
     transition: none;
   }
   .midnight-artist-swipe,
-  .midnight-artist-snapback,
-  .midnight-artist-dot {
+  .midnight-artist-snapback {
     transition: none;
-  }
-  .midnight-swipe-hint {
-    animation: none;
   }
   /* Ensure revealed content is visible without animation */
   [data-theme="midnight"] [data-reveal] {

@@ -24,7 +24,7 @@ interface MidnightArtistModalProps {
   onNavigate: (index: number) => void;
 }
 
-type SwipeState = "idle" | "dragging" | "snapping" | "pre-exit" | "exiting";
+type SwipePhase = "idle" | "dragging" | "snapping" | "pre-exit" | "exiting";
 
 export function MidnightArtistModal({
   artists,
@@ -43,25 +43,27 @@ export function MidnightArtistModal({
   const videoWrapperRef = useRef<HTMLDivElement>(null);
 
   // ── Swipe state ──
-  const [swipeState, setSwipeState] = useState<SwipeState>("idle");
+  const [phase, setPhase] = useState<SwipePhase>("idle");
   const [dragOffset, setDragOffset] = useState(0);
   const [exitDir, setExitDir] = useState<"left" | "right">("left");
   const pendingRef = useRef<number | null>(null);
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const lockRef = useRef<"h" | "v" | null>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
+
+  // Callback ref — guarantees touch listener attaches after Radix portal mount
+  const [cardEl, setCardEl] = useState<HTMLDivElement | null>(null);
 
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < artists.length - 1;
   const multi = artists.length > 1;
-  const getW = () => viewportRef.current?.offsetWidth || 380;
+  const CARD_W = 380;
   const GAP = 20;
 
   // ── Reset on artist change / modal close ──
   useEffect(() => {
     if (!isOpen) {
       setShowNameOverlay(false);
-      setSwipeState("idle");
+      setPhase("idle");
       setDragOffset(0);
       touchRef.current = null;
       lockRef.current = null;
@@ -88,7 +90,9 @@ export function MidnightArtistModal({
       return true;
     };
     if (!setup()) {
-      interval = setInterval(() => { if (setup()) clearInterval(interval); }, 200);
+      interval = setInterval(() => {
+        if (setup()) clearInterval(interval);
+      }, 200);
     }
     return () => {
       clearInterval(interval);
@@ -99,90 +103,136 @@ export function MidnightArtistModal({
   const handlePlay = useCallback(() => {
     setShowNameOverlay(true);
     if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
-    nameOverlayTimeout.current = setTimeout(() => setShowNameOverlay(false), 3000);
+    nameOverlayTimeout.current = setTimeout(
+      () => setShowNameOverlay(false),
+      3000
+    );
   }, []);
 
-  useEffect(() => () => {
-    if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
+    },
+    []
+  );
 
   const toggleMute = useCallback(() => {
-    const mux = videoWrapperRef.current?.querySelector("mux-player") as unknown as HTMLMediaElement | null;
-    if (mux) { mux.muted = !mux.muted; setIsMuted(mux.muted); }
+    const mux = videoWrapperRef.current?.querySelector(
+      "mux-player"
+    ) as unknown as HTMLMediaElement | null;
+    if (mux) {
+      mux.muted = !mux.muted;
+      setIsMuted(mux.muted);
+    }
     const vid = videoWrapperRef.current?.querySelector("video");
-    if (vid) { vid.muted = !vid.muted; setIsMuted(vid.muted); }
+    if (vid) {
+      vid.muted = !vid.muted;
+      setIsMuted(vid.muted);
+    }
   }, []);
 
-  // ── Navigation (button/keyboard-triggered — uses pre-exit for 2-frame setup) ──
-  const navigateTo = useCallback((idx: number, dir: "left" | "right") => {
-    if (idx < 0 || idx >= artists.length || swipeState !== "idle") return;
-    pendingRef.current = idx;
-    setExitDir(dir);
-    setSwipeState("pre-exit");
-  }, [artists.length, swipeState]);
+  // ── Navigation (button/keyboard — uses pre-exit for 2-frame setup) ──
+  const navigateTo = useCallback(
+    (idx: number, dir: "left" | "right") => {
+      if (idx < 0 || idx >= artists.length || phase !== "idle") return;
+      pendingRef.current = idx;
+      setExitDir(dir);
+      setPhase("pre-exit");
+    },
+    [artists.length, phase]
+  );
 
-  // Swipe-triggered navigation (skip pre-exit, already at drag positions)
-  const navigateFromSwipe = useCallback((idx: number, dir: "left" | "right") => {
-    if (idx < 0 || idx >= artists.length) return;
-    pendingRef.current = idx;
-    setExitDir(dir);
-    setSwipeState("exiting");
-  }, [artists.length]);
+  // Swipe-triggered navigation (skip pre-exit — cards already at drag positions)
+  const navigateFromSwipe = useCallback(
+    (idx: number, dir: "left" | "right") => {
+      if (idx < 0 || idx >= artists.length) return;
+      pendingRef.current = idx;
+      setExitDir(dir);
+      setPhase("exiting");
+    },
+    [artists.length]
+  );
 
-  const goPrev = useCallback(() => canGoPrev && navigateTo(currentIndex - 1, "right"), [canGoPrev, currentIndex, navigateTo]);
-  const goNext = useCallback(() => canGoNext && navigateTo(currentIndex + 1, "left"), [canGoNext, currentIndex, navigateTo]);
+  const goPrev = useCallback(
+    () => canGoPrev && navigateTo(currentIndex - 1, "right"),
+    [canGoPrev, currentIndex, navigateTo]
+  );
+  const goNext = useCallback(
+    () => canGoNext && navigateTo(currentIndex + 1, "left"),
+    [canGoNext, currentIndex, navigateTo]
+  );
 
-  // ── Pre-exit → exiting (2-frame setup for button nav) ──
+  // ── Pre-exit → exiting (2-frame setup for button/keyboard nav) ──
   useEffect(() => {
-    if (swipeState !== "pre-exit") return;
-    const id = requestAnimationFrame(() => setSwipeState("exiting"));
+    if (phase !== "pre-exit") return;
+    const id = requestAnimationFrame(() => setPhase("exiting"));
     return () => cancelAnimationFrame(id);
-  }, [swipeState]);
+  }, [phase]);
 
   // ── Transition end → commit navigation ──
-  const handleTransitionEnd = useCallback((e: React.TransitionEvent) => {
-    if (e.propertyName !== "transform" || e.target !== e.currentTarget) return;
-    if (swipeState === "exiting" && pendingRef.current !== null) {
-      onNavigate(pendingRef.current);
-      pendingRef.current = null;
-      setSwipeState("idle");
-      setDragOffset(0);
-    } else if (swipeState === "snapping") {
-      setSwipeState("idle");
-    }
-  }, [swipeState, onNavigate]);
+  const handleTransitionEnd = useCallback(
+    (e: React.TransitionEvent) => {
+      if (e.propertyName !== "transform" || e.target !== e.currentTarget)
+        return;
+      if (phase === "exiting" && pendingRef.current !== null) {
+        onNavigate(pendingRef.current);
+        pendingRef.current = null;
+        setPhase("idle");
+        setDragOffset(0);
+      } else if (phase === "snapping") {
+        setPhase("idle");
+      }
+    },
+    [phase, onNavigate]
+  );
 
-  // ── Touch handlers (React events — works immediately, no portal timing issues) ──
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    if (swipeState !== "idle" || !multi) return;
-    const t = e.touches[0];
-    touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
-    lockRef.current = null;
-  }, [swipeState, multi]);
+  // ── Touch start (React event — captures start position) ──
+  const onTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (phase !== "idle" || !multi) return;
+      const t = e.touches[0];
+      touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+      lockRef.current = null;
+    },
+    [phase, multi]
+  );
 
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchRef.current) return;
-    const t = e.touches[0];
-    const dx = t.clientX - touchRef.current.x;
-    const dy = t.clientY - touchRef.current.y;
+  // ── Touch move — NATIVE listener with passive:false for preventDefault ──
+  // Uses cardEl (state-based callback ref) to guarantee attachment after portal mount.
+  // React synthetic touch events are passive by default and can't call preventDefault.
+  useEffect(() => {
+    if (!cardEl || !isOpen || !multi) return;
 
-    if (!lockRef.current) {
-      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      lockRef.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-      if (lockRef.current === "h") setSwipeState("dragging");
-    }
-    if (lockRef.current !== "h") return;
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchRef.current) return;
+      const t = e.touches[0];
+      const dx = t.clientX - touchRef.current.x;
+      const dy = t.clientY - touchRef.current.y;
 
-    const atEdge = (dx > 0 && !canGoPrev) || (dx < 0 && !canGoNext);
-    setDragOffset(atEdge ? dx * 0.3 : dx);
-  }, [canGoPrev, canGoNext]);
+      if (!lockRef.current) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        lockRef.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+        if (lockRef.current === "h") setPhase("dragging");
+      }
+      if (lockRef.current !== "h") return;
 
+      e.preventDefault(); // Block scroll for horizontal swipe
+
+      const atEdge = (dx > 0 && !canGoPrev) || (dx < 0 && !canGoNext);
+      setDragOffset(atEdge ? dx * 0.3 : dx);
+    };
+
+    cardEl.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => cardEl.removeEventListener("touchmove", handleTouchMove);
+  }, [cardEl, isOpen, multi, canGoPrev, canGoNext]);
+
+  // ── Touch end ──
   const onTouchEnd = useCallback(() => {
     if (!touchRef.current || lockRef.current !== "h") {
       touchRef.current = null;
       lockRef.current = null;
-      if (swipeState === "dragging") {
-        setSwipeState("snapping");
+      if (phase === "dragging") {
+        setPhase("snapping");
         setDragOffset(0);
       }
       return;
@@ -194,19 +244,25 @@ export function MidnightArtistModal({
     touchRef.current = null;
     lockRef.current = null;
 
-    const w = getW();
-    const past = Math.abs(dx) > w * 0.35;
-    const flick = velocity > 0.3;
+    const past = Math.abs(dx) > CARD_W * 0.25;
+    const flick = velocity > 0.25;
 
     if ((past || flick) && dx < 0 && canGoNext) {
       navigateFromSwipe(currentIndex + 1, "left");
     } else if ((past || flick) && dx > 0 && canGoPrev) {
       navigateFromSwipe(currentIndex - 1, "right");
     } else {
-      setSwipeState("snapping");
+      setPhase("snapping");
       setDragOffset(0);
     }
-  }, [dragOffset, canGoNext, canGoPrev, currentIndex, navigateFromSwipe, swipeState]);
+  }, [
+    dragOffset,
+    canGoNext,
+    canGoPrev,
+    currentIndex,
+    navigateFromSwipe,
+    phase,
+  ]);
 
   // ── Keyboard ──
   useEffect(() => {
@@ -220,16 +276,13 @@ export function MidnightArtistModal({
   }, [isOpen, multi, goPrev, goNext]);
 
   // ── Position calculations ──
-  const w = getW();
-
-  // Which adjacent artist to show during drag/transition
   let adjArtist: Artist | null = null;
   let adjIdx: number | null = null;
 
-  if (swipeState === "pre-exit" || swipeState === "exiting") {
+  if (phase === "pre-exit" || phase === "exiting") {
     adjIdx = pendingRef.current;
-    adjArtist = adjIdx !== null ? artists[adjIdx] ?? null : null;
-  } else if (swipeState === "dragging") {
+    adjArtist = adjIdx !== null ? (artists[adjIdx] ?? null) : null;
+  } else if (phase === "dragging") {
     if (dragOffset < 0 && canGoNext) {
       adjIdx = currentIndex + 1;
       adjArtist = artists[adjIdx];
@@ -243,37 +296,43 @@ export function MidnightArtistModal({
   let currentX = 0;
   let currentOpacity = 1;
 
-  if (swipeState === "dragging") {
+  if (phase === "dragging") {
     currentX = dragOffset;
-    const atEdge = (dragOffset > 0 && !canGoPrev) || (dragOffset < 0 && !canGoNext);
-    currentOpacity = 1 - (Math.abs(dragOffset) / w) * (atEdge ? 0.4 : 0.15);
-  } else if (swipeState === "snapping") {
+    const atEdge =
+      (dragOffset > 0 && !canGoPrev) || (dragOffset < 0 && !canGoNext);
+    currentOpacity =
+      1 - (Math.abs(dragOffset) / CARD_W) * (atEdge ? 0.4 : 0.15);
+  } else if (phase === "snapping") {
     currentX = 0;
-  } else if (swipeState === "pre-exit") {
-    currentX = 0; // setup frame — stay at current position
-  } else if (swipeState === "exiting") {
-    currentX = exitDir === "left" ? -(w + GAP) : (w + GAP);
+  } else if (phase === "pre-exit") {
+    currentX = 0;
+  } else if (phase === "exiting") {
+    currentX = exitDir === "left" ? -(CARD_W + GAP) : CARD_W + GAP;
     currentOpacity = 0;
   }
 
   // Adjacent card position
   let adjX = 0;
-  if (swipeState === "dragging") {
-    adjX = dragOffset < 0 ? w + GAP + dragOffset : -(w + GAP) + dragOffset;
-  } else if (swipeState === "pre-exit") {
-    adjX = exitDir === "left" ? (w + GAP) : -(w + GAP); // setup: off-screen
-  } else if (swipeState === "exiting") {
-    adjX = 0; // animate to center
+  if (phase === "dragging") {
+    adjX =
+      dragOffset < 0
+        ? CARD_W + GAP + dragOffset
+        : -(CARD_W + GAP) + dragOffset;
+  } else if (phase === "pre-exit") {
+    adjX = exitDir === "left" ? CARD_W + GAP : -(CARD_W + GAP);
+  } else if (phase === "exiting") {
+    adjX = 0;
   }
 
-  // Transition classes
+  // Transition class
   let txClass = "";
-  if (swipeState === "dragging") txClass = "midnight-artist-dragging";
-  else if (swipeState === "exiting") txClass = "midnight-artist-swipe";
-  else if (swipeState === "snapping") txClass = "midnight-artist-snapback";
-  // pre-exit: no transition class (setup frame, positions applied instantly)
+  if (phase === "dragging") txClass = "midnight-artist-dragging";
+  else if (phase === "exiting") txClass = "midnight-artist-swipe";
+  else if (phase === "snapping") txClass = "midnight-artist-snapback";
 
-  const showAdj = adjArtist !== null && (swipeState === "dragging" || swipeState === "pre-exit" || swipeState === "exiting");
+  const showAdj =
+    adjArtist !== null &&
+    (phase === "dragging" || phase === "pre-exit" || phase === "exiting");
 
   if (!artist) return null;
 
@@ -281,41 +340,80 @@ export function MidnightArtistModal({
   const hasMuxVideo = hasVideo && isMuxPlaybackId(artist.video_url!);
   const adjHasVideo = !!adjArtist?.video_url;
 
+  // Shared card visual treatment
+  const cardVisual =
+    "w-full rounded-2xl overflow-hidden border border-white/[0.08]";
+  const cardBg = "#0d0d0d";
+  const cardShadow =
+    "0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02)";
+  const cardShadowActive =
+    "0 30px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)";
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent
         data-theme="midnight"
-        className="midnight-artist-dialog max-w-[380px] p-0 gap-0 rounded-2xl overflow-y-auto overflow-x-hidden"
+        className="midnight-artist-dialog p-0 gap-0"
       >
         <DialogTitle className="sr-only">{artist.name}</DialogTitle>
         <DialogDescription className="sr-only">
           Artist profile for {artist.name}
         </DialogDescription>
 
-        {/* Carousel viewport — clips the off-screen adjacent card */}
-        <div ref={viewportRef} className="relative overflow-hidden">
-
-          {/* ── Current card (full content with video) ── */}
+        {/* Positioning wrapper for cards + desktop chevrons */}
+        <div className="relative max-w-[380px] w-full mx-auto">
+          {/* ═══ CURRENT CARD — full visual card that moves on swipe ═══ */}
           <div
-            className={txClass}
+            ref={setCardEl}
+            className={`${cardVisual} ${txClass} relative`}
             style={{
               transform: `translateX(${currentX}px)`,
               opacity: currentOpacity,
+              background: cardBg,
               touchAction: "pan-y",
+              boxShadow: phase === "dragging" ? cardShadowActive : cardShadow,
             }}
             onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
             onTransitionEnd={handleTransitionEnd}
           >
-            <div className="px-6 pt-7 pb-6 max-[380px]:px-5 max-[380px]:pt-6 max-[380px]:pb-5">
+            {/* Close button (custom — Radix default is hidden via CSS) */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute top-3 right-3 z-30 w-9 h-9 flex items-center justify-center rounded-[10px] bg-white/[0.06] border border-white/[0.10] hover:bg-white/[0.12] hover:border-white/[0.20] transition-all cursor-pointer"
+              aria-label="Close"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-white/70"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+
+            <div className="px-6 pt-7 pb-5 max-[380px]:px-5 max-[380px]:pt-6 max-[380px]:pb-4">
               {/* ── Video section ── */}
               {hasVideo && !videoError && (
                 <div className="mb-5" ref={videoWrapperRef}>
                   <div
                     className="relative rounded-2xl overflow-hidden border border-foreground/[0.10] shadow-[0_0_30px_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.06)]"
                     style={{
-                      background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
+                      background:
+                        "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
                     }}
                   >
                     <div
@@ -331,7 +429,7 @@ export function MidnightArtistModal({
                           onPlay={handlePlay}
                           onError={() => setVideoError(true)}
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          {...{
+                          {...({
                             autoPlay: "any",
                             style: {
                               width: "100%",
@@ -342,7 +440,7 @@ export function MidnightArtistModal({
                               "--media-object-fit": "cover",
                               "--media-object-position": "center",
                             },
-                          } as any}
+                          } as any)}
                         />
                       ) : (
                         /* eslint-disable-next-line jsx-a11y/media-has-caption */
@@ -367,14 +465,17 @@ export function MidnightArtistModal({
                         <div
                           className="absolute inset-0 transition-opacity duration-1000"
                           style={{
-                            background: "radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 75%)",
+                            background:
+                              "radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 75%)",
                             opacity: showNameOverlay ? 1 : 0,
                           }}
                         />
                         <div className="relative flex flex-col items-center gap-3">
                           <div
                             className={`h-px bg-gradient-to-r from-transparent via-white/50 to-transparent transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                              showNameOverlay ? "w-14 opacity-100 duration-700" : "w-0 opacity-0 duration-300"
+                              showNameOverlay
+                                ? "w-14 opacity-100 duration-700"
+                                : "w-0 opacity-0 duration-300"
                             }`}
                           />
                           <h3
@@ -384,14 +485,17 @@ export function MidnightArtistModal({
                                 : "opacity-0 translate-y-1 tracking-[0.3em] duration-300"
                             }`}
                             style={{
-                              textShadow: "0 0 40px rgba(255,255,255,0.2), 0 0 80px rgba(255,255,255,0.08), 0 2px 12px rgba(0,0,0,0.9)",
+                              textShadow:
+                                "0 0 40px rgba(255,255,255,0.2), 0 0 80px rgba(255,255,255,0.08), 0 2px 12px rgba(0,0,0,0.9)",
                             }}
                           >
                             {artist.name}
                           </h3>
                           <div
                             className={`h-px bg-gradient-to-r from-transparent via-white/50 to-transparent transition-all ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                              showNameOverlay ? "w-14 opacity-100 duration-700 delay-75" : "w-0 opacity-0 duration-300"
+                              showNameOverlay
+                                ? "w-14 opacity-100 duration-700 delay-75"
+                                : "w-0 opacity-0 duration-300"
                             }`}
                           />
                         </div>
@@ -405,13 +509,33 @@ export function MidnightArtistModal({
                         aria-label={isMuted ? "Unmute" : "Mute"}
                       >
                         {isMuted ? (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/75">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-white/75"
+                          >
                             <path d="M11 5L6 9H2v6h4l5 4V5z" />
                             <line x1="23" y1="9" x2="17" y2="15" />
                             <line x1="17" y1="9" x2="23" y2="15" />
                           </svg>
                         ) : (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/75">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-white/75"
+                          >
                             <path d="M11 5L6 9H2v6h4l5 4V5z" />
                             <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
                             <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
@@ -434,14 +558,28 @@ export function MidnightArtistModal({
                   >
                     {artist.image ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={artist.image} alt="" className="absolute inset-0 w-full h-full object-cover brightness-[0.3]" />
+                      <img
+                        src={artist.image}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover brightness-[0.3]"
+                      />
                     ) : (
                       <div className="absolute inset-0 bg-foreground/[0.05]" />
                     )}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <div className="relative z-10 flex flex-col items-center gap-2.5">
                         <div className="w-12 h-12 rounded-full bg-black/30 border border-foreground/[0.08] flex items-center justify-center">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/25">
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-foreground/25"
+                          >
                             <rect x="2" y="2" width="20" height="20" rx="2" />
                             <path d="M10 9l5 3-5 3V9z" />
                           </svg>
@@ -456,62 +594,156 @@ export function MidnightArtistModal({
               )}
 
               {/* ── Artist identity ── */}
-              <div className={`flex items-center gap-3 ${hasVideo ? "mb-3" : "mb-4"}`}>
+              <div
+                className={`flex items-center gap-3 ${hasVideo ? "mb-3" : "mb-4"}`}
+              >
                 {artist.image ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={artist.image}
                     alt={artist.name}
                     className={`rounded-full object-cover border border-foreground/[0.08] shrink-0 ${
-                      hasVideo ? "w-9 h-9" : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
+                      hasVideo
+                        ? "w-9 h-9"
+                        : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
                     }`}
                   />
                 ) : (
-                  <div className={`rounded-full bg-foreground/[0.05] border border-foreground/[0.08] flex items-center justify-center shrink-0 ${
-                    hasVideo ? "w-9 h-9" : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
-                  }`}>
-                    <span className={`font-[family-name:var(--font-sans)] font-bold text-foreground/30 ${hasVideo ? "text-xs" : "text-xl"}`}>
+                  <div
+                    className={`rounded-full bg-foreground/[0.05] border border-foreground/[0.08] flex items-center justify-center shrink-0 ${
+                      hasVideo
+                        ? "w-9 h-9"
+                        : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
+                    }`}
+                  >
+                    <span
+                      className={`font-[family-name:var(--font-sans)] font-bold text-foreground/30 ${
+                        hasVideo ? "text-xs" : "text-xl"
+                      }`}
+                    >
                       {artist.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
-                <h3 className={`font-[family-name:var(--font-sans)] font-bold tracking-[0.01em] text-foreground/90 leading-tight ${
-                  hasVideo ? "text-[15px]" : "text-lg max-[380px]:text-base"
-                }`}>
+                <h3
+                  className={`font-[family-name:var(--font-sans)] font-bold tracking-[0.01em] text-foreground/90 leading-tight ${
+                    hasVideo
+                      ? "text-[15px]"
+                      : "text-lg max-[380px]:text-base"
+                  }`}
+                >
                   {artist.name}
                 </h3>
               </div>
 
               <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.07] to-transparent mb-4" />
 
-              {/* Bio */}
+              {/* Bio — line-clamp on mobile, full on desktop. No scrollbar. */}
               {artist.description && (
-                <div className="max-h-[120px] overflow-y-auto midnight-artist-bio">
-                  <p className="font-[family-name:var(--font-sans)] text-[13px] max-[380px]:text-[12px] leading-relaxed text-foreground/60">
-                    {artist.description}
-                  </p>
-                </div>
+                <p className="font-[family-name:var(--font-sans)] text-[13px] max-[380px]:text-[12px] leading-relaxed text-foreground/60 line-clamp-5 lg:line-clamp-none">
+                  {artist.description}
+                </p>
               )}
 
-              {/* Counter */}
+              {/* Instagram handle */}
+              {artist.instagram_handle && (
+                <a
+                  href={`https://instagram.com/${artist.instagram_handle.replace("@", "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-3 font-[family-name:var(--font-sans)] text-[12px] text-foreground/40 hover:text-foreground/60 transition-colors"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                  </svg>
+                  @{artist.instagram_handle.replace("@", "")}
+                </a>
+              )}
+
+              {/* ── Counter + inline nav arrows ── */}
               {multi && (
-                <div className="flex justify-center pt-4">
-                  <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/25 tracking-[0.15em]">
+                <div className="flex items-center justify-center gap-3 pt-5">
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation ${
+                      canGoPrev
+                        ? "bg-white/[0.06] border border-white/[0.10] text-white/50 hover:bg-white/[0.10] hover:text-white/70 cursor-pointer active:scale-90"
+                        : "text-white/[0.08] cursor-default"
+                    }`}
+                    disabled={!canGoPrev}
+                    aria-label="Previous artist"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="15,18 9,12 15,6" />
+                    </svg>
+                  </button>
+
+                  <span className="font-[family-name:var(--font-sans)] text-[11px] text-white/25 tracking-[0.12em] tabular-nums min-w-[3ch] text-center select-none">
                     {currentIndex + 1} / {artists.length}
                   </span>
+
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation ${
+                      canGoNext
+                        ? "bg-white/[0.06] border border-white/[0.10] text-white/50 hover:bg-white/[0.10] hover:text-white/70 cursor-pointer active:scale-90"
+                        : "text-white/[0.08] cursor-default"
+                    }`}
+                    disabled={!canGoNext}
+                    aria-label="Next artist"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9,6 15,12 9,18" />
+                    </svg>
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── Adjacent card (carousel peek — slides in during drag/transition) ── */}
+          {/* ═══ ADJACENT CARD — preview that slides in during drag/transition ═══ */}
           {showAdj && adjArtist && (
             <div
-              className={`absolute top-0 left-0 w-full pointer-events-none ${txClass}`}
-              style={{ transform: `translateX(${adjX}px)` }}
+              className={`absolute top-0 left-0 ${cardVisual} ${txClass} pointer-events-none`}
+              style={{
+                transform: `translateX(${adjX}px)`,
+                background: cardBg,
+                boxShadow: cardShadow,
+              }}
             >
-              <div className="px-6 pt-7 pb-6 max-[380px]:px-5 max-[380px]:pt-6 max-[380px]:pb-5">
-                {/* Video placeholder (static image, not a player) */}
+              <div className="px-6 pt-7 pb-5 max-[380px]:px-5 max-[380px]:pt-6 max-[380px]:pb-4">
+                {/* Video placeholder (static image — not a live player) */}
                 {adjHasVideo && (
                   <div className="mb-5">
                     <div
@@ -519,12 +751,17 @@ export function MidnightArtistModal({
                       style={{
                         aspectRatio: "4 / 5",
                         maxHeight: "320px",
-                        background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
+                        background:
+                          "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
                       }}
                     >
                       {adjArtist.image ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={adjArtist.image} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                        <img
+                          src={adjArtist.image}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover opacity-60"
+                        />
                       ) : (
                         <div className="absolute inset-0 bg-foreground/[0.03]" />
                       )}
@@ -533,28 +770,44 @@ export function MidnightArtistModal({
                 )}
 
                 {/* Identity */}
-                <div className={`flex items-center gap-3 ${adjHasVideo ? "mb-3" : "mb-4"}`}>
+                <div
+                  className={`flex items-center gap-3 ${adjHasVideo ? "mb-3" : "mb-4"}`}
+                >
                   {adjArtist.image ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={adjArtist.image}
                       alt={adjArtist.name}
                       className={`rounded-full object-cover border border-foreground/[0.08] shrink-0 ${
-                        adjHasVideo ? "w-9 h-9" : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
+                        adjHasVideo
+                          ? "w-9 h-9"
+                          : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
                       }`}
                     />
                   ) : (
-                    <div className={`rounded-full bg-foreground/[0.05] border border-foreground/[0.08] flex items-center justify-center shrink-0 ${
-                      adjHasVideo ? "w-9 h-9" : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
-                    }`}>
-                      <span className={`font-[family-name:var(--font-sans)] font-bold text-foreground/30 ${adjHasVideo ? "text-xs" : "text-xl"}`}>
+                    <div
+                      className={`rounded-full bg-foreground/[0.05] border border-foreground/[0.08] flex items-center justify-center shrink-0 ${
+                        adjHasVideo
+                          ? "w-9 h-9"
+                          : "w-[72px] h-[72px] max-[380px]:w-16 max-[380px]:h-16"
+                      }`}
+                    >
+                      <span
+                        className={`font-[family-name:var(--font-sans)] font-bold text-foreground/30 ${
+                          adjHasVideo ? "text-xs" : "text-xl"
+                        }`}
+                      >
                         {adjArtist.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
-                  <h3 className={`font-[family-name:var(--font-sans)] font-bold tracking-[0.01em] text-foreground/90 leading-tight ${
-                    adjHasVideo ? "text-[15px]" : "text-lg max-[380px]:text-base"
-                  }`}>
+                  <h3
+                    className={`font-[family-name:var(--font-sans)] font-bold tracking-[0.01em] text-foreground/90 leading-tight ${
+                      adjHasVideo
+                        ? "text-[15px]"
+                        : "text-lg max-[380px]:text-base"
+                    }`}
+                  >
                     {adjArtist.name}
                   </h3>
                 </div>
@@ -568,25 +821,36 @@ export function MidnightArtistModal({
                 )}
 
                 {multi && adjIdx !== null && (
-                  <div className="flex justify-center pt-4">
-                    <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/25 tracking-[0.15em]">
+                  <div className="flex items-center justify-center gap-3 pt-5">
+                    <div className="w-7 h-7" />
+                    <span className="font-[family-name:var(--font-sans)] text-[11px] text-white/25 tracking-[0.12em] tabular-nums min-w-[3ch] text-center select-none">
                       {adjIdx + 1} / {artists.length}
                     </span>
+                    <div className="w-7 h-7" />
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* ── Navigation arrows (all devices) ── */}
+          {/* ── Desktop chevron buttons (outside card) ── */}
           {multi && canGoPrev && (
             <button
               type="button"
-              className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/[0.10] text-white/50 hover:bg-black/60 hover:text-white/80 active:scale-[0.92] transition-all cursor-pointer touch-manipulation"
+              className="hidden lg:flex absolute left-[-52px] top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 border border-white/10 rounded-lg items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
               onClick={goPrev}
               aria-label="Previous artist"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="15,18 9,12 15,6" />
               </svg>
             </button>
@@ -594,11 +858,20 @@ export function MidnightArtistModal({
           {multi && canGoNext && (
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/[0.10] text-white/50 hover:bg-black/60 hover:text-white/80 active:scale-[0.92] transition-all cursor-pointer touch-manipulation"
+              className="hidden lg:flex absolute right-[-52px] top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 border border-white/10 rounded-lg items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
               onClick={goNext}
               aria-label="Next artist"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="9,6 15,12 9,18" />
               </svg>
             </button>

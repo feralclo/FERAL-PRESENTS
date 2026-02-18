@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "postinstall": "bash scripts/download-ffmpeg.sh"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",

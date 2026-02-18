@@ -5,8 +5,9 @@
  * and Firefox can't play. When a video fails the browser playback test,
  * we transcode it to H.264 MP4 (universal format) using FFmpeg WASM.
  *
- * FFmpeg WASM core (~32MB) is lazy-loaded from jsdelivr CDN on first use
- * and cached by the browser. Single-threaded mode — no SharedArrayBuffer.
+ * FFmpeg WASM core files are self-hosted from /ffmpeg/ (downloaded at
+ * build time via postinstall script). No CDN dependency.
+ * Single-threaded mode — no SharedArrayBuffer required.
  */
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
@@ -53,8 +54,9 @@ let ffmpegLoading: Promise<FFmpeg> | null = null;
 
 /**
  * Load the singleton FFmpeg instance.
- * Uses jsdelivr CDN (Cloudflare-backed, highly reliable).
- * The WASM binary is ~32MB — cached by the browser after first load.
+ * Files are self-hosted at /ffmpeg/ — no external CDN dependency.
+ * toBlobURL creates local blob URLs from our own server files,
+ * which avoids any CORS/worker-origin issues.
  */
 async function getFFmpeg(): Promise<FFmpeg> {
   if (ffmpegInstance) return ffmpegInstance;
@@ -63,7 +65,8 @@ async function getFFmpeg(): Promise<FFmpeg> {
   ffmpegLoading = (async () => {
     const ffmpeg = new FFmpeg();
 
-    const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+    // Self-hosted from public/ffmpeg/ — same origin, no CDN dependency
+    const baseURL = `${window.location.origin}/ffmpeg`;
     const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
     const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
 
@@ -84,9 +87,12 @@ async function getFFmpeg(): Promise<FFmpeg> {
 /**
  * Transcode a video file to H.264 MP4 for universal browser playback.
  *
+ * For QuickTime containers with H.264, this is effectively a fast remux.
+ * For other codecs, it re-encodes with ultrafast preset.
+ *
  * @param file        Input video file (any format FFmpeg supports)
  * @param onProgress  Callback with percent complete (0–100)
- * @returns           New File containing the transcoded H.264 MP4
+ * @returns           New File containing the H.264 MP4
  */
 export async function transcodeToMP4(
   file: File,

@@ -33,6 +33,9 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# FFmpeg WASM (downloaded at build time via postinstall)
+/public/ffmpeg/
+
 # vercel
 .vercel
 

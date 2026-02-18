@@ -104,13 +104,6 @@ export function MidnightMerchModal({
     }
   }, [fullscreenOpen]);
 
-  // Preload images so they're cached before the modal opens
-  useEffect(() => {
-    images.forEach((img) => {
-      const preload = new Image();
-      preload.src = img.src;
-    });
-  }, [images]);
 
   // Main view swipe handlers
   const onMainTouchStart = useCallback((e: React.TouchEvent) => {

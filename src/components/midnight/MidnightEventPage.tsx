@@ -62,6 +62,16 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     });
   }, [event, tracking]);
 
+  // Preload merch images on page load so the modal opens instantly
+  useEffect(() => {
+    (event.ticket_types || []).forEach((tt) => {
+      if (!tt.includes_merch) return;
+      const imgs = tt.product_id && tt.product ? tt.product.images : tt.merch_images;
+      if (imgs?.front) { const i = new Image(); i.src = imgs.front; }
+      if (imgs?.back) { const i = new Image(); i.src = imgs.back; }
+    });
+  }, [event.ticket_types]);
+
   // Merch modal state
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);

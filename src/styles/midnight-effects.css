@@ -430,13 +430,22 @@ body:has([data-theme="midnight"]) .header {
    not a parent, so selectors use the compound form.
    ═══════════════════════════════════════════════ */
 
-/* Kill focus outlines on mouse click — keeps keyboard focus-visible for a11y.
-   Covers the dialog, all buttons inside it, and the fullscreen zoom overlay. */
-.midnight-merch-dialog:focus:not(:focus-visible),
-.midnight-merch-dialog *:focus:not(:focus-visible),
-.midnight-fs-overlay *:focus:not(:focus-visible) {
+/* Kill ALL focus outlines/rings in the merch dialog + fullscreen overlay.
+   Radix programmatically moves focus on dialog open, which triggers visible
+   focus rings in most browsers. Interactive elements have hover/active states
+   for visual feedback, so focus rings add no value here — just visual noise. */
+.midnight-merch-dialog,
+.midnight-merch-dialog *,
+.midnight-fs-overlay,
+.midnight-fs-overlay * {
+  outline: none !important;
+}
+.midnight-merch-dialog *:focus,
+.midnight-merch-dialog:focus,
+.midnight-fs-overlay *:focus {
   outline: none !important;
   box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
 }
 
 /* Close button — bigger, visible, matches the frame */

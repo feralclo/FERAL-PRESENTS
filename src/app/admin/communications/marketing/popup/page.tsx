@@ -334,41 +334,59 @@ function PresetSelector({
   presets,
   value,
   onChange,
-  formatCustom,
+  customUnit,
+  customToDisplay,
+  displayToCustom,
 }: {
-  presets: { label: string; value: number }[];
+  presets: { label: string; value: number; recommended?: boolean }[];
   value: number;
   onChange: (val: number) => void;
-  formatCustom?: (val: number) => string;
+  /** Unit label for custom input (e.g. "seconds", "days") */
+  customUnit?: string;
+  /** Convert stored value → display value (e.g. ms → seconds) */
+  customToDisplay?: (val: number) => number;
+  /** Convert display value → stored value (e.g. seconds → ms) */
+  displayToCustom?: (val: number) => number;
 }) {
-  const isCustom = !presets.some((p) => p.value === value);
+  const [isCustomMode, setIsCustomMode] = useState(
+    () => !presets.some((p) => p.value === value)
+  );
+
+  const displayValue = customToDisplay ? customToDisplay(value) : value;
 
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        {presets.map((preset) => (
-          <button
-            key={preset.value}
-            type="button"
-            onClick={() => onChange(preset.value)}
-            className={cn(
-              "h-8 px-3.5 rounded-lg text-[12px] font-medium transition-all duration-150",
-              preset.value === value
-                ? "bg-primary text-white"
-                : "bg-transparent text-muted-foreground border border-border hover:border-primary/30 hover:text-foreground"
-            )}
-          >
-            {preset.label}
-          </button>
-        ))}
+        {presets.map((preset) => {
+          const isSelected = !isCustomMode && preset.value === value;
+          return (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => {
+                setIsCustomMode(false);
+                onChange(preset.value);
+              }}
+              className={cn(
+                "h-8 px-3.5 rounded-lg text-[12px] font-medium transition-all duration-150",
+                isSelected
+                  ? "bg-primary text-white"
+                  : "bg-transparent text-muted-foreground border border-border hover:border-primary/30 hover:text-foreground"
+              )}
+            >
+              {preset.label}
+              {preset.recommended && (
+                <span className="ml-1 text-[10px] opacity-60">(Recommended)</span>
+              )}
+            </button>
+          );
+        })}
         <button
           type="button"
-          onClick={() => {
-            if (!isCustom) onChange(presets[0].value + 1);
-          }}
+          onClick={() => setIsCustomMode(true)}
           className={cn(
             "h-8 px-3.5 rounded-lg text-[12px] font-medium transition-all duration-150",
-            isCustom
+            isCustomMode
               ? "bg-primary text-white"
               : "bg-transparent text-muted-foreground border border-border hover:border-primary/30 hover:text-foreground"
           )}
@@ -376,21 +394,24 @@ function PresetSelector({
           Custom
         </button>
       </div>
-      {isCustom && (
+      {isCustomMode && (
         <div className="mt-2 flex items-center gap-2">
           <Input
             type="number"
             className="h-8 w-24 font-mono text-xs"
-            value={value}
+            value={displayValue}
             min={1}
             onChange={(e) => {
               const n = Number(e.target.value);
-              if (n > 0) onChange(n);
+              if (n > 0) {
+                const stored = displayToCustom ? displayToCustom(n) : n;
+                onChange(stored);
+              }
             }}
           />
-          {formatCustom && (
+          {customUnit && (
             <span className="text-[11px] text-muted-foreground">
-              {formatCustom(value)}
+              {customUnit}
             </span>
           )}
         </div>
@@ -633,26 +654,30 @@ export default function PopupConfigPage() {
                     <span className="w-24 shrink-0 text-[12px] text-muted-foreground">On mobile, show after</span>
                     <PresetSelector
                       presets={[
-                        { label: "5s", value: 5000 },
+                        { label: "5s", value: 5000, recommended: true },
                         { label: "10s", value: 10000 },
-                        { label: "20s", value: 20000 },
+                        { label: "15s", value: 15000 },
                       ]}
                       value={settings.mobile_delay}
                       onChange={(val) => update({ mobile_delay: val })}
-                      formatCustom={(val) => `${(val / 1000).toFixed(1)}s`}
+                      customUnit="seconds"
+                      customToDisplay={(val) => Math.round(val / 1000)}
+                      displayToCustom={(val) => val * 1000}
                     />
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-24 shrink-0 text-[12px] text-muted-foreground">On desktop, show after</span>
                     <PresetSelector
                       presets={[
-                        { label: "8s", value: 8000 },
-                        { label: "15s", value: 15000 },
+                        { label: "10s", value: 10000, recommended: true },
+                        { label: "20s", value: 20000 },
                         { label: "30s", value: 30000 },
                       ]}
                       value={settings.desktop_delay}
                       onChange={(val) => update({ desktop_delay: val })}
-                      formatCustom={(val) => `${(val / 1000).toFixed(1)}s`}
+                      customUnit="seconds"
+                      customToDisplay={(val) => Math.round(val / 1000)}
+                      displayToCustom={(val) => val * 1000}
                     />
                   </div>
                 </div>
@@ -667,14 +692,12 @@ export default function PopupConfigPage() {
                   <PresetSelector
                     presets={[
                       { label: "1 day", value: 1 },
-                      { label: "7 days", value: 7 },
+                      { label: "7 days", value: 7, recommended: true },
                       { label: "30 days", value: 30 },
                     ]}
                     value={settings.dismiss_days}
                     onChange={(val) => update({ dismiss_days: val })}
-                    formatCustom={(val) =>
-                      `${val} ${val === 1 ? "day" : "days"}`
-                    }
+                    customUnit="days"
                   />
                 </div>
               </div>

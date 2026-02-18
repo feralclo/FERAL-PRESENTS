@@ -149,12 +149,20 @@ export function MidnightDiscountPopup() {
 
       trackPopupEvent("conversions", page);
 
-      // Store discount code for auto-apply at checkout
+      // Store discount code for auto-apply at checkout + email for abandoned cart bridge
       try {
         sessionStorage.setItem("feral_popup_discount", config.discount_code);
+        sessionStorage.setItem("feral_popup_email", email.trim());
       } catch {
         // ignore
       }
+
+      // Notify MidnightEventPage so it can create abandoned cart + show discounted prices
+      window.dispatchEvent(
+        new CustomEvent("feral_popup_email_captured", {
+          detail: { email: email.trim() },
+        })
+      );
 
       setScreen("code");
     },

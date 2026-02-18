@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import { MidnightDiscountPopup } from "./MidnightDiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
@@ -22,6 +22,8 @@ import { MidnightFooter } from "./MidnightFooter";
 import { isMuxPlaybackId, getMuxStreamUrl, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Artist, EventArtist } from "@/types/artists";
+import type { DiscountDisplay } from "./discount-utils";
+import { getDiscountAmount } from "./discount-utils";
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -74,6 +76,139 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       normalizeMerchImages(imgs).forEach((src) => { const i = new Image(); i.src = src; });
     });
   }, [event.ticket_types]);
+
+  // ── Discount display state ──────────────────────────────────────────
+  const [activeDiscount, setActiveDiscount] = useState<DiscountDisplay | null>(null);
+
+  // Validate popup discount code from sessionStorage
+  useEffect(() => {
+    function checkDiscount() {
+      try {
+        const code = sessionStorage.getItem("feral_popup_discount");
+        if (!code || activeDiscount) return;
+        fetch("/api/discounts/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, event_id: event.id }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.valid && data.discount) {
+              setActiveDiscount({
+                code: data.discount.code,
+                type: data.discount.type,
+                value: data.discount.value,
+              });
+            }
+          })
+          .catch(() => {});
+      } catch {
+        // sessionStorage unavailable
+      }
+    }
+
+    // Check on mount (page reload with existing sessionStorage)
+    checkDiscount();
+
+    // Also check when popup stores a new discount code
+    function handlePopupEmail() {
+      checkDiscount();
+    }
+    window.addEventListener("feral_popup_email_captured", handlePopupEmail);
+    return () => window.removeEventListener("feral_popup_email_captured", handlePopupEmail);
+  }, [event.id, activeDiscount]);
+
+  // ── Abandoned cart bridge ──────────────────────────────────────────
+  // When popup captures email + cart has items → create abandoned cart
+  const abandonedCartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function syncAbandonedCart() {
+      try {
+        const popupEmail = sessionStorage.getItem("feral_popup_email");
+        if (!popupEmail || cart.totalQty === 0) return;
+
+        // Build items from expressItems + ticket type lookups
+        const ttMap = new Map(
+          (event.ticket_types || []).map((tt) => [tt.id, tt])
+        );
+        const items = cart.expressItems.map((ei) => {
+          const tt = ttMap.get(ei.ticket_type_id);
+          return {
+            ticket_type_id: ei.ticket_type_id,
+            qty: ei.qty,
+            name: tt?.name || "Ticket",
+            price: tt ? Number(tt.price) : 0,
+            merch_size: ei.merch_size,
+          };
+        });
+
+        fetch("/api/checkout/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: popupEmail,
+            event_id: event.id,
+            items,
+            subtotal: cart.totalPrice,
+            currency: event.currency || "GBP",
+          }),
+        }).catch(() => {});
+      } catch {
+        // sessionStorage unavailable
+      }
+    }
+
+    // Debounce: wait 2s after cart changes before syncing
+    if (abandonedCartTimer.current) clearTimeout(abandonedCartTimer.current);
+    abandonedCartTimer.current = setTimeout(syncAbandonedCart, 2000);
+
+    return () => {
+      if (abandonedCartTimer.current) clearTimeout(abandonedCartTimer.current);
+    };
+  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+
+  // Also sync immediately when popup email is first captured
+  useEffect(() => {
+    function handlePopupCapture(e: globalThis.Event) {
+      const detail = (e as unknown as CustomEvent<{ email: string }>).detail;
+      if (!detail?.email || cart.totalQty === 0) return;
+
+      const ttMap = new Map(
+        (event.ticket_types || []).map((tt) => [tt.id, tt])
+      );
+      const items = cart.expressItems.map((ei) => {
+        const tt = ttMap.get(ei.ticket_type_id);
+        return {
+          ticket_type_id: ei.ticket_type_id,
+          qty: ei.qty,
+          name: tt?.name || "Ticket",
+          price: tt ? Number(tt.price) : 0,
+          merch_size: ei.merch_size,
+        };
+      });
+
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: detail.email,
+          event_id: event.id,
+          items,
+          subtotal: cart.totalPrice,
+          currency: event.currency || "GBP",
+        }),
+      }).catch(() => {});
+    }
+
+    window.addEventListener("feral_popup_email_captured", handlePopupCapture);
+    return () => window.removeEventListener("feral_popup_email_captured", handlePopupCapture);
+  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+
+  // Compute discounted total for bottom bar
+  const discountedTotal = activeDiscount
+    ? Math.max(0, Math.round((cart.totalPrice - getDiscountAmount(cart.totalPrice, activeDiscount)) * 100) / 100)
+    : cart.totalPrice;
 
   // Artist profiles — build a name→Artist map for the lineup component
   const artistProfiles = useMemo(() => {
@@ -266,6 +401,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                   ticketGroups={ticketGroups}
                   ticketGroupMap={ticketGroupMap}
                   onViewMerch={handleViewMerch}
+                  discount={activeDiscount}
                 />
               </div>
             </div>
@@ -288,7 +424,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-baseline gap-2 min-w-0">
               <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold text-foreground tracking-[0.01em]">
-                {currSymbol}{cart.totalPrice.toFixed(2)}
+                {currSymbol}{discountedTotal.toFixed(2)}
               </span>
               <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35">
                 {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}

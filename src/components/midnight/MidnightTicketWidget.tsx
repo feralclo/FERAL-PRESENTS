@@ -23,6 +23,8 @@ import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import type { UseCartResult } from "@/hooks/useCart";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
+import type { DiscountDisplay } from "./discount-utils";
+import { getDiscountAmount } from "./discount-utils";
 
 interface MidnightTicketWidgetProps {
   eventSlug: string;
@@ -34,6 +36,7 @@ interface MidnightTicketWidgetProps {
   ticketGroups?: string[];
   ticketGroupMap?: Record<string, string | null>;
   onViewMerch?: (ticketType: TicketTypeRow) => void;
+  discount?: DiscountDisplay | null;
 }
 
 export function MidnightTicketWidget({
@@ -46,6 +49,7 @@ export function MidnightTicketWidget({
   ticketGroups,
   ticketGroupMap,
   onViewMerch,
+  discount,
 }: MidnightTicketWidgetProps) {
   const isStripe = paymentMethod === "stripe";
   const [expressError, setExpressError] = useState("");
@@ -71,6 +75,11 @@ export function MidnightTicketWidget({
     handleSizeConfirm,
     handleCheckout,
   } = cart;
+
+  // Compute discounted total for CTA display
+  const discountedTotal = discount
+    ? Math.max(0, Math.round((totalPrice - getDiscountAmount(totalPrice, discount)) * 100) / 100)
+    : totalPrice;
 
   // Detect first item added → trigger one-shot CTA glow + express reveal
   useEffect(() => {
@@ -187,6 +196,7 @@ export function MidnightTicketWidget({
                 onAdd={addTicket}
                 onRemove={removeTicket}
                 onViewMerch={onViewMerch}
+                discount={discount}
               />
             ))}
 
@@ -208,6 +218,7 @@ export function MidnightTicketWidget({
                     onAdd={addTicket}
                     onRemove={removeTicket}
                     onViewMerch={onViewMerch}
+                    discount={discount}
                   />
                 ))}
               </div>
@@ -231,7 +242,7 @@ export function MidnightTicketWidget({
                 : <span className="flex items-center justify-center gap-2.5">
                     <span>Checkout</span>
                     <span className="w-px h-3.5 bg-white/20" />
-                    <span key={totalPrice} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{currSymbol}{totalPrice.toFixed(2)}</span>
+                    <span key={discountedTotal} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{currSymbol}{discountedTotal.toFixed(2)}</span>
                   </span>}
             </button>
 
@@ -287,6 +298,7 @@ export function MidnightTicketWidget({
               totalPrice={totalPrice}
               totalQty={totalQty}
               currSymbol={currSymbol}
+              discount={discount}
             />
           </CardContent>
         </Card>

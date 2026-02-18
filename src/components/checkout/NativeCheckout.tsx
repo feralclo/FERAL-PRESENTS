@@ -601,6 +601,7 @@ function StripeCheckoutPage({
       const popupCode = sessionStorage.getItem("feral_popup_discount");
       if (!popupCode || appliedDiscount) return;
       sessionStorage.removeItem("feral_popup_discount");
+      sessionStorage.removeItem("feral_popup_email");
 
       fetch("/api/discounts/validate", {
         method: "POST",

@@ -26,7 +26,6 @@ export async function POST() {
     const upload = await mux.video.uploads.create({
       new_asset_settings: {
         playback_policy: ["public"],
-        mp4_support: "standard",
       },
       cors_origin: "*",
     });

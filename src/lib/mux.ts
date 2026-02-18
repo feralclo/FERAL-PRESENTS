@@ -19,11 +19,11 @@ export function getMuxClient(): Mux | null {
 }
 
 /**
- * Construct a Mux MP4 stream URL from a playback ID.
- * Uses "medium" quality — good balance for artist promo videos.
+ * Construct a Mux HLS stream URL from a playback ID.
+ * HLS is adaptive — quality adjusts to connection speed.
  */
 export function getMuxStreamUrl(playbackId: string): string {
-  return `https://stream.mux.com/${playbackId}/medium.mp4`;
+  return `https://stream.mux.com/${playbackId}.m3u8`;
 }
 
 /**

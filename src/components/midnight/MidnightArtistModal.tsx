@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import Hls from "hls.js";
 import {
   Dialog,
   DialogContent,
@@ -9,16 +10,19 @@ import {
 } from "@/components/ui/dialog";
 import type { Artist } from "@/types/artists";
 
-/** Convert a stored video_url value to a playable URL */
-function getVideoSrc(videoUrl: string): string {
-  if (videoUrl.startsWith("http")) return videoUrl;
-  return `https://stream.mux.com/${videoUrl}/medium.mp4`;
+/** Check if a video_url is a Mux playback ID (not a full URL) */
+function isMuxId(videoUrl: string): boolean {
+  return !!videoUrl && !videoUrl.startsWith("http");
+}
+
+/** Get the HLS stream URL for a Mux playback ID */
+function getMuxHlsUrl(playbackId: string): string {
+  return `https://stream.mux.com/${playbackId}.m3u8`;
 }
 
 /** Get Mux thumbnail from a playback ID */
-function getVideoThumbnail(videoUrl: string): string | undefined {
-  if (videoUrl.startsWith("http")) return undefined;
-  return `https://image.mux.com/${videoUrl}/thumbnail.jpg?time=1`;
+function getMuxThumbnail(playbackId: string): string {
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=1`;
 }
 
 interface MidnightArtistModalProps {
@@ -67,26 +71,71 @@ export function MidnightArtistModal({
   onClose,
 }: MidnightArtistModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [showNameOverlay, setShowNameOverlay] = useState(false);
   const nameOverlayTimeout = useRef<NodeJS.Timeout>(undefined);
 
-  // Reset all video state when modal opens/closes or artist changes
+  // Load video source — HLS.js for Mux in Chrome, native for Safari/legacy URLs
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isOpen || !artist?.video_url) return;
+
+    // Clean up any previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    setIsPlaying(false);
+    setVideoReady(false);
+    setVideoError(false);
+    setShowNameOverlay(false);
+    if (nameOverlayTimeout.current) clearTimeout(nameOverlayTimeout.current);
+
+    if (isMuxId(artist.video_url)) {
+      const hlsUrl = getMuxHlsUrl(artist.video_url);
+
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        // Safari — native HLS support
+        video.src = hlsUrl;
+      } else if (Hls.isSupported()) {
+        // Chrome/Firefox — use hls.js
+        const hls = new Hls();
+        hls.loadSource(hlsUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            setVideoError(true);
+            setIsPlaying(false);
+          }
+        });
+        hlsRef.current = hls;
+      } else {
+        setVideoError(true);
+      }
+    } else {
+      // Legacy direct URL (e.g. old Supabase storage)
+      video.src = artist.video_url;
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [isOpen, artist?.id, artist?.video_url]);
+
+  // Clean up when modal closes
   useEffect(() => {
     if (!isOpen && videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-    setIsPlaying(false);
-    setVideoReady(false);
-    setVideoError(false);
-    setShowNameOverlay(false);
-    if (nameOverlayTimeout.current) {
-      clearTimeout(nameOverlayTimeout.current);
-    }
-  }, [isOpen, artist?.id]);
+  }, [isOpen]);
 
   // When metadata loads, seek to 0.1s to display first frame
   // (more reliable than #t= URL fragment across browsers)
@@ -175,14 +224,13 @@ export function MidnightArtistModal({
                     /* eslint-disable-next-line jsx-a11y/media-has-caption */
                     <video
                       ref={videoRef}
-                      src={getVideoSrc(artist.video_url!)}
                       className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
                         videoReady ? "opacity-100" : "opacity-0"
                       }`}
                       playsInline
                       muted
                       preload="metadata"
-                      poster={getVideoThumbnail(artist.video_url!) || artist.image || undefined}
+                      poster={isMuxId(artist.video_url!) ? getMuxThumbnail(artist.video_url!) : (artist.image || undefined)}
                       onLoadedMetadata={handleLoadedMetadata}
                       onCanPlay={handleCanPlay}
                       onEnded={handleVideoEnded}

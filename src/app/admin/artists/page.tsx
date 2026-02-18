@@ -28,8 +28,8 @@ import type { Artist } from "@/types/artists";
 
 /** Convert a stored video_url value to a playable URL */
 function getVideoSrc(videoUrl: string): string {
-  if (videoUrl.startsWith("http")) return videoUrl; // Legacy Supabase URL
-  return `https://stream.mux.com/${videoUrl}/medium.mp4`; // Mux playback ID
+  if (videoUrl.startsWith("http")) return videoUrl;
+  return `https://stream.mux.com/${videoUrl}.m3u8`;
 }
 
 /** Get Mux thumbnail from a playback ID */

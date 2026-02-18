@@ -79,6 +79,8 @@ export function ContentTab({
           <ArtistLineupEditor
             eventArtists={eventArtists}
             onChange={onEventArtistsChange}
+            sortAlphabetical={!!event.lineup_sort_alphabetical}
+            onSortAlphabeticalChange={(v) => updateEvent("lineup_sort_alphabetical", v)}
           />
           {/* Legacy tag input — hidden when using artist catalog, shown as fallback */}
           {eventArtists.length === 0 && (

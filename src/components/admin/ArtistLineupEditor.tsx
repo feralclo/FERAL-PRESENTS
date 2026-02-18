@@ -20,6 +20,9 @@ import {
   ChevronDown,
   Search,
   Loader2,
+  ArrowDownAZ,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Artist, EventArtist } from "@/types/artists";
@@ -27,12 +30,26 @@ import type { Artist, EventArtist } from "@/types/artists";
 interface ArtistLineupEditorProps {
   eventArtists: EventArtist[];
   onChange: (eventArtists: EventArtist[]) => void;
+  /** Whether to sort alphabetically and lock manual reorder */
+  sortAlphabetical: boolean;
+  onSortAlphabeticalChange: (value: boolean) => void;
   className?: string;
+}
+
+/** Sort event artists alphabetically by name, reassigning sort_order */
+function sortAlpha(artists: EventArtist[]): EventArtist[] {
+  return [...artists]
+    .sort((a, b) =>
+      (a.artist?.name || "").localeCompare(b.artist?.name || "")
+    )
+    .map((ea, i) => ({ ...ea, sort_order: i }));
 }
 
 export function ArtistLineupEditor({
   eventArtists,
   onChange,
+  sortAlphabetical,
+  onSortAlphabeticalChange,
   className,
 }: ArtistLineupEditorProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,19 +112,23 @@ export function ArtistLineupEditor({
 
   const addArtist = useCallback(
     (artist: Artist) => {
-      const newEntry: EventArtist = {
-        id: crypto.randomUUID(),
-        event_id: "",
-        artist_id: artist.id,
-        sort_order: eventArtists.length,
-        org_id: "",
-        artist,
-      };
-      onChange([...eventArtists, newEntry]);
+      const newList = [
+        ...eventArtists,
+        {
+          id: crypto.randomUUID(),
+          event_id: "",
+          artist_id: artist.id,
+          sort_order: eventArtists.length,
+          org_id: "",
+          artist,
+        } as EventArtist,
+      ];
+      // If alphabetical is on, re-sort after adding
+      onChange(sortAlphabetical ? sortAlpha(newList) : newList);
       setSearchQuery("");
       setShowDropdown(false);
     },
-    [eventArtists, onChange]
+    [eventArtists, onChange, sortAlphabetical]
   );
 
   const removeArtist = useCallback(
@@ -122,14 +143,24 @@ export function ArtistLineupEditor({
 
   const moveArtist = useCallback(
     (index: number, direction: -1 | 1) => {
+      if (sortAlphabetical) return; // locked
       const newIndex = index + direction;
       if (newIndex < 0 || newIndex >= eventArtists.length) return;
       const updated = [...eventArtists];
       [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
       onChange(updated.map((ea, i) => ({ ...ea, sort_order: i })));
     },
-    [eventArtists, onChange]
+    [eventArtists, onChange, sortAlphabetical]
   );
+
+  const toggleAlphabetical = useCallback(() => {
+    const next = !sortAlphabetical;
+    onSortAlphabeticalChange(next);
+    if (next) {
+      // Sort immediately when enabling
+      onChange(sortAlpha(eventArtists));
+    }
+  }, [sortAlphabetical, onSortAlphabeticalChange, onChange, eventArtists]);
 
   const handleQuickCreate = useCallback(async () => {
     if (!newName.trim()) return;
@@ -232,13 +263,42 @@ export function ArtistLineupEditor({
         )}
       </div>
 
+      {/* A–Z sort toggle */}
+      {eventArtists.length > 1 && (
+        <button
+          type="button"
+          onClick={toggleAlphabetical}
+          className={cn(
+            "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all w-full cursor-pointer",
+            sortAlphabetical
+              ? "border-primary/30 bg-primary/[0.06] text-primary"
+              : "border-border/60 bg-background/50 text-muted-foreground hover:border-border hover:text-foreground"
+          )}
+        >
+          <ArrowDownAZ size={14} />
+          <span className="flex-1 text-left">
+            {sortAlphabetical ? "Sorted A \u2013 Z" : "Sort A \u2013 Z"}
+          </span>
+          {sortAlphabetical ? (
+            <Lock size={12} className="text-primary/70" />
+          ) : (
+            <Unlock size={12} className="opacity-40" />
+          )}
+        </button>
+      )}
+
       {/* Artist list */}
       {eventArtists.length > 0 && (
         <div className="space-y-1">
           {eventArtists.map((ea, i) => (
             <div
               key={ea.artist_id}
-              className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2"
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-2",
+                sortAlphabetical
+                  ? "border-border/40 bg-background/30"
+                  : "border-border/60 bg-background/50"
+              )}
             >
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary">
                 {(ea.artist?.name || "?").charAt(0).toUpperCase()}
@@ -252,24 +312,28 @@ export function ArtistLineupEditor({
                 </span>
               )}
               <div className="flex items-center gap-0.5 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => moveArtist(i, -1)}
-                  disabled={i === 0}
-                  className="text-muted-foreground"
-                >
-                  <ChevronUp size={12} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => moveArtist(i, 1)}
-                  disabled={i === eventArtists.length - 1}
-                  className="text-muted-foreground"
-                >
-                  <ChevronDown size={12} />
-                </Button>
+                {!sortAlphabetical && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => moveArtist(i, -1)}
+                      disabled={i === 0}
+                      className="text-muted-foreground"
+                    >
+                      <ChevronUp size={12} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => moveArtist(i, 1)}
+                      disabled={i === eventArtists.length - 1}
+                      className="text-muted-foreground"
+                    >
+                      <ChevronDown size={12} />
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant="ghost"
                   size="icon-xs"

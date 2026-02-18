@@ -36,6 +36,8 @@ export interface Event {
   platform_fee_percent?: number;
   created_at: string;
   updated_at: string;
+  /** When true, lineup is displayed alphabetically (A-Z) and manual reordering is locked */
+  lineup_sort_alphabetical?: boolean;
   /** Joined event_artists with artist profiles (populated when fetched with join) */
   event_artists?: import("./artists").EventArtist[];
 }

@@ -4,6 +4,8 @@ import type { Artist } from "@/types/artists";
 
 interface MidnightLineupProps {
   artists: string[];
+  /** Whether the lineup is sorted alphabetically (shows A–Z badge) */
+  isAlphabetical?: boolean;
   /** Artist profiles keyed by name — pills with a profile become clickable */
   artistProfiles?: Map<string, Artist>;
   onArtistClick?: (artist: Artist) => void;
@@ -11,6 +13,7 @@ interface MidnightLineupProps {
 
 export function MidnightLineup({
   artists,
+  isAlphabetical,
   artistProfiles,
   onArtistClick,
 }: MidnightLineupProps) {
@@ -23,9 +26,11 @@ export function MidnightLineup({
         <h2 className="font-[family-name:var(--font-sans)] text-xs max-[480px]:text-[11px] font-bold tracking-[0.18em] uppercase text-foreground/60">
           Lineup
         </h2>
-        <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-foreground/30 border border-foreground/[0.08] rounded-full px-2.5 py-0.5 uppercase">
-          A &mdash; Z
-        </span>
+        {isAlphabetical && (
+          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-foreground/30 border border-foreground/[0.08] rounded-full px-2.5 py-0.5 uppercase">
+            A &mdash; Z
+          </span>
+        )}
         <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.08] to-transparent" />
       </div>
 

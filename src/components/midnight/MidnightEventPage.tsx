@@ -141,16 +141,22 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const currSymbol = cart.currSymbol;
 
   // Derive lineup: prefer event_artists (sorted), fall back to events.lineup
+  const isAlphabetical = !!event.lineup_sort_alphabetical;
   const lineup = useMemo(() => {
     const ea = event.event_artists;
     if (ea && ea.length > 0) {
-      return ea
+      const names = ea
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((e) => e.artist?.name)
         .filter(Boolean) as string[];
+      if (isAlphabetical) {
+        return names.sort((a, b) => a.localeCompare(b));
+      }
+      return names;
     }
-    return event.lineup || [];
-  }, [event.event_artists, event.lineup]);
+    const fallback = event.lineup || [];
+    return isAlphabetical ? [...fallback].sort((a, b) => a.localeCompare(b)) : fallback;
+  }, [event.event_artists, event.lineup, isAlphabetical]);
 
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
   const ticketGroupMap =
@@ -190,7 +196,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 {/* Lineup on mobile (above about) */}
                 {lineup.length > 0 && (
                   <div className="lg:hidden order-[-1] mb-12 max-md:mb-10" data-reveal="1">
-                    <MidnightLineup artists={lineup} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
+                    <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}
 
@@ -205,7 +211,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
                   <div className="hidden lg:block mt-16" data-reveal="3">
-                    <MidnightLineup artists={lineup} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
+                    <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}
               </div>

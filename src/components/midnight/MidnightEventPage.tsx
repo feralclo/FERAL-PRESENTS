@@ -402,6 +402,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                   ticketGroupMap={ticketGroupMap}
                   onViewMerch={handleViewMerch}
                   discount={activeDiscount}
+                  onApplyDiscount={setActiveDiscount}
                 />
               </div>
             </div>

@@ -204,6 +204,15 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
   const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
 
+  // Wrap setCompletedOrder to clean up popup discount after successful purchase
+  const handleOrderComplete = useCallback((order: Order) => {
+    setCompletedOrder(order);
+    try {
+      sessionStorage.removeItem("feral_popup_discount");
+      sessionStorage.removeItem("feral_popup_email");
+    } catch {}
+  }, []);
+
   // Track PageView on checkout page load
   useEffect(() => {
     trackPageView();
@@ -305,7 +314,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           });
           const data = await res.json();
           if (res.ok && data.data) {
-            setCompletedOrder(data.data);
+            handleOrderComplete(data.data);
           }
         } catch {
           // Will show checkout form as fallback
@@ -425,7 +434,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
         totalQty={totalQty}
         symbol={symbol}
         vatSettings={vatSettings}
-        onComplete={setCompletedOrder}
+        onComplete={handleOrderComplete}
         capturedEmail={capturedEmail}
         onChangeEmail={() => setCapturedEmail("")}
       />
@@ -442,7 +451,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       totalQty={totalQty}
       symbol={symbol}
       vatSettings={vatSettings}
-      onComplete={setCompletedOrder}
+      onComplete={handleOrderComplete}
       capturedEmail={capturedEmail}
       onChangeEmail={() => setCapturedEmail("")}
       restoreData={restoreData}
@@ -600,8 +609,6 @@ function StripeCheckoutPage({
     try {
       const popupCode = sessionStorage.getItem("feral_popup_discount");
       if (!popupCode || appliedDiscount) return;
-      sessionStorage.removeItem("feral_popup_discount");
-      sessionStorage.removeItem("feral_popup_email");
 
       fetch("/api/discounts/validate", {
         method: "POST",
@@ -1844,11 +1851,38 @@ function EmailCapture({
 }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [discount, setDiscount] = useState<DiscountInfo | null>(null);
   const { trackEngagement } = useTraffic();
 
   useEffect(() => {
     document.documentElement.classList.add("checkout-active");
     return () => document.documentElement.classList.remove("checkout-active");
+  }, []);
+
+  // Read popup discount from sessionStorage and validate
+  useEffect(() => {
+    try {
+      const code = sessionStorage.getItem("feral_popup_discount");
+      if (!code) return;
+      fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, event_id: event.id, subtotal }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.valid && data.discount) {
+            const d = data.discount;
+            const amount =
+              d.type === "percentage"
+                ? Math.round(((subtotal * d.value) / 100) * 100) / 100
+                : Math.min(d.value, subtotal);
+            setDiscount({ code: d.code, type: d.type, value: d.value, amount });
+          }
+        })
+        .catch(() => {});
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = useCallback(
@@ -1917,14 +1951,47 @@ function EmailCapture({
             {/* Gradient divider */}
             <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
 
-            {/* Total */}
-            <div className="flex items-center justify-between pt-4">
-              <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
-                Total
-              </span>
-              <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
-                {symbol}{subtotal.toFixed(2)}
-              </span>
+            {/* Total — with optional discount breakdown */}
+            <div className="pt-4">
+              {discount ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
+                      Subtotal
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-sm text-foreground/50 tracking-[0.5px]">
+                      {symbol}{subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="font-[family-name:var(--font-mono)] text-[8px] tracking-[1.5px] uppercase bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/15 rounded px-1.5 py-0.5">
+                        {discount.code}
+                      </span>
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-sm text-emerald-400/70 tracking-[0.5px]">
+                      &minus;{symbol}{discount.amount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.05]">
+                    <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
+                      Total
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
+                      {symbol}{Math.max(0, subtotal - discount.amount).toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
+                    Total
+                  </span>
+                  <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
+                    {symbol}{subtotal.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

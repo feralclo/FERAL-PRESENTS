@@ -37,6 +37,7 @@ interface MidnightTicketWidgetProps {
   ticketGroupMap?: Record<string, string | null>;
   onViewMerch?: (ticketType: TicketTypeRow) => void;
   discount?: DiscountDisplay | null;
+  onApplyDiscount?: (d: DiscountDisplay) => void;
 }
 
 export function MidnightTicketWidget({
@@ -50,6 +51,7 @@ export function MidnightTicketWidget({
   ticketGroupMap,
   onViewMerch,
   discount,
+  onApplyDiscount,
 }: MidnightTicketWidgetProps) {
   const isStripe = paymentMethod === "stripe";
   const [expressError, setExpressError] = useState("");
@@ -59,6 +61,12 @@ export function MidnightTicketWidget({
   const [ctaGlow, setCtaGlow] = useState(false);
   const [expressRevealed, setExpressRevealed] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(false);
+
+  // Manual discount code entry
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeValue, setCodeValue] = useState("");
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeError, setCodeError] = useState("");
 
   const {
     activeTypes,
@@ -113,6 +121,38 @@ export function MidnightTicketWidget({
     },
     [eventSlug]
   );
+
+  // Handle manual discount code submission
+  const handleCodeApply = useCallback(async () => {
+    const code = codeValue.trim();
+    if (!code) return;
+    setCodeError("");
+    setCodeLoading(true);
+    try {
+      const res = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, event_id: eventId }),
+      });
+      const data = await res.json();
+      if (data.valid && data.discount) {
+        sessionStorage.setItem("feral_popup_discount", data.discount.code);
+        setCodeOpen(false);
+        setCodeValue("");
+        onApplyDiscount?.({
+          code: data.discount.code,
+          type: data.discount.type,
+          value: data.discount.value,
+        });
+      } else {
+        setCodeError(data.error || "Invalid code");
+      }
+    } catch {
+      setCodeError("Something went wrong");
+    } finally {
+      setCodeLoading(false);
+    }
+  }, [codeValue, eventId, onApplyDiscount]);
 
   // Progression tickets: standard-tier ungrouped, not archived
   const groupMap = ticketGroupMap || {};
@@ -300,6 +340,54 @@ export function MidnightTicketWidget({
               currSymbol={currSymbol}
               discount={discount}
             />
+
+            {/* Manual discount code entry — visible only with items and no active discount */}
+            {totalQty > 0 && !discount && (
+              <div className="mt-3">
+                {!codeOpen ? (
+                  <button
+                    type="button"
+                    className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-foreground/25 hover:text-foreground/40 transition-colors duration-200 cursor-pointer bg-transparent border-0 p-0"
+                    onClick={() => setCodeOpen(true)}
+                  >
+                    Have a code?
+                  </button>
+                ) : (
+                  <div className="overflow-hidden animate-in slide-in-from-top-1 fade-in duration-200">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={codeValue}
+                        onChange={(e) => { setCodeValue(e.target.value.toUpperCase()); setCodeError(""); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCodeApply(); } }}
+                        placeholder="Enter code"
+                        className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-mono)] text-xs tracking-[0.04em] py-2.5 px-3 outline-none transition-colors duration-150 placeholder:text-foreground/25 focus:border-white/[0.25] focus:bg-white/[0.06]"
+                        autoFocus
+                        disabled={codeLoading}
+                      />
+                      <button
+                        type="button"
+                        className={cn(
+                          "shrink-0 px-4 py-2.5 rounded-lg font-[family-name:var(--font-mono)] text-[10px] tracking-[0.1em] uppercase font-bold transition-all duration-150 cursor-pointer",
+                          codeLoading
+                            ? "bg-white/[0.06] text-foreground/30 cursor-wait"
+                            : "bg-white/[0.10] border border-white/[0.15] text-foreground/70 hover:bg-white/[0.16] hover:text-foreground active:scale-[0.97]"
+                        )}
+                        onClick={handleCodeApply}
+                        disabled={codeLoading || !codeValue.trim()}
+                      >
+                        {codeLoading ? "..." : "Apply"}
+                      </button>
+                    </div>
+                    {codeError && (
+                      <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.04em] text-red-400/70 mt-2 m-0">
+                        {codeError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </aside>

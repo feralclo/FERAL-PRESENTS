@@ -23,20 +23,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video, CheckCircle2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Artist } from "@/types/artists";
 
-/** Convert a stored video_url value to a playable URL */
-function getVideoSrc(videoUrl: string): string {
-  if (videoUrl.startsWith("http")) return videoUrl;
-  return `https://stream.mux.com/${videoUrl}.m3u8`;
-}
-
-/** Get Mux thumbnail from a playback ID */
-function getVideoThumbnail(videoUrl: string): string | undefined {
-  if (videoUrl.startsWith("http")) return undefined;
-  return `https://image.mux.com/${videoUrl}/thumbnail.jpg?time=1`;
-}
+// Mux Player — dynamic import to avoid SSR issues (Web Component)
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
+  ssr: false,
+});
 
 export default function ArtistsPage() {
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -443,28 +438,46 @@ export default function ArtistsPage() {
                     Video ready
                   </div>
                   <div className="relative rounded-lg overflow-hidden bg-black border border-border">
-                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                    <video
-                      src={getVideoSrc(formVideoUrl)}
-                      className="w-full"
-                      style={{ maxHeight: "160px", display: previewError ? "none" : undefined }}
-                      muted
-                      playsInline
-                      controls
-                      preload="metadata"
-                      poster={getVideoThumbnail(formVideoUrl)}
-                      onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.1; }}
-                      onError={() => setPreviewError(true)}
-                    />
+                    {isMuxPlaybackId(formVideoUrl) ? (
+                      /* Mux video — use MuxPlayer for HLS (native <video> can't play .m3u8 on Chrome/Firefox) */
+                      <div style={{ maxHeight: "160px", overflow: "hidden", display: previewError ? "none" : undefined }}>
+                        <MuxPlayer
+                          playbackId={formVideoUrl}
+                          streamType="on-demand"
+                          muted
+                          preload="metadata"
+                          onError={() => setPreviewError(true)}
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          {...{ style: {
+                            width: "100%",
+                            maxHeight: "160px",
+                            "--media-object-fit": "contain",
+                          } } as any}
+                        />
+                      </div>
+                    ) : (
+                      /* Legacy direct URL — native <video> works fine */
+                      /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                      <video
+                        src={formVideoUrl}
+                        className="w-full"
+                        style={{ maxHeight: "160px", display: previewError ? "none" : undefined }}
+                        muted
+                        playsInline
+                        controls
+                        preload="metadata"
+                        onError={() => setPreviewError(true)}
+                      />
+                    )}
                     {previewError && (
                       <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-                        Video saved — preview loading
+                        Video saved — preview may take a moment
                       </div>
                     )}
                     <button
                       type="button"
                       onClick={() => { setFormVideoUrl(""); setPreviewError(false); }}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/70 border border-white/20 rounded-md flex items-center justify-center text-white/70 hover:bg-black/90 hover:text-white transition-colors cursor-pointer"
+                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/70 border border-white/20 rounded-md flex items-center justify-center text-white/70 hover:bg-black/90 hover:text-white transition-colors cursor-pointer z-10"
                     >
                       <X size={12} />
                     </button>

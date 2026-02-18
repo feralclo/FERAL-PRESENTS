@@ -8,17 +8,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { isMuxPlaybackId } from "@/lib/mux";
 import type { Artist } from "@/types/artists";
 
 // Mux Player — dynamic import to avoid SSR issues (it's a Web Component)
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
   ssr: false,
 });
-
-/** Check if a video_url is a Mux playback ID (not a full URL) */
-function isMuxId(videoUrl: string): boolean {
-  return !!videoUrl && !videoUrl.startsWith("http");
-}
 
 interface MidnightArtistModalProps {
   artist: Artist | null;
@@ -75,7 +71,7 @@ export function MidnightArtistModal({
   if (!artist) return null;
 
   const hasVideo = !!artist.video_url;
-  const hasMuxVideo = hasVideo && isMuxId(artist.video_url!);
+  const hasMuxVideo = hasVideo && isMuxPlaybackId(artist.video_url!);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -110,8 +106,10 @@ export function MidnightArtistModal({
                     <MuxPlayer
                       playbackId={artist.video_url!}
                       streamType="on-demand"
+                      autoPlay="muted"
                       muted
-                      preload="auto"
+                      loop
+                      preload="metadata"
                       onPlay={handlePlay}
                       onError={() => setVideoError(true)}
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,7 +131,8 @@ export function MidnightArtistModal({
                       className="absolute inset-0 w-full h-full object-cover"
                       playsInline
                       muted
-                      controls
+                      autoPlay
+                      loop
                       preload="metadata"
                       onError={() => setVideoError(true)}
                     />

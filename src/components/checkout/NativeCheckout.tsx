@@ -238,6 +238,16 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     return () => document.documentElement.classList.remove("checkout-active");
   }, []);
 
+  // Preload merch images so they're cached before OrderItems renders
+  useEffect(() => {
+    (event.ticket_types || []).forEach((tt) => {
+      if (!tt.includes_merch) return;
+      const imgs = tt.product_id && tt.product ? tt.product.images : tt.merch_images;
+      if (imgs?.front) { const i = new Image(); i.src = imgs.front; }
+      if (imgs?.back) { const i = new Image(); i.src = imgs.back; }
+    });
+  }, [event.ticket_types]);
+
   // Parse cart from URL
   const cartLines: CartLine[] = useMemo(() => {
     if (!cartParam) return [];
@@ -2156,9 +2166,11 @@ function OrderItems({
       {cartLines.map((line, i) => {
         const tt = getTicketType(line.ticket_type_id);
         const hasMerch = !!line.merch_size;
-        const merchImg = hasMerch ? (tt?.merch_images?.front || null) : null;
-        const merchName = tt?.merch_name
-          || (tt?.merch_type ? `${event?.name || ""} ${tt.merch_type}` : null);
+        const imgs = tt?.product_id && tt?.product ? tt.product.images : tt?.merch_images;
+        const merchImg = hasMerch ? (imgs?.front || null) : null;
+        const merchName = tt?.product_id && tt?.product
+          ? tt.product.name
+          : (tt?.merch_name || (tt?.merch_type ? `${event?.name || ""} ${tt.merch_type}` : null));
 
         return (
           <div key={i} className={i > 0 ? "border-t border-white/[0.06] mt-3.5 pt-3.5" : ""}>
@@ -2199,10 +2211,10 @@ function OrderItems({
             {/* Merch sub-item */}
             {hasMerch && (
               <div className="flex items-center gap-3 mt-2.5 pl-[62px]">
-                <div className="w-11 h-11 shrink-0 bg-white/[0.03] border border-white/[0.06] rounded-md overflow-hidden flex items-center justify-center">
+                <div className="w-11 h-11 shrink-0 bg-white/[0.04] border border-white/[0.06] rounded-md overflow-hidden flex items-center justify-center">
                   {merchImg ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={merchImg} alt="" className="w-full h-full object-cover" />
+                    <img src={merchImg} alt="" className="w-full h-full object-contain p-0.5" loading="eager" decoding="async" />
                   ) : (
                     <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-foreground/25">
                       <path d="M12 3l-2 3h4l-2-3zM6 6h12l1 3H5l1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>

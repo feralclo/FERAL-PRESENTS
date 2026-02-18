@@ -27,7 +27,7 @@ export function MidnightLineup({
           Lineup
         </h2>
         {isAlphabetical && (
-          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-foreground/30 border border-foreground/[0.08] rounded-full px-2.5 py-0.5 uppercase">
+          <span className="font-[family-name:var(--font-mono)] text-[9px] max-[480px]:text-[8px] tracking-[0.12em] text-[var(--accent)] border border-[var(--accent)]/20 rounded-full px-2.5 py-0.5 uppercase">
             A &mdash; Z
           </span>
         )}

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 import { saveSettings } from "@/lib/settings";
 import { SETTINGS_KEYS } from "@/lib/constants";
 import { DEFAULT_POPUP_SETTINGS } from "@/hooks/usePopupSettings";
@@ -130,7 +130,11 @@ function CodeValidator({ code }: { code: string }) {
 
     timeoutRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/discounts/validate?code=${encodeURIComponent(code.trim())}`);
+        const res = await fetch("/api/discounts/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code.trim() }),
+        });
         const json = await res.json();
         setStatus(json.valid ? "valid" : "invalid");
       } catch {
@@ -319,6 +323,78 @@ function CreatePopupDiscount({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PRESET SELECTOR — horizontal pill selector with custom input
+   ═══════════════════════════════════════════════════════════ */
+function PresetSelector({
+  presets,
+  value,
+  onChange,
+  formatCustom,
+}: {
+  presets: { label: string; value: number }[];
+  value: number;
+  onChange: (val: number) => void;
+  formatCustom?: (val: number) => string;
+}) {
+  const isCustom = !presets.some((p) => p.value === value);
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {presets.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            onClick={() => onChange(preset.value)}
+            className={cn(
+              "h-8 px-3.5 rounded-lg text-[12px] font-medium transition-all duration-150",
+              preset.value === value
+                ? "bg-primary text-white"
+                : "bg-transparent text-muted-foreground border border-border hover:border-primary/30 hover:text-foreground"
+            )}
+          >
+            {preset.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            if (!isCustom) onChange(presets[0].value + 1);
+          }}
+          className={cn(
+            "h-8 px-3.5 rounded-lg text-[12px] font-medium transition-all duration-150",
+            isCustom
+              ? "bg-primary text-white"
+              : "bg-transparent text-muted-foreground border border-border hover:border-primary/30 hover:text-foreground"
+          )}
+        >
+          Custom
+        </button>
+      </div>
+      {isCustom && (
+        <div className="mt-2 flex items-center gap-2">
+          <Input
+            type="number"
+            className="h-8 w-24 font-mono text-xs"
+            value={value}
+            min={1}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (n > 0) onChange(n);
+            }}
+          />
+          {formatCustom && (
+            <span className="text-[11px] text-muted-foreground">
+              {formatCustom(value)}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -547,100 +623,73 @@ export default function PopupConfigPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 p-5">
-              {/* Mobile delay */}
+              {/* Display Timing */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Mobile Delay
-                  </Label>
-                  <span className="font-mono text-xs text-foreground tabular-nums">
-                    {(settings.mobile_delay / 1000).toFixed(0)}s
-                  </span>
+                <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  When to show the popup
+                </Label>
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-24 shrink-0 text-[12px] text-muted-foreground">On mobile, show after</span>
+                    <PresetSelector
+                      presets={[
+                        { label: "5s", value: 5000 },
+                        { label: "10s", value: 10000 },
+                        { label: "20s", value: 20000 },
+                      ]}
+                      value={settings.mobile_delay}
+                      onChange={(val) => update({ mobile_delay: val })}
+                      formatCustom={(val) => `${(val / 1000).toFixed(1)}s`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-24 shrink-0 text-[12px] text-muted-foreground">On desktop, show after</span>
+                    <PresetSelector
+                      presets={[
+                        { label: "8s", value: 8000 },
+                        { label: "15s", value: 15000 },
+                        { label: "30s", value: 30000 },
+                      ]}
+                      value={settings.desktop_delay}
+                      onChange={(val) => update({ desktop_delay: val })}
+                      formatCustom={(val) => `${(val / 1000).toFixed(1)}s`}
+                    />
+                  </div>
                 </div>
-                <Slider
-                  value={[settings.mobile_delay]}
-                  onValueChange={([val]) => update({ mobile_delay: val })}
-                  min={1000}
-                  max={30000}
-                  step={1000}
-                />
-                <p className="mt-1 text-[10px] text-muted-foreground/40">
-                  Time before popup appears on mobile devices
-                </p>
               </div>
 
-              {/* Desktop delay */}
+              {/* After Dismissal */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Desktop Delay
-                  </Label>
-                  <span className="font-mono text-xs text-foreground tabular-nums">
-                    {(settings.desktop_delay / 1000).toFixed(0)}s
-                  </span>
+                <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  If someone closes it, don&apos;t show again for
+                </Label>
+                <div className="mt-3">
+                  <PresetSelector
+                    presets={[
+                      { label: "1 day", value: 1 },
+                      { label: "7 days", value: 7 },
+                      { label: "30 days", value: 30 },
+                    ]}
+                    value={settings.dismiss_days}
+                    onChange={(val) => update({ dismiss_days: val })}
+                    formatCustom={(val) =>
+                      `${val} ${val === 1 ? "day" : "days"}`
+                    }
+                  />
                 </div>
-                <Slider
-                  value={[settings.desktop_delay]}
-                  onValueChange={([val]) => update({ desktop_delay: val })}
-                  min={1000}
-                  max={60000}
-                  step={1000}
-                />
-                <p className="mt-1 text-[10px] text-muted-foreground/40">
-                  Time before popup appears on desktop
-                </p>
               </div>
 
-              {/* Dismiss days */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Dismiss Cooldown
-                  </Label>
-                  <span className="font-mono text-xs text-foreground tabular-nums">
-                    {settings.dismiss_days} {settings.dismiss_days === 1 ? "day" : "days"}
-                  </span>
-                </div>
-                <Slider
-                  value={[settings.dismiss_days]}
-                  onValueChange={([val]) => update({ dismiss_days: val })}
-                  min={1}
-                  max={90}
-                  step={1}
-                />
-                <p className="mt-1 text-[10px] text-muted-foreground/40">
-                  Days to suppress popup after a user dismisses it
-                </p>
-              </div>
-
-              {/* Countdown timer */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Countdown Timer
-                  </Label>
-                  <span className="font-mono text-xs text-foreground tabular-nums">
-                    {Math.floor(settings.countdown_seconds / 60)}:{String(settings.countdown_seconds % 60).padStart(2, "0")}
-                  </span>
-                </div>
-                <Slider
-                  value={[settings.countdown_seconds]}
-                  onValueChange={([val]) => update({ countdown_seconds: val })}
-                  min={60}
-                  max={600}
-                  step={30}
-                />
-                <p className="mt-1 text-[10px] text-muted-foreground/40">
-                  Urgency countdown displayed in the popup
-                </p>
-              </div>
-
-              {/* Exit intent toggle */}
+              {/* Catch leaving visitors (exit intent) */}
               <div className="flex items-center justify-between rounded-lg border border-border p-4">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Exit Intent (Desktop)</p>
-                  <p className="text-[11px] text-muted-foreground/50">
-                    Show popup when the cursor leaves the viewport
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">Catch leaving visitors</p>
+                    <Badge variant="info" className="text-[9px] font-medium uppercase">
+                      Desktop only
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/50">
+                    Show the popup when someone moves to close the tab
                   </p>
                 </div>
                 <Switch

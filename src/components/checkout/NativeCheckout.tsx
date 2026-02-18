@@ -595,6 +595,41 @@ function StripeCheckoutPage({
 }) {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
 
+  // Auto-apply popup discount code on mount
+  useEffect(() => {
+    try {
+      const popupCode = sessionStorage.getItem("feral_popup_discount");
+      if (!popupCode || appliedDiscount) return;
+      sessionStorage.removeItem("feral_popup_discount");
+
+      fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: popupCode, event_id: event.id, subtotal }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.valid && data.discount) {
+            const d = data.discount;
+            const amount =
+              d.type === "percentage"
+                ? Math.round(((subtotal * d.value) / 100) * 100) / 100
+                : Math.min(d.value, subtotal);
+            setAppliedDiscount({
+              code: d.code,
+              type: d.type,
+              value: d.value,
+              amount,
+            });
+          }
+        })
+        .catch(() => {});
+    } catch {
+      // sessionStorage unavailable
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!stripeReady || !stripePromise) {
     return (
       <div className="midnight-checkout min-h-screen flex flex-col">

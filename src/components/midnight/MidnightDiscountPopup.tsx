@@ -64,16 +64,9 @@ export function MidnightDiscountPopup() {
   const [screen, setScreen] = useState<Screen>("commitment");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [countdown, setCountdown] = useState(config.countdown_seconds);
-  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const exitIntentRef = useRef<((e: MouseEvent) => void) | null>(null);
   const hasOpenedRef = useRef(false);
   const page = typeof window !== "undefined" ? window.location.pathname : "";
-
-  // Sync countdown initial value when config loads
-  useEffect(() => {
-    if (!isOpen) setCountdown(config.countdown_seconds);
-  }, [config.countdown_seconds, isOpen]);
 
   // Show popup after delay (if not dismissed and enabled)
   useEffect(() => {
@@ -121,23 +114,6 @@ export function MidnightDiscountPopup() {
     };
   }, [config.enabled, config.dismiss_days, config.mobile_delay, config.desktop_delay, config.exit_intent, page]);
 
-  // Countdown timer
-  useEffect(() => {
-    if (!isOpen) return;
-    timerRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 0) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isOpen]);
-
   const close = useCallback(() => {
     setIsOpen(false);
     markDismissed();
@@ -173,18 +149,16 @@ export function MidnightDiscountPopup() {
 
       trackPopupEvent("conversions", page);
 
+      // Store discount code for auto-apply at checkout
       try {
-        localStorage.setItem(
-          "feral_code_expiry",
-          String(Date.now() + 24 * 60 * 60 * 1000)
-        );
+        sessionStorage.setItem("feral_popup_discount", config.discount_code);
       } catch {
         // ignore
       }
 
       setScreen("code");
     },
-    [email, page, config.klaviyo_enabled]
+    [email, page, config.klaviyo_enabled, config.discount_code]
   );
 
   const handleUseCode = useCallback(() => {
@@ -201,10 +175,6 @@ export function MidnightDiscountPopup() {
     },
     [close]
   );
-
-  const minutes = Math.floor(countdown / 60);
-  const seconds = countdown % 60;
-  const timerDisplay = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   // Don't render anything if disabled
   if (!config.enabled) return null;
@@ -284,7 +254,7 @@ export function MidnightDiscountPopup() {
 
               {/* Section label */}
               <p className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20 mb-3">
-                Exclusive Offer
+                Limited Time Offer
               </p>
 
               {/* Headline */}
@@ -328,15 +298,6 @@ export function MidnightDiscountPopup() {
                 {config.dismiss_text}
               </button>
 
-              {/* Timer */}
-              <div className="mt-5 flex flex-col items-center gap-1">
-                <span className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20">
-                  Expires in
-                </span>
-                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-white/60">
-                  {timerDisplay}
-                </span>
-              </div>
             </div>
           )}
 
@@ -407,15 +368,6 @@ export function MidnightDiscountPopup() {
                 </button>
               </form>
 
-              {/* Timer */}
-              <div className="mt-5 flex flex-col items-center gap-1">
-                <span className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20">
-                  Expires in
-                </span>
-                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-white/60">
-                  {timerDisplay}
-                </span>
-              </div>
             </div>
           )}
 
@@ -460,19 +412,9 @@ export function MidnightDiscountPopup() {
                 </p>
               </div>
 
-              {/* 24h urgency */}
-              <div className="flex flex-col items-center gap-1 mb-5">
-                <span className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20">
-                  Code expires in
-                </span>
-                <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tabular-nums text-white/60">
-                  24:00:00
-                </span>
-              </div>
-
               {/* Note */}
               <p className="font-[family-name:var(--font-sans)] text-[11px] text-white/30 mb-5">
-                This code won&apos;t be shown again. Use it now before it expires.
+                This code won&apos;t be shown again. It will be applied automatically at checkout.
               </p>
 
               {/* CTA — solid white */}
@@ -487,7 +429,7 @@ export function MidnightDiscountPopup() {
                   "cursor-pointer touch-manipulation"
                 )}
               >
-                Use Code Now
+                Apply Discount &amp; Browse Tickets
               </button>
             </div>
           )}

@@ -24,8 +24,10 @@ import {
 } from "@/components/ui/dialog";
 import { Mic2, Plus, Loader2, Pencil, Trash2, Search, Upload, X, Video, CheckCircle2 } from "lucide-react";
 import dynamic from "next/dynamic";
+import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
+import { SUPABASE_URL } from "@/lib/constants";
 import type { Artist } from "@/types/artists";
 
 // Mux Player — dynamic import to avoid SSR issues (Web Component)
@@ -150,7 +152,7 @@ export default function ArtistsPage() {
     setVideoStatus("Preparing upload...");
 
     try {
-      // Step 1: Get a Supabase signed upload URL
+      // Step 1: Get a signed upload token from our API
       const signedRes = await fetch("/api/upload-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -159,26 +161,63 @@ export default function ArtistsPage() {
       const signedData = await signedRes.json();
       if (!signedRes.ok) throw new Error(signedData.error || "Failed to prepare upload");
 
-      const { signedUrl, token, publicUrl } = signedData;
+      const { token, path, publicUrl } = signedData;
 
-      // Step 2: Upload directly to Supabase Storage (bypasses Vercel body limit)
-      // The signed URL already contains the auth token — do NOT send Authorization header
-      // (Bearer token would be misinterpreted as a JWT and rejected for large files)
+      // Step 2: Upload via TUS resumable protocol (handles large files in 6MB chunks)
+      // Direct storage hostname gives better upload performance
+      const storageHost = SUPABASE_URL.replace(".supabase.co", ".supabase.co");
+      const tusEndpoint = `${storageHost}/storage/v1/upload/resumable`;
+
       setVideoStatus("Uploading...");
-      const uploadRes = await fetch(signedUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type,
-          "x-upsert": "true",
-        },
-        body: file,
+
+      await new Promise<void>((resolve, reject) => {
+        const upload = new tus.Upload(file, {
+          endpoint: tusEndpoint,
+          retryDelays: [0, 3000, 5000, 10000, 20000],
+          headers: {
+            "x-upsert": "true",
+          },
+          uploadDataDuringCreation: true,
+          removeFingerprintOnSuccess: true,
+          chunkSize: 6 * 1024 * 1024, // 6MB chunks (Supabase requirement)
+          metadata: {
+            bucketName: "artist-media",
+            objectName: path,
+            contentType: file.type,
+            cacheControl: "3600",
+          },
+          onError: (error) => {
+            console.error("TUS upload error:", error);
+            reject(new Error(error.message || "Upload failed"));
+          },
+          onProgress: (bytesUploaded, bytesTotal) => {
+            // Upload is 0–70% of total progress (processing is 70–100%)
+            const pct = Math.round((bytesUploaded / bytesTotal) * 70);
+            setVideoProgress(pct);
+            const mbUp = (bytesUploaded / 1024 / 1024).toFixed(0);
+            const mbTotal = (bytesTotal / 1024 / 1024).toFixed(0);
+            setVideoStatus(`Uploading... ${mbUp}/${mbTotal} MB`);
+          },
+          onSuccess: () => resolve(),
+          onShouldRetry: (err) => {
+            const status = err.originalResponse?.getStatus();
+            // Don't retry on auth errors
+            if (status === 403 || status === 401) return false;
+            return true;
+          },
+        });
+
+        // Use signed token for auth (no service key exposed to browser)
+        upload.options.headers!["x-signature"] = token;
+
+        // Check for previous uploads to resume
+        upload.findPreviousUploads().then((previousUploads) => {
+          if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
+          upload.start();
+        });
       });
-      if (!uploadRes.ok) {
-        let detail = `${uploadRes.status} ${uploadRes.statusText}`;
-        try { const errBody = await uploadRes.json(); detail = errBody.error || errBody.message || detail; } catch { /* ignore */ }
-        throw new Error(`Storage upload failed: ${detail}`);
-      }
-      setVideoProgress(50);
+
+      setVideoProgress(70);
 
       // Step 3: Tell Mux to ingest the video from the Supabase URL
       setVideoStatus("Processing video...");

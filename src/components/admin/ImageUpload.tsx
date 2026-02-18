@@ -3,7 +3,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Upload, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { processImageFile } from "@/lib/image-utils";
 import { cn } from "@/lib/utils";
 
@@ -75,18 +74,41 @@ export function ImageUpload({
         {label}
       </span>
 
-      {value && (
+      {value ? (
+        /* Image is set — show preview with replace/remove actions */
         <div className="relative group">
-          <div className="rounded-md border border-border bg-[#0e0e0e] p-2 overflow-hidden">
+          <div
+            className="rounded-md border border-border bg-[#0e0e0e] p-2 overflow-hidden cursor-pointer"
+            onClick={() => fileRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const file = e.dataTransfer.files[0];
+              if (file) handleFile(file);
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={value}
               alt={label}
-              className="max-w-full max-h-[150px] object-contain mx-auto block"
+              className={cn(
+                "max-w-full max-h-[150px] object-contain mx-auto block transition-opacity",
+                dragging && "opacity-40"
+              )}
               style={{
                 filter: blurPx != null ? `blur(${blurPx}px)` : undefined,
               }}
             />
+            {dragging && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-medium text-primary">Drop to replace</span>
+              </div>
+            )}
           </div>
           {blurPx != null && (
             <span className="absolute top-3 right-3 text-[9px] text-muted-foreground/60 bg-black/70 px-1.5 py-0.5 rounded">
@@ -97,12 +119,48 @@ export function ImageUpload({
             <Button
               variant="ghost"
               size="icon-xs"
-              onClick={() => onChange("")}
+              onClick={(e) => { e.stopPropagation(); onChange(""); }}
               className="bg-white/10 backdrop-blur-sm text-white/70 hover:text-destructive hover:bg-white/20"
             >
               <Trash2 size={12} />
             </Button>
           </div>
+        </div>
+      ) : (
+        /* No image — show upload drop zone */
+        <div
+          className={cn(
+            "rounded-md border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-colors duration-150",
+            dragging
+              ? "border-primary/60 bg-primary/5"
+              : "border-border hover:border-primary/30"
+          )}
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+          }}
+        >
+          {processing ? (
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Loader2 size={14} className="animate-spin" />
+              Uploading...
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <Upload size={16} className="text-muted-foreground/50" />
+              <span className="text-xs text-muted-foreground">
+                Drag & drop or click to upload
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -110,58 +168,17 @@ export function ImageUpload({
         <p className="text-xs text-destructive">{uploadError}</p>
       )}
 
-      <div
-        className={cn(
-          "rounded-md border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-colors duration-150",
-          dragging
-            ? "border-primary/60 bg-primary/5"
-            : "border-border hover:border-primary/30"
-        )}
-        onClick={() => fileRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          const file = e.dataTransfer.files[0];
+      {/* Hidden file input shared by both states */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
           if (file) handleFile(file);
+          e.target.value = "";
         }}
-      >
-        {processing ? (
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Loader2 size={14} className="animate-spin" />
-            Uploading...
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-1">
-            <Upload size={16} className="text-muted-foreground/50" />
-            <span className="text-xs text-muted-foreground">
-              Drag & drop or click to select
-            </span>
-          </div>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFile(file);
-            e.target.value = "";
-          }}
-        />
-      </div>
-
-      <Input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Or enter image URL"
-        className="text-xs"
       />
     </div>
   );

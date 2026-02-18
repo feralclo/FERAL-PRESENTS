@@ -57,6 +57,7 @@ export function MidnightArtistModal({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showNameOverlay, setShowNameOverlay] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const nameOverlayTimeout = useRef<NodeJS.Timeout>(undefined);
 
   // Reset state when artist changes or modal closes
@@ -64,6 +65,7 @@ export function MidnightArtistModal({
     if (!isOpen) {
       setIsPlaying(false);
       setShowNameOverlay(false);
+      setVideoError(false);
       if (nameOverlayTimeout.current) {
         clearTimeout(nameOverlayTimeout.current);
       }
@@ -102,9 +104,14 @@ export function MidnightArtistModal({
     setIsPlaying(false);
   }, []);
 
+  const handleVideoError = useCallback(() => {
+    setVideoError(true);
+    setIsPlaying(false);
+  }, []);
+
   if (!artist) return null;
 
-  const hasVideo = !!artist.video_url;
+  const hasVideo = !!artist.video_url && !videoError;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -148,9 +155,10 @@ export function MidnightArtistModal({
                     className="absolute inset-0 w-full h-full object-cover"
                     playsInline
                     muted
-                    preload="none"
+                    preload="metadata"
                     poster={artist.image || undefined}
                     onEnded={handleVideoEnded}
+                    onError={handleVideoError}
                   />
 
                   {/* Play button overlay — fades out when playing */}

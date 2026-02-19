@@ -17,12 +17,6 @@ body:has([data-rep]) > .noise {
    No backdrop-filter (jank in in-app browsers).
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Recessed — timeline items, list entries, inline info */
-.rep-surface-0 {
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
 /* Standard — most cards, stat cards, sale entries */
 .rep-surface-1 {
   background: rgba(255, 255, 255, 0.025);
@@ -83,31 +77,6 @@ body:has([data-rep]) > .noise {
 .rep-profile-ring-elite::after { border-color: rgba(139, 92, 246, 0.3); }
 .rep-profile-ring-mythic::after {
   border-color: rgba(245, 158, 11, 0.3);
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   STAT CARD GLOW ACCENTS
-   ══════════════════════════════════════════════════════════════════════ */
-
-.rep-stat-glow-purple {
-  box-shadow: inset 0 1px 0 rgba(139, 92, 246, 0.08);
-  border-top: 2px solid rgba(139, 92, 246, 0.15);
-}
-.rep-stat-glow-orange {
-  box-shadow: inset 0 1px 0 rgba(249, 115, 22, 0.08);
-  border-top: 2px solid rgba(249, 115, 22, 0.15);
-}
-.rep-stat-glow-gold {
-  box-shadow: inset 0 1px 0 rgba(245, 158, 11, 0.08);
-  border-top: 2px solid rgba(245, 158, 11, 0.15);
-}
-.rep-stat-glow-green {
-  box-shadow: inset 0 1px 0 rgba(52, 211, 153, 0.08);
-  border-top: 2px solid rgba(52, 211, 153, 0.15);
-}
-.rep-stat-glow-blue {
-  box-shadow: inset 0 1px 0 rgba(56, 189, 248, 0.08);
-  border-top: 2px solid rgba(56, 189, 248, 0.15);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -191,28 +160,6 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   NUMBER POP
-   ══════════════════════════════════════════════════════════════════════ */
-
-.rep-number-pop {
-  animation: numberPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes numberPop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
-}
-
-.rep-points-pop {
-  animation: pointsPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes pointsPop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
    XP BAR EFFECTS
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -230,43 +177,6 @@ body:has([data-rep]) > .noise {
 @keyframes xpShine {
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
-}
-
-.rep-xp-counting {
-  animation: xpCountPulse 0.5s ease-out;
-}
-@keyframes xpCountPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   GRADIENT BORDERS
-   ══════════════════════════════════════════════════════════════════════ */
-
-.rep-gradient-border-gold {
-  position: relative;
-}
-.rep-gradient-border-gold::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(245, 158, 11, 0.08), rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.35));
-  z-index: -1;
-}
-
-.rep-gradient-border-primary {
-  position: relative;
-}
-.rep-gradient-border-primary::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.08), rgba(167, 139, 250, 0.25), rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.35));
-  z-index: -1;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -302,22 +212,6 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   MOBILE NAV GLOW
-   ══════════════════════════════════════════════════════════════════════ */
-
-.rep-nav-glow {
-  position: absolute;
-  top: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-/* ══════════════════════════════════════════════════════════════════════
    BOOT SEQUENCE & ONBOARDING
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -348,14 +242,6 @@ body:has([data-rep]) > .noise {
 }
 @keyframes stepSlideIn {
   from { opacity: 0; transform: translateX(40px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.rep-wizard-step {
-  animation: wizardFadeIn 0.3s ease-out;
-}
-@keyframes wizardFadeIn {
-  from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
@@ -399,50 +285,6 @@ body:has([data-rep]) > .noise {
   0% { opacity: 0; transform: scale(0.95); filter: blur(10px); }
   60% { opacity: 1; filter: blur(0); }
   100% { opacity: 1; transform: scale(1); filter: blur(0); }
-}
-
-.rep-scan-line {
-  position: relative;
-  overflow: hidden;
-}
-.rep-scan-line::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
-  animation: scanDown 1.5s ease-in-out;
-}
-@keyframes scanDown {
-  from { top: 0; opacity: 1; }
-  to { top: 100%; opacity: 0; }
-}
-
-.rep-glitch-flash {
-  animation: glitchFlash 0.15s ease-out;
-}
-@keyframes glitchFlash {
-  0% { filter: brightness(3) saturate(0); }
-  100% { filter: brightness(1) saturate(1); }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   PULSE BORDER
-   ══════════════════════════════════════════════════════════════════════ */
-
-.rep-pulse-border {
-  position: relative;
-  overflow: hidden;
-}
-.rep-pulse-border::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.3));
-  z-index: -1;
-  opacity: 0.6;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -723,20 +565,6 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   WEAPON CARD (Discount Code)
-   ══════════════════════════════════════════════════════════════════════ */
-
-/* Weapon card now uses rep-surface-2. Keep class for backwards compat. */
-.rep-weapon-card {
-  position: relative;
-  overflow: hidden;
-}
-.rep-weapon-grid,
-.rep-weapon-pulse {
-  /* Removed — no longer in use */
-}
-
-/* ══════════════════════════════════════════════════════════════════════
    MISSION CARD AMBIENT
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -812,19 +640,6 @@ body:has([data-rep]) > .noise {
 @keyframes liveDotPulse {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
   50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0); }
-}
-
-/* Position change indicators */
-.rep-position-up {
-  color: var(--color-success);
-  animation: positionBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.rep-position-down {
-  color: #F43F5E;
-}
-@keyframes positionBounce {
-  0% { transform: translateY(4px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
 }
 
 .rep-position-indicator {
@@ -908,9 +723,6 @@ body:has([data-rep]) > .noise {
   50% { transform: scale(1.05); filter: brightness(1.2); }
   100% { transform: scale(1); filter: brightness(1); }
 }
-
-/* Balance breathe — removed loop, static now */
-.rep-balance-breathe {}
 
 /* ══════════════════════════════════════════════════════════════════════
    LEVEL-UP CELEBRATION
@@ -1045,17 +857,8 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   GLASS, HERO, SCAN EFFECTS
+   HERO EFFECTS
    ══════════════════════════════════════════════════════════════════════ */
-
-.rep-glass-card {
-  background: rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 8px 32px rgba(0, 0, 0, 0.25);
-}
 
 .rep-hero-banner {
   position: relative;
@@ -1069,55 +872,15 @@ body:has([data-rep]) > .noise {
   pointer-events: none;
 }
 
-/* Scan card — removed scan line animation */
-.rep-scan-card {
-  overflow: hidden;
-  position: relative;
-}
-
 /* Profile hero — removed radial gradient */
 .rep-profile-hero {
   position: relative;
   overflow: hidden;
 }
 
-.rep-arena-card {
-  position: relative;
-  overflow: hidden;
-}
-.rep-arena-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 80% 20%, rgba(245, 158, 11, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 20% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
-  pointer-events: none;
-}
-
 /* ══════════════════════════════════════════════════════════════════════
    HOVER EFFECTS
    ══════════════════════════════════════════════════════════════════════ */
-
-.rep-glow {
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.08);
-}
-
-.rep-icon-glow {
-  position: relative;
-}
-.rep-icon-glow::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border-radius: inherit;
-  background: radial-gradient(circle, currentColor, transparent 70%);
-  opacity: 0.1;
-  pointer-events: none;
-}
-
-/* Sparkle hover — removed */
-.rep-sparkle-hover {}
 
 .rep-battle-log-entry {
   position: relative;
@@ -1137,20 +900,6 @@ body:has([data-rep]) > .noise {
   50% { border-color: rgba(139, 92, 246, 0.6); box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); }
 }
 
-/* Streak glow */
-.rep-streak-glow {
-  text-shadow: 0 0 10px rgba(245, 158, 11, 0.4), 0 0 20px rgba(245, 158, 11, 0.2);
-}
-
-/* Sale toast */
-.rep-sale-toast {
-  animation: saleToastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-@keyframes saleToastIn {
-  from { opacity: 0; transform: translateY(-20px) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
 /* ══════════════════════════════════════════════════════════════════════
    HUD COMMAND BAR (Bottom Nav)
    ══════════════════════════════════════════════════════════════════════ */
@@ -1168,13 +917,6 @@ body:has([data-rep]) > .noise {
   0% { transform: scale(0); }
   100% { transform: scale(1); }
 }
-
-/* ══════════════════════════════════════════════════════════════════════
-   EMPTY STATE RINGS
-   ══════════════════════════════════════════════════════════════════════ */
-
-/* Empty ring — removed (EmptyState uses rep-surface-1 now) */
-.rep-empty-ring { display: none; }
 
 /* ══════════════════════════════════════════════════════════════════════
    RESPONSIVE — Mobile-specific behavior
@@ -1223,15 +965,8 @@ body:has([data-rep]) > .noise {
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════════════
-   STAT CARD & TIMELINE (Points Page)
+   TIMELINE (Points Page)
    ══════════════════════════════════════════════════════════════════════ */
-
-.rep-stat-card {
-  transition: border-color 0.2s;
-}
-.rep-stat-card:hover {
-  border-color: rgba(255, 255, 255, 0.10);
-}
 
 .rep-timeline-entry {
   transition: background-color 0.2s;
@@ -1608,10 +1343,6 @@ body:has([data-rep]) > .noise {
 .rep-action-hover:hover {
   border-color: rgba(255, 255, 255, 0.12);
 }
-.rep-action-icon-hover {
-  /* No hover scale */
-}
-
 .rep-shop-hover {
   transition: border-color 0.2s;
 }
@@ -1797,7 +1528,6 @@ body:has([data-rep]) > .noise {
   .rep-leaderboard-item,
   .rep-boot-line,
   .rep-step-in,
-  .rep-wizard-step,
   .rep-celebrate,
   .rep-title-reveal {
     animation: none !important;

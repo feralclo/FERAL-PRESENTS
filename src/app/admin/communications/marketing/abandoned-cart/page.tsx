@@ -1301,6 +1301,129 @@ function StepSettings({
           Shared across all recovery emails
         </p>
       </SettingsSection>
+
+      {/* ── SEND TEST — real email to your inbox ── */}
+      <SendTestEmail step={step} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SEND TEST EMAIL — sends a real email using recent cart data
+   ═══════════════════════════════════════════════════════════ */
+function SendTestEmail({ step }: { step: EmailStep }) {
+  const [testEmail, setTestEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const resultTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSend = async () => {
+    if (!testEmail.trim() || !testEmail.includes("@")) {
+      setResult({ type: "error", message: "Enter a valid email" });
+      return;
+    }
+
+    setSending(true);
+    setResult(null);
+
+    try {
+      const res = await fetch("/api/abandoned-carts/send-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          test_email: testEmail.trim(),
+          step_config: {
+            subject: step.subject,
+            preview_text: step.preview_text,
+            include_discount: step.include_discount,
+            discount_code: step.discount_code || undefined,
+            discount_percent: step.discount_percent || undefined,
+            cta_text: step.cta_text || undefined,
+            discount_label: step.discount_label || undefined,
+          },
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setResult({ type: "error", message: json.error || "Failed to send" });
+      } else {
+        setResult({
+          type: "success",
+          message: `Sent! Used ${json.used_cart?.event_name || "recent cart"} data`,
+        });
+        if (resultTimer.current) clearTimeout(resultTimer.current);
+        resultTimer.current = setTimeout(() => setResult(null), 5000);
+      }
+    } catch {
+      setResult({ type: "error", message: "Network error" });
+    }
+
+    setSending(false);
+  };
+
+  return (
+    <div
+      className="overflow-hidden rounded-lg border transition-all"
+      style={{
+        borderColor: result?.type === "success"
+          ? "rgba(16,185,129,0.25)"
+          : "rgba(139,92,246,0.15)",
+        background: result?.type === "success"
+          ? "rgba(16,185,129,0.04)"
+          : "rgba(139,92,246,0.03)",
+      }}
+    >
+      <div className="px-3.5 py-3">
+        <div className="flex items-center gap-2 mb-2.5">
+          <Send size={12} className="text-primary" />
+          <span className="text-[11px] font-semibold text-foreground">Send Test Email</span>
+          <span className="text-[8px] text-muted-foreground/40">Uses real cart data</span>
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            className="flex-1 text-xs"
+            type="email"
+            value={testEmail}
+            onChange={(e) => { setTestEmail(e.target.value); setResult(null); }}
+            placeholder="your@email.com"
+            onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+            disabled={sending}
+          />
+          <Button
+            size="sm"
+            className="shrink-0 gap-1.5 px-3 text-xs"
+            onClick={handleSend}
+            disabled={sending || !testEmail.trim()}
+          >
+            {sending ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Send size={11} />
+            )}
+            {sending ? "Sending..." : "Send"}
+          </Button>
+        </div>
+
+        {result && (
+          <div className={`mt-2 flex items-center gap-1.5 text-[11px] ${
+            result.type === "success" ? "text-emerald-400" : "text-red-400"
+          }`}>
+            {result.type === "success" ? (
+              <CheckCircle2 size={11} />
+            ) : (
+              <AlertTriangle size={11} />
+            )}
+            {result.message}
+          </div>
+        )}
+
+        <p className="mt-2 text-[9px] text-muted-foreground/40">
+          Sends this step&apos;s email using the most recent abandoned cart. Delivered to your address only.
+        </p>
+      </div>
     </div>
   );
 }

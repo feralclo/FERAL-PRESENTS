@@ -24,7 +24,6 @@ import {
   Zap,
   Check,
   PartyPopper,
-  CircleDot,
   Power,
   Timer,
   Mail,
@@ -332,191 +331,135 @@ function RecoveryFlow({
   onSelectStep: (id: string) => void;
 }) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="border-b border-border pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <CircleDot size={15} className="text-primary" />
-              Recovery Flow
-            </CardTitle>
-            <p className="mt-1 text-[11px] text-muted-foreground/60">
-              Click an email step to edit its content and preview below
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {steps.filter((s) => s.enabled).length > 0 && (
-              <Badge variant="info" className="text-[9px] font-bold uppercase">
-                {steps.filter((s) => s.enabled).length} of {steps.length} active
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="px-5 pb-0 pt-5">
-        {/* Horizontal flow: Cart → Email 1 → Email 2 → Email 3 → Recovered */}
-        <div className="flex items-stretch gap-0 overflow-x-auto">
-          {/* Cart Abandoned — origin node */}
-          <div className="flex shrink-0 flex-col items-center" style={{ width: "72px" }}>
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300"
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Select an email to edit
+        </h3>
+        <span className="text-[10px] text-muted-foreground/50">
+          {steps.filter((s) => s.enabled).length} of {steps.length} emails active
+        </span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {steps.map((step, i) => {
+          const isSelected = activeStepId === step.id;
+          const stepActive = step.enabled && automationEnabled;
+          const StepIcon = step.icon;
+
+          return (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => onSelectStep(step.id)}
+              className={`group relative cursor-pointer overflow-hidden rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                isSelected
+                  ? "ring-1"
+                  : "border-transparent hover:border-border"
+              }`}
               style={{
-                backgroundColor: "rgba(245,158,11,0.15)",
-                boxShadow: "inset 0 0 0 1.5px rgba(245,158,11,0.5)",
+                borderColor: isSelected
+                  ? stepActive ? step.color : "var(--color-border)"
+                  : undefined,
+                backgroundColor: isSelected
+                  ? stepActive ? `${step.color}08` : "rgba(255,255,255,0.02)"
+                  : "var(--color-card)",
+                boxShadow: isSelected && stepActive
+                  ? `0 0 20px ${step.glowColor}, inset 0 1px 0 ${step.color}15`
+                  : "none",
+                outline: isSelected
+                  ? stepActive ? `1px solid ${step.color}30` : "1px solid var(--color-border)"
+                  : "none",
+                outlineOffset: "-1px",
               }}
             >
-              <ShoppingCart size={15} style={{ color: "#f59e0b" }} />
-            </div>
-            <span className="mt-2 text-center text-[9px] font-semibold uppercase leading-tight tracking-wider" style={{ color: "#f59e0b" }}>
-              Cart<br />Abandoned
-            </span>
-          </div>
-
-          {/* Email steps */}
-          {steps.map((step, i) => {
-            const isSelected = activeStepId === step.id;
-            const stepActive = step.enabled && automationEnabled;
-            const nextStep = steps[i + 1];
-            const nextColor = nextStep ? nextStep.color : "#10b981";
-            const prevColor = i === 0 ? "#f59e0b" : (steps[i - 1]?.color || "#f59e0b");
-
-            return (
-              <div key={step.id} className="flex min-w-0 flex-1 items-stretch">
-                {/* Connector line in */}
-                <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
+              {/* Step number + selected indicator */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
                   <div
-                    className="h-0.5 w-full transition-colors duration-300"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200"
                     style={{
-                      background: stepActive
-                        ? `linear-gradient(to right, ${prevColor}, ${step.color})`
-                        : "rgba(255,255,255,0.06)",
+                      backgroundColor: isSelected
+                        ? stepActive ? `${step.color}20` : "rgba(255,255,255,0.06)"
+                        : "rgba(255,255,255,0.04)",
+                      boxShadow: isSelected && stepActive
+                        ? `inset 0 0 0 1.5px ${step.color}50`
+                        : "inset 0 0 0 1px rgba(255,255,255,0.06)",
                     }}
-                  />
-                </div>
-
-                {/* Step card — tab-like, clearly clickable */}
-                <div className="relative flex min-w-[130px] flex-1 flex-col">
-                  <button
-                    type="button"
-                    onClick={() => onSelectStep(step.id)}
-                    className={`group relative flex flex-1 cursor-pointer flex-col rounded-t-lg border px-3 py-2.5 text-left transition-all duration-200 ${
-                      isSelected
-                        ? "border-b-0"
-                        : "rounded-b-lg border-transparent hover:border-border hover:bg-muted/30"
-                    }`}
-                    style={isSelected ? {
-                      borderColor: stepActive ? `${step.color}40` : "var(--color-border)",
-                      backgroundColor: stepActive ? `${step.color}06` : "rgba(255,255,255,0.02)",
-                      boxShadow: stepActive ? `0 -2px 12px ${step.glowColor}` : "none",
-                    } : {}}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <div
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300"
-                          style={{
-                            backgroundColor: stepActive ? `${step.color}18` : "rgba(255,255,255,0.04)",
-                            boxShadow: stepActive ? `inset 0 0 0 1px ${step.color}60` : "none",
-                          }}
-                        >
-                          {stepActive ? (
-                            <Check size={10} style={{ color: step.color }} />
-                          ) : (
-                            <step.icon size={10} style={{ color: "rgba(255,255,255,0.25)" }} />
-                          )}
-                        </div>
+                    <StepIcon
+                      size={15}
+                      style={{
+                        color: isSelected
+                          ? stepActive ? step.color : "var(--color-foreground)"
+                          : "var(--color-muted-foreground)",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">
+                        Email {i + 1}
+                      </span>
+                      {isSelected && (
                         <span
-                          className="text-[11px] font-semibold uppercase tracking-wider"
-                          style={{ color: stepActive ? step.color : "rgba(255,255,255,0.3)" }}
+                          className="rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white"
+                          style={{ backgroundColor: stepActive ? step.color : "#71717a" }}
                         >
-                          {step.label}
+                          Editing
                         </span>
-                      </div>
-                      <Switch
-                        size="sm"
-                        checked={step.enabled}
-                        onCheckedChange={() => onToggleStep(step.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={!automationEnabled}
-                      />
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="secondary" className="text-[8px] font-medium">
-                        <Timer size={7} className="mr-0.5" />
-                        {step.delay_label}
-                      </Badge>
-                      {step.include_discount && step.enabled && (
-                        <Badge variant="warning" className="text-[8px] font-bold uppercase">
-                          <Percent size={7} className="mr-0.5" /> {step.discount_percent}%
-                        </Badge>
                       )}
                     </div>
-                    {/* Selected: editing indicator */}
-                    {isSelected && (
-                      <div className="mt-1.5 flex items-center gap-1 text-[9px] font-medium" style={{ color: step.color }}>
-                        <Pencil size={8} />
-                        <span>Editing below</span>
-                      </div>
-                    )}
-                    {/* Not selected: hover hint */}
-                    {!isSelected && (
-                      <div className="mt-1.5 flex items-center gap-1 text-[9px] text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50">
-                        <Pencil size={8} />
-                        <span>Click to edit</span>
-                      </div>
-                    )}
-                  </button>
-                  {/* Selected bottom indicator — pointed tab connecting to editor */}
-                  {isSelected && (
-                    <div className="flex justify-center">
-                      <div
-                        className="h-2 w-6"
-                        style={{
-                          background: stepActive ? step.color : "var(--color-border)",
-                          clipPath: "polygon(0 0, 100% 0, 50% 100%)",
-                          opacity: stepActive ? 0.5 : 0.3,
-                        }}
-                      />
-                    </div>
-                  )}
+                    <span
+                      className="text-[13px] font-semibold transition-colors"
+                      style={{
+                        color: isSelected
+                          ? stepActive ? step.color : "var(--color-foreground)"
+                          : "var(--color-foreground)",
+                      }}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
                 </div>
-
-                {/* Connector line out */}
-                <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
-                  <div
-                    className="h-0.5 w-full transition-colors duration-300"
-                    style={{
-                      background: stepActive
-                        ? `linear-gradient(to right, ${step.color}, ${i === steps.length - 1 ? "#10b981" : nextColor})`
-                        : "rgba(255,255,255,0.06)",
-                    }}
-                  />
-                </div>
+                <Switch
+                  size="sm"
+                  checked={step.enabled}
+                  onCheckedChange={() => onToggleStep(step.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={!automationEnabled}
+                />
               </div>
-            );
-          })}
 
-          {/* Recovery outcome node */}
-          <div className="flex shrink-0 flex-col items-center" style={{ width: "72px" }}>
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300"
-              style={{
-                backgroundColor: automationEnabled ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
-                boxShadow: automationEnabled ? "inset 0 0 0 1.5px rgba(16,185,129,0.5)" : "none",
-              }}
-            >
-              <PartyPopper size={15} style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.15)" }} />
-            </div>
-            <span
-              className="mt-2 text-center text-[9px] font-semibold uppercase leading-tight tracking-wider"
-              style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.3)" }}
-            >
-              Cart<br />Recovered
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+              {/* Metadata badges */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <Badge variant="secondary" className="text-[8px] font-medium">
+                  <Timer size={7} className="mr-0.5" />
+                  {step.delay_label}
+                </Badge>
+                {step.include_discount && step.enabled && (
+                  <Badge variant="warning" className="text-[8px] font-bold uppercase">
+                    <Percent size={7} className="mr-0.5" /> {step.discount_percent}%
+                  </Badge>
+                )}
+                {!step.enabled && (
+                  <Badge variant="secondary" className="text-[8px] text-muted-foreground/40">
+                    Disabled
+                  </Badge>
+                )}
+              </div>
+
+              {/* Left accent bar when selected */}
+              {isSelected && (
+                <div
+                  className="absolute left-0 top-0 h-full w-1 rounded-l-xl"
+                  style={{ backgroundColor: stepActive ? step.color : "#71717a" }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -643,29 +586,41 @@ function EmailEditor({
       {editMode === "visual" ? (
         /* ─── VISUAL EDITOR: Styled email representation with editable fields ─── */
         <CardContent className="flex-1 overflow-y-auto p-0">
+          {/* Editable hint banner */}
+          <div className="flex items-center gap-2 border-b border-primary/10 bg-primary/5 px-4 py-2">
+            <Pencil size={11} className="shrink-0 text-primary/60" />
+            <p className="text-[11px] text-primary/70">
+              Click any <span className="font-semibold">highlighted field</span> to edit. Changes save automatically.
+            </p>
+          </div>
+
           <div className="mx-auto max-w-[520px]">
-            {/* Email client chrome */}
+            {/* Email client chrome — subject + preview editable */}
             <div className="border-b border-border/50 bg-secondary/30 px-5 py-3">
               <div className="space-y-2">
-                <div className="flex items-start gap-2">
+                <div className="group/field flex items-start gap-2">
                   <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Subject</span>
-                  <input
-                    type="text"
-                    value={step.subject}
-                    onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
-                    className="flex-1 border-0 bg-transparent px-0 text-[13px] font-medium text-foreground outline-none placeholder:text-muted-foreground/40 focus:ring-0"
-                    placeholder="Email subject line..."
-                  />
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={step.subject}
+                      onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
+                      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-[13px] font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/40 hover:border-primary/20 hover:bg-primary/5 focus:border-primary/40 focus:bg-primary/5"
+                      placeholder="Email subject line..."
+                    />
+                  </div>
                 </div>
-                <div className="flex items-start gap-2">
+                <div className="group/field flex items-start gap-2">
                   <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview</span>
-                  <input
-                    type="text"
-                    value={step.preview_text}
-                    onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
-                    className="flex-1 border-0 bg-transparent px-0 text-[12px] text-muted-foreground/60 outline-none placeholder:text-muted-foreground/30 focus:ring-0"
-                    placeholder="Inbox preview text..."
-                  />
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={step.preview_text}
+                      onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
+                      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-[12px] text-muted-foreground/60 outline-none transition-all placeholder:text-muted-foreground/30 hover:border-primary/20 hover:bg-primary/5 focus:border-primary/40 focus:bg-primary/5"
+                      placeholder="Inbox preview text..."
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -693,13 +648,13 @@ function EmailEditor({
                     )}
                   </div>
 
-                  {/* Editable greeting */}
-                  <div className="px-8 pt-6 pb-2">
+                  {/* Editable greeting — clear hover/focus affordance */}
+                  <div className="px-6 pt-6 pb-1">
                     <input
                       type="text"
                       value={step.greeting}
                       onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
-                      className="w-full border-0 bg-transparent text-center text-[20px] font-bold leading-tight text-white outline-none placeholder:text-white/20"
+                      className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-center text-[20px] font-bold leading-tight text-white outline-none transition-all placeholder:text-white/20 hover:border-white/15 hover:bg-white/5 focus:border-primary/50 focus:bg-white/5"
                       placeholder="Greeting headline..."
                       style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
                     />
@@ -708,12 +663,12 @@ function EmailEditor({
                     </p>
                   </div>
 
-                  {/* Editable message */}
-                  <div className="px-8 pb-8">
+                  {/* Editable message — clear hover/focus affordance */}
+                  <div className="px-6 pb-7">
                     <textarea
                       value={step.body_message}
                       onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
-                      className="w-full resize-none border-0 bg-transparent text-center text-[14px] leading-relaxed outline-none placeholder:text-white/15"
+                      className="w-full resize-none rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-center text-[14px] leading-relaxed outline-none transition-all placeholder:text-white/15 hover:border-white/15 hover:bg-white/5 focus:border-primary/50 focus:bg-white/5"
                       style={{ color: "#999999", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
                       placeholder="Body message..."
                       rows={2}
@@ -733,7 +688,7 @@ function EmailEditor({
                         Pulled from your live event
                       </div>
                       <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "12px", color: "#888888", marginTop: "4px" }}>
-                        Date, venue, and ticket details shown automatically
+                        Real event data, tickets, and pricing shown in actual email
                       </div>
                     </div>
                   </div>
@@ -1705,25 +1660,46 @@ export default function AbandonedCartPage() {
             </p>
           </div>
 
-          {/* Save status indicator */}
-          <div className="flex items-center gap-2">
-            {saving && (
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
-                Saving...
-              </span>
-            )}
-            {saveStatus === "saved" && (
-              <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-                <Check size={10} />
-                Saved
-              </span>
-            )}
-            {saveStatus === "error" && (
-              <span className="flex items-center gap-1 text-[10px] text-red-400">
-                <AlertTriangle size={10} />
-                Save failed
-              </span>
+          {/* Save status — always visible, Google Docs style */}
+          <div
+            className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 transition-all duration-300"
+            style={{
+              borderColor: saving
+                ? "rgba(139,92,246,0.2)"
+                : saveStatus === "saved"
+                ? "rgba(16,185,129,0.2)"
+                : saveStatus === "error"
+                ? "rgba(239,68,68,0.2)"
+                : "var(--color-border)",
+              backgroundColor: saving
+                ? "rgba(139,92,246,0.05)"
+                : saveStatus === "saved"
+                ? "rgba(16,185,129,0.05)"
+                : saveStatus === "error"
+                ? "rgba(239,68,68,0.05)"
+                : "transparent",
+            }}
+          >
+            {saving ? (
+              <>
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                <span className="text-[11px] font-medium text-primary/70">Saving...</span>
+              </>
+            ) : saveStatus === "saved" ? (
+              <>
+                <CheckCircle2 size={12} className="text-emerald-400" />
+                <span className="text-[11px] font-medium text-emerald-400">All changes saved</span>
+              </>
+            ) : saveStatus === "error" ? (
+              <>
+                <AlertTriangle size={12} className="text-red-400" />
+                <span className="text-[11px] font-medium text-red-400">Save failed</span>
+              </>
+            ) : (
+              <>
+                <Check size={12} className="text-muted-foreground/30" />
+                <span className="text-[11px] font-medium text-muted-foreground/40">Up to date</span>
+              </>
             )}
           </div>
         </div>

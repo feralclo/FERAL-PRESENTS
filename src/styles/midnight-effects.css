@@ -508,6 +508,50 @@ body:has([data-theme="midnight"]) .header {
   display: none !important;
 }
 
+/* Premium glass button — close, mute (utility actions) */
+[data-theme="midnight"] .midnight-btn-glass {
+  background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    0 2px 8px rgba(0,0,0,0.25);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="midnight"] .midnight-btn-glass:hover {
+  background: linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 100%);
+  border-color: color-mix(in srgb, var(--accent) 40%, rgba(255,255,255,0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    0 0 14px color-mix(in srgb, var(--accent) 12%, transparent),
+    0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Nav button — primary interaction, accent-tinted at rest */
+[data-theme="midnight"] .midnight-btn-nav {
+  background: linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,0.06));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 0 6px color-mix(in srgb, var(--accent) 5%, transparent);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="midnight"] .midnight-btn-nav:hover {
+  background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 0 18px color-mix(in srgb, var(--accent) 18%, transparent);
+  color: rgba(255,255,255,0.85);
+}
+
+[data-theme="midnight"] .midnight-btn-nav:disabled {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 
 /* ═══════════════════════════════════════════════
    METALLIC CTA — Platinum gradient button
@@ -549,29 +593,42 @@ body:has([data-theme="midnight"]) .header {
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
-/* Scroll-triggered cascade: each pill briefly glows accent color then fades back */
+/* Scroll-triggered cascade: each pill glows accent color in a slow, elegant wave */
 [data-theme="midnight"] .midnight-lineup-pill.lineup-cascade {
-  animation: lineupCascade 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: lineupCascade 2.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes lineupCascade {
   0%   { border-color: inherit; color: inherit; background: inherit; box-shadow: none; }
-  30%  { border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  15%  { border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+         color: color-mix(in srgb, var(--color-foreground) 95%, transparent);
+         background: color-mix(in srgb, var(--accent) 4%, transparent);
+         box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 6%, transparent); }
+  30%  { border-color: color-mix(in srgb, var(--accent) 45%, transparent);
          color: var(--color-foreground);
-         background: color-mix(in srgb, var(--accent) 6%, transparent);
-         box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 12%, transparent); }
+         background: color-mix(in srgb, var(--accent) 7%, transparent);
+         box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 14%, transparent); }
+  55%  { border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+         color: color-mix(in srgb, var(--color-foreground) 90%, transparent);
+         background: color-mix(in srgb, var(--accent) 2%, transparent);
+         box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 3%, transparent); }
   100% { border-color: inherit; color: inherit; background: inherit; box-shadow: none; }
 }
 
-/* "tap to explore" cascade highlight */
+/* "tap to explore" — slow pulse that breathes with the cascade */
 [data-theme="midnight"] .midnight-lineup-hint.lineup-hint-glow {
-  animation: lineupHintGlow 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: lineupHintGlow 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes lineupHintGlow {
-  0%   { color: inherit; }
-  20%  { color: var(--accent); }
-  100% { color: inherit; }
+  0%   { color: inherit; text-shadow: none; }
+  20%  { color: color-mix(in srgb, var(--accent) 70%, var(--color-foreground));
+         text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 15%, transparent); }
+  40%  { color: var(--accent);
+         text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent); }
+  65%  { color: color-mix(in srgb, var(--accent) 50%, var(--color-foreground));
+         text-shadow: 0 0 4px color-mix(in srgb, var(--accent) 8%, transparent); }
+  100% { color: inherit; text-shadow: none; }
 }
 
 
@@ -902,8 +959,10 @@ html.checkout-active .noise {
 
 /* Nav arrow pulse — draws eye to the right arrow */
 @keyframes midnight-nav-pulse {
-  0%, 100% { transform: scale(1); border-color: rgba(255,255,255,0.10); background: rgba(255,255,255,0.06); }
-  50%      { transform: scale(1.2); border-color: rgba(255,255,255,0.30); background: rgba(255,255,255,0.12); }
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15);
+             border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+             box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 20%, transparent); }
 }
 
 .midnight-artist-nav-hint {

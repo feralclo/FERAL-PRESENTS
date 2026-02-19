@@ -472,7 +472,7 @@ export function MidnightArtistModal({
             <button
               type="button"
               onClick={onClose}
-              className="absolute top-3 right-3 z-30 w-9 h-9 flex items-center justify-center rounded-[10px] bg-white/[0.06] border border-white/[0.10] hover:bg-white/[0.12] hover:border-white/[0.20] transition-all cursor-pointer"
+              className="midnight-btn-glass absolute top-3 right-3 z-30 w-9 h-9 flex items-center justify-center rounded-[10px] cursor-pointer active:scale-[0.92]"
               aria-label="Close"
             >
               <svg
@@ -560,7 +560,7 @@ export function MidnightArtistModal({
                       <button
                         type="button"
                         onClick={toggleMute}
-                        className="absolute bottom-3 right-3 z-20 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-md bg-black/35 border border-white/[0.10] hover:bg-black/55 hover:border-white/[0.18] active:scale-[0.92] touch-manipulation"
+                        className="midnight-btn-glass absolute bottom-3 right-3 z-20 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer backdrop-blur-md active:scale-[0.92] touch-manipulation"
                         aria-label={isMuted ? "Unmute" : "Mute"}
                       >
                         {isMuted ? (
@@ -732,9 +732,9 @@ export function MidnightArtistModal({
                   <button
                     type="button"
                     onClick={goPrev}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center touch-manipulation ${
                       canGoPrev
-                        ? "bg-white/[0.06] border border-white/[0.10] text-white/50 hover:bg-white/[0.10] hover:text-white/70 cursor-pointer active:scale-90"
+                        ? "midnight-btn-nav text-white/50 cursor-pointer active:scale-[0.88]"
                         : "text-white/[0.08] cursor-default"
                     }`}
                     disabled={!canGoPrev}
@@ -763,9 +763,9 @@ export function MidnightArtistModal({
                     onClick={goNext}
                     className={`w-7 h-7 rounded-full flex items-center justify-center touch-manipulation ${
                       canGoNext
-                        ? "bg-white/[0.06] border border-white/[0.10] text-white/50 hover:bg-white/[0.10] hover:text-white/70 cursor-pointer active:scale-90"
+                        ? "midnight-btn-nav text-white/50 cursor-pointer active:scale-[0.88]"
                         : "text-white/[0.08] cursor-default"
-                    } transition-all`}
+                    }`}
                     disabled={!canGoNext}
                     aria-label="Next artist"
                   >
@@ -905,7 +905,7 @@ export function MidnightArtistModal({
           {multi && canGoPrev && (
             <button
               type="button"
-              className="hidden lg:flex absolute left-[-52px] top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 border border-white/10 rounded-lg items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
+              className="hidden lg:flex absolute left-[-52px] top-1/2 -translate-y-1/2 w-9 h-9 midnight-btn-nav rounded-lg items-center justify-center text-white/60 cursor-pointer active:scale-[0.92]"
               onClick={goPrev}
               aria-label="Previous artist"
             >
@@ -926,7 +926,7 @@ export function MidnightArtistModal({
           {multi && canGoNext && (
             <button
               type="button"
-              className="hidden lg:flex absolute right-[-52px] top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 border border-white/10 rounded-lg items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
+              className="hidden lg:flex absolute right-[-52px] top-1/2 -translate-y-1/2 w-9 h-9 midnight-btn-nav rounded-lg items-center justify-center text-white/60 cursor-pointer active:scale-[0.92]"
               onClick={goNext}
               aria-label="Next artist"
             >

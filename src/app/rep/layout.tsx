@@ -338,7 +338,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 no-underline transition-all duration-300 active:scale-[0.97]",
+                    "relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 no-underline transition-transform duration-150 active:scale-[0.97]",
                     active ? "rep-glass-nav-active" : ""
                   )}
                 >
@@ -347,10 +347,10 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                       size={20}
                       strokeWidth={active ? 2 : 1.5}
                       className={cn(
-                        "transition-all duration-300",
+                        "transition-colors duration-300",
                         active
-                          ? "text-white drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]"
-                          : "text-white/30"
+                          ? "text-primary drop-shadow-[0_0_10px_rgba(139,92,246,0.5)]"
+                          : "text-white/35"
                       )}
                     />
                     {/* Quest badge */}
@@ -361,8 +361,8 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                     )}
                   </div>
                   <span className={cn(
-                    "text-[9px] font-semibold tracking-wide transition-all duration-300",
-                    active ? "text-white/80" : "text-white/25"
+                    "text-[9px] font-semibold tracking-wide transition-colors duration-300",
+                    active ? "text-white/70" : "text-white/25"
                   )}>
                     {item.label}
                   </span>

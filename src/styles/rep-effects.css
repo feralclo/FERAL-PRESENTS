@@ -1143,72 +1143,59 @@ body:has([data-rep]) > .noise {
 
 .rep-glass-nav {
   border-radius: 28px;
-  /* Light-tinted — glass LIGHTENS, never darkens */
-  background: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(20px) saturate(1.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  /* Visible purple border — defines the glass shape */
-  border: 1.5px solid rgba(139, 92, 246, 0.22);
+  /* Neutral clear glass — the icons provide the color */
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  /* Clean visible border — defines the glass edge */
+  border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow:
-    /* White edge catch along top — light reflecting off glass surface */
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    /* Subtle bottom edge */
-    inset 0 -0.5px 0 rgba(255, 255, 255, 0.05),
-    /* Outer white halo — second edge layer */
-    0 0 0 0.5px rgba(255, 255, 255, 0.06),
-    /* Purple ambient glow */
-    0 0 20px rgba(139, 92, 246, 0.08),
-    /* Floating depth */
-    0 8px 32px rgba(0, 0, 0, 0.25);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 32px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
 }
 
-/* Light reflection across top of glass — like overhead light hitting curved surface */
+/* Top surface reflection — overhead light on curved glass */
 .rep-glass-nav::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.10) 0%,
-    rgba(255, 255, 255, 0.03) 35%,
-    transparent 60%
-  );
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), transparent 45%);
   pointer-events: none;
 }
 
-/* Glass-brighten zone — purple-lit pad behind active item */
+/* Purple light scatter from active icon onto surrounding glass */
 .rep-glass-nav a::before {
   content: "";
   position: absolute;
-  inset: 4px 4px;
-  border-radius: 16px;
-  background: radial-gradient(ellipse at 50% 55%, rgba(139, 92, 246, 0.16), rgba(139, 92, 246, 0.05) 65%, transparent);
+  inset: 2px;
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 50% 40%, rgba(139, 92, 246, 0.14), transparent 70%);
   opacity: 0;
   transition: opacity 250ms ease;
   pointer-events: none;
 }
 
-/* Luminous dot — purple indicator under active item */
+/* Purple indicator dot */
 .rep-glass-nav a::after {
   content: "";
   position: absolute;
-  bottom: 2px;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: rgba(139, 92, 246, 0.9);
-  box-shadow: 0 0 6px rgba(139, 92, 246, 0.6), 0 0 14px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
   opacity: 0;
   transition: opacity 250ms ease;
   pointer-events: none;
 }
 
-/* Active state — fade in pseudo-elements */
+/* Active — icon light illuminates the glass */
 .rep-glass-nav-active::before,
 .rep-glass-nav-active::after {
   opacity: 1;

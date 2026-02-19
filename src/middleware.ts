@@ -64,6 +64,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/logout",
   "/api/rep-portal/verify-email",
   "/api/rep-portal/invite/",
+  "/api/rep-portal/push-vapid-key",
 ];
 
 const PUBLIC_API_EXACT_GETS = [

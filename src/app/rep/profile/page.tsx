@@ -15,6 +15,8 @@ import {
   Zap,
   Trophy,
   TrendingUp,
+  Download,
+  Bell,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +26,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { TikTokIcon } from "@/components/rep";
+import { TikTokIcon, InstallPrompt } from "@/components/rep";
+import { useRepPWA } from "@/hooks/useRepPWA";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { openSocialProfile } from "@/lib/rep-social";
 import { cn } from "@/lib/utils";
@@ -98,6 +101,10 @@ export default function RepProfilePage() {
   // Discount
   const [discountCode, setDiscountCode] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // PWA
+  const { shouldShowInstall, platform, promptInstall, dismissInstall, requestPush, isStandalone, pushPermission, pushSupported } = useRepPWA();
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -571,6 +578,68 @@ export default function RepProfilePage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* ── App & Notifications ── */}
+      {(!isStandalone || (pushSupported && pushPermission !== "granted")) && (
+        <Card className="py-0 gap-0 rep-slide-up" style={{ animationDelay: "125ms" }}>
+          <CardContent className="p-4 space-y-2">
+            {/* Install App */}
+            {shouldShowInstall && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={() => setShowInstallModal(true)}
+              >
+                <Download size={14} className="text-primary" />
+                Install App
+                <span className="ml-auto text-[10px] text-muted-foreground">Home screen</span>
+              </Button>
+            )}
+
+            {/* Enable Notifications */}
+            {pushSupported && pushPermission !== "granted" && pushPermission !== "denied" && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={() => requestPush()}
+              >
+                <Bell size={14} className="text-primary" />
+                Enable Notifications
+                <span className="ml-auto text-[10px] text-muted-foreground">Sales & quests</span>
+              </Button>
+            )}
+
+            {/* Notification permission denied */}
+            {pushPermission === "denied" && (
+              <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-muted-foreground">
+                <Bell size={14} />
+                Notifications blocked — enable in browser settings
+              </div>
+            )}
+
+            {/* Already receiving notifications */}
+            {pushPermission === "granted" && (
+              <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-success">
+                <Bell size={14} />
+                Notifications enabled
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Install Modal */}
+      {showInstallModal && (
+        <InstallPrompt
+          platform={platform}
+          onInstall={promptInstall}
+          onDismiss={() => {
+            setShowInstallModal(false);
+            dismissInstall();
+          }}
+          onEnableNotifications={requestPush}
+        />
+      )}
 
       {/* ── Sign Out ── */}
       <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>

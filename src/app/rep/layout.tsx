@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { useRepPWA } from "@/hooks/useRepPWA";
+import { InstallPrompt } from "@/components/rep";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -167,7 +168,23 @@ export default function RepLayout({ children }: { children: ReactNode }) {
   }, [isPublicPage, pathname, router]);
 
   // PWA: register service worker, handle install prompt
-  const { installable, promptInstall } = useRepPWA();
+  const { shouldShowInstall, platform, promptInstall, dismissInstall, requestPush, isStandalone } = useRepPWA();
+  const [showInstallModal, setShowInstallModal] = useState(false);
+
+  // Show install prompt after 3rd visit (not on first — let them explore first)
+  useEffect(() => {
+    if (!shouldShowInstall || isStandalone) return;
+    try {
+      const visits = parseInt(localStorage.getItem("rep_visit_count") || "0", 10) + 1;
+      localStorage.setItem("rep_visit_count", String(visits));
+      if (visits >= 3) {
+        // Delay so it doesn't pop up immediately on page load
+        const timer = setTimeout(() => setShowInstallModal(true), 2000);
+        return () => clearTimeout(timer);
+      }
+    } catch { /* storage unavailable */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldShowInstall, isStandalone]);
 
   // Add manifest link to head
   useEffect(() => {
@@ -369,17 +386,17 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       {/* Portal target for modals — sibling of <main> to escape its stacking context */}
       <div id="rep-portal-root" />
 
-      {/* PWA Install Banner (mobile only, above bottom nav) */}
-      {showNav && installable && (
-        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] inset-x-0 z-40 md:hidden px-4 pointer-events-none">
-          <button
-            onClick={promptInstall}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary/15 border border-primary/20 backdrop-blur-lg py-2.5 text-xs font-semibold text-primary pointer-events-auto rep-slide-up"
-          >
-            <Zap size={12} />
-            Install App for Notifications
-          </button>
-        </div>
+      {/* PWA Install Modal */}
+      {showInstallModal && (
+        <InstallPrompt
+          platform={platform}
+          onInstall={promptInstall}
+          onDismiss={() => {
+            setShowInstallModal(false);
+            dismissInstall();
+          }}
+          onEnableNotifications={requestPush}
+        />
       )}
 
       {/* Mobile bottom nav — HUD Command Bar */}

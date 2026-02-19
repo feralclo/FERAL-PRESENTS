@@ -1,7 +1,9 @@
+import Script from "next/script";
 import { fetchSettings } from "@/lib/settings";
 import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
+import { fetchMarketingSettings } from "@/lib/meta";
 import { SettingsProvider } from "@/hooks/useSettings";
 import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
 import type { BrandingSettings } from "@/types/settings";
@@ -93,8 +95,14 @@ export default async function EventLayout({
   // Fetch active template in parallel (for Aurora detection)
   const templatePromise = getActiveTemplate();
 
+  // Fetch marketing settings for pixel injection (org-scoped when multi-tenant)
+  const marketingPromise = fetchMarketingSettings().catch(() => null);
+
   // Wait for all in parallel
-  const [settings, , branding, activeTemplate] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise]);
+  const [settings, , branding, activeTemplate, marketing] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise, marketingPromise]);
+
+  // Meta Pixel ID — only inject if tracking is enabled
+  const pixelId = marketing?.meta_tracking_enabled ? marketing.meta_pixel_id : null;
 
   // Theme is always from the events table
   const theme = eventTheme || "default";
@@ -150,6 +158,39 @@ export default async function EventLayout({
   return (
     <>
       {preconnectHints}
+      {/* Meta Pixel — injected server-side for instant detection by Pixel Helper
+          and Meta's Test Events tool. Init + PageView fire immediately in the HTML.
+          The useMetaTracking hook handles CAPI dedup + subsequent events.
+          When multi-tenant: fetchMarketingSettings() will accept org_id. */}
+      {pixelId && (
+        <Script id="meta-pixel" strategy="afterInteractive">
+          {`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '${pixelId}');
+            var pvId='pv-'+Date.now()+'-'+Math.random().toString(36).substr(2,9);
+            fbq('track','PageView',{},{eventID:pvId});
+            window.__META_HTML_PAGEVIEW_ID=pvId;
+          `}
+        </Script>
+      )}
+      {pixelId && (
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
+            alt=""
+          />
+        </noscript>
+      )}
       <div
         data-theme-root
         data-theme={dataThemeAttr}

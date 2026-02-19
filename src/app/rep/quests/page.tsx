@@ -41,8 +41,8 @@ function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpan
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onExpand(); }}
-      className="group relative w-full rounded-xl overflow-hidden bg-black cursor-pointer border-0 p-0 text-left"
-      style={{ height: 200 }}
+      className="group relative mx-auto block aspect-[9/16] rounded-xl overflow-hidden bg-black cursor-pointer border-0 p-0"
+      style={{ maxHeight: 240 }}
     >
       <MuxPlayer
         playbackId={playbackId}
@@ -72,14 +72,15 @@ function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpan
         src={getMuxThumbnailUrl(playbackId)}
         alt=""
         className={cn(
-          "absolute inset-0 w-full h-full object-cover z-[5] transition-opacity duration-300 pointer-events-none",
+          "absolute inset-0 w-full h-full object-cover z-[5] transition-opacity duration-500 pointer-events-none",
           videoReady ? "opacity-0" : "opacity-100"
         )}
       />
 
-      {/* Expand icon — always visible on mobile, hover-reveal on desktop */}
-      <div className="absolute bottom-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 border border-white/15 text-white/80 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-        <Maximize2 size={14} />
+      {/* Bottom gradient with expand CTA */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-1.5 pb-3 pt-8 bg-gradient-to-t from-black/70 to-transparent pointer-events-none">
+        <Maximize2 size={13} className="text-white/90" />
+        <span className="text-[11px] font-semibold text-white/90 tracking-wide">Tap to expand</span>
       </div>
     </button>
   );

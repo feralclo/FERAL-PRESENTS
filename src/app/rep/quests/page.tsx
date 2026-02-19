@@ -547,6 +547,7 @@ export default function RepQuestsPage() {
     if (!submitQuestId) return;
     const proofValue = proofType === "screenshot" ? (uploadedUrl || proofText.trim()) : proofText.trim();
     if (!proofValue) return;
+    setError("");
     setSubmitting(true);
     try {
       const isUrlType = ["tiktok_link", "instagram_link", "url", "screenshot"].includes(proofType);
@@ -1357,6 +1358,13 @@ export default function RepQuestsPage() {
                     >
                       {proofType === "screenshot" ? "Paste a link instead" : "Or upload a screenshot"}
                     </button>
+                  )}
+
+                  {/* ══ Error display ══ */}
+                  {error && !submitting && !submitted && (
+                    <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2">
+                      <p className="text-xs text-red-400">{error}</p>
+                    </div>
                   )}
 
                   {/* ══ Submit CTA — tier-colored with XP ══ */}

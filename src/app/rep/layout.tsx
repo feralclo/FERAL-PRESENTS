@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTierFromLevel } from "@/lib/rep-tiers";
+import { useRepPWA } from "@/hooks/useRepPWA";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -164,6 +165,42 @@ export default function RepLayout({ children }: { children: ReactNode }) {
 
     return () => { cancelled = true; };
   }, [isPublicPage, pathname, router]);
+
+  // PWA: register service worker, handle install prompt
+  const { installable, promptInstall } = useRepPWA();
+
+  // Add manifest link to head
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const existing = document.querySelector('link[rel="manifest"][href="/rep-manifest.json"]');
+    if (existing) return;
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = "/rep-manifest.json";
+    document.head.appendChild(link);
+
+    // Theme color meta
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = "#08080c";
+
+    // Apple mobile web app meta tags
+    if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
+      const capable = document.createElement("meta");
+      capable.name = "apple-mobile-web-app-capable";
+      capable.content = "yes";
+      document.head.appendChild(capable);
+
+      const statusBar = document.createElement("meta");
+      statusBar.name = "apple-mobile-web-app-status-bar-style";
+      statusBar.content = "black-translucent";
+      document.head.appendChild(statusBar);
+    }
+  }, []);
 
   const showNav = !isPublicPage && authState.status === "active";
 
@@ -331,6 +368,19 @@ export default function RepLayout({ children }: { children: ReactNode }) {
 
       {/* Portal target for modals — sibling of <main> to escape its stacking context */}
       <div id="rep-portal-root" />
+
+      {/* PWA Install Banner (mobile only, above bottom nav) */}
+      {showNav && installable && (
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] inset-x-0 z-40 md:hidden px-4 pointer-events-none">
+          <button
+            onClick={promptInstall}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary/15 border border-primary/20 backdrop-blur-lg py-2.5 text-xs font-semibold text-primary pointer-events-auto rep-slide-up"
+          >
+            <Zap size={12} />
+            Install App for Notifications
+          </button>
+        </div>
+      )}
 
       {/* Mobile bottom nav — HUD Command Bar */}
       {showNav && (

@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RadialGauge, HudSectionHeader, LevelUpOverlay } from "@/components/rep";
+import { RadialGauge, HudSectionHeader, LevelUpOverlay, WelcomeOverlay, hasCompletedOnboarding } from "@/components/rep";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,7 @@ export default function RepDashboardPage() {
   const [levelUpInfo, setLevelUpInfo] = useState<{ level: number; name: string } | null>(null);
   const [xpAnimated, setXpAnimated] = useState(false);
   const [statsReady, setStatsReady] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -92,6 +93,11 @@ export default function RepDashboardPage() {
             setShowLevelUp(true);
           }
           localStorage.setItem(LEVEL_UP_STORAGE_KEY, String(currentLevel));
+
+          // Check if first visit (onboarding)
+          if (!hasCompletedOnboarding()) {
+            setShowWelcome(true);
+          }
 
           // Animate XP bar and stats after load
           setTimeout(() => setXpAnimated(true), 300);
@@ -187,6 +193,15 @@ export default function RepDashboardPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
+      {/* ── Welcome Onboarding Overlay (first visit) ── */}
+      {showWelcome && (
+        <WelcomeOverlay
+          repName={rep.display_name || rep.first_name}
+          discountCode={data.discount_codes[0]?.code}
+          onDismiss={() => setShowWelcome(false)}
+        />
+      )}
+
       {/* ── Level-Up Celebration Overlay ── */}
       {showLevelUp && levelUpInfo && (
         <LevelUpOverlay

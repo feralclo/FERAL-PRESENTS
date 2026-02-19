@@ -4,9 +4,12 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Compass, Upload, Link as LinkIcon, Type, X, Loader2, Check,
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
-  Camera, Share2, Sparkles, Zap, ChevronRight,
+  Camera, Share2, Sparkles, Zap, Eye, Play, BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
@@ -151,6 +154,37 @@ function formatDate(dateStr: string): string {
   });
 }
 
+// ─── Video embed parser ─────────────────────────────────────────────────────
+
+function parseVideoEmbed(url: string): { type: "iframe" | "link"; src: string } {
+  try {
+    const u = new URL(url);
+
+    // TikTok: tiktok.com/@user/video/123 → iframe embed
+    const tiktokMatch = u.pathname.match(/\/video\/(\d+)/);
+    if (u.hostname.includes("tiktok.com") && tiktokMatch) {
+      return { type: "iframe", src: `https://www.tiktok.com/embed/v2/${tiktokMatch[1]}` };
+    }
+
+    // YouTube: youtube.com/watch?v=xyz or youtu.be/xyz
+    if (u.hostname.includes("youtube.com") && u.searchParams.get("v")) {
+      return { type: "iframe", src: `https://www.youtube.com/embed/${u.searchParams.get("v")}` };
+    }
+    if (u.hostname === "youtu.be" && u.pathname.length > 1) {
+      return { type: "iframe", src: `https://www.youtube.com/embed${u.pathname}` };
+    }
+
+    // Instagram: instagram.com/reel/abc → iframe embed
+    const instaMatch = u.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
+    if (u.hostname.includes("instagram.com") && instaMatch) {
+      return { type: "iframe", src: `https://www.instagram.com/${instaMatch[1]}/${instaMatch[2]}/embed` };
+    }
+  } catch { /* invalid URL — fall through */ }
+
+  // Fallback: external link card
+  return { type: "link", src: url };
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function RepQuestsPage() {
@@ -168,10 +202,28 @@ export default function RepQuestsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState("");
 
+  // Quest detail modal
+  const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
+  const [mediaFullscreen, setMediaFullscreen] = useState(false);
+
   // View submissions
   const [expandedQuestId, setExpandedQuestId] = useState<string | null>(null);
   const [questSubmissions, setQuestSubmissions] = useState<Record<string, Submission[]>>({});
   const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
+
+  // Fullscreen image: Escape key + body scroll lock
+  useEffect(() => {
+    if (!mediaFullscreen) return;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMediaFullscreen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mediaFullscreen]);
 
   const loadQuests = useCallback(async () => {
     try {
@@ -510,15 +562,13 @@ export default function RepQuestsPage() {
                   )}
 
                   {/* CTA button — full width, tier-themed */}
-                  {tab === "active" && (
-                    <button
-                      onClick={() => openSubmitModal(quest)}
-                      className={tier.ctaClass}
-                    >
-                      <Zap size={14} />
-                      Accept Quest
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setDetailQuest(quest)}
+                    className={tier.ctaClass}
+                  >
+                    <Eye size={14} />
+                    View Quest
+                  </button>
 
                   {/* Non-urgent expiry */}
                   {expiry && !expiry.urgent && (
@@ -605,6 +655,188 @@ export default function RepQuestsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Quest Detail Modal */}
+      <Dialog open={!!detailQuest} onOpenChange={(open) => { if (!open) setDetailQuest(null); }}>
+        <DialogContent
+          className="max-w-[480px] p-0 gap-0 overflow-hidden max-md:top-auto max-md:bottom-0 max-md:translate-y-0 max-md:rounded-b-none max-md:max-w-full max-md:max-h-[85vh]"
+        >
+          {detailQuest && (() => {
+            const tier = getQuestTier(detailQuest.points_reward);
+            const QuestTypeIcon = QUEST_TYPE_ICONS[detailQuest.quest_type] || Zap;
+            const questTypeLabel = detailQuest.quest_type.replace(/_/g, " ");
+            const subs = detailQuest.my_submissions;
+            const hasSubs = subs.total > 0;
+            const approvedCount = getApprovedCount(detailQuest);
+            const isCompleted = detailQuest.max_completions ? approvedCount >= detailQuest.max_completions : false;
+            const isRepeatable = detailQuest.max_completions && detailQuest.max_completions > 1;
+            const videoEmbed = detailQuest.video_url ? parseVideoEmbed(detailQuest.video_url) : null;
+
+            return (
+              <div className="overflow-y-auto max-h-[85vh] max-md:max-h-[calc(85vh-0px)]">
+                {/* Media section */}
+                {(detailQuest.video_url || detailQuest.image_url) && (
+                  <div className="rep-quest-detail-media">
+                    {detailQuest.video_url && videoEmbed ? (
+                      videoEmbed.type === "iframe" ? (
+                        <iframe
+                          src={videoEmbed.src}
+                          allow="accelerometer; autoplay; encrypted-media; gyroscope"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <a
+                          href={videoEmbed.src}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rep-quest-video-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Play size={24} />
+                          <span>View Video</span>
+                          <ExternalLink size={14} className="ml-auto opacity-50" />
+                        </a>
+                      )
+                    ) : detailQuest.image_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={detailQuest.image_url}
+                        alt={detailQuest.title}
+                        onClick={() => setMediaFullscreen(true)}
+                      />
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Quest info */}
+                <div className="px-5 pt-4 pb-5 space-y-3">
+                  <DialogTitle className="sr-only">{detailQuest.title}</DialogTitle>
+                  <DialogDescription className="sr-only">Quest details and submission</DialogDescription>
+
+                  {/* Tier + XP badges */}
+                  <div className="flex items-center justify-between">
+                    <span className={tier.badgeClass}>{tier.label}</span>
+                    <span className={tier.xpBadgeClass}>+{detailQuest.points_reward} XP</span>
+                  </div>
+
+                  {/* Quest type + title */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <QuestTypeIcon size={13} className="opacity-50" />
+                      <span className="text-xs text-muted-foreground capitalize">{questTypeLabel}</span>
+                    </div>
+                    <h3 className="text-lg font-extrabold text-foreground tracking-tight leading-snug">
+                      {detailQuest.title}
+                    </h3>
+                  </div>
+
+                  {/* Full description */}
+                  {detailQuest.description && (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {detailQuest.description}
+                    </p>
+                  )}
+
+                  {/* Instructions */}
+                  {detailQuest.instructions && (
+                    <div className="rep-quest-detail-instructions rounded-xl p-4">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <BookOpen size={13} className="text-primary" />
+                        <span className="text-xs font-semibold text-foreground">How to Complete</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                        {detailQuest.instructions}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Progress bar for repeatable quests */}
+                  {isRepeatable && (
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-[10px] text-muted-foreground">Progress</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground">
+                          {approvedCount}/{detailQuest.max_completions}
+                        </span>
+                      </div>
+                      <div className={tier.progressClass}>
+                        <div
+                          className="rep-quest-progress-fill"
+                          style={{ width: `${Math.min(100, (approvedCount / (detailQuest.max_completions || 1)) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status badges */}
+                  {hasSubs && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {subs.pending > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                          <Clock size={10} /> {subs.pending} pending
+                        </span>
+                      )}
+                      {subs.approved > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                          <Check size={10} /> {subs.approved} approved
+                        </span>
+                      )}
+                      {subs.rejected > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                          <X size={10} /> {subs.rejected} rejected
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Footer CTA */}
+                  {isCompleted ? (
+                    <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3">
+                      <Check size={16} className="text-emerald-400" />
+                      <span className="text-sm font-semibold text-emerald-400">Completed</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const quest = detailQuest;
+                        setDetailQuest(null);
+                        setTimeout(() => openSubmitModal(quest), 150);
+                      }}
+                      className={cn(tier.ctaClass, "!mt-1")}
+                    >
+                      <Zap size={14} />
+                      Submit Proof
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Fullscreen image overlay — plain DOM, not nested Radix Dialog */}
+      {mediaFullscreen && detailQuest?.image_url && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
+          onClick={() => setMediaFullscreen(false)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-20 w-9 h-9 bg-white/8 border border-white/12 rounded-lg flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); setMediaFullscreen(false); }}
+            aria-label="Close zoom"
+          >
+            <X size={18} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={detailQuest.image_url}
+            alt={detailQuest.title}
+            className="max-w-[90vw] max-h-[90vh] object-contain cursor-zoom-out"
+          />
         </div>
       )}
 

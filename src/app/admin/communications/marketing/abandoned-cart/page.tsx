@@ -666,52 +666,43 @@ function EmailEditor({
       </CardHeader>
 
       {editMode === "visual" ? (
-        /* ─── VISUAL EDITOR: Styled email representation with editable fields ─── */
+        /* ─── VISUAL EDITOR: looks like the real email, fields blend in ─── */
         <CardContent className="flex-1 overflow-y-auto p-0">
-          {/* Subtle hint */}
-          <div className="flex items-center gap-2 border-b border-primary/10 bg-primary/5 px-4 py-1.5">
-            <Pencil size={10} className="shrink-0 text-primary/50" />
-            <p className="text-[10px] text-primary/60">
-              Hover over <span className="font-semibold text-primary/80">purple-bordered fields</span> to edit
-            </p>
-          </div>
-
           <div className="mx-auto max-w-[520px]">
             {/* Email client chrome — subject + preview */}
             <div className="border-b border-border/50 bg-secondary/30 px-5 py-3">
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2">
-                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Subject</span>
+                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Sub</span>
                   <input
                     type="text"
                     value={step.subject}
                     onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
-                    className="w-full rounded-md border-l-2 border-y-0 border-r-0 border-primary/25 bg-transparent px-2.5 py-1 text-[13px] font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/40 hover:border-l-2 hover:border-primary/60 hover:bg-primary/5 focus:border-l-2 focus:border-primary focus:bg-primary/5"
+                    className="w-full rounded bg-transparent px-1.5 py-0.5 text-[13px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground/30 hover:bg-white/5 focus:bg-white/5 focus:ring-1 focus:ring-primary/30"
                     placeholder="Email subject line..."
                   />
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Preview</span>
+                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Pre</span>
                   <input
                     type="text"
                     value={step.preview_text}
                     onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
-                    className="w-full rounded-md border-l-2 border-y-0 border-r-0 border-primary/25 bg-transparent px-2.5 py-1 text-[12px] text-muted-foreground/60 outline-none transition-all placeholder:text-muted-foreground/30 hover:border-l-2 hover:border-primary/60 hover:bg-primary/5 focus:border-l-2 focus:border-primary focus:bg-primary/5"
+                    className="w-full rounded bg-transparent px-1.5 py-0.5 text-[12px] text-muted-foreground/50 outline-none transition-colors placeholder:text-muted-foreground/20 hover:bg-white/5 focus:bg-white/5 focus:ring-1 focus:ring-primary/30"
                     placeholder="Inbox preview text..."
                   />
                 </div>
               </div>
             </div>
 
-            {/* Email body visual */}
+            {/* Email body — looks like the actual rendered email */}
             <div className="bg-[#f4f4f5] p-4">
               <div className="overflow-hidden rounded-xl" style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.12)" }}>
                 {/* Dark hero block */}
                 <div style={{ backgroundColor: "#0e0e0e" }}>
-                  {/* Accent bar */}
                   <div style={{ height: "4px", backgroundColor: accentColor }} />
 
-                  {/* Logo area */}
+                  {/* Logo */}
                   <div className="px-8 pt-8 text-center">
                     {branding.logo_url ? (
                       <img
@@ -726,24 +717,24 @@ function EmailEditor({
                     )}
                   </div>
 
-                  {/* Editable greeting — purple left border affordance */}
-                  <div className="px-5 pt-6 pb-1">
+                  {/* Editable greeting — invisible input, subtle hover */}
+                  <div className="px-7 pt-6 pb-1">
                     <input
                       type="text"
                       value={step.greeting}
                       onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
-                      className="w-full rounded-md border-l-2 border-y-0 border-r-0 border-primary/30 bg-transparent px-3 py-1.5 text-center text-[20px] font-bold leading-tight text-white outline-none transition-all placeholder:text-white/20 hover:border-primary/70 hover:bg-white/5 focus:border-primary focus:bg-white/5"
+                      className="w-full rounded bg-transparent px-1 py-1 text-center text-[20px] font-bold leading-tight text-white outline-none transition-colors placeholder:text-white/15 hover:bg-white/[0.04] focus:bg-white/[0.06] focus:ring-1 focus:ring-white/20"
                       placeholder="Greeting headline..."
                       style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
                     />
                   </div>
 
-                  {/* Editable message — purple left border affordance */}
-                  <div className="px-5 pb-7">
+                  {/* Editable body message */}
+                  <div className="px-7 pb-8">
                     <textarea
                       value={step.body_message}
                       onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
-                      className="w-full resize-none rounded-md border-l-2 border-y-0 border-r-0 border-primary/30 bg-transparent px-3 py-1.5 text-center text-[14px] leading-relaxed outline-none transition-all placeholder:text-white/15 hover:border-primary/70 hover:bg-white/5 focus:border-primary focus:bg-white/5"
+                      className="w-full resize-none rounded bg-transparent px-1 py-1 text-center text-[14px] leading-relaxed outline-none transition-colors placeholder:text-white/10 hover:bg-white/[0.04] focus:bg-white/[0.06] focus:ring-1 focus:ring-white/20"
                       style={{ color: "#999999", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
                       placeholder="Body message..."
                       rows={2}
@@ -751,10 +742,10 @@ function EmailEditor({
                   </div>
                 </div>
 
-                {/* White content area — realistic sample data */}
+                {/* White content area */}
                 <div style={{ backgroundColor: "#ffffff" }}>
-                  {/* Event card — realistic preview */}
-                  <div className="px-7 pt-6">
+                  {/* Event card */}
+                  <div style={{ padding: "24px 28px 0" }}>
                     <div style={{ backgroundColor: "#111111", borderRadius: "10px", padding: "18px 22px" }}>
                       <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "2.5px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "10px" }}>
                         EVENT
@@ -769,12 +760,11 @@ function EmailEditor({
                     </div>
                   </div>
 
-                  {/* Order items — realistic preview */}
-                  <div className="px-7 pt-5">
+                  {/* Order items */}
+                  <div style={{ padding: "20px 28px 0" }}>
                     <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "2.5px", textTransform: "uppercase" as const, color: "#aaaaaa", marginBottom: "12px" }}>
                       YOUR ORDER
                     </div>
-                    {/* Item rows */}
                     <div style={{ borderTop: "1px solid #f0f0f0" }}>
                       <div className="flex items-center justify-between" style={{ padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}>
                         <div>
@@ -791,65 +781,43 @@ function EmailEditor({
                         <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 600, color: "#333" }}>£55.00</span>
                       </div>
                     </div>
-                    {/* Total */}
-                    <div className="flex items-center justify-between" style={{ padding: "14px 0 4px" }}>
+                    <div className="flex items-center justify-between" style={{ padding: "14px 0 0" }}>
                       <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "14px", fontWeight: 600, color: "#111" }}>Total</span>
                       <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "20px", fontWeight: 700, color: "#111" }}>£105.00</span>
                     </div>
                   </div>
 
-                  {/* Discount block — premium coupon-style design */}
+                  {/* Discount — compact, clean */}
                   {step.include_discount && (
-                    <div className="px-7 pt-5">
-                      <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden" }}>
-                        {/* Dark gradient background */}
-                        <div style={{
-                          background: `linear-gradient(135deg, #0e0e0e 0%, ${accentColor}15 100%)`,
-                          border: `1px dashed ${accentColor}40`,
-                          borderRadius: "12px",
-                          padding: "24px 20px",
-                          textAlign: "center" as const,
-                        }}>
-                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#888", marginBottom: "12px" }}>
-                            Your exclusive offer
-                          </div>
-                          <div style={{
-                            display: "inline-block",
-                            backgroundColor: accentColor,
-                            borderRadius: "8px",
-                            padding: "10px 28px",
-                            marginBottom: "10px",
-                          }}>
-                            <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "22px", fontWeight: 800, color: "#ffffff", letterSpacing: "3px" }}>
-                              {step.discount_code || "CODE"}
-                            </span>
-                          </div>
-                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "14px", fontWeight: 600, color: "#ffffff", marginTop: "4px" }}>
-                            {step.discount_percent || 0}% off your order
-                          </div>
-                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#666", marginTop: "6px" }}>
-                            Apply at checkout &middot; Limited time
-                          </div>
-                        </div>
+                    <div style={{ padding: "20px 28px 0", textAlign: "center" as const }}>
+                      <div style={{ display: "inline-block", backgroundColor: "#111", borderRadius: "8px", padding: "12px 24px" }}>
+                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#888" }}>
+                          Use code{" "}
+                        </span>
+                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "15px", fontWeight: 800, color: accentColor, letterSpacing: "2px" }}>
+                          {step.discount_code || "CODE"}
+                        </span>
+                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#888" }}>
+                          {" "}for {step.discount_percent || 0}% off
+                        </span>
                       </div>
                     </div>
                   )}
 
-                  {/* CTA button — premium with shadow */}
-                  <div className="px-7 py-7 text-center">
+                  {/* CTA button */}
+                  <div style={{ padding: "24px 28px 28px", textAlign: "center" as const }}>
                     <div
                       style={{
                         display: "inline-block",
                         backgroundColor: accentColor,
                         color: "#ffffff",
                         fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                        fontSize: "14px",
+                        fontSize: "13px",
                         fontWeight: 700,
                         letterSpacing: "1.5px",
                         textTransform: "uppercase" as const,
-                        padding: "16px 52px",
-                        borderRadius: "10px",
-                        boxShadow: `0 4px 14px ${accentColor}40`,
+                        padding: "15px 48px",
+                        borderRadius: "8px",
                       }}
                     >
                       Complete Your Order
@@ -858,14 +826,14 @@ function EmailEditor({
                 </div>
 
                 {/* Footer */}
-                <div style={{ backgroundColor: "#fafafa", padding: "20px 32px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0" }}>
-                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#cccccc" }}>
+                <div style={{ backgroundColor: "#fafafa", padding: "18px 28px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0" }}>
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#ccc" }}>
                     {branding.from_name || "YOUR BRAND"}
                   </div>
-                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#bbbbbb", marginTop: "6px" }}>
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#bbb", marginTop: "5px" }}>
                     You&apos;re receiving this because you started checkout.
                   </div>
-                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", color: "#cccccc", marginTop: "4px", textDecoration: "underline" }}>
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", color: "#ccc", marginTop: "4px", textDecoration: "underline" }}>
                     Unsubscribe
                   </div>
                 </div>

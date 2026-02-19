@@ -728,30 +728,15 @@ export function buildAbandonedCartRecoveryEmail(
                 </tr>
 
                 ${hasDiscount ? `
-                <!-- Discount Code — premium coupon-style card -->
+                <!-- Discount Code — compact inline pill -->
                 <tr>
-                  <td style="padding: 24px 40px 0;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 12px; overflow: hidden;">
+                  <td style="padding: 20px 40px 0; text-align: center;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                       <tr>
-                        <td style="background-color: #0e0e0e; background-image: linear-gradient(135deg, #0e0e0e, #1a1a1a); border: 1px dashed ${accent}40; border-radius: 12px; padding: 28px 24px; text-align: center;">
-                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #888888; margin-bottom: 14px;">
-                            Your exclusive offer
-                          </div>
-                          <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-                            <tr>
-                              <td style="background-color: ${accent}; border-radius: 8px; padding: 10px 28px;">
-                                <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 3px;">
-                                  ${escapeHtml(cart.discount_code!)}
-                                </span>
-                              </td>
-                            </tr>
-                          </table>
-                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; margin-top: 12px;">
-                            ${cart.discount_percent}% off your order
-                          </div>
-                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #666666; margin-top: 6px;">
-                            Apply at checkout &middot; Limited time
-                          </div>
+                        <td style="background-color: #111111; border-radius: 8px; padding: 12px 24px;">
+                          <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #888888;">Use code </span>
+                          <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 800; color: ${accent}; letter-spacing: 2px;">${escapeHtml(cart.discount_code!)}</span>
+                          <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #888888;"> for ${cart.discount_percent}% off</span>
                         </td>
                       </tr>
                     </table>

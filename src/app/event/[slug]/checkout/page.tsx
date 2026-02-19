@@ -32,6 +32,8 @@ export default async function CheckoutRoute({
 
   // Cart restoration: ?restore= token from abandoned cart recovery email
   const restoreToken = typeof sp.restore === "string" ? sp.restore : undefined;
+  // Discount code from recovery email link: ?discount=CODE
+  const discountCode = typeof sp.discount === "string" ? sp.discount : undefined;
 
   // Fetch event from DB
   let event = null;
@@ -40,6 +42,7 @@ export default async function CheckoutRoute({
     firstName: string;
     lastName: string;
     cartParam: string;
+    discountCode?: string;
   } | null = null;
 
   try {
@@ -82,6 +85,7 @@ export default async function CheckoutRoute({
             firstName: cart.first_name || "",
             lastName: cart.last_name || "",
             cartParam,
+            ...(discountCode ? { discountCode } : {}),
           };
         }
       }

@@ -18,6 +18,8 @@ interface EmailStepConfig {
   discount_percent: number;
   cta_text?: string;
   discount_label?: string;
+  greeting?: string;
+  body_message?: string;
 }
 
 interface AutomationSettings {
@@ -324,6 +326,8 @@ export async function GET(request: NextRequest) {
             discount_percent: step.discount_percent || undefined,
             cta_text: step.cta_text || undefined,
             discount_label: step.discount_label || undefined,
+            greeting: step.greeting || undefined,
+            body_message: step.body_message || undefined,
           },
         });
 

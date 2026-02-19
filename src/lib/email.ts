@@ -469,6 +469,8 @@ export async function sendAbandonedCartRecoveryEmail(params: {
     discount_percent?: number;
     cta_text?: string;
     discount_label?: string;
+    greeting?: string;
+    body_message?: string;
   };
 }): Promise<boolean> {
   try {
@@ -486,7 +488,11 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
     ).replace(/\/$/, "");
-    const recoveryUrl = `${siteUrl}/event/${params.event.slug}/checkout?restore=${params.cartToken}`;
+    // Build recovery URL — include discount code if present so checkout auto-applies it
+    const discountParam = params.stepConfig.include_discount && params.stepConfig.discount_code
+      ? `&discount=${encodeURIComponent(params.stepConfig.discount_code)}`
+      : "";
+    const recoveryUrl = `${siteUrl}/event/${params.event.slug}/checkout?restore=${params.cartToken}${discountParam}`;
     const unsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${encodeURIComponent(params.cartToken)}&type=cart_recovery`;
 
     const currency = params.currency || params.event.currency || "GBP";
@@ -545,6 +551,8 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       {
         subject: params.stepConfig.subject,
         preview_text: params.stepConfig.preview_text,
+        greeting: params.stepConfig.greeting,
+        body_message: params.stepConfig.body_message,
         cta_text: params.stepConfig.cta_text,
         discount_label: params.stepConfig.discount_label,
       },

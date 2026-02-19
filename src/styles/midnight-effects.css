@@ -549,6 +549,31 @@ body:has([data-theme="midnight"]) .header {
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
+/* Scroll-triggered cascade: each pill briefly glows accent color then fades back */
+[data-theme="midnight"] .midnight-lineup-pill.lineup-cascade {
+  animation: lineupCascade 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes lineupCascade {
+  0%   { border-color: inherit; color: inherit; background: inherit; box-shadow: none; }
+  30%  { border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+         color: var(--color-foreground);
+         background: color-mix(in srgb, var(--accent) 6%, transparent);
+         box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 12%, transparent); }
+  100% { border-color: inherit; color: inherit; background: inherit; box-shadow: none; }
+}
+
+/* "tap to explore" cascade highlight */
+[data-theme="midnight"] .midnight-lineup-hint.lineup-hint-glow {
+  animation: lineupHintGlow 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes lineupHintGlow {
+  0%   { color: inherit; }
+  20%  { color: var(--accent); }
+  100% { color: inherit; }
+}
+
 
 /* ═══════════════════════════════════════════════
    CONTENT ZONE — Full-width dark section below tickets
@@ -924,8 +949,11 @@ html.checkout-active .noise {
     animation: none;
   }
   [data-theme="midnight"] .midnight-lineup-pill,
+  [data-theme="midnight"] .midnight-lineup-pill.lineup-cascade,
+  [data-theme="midnight"] .midnight-lineup-hint.lineup-hint-glow,
   [data-theme="midnight"] [data-reveal] {
     transition: none;
+    animation: none;
   }
   .midnight-artist-swipe,
   .midnight-artist-swipe-fast,

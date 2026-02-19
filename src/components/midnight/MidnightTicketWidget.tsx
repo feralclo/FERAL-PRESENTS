@@ -339,11 +339,12 @@ export function MidnightTicketWidget({
                     <ExpressCheckout
                       eventId={eventId}
                       currency={currency}
-                      amount={totalPrice}
+                      amount={discountedTotal}
                       items={expressItems}
                       onSuccess={handleExpressSuccess}
                       onError={setExpressError}
                       onAvailable={() => setExpressAvailable(true)}
+                      discountCode={discount?.code}
                     />
                   </div>
                 </div>

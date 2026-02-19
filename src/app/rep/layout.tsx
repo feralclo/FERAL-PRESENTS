@@ -348,7 +348,9 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                       strokeWidth={active ? 2 : 1.5}
                       className={cn(
                         "transition-all duration-300",
-                        active ? "text-white" : "text-white/30"
+                        active
+                          ? "text-white drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]"
+                          : "text-white/30"
                       )}
                     />
                     {/* Quest badge */}
@@ -360,7 +362,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   </div>
                   <span className={cn(
                     "text-[9px] font-semibold tracking-wide transition-all duration-300",
-                    active ? "text-white/80" : "text-white/20"
+                    active ? "text-white/80" : "text-white/25"
                   )}>
                     {item.label}
                   </span>

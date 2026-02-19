@@ -463,6 +463,7 @@ body:has([data-rep]) > .noise {
 }
 .rep-quest-rare:hover {
   border-color: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.06);
 }
 
 .rep-quest-epic {
@@ -471,6 +472,7 @@ body:has([data-rep]) > .noise {
 }
 .rep-quest-epic:hover {
   border-color: rgba(139, 92, 246, 0.30);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.06);
 }
 
 .rep-quest-legendary {
@@ -523,11 +525,24 @@ body:has([data-rep]) > .noise {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.18);
 }
-/* Keep tier class names as no-ops for backwards compat */
-.rep-quest-cta-common,
-.rep-quest-cta-rare,
-.rep-quest-cta-epic,
-.rep-quest-cta-legendary {}
+.rep-quest-cta-common {}
+.rep-quest-cta-rare:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.08);
+}
+.rep-quest-cta-epic:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.08);
+}
+.rep-quest-cta-legendary {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.15));
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #FBBF24;
+}
+.rep-quest-cta-legendary:hover {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
 
 /* ── Quest action button (unified glass) ── */
 .rep-quest-action {
@@ -1337,7 +1352,10 @@ body:has([data-rep]) > .noise {
   border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 20px;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rep-quest-card:active {
+  transform: scale(0.98);
 }
 .rep-quest-has-image {
   min-height: 280px;
@@ -1360,8 +1378,42 @@ body:has([data-rep]) > .noise {
   background: var(--color-card);
   border: 1px solid rgba(255, 255, 255, 0.08);
   animation: questSheetIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Detail sheet tier glows ── */
+.rep-quest-detail-common {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.rep-quest-detail-rare {
+  border-color: rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.06);
+}
+.rep-quest-detail-epic {
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.08);
+}
+.rep-quest-detail-legendary {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.1);
+}
+
+/* ── Detail CTA tier variants ── */
+.rep-quest-detail-cta-common {}
+.rep-quest-detail-cta-rare:hover {
+  box-shadow: 0 6px 28px rgba(56, 189, 248, 0.3), 0 0 50px rgba(56, 189, 248, 0.1);
+}
+.rep-quest-detail-cta-epic:hover {
+  box-shadow: 0 6px 28px rgba(139, 92, 246, 0.4), 0 0 50px rgba(139, 92, 246, 0.15);
+}
+.rep-quest-detail-cta-legendary {
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1);
+}
+.rep-quest-detail-cta-legendary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 28px rgba(245, 158, 11, 0.4), 0 0 50px rgba(245, 158, 11, 0.15);
 }
 @keyframes questSheetIn {
   from { opacity: 0; transform: translateY(40px); }
@@ -1412,7 +1464,7 @@ body:has([data-rep]) > .noise {
 }
 .rep-quest-detail-media img {
   width: 100%;
-  max-height: 260px;
+  max-height: 200px;
   object-fit: contain;
   border-radius: 12px;
   cursor: zoom-in;
@@ -1494,16 +1546,25 @@ body:has([data-rep]) > .noise {
 
 /* ── Quest progress bar ── */
 .rep-quest-progress {
-  height: 6px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
   margin-top: 8px;
 }
 .rep-quest-progress-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 3px;
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+.rep-quest-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+  animation: xpShine 2s ease-in-out infinite;
 }
 .rep-quest-progress-common .rep-quest-progress-fill { background: #666680; }
 .rep-quest-progress-rare .rep-quest-progress-fill { background: #38BDF8; }
@@ -1719,7 +1780,8 @@ body:has([data-rep]) > .noise {
   .rep-level-up-badge,
   .rep-level-up-overlay,
   .rep-cursor,
-  .rep-quest-detail-sheet {
+  .rep-quest-detail-sheet,
+  .rep-quest-progress-fill::after {
     animation: none !important;
   }
   /* Entrance animations: instant appearance */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   Compass, Upload, Link as LinkIcon, Type, X, Loader2, Check,
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
@@ -8,6 +9,9 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
+import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
+
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -662,20 +666,31 @@ export default function RepQuestsPage() {
         const approvedCount = getApprovedCount(detailQuest);
         const isCompleted = detailQuest.max_completions ? approvedCount >= detailQuest.max_completions : false;
         const isRepeatable = detailQuest.max_completions && detailQuest.max_completions > 1;
-        const videoEmbed = detailQuest.video_url ? parseVideoEmbed(detailQuest.video_url) : null;
+        const hasMuxVideo = detailQuest.video_url && isMuxPlaybackId(detailQuest.video_url);
+        const videoEmbed = detailQuest.video_url && !hasMuxVideo ? parseVideoEmbed(detailQuest.video_url) : null;
+
+        const titleColorClass =
+          tier.tier === "legendary" ? "rep-gradient-text-gold"
+          : tier.tier === "epic" ? "rep-gradient-text"
+          : tier.tier === "rare" ? "text-[#38BDF8]"
+          : "text-foreground";
 
         return (
           <div
-            className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
             onClick={(e) => { if (e.target === e.currentTarget) setDetailQuest(null); }}
           >
             <div
-              className="rep-quest-detail-sheet relative w-full max-w-md max-h-[90vh] rounded-t-2xl md:rounded-2xl"
+              className={cn(
+                "rep-quest-detail-sheet relative w-full max-w-md rounded-t-2xl md:rounded-2xl",
+                `max-h-[calc(85vh-env(safe-area-inset-bottom))] md:max-h-[90vh]`,
+                `rep-quest-detail-${tier.tier}`,
+              )}
               role="dialog"
               aria-label={detailQuest.title}
             >
               {/* Drag handle (mobile) */}
-              <div className="rep-quest-drag-handle-zone md:hidden">
+              <div className="rep-quest-drag-handle-zone md:hidden shrink-0">
                 <div className="rep-quest-drag-handle" />
               </div>
 
@@ -688,124 +703,145 @@ export default function RepQuestsPage() {
                 <X size={16} />
               </button>
 
-              {/* Media section */}
-              {(detailQuest.video_url || detailQuest.image_url) && (
-                <div className="rep-quest-detail-media pt-2">
-                  {detailQuest.video_url && videoEmbed ? (
-                    videoEmbed.type === "iframe" ? (
-                      <iframe
-                        src={videoEmbed.src}
-                        allow="accelerometer; autoplay; encrypted-media; gyroscope"
-                        allowFullScreen
-                        style={
-                          videoEmbed.src.includes("youtube.com") ? { aspectRatio: "16/9" }
-                          : videoEmbed.src.includes("tiktok.com") ? { height: "min(500px, 65vh)" }
-                          : { height: "min(450px, 60vh)" }
-                        }
+              {/* Scrollable content area */}
+              <div className="flex-1 overflow-y-auto overscroll-contain">
+                {/* Media section */}
+                {(detailQuest.video_url || detailQuest.image_url) && (
+                  <div className="rep-quest-detail-media pt-2">
+                    {hasMuxVideo ? (
+                      <MuxPlayer
+                        playbackId={detailQuest.video_url!}
+                        muted
+                        autoPlay="muted"
+                        loop
+                        style={{
+                          aspectRatio: "16/9",
+                          maxHeight: "min(280px, 40vh)",
+                          "--controls": "none",
+                          "--media-object-fit": "contain",
+                        } as Record<string, string>}
                       />
-                    ) : (
-                      <a
-                        href={videoEmbed.src}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rep-quest-video-link"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Play size={24} />
-                        <span>View Video</span>
-                        <ExternalLink size={14} className="ml-auto opacity-50" />
-                      </a>
-                    )
-                  ) : detailQuest.image_url ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={detailQuest.image_url}
-                      alt={detailQuest.title}
-                      onClick={() => setMediaFullscreen(true)}
-                    />
-                  ) : null}
-                </div>
-              )}
-
-              {/* Quest info */}
-              <div className="px-5 pt-4 pb-5 space-y-3">
-                {/* Tier + XP badges */}
-                <div className="flex items-center justify-between">
-                  <span className={tier.badgeClass}>{tier.label}</span>
-                  <span className={tier.xpBadgeClass}>+{detailQuest.points_reward} XP</span>
-                </div>
-
-                {/* Quest type + title */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <QuestTypeIcon size={13} className="opacity-50" />
-                    <span className="text-xs text-muted-foreground capitalize">{questTypeLabel}</span>
+                    ) : detailQuest.video_url && videoEmbed ? (
+                      videoEmbed.type === "iframe" ? (
+                        <iframe
+                          src={videoEmbed.src}
+                          allow="accelerometer; autoplay; encrypted-media; gyroscope"
+                          allowFullScreen
+                          style={
+                            videoEmbed.src.includes("youtube.com") ? { aspectRatio: "16/9", maxHeight: "min(280px, 40vh)" }
+                            : videoEmbed.src.includes("tiktok.com") ? { height: "min(350px, 45vh)" }
+                            : { height: "min(350px, 45vh)" }
+                          }
+                        />
+                      ) : (
+                        <a
+                          href={videoEmbed.src}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rep-quest-video-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Play size={24} />
+                          <span>View Video</span>
+                          <ExternalLink size={14} className="ml-auto opacity-50" />
+                        </a>
+                      )
+                    ) : detailQuest.image_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={detailQuest.image_url}
+                        alt={detailQuest.title}
+                        onClick={() => setMediaFullscreen(true)}
+                      />
+                    ) : null}
                   </div>
-                  <h3 className="text-xl font-extrabold text-foreground tracking-tight leading-snug">
-                    {detailQuest.title}
-                  </h3>
-                </div>
-
-                {/* Full description */}
-                {detailQuest.description && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {detailQuest.description}
-                  </p>
                 )}
 
-                {/* Instructions */}
-                {detailQuest.instructions && (
-                  <div className="rep-quest-detail-instructions rounded-xl p-4">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <BookOpen size={13} className="text-primary" />
-                      <span className="text-xs font-semibold text-foreground">How to Complete</span>
+                {/* Quest info */}
+                <div className="px-5 pt-4 pb-3 space-y-3">
+                  {/* Tier + XP badges — bigger, centered */}
+                  <div className="flex items-center justify-center gap-3">
+                    <span className={tier.badgeClass}>{tier.label}</span>
+                    <span className={cn(tier.xpBadgeClass, "text-base font-extrabold flex items-center gap-1")}>
+                      <Zap size={14} />
+                      +{detailQuest.points_reward} XP
+                    </span>
+                  </div>
+
+                  {/* Quest type + title — tier colored */}
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <QuestTypeIcon size={13} className="opacity-50" />
+                      <span className="text-xs text-muted-foreground capitalize">{questTypeLabel}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                      {detailQuest.instructions}
+                    <h3 className={cn("text-xl font-extrabold tracking-tight leading-snug", titleColorClass)}>
+                      {detailQuest.title}
+                    </h3>
+                  </div>
+
+                  {/* Full description */}
+                  {detailQuest.description && (
+                    <p className="text-sm text-muted-foreground leading-relaxed text-center">
+                      {detailQuest.description}
                     </p>
-                  </div>
-                )}
+                  )}
 
-                {/* Progress bar for repeatable quests */}
-                {isRepeatable && (
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[10px] text-muted-foreground">Progress</span>
-                      <span className="text-[10px] font-semibold text-muted-foreground">
-                        {approvedCount}/{detailQuest.max_completions}
-                      </span>
+                  {/* Instructions */}
+                  {detailQuest.instructions && (
+                    <div className="rep-quest-detail-instructions rounded-xl p-4">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <BookOpen size={13} className="text-primary" />
+                        <span className="text-xs font-semibold text-foreground">How to Complete</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                        {detailQuest.instructions}
+                      </p>
                     </div>
-                    <div className={tier.progressClass}>
-                      <div
-                        className="rep-quest-progress-fill"
-                        style={{ width: `${Math.min(100, (approvedCount / (detailQuest.max_completions || 1)) * 100)}%` }}
-                      />
+                  )}
+
+                  {/* Progress bar for repeatable quests */}
+                  {isRepeatable && (
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-[10px] text-muted-foreground">Progress</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground">
+                          {approvedCount}/{detailQuest.max_completions}
+                        </span>
+                      </div>
+                      <div className={tier.progressClass}>
+                        <div
+                          className="rep-quest-progress-fill"
+                          style={{ width: `${Math.min(100, (approvedCount / (detailQuest.max_completions || 1)) * 100)}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Status badges */}
-                {hasSubs && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {subs.pending > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
-                        <Clock size={10} /> {subs.pending} pending
-                      </span>
-                    )}
-                    {subs.approved > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                        <Check size={10} /> {subs.approved} approved
-                      </span>
-                    )}
-                    {subs.rejected > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
-                        <X size={10} /> {subs.rejected} rejected
-                      </span>
-                    )}
-                  </div>
-                )}
+                  {/* Status badges */}
+                  {hasSubs && (
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {subs.pending > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                          <Clock size={10} /> {subs.pending} pending
+                        </span>
+                      )}
+                      {subs.approved > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                          <Check size={10} /> {subs.approved} approved
+                        </span>
+                      )}
+                      {subs.rejected > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                          <X size={10} /> {subs.rejected} rejected
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                {/* Footer CTA */}
+              {/* Sticky CTA footer */}
+              <div className="shrink-0 px-5 pb-5 pt-3 bg-gradient-to-t from-[var(--color-card)] via-[var(--color-card)] to-transparent">
                 {isCompleted ? (
                   <div className="rep-quest-detail-complete">
                     <Check size={16} />
@@ -818,7 +854,7 @@ export default function RepQuestsPage() {
                       setDetailQuest(null);
                       setTimeout(() => openSubmitModal(quest), 150);
                     }}
-                    className="rep-quest-detail-cta"
+                    className={cn("rep-quest-detail-cta", `rep-quest-detail-cta-${tier.tier}`)}
                   >
                     <Zap size={16} />
                     Submit Proof
@@ -874,11 +910,22 @@ export default function RepQuestsPage() {
             )}
 
             {submitted ? (
-              <div className="text-center py-6">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-3">
+              <div className="text-center py-6 relative">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-3 rep-reward-success-ring relative">
                   <Check size={20} className="text-success" />
+                  <div className="rep-success-particles">
+                    <div className="rep-success-particle" />
+                    <div className="rep-success-particle" />
+                    <div className="rep-success-particle" />
+                    <div className="rep-success-particle" />
+                    <div className="rep-success-particle" />
+                    <div className="rep-success-particle" />
+                  </div>
                 </div>
                 <p className="text-sm text-foreground font-medium">Submitted for review!</p>
+                {submitQuest && (
+                  <p className="text-xs text-primary font-bold mt-1">+{submitQuest.points_reward} XP pending</p>
+                )}
               </div>
             ) : (
               <>

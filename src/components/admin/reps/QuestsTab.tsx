@@ -32,6 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import {
   Plus,
   Loader2,
   Check,
@@ -40,8 +46,15 @@ import {
   Swords,
   Pencil,
   Trash2,
+  FileText,
+  ImageIcon,
+  Settings2,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+import { isMuxPlaybackId } from "@/lib/mux";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 import type {
   RepQuest,
   QuestType,
@@ -268,114 +281,136 @@ export function QuestsTab() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit Quest" : "Create Quest"}</DialogTitle>
-            <DialogDescription>{editId ? "Update this quest." : "Create a new quest for your reps to complete."}</DialogDescription>
+            <DialogDescription>{editId ? "Update this quest." : "Create a new quest for your reps."}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
-            {/* ── Quest Content ── */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pt-2">Quest Content</p>
-            <div className="space-y-2">
-              <Label>Title *</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share on Instagram Stories" autoFocus />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={2} />
-            </div>
-            <div className="space-y-2">
-              <Label>How to Complete</Label>
-              <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Step-by-step instructions shown to reps in the quest detail view" rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={questType} onValueChange={(v) => setQuestType(v as QuestType)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="social_post">Social Post</SelectItem>
-                    <SelectItem value="story_share">Story Share</SelectItem>
-                    <SelectItem value="content_creation">Content Creation</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Points Reward</Label>
-                <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
-              </div>
-            </div>
+          <Tabs defaultValue="content" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="content"><FileText size={14} /> Content</TabsTrigger>
+              <TabsTrigger value="media"><ImageIcon size={14} /> Media</TabsTrigger>
+              <TabsTrigger value="settings"><Settings2 size={14} /> Settings</TabsTrigger>
+            </TabsList>
 
-            {/* ── Reference Media ── */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pt-2">Reference Media</p>
-            <div className="space-y-1.5">
-              <ImageUpload
-                label="Reference Image"
-                value={imageUrl}
-                onChange={setImageUrl}
-                uploadKey={editId ? `quest_${editId}_image` : undefined}
-              />
-              <p className="text-[11px] text-muted-foreground">Recommended: 800 &times; 450px landscape (16:9). Shown as an ambient background on quest cards.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Reference Video URL</Label>
-              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="TikTok / YouTube / Instagram link" />
-              {videoPreview && (() => {
-                try {
-                  const u = new URL(videoPreview);
-                  // YouTube
-                  const ytId = u.hostname.includes("youtube.com") ? u.searchParams.get("v") : u.hostname === "youtu.be" && u.pathname.length > 1 ? u.pathname.slice(1) : null;
-                  if (ytId) {
-                    return (
-                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
-                        <iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full border-none" style={{ aspectRatio: "16/9" }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
-                      </div>
-                    );
-                  }
-                  // TikTok
-                  const tiktokMatch = u.pathname.match(/\/video\/(\d+)/);
-                  if (u.hostname.includes("tiktok.com") && tiktokMatch) {
-                    return (
-                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
-                        <iframe src={`https://www.tiktok.com/embed/v2/${tiktokMatch[1]}`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
-                      </div>
-                    );
-                  }
-                  // Instagram
-                  const instaMatch = u.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
-                  if (u.hostname.includes("instagram.com") && instaMatch) {
-                    return (
-                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
-                        <iframe src={`https://www.instagram.com/${instaMatch[1]}/${instaMatch[2]}/embed`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
-                      </div>
-                    );
-                  }
-                  // Unknown URL
-                  return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
-                } catch {
-                  return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
-                }
-              })()}
-            </div>
+            {/* ── Content Tab ── */}
+            <TabsContent value="content" className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Title *</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share on Instagram Stories" autoFocus />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>How to Complete</Label>
+                <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Step-by-step instructions shown to reps in the quest detail view" rows={3} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={questType} onValueChange={(v) => setQuestType(v as QuestType)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="social_post">Social Post</SelectItem>
+                      <SelectItem value="story_share">Story Share</SelectItem>
+                      <SelectItem value="content_creation">Content Creation</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Points Reward</Label>
+                  <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
+                </div>
+              </div>
+            </TabsContent>
 
-            {/* ── Limits & Scheduling ── */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pt-2">Limits & Scheduling</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Max Completions per Rep</Label>
-                <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+            {/* ── Media Tab ── */}
+            <TabsContent value="media" className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <ImageUpload
+                  label="Reference Image"
+                  value={imageUrl}
+                  onChange={setImageUrl}
+                  uploadKey={editId ? `quest_${editId}_image` : undefined}
+                />
+                <p className="text-[11px] text-muted-foreground">Recommended: 800 &times; 450px landscape (16:9). Shown as an ambient background on quest cards.</p>
               </div>
               <div className="space-y-2">
-                <Label>Expires At</Label>
-                <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+                <Label>Reference Video URL</Label>
+                <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Mux playback ID, TikTok, YouTube, or Instagram link" />
+                {videoPreview && (() => {
+                  // Mux playback ID
+                  if (isMuxPlaybackId(videoPreview)) {
+                    return (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                        <MuxPlayer
+                          playbackId={videoPreview}
+                          muted
+                          autoPlay="muted"
+                          loop
+                          style={{ aspectRatio: "16/9", "--controls": "none" } as Record<string, string>}
+                        />
+                      </div>
+                    );
+                  }
+                  try {
+                    const u = new URL(videoPreview);
+                    // YouTube
+                    const ytId = u.hostname.includes("youtube.com") ? u.searchParams.get("v") : u.hostname === "youtu.be" && u.pathname.length > 1 ? u.pathname.slice(1) : null;
+                    if (ytId) {
+                      return (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                          <iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full border-none" style={{ aspectRatio: "16/9" }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
+                        </div>
+                      );
+                    }
+                    // TikTok
+                    const tiktokMatch = u.pathname.match(/\/video\/(\d+)/);
+                    if (u.hostname.includes("tiktok.com") && tiktokMatch) {
+                      return (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                          <iframe src={`https://www.tiktok.com/embed/v2/${tiktokMatch[1]}`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
+                        </div>
+                      );
+                    }
+                    // Instagram
+                    const instaMatch = u.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
+                    if (u.hostname.includes("instagram.com") && instaMatch) {
+                      return (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                          <iframe src={`https://www.instagram.com/${instaMatch[1]}/${instaMatch[2]}/embed`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
+                        </div>
+                      );
+                    }
+                    return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
+                  } catch {
+                    return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
+                  }
+                })()}
               </div>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">Notify Reps</p>
-                <p className="text-[11px] text-muted-foreground">Send email notification to all assigned reps</p>
+            </TabsContent>
+
+            {/* ── Settings Tab ── */}
+            <TabsContent value="settings" className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Max Completions per Rep</Label>
+                  <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expires At</Label>
+                  <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+                </div>
               </div>
-              <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
-            </div>
-          </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Notify Reps</p>
+                  <p className="text-[11px] text-muted-foreground">Send email notification to all assigned reps</p>
+                </div>
+                <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
+              </div>
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving || !title.trim()}>

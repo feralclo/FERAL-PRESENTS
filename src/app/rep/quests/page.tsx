@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import {
   Compass, Upload, Link as LinkIcon, Type, X, Loader2, Check,
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
-  Camera, Share2, Sparkles, Zap, Play, BookOpen,
+  Camera, Share2, Sparkles, Zap, Play, BookOpen, Maximize2,
+  Volume2, VolumeX,
 } from "lucide-react";
 import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
@@ -14,9 +15,9 @@ import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 
-// ─── Mux video: auto-play with thumbnail overlay (matches MidnightArtistModal) ─
+// ─── Mux video: mini preview with tap-to-expand ─────────────────────────────
 
-function MuxVideoPreview({ playbackId }: { playbackId: string }) {
+function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpand: () => void }) {
   const [videoReady, setVideoReady] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
@@ -37,11 +38,17 @@ function MuxVideoPreview({ playbackId }: { playbackId: string }) {
   }
 
   return (
-    <div className="relative w-full rounded-lg overflow-hidden bg-black" style={{ maxHeight: "min(220px, 30vh)" }}>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onExpand(); }}
+      className="group relative w-full rounded-lg overflow-hidden bg-black cursor-pointer border-0 p-0 text-left"
+      style={{ maxHeight: "min(140px, 22vh)" }}
+    >
       <MuxPlayer
         playbackId={playbackId}
         streamType="on-demand"
         loop
+        muted
         preload="auto"
         onError={() => setVideoError(true)}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,10 +58,11 @@ function MuxVideoPreview({ playbackId }: { playbackId: string }) {
           style: {
             width: "100%",
             height: "100%",
-            maxHeight: "min(220px, 30vh)",
+            maxHeight: "min(140px, 22vh)",
             "--controls": "none",
             "--media-object-fit": "contain",
             "--media-object-position": "center",
+            pointerEvents: "none",
           },
         } as any)}
       />
@@ -65,11 +73,16 @@ function MuxVideoPreview({ playbackId }: { playbackId: string }) {
         src={getMuxThumbnailUrl(playbackId)}
         alt=""
         className={cn(
-          "absolute inset-0 w-full h-full object-contain z-[5] transition-opacity duration-300",
-          videoReady ? "opacity-0 pointer-events-none" : "opacity-100"
+          "absolute inset-0 w-full h-full object-contain z-[5] transition-opacity duration-300 pointer-events-none",
+          videoReady ? "opacity-0" : "opacity-100"
         )}
       />
-    </div>
+
+      {/* Expand icon — always visible on mobile, hover-reveal on desktop */}
+      <div className="absolute bottom-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 border border-white/15 text-white/80 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+        <Maximize2 size={14} />
+      </div>
+    </button>
   );
 }
 
@@ -234,18 +247,22 @@ export default function RepQuestsPage() {
   // Quest detail modal
   const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
   const [mediaFullscreen, setMediaFullscreen] = useState(false);
+  const [videoFullscreen, setVideoFullscreen] = useState(false);
+  const [fullscreenMuted, setFullscreenMuted] = useState(true);
+  const fullscreenVideoRef = useRef<HTMLDivElement>(null);
 
   // View submissions
   const [expandedQuestId, setExpandedQuestId] = useState<string | null>(null);
   const [questSubmissions, setQuestSubmissions] = useState<Record<string, Submission[]>>({});
   const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
 
-  // Detail modal / fullscreen image: Escape key + body scroll lock
+  // Detail modal / fullscreen image / fullscreen video: Escape key + body scroll lock
   useEffect(() => {
-    if (!detailQuest && !mediaFullscreen) return;
+    if (!detailQuest && !mediaFullscreen && !videoFullscreen) return;
     document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        if (videoFullscreen) { setVideoFullscreen(false); setFullscreenMuted(true); return; }
         if (mediaFullscreen) { setMediaFullscreen(false); return; }
         if (detailQuest) setDetailQuest(null);
       }
@@ -255,7 +272,7 @@ export default function RepQuestsPage() {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
-  }, [detailQuest, mediaFullscreen]);
+  }, [detailQuest, mediaFullscreen, videoFullscreen]);
 
   const loadQuests = useCallback(async () => {
     try {
@@ -707,7 +724,7 @@ export default function RepQuestsPage() {
         return (
           <div
             className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
-            onClick={(e) => { if (e.target === e.currentTarget) setDetailQuest(null); }}
+            onClick={(e) => { if (e.target === e.currentTarget) { setDetailQuest(null); setVideoFullscreen(false); setFullscreenMuted(true); } }}
           >
             <div
               className={cn(
@@ -725,7 +742,7 @@ export default function RepQuestsPage() {
 
               {/* Close button */}
               <button
-                onClick={() => setDetailQuest(null)}
+                onClick={() => { setDetailQuest(null); setVideoFullscreen(false); setFullscreenMuted(true); }}
                 className="rep-quest-detail-close"
                 aria-label="Close"
               >
@@ -738,8 +755,8 @@ export default function RepQuestsPage() {
                 {(detailQuest.video_url || detailQuest.image_url) && (
                   <div className="rep-quest-detail-media pt-2">
                     {hasMuxVideo ? (
-                      /* Mux video — thumbnail + tap to play inline */
-                      <MuxVideoPreview playbackId={detailQuest.video_url!} />
+                      /* Mux video — mini preview, tap to expand fullscreen */
+                      <MuxVideoPreview playbackId={detailQuest.video_url!} onExpand={() => setVideoFullscreen(true)} />
                     ) : hasLegacyVideoUrl ? (
                       <a
                         href={detailQuest.video_url!}
@@ -858,6 +875,8 @@ export default function RepQuestsPage() {
                     onClick={() => {
                       const quest = detailQuest;
                       setDetailQuest(null);
+                      setVideoFullscreen(false);
+                      setFullscreenMuted(true);
                       setTimeout(() => openSubmitModal(quest), 150);
                     }}
                     className={cn("rep-quest-detail-cta", `rep-quest-detail-cta-${tier.tier}`)}
@@ -894,6 +913,93 @@ export default function RepQuestsPage() {
           />
         </div>
       , (document.getElementById("rep-portal-root") || document.body))}
+
+      {/* Fullscreen video overlay — portalled */}
+      {videoFullscreen && detailQuest?.video_url && isMuxPlaybackId(detailQuest.video_url) && typeof document !== "undefined" && createPortal((() => {
+        const tier = getQuestTier(detailQuest.points_reward);
+        const titleColorClass =
+          tier.tier === "legendary" ? "rep-gradient-text-gold"
+          : tier.tier === "epic" ? "rep-gradient-text"
+          : tier.tier === "rare" ? "text-[#38BDF8]"
+          : "text-foreground";
+
+        return (
+          <div
+            className="fixed inset-0 z-[200] bg-black flex flex-col"
+            onClick={(e) => { if (e.target === e.currentTarget) { setVideoFullscreen(false); setFullscreenMuted(true); } }}
+          >
+            {/* Close button */}
+            <button
+              type="button"
+              className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/8 border border-white/12 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); setVideoFullscreen(false); setFullscreenMuted(true); }}
+              aria-label="Close video"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Video area — centered, respects aspect ratio */}
+            <div
+              ref={fullscreenVideoRef}
+              className="flex-1 flex items-center justify-center px-4 pt-14"
+              onClick={(e) => { if (e.target === e.currentTarget) { setVideoFullscreen(false); setFullscreenMuted(true); } }}
+            >
+              <div className="relative w-full" style={{ maxHeight: "calc(100dvh - 120px)" }}>
+                <MuxPlayer
+                  playbackId={detailQuest.video_url!}
+                  streamType="on-demand"
+                  loop
+                  muted={fullscreenMuted}
+                  preload="auto"
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  {...({
+                    autoPlay: "any",
+                    style: {
+                      width: "100%",
+                      height: "100%",
+                      maxHeight: "calc(100dvh - 120px)",
+                      "--controls": "none",
+                      "--media-object-fit": "contain",
+                      "--media-object-position": "center",
+                    },
+                  } as any)}
+                />
+
+                {/* Mute toggle */}
+                <button
+                  type="button"
+                  className="absolute bottom-3 right-3 z-10 w-9 h-9 bg-black/60 border border-white/15 rounded-full flex items-center justify-center text-white/80 hover:bg-black/80 hover:text-white transition-all cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newMuted = !fullscreenMuted;
+                    setFullscreenMuted(newMuted);
+                    // Direct DOM toggle for immediate response
+                    const player = fullscreenVideoRef.current?.querySelector("mux-player");
+                    if (player) (player as HTMLMediaElement).muted = newMuted;
+                  }}
+                  aria-label={fullscreenMuted ? "Unmute" : "Mute"}
+                >
+                  {fullscreenMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Bottom gradient overlay with gamification */}
+            <div className="shrink-0 px-5 pb-6 pt-8 bg-gradient-to-t from-black via-black/80 to-transparent">
+              <div className="flex items-center gap-2.5 mb-2">
+                <span className={tier.badgeClass}>{tier.label}</span>
+                <span className={cn(tier.xpBadgeClass, "flex items-center gap-1")}>
+                  <Zap size={12} />
+                  +{detailQuest.points_reward} XP
+                </span>
+              </div>
+              <h3 className={cn("text-lg font-extrabold tracking-tight", titleColorClass)}>
+                {detailQuest.title}
+              </h3>
+            </div>
+          </div>
+        );
+      })(), (document.getElementById("rep-portal-root") || document.body))}
 
       {/* Submit Proof Modal — portalled */}
       {submitQuestId && typeof document !== "undefined" && createPortal(

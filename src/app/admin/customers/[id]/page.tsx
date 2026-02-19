@@ -53,6 +53,7 @@ import {
   PartyPopper,
   CircleDot,
   X,
+  MapPin,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -236,6 +237,13 @@ function memberSince(dateStr?: string): string {
   if (days < 30) return `${days} days ago`;
   if (days < 365) return `${Math.floor(days / 30)} months ago`;
   return `${Math.floor(days / 365)}+ years ago`;
+}
+
+function countryFlag(code: string | null): string {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(
+    ...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
+  );
 }
 
 /* ── Timeline ── */
@@ -1468,6 +1476,13 @@ export default function CustomerProfilePage() {
                     <CalendarDays size={13} className="text-muted-foreground/50" />
                     {isDiscoverer ? "First seen" : "Member since"} {memberSince(customer.first_order_at || customer.created_at)}
                   </div>
+                  {(customer.city || customer.country) && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin size={13} className="text-muted-foreground/50" />
+                      {countryFlag(customer.country || null)}{" "}
+                      {customer.city ? `Last seen in ${customer.city}` : customer.country || ""}
+                    </div>
+                  )}
                   {activeAbandonedCarts.length > 0 && (
                     <div className="flex items-center gap-1.5 text-sm text-amber-400">
                       <ShoppingCart size={13} />

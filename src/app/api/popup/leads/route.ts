@@ -82,16 +82,25 @@ export async function GET(request: NextRequest) {
 
     // Batch: collect unique emails → match customers
     const emails = [...new Set(conversions.map((c) => c.email?.toLowerCase()).filter(Boolean))];
-    let emailCustomerMap: Record<string, { id: string; total_orders: number; total_spent: number }> = {};
+    let emailCustomerMap: Record<string, { id: string; first_name: string | null; last_name: string | null; nickname: string | null; city: string | null; country: string | null; total_orders: number; total_spent: number }> = {};
     if (emails.length > 0) {
       const { data: customers } = await supabase
         .from(TABLES.CUSTOMERS)
-        .select("id, email, total_orders, total_spent")
+        .select("id, email, first_name, last_name, nickname, city, country, total_orders, total_spent")
         .eq("org_id", ORG_ID)
         .in("email", emails);
       if (customers) {
         emailCustomerMap = Object.fromEntries(
-          customers.map((c) => [c.email.toLowerCase(), { id: c.id, total_orders: c.total_orders, total_spent: c.total_spent }])
+          customers.map((c) => [c.email.toLowerCase(), {
+            id: c.id,
+            first_name: c.first_name || null,
+            last_name: c.last_name || null,
+            nickname: c.nickname || null,
+            city: c.city || null,
+            country: c.country || null,
+            total_orders: c.total_orders,
+            total_spent: c.total_spent,
+          }])
         );
       }
     }

@@ -120,53 +120,100 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
   // ── Abandoned cart bridge ──────────────────────────────────────────
   // When popup captures email + cart has items → create abandoned cart
+  // Uses sendBeacon on page exit to survive tab close / navigation
   const abandonedCartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Keep a ref to the latest cart payload so beforeunload can access it
+  const cartPayloadRef = useRef<{
+    email: string;
+    event_id: string;
+    items: { ticket_type_id: string; qty: number; name: string; price: number; merch_size?: string }[];
+    subtotal: number;
+    currency: string;
+  } | null>(null);
+
+  // Build the cart payload (shared between debounced sync + page exit flush)
+  const buildCartPayload = useCallback(() => {
+    try {
+      const popupEmail = sessionStorage.getItem("feral_popup_email");
+      if (!popupEmail || cart.totalQty === 0) return null;
+
+      const ttMap = new Map(
+        (event.ticket_types || []).map((tt) => [tt.id, tt])
+      );
+      const items = cart.expressItems.map((ei) => {
+        const tt = ttMap.get(ei.ticket_type_id);
+        return {
+          ticket_type_id: ei.ticket_type_id,
+          qty: ei.qty,
+          name: tt?.name || "Ticket",
+          price: tt ? Number(tt.price) : 0,
+          merch_size: ei.merch_size,
+        };
+      });
+
+      return {
+        email: popupEmail,
+        event_id: event.id,
+        items,
+        subtotal: cart.totalPrice,
+        currency: event.currency || "GBP",
+      };
+    } catch {
+      return null;
+    }
+  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+
+  // Update the ref whenever cart changes so page exit handler has fresh data
+  useEffect(() => {
+    cartPayloadRef.current = buildCartPayload();
+  }, [buildCartPayload]);
+
+  // Debounced sync: fires 2s after cart stabilizes
   useEffect(() => {
     function syncAbandonedCart() {
-      try {
-        const popupEmail = sessionStorage.getItem("feral_popup_email");
-        if (!popupEmail || cart.totalQty === 0) return;
-
-        // Build items from expressItems + ticket type lookups
-        const ttMap = new Map(
-          (event.ticket_types || []).map((tt) => [tt.id, tt])
-        );
-        const items = cart.expressItems.map((ei) => {
-          const tt = ttMap.get(ei.ticket_type_id);
-          return {
-            ticket_type_id: ei.ticket_type_id,
-            qty: ei.qty,
-            name: tt?.name || "Ticket",
-            price: tt ? Number(tt.price) : 0,
-            merch_size: ei.merch_size,
-          };
-        });
-
-        fetch("/api/checkout/capture", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: popupEmail,
-            event_id: event.id,
-            items,
-            subtotal: cart.totalPrice,
-            currency: event.currency || "GBP",
-          }),
-        }).catch(() => {});
-      } catch {
-        // sessionStorage unavailable
-      }
+      const payload = buildCartPayload();
+      if (!payload) return;
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+      // Clear ref so page exit doesn't double-send
+      cartPayloadRef.current = null;
     }
 
-    // Debounce: wait 2s after cart changes before syncing
     if (abandonedCartTimer.current) clearTimeout(abandonedCartTimer.current);
     abandonedCartTimer.current = setTimeout(syncAbandonedCart, 2000);
 
     return () => {
       if (abandonedCartTimer.current) clearTimeout(abandonedCartTimer.current);
     };
-  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+  }, [buildCartPayload]);
+
+  // Flush on page exit — survives tab close / back navigation
+  useEffect(() => {
+    function flushOnExit() {
+      const payload = cartPayloadRef.current;
+      if (!payload) return;
+      // sendBeacon survives page unload — fire and forget
+      navigator.sendBeacon(
+        "/api/checkout/capture",
+        new Blob([JSON.stringify(payload)], { type: "application/json" })
+      );
+      cartPayloadRef.current = null;
+    }
+
+    window.addEventListener("beforeunload", flushOnExit);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushOnExit();
+    });
+
+    return () => {
+      window.removeEventListener("beforeunload", flushOnExit);
+      // Note: visibilitychange cleanup not strictly needed as component unmounts
+    };
+  }, []);
 
   // Also sync immediately when popup email is first captured
   useEffect(() => {

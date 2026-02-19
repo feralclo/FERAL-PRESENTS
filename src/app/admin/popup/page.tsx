@@ -21,7 +21,9 @@ import {
   Trophy,
   Target,
   Loader2,
+  MapPin,
 } from "lucide-react";
+import { generateNickname } from "@/lib/nicknames";
 
 /* ── Types ── */
 interface PopupStats {
@@ -47,7 +49,16 @@ interface Lead {
   country: string | null;
   timestamp: string;
   event_name: string | null;
-  customer: { id: string; total_orders: number; total_spent: number } | null;
+  customer: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    nickname: string | null;
+    city: string | null;
+    country: string | null;
+    total_orders: number;
+    total_spent: number;
+  } | null;
 }
 
 interface LeadsData {
@@ -606,13 +617,24 @@ export default function PopupAnalytics() {
                 {leadsData.leads.map((lead, i) => {
                   const isNew = isToday(lead.timestamp);
                   const isFirst = i === 0;
-                  // Resolve event name from slugMap if not provided by API
-                  const eventName = lead.event_name || (lead.email && resolveEventName(
-                    // Extract page from the lead's context — for realtime leads we don't have page
-                    "", slugMap
-                  )) || null;
-                  const flag = countryFlag(lead.country);
-                  const initials = lead.email.slice(0, 2).toUpperCase();
+                  const eventName = lead.event_name || null;
+
+                  // Customer profile info
+                  const cust = lead.customer;
+                  const hasName = cust && (cust.first_name || cust.last_name);
+                  const displayName = hasName
+                    ? `${cust.first_name || ""} ${cust.last_name || ""}`.trim()
+                    : cust?.nickname || generateNickname(lead.email);
+
+                  // Use lead geo first, fall back to customer geo
+                  const geoCity = lead.city || cust?.city || null;
+                  const geoCountry = lead.country || cust?.country || null;
+                  const flag = countryFlag(geoCountry);
+
+                  // Initials from customer name or email
+                  const initials = hasName
+                    ? `${(cust.first_name?.[0] || "").toUpperCase()}${(cust.last_name?.[0] || "").toUpperCase()}`
+                    : lead.email.slice(0, 2).toUpperCase();
 
                   return (
                     <div
@@ -622,45 +644,67 @@ export default function PopupAnalytics() {
                       }`}
                     >
                       {/* Avatar */}
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[10px] font-bold text-primary">
-                        {initials}
-                      </span>
+                      {cust ? (
+                        <Link href={`/admin/customers/${cust.id}/`} onClick={(e) => e.stopPropagation()}>
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[10px] font-bold text-primary cursor-pointer hover:bg-primary/25 transition-colors">
+                            {initials}
+                          </span>
+                        </Link>
+                      ) : (
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[10px] font-bold text-primary">
+                          {initials}
+                        </span>
+                      )}
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {lead.email}
-                          </span>
+                          {cust ? (
+                            <Link
+                              href={`/admin/customers/${cust.id}/`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors"
+                            >
+                              {displayName}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {displayName}
+                            </span>
+                          )}
                           {isNew && (
                             <Badge variant="success" className="text-[9px] font-bold px-1.5 py-0">
                               New!
                             </Badge>
                           )}
-                          {lead.customer && lead.customer.total_orders > 0 && (
-                            <Link
-                              href={`/admin/customers/${lead.customer.id}/`}
-                              onClick={(e) => e.stopPropagation()}
+                          {cust && cust.total_orders > 0 && (
+                            <Badge
+                              variant={cust.total_orders >= 5 ? "warning" : cust.total_orders > 1 ? "success" : "secondary"}
+                              className="text-[9px] font-bold"
                             >
-                              <Badge
-                                variant={lead.customer.total_orders >= 5 ? "warning" : "secondary"}
-                                className="text-[9px] font-bold cursor-pointer hover:opacity-80 transition-opacity"
-                              >
-                                {lead.customer.total_orders} order{lead.customer.total_orders !== 1 ? "s" : ""}
-                              </Badge>
-                            </Link>
+                              {cust.total_orders} order{cust.total_orders !== 1 ? "s" : ""}
+                            </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] text-muted-foreground/50 truncate">
+                            {lead.email}
+                          </span>
                           {eventName && (
-                            <span className="text-[11px] text-muted-foreground truncate">
-                              {eventName}
-                            </span>
+                            <>
+                              <span className="text-[11px] text-muted-foreground/30">·</span>
+                              <span className="text-[11px] text-muted-foreground truncate">
+                                {eventName}
+                              </span>
+                            </>
                           )}
-                          {(lead.city || lead.country) && (
-                            <span className="text-[11px] text-muted-foreground/60">
-                              {eventName ? "·" : ""} {flag} {lead.city || ""}{lead.city && lead.country ? ", " : ""}{lead.country || ""}
-                            </span>
+                          {geoCity && (
+                            <>
+                              <span className="text-[11px] text-muted-foreground/30">·</span>
+                              <span className="text-[11px] text-muted-foreground/60 flex items-center gap-0.5">
+                                {flag} {geoCity}
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>

@@ -108,22 +108,9 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    // ── 2. Load automation settings ──
-    const { data: settingsRow } = await supabase
-      .from(TABLES.SITE_SETTINGS)
-      .select("data")
-      .eq("key", abandonedCartAutomationKey(ORG_ID))
-      .single();
+    // ── 2. Promote + expire carts (always runs, even if email automation is off) ──
 
-    const settings: AutomationSettings = settingsRow?.data
-      ? { ...DEFAULT_SETTINGS, ...(settingsRow.data as Partial<AutomationSettings>) }
-      : DEFAULT_SETTINGS;
-
-    if (!settings.enabled || settings.steps.length === 0) {
-      return NextResponse.json({ status: "skipped", reason: "automation disabled" });
-    }
-
-    // ── 2.5 Promote "pending" carts → "abandoned" after grace period ──
+    // 2a. Promote "pending" carts → "abandoned" after grace period
     // Carts start as "pending" when the customer enters their email at checkout.
     // If they don't complete purchase within the grace period, they become truly abandoned.
     const pendingThreshold = new Date(
@@ -143,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     summary.promoted = promotedCarts?.length ?? 0;
 
-    // ── 3. Expire stale carts (>7 days old, still abandoned) ──
+    // 2b. Expire stale carts (>7 days old, still abandoned)
     const expiryThreshold = new Date(
       Date.now() - EXPIRY_MINUTES * 60 * 1000,
     ).toISOString();
@@ -160,6 +147,26 @@ export async function GET(request: NextRequest) {
       .select("id");
 
     summary.expired = expiredCarts?.length ?? 0;
+
+    // ── 3. Load automation settings (email sending only) ──
+    const { data: settingsRow } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", abandonedCartAutomationKey(ORG_ID))
+      .single();
+
+    const settings: AutomationSettings = settingsRow?.data
+      ? { ...DEFAULT_SETTINGS, ...(settingsRow.data as Partial<AutomationSettings>) }
+      : DEFAULT_SETTINGS;
+
+    if (!settings.enabled || settings.steps.length === 0) {
+      return NextResponse.json({
+        status: "ok",
+        reason: "email automation disabled — promotions and expiry still ran",
+        promoted: summary.promoted,
+        expired: summary.expired,
+      });
+    }
 
     // ── 4. Collect unsubscribed emails (carts with unsubscribed_at set) ──
     const unsubscribedEmails = new Set<string>();

@@ -15,25 +15,27 @@ import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 
-// ─── Mux video: mini preview with tap-to-expand ─────────────────────────────
+// ─── Mux video: animated thumbnail preview (no player = zero jank) ───────────
 
 function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpand: () => void }) {
-  const [videoReady, setVideoReady] = useState(false);
-  const [videoError, setVideoError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
-  if (videoError) {
+  // Mux animated thumbnail — silent looping ~4s preview, no video player needed
+  const animatedUrl = `https://image.mux.com/${playbackId}/animated.webp?width=320&fps=12&start=0&end=4`;
+  const staticUrl = getMuxThumbnailUrl(playbackId);
+
+  if (imgError) {
     return (
-      <a
-        href={`https://stream.mux.com/${playbackId}.m3u8`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 text-muted-foreground hover:text-foreground hover:border-white/[0.15] transition-colors"
-        onClick={(e) => e.stopPropagation()}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onExpand(); }}
+        className="flex items-center gap-3 w-full rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 text-muted-foreground hover:text-foreground hover:border-white/[0.15] transition-colors cursor-pointer"
       >
         <Play size={20} />
-        <span className="text-sm font-medium">View Video</span>
-        <ExternalLink size={14} className="ml-auto opacity-50" />
-      </a>
+        <span className="text-sm font-medium">Watch Video</span>
+        <Maximize2 size={14} className="ml-auto opacity-50" />
+      </button>
     );
   }
 
@@ -41,48 +43,152 @@ function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpan
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onExpand(); }}
-      className="group relative mx-auto block aspect-[9/16] rounded-xl overflow-hidden bg-black cursor-pointer border-0 p-0"
-      style={{ maxHeight: 240 }}
+      className="group relative mx-auto block aspect-[9/16] rounded-2xl overflow-hidden bg-white/[0.03] cursor-pointer border border-white/[0.08] p-0"
+      style={{ maxHeight: 260 }}
     >
-      <MuxPlayer
-        playbackId={playbackId}
-        streamType="on-demand"
-        loop
-        muted
-        preload="auto"
-        onError={() => setVideoError(true)}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...({
-          autoPlay: "any",
-          onPlaying: () => setVideoReady(true),
-          style: {
-            width: "100%",
-            height: "100%",
-            "--controls": "none",
-            "--media-object-fit": "cover",
-            "--media-object-position": "center",
-            pointerEvents: "none",
-          },
-        } as any)}
-      />
-
-      {/* Thumbnail overlay — masks initialization jank, fades out when playing */}
+      {/* Animated preview from Mux — loads as an image, no player init */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={getMuxThumbnailUrl(playbackId)}
+        src={animatedUrl}
         alt=""
+        onLoad={() => setImgLoaded(true)}
+        onError={() => {
+          // Fallback: try static thumbnail, then give up
+          if (!imgLoaded) {
+            const img = new Image();
+            img.onload = () => setImgLoaded(true);
+            img.onerror = () => setImgError(true);
+            img.src = staticUrl;
+          }
+        }}
         className={cn(
-          "absolute inset-0 w-full h-full object-cover z-[5] transition-opacity duration-500 pointer-events-none",
-          videoReady ? "opacity-0" : "opacity-100"
+          "w-full h-full object-cover transition-opacity duration-700 ease-out",
+          imgLoaded ? "opacity-100" : "opacity-0"
         )}
       />
 
-      {/* Bottom gradient with expand CTA */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-1.5 pb-3 pt-8 bg-gradient-to-t from-black/70 to-transparent pointer-events-none">
-        <Maximize2 size={13} className="text-white/90" />
-        <span className="text-[11px] font-semibold text-white/90 tracking-wide">Tap to expand</span>
+      {/* Loading shimmer while image loads */}
+      {!imgLoaded && (
+        <div className="absolute inset-0 bg-white/[0.04] animate-pulse rounded-2xl" />
+      )}
+
+      {/* Center play icon — frosted glass, premium feel */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center">
+        <div className="h-12 w-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:scale-110 group-active:scale-95 transition-transform duration-200">
+          <Play size={20} className="text-white ml-0.5" fill="currentColor" fillOpacity={0.9} />
+        </div>
+      </div>
+
+      {/* Bottom gradient with CTA */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-1.5 pb-3 pt-10 bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
+        <span className="text-[11px] font-medium text-white/70 tracking-wide">Tap to watch</span>
       </div>
     </button>
+  );
+}
+
+// ─── Fullscreen video: thumbnail crossfade → MuxPlayer ───────────────────────
+
+function FullscreenVideo({
+  playbackId, tier, titleColorClass, title, points, muted, onMuteToggle, videoRef, onClose,
+}: {
+  playbackId: string;
+  tier: TierConfig;
+  titleColorClass: string;
+  title: string;
+  points: number;
+  muted: boolean;
+  onMuteToggle: () => void;
+  videoRef: React.RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}) {
+  const [videoReady, setVideoReady] = useState(false);
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] bg-black flex flex-col"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Close button */}
+      <button
+        type="button"
+        className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/8 border border-white/12 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Close video"
+      >
+        <X size={20} />
+      </button>
+
+      {/* Video area */}
+      <div
+        ref={videoRef}
+        className="flex-1 flex items-center justify-center"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <div className="relative w-full h-full">
+          <MuxPlayer
+            playbackId={playbackId}
+            streamType="on-demand"
+            loop
+            muted={muted}
+            preload="auto"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            {...({
+              autoPlay: "any",
+              onPlaying: () => setVideoReady(true),
+              style: {
+                width: "100%",
+                height: "100%",
+                "--controls": "none",
+                "--media-object-fit": "contain",
+                "--media-object-position": "center",
+              },
+            } as any)}
+          />
+
+          {/* Thumbnail overlay — covers player until video is actually rendering */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={getMuxThumbnailUrl(playbackId)}
+            alt=""
+            className={cn(
+              "absolute inset-0 w-full h-full object-contain z-[5] transition-opacity duration-700 ease-out pointer-events-none",
+              videoReady ? "opacity-0" : "opacity-100"
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Bottom gradient overlay with gamification */}
+      <div className="shrink-0 px-5 pb-6 pt-8 bg-gradient-to-t from-black via-black/80 to-transparent">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2.5">
+            <span className={tier.badgeClass}>{tier.label}</span>
+            <span className={cn(tier.xpBadgeClass, "flex items-center gap-1")}>
+              <Zap size={12} />
+              +{points} XP
+            </span>
+          </div>
+          {/* Mute toggle */}
+          <button
+            type="button"
+            className="w-9 h-9 bg-white/8 border border-white/12 rounded-full flex items-center justify-center text-white/70 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMuteToggle();
+              const player = videoRef.current?.querySelector("mux-player");
+              if (player) (player as HTMLMediaElement).muted = !muted;
+            }}
+            aria-label={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+        </div>
+        <h3 className={cn("text-lg font-extrabold tracking-tight", titleColorClass)}>
+          {title}
+        </h3>
+      </div>
+    </div>
   );
 }
 
@@ -924,80 +1030,19 @@ export default function RepQuestsPage() {
           : "text-foreground";
 
         return (
-          <div
-            className="fixed inset-0 z-[200] bg-black flex flex-col"
-            onClick={(e) => { if (e.target === e.currentTarget) { setVideoFullscreen(false); setFullscreenMuted(true); } }}
-          >
-            {/* Close button */}
-            <button
-              type="button"
-              className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/8 border border-white/12 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); setVideoFullscreen(false); setFullscreenMuted(true); }}
-              aria-label="Close video"
-            >
-              <X size={20} />
-            </button>
-
-            {/* Video area — fills available space, aspect ratio preserved via contain */}
-            <div
-              ref={fullscreenVideoRef}
-              className="flex-1 flex items-center justify-center"
-              onClick={(e) => { if (e.target === e.currentTarget) { setVideoFullscreen(false); setFullscreenMuted(true); } }}
-            >
-              <div className="relative w-full h-full">
-                <MuxPlayer
-                  playbackId={detailQuest.video_url!}
-                  streamType="on-demand"
-                  loop
-                  muted={fullscreenMuted}
-                  preload="auto"
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  {...({
-                    autoPlay: "any",
-                    style: {
-                      width: "100%",
-                      height: "100%",
-                      "--controls": "none",
-                      "--media-object-fit": "contain",
-                      "--media-object-position": "center",
-                    },
-                  } as any)}
-                />
-
-              </div>
-            </div>
-
-            {/* Bottom gradient overlay with gamification */}
-            <div className="shrink-0 px-5 pb-6 pt-8 bg-gradient-to-t from-black via-black/80 to-transparent">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2.5">
-                  <span className={tier.badgeClass}>{tier.label}</span>
-                  <span className={cn(tier.xpBadgeClass, "flex items-center gap-1")}>
-                    <Zap size={12} />
-                    +{detailQuest.points_reward} XP
-                  </span>
-                </div>
-                {/* Mute toggle */}
-                <button
-                  type="button"
-                  className="w-9 h-9 bg-white/8 border border-white/12 rounded-full flex items-center justify-center text-white/70 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const newMuted = !fullscreenMuted;
-                    setFullscreenMuted(newMuted);
-                    const player = fullscreenVideoRef.current?.querySelector("mux-player");
-                    if (player) (player as HTMLMediaElement).muted = newMuted;
-                  }}
-                  aria-label={fullscreenMuted ? "Unmute" : "Mute"}
-                >
-                  {fullscreenMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                </button>
-              </div>
-              <h3 className={cn("text-lg font-extrabold tracking-tight", titleColorClass)}>
-                {detailQuest.title}
-              </h3>
-            </div>
-          </div>
+          <FullscreenVideo
+            playbackId={detailQuest.video_url!}
+            tier={tier}
+            titleColorClass={titleColorClass}
+            title={detailQuest.title}
+            points={detailQuest.points_reward}
+            muted={fullscreenMuted}
+            onMuteToggle={() => {
+              setFullscreenMuted((m) => !m);
+            }}
+            videoRef={fullscreenVideoRef}
+            onClose={() => { setVideoFullscreen(false); setFullscreenMuted(true); }}
+          />
         );
       })(), (document.getElementById("rep-portal-root") || document.body))}
 

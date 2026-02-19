@@ -821,7 +821,7 @@ export default function RepQuestsPage() {
             </div>
           </div>
         );
-      })(), document.body)}
+      })(), (document.getElementById("rep-portal-root") || document.body))}
 
       {/* Fullscreen image overlay — portalled */}
       {mediaFullscreen && detailQuest?.image_url && typeof document !== "undefined" && createPortal(
@@ -844,7 +844,7 @@ export default function RepQuestsPage() {
             className="max-w-[90vw] max-h-[90vh] object-contain cursor-zoom-out"
           />
         </div>
-      , document.body)}
+      , (document.getElementById("rep-portal-root") || document.body))}
 
       {/* Submit Proof Modal — portalled */}
       {submitQuestId && typeof document !== "undefined" && createPortal(
@@ -1001,7 +1001,7 @@ export default function RepQuestsPage() {
             )}
           </div>
         </div>
-      , document.body)}
+      , (document.getElementById("rep-portal-root") || document.body))}
     </div>
   );
 }

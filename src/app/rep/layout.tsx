@@ -329,6 +329,9 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
+      {/* Portal target for modals — sibling of <main> to escape its stacking context */}
+      <div id="rep-portal-root" />
+
       {/* Mobile bottom nav — HUD Command Bar */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">

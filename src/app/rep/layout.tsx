@@ -32,10 +32,13 @@ const NAV_ITEMS = [
   { href: "/rep/rewards", label: "Rewards", icon: Gift },
 ];
 
-const MOBILE_NAV = [
+// HUD bar: 2 left items, center hub (Quests), 2 right items
+const HUD_LEFT = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
   { href: "/rep/leaderboard", label: "Board", icon: Trophy },
-  { href: "/rep/quests", label: "Quests", icon: Compass },
+];
+const HUD_CENTER = { href: "/rep/quests", label: "Quests", icon: Compass };
+const HUD_RIGHT = [
   { href: "/rep/rewards", label: "Rewards", icon: Gift },
   { href: "/rep/profile", label: "Me", icon: User },
 ];
@@ -326,46 +329,105 @@ export default function RepLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile bottom nav — Glass Nav */}
+      {/* Mobile bottom nav — HUD Command Bar */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
-          <nav className="rep-glass-nav flex items-center justify-around px-2 py-3 pointer-events-auto">
-            {MOBILE_NAV.map((item) => {
+          <nav className="flex items-end justify-around rounded-[20px] border border-white/[0.06] bg-[rgba(12,12,18,0.94)] backdrop-blur-[24px] saturate-[1.4] shadow-[0_-4px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04),0_-1px_0_rgba(139,92,246,0.08)] px-2 pb-1.5 pt-2.5 relative pointer-events-auto">
+            {/* Left items */}
+            {HUD_LEFT.map((item) => {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
+                >
+                  {active ? (
+                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
+                      <Icon
+                        size={19}
+                        strokeWidth={2.5}
+                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
+                      />
+                    </div>
+                  ) : (
+                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
+                  )}
+                  <span className={cn(
+                    "text-[9px] font-semibold tracking-wide",
+                    active ? "text-primary" : "text-[#444455]"
+                  )}>
+                    {item.label}
+                  </span>
+                  {active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                  )}
+                </Link>
+              );
+            })}
+
+            {/* Center hub — Quests */}
+            {(() => {
+              const active = matchRoute(pathname, HUD_CENTER.href);
+              const Icon = HUD_CENTER.icon;
+              return (
+                <Link
+                  href={HUD_CENTER.href}
                   className={cn(
-                    "relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 no-underline transition-transform duration-150 active:scale-[0.97]",
-                    active ? "rep-glass-nav-active" : ""
+                    "relative flex flex-col items-center -mt-5 z-[2] no-underline",
+                    active && "rep-hud-hub-active"
                   )}
                 >
-                  <div className="relative">
-                    <Icon
-                      size={20}
-                      strokeWidth={active ? 2 : 1.5}
-                      className={cn(
-                        "transition-colors duration-300",
-                        active
-                          ? "text-primary drop-shadow-[0_0_10px_rgba(139,92,246,0.5)]"
-                          : "text-white/35"
-                      )}
-                    />
-                    {/* Quest badge */}
-                    {item.href === "/rep/quests" && repStats && repStats.active_quests > 0 && (
-                      <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-destructive text-white text-[8px] font-bold px-0.5 shadow-[0_2px_8px_rgba(244,63,94,0.4)] animate-[badgeSpring_0.4s_cubic-bezier(0.34,1.56,0.64,1)]">
+                  <div className="flex items-center justify-center w-[52px] h-[52px] rounded-full bg-[#7C3AED] shadow-[0_4px_20px_rgba(124,58,237,0.45),inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-200 active:scale-95 relative rep-hud-hub-circle">
+                    <Icon size={24} strokeWidth={2} className="text-white" />
+                    {/* Quest count badge */}
+                    {repStats && repStats.active_quests > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-white text-[9px] font-bold px-1 shadow-[0_2px_8px_rgba(244,63,94,0.4)] animate-[badgeSpring_0.4s_cubic-bezier(0.34,1.56,0.64,1)]">
                         {repStats.active_quests > 9 ? "9+" : repStats.active_quests}
                       </span>
                     )}
                   </div>
                   <span className={cn(
-                    "text-[9px] font-semibold tracking-wide transition-colors duration-300",
-                    active ? "text-white/70" : "text-white/25"
+                    "text-[9px] font-semibold tracking-wide mt-1",
+                    active ? "text-primary" : "text-[#444455]"
+                  )}>
+                    {HUD_CENTER.label}
+                  </span>
+                </Link>
+              );
+            })()}
+
+            {/* Right items */}
+            {HUD_RIGHT.map((item) => {
+              const active = matchRoute(pathname, item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
+                >
+                  {active ? (
+                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
+                      <Icon
+                        size={19}
+                        strokeWidth={2.5}
+                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
+                      />
+                    </div>
+                  ) : (
+                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
+                  )}
+                  <span className={cn(
+                    "text-[9px] font-semibold tracking-wide",
+                    active ? "text-primary" : "text-[#444455]"
                   )}>
                     {item.label}
                   </span>
+                  {active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                  )}
                 </Link>
               );
             })}

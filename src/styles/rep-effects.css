@@ -1137,71 +1137,18 @@ body:has([data-rep]) > .noise {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   GLASS NAV BAR (Bottom Nav)
-   Liquid frosted glass — true translucency with overhead light sim.
+   HUD COMMAND BAR (Bottom Nav)
    ══════════════════════════════════════════════════════════════════════ */
 
-.rep-glass-nav {
-  border-radius: 28px;
-  /* Neutral clear glass — the icons provide the color */
-  background: rgba(255, 255, 255, 0.10);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  /* Clean visible border — defines the glass edge */
-  border: 1px solid rgba(255, 255, 255, 0.18);
+/* Active glow on hub center button — static */
+.rep-hud-hub-active .rep-hud-hub-circle {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 8px 32px rgba(0, 0, 0, 0.2);
-  position: relative;
-  overflow: hidden;
+    0 4px 24px rgba(124, 58, 237, 0.45),
+    0 0 40px rgba(124, 58, 237, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-/* Top surface reflection — overhead light on curved glass */
-.rep-glass-nav::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), transparent 45%);
-  pointer-events: none;
-}
-
-/* Purple light scatter from active icon onto surrounding glass */
-.rep-glass-nav a::before {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border-radius: 18px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(139, 92, 246, 0.14), transparent 70%);
-  opacity: 0;
-  transition: opacity 250ms ease;
-  pointer-events: none;
-}
-
-/* Purple indicator dot */
-.rep-glass-nav a::after {
-  content: "";
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(139, 92, 246, 0.9);
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
-  opacity: 0;
-  transition: opacity 250ms ease;
-  pointer-events: none;
-}
-
-/* Active — icon light illuminates the glass */
-.rep-glass-nav-active::before,
-.rep-glass-nav-active::after {
-  opacity: 1;
-}
-
-/* Badge spring animation (shared by quest + notification badges) */
+/* Badge spring animation */
 @keyframes badgeSpring {
   0% { transform: scale(0); }
   100% { transform: scale(1); }

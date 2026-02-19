@@ -30,6 +30,7 @@ export default async function EventLayout({
   let eventTheme: string | null = null;
   let eventHasImage = false;
   let eventId: string | null = null;
+  let heroImageUrl: string | null = null;
 
   // Single Supabase client, reused across all queries
   const supabase = await getSupabaseAdmin();
@@ -49,6 +50,7 @@ export default async function EventLayout({
         eventId = event.id;
         eventTheme = event.theme || null;
         eventHasImage = !!(event.hero_image || event.cover_image);
+        heroImageUrl = event.hero_image || event.cover_image || null;
       }
     } catch {
       // Fall through — event may not exist in DB (e.g. Kompass)
@@ -129,8 +131,14 @@ export default async function EventLayout({
   /* Preconnect hints — browser starts DNS + TCP/TLS handshake before
      any JS loads, shaving ~100-300ms off Express Checkout readiness.
      Stripe domains for payment processing, Google domains for Google Pay. */
+  /* Hero image preload — CSS background-image is discovered late (after
+     CSS parse) and loads with low priority. Preloading via <link> in the
+     initial HTML starts the fetch immediately, before any JS runs. */
   const preconnectHints = (
     <>
+      {heroImageUrl && (
+        <link rel="preload" as="image" href={heroImageUrl} fetchPriority="high" />
+      )}
       <link rel="preconnect" href="https://js.stripe.com" />
       <link rel="preconnect" href="https://api.stripe.com" />
       <link rel="preconnect" href="https://pay.google.com" />

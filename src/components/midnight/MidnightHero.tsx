@@ -30,7 +30,9 @@ export function MidnightHero({
       {/* Background image via CSS — avoids iOS Safari <img> + object-fit
           compositor bug that causes "pop and enlarge" during scroll.
           scale(1.05) prevents edge gaps on varied aspect ratios.
-          saturate(1.15) enriches colours through the dark overlays. */}
+          saturate(1.15) enriches colours through the dark overlays.
+          Image is preloaded via <link rel="preload"> in the event layout
+          (server component) so it starts fetching from the initial HTML. */}
       {bannerImage && (
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"

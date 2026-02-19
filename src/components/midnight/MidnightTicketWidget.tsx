@@ -67,6 +67,7 @@ export function MidnightTicketWidget({
   const [codeValue, setCodeValue] = useState("");
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeError, setCodeError] = useState("");
+  const codeInputRef = useRef<HTMLInputElement>(null);
 
   const {
     activeTypes,
@@ -107,6 +108,14 @@ export function MidnightTicketWidget({
   useEffect(() => {
     if (isStripe) preloadStripe();
   }, [isStripe]);
+
+  // Focus discount code input without scrolling — autoFocus would
+  // scroll the page and push checkout/Apple Pay out of view
+  useEffect(() => {
+    if (codeOpen && codeInputRef.current) {
+      codeInputRef.current.focus({ preventScroll: true });
+    }
+  }, [codeOpen]);
 
   // Express checkout success → redirect
   const handleExpressSuccess = useCallback(
@@ -357,6 +366,7 @@ export function MidnightTicketWidget({
                   <div className="overflow-hidden animate-in slide-in-from-top-1 fade-in duration-200">
                     <div className="flex gap-2">
                       <input
+                        ref={codeInputRef}
                         type="text"
                         value={codeValue}
                         onChange={(e) => { setCodeValue(e.target.value.toUpperCase()); setCodeError(""); }}
@@ -366,7 +376,6 @@ export function MidnightTicketWidget({
                         autoCorrect="off"
                         spellCheck={false}
                         className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-mono)] text-[16px] tracking-[0.04em] py-2.5 px-3 outline-none transition-colors duration-150 placeholder:text-foreground/25 focus:border-white/[0.25] focus:bg-white/[0.06]"
-                        autoFocus
                         disabled={codeLoading}
                       />
                       <button

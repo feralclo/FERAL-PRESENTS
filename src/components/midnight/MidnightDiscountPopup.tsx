@@ -68,7 +68,9 @@ export function MidnightDiscountPopup() {
   const hasOpenedRef = useRef(false);
   const page = typeof window !== "undefined" ? window.location.pathname : "";
 
-  // Show popup after delay (if not dismissed and enabled)
+  // Show popup after delay (if not dismissed and enabled).
+  // Waits for cookie consent to be resolved first so the two
+  // overlays never compete for the user's attention.
   useEffect(() => {
     if (!config.enabled) {
       window.dispatchEvent(new CustomEvent("feral_popup_dismissed"));
@@ -92,22 +94,42 @@ export function MidnightDiscountPopup() {
       trackPopupEvent("impressions", page);
     }
 
-    const timer = setTimeout(openPopup, delay);
+    let popupTimer: ReturnType<typeof setTimeout>;
+    let consentHandler: (() => void) | null = null;
 
-    // Desktop: exit intent
-    if (!isMobile && config.exit_intent) {
-      const handleMouseLeave = (e: MouseEvent) => {
-        if (e.clientY <= 0) {
-          openPopup();
-          document.removeEventListener("mouseout", handleMouseLeave);
-        }
-      };
-      exitIntentRef.current = handleMouseLeave;
-      document.addEventListener("mouseout", handleMouseLeave);
+    function startPopupSchedule() {
+      popupTimer = setTimeout(openPopup, delay);
+
+      // Desktop: exit intent
+      if (!isMobile && config.exit_intent) {
+        const handleMouseLeave = (e: MouseEvent) => {
+          if (e.clientY <= 0) {
+            openPopup();
+            document.removeEventListener("mouseout", handleMouseLeave);
+          }
+        };
+        exitIntentRef.current = handleMouseLeave;
+        document.addEventListener("mouseout", handleMouseLeave);
+      }
+    }
+
+    // If cookie consent already resolved, start popup timer immediately.
+    // Otherwise wait for consent to be given before starting the timer —
+    // prevents the popup overlay from appearing behind the cookie card.
+    const hasCookieConsent = !!localStorage.getItem("feral_cookie_consent");
+
+    if (hasCookieConsent) {
+      startPopupSchedule();
+    } else {
+      consentHandler = () => startPopupSchedule();
+      window.addEventListener("feral_consent_update", consentHandler, { once: true });
     }
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(popupTimer);
+      if (consentHandler) {
+        window.removeEventListener("feral_consent_update", consentHandler);
+      }
       if (exitIntentRef.current) {
         document.removeEventListener("mouseout", exitIntentRef.current);
       }

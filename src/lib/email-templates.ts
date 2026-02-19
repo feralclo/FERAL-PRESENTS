@@ -714,19 +714,19 @@ export function buildAbandonedCartRecoveryEmail(
           </tr>
 
           ${hasDiscount ? `
-          <!-- Discount Highlight — dashed coupon style -->
+          <!-- Discount Highlight — dark premium card -->
           <tr>
             <td style="padding: 0 40px 28px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
                 <tr>
-                  <td style="border: 2px dashed ${accent}; border-radius: 8px; padding: 20px 24px; text-align: center;">
-                    <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: ${accent}; margin-bottom: 8px;">
+                  <td style="background-color: #0e0e0e; background-image: linear-gradient(#111111, #111111); border-radius: 10px; padding: 28px 24px; text-align: center;">
+                    <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: ${accent}; margin-bottom: 12px;">
                       YOUR EXCLUSIVE CODE
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 26px; font-weight: 700; color: ${accent}; letter-spacing: 2px; margin-bottom: 6px;">
+                    <div style="font-family: 'Courier New', monospace; font-size: 30px; font-weight: 700; color: #ffffff; letter-spacing: 4px; margin-bottom: 8px;">
                       ${escapeHtml(cart.discount_code!)}
                     </div>
-                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #888888;">
                       ${cart.discount_percent}% off your order
                     </div>
                   </td>

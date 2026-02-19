@@ -47,6 +47,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Ensure logo_url is absolute using the request's own origin
+    // (resolveUrl uses env vars which may be missing in some environments)
+    if (
+      emailSettings.logo_url &&
+      !emailSettings.logo_url.startsWith("http") &&
+      !emailSettings.logo_url.startsWith("data:")
+    ) {
+      const origin = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+      emailSettings = {
+        ...emailSettings,
+        logo_url: `${origin}${emailSettings.logo_url.startsWith("/") ? "" : "/"}${emailSettings.logo_url}`,
+      };
+    }
+
     // Sample cart data for preview
     const sampleCart: AbandonedCartEmailData = {
       customer_first_name: "Alex",

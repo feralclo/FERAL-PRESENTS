@@ -463,9 +463,9 @@ function EmailBranding({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   RECOVERY PIPELINE — horizontal flow of email steps
+   RECOVERY FLOW — horizontal sequence of email steps
    ═══════════════════════════════════════════════════════════ */
-function RecoveryPipeline({
+function RecoveryFlow({
   steps,
   automationEnabled,
   onToggleStep,
@@ -482,10 +482,15 @@ function RecoveryPipeline({
     <Card className="overflow-hidden">
       <CardHeader className="border-b border-border pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <CircleDot size={15} className="text-primary" />
-            Recovery Pipeline
-          </CardTitle>
+          <div>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <CircleDot size={15} className="text-primary" />
+              Recovery Flow
+            </CardTitle>
+            <p className="mt-1 text-[11px] text-muted-foreground/60">
+              Click an email step to edit its content and preview below
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             {steps.filter((s) => s.enabled).length > 0 && (
               <Badge variant="info" className="text-[9px] font-bold uppercase">
@@ -495,8 +500,8 @@ function RecoveryPipeline({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-5">
-        {/* Horizontal pipeline: Cart → Email 1 → Email 2 → Email 3 → Recovered */}
+      <CardContent className="px-5 pb-0 pt-5">
+        {/* Horizontal flow: Cart → Email 1 → Email 2 → Email 3 → Recovered */}
         <div className="flex items-stretch gap-0 overflow-x-auto">
           {/* Cart Abandoned — origin node */}
           <div className="flex shrink-0 flex-col items-center" style={{ width: "72px" }}>
@@ -520,112 +525,120 @@ function RecoveryPipeline({
             const stepActive = step.enabled && automationEnabled;
             const nextStep = steps[i + 1];
             const nextColor = nextStep ? nextStep.color : "#10b981";
+            const prevColor = i === 0 ? "#f59e0b" : (steps[i - 1]?.color || "#f59e0b");
 
             return (
               <div key={step.id} className="flex min-w-0 flex-1 items-stretch">
-                {/* Connector line */}
+                {/* Connector line in */}
                 <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
                   <div
                     className="h-0.5 w-full transition-colors duration-300"
                     style={{
                       background: stepActive
-                        ? `linear-gradient(to right, ${i === 0 ? "#f59e0b" : steps[i - 1]?.color || "#f59e0b"}, ${step.color})`
+                        ? `linear-gradient(to right, ${prevColor}, ${step.color})`
                         : "rgba(255,255,255,0.06)",
                     }}
                   />
                 </div>
 
-                {/* Step card */}
-                <button
-                  type="button"
-                  onClick={() => onSelectStep(step.id)}
-                  className={`group relative flex min-w-[120px] flex-1 flex-col rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ${
-                    isSelected
-                      ? ""
-                      : "border-transparent hover:border-border/40 hover:bg-muted/20"
-                  }`}
-                  style={isSelected ? {
-                    borderColor: stepActive ? `${step.color}40` : "var(--color-border)",
-                    backgroundColor: stepActive ? `${step.color}08` : "rgba(255,255,255,0.02)",
-                    boxShadow: stepActive ? `0 0 12px ${step.glowColor}` : "none",
-                  } : {}}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <div
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300"
-                        style={{
-                          backgroundColor: stepActive ? `${step.color}18` : "rgba(255,255,255,0.04)",
-                          boxShadow: stepActive ? `inset 0 0 0 1px ${step.color}60` : "none",
-                        }}
-                      >
-                        {stepActive ? (
-                          <Check size={10} style={{ color: step.color }} />
-                        ) : (
-                          <step.icon size={10} style={{ color: "rgba(255,255,255,0.25)" }} />
-                        )}
+                {/* Step card — tab-like, clearly clickable */}
+                <div className="relative flex min-w-[130px] flex-1 flex-col">
+                  <button
+                    type="button"
+                    onClick={() => onSelectStep(step.id)}
+                    className={`group relative flex flex-1 cursor-pointer flex-col rounded-t-lg border px-3 py-2.5 text-left transition-all duration-200 ${
+                      isSelected
+                        ? "border-b-0"
+                        : "rounded-b-lg border-transparent hover:border-border hover:bg-muted/30"
+                    }`}
+                    style={isSelected ? {
+                      borderColor: stepActive ? `${step.color}40` : "var(--color-border)",
+                      backgroundColor: stepActive ? `${step.color}06` : "rgba(255,255,255,0.02)",
+                      boxShadow: stepActive ? `0 -2px 12px ${step.glowColor}` : "none",
+                    } : {}}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300"
+                          style={{
+                            backgroundColor: stepActive ? `${step.color}18` : "rgba(255,255,255,0.04)",
+                            boxShadow: stepActive ? `inset 0 0 0 1px ${step.color}60` : "none",
+                          }}
+                        >
+                          {stepActive ? (
+                            <Check size={10} style={{ color: step.color }} />
+                          ) : (
+                            <step.icon size={10} style={{ color: "rgba(255,255,255,0.25)" }} />
+                          )}
+                        </div>
+                        <span
+                          className="text-[11px] font-semibold uppercase tracking-wider"
+                          style={{ color: stepActive ? step.color : "rgba(255,255,255,0.3)" }}
+                        >
+                          {step.label}
+                        </span>
                       </div>
-                      <span
-                        className="text-[11px] font-semibold uppercase tracking-wider"
-                        style={{ color: stepActive ? step.color : "rgba(255,255,255,0.3)" }}
-                      >
-                        {step.label}
-                      </span>
+                      <Switch
+                        size="sm"
+                        checked={step.enabled}
+                        onCheckedChange={() => onToggleStep(step.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={!automationEnabled}
+                      />
                     </div>
-                    <Switch
-                      size="sm"
-                      checked={step.enabled}
-                      onCheckedChange={(e) => { e; onToggleStep(step.id); }}
-                      onClick={(e) => e.stopPropagation()}
-                      disabled={!automationEnabled}
-                    />
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <Badge variant="secondary" className="text-[8px] font-medium">
-                      <Timer size={7} className="mr-0.5" />
-                      {step.delay_label}
-                    </Badge>
-                    {step.include_discount && step.enabled && (
-                      <Badge variant="warning" className="text-[8px] font-bold uppercase">
-                        <Percent size={7} className="mr-0.5" /> {step.discount_percent}%
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="secondary" className="text-[8px] font-medium">
+                        <Timer size={7} className="mr-0.5" />
+                        {step.delay_label}
                       </Badge>
+                      {step.include_discount && step.enabled && (
+                        <Badge variant="warning" className="text-[8px] font-bold uppercase">
+                          <Percent size={7} className="mr-0.5" /> {step.discount_percent}%
+                        </Badge>
+                      )}
+                    </div>
+                    {/* Selected: editing indicator */}
+                    {isSelected && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[9px] font-medium" style={{ color: step.color }}>
+                        <Pencil size={8} />
+                        <span>Editing below</span>
+                      </div>
                     )}
-                  </div>
+                    {/* Not selected: hover hint */}
+                    {!isSelected && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[9px] text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50">
+                        <Pencil size={8} />
+                        <span>Click to edit</span>
+                      </div>
+                    )}
+                  </button>
+                  {/* Selected bottom indicator — pointed tab connecting to editor */}
                   {isSelected && (
-                    <div className="mt-1 flex items-center gap-1 text-[9px]" style={{ color: step.color }}>
-                      <Eye size={8} />
-                      <span>Editing</span>
+                    <div className="flex justify-center">
+                      <div
+                        className="h-2 w-6"
+                        style={{
+                          background: stepActive ? step.color : "var(--color-border)",
+                          clipPath: "polygon(0 0, 100% 0, 50% 100%)",
+                          opacity: stepActive ? 0.5 : 0.3,
+                        }}
+                      />
                     </div>
                   )}
-                </button>
+                </div>
 
-                {/* Connector after last step → recovered */}
-                {i === steps.length - 1 && (
-                  <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
-                    <div
-                      className="h-0.5 w-full transition-colors duration-300"
-                      style={{
-                        background: stepActive
-                          ? `linear-gradient(to right, ${step.color}, #10b981)`
-                          : "rgba(255,255,255,0.06)",
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Connector between steps (not last) */}
-                {i < steps.length - 1 && (
-                  <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
-                    <div
-                      className="h-0.5 w-full transition-colors duration-300"
-                      style={{
-                        background: stepActive
-                          ? `linear-gradient(to right, ${step.color}, ${nextColor})`
-                          : "rgba(255,255,255,0.06)",
-                      }}
-                    />
-                  </div>
-                )}
+                {/* Connector line out */}
+                <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
+                  <div
+                    className="h-0.5 w-full transition-colors duration-300"
+                    style={{
+                      background: stepActive
+                        ? `linear-gradient(to right, ${step.color}, ${i === steps.length - 1 ? "#10b981" : nextColor})`
+                        : "rgba(255,255,255,0.06)",
+                    }}
+                  />
+                </div>
               </div>
             );
           })}
@@ -1656,7 +1669,7 @@ export default function AbandonedCartPage() {
 
       {/* Row 1: Recovery Pipeline (full width, horizontal strip) */}
       <div className="mb-6">
-        <RecoveryPipeline
+        <RecoveryFlow
           steps={settings.steps}
           automationEnabled={settings.enabled}
           onToggleStep={handleToggleStep}

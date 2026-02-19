@@ -1638,14 +1638,6 @@ export default function AbandonedCartPage() {
         />
       </div>
 
-      {/* Email Branding — logo + accent color */}
-      <div className="mb-6">
-        <EmailBranding
-          branding={branding}
-          onBrandingChange={handleBrandingChange}
-        />
-      </div>
-
       {/* Disabled overlay hint */}
       {!settings.enabled && stats && stats.abandoned > 0 && (
         <div className="mb-6 flex items-center gap-4 rounded-xl border border-amber-500/20 bg-amber-500/4 px-5 py-4">
@@ -1675,6 +1667,14 @@ export default function AbandonedCartPage() {
           onToggleStep={handleToggleStep}
           activeStepId={activeStepId}
           onSelectStep={setActiveStepId}
+        />
+      </div>
+
+      {/* Email Branding — logo + accent color (near editor/preview where it's relevant) */}
+      <div className="mb-6">
+        <EmailBranding
+          branding={branding}
+          onBrandingChange={handleBrandingChange}
         />
       </div>
 

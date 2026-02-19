@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { Scanlines } from "@/components/layout/Scanlines";
-import { GTM_ID } from "@/lib/constants";
+import { GTM_ID, TABLES, SETTINGS_KEYS } from "@/lib/constants";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import type { MarketingSettings } from "@/types/marketing";
 import "@/styles/base.css";
 import "@/styles/effects.css";
 import "@/styles/cookie.css";
@@ -16,14 +18,57 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Fetch Meta Pixel ID — must be in <head> for Pixel Helper detection.
+  // This is a single lightweight query, cached for the request lifecycle.
+  let pixelId: string | null = null;
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (supabase) {
+      const { data } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", SETTINGS_KEYS.MARKETING)
+        .single();
+      const marketing = data?.data as MarketingSettings | null;
+      if (marketing?.meta_tracking_enabled && marketing.meta_pixel_id) {
+        pixelId = marketing.meta_pixel_id;
+      }
+    }
+  } catch {
+    // Silent — pixel is non-critical, page must still render
+  }
+
   return (
     <html lang="en">
       <head>
+        {/* Meta Pixel — MUST be in <head> for Pixel Helper + Test Events detection.
+            Raw <script> tag (not Next.js <Script>) so it renders as a synchronous
+            inline script in the initial HTML, exactly like Shopify does it.
+            The Pixel Helper Chrome extension specifically looks in <head>. */}
+        {pixelId && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');var pvId='pv-'+Date.now()+'-'+Math.random().toString(36).substr(2,9);fbq('track','PageView',{},{eventID:pvId});window.__META_HTML_PAGEVIEW_ID=pvId;`,
+            }}
+          />
+        )}
+        {pixelId && (
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              style={{ display: "none" }}
+              src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
+              alt=""
+            />
+          </noscript>
+        )}
+
         {/* Fonts — loaded via Google Fonts CDN (same as existing site) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

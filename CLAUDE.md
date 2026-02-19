@@ -303,9 +303,19 @@ Using the wrong client causes silent data loss (empty arrays instead of errors w
 **Rules:** Use `getSupabaseAdmin()` for all data queries. Use `getSupabaseServer()` only for auth. Never create raw `createClient()` with anon key server-side. Add new tables to health check. Show API errors in admin pages.
 
 ### External Service Changes Rule (CRITICAL)
-Claude has MCP access to **Supabase** (schema, queries, migrations). Use MCP tools directly — don't tell the user to go to dashboards. **Stripe** and **Vercel** have no MCP — tell user to use dashboards or provide copy-paste instructions for changes.
+Claude has MCP access to **Supabase** and **Vercel**. Use MCP tools directly — **NEVER** give the user SQL to run manually or tell them to go to dashboards. Always execute migrations and queries via MCP yourself.
 
-**Rules:** Never hardcode secrets. Document changes in this file. If MCP can't do something, provide copy-paste instructions. Never assume it exists unless documented here.
+**If Supabase or Vercel MCP token has expired**, do NOT fall back to giving the user raw SQL or manual instructions. Instead, stop and display a highly visible reconnection prompt:
+
+```
+## ⚠️  SUPABASE MCP DISCONNECTED
+
+Run /mcp in this terminal to re-authorize, then I'll continue.
+```
+
+**Stripe** has no MCP — tell user to use dashboard or provide copy-paste instructions.
+
+**Rules:** Never hardcode secrets. Document changes in this file. Never assume a table/column exists unless documented here. Never give the user SQL to run — that's Claude's job via MCP.
 
 ---
 

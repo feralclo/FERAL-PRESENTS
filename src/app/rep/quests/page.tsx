@@ -646,7 +646,7 @@ export default function RepQuestsPage() {
 
         return (
           <div
-            className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
+            className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
             onClick={(e) => { if (e.target === e.currentTarget) setDetailQuest(null); }}
           >
             <div
@@ -849,7 +849,7 @@ export default function RepQuestsPage() {
       {/* Submit Proof Modal */}
       {submitQuestId && (
         <div
-          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
           onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
         >
           <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6">

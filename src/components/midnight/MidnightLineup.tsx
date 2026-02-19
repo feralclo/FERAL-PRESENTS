@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
 import type { Artist } from "@/types/artists";
 
 interface MidnightLineupProps {
@@ -18,56 +17,10 @@ export function MidnightLineup({
   artistProfiles,
   onArtistClick,
 }: MidnightLineupProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const hintRef = useRef<HTMLSpanElement>(null);
-  const [cascaded, setCascaded] = useState(false);
-
-  // Cascade animation: when lineup scrolls into view, pills highlight in sequence
-  const triggerCascade = useCallback(() => {
-    if (cascaded) return;
-    setCascaded(true);
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const pills = container.querySelectorAll<HTMLElement>(".midnight-lineup-pill");
-    const stagger = Math.min(200, 3000 / Math.max(pills.length, 1)); // unhurried wave
-
-    pills.forEach((pill, i) => {
-      pill.style.animationDelay = `${i * stagger}ms`;
-      pill.classList.add("lineup-cascade");
-    });
-
-    // Trigger "tap to explore" hint glow partway through the cascade
-    if (hintRef.current) {
-      const hintDelay = Math.min(pills.length * stagger * 0.65, 2000);
-      hintRef.current.style.animationDelay = `${hintDelay}ms`;
-      hintRef.current.classList.add("lineup-hint-glow");
-    }
-  }, [cascaded]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          triggerCascade();
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.2, rootMargin: "-40px 0px" }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [triggerCascade]);
-
   if (artists.length === 0) return null;
 
   return (
-    <div ref={containerRef}>
+    <div>
       {/* Section header */}
       <div className="flex items-center gap-3 mb-8 max-[480px]:mb-6">
         <h2 className="font-[family-name:var(--font-sans)] text-sm max-[480px]:text-xs font-bold tracking-[0.2em] uppercase text-foreground/90">
@@ -81,8 +34,7 @@ export function MidnightLineup({
         <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.12] to-transparent" />
         {artistProfiles && artistProfiles.size > 0 && (
           <span
-            ref={hintRef}
-            className="midnight-lineup-hint font-[family-name:var(--font-sans)] text-[10px] max-[480px]:text-[9px] tracking-[0.04em] text-foreground/25 whitespace-nowrap transition-colors duration-300"
+            className="midnight-lineup-hint font-[family-name:var(--font-sans)] text-[10px] max-[480px]:text-[9px] tracking-[0.04em] text-foreground/25 whitespace-nowrap"
           >
             tap to explore
           </span>

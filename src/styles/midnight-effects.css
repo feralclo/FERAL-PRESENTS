@@ -593,35 +593,6 @@ body:has([data-theme="midnight"]) .header {
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
-/* Scroll-triggered cascade: each pill glows in a slow, natural wave.
-   Simple 3-stop keyframe — CSS interpolates smoothly between fewer stops.
-   Peak at 18%, then a long ~80% graceful fade back to rest. ease-out gives
-   a quick natural rise and a lingering decay (like light passing through). */
-[data-theme="midnight"] .midnight-lineup-pill.lineup-cascade {
-  animation: lineupCascade 3.5s ease-out both;
-}
-
-@keyframes lineupCascade {
-  0%   { border-color: inherit; color: inherit; background: inherit; box-shadow: none; }
-  18%  { border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-         color: var(--color-foreground);
-         background: color-mix(in srgb, var(--accent) 6%, transparent);
-         box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 10%, transparent); }
-  100% { border-color: inherit; color: inherit; background: inherit; box-shadow: none; }
-}
-
-/* "tap to explore" — gentle accent pulse, peaks then fades slowly */
-[data-theme="midnight"] .midnight-lineup-hint.lineup-hint-glow {
-  animation: lineupHintGlow 4s ease-out both;
-}
-
-@keyframes lineupHintGlow {
-  0%   { color: inherit; text-shadow: none; }
-  22%  { color: var(--accent);
-         text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 20%, transparent); }
-  100% { color: inherit; text-shadow: none; }
-}
-
 
 /* ═══════════════════════════════════════════════
    CONTENT ZONE — Full-width dark section below tickets
@@ -999,8 +970,6 @@ html.checkout-active .noise {
     animation: none;
   }
   [data-theme="midnight"] .midnight-lineup-pill,
-  [data-theme="midnight"] .midnight-lineup-pill.lineup-cascade,
-  [data-theme="midnight"] .midnight-lineup-hint.lineup-hint-glow,
   [data-theme="midnight"] [data-reveal] {
     transition: none;
     animation: none;

@@ -219,6 +219,12 @@ function loadPixel(pixelId: string) {
     };
 
     document.head.appendChild(script);
+  } else {
+    // Pixel was already loaded from server-rendered HTML (standard snippet in layout).
+    // Mark as ready immediately so CAPI events don't wait for a script load that already happened.
+    _pixelScriptReady = true;
+    _resolvePixelReady?.();
+    console.debug("[Meta] Pixel already loaded from HTML — _fbp:", getCookie("_fbp") ? "set" : "not set");
   }
 
   // Advanced Matching: pass any stored customer data during init.
@@ -394,10 +400,24 @@ export function useMetaTracking() {
   const trackPageView = useCallback(() => {
     getSettings().then((s) => {
       if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
-      const eventId = crypto.randomUUID();
-      firePixelEvent("PageView", {}, eventId);
-      sendCAPI("PageView", eventId);
-      console.debug("[Meta] PageView fired:", eventId);
+
+      // Check if the server-rendered HTML already fired a PageView (from layout.tsx).
+      // If so, reuse its event_id for CAPI deduplication and skip the pixel call.
+      const w = window as any;
+      const htmlPageViewId = w.__META_HTML_PAGEVIEW_ID;
+
+      if (htmlPageViewId) {
+        // HTML already fired pixel PageView — only fire CAPI with the same event_id
+        delete w.__META_HTML_PAGEVIEW_ID; // Consume it so SPA navigations fire fresh
+        sendCAPI("PageView", htmlPageViewId);
+        console.debug("[Meta] PageView CAPI (dedup with HTML):", htmlPageViewId);
+      } else {
+        // No HTML PageView (e.g., SPA navigation) — fire both pixel and CAPI
+        const eventId = crypto.randomUUID();
+        firePixelEvent("PageView", {}, eventId);
+        sendCAPI("PageView", eventId);
+        console.debug("[Meta] PageView fired:", eventId);
+      }
     });
   }, []);
 

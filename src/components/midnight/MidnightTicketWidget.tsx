@@ -109,11 +109,25 @@ export function MidnightTicketWidget({
     if (isStripe) preloadStripe();
   }, [isStripe]);
 
-  // Focus discount code input without scrolling — autoFocus would
-  // scroll the page and push checkout/Apple Pay out of view
+  // Position discount code input above the mobile keyboard when opened.
+  // Default autoFocus scrolls aggressively and pushes checkout out of view.
+  // preventScroll hides the input behind the keyboard entirely.
+  // Instead: scroll input to ~30% from viewport top (safely above keyboard),
+  // then focus after a short delay so keyboard appears with input visible.
   useEffect(() => {
-    if (codeOpen && codeInputRef.current) {
-      codeInputRef.current.focus({ preventScroll: true });
+    if (!codeOpen || !codeInputRef.current) return;
+    const el = codeInputRef.current;
+    const rect = el.getBoundingClientRect();
+    const targetY = window.innerHeight * 0.3;
+    const scrollBy = rect.top - targetY;
+    if (scrollBy > 20) {
+      window.scrollBy({ top: scrollBy, behavior: "smooth" });
+      // Focus after scroll settles so keyboard doesn't fight the scroll
+      const timer = setTimeout(() => el.focus({ preventScroll: true }), 350);
+      return () => clearTimeout(timer);
+    } else {
+      // Already in a good position — just focus
+      el.focus({ preventScroll: true });
     }
   }, [codeOpen]);
 

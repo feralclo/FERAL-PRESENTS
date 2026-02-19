@@ -7,7 +7,7 @@ import {
   Compass, Upload, Link as LinkIcon, Type, X, Loader2, Check,
   Clock, ChevronDown, ChevronUp, AlertCircle, ExternalLink,
   Camera, Share2, Sparkles, Zap, Play, BookOpen, Maximize2,
-  Volume2, VolumeX,
+  Volume2, VolumeX, Music,
 } from "lucide-react";
 import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
@@ -187,9 +187,58 @@ function FullscreenVideo({
         <h3 className={cn("text-lg font-extrabold tracking-tight", titleColorClass)}>
           {title}
         </h3>
+
+        {/* Create Now — deep link to apps */}
+        <div className="flex gap-2 mt-3">
+          <a
+            href="https://www.tiktok.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/[0.12] text-white/80 text-xs font-semibold hover:bg-white/[0.15] active:scale-[0.97] transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Music size={14} />
+            Create on TikTok
+          </a>
+          <a
+            href="https://www.instagram.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/[0.12] text-white/80 text-xs font-semibold hover:bg-white/[0.15] active:scale-[0.97] transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Camera size={14} />
+            Create on Instagram
+          </a>
+        </div>
       </div>
     </div>
   );
+}
+
+// ─── Success sound (Web Audio API — no external files) ──────────────────────
+
+function playSuccessSound() {
+  try {
+    const ctx = new AudioContext();
+    // Ascending major arpeggio: C5 → E5 → G5 → C6
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      const t = ctx.currentTime + i * 0.09;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.13, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      osc.start(t);
+      osc.stop(t + 0.3);
+    });
+    setTimeout(() => ctx.close(), 1500);
+  } catch { /* AudioContext not available — silent fallback */ }
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -225,10 +274,10 @@ type ProofType = "tiktok_link" | "instagram_link" | "screenshot" | "url" | "text
 // ─── Quest type → proof type mapping ─────────────────────────────────────────
 
 const QUEST_PROOF_MAP: Record<string, { types: ProofType[]; default: ProofType }> = {
-  social_post: { types: ["tiktok_link", "instagram_link", "url"], default: "tiktok_link" },
-  story_share: { types: ["screenshot", "url"], default: "screenshot" },
-  content_creation: { types: ["tiktok_link", "instagram_link", "url", "screenshot"], default: "url" },
-  custom: { types: ["tiktok_link", "instagram_link", "url", "screenshot", "text"], default: "url" },
+  social_post: { types: ["tiktok_link", "instagram_link"], default: "tiktok_link" },
+  story_share: { types: ["tiktok_link", "instagram_link", "screenshot"], default: "tiktok_link" },
+  content_creation: { types: ["tiktok_link", "instagram_link", "screenshot"], default: "tiktok_link" },
+  custom: { types: ["tiktok_link", "instagram_link", "screenshot"], default: "tiktok_link" },
 };
 
 const PROOF_TYPE_CONFIG: Record<ProofType, { label: string; icon: typeof LinkIcon; placeholder: string }> = {
@@ -484,6 +533,7 @@ export default function RepQuestsPage() {
       if (res.ok) {
         setSubmitted(true);
         setError("");
+        playSuccessSound();
         setTimeout(() => {
           const questId = submitQuestId;
           setSubmitQuestId(null);
@@ -724,6 +774,20 @@ export default function RepQuestsPage() {
                   {expiry && !expiry.urgent && (
                     <p className="text-[10px] text-muted-foreground mt-2">{expiry.text}</p>
                   )}
+
+                  {/* View Quest CTA */}
+                  <div className={cn(
+                    "mt-3 py-2.5 rounded-xl text-center text-[11px] font-bold uppercase tracking-widest border transition-all duration-200",
+                    tier.tier === "legendary"
+                      ? "bg-amber-500/8 border-amber-500/15 text-amber-400/80"
+                      : tier.tier === "epic"
+                      ? "bg-purple-500/8 border-purple-500/15 text-purple-400/80"
+                      : tier.tier === "rare"
+                      ? "bg-sky-500/8 border-sky-500/15 text-sky-400/80"
+                      : "bg-white/[0.04] border-white/[0.08] text-white/50"
+                  )}>
+                    View Quest
+                  </div>
 
                   {/* History toggle */}
                   {hasSubs && (
@@ -988,7 +1052,7 @@ export default function RepQuestsPage() {
                     className={cn("rep-quest-detail-cta", `rep-quest-detail-cta-${tier.tier}`)}
                   >
                     <Zap size={16} />
-                    Submit Proof
+                    Submit Proof — Earn {detailQuest.points_reward} XP
                   </button>
                 )}
               </div>
@@ -1046,162 +1110,249 @@ export default function RepQuestsPage() {
         );
       })(), (document.getElementById("rep-portal-root") || document.body))}
 
-      {/* Submit Proof Modal — portalled */}
-      {submitQuestId && typeof document !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-          onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
-        >
-          <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-bold text-foreground">Submit Proof</h3>
-              <button
-                onClick={() => { if (!submitting) setSubmitQuestId(null); }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {submitQuest && (
-              <p className="text-xs text-muted-foreground mb-4 line-clamp-1">{submitQuest.title}</p>
-            )}
+      {/* Submit Proof Modal — gamified, portalled */}
+      {submitQuestId && typeof document !== "undefined" && createPortal((() => {
+        const sq = submitQuest;
+        const sqTier = sq ? getQuestTier(sq.points_reward) : null;
+        const sqTitleColor = sqTier
+          ? sqTier.tier === "legendary" ? "rep-gradient-text-gold"
+            : sqTier.tier === "epic" ? "rep-gradient-text"
+            : sqTier.tier === "rare" ? "text-[#38BDF8]"
+            : "text-foreground"
+          : "text-foreground";
+        const platformTypes = availableProofTypes.filter((pt) => pt === "tiktok_link" || pt === "instagram_link");
+        const hasScreenshot = availableProofTypes.includes("screenshot");
+        const isPlatformLink = proofType === "tiktok_link" || proofType === "instagram_link";
 
-            {submitted ? (
-              <div className="text-center py-6 relative">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-3 rep-reward-success-ring relative">
-                  <Check size={20} className="text-success" />
-                  <div className="rep-success-particles">
-                    <div className="rep-success-particle" />
-                    <div className="rep-success-particle" />
-                    <div className="rep-success-particle" />
-                    <div className="rep-success-particle" />
-                    <div className="rep-success-particle" />
-                    <div className="rep-success-particle" />
-                  </div>
-                </div>
-                <p className="text-sm text-foreground font-medium">Submitted for review!</p>
-                {submitQuest && (
-                  <p className="text-xs text-primary font-bold mt-1">+{submitQuest.points_reward} XP pending</p>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* Proof type selector */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {availableProofTypes.map((pt) => {
-                    const config = PROOF_TYPE_CONFIG[pt];
-                    const Icon = config.icon;
-                    return (
-                      <button
-                        key={pt}
-                        onClick={() => { setProofType(pt); setProofText(""); setUploadedUrl(""); }}
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors border",
-                          proofType === pt
-                            ? "bg-primary/10 text-primary border-primary/30"
-                            : "bg-secondary text-muted-foreground border-border"
-                        )}
-                      >
-                        <Icon size={12} />
-                        {config.label}
-                      </button>
-                    );
-                  })}
-                </div>
+        return (
+          <div
+            className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
+          >
+            <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/[0.08] bg-[var(--color-card)]">
 
-                {/* Proof input */}
-                {proofType === "text" ? (
-                  <textarea
-                    value={proofText}
-                    onChange={(e) => setProofText(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors resize-none"
-                    placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
-                    rows={4}
-                    autoFocus
-                  />
-                ) : proofType === "screenshot" ? (
-                  <div className="space-y-3">
-                    {uploadedUrl ? (
-                      <div className="relative rounded-xl overflow-hidden border border-border">
-                        <img src={uploadedUrl} alt="Proof" className="w-full max-h-48 object-contain bg-secondary" />
-                        <button
-                          onClick={() => { setUploadedUrl(""); setProofText(""); }}
-                          className="absolute top-2 right-2 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-secondary py-8 cursor-pointer transition-colors hover:border-primary/50 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-                        {uploading ? (
-                          <Loader2 size={20} className="animate-spin text-primary" />
-                        ) : (
-                          <Upload size={20} className="text-muted-foreground" />
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          {uploading ? "Uploading..." : "Tap to upload a screenshot"}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileUpload(file);
-                          }}
-                        />
-                      </label>
-                    )}
-                    <p className="text-[10px] text-center text-muted-foreground">or paste a URL</p>
-                    <input
-                      value={uploadedUrl ? "" : proofText}
-                      onChange={(e) => { setProofText(e.target.value); setUploadedUrl(""); }}
-                      className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors"
-                      placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
-                      disabled={!!uploadedUrl}
-                    />
-                  </div>
-                ) : (
-                  /* tiktok_link, instagram_link, url — all are URL inputs */
-                  <input
-                    value={proofText}
-                    onChange={(e) => setProofText(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors"
-                    placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
-                    autoFocus
-                  />
-                )}
-
-                {/* Inline validation hint for social links */}
-                {proofType === "tiktok_link" && proofText && !/tiktok\.com\//.test(proofText) && (
-                  <p className="mt-2 text-[10px] text-amber-400 flex items-center gap-1">
-                    <AlertCircle size={10} /> Must be a TikTok URL (e.g. tiktok.com/@user/video/...)
-                  </p>
-                )}
-                {proofType === "instagram_link" && proofText && !/instagram\.com\/(p|reel|reels|tv)\//.test(proofText) && (
-                  <p className="mt-2 text-[10px] text-amber-400 flex items-center gap-1">
-                    <AlertCircle size={10} /> Must be an Instagram post or reel URL
-                  </p>
-                )}
-
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || (!proofText.trim() && !uploadedUrl)}
-                  className="w-full mt-4 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
-                >
-                  {submitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 size={14} className="animate-spin" /> Submitting...
+              {/* ── Header: tier badge, XP, close ── */}
+              <div className="flex items-center justify-between px-5 pt-5">
+                <div className="flex items-center gap-2">
+                  {sqTier && <span className={sqTier.badgeClass}>{sqTier.label}</span>}
+                  {sq && (
+                    <span className={cn(sqTier?.xpBadgeClass, "flex items-center gap-1")}>
+                      <Zap size={12} /> +{sq.points_reward} XP
                     </span>
-                  ) : (
-                    "Submit"
                   )}
+                </div>
+                <button
+                  onClick={() => { if (!submitting) setSubmitQuestId(null); }}
+                  className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={16} />
                 </button>
-              </>
-            )}
+              </div>
+
+              {/* ── Quest title + motivation ── */}
+              {sq && (
+                <div className="px-5 pt-2 pb-1">
+                  <h3 className={cn("text-lg font-extrabold tracking-tight", sqTitleColor)}>
+                    {sq.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Submit your proof to earn <span className="font-bold text-primary">{sq.points_reward} XP</span>
+                  </p>
+                </div>
+              )}
+
+              {submitted ? (
+                /* ══ Success state — big celebration ══ */
+                <div className="text-center py-10 px-5 relative">
+                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/10 mb-4 rep-reward-success-ring relative">
+                    <Check size={28} className="text-success" />
+                    <div className="rep-success-particles">
+                      <div className="rep-success-particle" />
+                      <div className="rep-success-particle" />
+                      <div className="rep-success-particle" />
+                      <div className="rep-success-particle" />
+                      <div className="rep-success-particle" />
+                      <div className="rep-success-particle" />
+                    </div>
+                  </div>
+                  <p className="text-base font-extrabold text-foreground mb-1">Quest Submitted!</p>
+                  <p className="text-xs text-muted-foreground mb-3">Your proof is being reviewed</p>
+                  {sq && (
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-2">
+                      <Zap size={14} className="text-primary" />
+                      <span className="text-sm font-bold text-primary">+{sq.points_reward} XP pending</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="px-5 pb-5 pt-3 space-y-4">
+
+                  {/* ══ Platform selector — two big cards ══ */}
+                  {platformTypes.length > 0 && isPlatformLink && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground mb-2 uppercase tracking-widest">Where did you post?</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {platformTypes.map((pt) => {
+                          const isTikTok = pt === "tiktok_link";
+                          const selected = proofType === pt;
+                          return (
+                            <button
+                              key={pt}
+                              type="button"
+                              onClick={() => { setProofType(pt); setProofText(""); setUploadedUrl(""); }}
+                              className={cn(
+                                "relative rounded-xl p-3.5 border-2 text-center transition-all duration-200 cursor-pointer",
+                                selected
+                                  ? isTikTok
+                                    ? "bg-[#25F4EE]/5 border-[#25F4EE]/30 shadow-[0_0_24px_rgba(37,244,238,0.08)]"
+                                    : "bg-[#E1306C]/5 border-[#E1306C]/30 shadow-[0_0_24px_rgba(225,48,108,0.08)]"
+                                  : "bg-white/[0.02] border-white/[0.08] hover:border-white/[0.15]"
+                              )}
+                            >
+                              <div className={cn(
+                                "mx-auto mb-1.5 w-9 h-9 rounded-lg flex items-center justify-center",
+                                isTikTok ? "bg-[#25F4EE]/10" : "bg-[#E1306C]/10"
+                              )}>
+                                {isTikTok
+                                  ? <Music size={18} className="text-[#25F4EE]" />
+                                  : <Camera size={18} className="text-[#E1306C]" />
+                                }
+                              </div>
+                              <span className="text-sm font-bold text-foreground block">
+                                {isTikTok ? "TikTok" : "Instagram"}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {isTikTok ? "Video link" : "Post or reel"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ══ Link input ══ */}
+                  {isPlatformLink && (
+                    <div>
+                      <label className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground mb-2 uppercase tracking-widest">
+                        <LinkIcon size={11} />
+                        Paste your {proofType === "tiktok_link" ? "TikTok" : "Instagram"} link
+                      </label>
+                      <input
+                        value={proofText}
+                        onChange={(e) => setProofText(e.target.value)}
+                        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-primary/50 focus:bg-white/[0.05] focus:outline-none transition-all"
+                        placeholder={PROOF_TYPE_CONFIG[proofType].placeholder}
+                        autoFocus
+                      />
+
+                      {/* Validation hints */}
+                      {proofType === "tiktok_link" && proofText && !/tiktok\.com\//.test(proofText) && (
+                        <p className="mt-2 text-[10px] text-amber-400 flex items-center gap-1">
+                          <AlertCircle size={10} /> Must be a TikTok URL (e.g. tiktok.com/@user/video/...)
+                        </p>
+                      )}
+                      {proofType === "instagram_link" && proofText && !/instagram\.com\/(p|reel|reels|tv)\//.test(proofText) && (
+                        <p className="mt-2 text-[10px] text-amber-400 flex items-center gap-1">
+                          <AlertCircle size={10} /> Must be an Instagram post or reel URL
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ══ Screenshot upload (when selected) ══ */}
+                  {proofType === "screenshot" && (
+                    <div className="space-y-3">
+                      {uploadedUrl ? (
+                        <div className="relative rounded-xl overflow-hidden border border-white/[0.08]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={uploadedUrl} alt="Proof" className="w-full max-h-48 object-contain bg-white/[0.02]" />
+                          <button
+                            onClick={() => { setUploadedUrl(""); setProofText(""); }}
+                            className="absolute top-2 right-2 h-7 w-7 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center text-white hover:bg-black/80"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className={cn(
+                          "flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-white/[0.10] bg-white/[0.02] py-8 cursor-pointer transition-all hover:border-primary/40 hover:bg-white/[0.04]",
+                          uploading && "opacity-50 pointer-events-none"
+                        )}>
+                          {uploading
+                            ? <Loader2 size={22} className="animate-spin text-primary" />
+                            : <Upload size={22} className="text-muted-foreground" />
+                          }
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {uploading ? "Uploading..." : "Tap to upload a screenshot"}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file);
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ══ Toggle: screenshot ↔ link ══ */}
+                  {hasScreenshot && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (proofType === "screenshot") {
+                          setProofType(platformTypes[0] || "tiktok_link");
+                        } else {
+                          setProofType("screenshot");
+                        }
+                        setProofText("");
+                        setUploadedUrl("");
+                      }}
+                      className="w-full text-center text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1"
+                    >
+                      {proofType === "screenshot" ? "Paste a link instead" : "Or upload a screenshot"}
+                    </button>
+                  )}
+
+                  {/* ══ Submit CTA — tier-colored with XP ══ */}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || (!proofText.trim() && !uploadedUrl)}
+                    className={cn(
+                      "w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-30 disabled:scale-100",
+                      "flex items-center justify-center gap-2",
+                      sqTier?.tier === "legendary"
+                        ? "bg-gradient-to-r from-amber-500 to-yellow-500 hover:brightness-110"
+                        : sqTier?.tier === "epic"
+                        ? "bg-gradient-to-r from-purple-500 to-violet-500 hover:brightness-110"
+                        : sqTier?.tier === "rare"
+                        ? "bg-gradient-to-r from-sky-500 to-blue-500 hover:brightness-110"
+                        : "bg-primary hover:brightness-110"
+                    )}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={16} />
+                        Submit for +{sq?.points_reward ?? 0} XP
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      , (document.getElementById("rep-portal-root") || document.body))}
+        );
+      })(), (document.getElementById("rep-portal-root") || document.body))}
     </div>
   );
 }

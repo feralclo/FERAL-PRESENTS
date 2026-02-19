@@ -1,4 +1,3 @@
-import Script from "next/script";
 import { fetchSettings } from "@/lib/settings";
 import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -158,27 +157,16 @@ export default async function EventLayout({
   return (
     <>
       {preconnectHints}
-      {/* Meta Pixel — injected server-side for instant detection by Pixel Helper
-          and Meta's Test Events tool. Init + PageView fire immediately in the HTML.
-          The useMetaTracking hook handles CAPI dedup + subsequent events.
-          When multi-tenant: fetchMarketingSettings() will accept org_id. */}
+      {/* Meta Pixel — raw script tag, server-rendered directly into the HTML.
+          NOT using Next.js <Script> component because afterInteractive injects
+          client-side (after hydration), which is too late for Pixel Helper detection.
+          This raw tag is in the initial HTML response, just like Shopify does it. */}
       {pixelId && (
-        <Script id="meta-pixel" strategy="afterInteractive">
-          {`
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${pixelId}');
-            var pvId='pv-'+Date.now()+'-'+Math.random().toString(36).substr(2,9);
-            fbq('track','PageView',{},{eventID:pvId});
-            window.__META_HTML_PAGEVIEW_ID=pvId;
-          `}
-        </Script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');var pvId='pv-'+Date.now()+'-'+Math.random().toString(36).substr(2,9);fbq('track','PageView',{},{eventID:pvId});window.__META_HTML_PAGEVIEW_ID=pvId;`,
+          }}
+        />
       )}
       {pixelId && (
         <noscript>

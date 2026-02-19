@@ -29,7 +29,7 @@ function isProtectedAdminPage(pathname: string): boolean {
  * Rep portal page routes that require rep authentication.
  * Public pages (login, join, invite) are excluded.
  */
-const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite", "/rep/verify-email", "/rep/dev-access"];
+const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite", "/rep/verify-email", "/rep/dev-access", "/rep/test"];
 
 function isProtectedRepPage(pathname: string): boolean {
   if (!pathname.startsWith("/rep")) return false;

@@ -23,8 +23,8 @@ const cspDirectives = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Fonts: Google Fonts CDN
   "font-src 'self' https://fonts.gstatic.com",
-  // Images: self + data URIs (QR codes, base64 logos) + Mux thumbnails
-  `img-src 'self' data: blob: https://image.mux.com`,
+  // Images: self + data URIs (QR codes, base64 logos) + Mux thumbnails + Meta Pixel tracking
+  `img-src 'self' data: blob: https://image.mux.com https://www.facebook.com`,
   // Media: Mux HLS video segments + blob URIs for player internals
   "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
   // Workers: Mux Player uses Web Workers for HLS parsing

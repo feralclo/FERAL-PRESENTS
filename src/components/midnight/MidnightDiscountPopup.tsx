@@ -346,15 +346,20 @@ export function MidnightDiscountPopup() {
               <form onSubmit={handleEmailSubmit} className="w-full">
                 <input
                   type="email"
+                  inputMode="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   autoComplete="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   autoFocus
                   className={cn(
                     "w-full h-12 px-4 rounded-xl mb-3",
                     "bg-white/[0.06] border border-white/[0.10]",
-                    "font-[family-name:var(--font-sans)] text-[14px] text-white placeholder:text-white/25",
+                    // 16px prevents iOS Safari auto-zoom on focus
+                    "font-[family-name:var(--font-sans)] text-[16px] text-white placeholder:text-white/25",
                     "outline-none focus:border-white/[0.20] focus:bg-white/[0.08]",
                     "transition-all duration-200",
                     "touch-manipulation"

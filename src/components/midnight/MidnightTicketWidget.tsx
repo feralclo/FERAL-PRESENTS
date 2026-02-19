@@ -347,10 +347,10 @@ export function MidnightTicketWidget({
                 {!codeOpen ? (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/40 hover:text-foreground/60 border-b border-dashed border-foreground/15 hover:border-foreground/30 transition-colors duration-200 cursor-pointer bg-transparent border-t-0 border-x-0 p-0 pb-px"
+                    className="inline-flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[12px] tracking-[0.06em] text-foreground/50 hover:text-foreground/70 border-b border-dashed border-foreground/20 hover:border-foreground/40 transition-colors duration-200 cursor-pointer bg-transparent border-t-0 border-x-0 p-0 pb-px"
                     onClick={() => setCodeOpen(true)}
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
                     Have a code?
                   </button>
                 ) : (
@@ -362,7 +362,10 @@ export function MidnightTicketWidget({
                         onChange={(e) => { setCodeValue(e.target.value.toUpperCase()); setCodeError(""); }}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCodeApply(); } }}
                         placeholder="Enter code"
-                        className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-mono)] text-xs tracking-[0.04em] py-2.5 px-3 outline-none transition-colors duration-150 placeholder:text-foreground/25 focus:border-white/[0.25] focus:bg-white/[0.06]"
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-mono)] text-[16px] tracking-[0.04em] py-2.5 px-3 outline-none transition-colors duration-150 placeholder:text-foreground/25 focus:border-white/[0.25] focus:bg-white/[0.06]"
                         autoFocus
                         disabled={codeLoading}
                       />

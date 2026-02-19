@@ -10,9 +10,64 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
-import { isMuxPlaybackId } from "@/lib/mux";
+import { isMuxPlaybackId, getMuxThumbnailUrl, getMuxStreamUrl } from "@/lib/mux";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
+
+// ─── Mux video: thumbnail → tap to play ──────────────────────────────────────
+
+function MuxVideoPreview({ playbackId }: { playbackId: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState(false);
+
+  if (playing && !error) {
+    return (
+      <MuxPlayer
+        playbackId={playbackId}
+        streamType="on-demand"
+        muted
+        autoPlay
+        preload="auto"
+        onError={() => setError(true)}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {...{ style: {
+          width: "100%",
+          maxHeight: "min(200px, 30vh)",
+          "--media-object-fit": "contain",
+        } } as any}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setPlaying(true)}
+      className="relative w-full cursor-pointer bg-black rounded-lg overflow-hidden border-none p-0"
+      style={{ maxHeight: "min(200px, 30vh)" }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={getMuxThumbnailUrl(playbackId)}
+        alt="Video thumbnail"
+        className="w-full object-contain"
+        style={{ maxHeight: "min(200px, 30vh)" }}
+      />
+      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+          <Play size={22} className="text-white ml-0.5" />
+        </div>
+      </div>
+      {error && (
+        <div className="absolute bottom-2 inset-x-2 text-center">
+          <span className="text-[10px] text-white/70 bg-black/60 px-2 py-1 rounded">
+            Tap to retry
+          </span>
+        </div>
+      )}
+    </button>
+  );
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -679,18 +734,8 @@ export default function RepQuestsPage() {
                 {(detailQuest.video_url || detailQuest.image_url) && (
                   <div className="rep-quest-detail-media pt-2">
                     {hasMuxVideo ? (
-                      <MuxPlayer
-                        playbackId={detailQuest.video_url!}
-                        streamType="on-demand"
-                        muted
-                        preload="metadata"
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        {...{ style: {
-                          width: "100%",
-                          maxHeight: "min(200px, 30vh)",
-                          "--media-object-fit": "contain",
-                        } } as any}
-                      />
+                      /* Mux video — thumbnail + tap to play inline */
+                      <MuxVideoPreview playbackId={detailQuest.video_url!} />
                     ) : hasLegacyVideoUrl ? (
                       <a
                         href={detailQuest.video_url!}

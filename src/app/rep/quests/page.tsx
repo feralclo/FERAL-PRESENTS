@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import {
   Compass, Upload, Link as LinkIcon, Type, X, Loader2, Check,
@@ -625,8 +626,8 @@ export default function RepQuestsPage() {
         </div>
       )}
 
-      {/* Quest Detail Modal — plain overlay (no Radix Dialog) */}
-      {detailQuest && (() => {
+      {/* Quest Detail Modal — portalled to escape <main> stacking context */}
+      {detailQuest && typeof document !== "undefined" && createPortal((() => {
         const tier = getQuestTier(detailQuest.points_reward);
         const QuestTypeIcon = QUEST_TYPE_ICONS[detailQuest.quest_type] || Zap;
         const questTypeLabel = detailQuest.quest_type.replace(/_/g, " ");
@@ -821,10 +822,10 @@ export default function RepQuestsPage() {
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
 
-      {/* Fullscreen image overlay — plain DOM, not nested Radix Dialog */}
-      {mediaFullscreen && detailQuest?.image_url && (
+      {/* Fullscreen image overlay — portalled */}
+      {mediaFullscreen && detailQuest?.image_url && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
           onClick={() => setMediaFullscreen(false)}
@@ -844,10 +845,10 @@ export default function RepQuestsPage() {
             className="max-w-[90vw] max-h-[90vh] object-contain cursor-zoom-out"
           />
         </div>
-      )}
+      , document.body)}
 
-      {/* Submit Proof Modal */}
-      {submitQuestId && (
+      {/* Submit Proof Modal — portalled */}
+      {submitQuestId && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
           onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
@@ -1001,7 +1002,7 @@ export default function RepQuestsPage() {
             )}
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

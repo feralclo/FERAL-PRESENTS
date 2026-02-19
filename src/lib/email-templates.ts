@@ -731,25 +731,26 @@ export function buildAbandonedCartRecoveryEmail(
                 </tr>
 
                 ${hasDiscount ? (() => {
-                  const discountLabel = (stepConfig.discount_label || "Use code {{code}} for {{percent}}% off your order")
-                    .replace(/\{\{code\}\}/g, cart.discount_code!)
-                    .replace(/\{\{percent\}\}/g, String(cart.discount_percent));
+                  const discountLabel = stepConfig.discount_label || "Your exclusive offer";
                   return `
                 <!-- Discount Code -->
                 <tr>
-                  <td style="padding: 24px 40px 0; text-align: center;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
+                  <td style="padding: 28px 40px 0; text-align: center;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaaaaa; margin-bottom: 16px;">
+                      ${escapeHtml(discountLabel)}
+                    </div>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                       <tr>
-                        <td style="background-color: #111111; background-image: linear-gradient(135deg, #111111, #1a1a1a); border-radius: 10px; padding: 20px 24px; text-align: center;">
-                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #888888; margin-bottom: 12px;">
-                            ${escapeHtml(discountLabel)}
-                          </div>
-                          <div style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 800; color: ${accent}; letter-spacing: 4px; line-height: 1;">
+                        <td style="border: 2px dashed ${accent}40; border-radius: 8px; padding: 14px 32px; text-align: center;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 20px; font-weight: 800; color: ${accent}; letter-spacing: 3px; line-height: 1;">
                             ${escapeHtml(cart.discount_code!)}
                           </div>
                         </td>
                       </tr>
                     </table>
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #666666; margin-top: 10px;">
+                      ${cart.discount_percent}% off your order
+                    </div>
                   </td>
                 </tr>
                 `;
@@ -759,14 +760,14 @@ export function buildAbandonedCartRecoveryEmail(
                 <tr>
                   <td style="padding: 32px 40px 36px; text-align: center;">
                     <!--[if mso]>
-                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:54px;v-text-anchor:middle;width:340px;" arcsize="16%" fill="t">
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="14%" fill="t">
                       <v:fill type="tile" color="${accent}" />
                       <w:anchorlock/>
-                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:1.5px;">${escapeHtml(ctaText)}</center>
+                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:0.5px;">${escapeHtml(ctaText)}</center>
                     </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-->
-                    <a href="${escapeHtml(cart.recovery_url)}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; padding: 18px 52px; border-radius: 10px; mso-padding-alt: 0;">
+                    <a href="${escapeHtml(cart.recovery_url)}" style="display: block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; padding: 16px 24px; border-radius: 10px; text-align: center; mso-padding-alt: 0;">
                       ${escapeHtml(ctaText)}
                     </a>
                     <!--<![endif]-->
@@ -816,7 +817,7 @@ YOUR ORDER
 ${cartItemsText}
 ${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
 Total: ${cart.currency_symbol}${total.toFixed(2)}
-${hasDiscount ? `\n${(stepConfig.discount_label || "Use code {{code}} for {{percent}}% off your order").replace(/\{\{code\}\}/g, cart.discount_code!).replace(/\{\{percent\}\}/g, String(cart.discount_percent))}\n${cart.discount_code}\n` : ""}
+${hasDiscount ? `\n${stepConfig.discount_label || "Your exclusive offer"}\n${cart.discount_code} — ${cart.discount_percent}% off your order\n` : ""}
 ${ctaText}: ${cart.recovery_url}
 
 ---

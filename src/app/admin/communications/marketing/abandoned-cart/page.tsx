@@ -101,7 +101,7 @@ const DEFAULT_STEPS: EmailStep[] = [
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
-    discount_label: "Use code {{code}} for {{percent}}% off your order",
+    discount_label: "Your exclusive offer",
     icon: Send,
     color: "#8B5CF6",
     glowColor: "rgba(139,92,246,0.3)",
@@ -121,7 +121,7 @@ const DEFAULT_STEPS: EmailStep[] = [
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
-    discount_label: "Use code {{code}} for {{percent}}% off your order",
+    discount_label: "Your exclusive offer",
     icon: Zap,
     color: "#f97316",
     glowColor: "rgba(249,115,22,0.3)",
@@ -141,7 +141,7 @@ const DEFAULT_STEPS: EmailStep[] = [
     include_discount: true,
     discount_code: "COMEBACK10",
     discount_percent: 10,
-    discount_label: "Use code {{code}} for {{percent}}% off your order",
+    discount_label: "Your exclusive offer",
     icon: Flame,
     color: "#ef4444",
     glowColor: "rgba(239,68,68,0.3)",
@@ -1123,16 +1123,16 @@ function StepSettings({
               </div>
               <div>
                 <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
-                  Discount Copy
+                  Heading Text
                 </Label>
                 <Input
                   className="mt-1 text-xs"
                   value={step.discount_label}
                   onChange={(e) => onUpdate(step.id, { discount_label: e.target.value })}
-                  placeholder="Use code {{code}} for {{percent}}% off your order"
+                  placeholder="Your exclusive offer"
                 />
-                <p className="mt-1 text-[9px] text-muted-foreground/30">
-                  {"{{code}}"} and {"{{percent}}"} are replaced automatically
+                <p className="mt-1.5 text-[9px] text-muted-foreground/40">
+                  Appears above the code in the email. The code and percentage are shown automatically.
                 </p>
               </div>
 

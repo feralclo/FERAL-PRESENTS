@@ -105,6 +105,10 @@ function FullscreenVideo({
 }) {
   const [videoReady, setVideoReady] = useState(false);
 
+  // Use animated thumbnail (already cached from mini preview) so overlay shows motion, not a freeze
+  const animatedThumbUrl = `https://image.mux.com/${playbackId}/animated.webp?width=480&fps=12&start=0&end=4`;
+  const staticThumbUrl = getMuxThumbnailUrl(playbackId);
+
   return (
     <div
       className="fixed inset-0 z-[200] bg-black flex flex-col"
@@ -113,7 +117,7 @@ function FullscreenVideo({
       {/* Close button */}
       <button
         type="button"
-        className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/8 border border-white/12 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+        className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/10 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/20 hover:text-white transition-all cursor-pointer backdrop-blur-sm"
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         aria-label="Close video"
       >
@@ -147,16 +151,29 @@ function FullscreenVideo({
             } as any)}
           />
 
-          {/* Thumbnail overlay — covers player until video is actually rendering */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={getMuxThumbnailUrl(playbackId)}
-            alt=""
+          {/* Animated thumbnail overlay — uses cached animated webp so it feels alive while video loads */}
+          <div
             className={cn(
-              "absolute inset-0 w-full h-full object-contain z-[5] transition-opacity duration-700 ease-out pointer-events-none",
+              "absolute inset-0 z-[5] flex items-center justify-center transition-opacity duration-500 ease-out pointer-events-none",
               videoReady ? "opacity-0" : "opacity-100"
             )}
-          />
+          >
+            <picture>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={animatedThumbUrl}
+                alt=""
+                className="w-full h-full object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).src = staticThumbUrl; }}
+              />
+            </picture>
+            {/* Subtle loading pulse so it doesn't feel frozen */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-black/30 backdrop-blur-md border border-white/15 flex items-center justify-center animate-pulse">
+                <Loader2 size={22} className="text-white/70 animate-spin" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -417,15 +434,16 @@ export default function RepQuestsPage() {
   const [questSubmissions, setQuestSubmissions] = useState<Record<string, Submission[]>>({});
   const [loadingSubs, setLoadingSubs] = useState<string | null>(null);
 
-  // Detail modal / fullscreen image / fullscreen video: Escape key + body scroll lock
+  // Modal stack: Escape key + body scroll lock
   useEffect(() => {
-    if (!detailQuest && !mediaFullscreen && !videoFullscreen) return;
+    if (!detailQuest && !mediaFullscreen && !videoFullscreen && !submitQuestId) return;
     document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        if (submitQuestId && !submitting) { setSubmitQuestId(null); return; }
         if (videoFullscreen) { setVideoFullscreen(false); setFullscreenMuted(true); return; }
         if (mediaFullscreen) { setMediaFullscreen(false); return; }
-        if (detailQuest) setDetailQuest(null);
+        if (detailQuest) { setDetailQuest(null); setVideoFullscreen(false); setFullscreenMuted(true); }
       }
     }
     window.addEventListener("keydown", onKey);
@@ -433,7 +451,7 @@ export default function RepQuestsPage() {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
-  }, [detailQuest, mediaFullscreen, videoFullscreen]);
+  }, [detailQuest, mediaFullscreen, videoFullscreen, submitQuestId, submitting]);
 
   const loadQuests = useCallback(async () => {
     try {
@@ -548,6 +566,9 @@ export default function RepQuestsPage() {
         setTimeout(() => {
           const questId = submitQuestId;
           setSubmitQuestId(null);
+          setDetailQuest(null);
+          setVideoFullscreen(false);
+          setFullscreenMuted(true);
           setSubmitted(false);
           setProofText("");
           setUploadedUrl("");
@@ -1066,13 +1087,7 @@ export default function RepQuestsPage() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => {
-                      const quest = detailQuest;
-                      setDetailQuest(null);
-                      setVideoFullscreen(false);
-                      setFullscreenMuted(true);
-                      setTimeout(() => openSubmitModal(quest), 150);
-                    }}
+                    onClick={() => openSubmitModal(detailQuest)}
                     className={cn("rep-quest-detail-cta", `rep-quest-detail-cta-${tier.tier}`)}
                   >
                     <Zap size={16} />
@@ -1135,7 +1150,7 @@ export default function RepQuestsPage() {
         );
       })(), (document.getElementById("rep-portal-root") || document.body))}
 
-      {/* Submit Proof Modal — gamified, portalled */}
+      {/* Submit Proof Modal — gamified, portalled, stacks on top of detail modal */}
       {submitQuestId && typeof document !== "undefined" && createPortal((() => {
         const sq = submitQuest;
         const sqTier = sq ? getQuestTier(sq.points_reward) : null;
@@ -1151,7 +1166,7 @@ export default function RepQuestsPage() {
 
         return (
           <div
-            className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="fixed inset-0 z-[70] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
             onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
           >
             <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/[0.08] bg-[var(--color-card)]">

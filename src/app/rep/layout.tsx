@@ -346,17 +346,16 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   href={item.href}
                   className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
                 >
-                  {active ? (
-                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
-                      <Icon
-                        size={19}
-                        strokeWidth={2.5}
-                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
-                      />
-                    </div>
-                  ) : (
-                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
-                  )}
+                  <div className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200",
+                    active ? "bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]" : "bg-transparent"
+                  )}>
+                    <Icon
+                      size={active ? 19 : 20}
+                      strokeWidth={active ? 2.5 : 1.5}
+                      className={active ? "text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]" : "text-[#444455]"}
+                    />
+                  </div>
                   <span className={cn(
                     "text-[9px] font-semibold tracking-wide",
                     active ? "text-primary" : "text-[#444455]"
@@ -411,17 +410,16 @@ export default function RepLayout({ children }: { children: ReactNode }) {
                   href={item.href}
                   className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
                 >
-                  {active ? (
-                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
-                      <Icon
-                        size={19}
-                        strokeWidth={2.5}
-                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
-                      />
-                    </div>
-                  ) : (
-                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
-                  )}
+                  <div className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200",
+                    active ? "bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]" : "bg-transparent"
+                  )}>
+                    <Icon
+                      size={active ? 19 : 20}
+                      strokeWidth={active ? 2.5 : 1.5}
+                      className={active ? "text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]" : "text-[#444455]"}
+                    />
+                  </div>
                   <span className={cn(
                     "text-[9px] font-semibold tracking-wide",
                     active ? "text-primary" : "text-[#444455]"

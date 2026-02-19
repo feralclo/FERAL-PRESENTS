@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import {
   Plus,
   Loader2,
   Check,
@@ -40,8 +46,26 @@ import {
   Swords,
   Pencil,
   Trash2,
+  FileText,
+  ImageIcon,
+  Settings2,
+  Upload,
+  CheckCircle2,
+  ExternalLink,
+  Music,
+  Camera,
+  Link as LinkIcon,
+  Type,
+  Image as ImageLucide,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+import * as tus from "tus-js-client";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, ORG_ID } from "@/lib/constants";
+import { isMuxPlaybackId } from "@/lib/mux";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 import type {
   RepQuest,
   QuestType,
@@ -75,12 +99,24 @@ export function QuestsTab() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [questType, setQuestType] = useState<QuestType>("social_post");
+  const [platform, setPlatform] = useState<"tiktok" | "instagram" | "any">("any");
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [pointsReward, setPointsReward] = useState("");
   const [maxCompletions, setMaxCompletions] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [notifyReps, setNotifyReps] = useState(true);
+
+  // Video upload state
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStatus, setVideoStatus] = useState("");
+  const [videoError, setVideoError] = useState("");
+  const [previewError, setPreviewError] = useState(false);
+  const [videoDragging, setVideoDragging] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
 
   // Submissions review
   const [showSubmissions, setShowSubmissions] = useState<string | null>(null);
@@ -104,6 +140,142 @@ export function QuestsTab() {
 
   useEffect(() => { loadQuests(); }, [loadQuests]);
 
+  // ── Video upload handlers ──
+
+  /** Poll Mux status every 3s until asset is ready */
+  const pollMuxStatus = useCallback(async (assetId: string): Promise<string> => {
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const res = await fetch(`/api/mux/status?assetId=${assetId}`);
+      const data = await res.json();
+      if (data.status === "ready" && data.playbackId) return data.playbackId;
+      if (data.status === "errored") throw new Error("Mux processing failed");
+      setVideoStatus("Processing video...");
+    }
+    throw new Error("Processing timed out");
+  }, []);
+
+  const handleVideoUpload = useCallback(async (file: File) => {
+    setVideoError("");
+    if (!file.type.startsWith("video/")) {
+      setVideoError("Please upload a video file (MP4, MOV, or WebM).");
+      return;
+    }
+    const MAX_SIZE = 200 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setVideoError(`Video is ${Math.round(file.size / 1024 / 1024)}MB — max is 200MB.`);
+      return;
+    }
+    setVideoUploading(true);
+    setVideoProgress(0);
+    setVideoStatus("Preparing upload...");
+    try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase not configured");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
+      const storagePath = `${ORG_ID}/quests/${Date.now()}_${safeName}`;
+      const tusEndpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
+
+      setVideoStatus("Uploading...");
+      await new Promise<void>((resolve, reject) => {
+        const upload = new tus.Upload(file, {
+          endpoint: tusEndpoint,
+          retryDelays: [0, 3000, 5000, 10000, 20000],
+          headers: {
+            authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+            "x-upsert": "true",
+          },
+          uploadDataDuringCreation: true,
+          removeFingerprintOnSuccess: true,
+          chunkSize: 6 * 1024 * 1024,
+          metadata: {
+            bucketName: "artist-media",
+            objectName: storagePath,
+            contentType: file.type,
+            cacheControl: "3600",
+          },
+          onError: (error) => reject(new Error(error.message || "Upload failed")),
+          onProgress: (bytesUploaded, bytesTotal) => {
+            const pct = Math.round((bytesUploaded / bytesTotal) * 70);
+            setVideoProgress(pct);
+            const mbUp = (bytesUploaded / 1024 / 1024).toFixed(0);
+            const mbTotal = (bytesTotal / 1024 / 1024).toFixed(0);
+            setVideoStatus(`Uploading... ${mbUp}/${mbTotal} MB`);
+          },
+          onSuccess: () => resolve(),
+          onShouldRetry: (err) => {
+            const status = err.originalResponse?.getStatus();
+            if (status === 403 || status === 401) return false;
+            return true;
+          },
+        });
+        upload.findPreviousUploads().then((prev) => {
+          if (prev.length) upload.resumeFromPreviousUpload(prev[0]);
+          upload.start();
+        });
+      });
+
+      setVideoProgress(70);
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/artist-media/${storagePath}`;
+
+      setVideoStatus("Processing video...");
+      const muxRes = await fetch("/api/mux/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrl: publicUrl }),
+      });
+      const muxData = await muxRes.json();
+      if (!muxRes.ok) throw new Error(muxData.error || "Failed to start processing");
+
+      const playbackId = await pollMuxStatus(muxData.assetId);
+      setVideoUrl(playbackId);
+      setPreviewError(false);
+      setVideoProgress(100);
+      setVideoStatus("");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setVideoError(`Upload failed — ${msg}`);
+      setVideoStatus("");
+    }
+    setVideoUploading(false);
+    setVideoProgress(0);
+  }, [pollMuxStatus]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes("Files")) setVideoDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setVideoDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+  }, []);
+
+  const handleVideoDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current = 0;
+    setVideoDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("video/")) handleVideoUpload(file);
+  }, [handleVideoUpload]);
+
+  const handleVideoFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleVideoUpload(file);
+    e.target.value = "";
+  }, [handleVideoUpload]);
+
   const loadSubmissions = useCallback(async (questId: string) => {
     setLoadingSubs(true);
     try {
@@ -115,19 +287,22 @@ export function QuestsTab() {
   }, []);
 
   const openCreate = () => {
-    setEditId(null); setTitle(""); setDescription("");
-    setQuestType("social_post"); setImageUrl(""); setVideoUrl("");
+    setEditId(null); setTitle(""); setDescription(""); setInstructions("");
+    setQuestType("social_post"); setPlatform("any"); setImageUrl(""); setVideoUrl("");
     setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
+    setVideoError(""); setPreviewError(false);
     setShowDialog(true);
   };
 
   const openEdit = (q: RepQuest) => {
     setEditId(q.id); setTitle(q.title); setDescription(q.description || "");
-    setQuestType(q.quest_type);
+    setInstructions(q.instructions || ""); setQuestType(q.quest_type);
+    setPlatform(q.platform || "any");
     setImageUrl(q.image_url || ""); setVideoUrl(q.video_url || "");
     setPointsReward(String(q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
     setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
+    setVideoError(""); setPreviewError(false);
     setShowDialog(true);
   };
 
@@ -136,7 +311,7 @@ export function QuestsTab() {
     setSaving(true);
     const body = {
       title: title.trim(), description: description.trim() || null,
-      quest_type: questType,
+      instructions: instructions.trim() || null, quest_type: questType, platform,
       image_url: imageUrl.trim() || null, video_url: videoUrl.trim() || null,
       points_reward: Number(pointsReward) || 0,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
@@ -256,69 +431,182 @@ export function QuestsTab() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit Quest" : "Create Quest"}</DialogTitle>
-            <DialogDescription>{editId ? "Update this quest." : "Create a new quest for your reps to complete."}</DialogDescription>
+            <DialogDescription>{editId ? "Update this quest." : "Create a new quest for your reps."}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-2">
-              <Label>Title *</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share on Instagram Stories" autoFocus />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What should reps do?" rows={2} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <Tabs defaultValue="content" className="w-full min-h-0 flex-1 flex flex-col [&>[role=tabpanel]]:flex-1 [&>[role=tabpanel]]:overflow-y-auto">
+            <TabsList className="w-full">
+              <TabsTrigger value="content"><FileText size={14} /> Content</TabsTrigger>
+              <TabsTrigger value="media"><ImageIcon size={14} /> Media</TabsTrigger>
+              <TabsTrigger value="settings"><Settings2 size={14} /> Settings</TabsTrigger>
+            </TabsList>
+
+            {/* ── Content Tab ── */}
+            <TabsContent value="content" className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={questType} onValueChange={(v) => setQuestType(v as QuestType)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="social_post">Social Post</SelectItem>
-                    <SelectItem value="story_share">Story Share</SelectItem>
-                    <SelectItem value="content_creation">Content Creation</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Title *</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share on Instagram Stories" autoFocus />
               </div>
               <div className="space-y-2">
-                <Label>Points Reward</Label>
-                <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
+                <Label>Description</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={2} />
               </div>
-            </div>
-            <div className="space-y-1.5">
+              <div className="space-y-2">
+                <Label>How to Complete</Label>
+                <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Step-by-step instructions shown to reps in the quest detail view" rows={3} />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={questType} onValueChange={(v) => setQuestType(v as QuestType)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="social_post">Social Post</SelectItem>
+                      <SelectItem value="story_share">Story Share</SelectItem>
+                      <SelectItem value="content_creation">Content Creation</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Platform</Label>
+                  <Select value={platform} onValueChange={(v) => setPlatform(v as "tiktok" | "instagram" | "any")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any Platform</SelectItem>
+                      <SelectItem value="tiktok">TikTok</SelectItem>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Points Reward</Label>
+                  <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Media Tab ── */}
+            <TabsContent value="media" className="space-y-4 pt-2">
               <ImageUpload
-                label="Reference Image"
+                label="Quest Image"
                 value={imageUrl}
                 onChange={setImageUrl}
                 uploadKey={editId ? `quest_${editId}_image` : undefined}
               />
-              <p className="text-[11px] text-muted-foreground">Recommended: 800 &times; 450px landscape (16:9). Shown as an ambient background on quest cards.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Reference Video URL</Label>
-              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="TikTok / YouTube link" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+
               <div className="space-y-2">
-                <Label>Max Completions per Rep</Label>
-                <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quest Video</span>
+                <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoFileChange} className="hidden" />
+
+                {videoUrl && isMuxPlaybackId(videoUrl) ? (
+                  /* Video is set — show preview */
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-primary">
+                      <CheckCircle2 size={12} />
+                      Video ready
+                    </div>
+                    <div className="relative rounded-lg overflow-hidden bg-black border border-border">
+                      <div style={{ display: previewError ? "none" : undefined }}>
+                        <MuxPlayer
+                          playbackId={videoUrl}
+                          streamType="on-demand"
+                          muted
+                          preload="metadata"
+                          onError={() => setPreviewError(true)}
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          {...{ style: { width: "100%", maxHeight: "220px", "--controls": "none", "--media-object-fit": "contain" } } as any}
+                        />
+                      </div>
+                      {previewError && (
+                        <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
+                          Video saved — preview may take a moment
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setVideoUrl(""); setPreviewError(false); }}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/70 border border-white/20 rounded-md flex items-center justify-center text-white/70 hover:bg-black/90 hover:text-white transition-colors cursor-pointer z-10"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ) : videoUploading ? (
+                  /* Upload in progress */
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-secondary/30 px-4 py-6">
+                    <Loader2 size={20} className="animate-spin text-primary" />
+                    <span className="text-xs text-muted-foreground">
+                      {videoStatus || "Uploading..."}{videoProgress > 0 && videoProgress < 100 ? ` ${videoProgress}%` : ""}
+                    </span>
+                    {videoProgress > 0 && (
+                      <div className="w-full max-w-[200px] h-1 rounded-full bg-border overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${videoProgress}%` }} />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Drag & drop zone */
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => videoInputRef.current?.click()}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") videoInputRef.current?.click(); }}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleVideoDrop}
+                    className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 cursor-pointer transition-all duration-150 ${
+                      videoDragging
+                        ? "border-primary bg-primary/[0.06] scale-[1.01]"
+                        : "border-border/60 bg-secondary/20 hover:border-border hover:bg-secondary/40"
+                    }`}
+                  >
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+                      videoDragging ? "bg-primary/15 text-primary" : "bg-muted/30 text-muted-foreground"
+                    }`}>
+                      <Upload size={16} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-medium text-foreground/80">
+                        {videoDragging ? "Drop video here" : "Drag & drop or click to upload"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">Max 200MB</p>
+                    </div>
+                  </div>
+                )}
+                {videoError && (
+                  <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/[0.06] px-3 py-2.5">
+                    <X size={10} className="text-destructive mt-0.5 shrink-0" />
+                    <p className="text-[11px] text-destructive">{videoError}</p>
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>Expires At</Label>
-                <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+            </TabsContent>
+
+            {/* ── Settings Tab ── */}
+            <TabsContent value="settings" className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Max Completions per Rep</Label>
+                  <Input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)} placeholder="Unlimited" min="1" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expires At</Label>
+                  <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">Notify Reps</p>
-                <p className="text-[11px] text-muted-foreground">Send email notification to all assigned reps</p>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Notify Reps</p>
+                  <p className="text-[11px] text-muted-foreground">Send email notification to all assigned reps</p>
+                </div>
+                <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
               </div>
-              <Switch checked={notifyReps} onCheckedChange={setNotifyReps} />
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving || !title.trim()}>
@@ -333,7 +621,15 @@ export function QuestsTab() {
       <Dialog open={!!showSubmissions} onOpenChange={(open) => !open && setShowSubmissions(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Quest Submissions</DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              Quest Submissions
+              {(() => {
+                const pendingCount = submissions.filter((s) => s.status === "pending").length;
+                return pendingCount > 0 ? (
+                  <Badge variant="warning" className="tabular-nums">{pendingCount} pending</Badge>
+                ) : null;
+              })()}
+            </DialogTitle>
             <DialogDescription>Review proof submitted by reps.</DialogDescription>
           </DialogHeader>
           {loadingSubs ? (
@@ -341,65 +637,128 @@ export function QuestsTab() {
           ) : submissions.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No submissions yet</p>
           ) : (
-            <div className="max-h-[60vh] overflow-y-auto space-y-3">
-              {submissions.map((sub) => (
-                <div key={sub.id} className="rounded-lg border border-border p-4">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {new Date(sub.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                    <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"}>
-                      {sub.status}
-                    </Badge>
-                  </div>
-                  <div className="rounded-md bg-muted/30 p-3 mb-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Proof ({sub.proof_type})</p>
-                    {sub.proof_type === "screenshot" && sub.proof_url && <img src={sub.proof_url} alt="Proof" className="max-h-40 rounded-md" />}
-                    {sub.proof_type === "url" && sub.proof_text && (
-                      <a href={sub.proof_text} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">{sub.proof_text}</a>
-                    )}
-                    {sub.proof_type === "text" && sub.proof_text && <p className="text-sm text-foreground">{sub.proof_text}</p>}
-                  </div>
-                  {sub.status === "pending" && (
-                    <div className="space-y-2">
-                      {rejectingId === sub.id ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="Reason for rejection..."
-                            className="text-sm min-h-[60px]"
-                            autoFocus
-                          />
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="destructive" disabled={!rejectReason.trim() || reviewingId === sub.id}
-                              onClick={() => { handleReview(sub.id, "rejected", rejectReason.trim()); setRejectingId(null); setRejectReason(""); }}>
-                              {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Confirm Reject
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancel</Button>
+            <>
+              {/* Batch approve — only when 2+ pending */}
+              {submissions.filter((s) => s.status === "pending").length >= 2 && (
+                <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+                  <span className="text-xs text-muted-foreground">
+                    {submissions.filter((s) => s.status === "pending").length} submissions awaiting review
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={reviewingId !== null}
+                    onClick={async () => {
+                      const pending = submissions.filter((s) => s.status === "pending");
+                      for (const sub of pending) {
+                        await handleReview(sub.id, "approved");
+                      }
+                    }}
+                  >
+                    <CheckCircle2 size={12} /> Approve All
+                  </Button>
+                </div>
+              )}
+              <div className="max-h-[60vh] overflow-y-auto space-y-3">
+                {/* Sort: pending first, then approved, then rejected */}
+                {[...submissions].sort((a, b) => {
+                  const order = { pending: 0, approved: 1, rejected: 2 };
+                  return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+                }).map((sub) => {
+                  const proofUrl = sub.proof_url || sub.proof_text || "";
+                  const isTikTok = sub.proof_type === "tiktok_link";
+                  const isInstagram = sub.proof_type === "instagram_link";
+                  const isPlatformLink = isTikTok || isInstagram;
+                  const ProofIcon = isTikTok ? Music : isInstagram ? Camera : sub.proof_type === "screenshot" ? ImageLucide : sub.proof_type === "url" ? LinkIcon : Type;
+                  const proofLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram" : sub.proof_type === "screenshot" ? "Screenshot" : sub.proof_type === "url" ? "URL" : "Text";
+
+                  return (
+                    <div key={sub.id} className={`rounded-lg border p-4 ${sub.status === "pending" ? "border-warning/30 bg-warning/[0.02]" : "border-border"}`}>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2.5">
+                          {sub.rep?.photo_url ? (
+                            <img src={sub.rep.photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                              {sub.rep?.first_name?.charAt(0) || "?"}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`.trim() || "Unknown"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {new Date(sub.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </p>
                           </div>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id}>
-                            {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Approve
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setRejectingId(sub.id)} disabled={reviewingId === sub.id}>
-                            <X size={12} /> Reject
-                          </Button>
+                        <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"}>
+                          {sub.status}
+                        </Badge>
+                      </div>
+
+                      {/* Proof preview — handles all types including tiktok_link & instagram_link */}
+                      <div className="rounded-md bg-muted/30 p-3 mb-3">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <ProofIcon size={11} className="text-muted-foreground" />
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{proofLabel}</p>
+                        </div>
+                        {sub.proof_type === "screenshot" && sub.proof_url && (
+                          <img src={sub.proof_url} alt="Proof" className="max-h-40 rounded-md" />
+                        )}
+                        {(isPlatformLink || sub.proof_type === "url") && proofUrl && (
+                          <a
+                            href={proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline break-all"
+                          >
+                            <ExternalLink size={12} className="shrink-0" />
+                            {proofUrl}
+                          </a>
+                        )}
+                        {sub.proof_type === "text" && sub.proof_text && (
+                          <p className="text-sm text-foreground">{sub.proof_text}</p>
+                        )}
+                      </div>
+
+                      {/* Actions for pending submissions */}
+                      {sub.status === "pending" && (
+                        <div className="space-y-2">
+                          {rejectingId === sub.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="Reason for rejection..."
+                                className="text-sm min-h-[60px]"
+                                autoFocus
+                              />
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="destructive" disabled={!rejectReason.trim() || reviewingId === sub.id}
+                                  onClick={() => { handleReview(sub.id, "rejected", rejectReason.trim()); setRejectingId(null); setRejectReason(""); }}>
+                                  {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Confirm Reject
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancel</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id}>
+                                {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Approve
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setRejectingId(sub.id)} disabled={reviewingId === sub.id}>
+                                <X size={12} /> Reject
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
+                      {sub.rejection_reason && <p className="mt-2 text-xs text-destructive">Reason: {sub.rejection_reason}</p>}
                     </div>
-                  )}
-                  {sub.rejection_reason && <p className="mt-2 text-xs text-destructive">Reason: {sub.rejection_reason}</p>}
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
           <DialogFooter><Button variant="outline" onClick={() => setShowSubmissions(null)}>Close</Button></DialogFooter>
         </DialogContent>

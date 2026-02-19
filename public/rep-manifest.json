@@ -1,0 +1,26 @@
+{
+  "name": "Entry Reps",
+  "short_name": "Reps",
+  "description": "Sell tickets, complete quests, climb the leaderboard.",
+  "start_url": "/rep",
+  "scope": "/rep",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08080c",
+  "theme_color": "#8B5CF6",
+  "categories": ["social", "entertainment"],
+  "icons": [
+    {
+      "src": "/images/rep-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/rep-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

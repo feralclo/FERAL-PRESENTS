@@ -180,6 +180,59 @@ export function ImageUpload({
           e.target.value = "";
         }}
       />
+
+      {value ? (
+        /* Compact replace button when image is already set */
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+        >
+          {processing ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" /> Replacing...
+            </span>
+          ) : (
+            "Click to replace"
+          )}
+        </button>
+      ) : (
+        /* Full drag & drop zone when no image */
+        <div
+          className={cn(
+            "rounded-md border-2 border-dashed px-4 py-5 text-center cursor-pointer transition-colors duration-150",
+            dragging
+              ? "border-primary/60 bg-primary/5"
+              : "border-border hover:border-primary/30"
+          )}
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+          }}
+        >
+          {processing ? (
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Loader2 size={14} className="animate-spin" />
+              Uploading...
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <Upload size={16} className="text-muted-foreground/50" />
+              <span className="text-xs text-muted-foreground">
+                Drag & drop or click to select
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 /* ── Gender options ── */
 const GENDER_OPTIONS = [
@@ -192,7 +193,7 @@ export default function RepInvitePage() {
           {VERIFY_LINES.slice(0, visibleLines).map((line, i) => (
             <p
               key={i}
-              className="rep-boot-line font-mono text-[13px] text-[var(--rep-text-muted)]"
+              className="rep-boot-line font-mono text-[13px] text-muted-foreground"
             >
               <span className="text-primary mr-2">&gt;</span>
               {line.text}
@@ -324,7 +325,7 @@ export default function RepInvitePage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="rep-input"
+                  className="h-14 rounded-2xl bg-secondary"
                   placeholder="Min 6 characters"
                   autoComplete="new-password"
                 />
@@ -340,14 +341,14 @@ export default function RepInvitePage() {
               Got Instagram?
             </h2>
             <p className="text-sm text-muted-foreground mb-6">Optional</p>
-            <div className="rep-social-wrap">
-              <span className="rep-at">@</span>
+            <div className="relative">
+              <span className="absolute left-[18px] top-1/2 -translate-y-1/2 text-base text-muted-foreground pointer-events-none">@</span>
               <Input
                 ref={inputRef}
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value.replace("@", ""))}
                 onKeyDown={handleKeyDown}
-                className="rep-input"
+                className="h-14 rounded-2xl bg-secondary pl-9"
                 placeholder="yourhandle"
               />
             </div>
@@ -361,14 +362,14 @@ export default function RepInvitePage() {
               On TikTok?
             </h2>
             <p className="text-sm text-muted-foreground mb-6">Optional</p>
-            <div className="rep-social-wrap">
-              <span className="rep-at">@</span>
+            <div className="relative">
+              <span className="absolute left-[18px] top-1/2 -translate-y-1/2 text-base text-muted-foreground pointer-events-none">@</span>
               <Input
                 ref={inputRef}
                 value={tiktok}
                 onChange={(e) => setTiktok(e.target.value.replace("@", ""))}
                 onKeyDown={handleKeyDown}
-                className="rep-input"
+                className="h-14 rounded-2xl bg-secondary pl-9"
                 placeholder="yourhandle"
               />
             </div>
@@ -388,7 +389,7 @@ export default function RepInvitePage() {
               value={dob}
               onChange={(e) => setDob(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="rep-input"
+              className="h-14 rounded-2xl bg-secondary"
             />
           </>
         );
@@ -408,7 +409,11 @@ export default function RepInvitePage() {
                     setGender(opt.value);
                     setTimeout(advance, 300);
                   }}
-                  className={`rep-choice-tile ${gender === opt.value ? "selected" : ""}`}
+                  className={cn(
+                    "rounded-[14px] border border-border bg-secondary px-5 py-3.5 text-sm font-medium text-muted-foreground text-center transition-all duration-200",
+                    "hover:border-primary/40 hover:text-foreground hover:bg-primary/5",
+                    gender === opt.value && "border-primary bg-primary/10 text-foreground shadow-[0_0_20px_rgba(139,92,246,0.1)]"
+                  )}
                 >
                   {opt.label}
                 </button>
@@ -429,7 +434,7 @@ export default function RepInvitePage() {
       <div className="w-full max-w-md">
         {/* Greeting */}
         {repInfo?.first_name && step === 0 && (
-          <p className="text-[11px] text-primary font-mono uppercase tracking-[3px] mb-6 rep-fade-in">
+          <p className="text-xs text-primary font-mono uppercase tracking-[3px] mb-6 rep-fade-in">
             Hey {repInfo.first_name}
           </p>
         )}

@@ -7,61 +7,15 @@ import {
   Banknote,
   BarChart3,
   Filter,
-  ChevronDown,
   RefreshCw,
   Zap,
-  Flame,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-
-// ─── SVG Radial Gauge (same pattern as dashboard) ────────────────────────────
-
-const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 30;
-
-function SalesGauge({
-  value,
-  max,
-  color,
-  icon: Icon,
-  label,
-  displayValue,
-}: {
-  value: number;
-  max: number;
-  color: string;
-  icon: typeof Zap;
-  label: string;
-  displayValue: string;
-}) {
-  const percent = max > 0 ? Math.min(value / max, 1) : 0;
-  const offset = GAUGE_CIRCUMFERENCE * (1 - percent);
-
-  return (
-    <div className="rep-gauge">
-      <div className="rep-gauge-accent" style={{ backgroundColor: color }} />
-      <svg className="rep-gauge-svg" viewBox="0 0 72 72">
-        <circle className="rep-gauge-track" cx="36" cy="36" r="30" />
-        <circle
-          className="rep-gauge-fill"
-          cx="36" cy="36" r="30"
-          stroke={color}
-          strokeDasharray={GAUGE_CIRCUMFERENCE}
-          strokeDashoffset={offset}
-          style={{ "--gauge-color": color } as React.CSSProperties}
-        />
-      </svg>
-      <div className="rep-gauge-center">
-        <Icon size={18} style={{ color, filter: `drop-shadow(0 0 4px ${color}40)` }} />
-      </div>
-      <p className="rep-gauge-label">{label}</p>
-      <p className="rep-gauge-value" style={{ color }}>{displayValue}</p>
-    </div>
-  );
-}
+import { RadialGauge, EmptyState, HudSectionHeader } from "@/components/rep";
 
 interface Sale {
   id: string;
@@ -178,7 +132,7 @@ export default function RepSalesPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
         <div>
           <Skeleton className="h-6 w-24 mb-2" />
           <Skeleton className="h-4 w-48" />
@@ -200,7 +154,7 @@ export default function RepSalesPage() {
 
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
         <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
             <TrendingUp size={22} className="text-destructive" />
@@ -221,11 +175,11 @@ export default function RepSalesPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between rep-slide-up">
         <div>
-          <h1 className="text-xl font-bold rep-gradient-text">Sales</h1>
+          <h1 className="text-xl font-bold text-foreground">Sales</h1>
           <p className="text-sm text-muted-foreground">
             Orders placed with your discount code
           </p>
@@ -249,7 +203,7 @@ export default function RepSalesPage() {
           <button
             onClick={() => setFilterEvent("all")}
             className={cn(
-              "rounded-full px-3 py-1.5 text-[11px] font-medium border transition-all",
+              "rounded-full px-3 py-1.5 text-xs font-medium border transition-all",
               filterEvent === "all"
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border text-muted-foreground hover:border-primary/30"
@@ -262,7 +216,7 @@ export default function RepSalesPage() {
               key={event.id}
               onClick={() => setFilterEvent(event.id)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-[11px] font-medium border transition-all",
+                "rounded-full px-3 py-1.5 text-xs font-medium border transition-all",
                 filterEvent === event.id
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-primary/30"
@@ -276,7 +230,7 @@ export default function RepSalesPage() {
 
       {/* Stats — Radial HUD Gauges */}
       <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "50ms" }}>
-        <SalesGauge
+        <RadialGauge
           value={stats.count}
           max={Math.max(stats.count, 20)}
           color="#8B5CF6"
@@ -284,7 +238,7 @@ export default function RepSalesPage() {
           label="Sales"
           displayValue={String(stats.count)}
         />
-        <SalesGauge
+        <RadialGauge
           value={stats.revenue}
           max={Math.max(stats.revenue, 500)}
           color="#34D399"
@@ -292,7 +246,7 @@ export default function RepSalesPage() {
           label="Earned"
           displayValue={`${currSymbol}${stats.revenue.toFixed(0)}`}
         />
-        <SalesGauge
+        <RadialGauge
           value={stats.avgOrder}
           max={Math.max(stats.avgOrder, 100)}
           color="#38BDF8"
@@ -304,39 +258,26 @@ export default function RepSalesPage() {
 
       {/* Sales Timeline */}
       {filteredSales.length === 0 ? (
-        <div className="text-center py-16 rep-slide-up">
-          <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
-            <div className="rep-empty-ring" />
-            <div className="rep-empty-ring" />
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-              <TrendingUp size={22} className="text-primary/50" />
-            </div>
-          </div>
-          <p className="text-sm text-foreground font-medium mb-1">
-            {filterEvent !== "all" ? "No sales for this event" : "No sales yet"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {filterEvent !== "all" ? "Try a different filter" : "Share your code to start earning"}
-          </p>
+        <div className="rep-slide-up">
+          <EmptyState
+            icon={TrendingUp}
+            title={filterEvent !== "all" ? "No sales for this event" : "No sales yet"}
+            subtitle={filterEvent !== "all" ? "Try a different filter" : "Share your code to start earning"}
+          />
         </div>
       ) : (
         <div className="space-y-5 rep-slide-up" style={{ animationDelay: "100ms" }}>
           {groups.map((group) => (
             <div key={group.label}>
-              <div className="rep-hud-header">
-                <div className="rep-hud-header-diamond" />
-                <span className="rep-hud-header-text">{group.label}</span>
-                <span className="text-[10px] font-mono text-[var(--rep-text-muted)] ml-1">
-                  {group.sales.length} sale{group.sales.length !== 1 ? "s" : ""}
-                </span>
-                <div className="rep-hud-header-line" />
-              </div>
+              <HudSectionHeader
+                label={group.label}
+                extra={`${group.sales.length} sale${group.sales.length !== 1 ? "s" : ""}`}
+              />
               <div className="space-y-2">
-                {group.sales.map((sale, i) => (
+                {group.sales.map((sale) => (
                   <Card
                     key={sale.id}
-                    className="py-0 gap-0 rep-card-lift rep-slide-up rep-sale-hover"
-                    style={{ animationDelay: `${i * 30}ms` }}
+                    className="py-0 gap-0"
                   >
                     <CardContent className="px-4 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
@@ -347,7 +288,7 @@ export default function RepSalesPage() {
                           <div className="flex items-center gap-2">
                             <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
                             {sale.status === "refunded" && (
-                              <Badge variant="destructive" className="text-[8px] px-1 py-0">Refunded</Badge>
+                              <Badge variant="destructive" className="text-[10px] px-1 py-0">Refunded</Badge>
                             )}
                           </div>
                           <p className="text-[10px] text-muted-foreground truncate">

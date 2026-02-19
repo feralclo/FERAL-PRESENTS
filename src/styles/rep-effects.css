@@ -1,0 +1,1537 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   ENTRY REPS — Effect Classes
+   Visual effects only: animations, glows, gradients, particles.
+   No layout, spacing, sizing, or typography.
+   Scoped to [data-rep] so it never leaks to admin or public pages.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Kill global CRT effects in rep portal ── */
+body:has([data-rep]) > .scanlines,
+body:has([data-rep]) > .noise {
+  display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CARD DEPTH SYSTEM
+   Three elevation levels for consistent surface hierarchy.
+   No backdrop-filter (jank in in-app browsers).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Standard — most cards, stat cards, sale entries */
+.rep-surface-1 {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Elevated — hero cards, weapon card, position card, modals */
+.rep-surface-2 {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   AVATAR TIER RINGS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-avatar-ring {
+  border-width: 3px;
+  border-style: solid;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.rep-avatar-ring-starter {
+  border-color: rgba(148, 163, 184, 0.5);
+  box-shadow: 0 0 16px rgba(148, 163, 184, 0.15);
+}
+.rep-avatar-ring-pro {
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+}
+.rep-avatar-ring-elite {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+.rep-avatar-ring-mythic {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROFILE ENHANCED TIER RING
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-profile-ring {
+  position: relative;
+}
+.rep-profile-ring::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  opacity: 0.3;
+}
+.rep-profile-ring-starter::after { border-color: rgba(148, 163, 184, 0.3); }
+.rep-profile-ring-pro::after { border-color: rgba(56, 189, 248, 0.3); }
+.rep-profile-ring-elite::after { border-color: rgba(139, 92, 246, 0.3); }
+.rep-profile-ring-mythic::after {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ENTRY ANIMATIONS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-fade-in {
+  animation: repFadeIn 0.4s ease-out both;
+}
+@keyframes repFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rep-slide-up {
+  animation: repSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes repSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-page-enter {
+  animation: pageEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-card-reveal {
+  animation: cardReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes cardReveal {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   GRADIENT TEXT
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-gradient-text {
+  background: linear-gradient(135deg, #C4B5FD, #8B5CF6, #7C3AED, #A78BFA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.rep-gradient-text-gold {
+  background: linear-gradient(135deg, #FDE68A, #F59E0B, #D97706, #FBBF24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BADGE & SHIMMER
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-badge-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.rep-badge-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   XP BAR EFFECTS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-xp-fill {
+  position: relative;
+  overflow: hidden;
+}
+.rep-xp-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+  animation: xpShine 2s ease-in-out infinite;
+}
+@keyframes xpShine {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   COPY FLASH
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-copy-flash {
+  animation: copyFlash 0.4s ease-out;
+}
+@keyframes copyFlash {
+  0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(139, 92, 246, 0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DESKTOP NAV ACTIVE GLOW
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-nav-active-glow {
+  position: relative;
+}
+.rep-nav-active-glow::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4), 0 0 16px rgba(139, 92, 246, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BOOT SEQUENCE & ONBOARDING
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-boot-line {
+  animation: bootLineIn 0.3s ease-out both;
+}
+@keyframes bootLineIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--color-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.8s step-end infinite;
+}
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.rep-step-in {
+  animation: stepSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes stepSlideIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.rep-celebrate {
+  animation: celebrateIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes celebrateIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.rep-title-reveal {
+  animation: titleReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes titleReveal {
+  from { opacity: 0; transform: translateY(30px); letter-spacing: 0.2em; }
+  to { opacity: 1; transform: translateY(0); letter-spacing: normal; }
+}
+
+.rep-start-btn {
+  position: relative;
+  overflow: hidden;
+}
+.rep-start-btn::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--color-primary), rgba(139, 92, 246, 0.4), var(--color-primary));
+  z-index: -1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   INVITE / ACCESS GRANTED
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-access-reveal {
+  animation: accessReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes accessReveal {
+  0% { opacity: 0; transform: scale(0.95); filter: blur(10px); }
+  60% { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   QUEST TIER GLOWS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-quest-common {
+  border-color: rgba(255, 255, 255, 0.06);
+  animation: repSlideUp 0.4s ease-out both;
+}
+.rep-quest-common:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.rep-quest-rare {
+  border-color: rgba(56, 189, 248, 0.15);
+  animation: repSlideUp 0.4s ease-out both;
+}
+.rep-quest-rare:hover {
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.06);
+}
+
+.rep-quest-epic {
+  border-color: rgba(139, 92, 246, 0.20);
+  animation: repSlideUp 0.4s ease-out both;
+}
+.rep-quest-epic:hover {
+  border-color: rgba(139, 92, 246, 0.30);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.06);
+}
+
+.rep-quest-legendary {
+  border-color: transparent;
+  animation: repSlideUp 0.4s ease-out both;
+}
+.rep-quest-legendary::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.5),
+    rgba(245, 158, 11, 0.12),
+    rgba(251, 191, 36, 0.4),
+    rgba(245, 158, 11, 0.12),
+    rgba(245, 158, 11, 0.5)
+  );
+  background-size: 300% 300%;
+  animation: legendaryBorderPulse 3s ease-in-out infinite;
+  z-index: -1;
+}
+.rep-quest-legendary::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.04), var(--color-card));
+  z-index: -1;
+}
+.rep-quest-legendary:hover {
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12);
+}
+@keyframes legendaryBorderPulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Quest CTA buttons (unified glass) ── */
+.rep-quest-cta {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-foreground);
+  border-color: rgba(255, 255, 255, 0.12);
+  transition: background 0.2s, border-color 0.2s;
+}
+.rep-quest-cta:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.rep-quest-cta-common {}
+.rep-quest-cta-rare:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.08);
+}
+.rep-quest-cta-epic:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.08);
+}
+.rep-quest-cta-legendary {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.15));
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #FBBF24;
+}
+.rep-quest-cta-legendary:hover {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+/* ── Quest action button (unified glass) ── */
+.rep-quest-action {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-foreground);
+  border-color: rgba(255, 255, 255, 0.12);
+  transition: background 0.2s, border-color 0.2s;
+}
+.rep-quest-action:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.rep-quest-action-common,
+.rep-quest-action-rare,
+.rep-quest-action-epic,
+.rep-quest-action-legendary {}
+
+/* ── Quest tier badge (tiny label) ── */
+.rep-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+}
+.rep-tier-badge-common {
+  background: rgba(102, 102, 128, 0.1);
+  color: #666680;
+  border: 1px solid rgba(102, 102, 128, 0.2);
+}
+.rep-tier-badge-rare {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+.rep-tier-badge-epic {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.rep-tier-badge-legendary {
+  background: rgba(245, 158, 11, 0.1);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.rep-tier-badge-legendary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── XP badge (points pill) ── */
+.rep-xp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 18px;
+}
+.rep-xp-badge-common {
+  background: rgba(102, 102, 128, 0.1);
+  color: #666680;
+}
+.rep-xp-badge-rare {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+}
+.rep-xp-badge-epic {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8B5CF6;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.rep-xp-badge-epic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+.rep-xp-badge-legendary {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 191, 36, 0.15));
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+.rep-xp-badge-legendary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── Quest image ambient layers ── */
+.rep-quest-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.rep-quest-ambient img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.rep-quest-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.rep-quest-ambient-common img {
+  opacity: 0.55;
+  filter: brightness(0.85) grayscale(0.15);
+}
+.rep-quest-ambient-common::after {
+  background: linear-gradient(to bottom, rgba(17, 17, 24, 0.08) 0%, rgba(17, 17, 24, 0.35) 35%, rgba(17, 17, 24, 0.82) 60%, rgba(17, 17, 24, 0.97) 100%);
+}
+.rep-quest-ambient-rare img {
+  opacity: 0.65;
+  filter: brightness(0.88) saturate(1.2);
+}
+.rep-quest-ambient-rare::after {
+  background: linear-gradient(to bottom, rgba(10, 14, 24, 0.05) 0%, rgba(12, 18, 30, 0.3) 35%, rgba(14, 18, 28, 0.8) 60%, rgba(17, 17, 24, 0.97) 100%);
+}
+.rep-quest-ambient-epic img {
+  opacity: 0.72;
+  filter: brightness(0.9) saturate(1.3);
+}
+.rep-quest-ambient-epic::after {
+  background: linear-gradient(to bottom, rgba(18, 12, 26, 0.03) 0%, rgba(20, 15, 32, 0.28) 35%, rgba(18, 15, 28, 0.78) 60%, rgba(17, 17, 24, 0.97) 100%);
+}
+.rep-quest-ambient-legendary img {
+  opacity: 0.82;
+  filter: brightness(0.92) saturate(1.4) sepia(0.05);
+}
+.rep-quest-ambient-legendary::after {
+  background: linear-gradient(to bottom, rgba(22, 18, 10, 0.02) 0%, rgba(25, 20, 12, 0.22) 35%, rgba(20, 18, 14, 0.76) 60%, rgba(17, 17, 24, 0.97) 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MISSION CARD AMBIENT
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-mission-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.rep-mission-ambient img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.15;
+  filter: blur(1px) brightness(0.8);
+}
+.rep-mission-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, var(--color-card) 0%, rgba(17, 17, 24, 0.7) 40%, rgba(17, 17, 24, 0.5) 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEADERBOARD
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-leaderboard-item {
+  animation: slideInUp 0.4s ease-out both;
+}
+.rep-leaderboard-item:nth-child(1) { animation-delay: 0ms; }
+.rep-leaderboard-item:nth-child(2) { animation-delay: 60ms; }
+.rep-leaderboard-item:nth-child(3) { animation-delay: 120ms; }
+.rep-leaderboard-item:nth-child(4) { animation-delay: 180ms; }
+.rep-leaderboard-item:nth-child(5) { animation-delay: 240ms; }
+.rep-leaderboard-item:nth-child(6) { animation-delay: 300ms; }
+.rep-leaderboard-item:nth-child(7) { animation-delay: 360ms; }
+.rep-leaderboard-item:nth-child(8) { animation-delay: 420ms; }
+.rep-leaderboard-item:nth-child(9) { animation-delay: 480ms; }
+.rep-leaderboard-item:nth-child(10) { animation-delay: 540ms; }
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-podium-gold {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.rep-podium-silver {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.04));
+  border-color: rgba(148, 163, 184, 0.25);
+}
+.rep-podium-bronze {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(217, 119, 6, 0.04));
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+/* Live event border — static */
+.rep-contested-border {
+  border-color: rgba(52, 211, 153, 0.20) !important;
+}
+
+.rep-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: liveDotPulse 1.5s ease-in-out infinite;
+}
+@keyframes liveDotPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0); }
+}
+
+.rep-position-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  animation: positionIndicatorIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes positionIndicatorIn {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Position card — static border */
+.rep-position-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(139, 92, 246, 0.12) !important;
+}
+
+.rep-position-dramatic {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Event card ambient image */
+.rep-event-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.rep-event-ambient img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.12;
+  filter: blur(1px) brightness(0.7);
+}
+.rep-event-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-card) 30%, rgba(17, 17, 24, 0.6) 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REWARD TIER GLOWS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-reward-glow-low {
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+.rep-reward-glow-mid {
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.05);
+  border-color: rgba(56, 189, 248, 0.12) !important;
+}
+.rep-reward-glow-high {
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+.rep-reward-glow-legendary {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.18) !important;
+}
+
+.rep-reward-locked {
+  filter: grayscale(0.6);
+  opacity: 0.5;
+}
+.rep-reward-unlocked {
+  animation: unlockPulse 0.6s ease-out;
+}
+@keyframes unlockPulse {
+  0% { transform: scale(0.95); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEVEL-UP CELEBRATION
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-level-up-overlay {
+  animation: levelUpOverlayIn 0.5s ease-out both;
+}
+@keyframes levelUpOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rep-level-up-badge {
+  animation: levelUpBadge 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: 0.2s;
+}
+@keyframes levelUpBadge {
+  0% { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+  60% { opacity: 1; transform: scale(1.15) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.rep-level-up-text {
+  animation: levelUpText 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.5s;
+}
+@keyframes levelUpText {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-level-up-ring {
+  animation: levelUpRing 1.2s ease-out both;
+  animation-delay: 0.3s;
+}
+@keyframes levelUpRing {
+  0% { transform: scale(0.5); opacity: 0; box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+  30% { opacity: 1; box-shadow: 0 0 0 20px rgba(139, 92, 246, 0.2); }
+  60% { box-shadow: 0 0 0 40px rgba(139, 92, 246, 0.05); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 60px rgba(139, 92, 246, 0); }
+}
+
+/* ── Confetti burst ── */
+.rep-confetti-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+.rep-confetti-piece {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  top: 40%;
+  left: 50%;
+  animation: confettiBurst 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes confettiBurst {
+  0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--cx)), calc(-50% + var(--cy) + 120px)) scale(0.5) rotate(var(--cr)); opacity: 0; }
+}
+
+/* ── Reward success ring + particles ── */
+.rep-reward-success-ring {
+  animation: successRing 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes successRing {
+  0% { transform: scale(0.5); opacity: 0; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  50% { box-shadow: 0 0 0 12px rgba(52, 211, 153, 0.15); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+.rep-success-particles {
+  position: absolute;
+  inset: -20px;
+  pointer-events: none;
+}
+.rep-success-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  left: 50%;
+  top: 50%;
+}
+.rep-success-particle:nth-child(odd) {
+  background: var(--color-success);
+}
+.rep-success-particle:nth-child(1) { animation: p1 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.rep-success-particle:nth-child(2) { animation: p2 0.8s cubic-bezier(0.16, 1, 0.3, 1) both 0.05s; }
+.rep-success-particle:nth-child(3) { animation: p3 0.8s cubic-bezier(0.16, 1, 0.3, 1) both 0.1s; }
+.rep-success-particle:nth-child(4) { animation: p4 0.8s cubic-bezier(0.16, 1, 0.3, 1) both 0.15s; }
+.rep-success-particle:nth-child(5) { animation: p5 0.8s cubic-bezier(0.16, 1, 0.3, 1) both 0.2s; }
+.rep-success-particle:nth-child(6) { animation: p6 0.8s cubic-bezier(0.16, 1, 0.3, 1) both 0.25s; }
+@keyframes p1 { 0% { transform: translate(-50%,-50%) scale(1); opacity:1; } 100% { transform: translate(30px,-40px) scale(0); opacity:0; } }
+@keyframes p2 { 0% { transform: translate(-50%,-50%) scale(1); opacity:1; } 100% { transform: translate(-35px,-30px) scale(0); opacity:0; } }
+@keyframes p3 { 0% { transform: translate(-50%,-50%) scale(1); opacity:1; } 100% { transform: translate(40px,15px) scale(0); opacity:0; } }
+@keyframes p4 { 0% { transform: translate(-50%,-50%) scale(1); opacity:1; } 100% { transform: translate(-25px,35px) scale(0); opacity:0; } }
+@keyframes p5 { 0% { transform: translate(-50%,-50%) scale(1); opacity:1; } 100% { transform: translate(15px,40px) scale(0); opacity:0; } }
+@keyframes p6 { 0% { transform: translate(-50%,-50%) scale(1); opacity:1; } 100% { transform: translate(-40px,-10px) scale(0); opacity:0; } }
+
+/* ══════════════════════════════════════════════════════════════════════
+   NOTIFICATIONS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-notification-badge {
+  animation: notifBadgeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes notifBadgeIn {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+.rep-notification-panel {
+  animation: notifPanelIn 0.2s ease-out;
+}
+@keyframes notifPanelIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.rep-notification-item {
+  animation: notifItemIn 0.25s ease-out both;
+}
+@keyframes notifItemIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HERO EFFECTS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-hero-banner {
+  position: relative;
+  overflow: hidden;
+}
+.rep-hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Profile hero — removed radial gradient */
+.rep-profile-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HOVER EFFECTS
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-battle-log-entry {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.2s;
+}
+.rep-battle-log-entry:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Photo upload pulse */
+.rep-photo-uploading {
+  animation: photoUploadPulse 1.2s ease-in-out infinite;
+}
+@keyframes photoUploadPulse {
+  0%, 100% { border-color: rgba(139, 92, 246, 0.2); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+  50% { border-color: rgba(139, 92, 246, 0.6); box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HUD COMMAND BAR (Bottom Nav)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Active glow on hub center button — static */
+.rep-hud-hub-active .rep-hud-hub-circle {
+  box-shadow:
+    0 4px 24px rgba(124, 58, 237, 0.45),
+    0 0 40px rgba(124, 58, 237, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Badge spring animation */
+@keyframes badgeSpring {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile-specific behavior
+   ══════════════════════════════════════════════════════════════════════ */
+
+[data-rep] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (max-width: 768px) {
+  [data-rep] ::-webkit-scrollbar {
+    display: none;
+  }
+  [data-rep] {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  [data-rep] input,
+  [data-rep] textarea,
+  [data-rep] select {
+    font-size: 16px;
+  }
+  [data-rep] button {
+    min-height: 44px;
+  }
+  [data-rep] .font-mono {
+    word-break: break-all;
+  }
+  [data-rep] main {
+    overscroll-behavior-y: contain;
+  }
+  [data-rep] nav[class*="fixed bottom-0"] {
+    padding-bottom: max(env(safe-area-inset-bottom), 8px);
+  }
+}
+
+[data-rep] input[type="date"] {
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   TIMELINE (Points Page)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-timeline-entry {
+  transition: background-color 0.2s;
+}
+.rep-timeline-entry:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   INPUT (Join / Invite)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-secondary);
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 16px;
+  color: var(--color-foreground);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-appearance: none;
+}
+.rep-input::placeholder {
+  color: rgba(113, 113, 122, 0.5);
+}
+.rep-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), 0 0 20px rgba(139, 92, 246, 0.05);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   COUNTDOWN (Leaderboard)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-countdown {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.rep-countdown-segment {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 32px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EVENT CARD (Leaderboard)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-event-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+  cursor: pointer;
+}
+.rep-event-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.rep-event-card.rep-event-live {
+  border-color: rgba(52, 211, 153, 0.20);
+}
+.rep-event-card.rep-event-locked {
+  border-color: rgba(245, 158, 11, 0.15);
+  opacity: 0.85;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MEDAL & REWARD PILL (Leaderboard)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.rep-reward-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rep-reward-pill-gold {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.rep-reward-pill-silver {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94A3B8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.rep-reward-pill-bronze {
+  background: rgba(217, 119, 6, 0.12);
+  color: #CD7F32;
+  border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   QUEST CARD STRUCTURE
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-quest-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 20px;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rep-quest-card:active {
+  transform: scale(0.98);
+}
+.rep-quest-has-image {
+  min-height: 280px;
+}
+.rep-quest-glass {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-height: inherit;
+  text-align: center;
+}
+.rep-quest-spacer {
+  flex: 1;
+  min-height: 12px;
+}
+
+/* ── Quest Detail Bottom Sheet ── */
+.rep-quest-detail-sheet {
+  background: var(--color-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: questSheetIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Detail sheet tier glows ── */
+.rep-quest-detail-common {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.rep-quest-detail-rare {
+  border-color: rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.06);
+}
+.rep-quest-detail-epic {
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.08);
+}
+.rep-quest-detail-legendary {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.1);
+}
+
+/* ── Detail CTA tier variants ── */
+.rep-quest-detail-cta-common {}
+.rep-quest-detail-cta-rare:hover {
+  box-shadow: 0 6px 28px rgba(56, 189, 248, 0.3), 0 0 50px rgba(56, 189, 248, 0.1);
+}
+.rep-quest-detail-cta-epic:hover {
+  box-shadow: 0 6px 28px rgba(139, 92, 246, 0.4), 0 0 50px rgba(139, 92, 246, 0.15);
+}
+.rep-quest-detail-cta-legendary {
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1);
+}
+.rep-quest-detail-cta-legendary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 28px rgba(245, 158, 11, 0.4), 0 0 50px rgba(245, 158, 11, 0.15);
+}
+@keyframes questSheetIn {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rep-quest-drag-handle-zone {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+.rep-quest-drag-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.rep-quest-detail-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.rep-quest-detail-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* ── Quest detail — media container (flexible height) ── */
+.rep-quest-detail-media {
+  position: relative;
+  overflow: hidden;
+  padding: 0 16px;
+}
+.rep-quest-detail-media img {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 12px;
+  cursor: zoom-in;
+}
+.rep-quest-detail-media iframe {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+}
+
+/* ── Quest detail — instructions card ── */
+.rep-quest-detail-instructions {
+  background: rgba(139, 92, 246, 0.04);
+  border: 1px solid rgba(139, 92, 246, 0.10);
+}
+
+/* ── Quest detail — video link fallback ── */
+.rep-quest-video-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.rep-quest-video-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Quest detail — CTA button (solid, prominent) ── */
+.rep-quest-detail-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(139, 92, 246, 0.1);
+}
+.rep-quest-detail-cta:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 28px rgba(139, 92, 246, 0.4), 0 0 50px rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
+}
+.rep-quest-detail-cta:active {
+  transform: scale(0.97);
+}
+
+/* ── Quest detail — completed state ── */
+.rep-quest-detail-complete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  background: rgba(52, 211, 153, 0.1);
+  color: #34D399;
+  font-size: 15px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* ── Quest progress bar ── */
+.rep-quest-progress {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.rep-quest-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+.rep-quest-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+  animation: xpShine 2s ease-in-out infinite;
+}
+.rep-quest-progress-common .rep-quest-progress-fill { background: #666680; }
+.rep-quest-progress-rare .rep-quest-progress-fill { background: #38BDF8; }
+.rep-quest-progress-epic .rep-quest-progress-fill { background: #8B5CF6; }
+.rep-quest-progress-legendary .rep-quest-progress-fill { background: #F59E0B; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MISSION CARD (Dashboard)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-mission-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  transition: border-color 0.2s ease;
+}
+.rep-mission-card:hover {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+.rep-mission-content {
+  position: relative;
+  z-index: 1;
+}
+.rep-mission-card-hover {
+  transition: border-color 0.2s;
+}
+.rep-mission-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HOVER EFFECTS — Action, Leaderboard, Shop
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-action-hover {
+  transition: border-color 0.2s;
+}
+.rep-action-hover:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.rep-shop-hover {
+  transition: border-color 0.2s;
+}
+.rep-shop-hover:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.rep-lb-hover {
+  transition: background-color 0.2s;
+}
+.rep-lb-hover:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.rep-lb-podium-hover:hover {
+  /* Keep podium stable */
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PODIUM (Leaderboard)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.rep-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 12px 0;
+}
+.rep-podium-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  max-width: 130px;
+}
+.rep-podium-bar {
+  width: 100%;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px 8px 12px;
+  position: relative;
+  overflow: hidden;
+}
+.rep-podium-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+  pointer-events: none;
+}
+.rep-podium-bar-1 {
+  min-height: 160px;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.03) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-bottom: none;
+  box-shadow: 0 -8px 32px rgba(245, 158, 11, 0.08);
+}
+.rep-podium-bar-2 {
+  min-height: 120px;
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.02) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-bottom: none;
+}
+.rep-podium-bar-3 {
+  min-height: 95px;
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.1) 0%, rgba(180, 83, 9, 0.02) 100%);
+  border: 1px solid rgba(180, 83, 9, 0.15);
+  border-bottom: none;
+}
+.rep-podium-base {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+.rep-podium-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rep-podium-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.1);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.rep-podium-col:first-child .rep-podium-avatar {
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+  border: 2px solid rgba(245, 158, 11, 0.4);
+}
+.rep-podium-col:nth-child(2) .rep-podium-avatar {
+  border: 2px solid rgba(148, 163, 184, 0.3);
+}
+.rep-podium-col:nth-child(3) .rep-podium-avatar {
+  border: 2px solid rgba(180, 83, 9, 0.3);
+}
+.rep-podium-medal {
+  font-size: 24px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-col:first-child .rep-podium-medal {
+  font-size: 28px;
+}
+.rep-podium-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-foreground);
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-stat {
+  font-size: 10px;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  color: var(--color-muted-foreground);
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+}
+.rep-podium-revenue {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-foreground);
+  margin-top: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Kill remaining animations (legendary border, shimmer, xp, celebrations) */
+  .rep-quest-legendary::before,
+  .rep-badge-shimmer::after,
+  .rep-tier-badge-legendary::after,
+  .rep-xp-badge-epic::after,
+  .rep-xp-badge-legendary::after,
+  .rep-xp-fill::after,
+  .rep-confetti-piece,
+  .rep-success-particle,
+  .rep-level-up-ring,
+  .rep-level-up-badge,
+  .rep-level-up-overlay,
+  .rep-cursor,
+  .rep-quest-detail-sheet,
+  .rep-quest-progress-fill::after {
+    animation: none !important;
+  }
+  /* Entrance animations: instant appearance */
+  .rep-fade-in,
+  .rep-slide-up,
+  .rep-page-enter,
+  .rep-card-reveal,
+  .rep-quest-common,
+  .rep-quest-rare,
+  .rep-quest-epic,
+  .rep-quest-legendary,
+  .rep-leaderboard-item,
+  .rep-boot-line,
+  .rep-step-in,
+  .rep-celebrate,
+  .rep-title-reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

@@ -4,7 +4,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import "@/styles/tailwind.css";
-import "@/styles/rep-portal.css";
+import "@/styles/rep-effects.css";
 import {
   LayoutDashboard,
   Trophy,
@@ -17,14 +17,15 @@ import {
   Loader2,
   Bell,
   Zap,
-  ShoppingCart,
   Star,
   ArrowUp,
   CheckCircle2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { getTierFromLevel } from "@/lib/rep-tiers";
+import { useRepPWA } from "@/hooks/useRepPWA";
+import { InstallPrompt } from "@/components/rep";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -166,6 +167,58 @@ export default function RepLayout({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [isPublicPage, pathname, router]);
 
+  // PWA: register service worker, handle install prompt
+  const { shouldShowInstall, platform, promptInstall, dismissInstall, requestPush, isStandalone } = useRepPWA();
+  const [showInstallModal, setShowInstallModal] = useState(false);
+
+  // Show install prompt after 3rd visit (not on first — let them explore first)
+  useEffect(() => {
+    if (!shouldShowInstall || isStandalone) return;
+    try {
+      const visits = parseInt(localStorage.getItem("rep_visit_count") || "0", 10) + 1;
+      localStorage.setItem("rep_visit_count", String(visits));
+      if (visits >= 3) {
+        // Delay so it doesn't pop up immediately on page load
+        const timer = setTimeout(() => setShowInstallModal(true), 2000);
+        return () => clearTimeout(timer);
+      }
+    } catch { /* storage unavailable */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldShowInstall, isStandalone]);
+
+  // Add manifest link to head
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const existing = document.querySelector('link[rel="manifest"][href="/rep-manifest.json"]');
+    if (existing) return;
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = "/rep-manifest.json";
+    document.head.appendChild(link);
+
+    // Theme color meta
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = "#08080c";
+
+    // Apple mobile web app meta tags
+    if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
+      const capable = document.createElement("meta");
+      capable.name = "apple-mobile-web-app-capable";
+      capable.content = "yes";
+      document.head.appendChild(capable);
+
+      const statusBar = document.createElement("meta");
+      statusBar.name = "apple-mobile-web-app-status-bar-style";
+      statusBar.content = "black-translucent";
+      document.head.appendChild(statusBar);
+    }
+  }, []);
+
   const showNav = !isPublicPage && authState.status === "active";
 
   const brandName = branding?.org_name
@@ -207,6 +260,8 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  const tier = repStats ? getTierFromLevel(repStats.level) : null;
 
   return (
     <div data-admin data-rep className="min-h-screen bg-background text-foreground">
@@ -250,14 +305,14 @@ export default function RepLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             {/* Desktop stats strip */}
-            {repStats && (
+            {repStats && tier && (
               <div className="flex items-center gap-2 mr-2">
-                <span className="rep-xp-pill">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-bold tabular-nums text-primary">
                   <Zap size={11} />
                   {repStats.xp.toLocaleString()}
                 </span>
                 {repStats.rank && (
-                  <span className="text-[11px] font-bold font-mono text-[var(--rep-gold)] tabular-nums">
+                  <span className="text-xs font-bold font-mono tabular-nums" style={{ color: tier.color }}>
                     #{repStats.rank}
                   </span>
                 )}
@@ -294,18 +349,18 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </Link>
             <div className="flex items-center gap-2">
               {/* XP + Level pills */}
-              {repStats && (
+              {repStats && tier && (
                 <>
-                  <span className="rep-xp-pill">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-bold tabular-nums text-primary">
                     <Zap size={10} />
                     {repStats.xp.toLocaleString()}
                   </span>
                   <span
-                    className="rep-level-pill"
+                    className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums"
                     style={{
-                      backgroundColor: getLevelColor(repStats.level) + "15",
-                      color: getLevelColor(repStats.level),
-                      border: `1px solid ${getLevelColor(repStats.level)}30`,
+                      backgroundColor: tier.color + "15",
+                      color: tier.color,
+                      border: `1px solid ${tier.color}30`,
                     }}
                   >
                     Lv.{repStats.level}
@@ -316,7 +371,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           {/* Purple gradient edge line */}
-          <div className="rep-top-bar-line" />
+          <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         </div>
       )}
 
@@ -324,38 +379,59 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       <main className={cn(
         showNav && "pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6",
         "rep-page-enter"
-      )} key={pathname}>
+      )}>
         {children}
       </main>
+
+      {/* Portal target for modals — sibling of <main> to escape its stacking context */}
+      <div id="rep-portal-root" />
+
+      {/* PWA Install Modal */}
+      {showInstallModal && (
+        <InstallPrompt
+          platform={platform}
+          onInstall={promptInstall}
+          onDismiss={() => {
+            setShowInstallModal(false);
+            dismissInstall();
+          }}
+          onEnableNotifications={requestPush}
+        />
+      )}
 
       {/* Mobile bottom nav — HUD Command Bar */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
-          <nav className="rep-hud-bar pointer-events-auto">
+          <nav className="flex items-end justify-around rounded-[20px] border border-white/[0.06] bg-[rgba(12,12,18,0.94)] backdrop-blur-[24px] saturate-[1.4] shadow-[0_-4px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04),0_-1px_0_rgba(139,92,246,0.08)] px-2 pb-1.5 pt-2.5 relative pointer-events-auto">
             {/* Left items */}
             {HUD_LEFT.map((item) => {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href} className="rep-hud-item">
-                  {active ? (
-                    <div className="rep-hud-item-active-bg">
-                      <Icon
-                        size={19}
-                        strokeWidth={2.5}
-                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
-                      />
-                    </div>
-                  ) : (
-                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
-                  )}
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
+                >
+                  <div className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200",
+                    active ? "bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]" : "bg-transparent"
+                  )}>
+                    <Icon
+                      size={active ? 19 : 20}
+                      strokeWidth={active ? 2.5 : 1.5}
+                      className={active ? "text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]" : "text-[#444455]"}
+                    />
+                  </div>
                   <span className={cn(
                     "text-[9px] font-semibold tracking-wide",
                     active ? "text-primary" : "text-[#444455]"
                   )}>
                     {item.label}
                   </span>
-                  {active && <span className="rep-hud-dot" />}
+                  {active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                  )}
                 </Link>
               );
             })}
@@ -367,19 +443,22 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               return (
                 <Link
                   href={HUD_CENTER.href}
-                  className={cn("rep-hud-hub", active && "rep-hud-hub-active")}
+                  className={cn(
+                    "relative flex flex-col items-center -mt-5 z-[2] no-underline",
+                    active && "rep-hud-hub-active"
+                  )}
                 >
-                  <div className="rep-hud-hub-circle">
+                  <div className="flex items-center justify-center w-[52px] h-[52px] rounded-full bg-[#7C3AED] shadow-[0_4px_20px_rgba(124,58,237,0.45),inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-200 active:scale-95 relative rep-hud-hub-circle">
                     <Icon size={24} strokeWidth={2} className="text-white" />
                     {/* Quest count badge */}
                     {repStats && repStats.active_quests > 0 && (
-                      <span className="rep-hud-badge">
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-white text-[9px] font-bold px-1 shadow-[0_2px_8px_rgba(244,63,94,0.4)] animate-[badgeSpring_0.4s_cubic-bezier(0.34,1.56,0.64,1)]">
                         {repStats.active_quests > 9 ? "9+" : repStats.active_quests}
                       </span>
                     )}
                   </div>
                   <span className={cn(
-                    "rep-hud-hub-label",
+                    "text-[9px] font-semibold tracking-wide mt-1",
                     active ? "text-primary" : "text-[#444455]"
                   )}>
                     {HUD_CENTER.label}
@@ -393,25 +472,30 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href} className="rep-hud-item">
-                  {active ? (
-                    <div className="rep-hud-item-active-bg">
-                      <Icon
-                        size={19}
-                        strokeWidth={2.5}
-                        className="text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]"
-                      />
-                    </div>
-                  ) : (
-                    <Icon size={20} strokeWidth={1.5} className="text-[#444455]" />
-                  )}
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex flex-col items-center justify-center w-14 gap-0.5 transition-all duration-200 no-underline relative pb-0.5"
+                >
+                  <div className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200",
+                    active ? "bg-primary/12 shadow-[0_0_12px_rgba(139,92,246,0.15)]" : "bg-transparent"
+                  )}>
+                    <Icon
+                      size={active ? 19 : 20}
+                      strokeWidth={active ? 2.5 : 1.5}
+                      className={active ? "text-primary drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]" : "text-[#444455]"}
+                    />
+                  </div>
                   <span className={cn(
                     "text-[9px] font-semibold tracking-wide",
                     active ? "text-primary" : "text-[#444455]"
                   )}>
                     {item.label}
                   </span>
-                  {active && <span className="rep-hud-dot" />}
+                  {active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                  )}
                 </Link>
               );
             })}
@@ -420,15 +504,6 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       )}
     </div>
   );
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function getLevelColor(level: number): string {
-  if (level >= 9) return "#F59E0B";
-  if (level >= 7) return "#8B5CF6";
-  if (level >= 4) return "#38BDF8";
-  return "#94A3B8";
 }
 
 // ─── Notification Center ─────────────────────────────────────────────────────
@@ -639,7 +714,7 @@ function NotificationCenter() {
                         </span>
                       </div>
                       {n.body && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {n.body}
                         </p>
                       )}

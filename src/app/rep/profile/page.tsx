@@ -15,6 +15,8 @@ import {
   Zap,
   Trophy,
   TrendingUp,
+  Download,
+  Bell,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +26,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { TikTokIcon, InstallPrompt } from "@/components/rep";
+import { useRepPWA } from "@/hooks/useRepPWA";
+import { getTierFromLevel } from "@/lib/rep-tiers";
+import { openSocialProfile } from "@/lib/rep-social";
 import { cn } from "@/lib/utils";
 
 interface RepProfile {
@@ -40,22 +46,6 @@ interface RepProfile {
   level: number;
   points_balance: number;
   total_sales: number;
-}
-
-function getTierFromLevel(level: number): { name: string; ring: string; color: string; profileRing: string } {
-  if (level >= 9) return { name: "Mythic", ring: "rep-avatar-ring-mythic", color: "#F59E0B", profileRing: "rep-profile-ring rep-profile-ring-mythic" };
-  if (level >= 7) return { name: "Elite", ring: "rep-avatar-ring-elite", color: "#8B5CF6", profileRing: "rep-profile-ring rep-profile-ring-elite" };
-  if (level >= 4) return { name: "Pro", ring: "rep-avatar-ring-pro", color: "#38BDF8", profileRing: "rep-profile-ring rep-profile-ring-pro" };
-  return { name: "Starter", ring: "rep-avatar-ring-starter", color: "#94A3B8", profileRing: "rep-profile-ring rep-profile-ring-starter" };
-}
-
-// TikTok icon (not in lucide)
-function TikTokIcon({ size = 16, className }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.8a8.19 8.19 0 0 0 3.76.96V6.32a4.85 4.85 0 0 1-.01.37Z" />
-    </svg>
-  );
 }
 
 /**
@@ -89,43 +79,6 @@ function processProfileImage(file: File): Promise<string> {
   });
 }
 
-/**
- * Open social profile in native app (iOS deep link) with web fallback.
- * Does not navigate away from the portal.
- */
-function openSocialProfile(platform: "instagram" | "tiktok", username: string) {
-  const schemes: Record<string, string> = {
-    instagram: `instagram://user?username=${username}`,
-    tiktok: `snssdk1233://user/profile/${username}`,
-  };
-  const webUrls: Record<string, string> = {
-    instagram: `https://instagram.com/${username}`,
-    tiktok: `https://tiktok.com/@${username}`,
-  };
-
-  // Try native app scheme
-  window.location.href = schemes[platform];
-
-  // If we're still here after 1.5s, the app didn't open — use web fallback
-  const timer = setTimeout(() => {
-    window.open(webUrls[platform], "_blank", "noopener");
-  }, 1500);
-
-  // If the native app opened, the page becomes hidden — cancel fallback
-  const onVisibility = () => {
-    if (document.hidden) {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisibility);
-    }
-  };
-  document.addEventListener("visibilitychange", onVisibility);
-
-  // Clean up listener after fallback fires
-  setTimeout(() => {
-    document.removeEventListener("visibilitychange", onVisibility);
-  }, 2000);
-}
-
 export default function RepProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +101,10 @@ export default function RepProfilePage() {
   // Discount
   const [discountCode, setDiscountCode] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // PWA
+  const { shouldShowInstall, platform, promptInstall, dismissInstall, requestPush, isStandalone, pushPermission, pushSupported } = useRepPWA();
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -388,7 +345,7 @@ export default function RepProfilePage() {
                 </div>
               </button>
 
-              <h1 className="mt-3 text-lg font-bold rep-gradient-text">
+              <h1 className="mt-3 text-lg font-bold text-foreground">
                 {profile.display_name || profile.first_name}
               </h1>
               <p className="text-xs text-muted-foreground">{profile.email}</p>
@@ -396,7 +353,7 @@ export default function RepProfilePage() {
               {/* Tier badge */}
               <div className="flex items-center justify-center mt-2">
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold rep-badge-shimmer"
+                  className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold", tier.name === "Mythic" && "rep-badge-shimmer")}
                   style={{ backgroundColor: `${tier.color}15`, color: tier.color, border: `1px solid ${tier.color}30` }}
                 >
                   <Zap size={10} />
@@ -406,68 +363,38 @@ export default function RepProfilePage() {
 
               {/* Mini stat gauges */}
               <div className="flex items-center justify-center gap-6 mt-5">
-                <div className="rep-mini-gauge">
-                  <div className="rep-mini-gauge-ring">
-                    <svg viewBox="0 0 56 56">
-                      <circle className="track" cx="28" cy="28" r="22" />
-                      <circle
-                        className="fill"
-                        cx="28" cy="28" r="22"
-                        stroke="#8B5CF6"
-                        strokeDasharray={MINI_CIRC}
-                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.points_balance / Math.max(profile.points_balance, 100), 1))}
-                        style={{ filter: "drop-shadow(0 0 3px rgba(139, 92, 246, 0.4))" }}
-                      />
-                    </svg>
-                    <div className="rep-mini-gauge-center">
-                      <Zap size={14} className="text-primary" />
+                {[
+                  { icon: Zap, iconClass: "text-primary", color: "#8B5CF6", value: String(profile.points_balance), label: "XP", percent: Math.min(profile.points_balance / Math.max(profile.points_balance, 100), 1) },
+                  { icon: TrendingUp, iconClass: "text-success", color: "#34D399", value: String(profile.total_sales), label: "Sales", percent: Math.min(profile.total_sales / Math.max(profile.total_sales, 20), 1) },
+                  { icon: Trophy, iconClass: "", color: tier.color, value: `Lv.${profile.level}`, label: "Tier", percent: Math.min(profile.level / 10, 1) },
+                ].map((g) => {
+                  const GIcon = g.icon;
+                  return (
+                    <div key={g.label} className="flex flex-col items-center gap-1">
+                      <div className="relative" style={{ width: 56, height: 56 }}>
+                        <svg className="-rotate-90 w-full h-full" viewBox="0 0 56 56">
+                          <circle fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={3.5} cx="28" cy="28" r="22" />
+                          <circle
+                            fill="none"
+                            stroke={g.color}
+                            strokeWidth={3.5}
+                            strokeLinecap="round"
+                            cx="28" cy="28" r="22"
+                            strokeDasharray={MINI_CIRC}
+                            strokeDashoffset={MINI_CIRC * (1 - g.percent)}
+                            className="transition-[stroke-dashoffset] duration-1000 ease-out"
+                            style={{ filter: `drop-shadow(0 0 2px ${g.color}40)` }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <GIcon size={14} className={g.iconClass} style={!g.iconClass ? { color: g.color } : undefined} />
+                        </div>
+                      </div>
+                      <span className="text-[13px] font-bold font-mono tabular-nums" style={{ color: g.color }}>{g.value}</span>
+                      <span className="text-[10px] uppercase tracking-[1px] text-muted-foreground font-semibold">{g.label}</span>
                     </div>
-                  </div>
-                  <span className="rep-mini-gauge-value" style={{ color: "#8B5CF6" }}>{profile.points_balance}</span>
-                  <span className="rep-mini-gauge-label">XP</span>
-                </div>
-
-                <div className="rep-mini-gauge">
-                  <div className="rep-mini-gauge-ring">
-                    <svg viewBox="0 0 56 56">
-                      <circle className="track" cx="28" cy="28" r="22" />
-                      <circle
-                        className="fill"
-                        cx="28" cy="28" r="22"
-                        stroke="#34D399"
-                        strokeDasharray={MINI_CIRC}
-                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.total_sales / Math.max(profile.total_sales, 20), 1))}
-                        style={{ filter: "drop-shadow(0 0 3px rgba(52, 211, 153, 0.4))" }}
-                      />
-                    </svg>
-                    <div className="rep-mini-gauge-center">
-                      <TrendingUp size={14} className="text-success" />
-                    </div>
-                  </div>
-                  <span className="rep-mini-gauge-value" style={{ color: "#34D399" }}>{profile.total_sales}</span>
-                  <span className="rep-mini-gauge-label">Sales</span>
-                </div>
-
-                <div className="rep-mini-gauge">
-                  <div className="rep-mini-gauge-ring">
-                    <svg viewBox="0 0 56 56">
-                      <circle className="track" cx="28" cy="28" r="22" />
-                      <circle
-                        className="fill"
-                        cx="28" cy="28" r="22"
-                        stroke={tier.color}
-                        strokeDasharray={MINI_CIRC}
-                        strokeDashoffset={MINI_CIRC * (1 - Math.min(profile.level / 10, 1))}
-                        style={{ filter: `drop-shadow(0 0 3px ${tier.color}66)` }}
-                      />
-                    </svg>
-                    <div className="rep-mini-gauge-center">
-                      <Trophy size={14} style={{ color: tier.color }} />
-                    </div>
-                  </div>
-                  <span className="rep-mini-gauge-value" style={{ color: tier.color }}>Lv.{profile.level}</span>
-                  <span className="rep-mini-gauge-label">Tier</span>
-                </div>
+                  );
+                })}
               </div>
             </>
           );
@@ -504,7 +431,7 @@ export default function RepProfilePage() {
 
       {/* ── Discount Code ── */}
       {discountCode && (
-        <Card className="py-0 gap-0 border-primary/20 bg-primary/5 rep-pulse-border rep-slide-up rep-scan-card" style={{ animationDelay: "50ms" }}>
+        <Card className="py-0 gap-0 rep-surface-2 border-primary/15 rep-slide-up" style={{ animationDelay: "50ms" }}>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <Flame size={14} className="text-primary" />
@@ -513,7 +440,7 @@ export default function RepProfilePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-2xl font-bold font-mono tracking-[4px] text-foreground flex-1" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.15)" }}>
+              <p className="text-2xl font-bold font-mono tracking-[4px] text-foreground flex-1">
                 {discountCode}
               </p>
               <Button size="sm" onClick={copyCode}>
@@ -521,7 +448,7 @@ export default function RepProfilePage() {
                 {copiedCode ? "Copied" : "Copy"}
               </Button>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Share this code — every sale earns you points
             </p>
           </CardContent>
@@ -538,7 +465,7 @@ export default function RepProfilePage() {
 
           {/* Display Name */}
           <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Display Name
             </Label>
             <Input
@@ -554,7 +481,7 @@ export default function RepProfilePage() {
 
           {/* Phone */}
           <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Phone
             </Label>
             <Input
@@ -570,12 +497,12 @@ export default function RepProfilePage() {
 
           {/* Socials */}
           <div className="space-y-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Socials
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Instagram size={11} /> Instagram
                 </Label>
                 <div className="relative">
@@ -590,7 +517,7 @@ export default function RepProfilePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <TikTokIcon size={11} /> TikTok
                 </Label>
                 <div className="relative">
@@ -611,7 +538,7 @@ export default function RepProfilePage() {
 
           {/* Bio */}
           <div className="space-y-2">
-            <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Bio
             </Label>
             <Textarea
@@ -651,6 +578,68 @@ export default function RepProfilePage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* ── App & Notifications ── */}
+      {(!isStandalone || (pushSupported && pushPermission !== "granted")) && (
+        <Card className="py-0 gap-0 rep-slide-up" style={{ animationDelay: "125ms" }}>
+          <CardContent className="p-4 space-y-2">
+            {/* Install App */}
+            {shouldShowInstall && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={() => setShowInstallModal(true)}
+              >
+                <Download size={14} className="text-primary" />
+                Install App
+                <span className="ml-auto text-[10px] text-muted-foreground">Home screen</span>
+              </Button>
+            )}
+
+            {/* Enable Notifications */}
+            {pushSupported && pushPermission !== "granted" && pushPermission !== "denied" && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3"
+                onClick={() => requestPush()}
+              >
+                <Bell size={14} className="text-primary" />
+                Enable Notifications
+                <span className="ml-auto text-[10px] text-muted-foreground">Sales & quests</span>
+              </Button>
+            )}
+
+            {/* Notification permission denied */}
+            {pushPermission === "denied" && (
+              <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-muted-foreground">
+                <Bell size={14} />
+                Notifications blocked — enable in browser settings
+              </div>
+            )}
+
+            {/* Already receiving notifications */}
+            {pushPermission === "granted" && (
+              <div className="flex items-center gap-3 px-4 py-2.5 text-xs text-success">
+                <Bell size={14} />
+                Notifications enabled
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Install Modal */}
+      {showInstallModal && (
+        <InstallPrompt
+          platform={platform}
+          onInstall={promptInstall}
+          onDismiss={() => {
+            setShowInstallModal(false);
+            dismissInstall();
+          }}
+          onEnableNotifications={requestPush}
+        />
+      )}
 
       {/* ── Sign Out ── */}
       <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>

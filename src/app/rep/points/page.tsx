@@ -15,6 +15,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 // ─── Hero Radial Gauge ────────────────────────────────────────────────────────
@@ -26,24 +27,30 @@ function HeroGauge({ value, max, color }: { value: number; max: number; color: s
   const offset = HERO_CIRCUMFERENCE * (1 - percent);
 
   return (
-    <div className="rep-gauge rep-gauge-hero" style={{ background: "transparent", border: "none" }}>
-      <svg className="rep-gauge-svg" viewBox="0 0 120 120">
-        <circle className="rep-gauge-track" cx="60" cy="60" r="50" strokeWidth="6" />
+    <div className="relative inline-flex items-center justify-center" style={{ width: 120, height: 120 }}>
+      <svg className="-rotate-90" viewBox="0 0 120 120" width={120} height={120}>
         <circle
-          className="rep-gauge-fill"
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.04)"
+          strokeWidth={6}
           cx="60" cy="60" r="50"
+        />
+        <circle
+          fill="none"
           stroke={color}
           strokeDasharray={HERO_CIRCUMFERENCE}
           strokeDashoffset={offset}
-          strokeWidth="6"
+          strokeWidth={6}
           strokeLinecap="round"
-          style={{ "--gauge-color": color } as React.CSSProperties}
+          cx="60" cy="60" r="50"
+          className="transition-[stroke-dashoffset] duration-1000 ease-out"
+          style={{ filter: `drop-shadow(0 0 3px ${color}60)` }}
         />
       </svg>
-      <div className="rep-gauge-center" style={{ top: 0, width: 120, height: 120 }}>
+      <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
           <Zap size={16} className="mx-auto mb-1" style={{ color }} />
-          <p className="text-2xl font-bold font-mono tabular-nums" style={{ color, textShadow: `0 0 16px ${color}40` }}>
+          <p className="text-2xl font-bold font-mono tabular-nums" style={{ color }}>
             {value}
           </p>
         </div>
@@ -156,7 +163,7 @@ export default function RepPointsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-6 w-32 mb-2" />
@@ -179,7 +186,7 @@ export default function RepPointsPage() {
 
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
         <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
             <Zap size={22} className="text-destructive" />
@@ -200,18 +207,18 @@ export default function RepPointsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* Header with hero gauge */}
       <div className="text-center rep-slide-up">
-        <h1 className="text-xl font-bold rep-gradient-text mb-1">Points</h1>
+        <h1 className="text-xl font-bold text-foreground mb-1">Points</h1>
         <p className="text-sm text-muted-foreground mb-4">Your points history</p>
         <HeroGauge value={myPoints} max={Math.max(totalEarned, myPoints, 100)} color="#8B5CF6" />
-        <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold mt-2">Balance</p>
+        <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold mt-2">Balance</p>
       </div>
 
       {/* Earned / Spent summary */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "50ms" }}>
-        <Card className="py-0 gap-0 rep-stat-card rep-stat-glow-green">
+        <Card className="py-0 gap-0 rep-surface-1">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1.5">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-success/15">
@@ -219,10 +226,10 @@ export default function RepPointsPage() {
               </div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Earned</p>
             </div>
-            <p className="text-xl font-bold text-success font-mono tabular-nums" style={{ textShadow: "0 0 12px rgba(52, 211, 153, 0.15)" }}>+{totalEarned}</p>
+            <p className="text-xl font-bold text-success font-mono tabular-nums">+{totalEarned}</p>
           </CardContent>
         </Card>
-        <Card className="py-0 gap-0 rep-stat-card">
+        <Card className="py-0 gap-0 rep-surface-1">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1.5">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-muted/30">
@@ -237,16 +244,12 @@ export default function RepPointsPage() {
 
       {/* Points Timeline */}
       {entries.length === 0 ? (
-        <div className="text-center py-16 rep-slide-up">
-          <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
-            <div className="rep-empty-ring" />
-            <div className="rep-empty-ring" />
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-              <Zap size={22} className="text-primary/50" />
-            </div>
-          </div>
-          <p className="text-sm text-foreground font-medium mb-1">No points activity yet</p>
-          <p className="text-xs text-muted-foreground">Earn points by making sales and completing quests</p>
+        <div className="rep-slide-up">
+          <EmptyState
+            icon={Zap}
+            title="No points activity yet"
+            subtitle="Earn points by making sales and completing quests"
+          />
         </div>
       ) : (
         <div className="relative rep-slide-up" style={{ animationDelay: "100ms" }}>
@@ -262,8 +265,7 @@ export default function RepPointsPage() {
               return (
                 <div
                   key={entry.id}
-                  className="relative flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-muted/20 transition-colors rep-slide-up rep-timeline-entry"
-                  style={{ animationDelay: `${120 + i * 25}ms` }}
+                  className="relative flex items-center gap-3 py-2.5 px-2 rounded-xl transition-colors rep-timeline-entry"
                 >
                   {/* Timeline dot — larger with glow */}
                   <div className={cn(
@@ -288,7 +290,7 @@ export default function RepPointsPage() {
                         </span>
                       </div>
                       {entry.description && (
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
                           {entry.description}
                         </p>
                       )}
@@ -298,7 +300,7 @@ export default function RepPointsPage() {
                       <span className={cn(
                         "text-sm font-bold font-mono tabular-nums",
                         isPositive ? "text-success" : "text-destructive"
-                      )} style={isPositive ? { textShadow: "0 0 8px rgba(52, 211, 153, 0.15)" } : undefined}>
+                      )}>
                         {isPositive ? "+" : ""}{entry.points}
                       </span>
                       <span className="text-[10px] font-mono text-muted-foreground/50 tabular-nums w-12 text-right">

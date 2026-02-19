@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ interface EventLeaderboardData {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MEDAL_COLORS = ["var(--rep-gold)", "var(--rep-silver)", "var(--rep-bronze)"];
+const MEDAL_COLORS = ["#FBBF24", "#94A3B8", "#CD7F32"];
 const PODIUM_BG = [
   "rep-podium-gold border-2",
   "rep-podium-silver border",
@@ -115,31 +116,34 @@ export default function RepLeaderboardPage() {
   const [tab, setTab] = useState<"all-time" | "events">("all-time");
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
       {/* Header */}
       <div className="text-center mb-5 rep-slide-up">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--rep-gold)]/10 mb-3" style={{ filter: "drop-shadow(0 0 12px rgba(245, 158, 11, 0.15))" }}>
-          <Trophy size={24} className="text-[var(--rep-gold)]" />
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-warning/10 mb-3">
+          <Trophy size={24} className="text-warning" />
         </div>
         <h1 className="text-xl font-bold rep-gradient-text-gold">Leaderboard</h1>
       </div>
 
       {/* Tab Bar */}
-      <div className="rep-tab-bar mb-5">
-        <button
-          type="button"
-          className={`rep-tab ${tab === "all-time" ? "active" : ""}`}
-          onClick={() => setTab("all-time")}
-        >
-          All Time
-        </button>
-        <button
-          type="button"
-          className={`rep-tab ${tab === "events" ? "active" : ""}`}
-          onClick={() => setTab("events")}
-        >
-          Events
-        </button>
+      <div className="flex gap-0.5 bg-secondary rounded-xl p-[3px] border border-border mb-5">
+        {([
+          { id: "all-time" as const, label: "All Time" },
+          { id: "events" as const, label: "Events" },
+        ]).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
+              "hover:text-foreground",
+              tab === t.id && "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {tab === "all-time" ? <AllTimeLeaderboard /> : <EventsLeaderboard />}
@@ -157,8 +161,8 @@ function PositionIndicator({ change }: { change: number }) {
     <span className={cn(
       "rep-position-indicator inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
       isUp
-        ? "text-[var(--rep-success)] bg-[var(--rep-success)]/10"
-        : "text-[var(--rep-destructive)] bg-[var(--rep-destructive)]/10"
+        ? "text-success bg-success/10"
+        : "text-destructive bg-destructive/10"
     )}>
       {isUp ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
       {Math.abs(change)}
@@ -235,10 +239,10 @@ function AllTimeLeaderboard() {
     <div className="rep-fade-in">
       {/* Your Position Card — animated gradient border */}
       {myPosition && (
-        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-position-card rep-position-dramatic">
-          <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1.5">Your Position</p>
+        <div className="mb-5 rounded-2xl p-5 text-center rep-card-reveal rep-surface-2 border-primary/12">
+          <p className="text-[10px] uppercase tracking-[2px] text-muted-foreground font-semibold mb-1.5">Your Position</p>
           <div className="flex items-center justify-center gap-3">
-            <p className="text-4xl font-bold font-mono rep-gradient-text" style={{ textShadow: "0 0 24px rgba(139, 92, 246, 0.2)" }}>
+            <p className="text-4xl font-bold font-mono text-foreground">
               #{myPosition}
             </p>
             {myChange !== 0 && <PositionIndicator change={myChange} />}
@@ -263,7 +267,7 @@ function AllTimeLeaderboard() {
                   <button
                     type="button"
                     onClick={() => handleEntryClick(entry)}
-                    className={cn("rep-podium-avatar", `rep-podium-avatar-${idx + 1}`, isMe && "ring-2 ring-[var(--rep-accent)]")}
+                    className={cn("rep-podium-avatar", `rep-podium-avatar-${idx + 1}`, isMe && "ring-2 ring-primary")}
                   >
                     {entry.photo_url ? (
                       <img src={entry.photo_url} alt="" />
@@ -281,7 +285,7 @@ function AllTimeLeaderboard() {
                     className={cn(barClass, "cursor-pointer")}
                   >
                     <div className="rep-podium-medal">{MEDAL_EMOJI[idx]}</div>
-                    <div className={cn("rep-podium-name", isMe && "text-[var(--rep-accent)]")}>
+                    <div className={cn("rep-podium-name", isMe && "text-primary")}>
                       {entry.display_name || entry.first_name}
                       {isMe && <span className="text-[9px] opacity-60 ml-0.5">(You)</span>}
                     </div>
@@ -310,15 +314,15 @@ function AllTimeLeaderboard() {
               type="button"
               onClick={() => handleEntryClick(entry)}
               className={cn(
-                "rep-leaderboard-item rep-card-lift rep-lb-hover w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer active:scale-[0.98]",
+                "rep-leaderboard-item rep-lb-hover w-full text-left flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-colors duration-200",
                 entry.id === myRepId
-                  ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5"
-                  : "border border-[var(--rep-border)] bg-[var(--rep-card)]"
+                  ? "border-2 border-primary/30 bg-primary/5"
+                  : "border border-border bg-card"
               )}
             >
               {/* Rank */}
               <div className="w-7 text-center">
-                <span className="text-xs font-mono text-[var(--rep-text-muted)]">
+                <span className="text-xs font-mono text-muted-foreground">
                   {entry.position}
                 </span>
               </div>
@@ -328,7 +332,7 @@ function AllTimeLeaderboard() {
                 {entry.photo_url ? (
                   <img src={entry.photo_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-[var(--rep-accent)]/10 text-[10px] font-bold text-[var(--rep-accent)]">
+                  <div className="h-full w-full flex items-center justify-center bg-primary/10 text-[10px] font-bold text-primary">
                     {(entry.display_name || entry.first_name || "?").charAt(0)}
                   </div>
                 )}
@@ -337,15 +341,15 @@ function AllTimeLeaderboard() {
               {/* Name + Level */}
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium truncate ${
-                  entry.id === myRepId ? "text-[var(--rep-accent)]" : "text-white"
+                  entry.id === myRepId ? "text-primary" : "text-foreground"
                 }`}>
                   {entry.display_name || entry.first_name}
                   {entry.id === myRepId && (
-                    <span className="ml-1.5 text-[10px] text-[var(--rep-accent)]/60">(YOU)</span>
+                    <span className="ml-1.5 text-[10px] text-primary/60">(YOU)</span>
                   )}
                 </p>
                 <div className="flex items-center gap-2">
-                  <p className="text-[10px] text-[var(--rep-text-muted)]">
+                  <p className="text-[10px] text-muted-foreground">
                     Lv.{entry.level} · {entry.total_sales} sales
                   </p>
                   <PositionIndicator change={positionChanges[entry.id] || 0} />
@@ -353,7 +357,7 @@ function AllTimeLeaderboard() {
               </div>
 
               {/* Earned */}
-              <p className="text-sm font-bold font-mono tabular-nums text-white">
+              <p className="text-sm font-bold font-mono tabular-nums text-foreground">
                 £{Number(entry.total_revenue).toFixed(0)}
               </p>
             </button>
@@ -362,7 +366,11 @@ function AllTimeLeaderboard() {
       )}
 
       {entries.length === 0 && (
-        <EmptyLeaderboard />
+        <EmptyState
+          icon={Trophy}
+          title="No entries yet"
+          subtitle="Be the first to make a sale!"
+        />
       )}
     </div>
   );
@@ -410,14 +418,12 @@ function EventsLeaderboard() {
 
   if (events.length === 0) {
     return (
-      <div className="text-center py-16 rep-fade-in">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--rep-accent)]/10 mb-3">
-          <Calendar size={22} className="text-[var(--rep-accent)]" />
-        </div>
-        <p className="text-sm text-foreground font-medium mb-1">No active events</p>
-        <p className="text-xs text-[var(--rep-text-muted)]">
-          You&apos;ll see events here once you&apos;re assigned.
-        </p>
+      <div className="rep-fade-in">
+        <EmptyState
+          icon={Calendar}
+          title="No active events"
+          subtitle="You'll see events here once you're assigned."
+        />
       </div>
     );
   }
@@ -462,29 +468,29 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
             <div className="flex items-center gap-2 mb-1">
               {isLive && <span className="rep-live-dot" />}
               {isLive && (
-                <span className="text-[10px] font-bold text-[var(--rep-success)] uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-success uppercase tracking-wider">
                   Live
                 </span>
               )}
               {event.locked && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--rep-gold)] uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-warning uppercase tracking-wider">
                   <Lock size={10} /> Locked
                 </span>
               )}
               {isPast && !event.locked && (
-                <span className="text-[10px] font-bold text-[var(--rep-text-muted)] uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Ended
                 </span>
               )}
             </div>
-            <h3 className="text-sm font-semibold text-white truncate">{event.event_name}</h3>
+            <h3 className="text-sm font-semibold text-foreground truncate">{event.event_name}</h3>
             {event.event_date && (
-              <p className="text-[11px] text-[var(--rep-text-muted)] mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {formatEventDate(event.event_date)}
               </p>
             )}
           </div>
-          <ChevronRight size={16} className="text-[var(--rep-text-muted)] shrink-0 mt-1" />
+          <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-1" />
         </div>
 
         {/* Countdown (if upcoming) */}
@@ -495,24 +501,24 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
         {/* Stats row */}
         <div className="flex items-center gap-4 mt-3">
           <div>
-            <p className="text-[10px] text-[var(--rep-text-muted)]">Your Rank</p>
-            <p className="text-sm font-bold font-mono text-[var(--rep-accent)]">
+            <p className="text-[10px] text-muted-foreground">Your Rank</p>
+            <p className="text-sm font-bold font-mono text-primary">
               {event.your_position ? `#${event.your_position}` : "\u2014"}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-[var(--rep-text-muted)]">Sales</p>
-            <p className="text-sm font-bold font-mono text-white">{event.your_sales}</p>
+            <p className="text-[10px] text-muted-foreground">Sales</p>
+            <p className="text-sm font-bold font-mono text-foreground">{event.your_sales}</p>
           </div>
           <div>
-            <p className="text-[10px] text-[var(--rep-text-muted)]">Earned</p>
-            <p className="text-sm font-bold font-mono text-white">
+            <p className="text-[10px] text-muted-foreground">Earned</p>
+            <p className="text-sm font-bold font-mono text-foreground">
               £{Number(event.your_revenue).toFixed(0)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-[var(--rep-text-muted)]">Reps</p>
-            <p className="text-sm font-bold font-mono text-[var(--rep-text-muted)]">
+            <p className="text-[10px] text-muted-foreground">Reps</p>
+            <p className="text-sm font-bold font-mono text-muted-foreground">
               {event.reps_count}
             </p>
           </div>
@@ -520,7 +526,7 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
 
         {/* Position rewards preview */}
         {event.position_rewards.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--rep-border)]">
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
             {event.position_rewards.map((pr, i) => (
               <span
                 key={pr.position}
@@ -598,15 +604,15 @@ function EventLeaderboardView({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs text-[var(--rep-text-muted)] hover:text-white transition-colors mb-4"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
       >
         <ArrowLeft size={12} /> Back to Events
       </button>
 
       <div className="text-center mb-5">
-        <h2 className="text-lg font-bold text-white">{data.event?.name || "Event"}</h2>
+        <h2 className="text-lg font-bold text-foreground">{data.event?.name || "Event"}</h2>
         {data.event?.date_start && (
-          <p className="text-xs text-[var(--rep-text-muted)] mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {formatEventDate(data.event.date_start)}
           </p>
         )}
@@ -614,13 +620,13 @@ function EventLeaderboardView({
         {/* Status badges */}
         <div className="flex items-center justify-center gap-2 mt-2">
           {isLive && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--rep-success)]/10 border border-[var(--rep-success)]/20 px-3 py-1 text-[10px] font-bold text-[var(--rep-success)] uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 border border-success/20 px-3 py-1 text-[10px] font-bold text-success uppercase tracking-wider">
               <span className="rep-live-dot" />
               Positions Contested
             </span>
           )}
           {data.locked && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--rep-gold)]/10 border border-[var(--rep-gold)]/20 px-3 py-1 text-[10px] font-bold text-[var(--rep-gold)] uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 border border-warning/20 px-3 py-1 text-[10px] font-bold text-warning uppercase tracking-wider">
               <Lock size={10} />
               Results Final
             </span>
@@ -638,9 +644,9 @@ function EventLeaderboardView({
       {/* Your position — animated gradient border */}
       {data.current_position && (
         <div className="mb-4 rounded-2xl p-4 text-center rep-card-reveal rep-position-card rep-position-dramatic">
-          <p className="text-[10px] uppercase tracking-[2px] text-[var(--rep-text-muted)] font-semibold mb-1">Your Position</p>
+          <p className="text-[10px] uppercase tracking-[2px] text-muted-foreground font-semibold mb-1">Your Position</p>
           <div className="flex items-center justify-center gap-2">
-            <p className="text-3xl font-bold font-mono rep-gradient-text" style={{ textShadow: "0 0 20px rgba(139, 92, 246, 0.2)" }}>
+            <p className="text-3xl font-bold font-mono rep-gradient-text drop-shadow-[0_0_20px_rgba(139,92,246,0.2)]">
               #{data.current_position}
             </p>
             {myChange !== 0 && <PositionIndicator change={myChange} />}
@@ -668,9 +674,9 @@ function EventLeaderboardView({
                 isPodium
                   ? `${PODIUM_BG[i]} rep-lb-podium-hover ${isLive && !data.locked ? "rep-contested-border" : ""}`
                   : isMe
-                    ? "border-2 border-[var(--rep-accent)]/30 bg-[var(--rep-accent)]/5 rep-lb-hover"
-                    : "border border-[var(--rep-border)] bg-[var(--rep-card)] rep-lb-hover"
-              } ${isMe ? "ring-1 ring-[var(--rep-accent)]/30" : ""}`}
+                    ? "border-2 border-primary/30 bg-primary/5 rep-lb-hover"
+                    : "border border-border bg-card rep-lb-hover"
+              } ${isMe ? "ring-1 ring-primary/30" : ""}`}
             >
               <div className="flex items-center gap-3">
                 {/* Position */}
@@ -683,7 +689,7 @@ function EventLeaderboardView({
                       {MEDAL_EMOJI[i]}
                     </span>
                   ) : (
-                    <span className="text-xs font-mono text-[var(--rep-text-muted)]">
+                    <span className="text-xs font-mono text-muted-foreground">
                       {i + 1}
                     </span>
                   )}
@@ -707,7 +713,7 @@ function EventLeaderboardView({
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center bg-[var(--rep-accent)]/10 text-xs font-bold text-[var(--rep-accent)]">
+                    <div className="h-full w-full flex items-center justify-center bg-primary/10 text-xs font-bold text-primary">
                       {(entry.display_name || entry.first_name || "?").charAt(0)}
                     </div>
                   )}
@@ -717,25 +723,25 @@ function EventLeaderboardView({
                 <div className="flex-1 min-w-0">
                   <p
                     className={`text-sm font-medium truncate ${
-                      isMe ? "text-[var(--rep-accent)]" : "text-white"
+                      isMe ? "text-primary" : "text-foreground"
                     }`}
                   >
                     {entry.display_name || entry.first_name}
                     {isMe && (
-                      <span className="ml-1.5 text-[10px] text-[var(--rep-accent)]/60">
+                      <span className="ml-1.5 text-[10px] text-primary/60">
                         (YOU)
                       </span>
                     )}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-[var(--rep-accent)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[var(--rep-accent)]">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                       Lv.{entry.level}
                     </span>
-                    <span className="text-[10px] text-[var(--rep-text-muted)]">
+                    <span className="text-[10px] text-muted-foreground">
                       {entry.total_sales} sales
                     </span>
                     {isLive && isPodium && !data.locked && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--rep-success)]">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success">
                         <Flame size={10} /> Contested
                       </span>
                     )}
@@ -745,7 +751,7 @@ function EventLeaderboardView({
 
                 {/* Earned */}
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold font-mono tabular-nums text-white">
+                  <p className="text-sm font-bold font-mono tabular-nums text-foreground">
                     £{Number(entry.total_revenue).toFixed(0)}
                   </p>
                 </div>
@@ -772,7 +778,7 @@ function EventLeaderboardView({
         })}
 
         {data.leaderboard.length === 0 && (
-          <div className="text-center py-16 text-sm text-[var(--rep-text-muted)]">
+          <div className="text-center py-16 text-sm text-muted-foreground">
             No sales yet for this event. Be the first!
           </div>
         )}
@@ -797,41 +803,41 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
 
   if (timeLeft.total <= 0) {
     return (
-      <p className="text-xs text-[var(--rep-text-muted)] font-mono">Event has started</p>
+      <p className="text-xs text-muted-foreground font-mono text-center">Event has started</p>
     );
   }
 
   return (
     <div className="flex items-center justify-center gap-1 rep-countdown">
-      <Clock size={12} className="text-[var(--rep-text-muted)] mr-1" />
+      <Clock size={12} className="text-muted-foreground mr-1" />
       {timeLeft.days > 0 && (
         <>
           <span className="rep-countdown-segment">
-            <span className="text-sm font-bold font-mono text-white">{timeLeft.days}</span>
-            <span className="text-[9px] text-[var(--rep-text-muted)]">d</span>
+            <span className="text-sm font-bold font-mono text-foreground">{timeLeft.days}</span>
+            <span className="text-[9px] text-muted-foreground">d</span>
           </span>
-          <span className="text-[var(--rep-text-muted)] text-xs">:</span>
+          <span className="text-muted-foreground text-xs">:</span>
         </>
       )}
       <span className="rep-countdown-segment">
-        <span className="text-sm font-bold font-mono text-white">
+        <span className="text-sm font-bold font-mono text-foreground">
           {String(timeLeft.hours).padStart(2, "0")}
         </span>
-        <span className="text-[9px] text-[var(--rep-text-muted)]">h</span>
+        <span className="text-[9px] text-muted-foreground">h</span>
       </span>
-      <span className="text-[var(--rep-text-muted)] text-xs">:</span>
+      <span className="text-muted-foreground text-xs">:</span>
       <span className="rep-countdown-segment">
-        <span className="text-sm font-bold font-mono text-white">
+        <span className="text-sm font-bold font-mono text-foreground">
           {String(timeLeft.minutes).padStart(2, "0")}
         </span>
-        <span className="text-[9px] text-[var(--rep-text-muted)]">m</span>
+        <span className="text-[9px] text-muted-foreground">m</span>
       </span>
-      <span className="text-[var(--rep-text-muted)] text-xs">:</span>
+      <span className="text-muted-foreground text-xs">:</span>
       <span className="rep-countdown-segment">
-        <span className="text-sm font-bold font-mono text-white">
+        <span className="text-sm font-bold font-mono text-foreground">
           {String(timeLeft.seconds).padStart(2, "0")}
         </span>
-        <span className="text-[9px] text-[var(--rep-text-muted)]">s</span>
+        <span className="text-[9px] text-muted-foreground">s</span>
       </span>
     </div>
   );
@@ -854,21 +860,6 @@ function LeaderboardSkeleton() {
   );
 }
 
-function EmptyLeaderboard() {
-  return (
-    <div className="text-center py-16">
-      <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
-        <div className="rep-empty-ring" />
-        <div className="rep-empty-ring" />
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--rep-gold)]/10">
-          <Trophy size={22} className="text-[var(--rep-gold)]/50" />
-        </div>
-      </div>
-      <p className="text-sm text-foreground font-medium mb-1">No entries yet</p>
-      <p className="text-xs text-[var(--rep-text-muted)]">Be the first to make a sale!</p>
-    </div>
-  );
-}
 
 function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (

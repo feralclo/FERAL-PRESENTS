@@ -1,5 +1,6 @@
 import { TABLES } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { sendPushToRep, isPushConfigured } from "@/lib/web-push";
 import type { RepNotificationType } from "@/types/reps";
 
 /**
@@ -32,6 +33,19 @@ export async function createNotification(params: {
 
     if (error) {
       console.error("[rep-notifications] Insert failed:", error);
+      return;
+    }
+
+    // Send push notification (fire-and-forget, never blocks)
+    if (isPushConfigured()) {
+      sendPushToRep(params.repId, {
+        title: params.title,
+        body: params.body,
+        url: params.link,
+        tag: params.type, // Collapse duplicate notification types
+      }).catch((err) => {
+        console.warn("[rep-notifications] Push send failed:", err);
+      });
     }
   } catch (err) {
     console.error("[rep-notifications] Failed to create notification:", err);

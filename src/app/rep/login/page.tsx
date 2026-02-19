@@ -117,7 +117,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8 rep-fade-in">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 rep-glow mb-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shadow-[0_0_12px_rgba(139,92,246,0.08)] mb-4">
             <Zap size={20} className="text-primary" />
           </div>
           <h1 className="font-mono text-xl font-bold uppercase tracking-[4px] text-primary">

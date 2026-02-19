@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Gift,
   Lock,
@@ -21,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -79,6 +81,30 @@ const CLAIM_STATUS_CONFIG: Record<string, { label: string; variant: "default" | 
   cancelled: { label: "Cancelled", variant: "destructive", icon: XCircle },
 };
 
+// ─── Success sound ──────────────────────────────────────────────────────────
+
+function playSuccessSound() {
+  try {
+    const ctx = new AudioContext();
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      const t = ctx.currentTime + i * 0.09;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.13, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      osc.start(t);
+      osc.stop(t + 0.3);
+    });
+    setTimeout(() => ctx.close(), 1500);
+  } catch { /* AudioContext not available */ }
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function RepRewardsPage() {
@@ -135,6 +161,7 @@ export default function RepRewardsPage() {
       if (res.ok) {
         setError("");
         setSuccessReward(reward);
+        playSuccessSound();
         // Refresh data
         const [rewardsRes, meRes, claimsRes] = await Promise.all([
           fetch("/api/rep-portal/rewards"),
@@ -184,7 +211,7 @@ export default function RepRewardsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-6 w-28 mb-2" />
@@ -218,24 +245,24 @@ export default function RepRewardsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* Header with points balance */}
       <div className="flex items-center justify-between rep-slide-up">
         <div>
-          <h1 className="text-xl font-bold rep-gradient-text">Rewards</h1>
+          <h1 className="text-xl font-bold text-foreground">Rewards</h1>
           <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl bg-primary/10 border border-primary/20 px-5 py-3 rep-glow rep-balance-breathe rep-scan-card">
+        <div className="rounded-xl rep-surface-2 border-primary/15 px-5 py-3">
           <div className="flex items-center gap-1.5 mb-1">
             <Zap size={12} className="text-primary" />
-            <p className="text-[9px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
+            <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
           </div>
-          <p className="text-xl font-bold font-mono text-primary tabular-nums" style={{ textShadow: "0 0 16px rgba(139, 92, 246, 0.2)" }}>{myPoints}</p>
+          <p className="text-xl font-bold font-mono text-primary tabular-nums">{myPoints}</p>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="rep-tab-bar rep-slide-up" style={{ animationDelay: "50ms" }}>
+      <div className="flex gap-0.5 bg-secondary rounded-xl p-[3px] border border-border rep-slide-up" style={{ animationDelay: "50ms" }}>
         {[
           { id: "earned" as TabId, label: "Earned", count: milestoneRewards.length },
           { id: "shop" as TabId, label: "Shop", count: shopRewards.length },
@@ -244,7 +271,11 @@ export default function RepRewardsPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={cn("rep-tab", tab === t.id && "active")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
+              "hover:text-foreground",
+              tab === t.id && "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+            )}
           >
             {t.label}
             {t.count > 0 && (
@@ -270,7 +301,7 @@ export default function RepRewardsPage() {
       {tab === "earned" && (
         <div className="space-y-3 rep-slide-up">
           {milestoneRewards.length === 0 ? (
-            <EmptyState icon={Target} text="No milestones yet" sub="Milestones will appear as the team sets them up" />
+            <EmptyState icon={Target} title="No milestones yet" subtitle="Milestones will appear as the team sets them up" />
           ) : (
             milestoneRewards.map((reward) => {
               const claimed = hasClaimed(reward);
@@ -278,7 +309,7 @@ export default function RepRewardsPage() {
                 <Card
                   key={reward.id}
                   className={cn(
-                    "py-0 gap-0 rep-card-lift",
+                    "py-0 gap-0",
                     claimed
                       ? "border-success/30 bg-success/5 rep-reward-unlocked"
                       : "border-border/40"
@@ -309,13 +340,13 @@ export default function RepRewardsPage() {
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-medium text-foreground">{reward.name}</h3>
                           {claimed && (
-                            <Badge variant="default" className="bg-success/15 text-success border-success/20 text-[9px] px-1.5 py-0">
+                            <Badge variant="default" className="bg-success/15 text-success border-success/20 text-[10px] px-1.5 py-0">
                               Unlocked
                             </Badge>
                           )}
                         </div>
                         {reward.description && (
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{reward.description}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{reward.description}</p>
                         )}
                         {reward.milestones && reward.milestones.length > 0 && (
                           <div className="mt-3 space-y-2.5">
@@ -328,7 +359,7 @@ export default function RepRewardsPage() {
                                       m.achieved ? "bg-success" : "bg-border"
                                     )} />
                                     <span className={cn(
-                                      "text-[11px]",
+                                      "text-xs",
                                       m.achieved ? "text-success font-medium" : "text-muted-foreground"
                                     )}>
                                       {m.title}
@@ -361,7 +392,7 @@ export default function RepRewardsPage() {
       {tab === "shop" && (
         <div className="rep-slide-up">
           {shopRewards.length === 0 ? (
-            <EmptyState icon={ShoppingCart} text="Shop is empty" sub="Rewards will appear here when they're available" />
+            <EmptyState icon={ShoppingCart} title="Shop is empty" subtitle="Rewards will appear here when they're available" />
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {shopRewards.map((reward) => {
@@ -378,7 +409,7 @@ export default function RepRewardsPage() {
                   <Card
                     key={reward.id}
                     className={cn(
-                      "py-0 gap-0 overflow-hidden rep-card-lift rep-shop-hover",
+                      "py-0 gap-0 overflow-hidden rep-shop-hover",
                       claimed ? "border-success/30" : "border-border/40",
                       glowClass
                     )}
@@ -387,7 +418,7 @@ export default function RepRewardsPage() {
                       <div className="relative h-32 bg-muted/20 flex items-center justify-center">
                         <img src={reward.image_url} alt="" className="max-h-full max-w-full object-contain p-3" />
                         {remaining !== null && remaining > 0 && remaining <= 5 && !claimed && (
-                          <span className="absolute top-2 right-2 text-[9px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
+                          <span className="absolute top-2 right-2 text-[10px] font-bold text-warning bg-warning/15 border border-warning/20 px-2 py-0.5 rounded-full animate-pulse">
                             {remaining} left
                           </span>
                         )}
@@ -407,15 +438,15 @@ export default function RepRewardsPage() {
                       </div>
 
                       {claimed ? (
-                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-[11px] text-success font-medium">
+                        <div className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-success/10 text-xs text-success font-medium">
                           <Check size={12} style={{ filter: "drop-shadow(0 0 4px rgba(52, 211, 153, 0.4))" }} /> Claimed
                         </div>
                       ) : soldOut ? (
-                        <div className="text-[11px] text-muted-foreground font-medium text-center py-2">Sold out</div>
+                        <div className="text-xs text-muted-foreground font-medium text-center py-2">Sold out</div>
                       ) : (
                         <Button
                           size="sm"
-                          className="w-full text-[11px]"
+                          className="w-full text-xs"
                           disabled={!canAfford || claimingId === reward.id}
                           onClick={() => setConfirmReward(reward)}
                         >
@@ -444,7 +475,7 @@ export default function RepRewardsPage() {
       {tab === "history" && (
         <div className="space-y-2 rep-slide-up">
           {claims.length === 0 ? (
-            <EmptyState icon={Clock} text="No claim history" sub="Your reward claims will show up here" />
+            <EmptyState icon={Clock} title="No claim history" subtitle="Your reward claims will show up here" />
           ) : (
             claims.map((claim) => {
               const config = CLAIM_STATUS_CONFIG[claim.status] || CLAIM_STATUS_CONFIG.claimed;
@@ -454,7 +485,7 @@ export default function RepRewardsPage() {
               const imgUrl = reward?.image_url || productImg;
 
               return (
-                <Card key={claim.id} className="py-0 gap-0 rep-card-lift border-border/40">
+                <Card key={claim.id} className="py-0 gap-0 border-border/40">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       {imgUrl ? (
@@ -473,7 +504,7 @@ export default function RepRewardsPage() {
                               {reward?.name || "Reward"}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <Badge variant={config.variant} className="text-[9px] px-1.5 py-0 gap-1">
+                              <Badge variant={config.variant} className="text-[10px] px-1.5 py-0 gap-1">
                                 <StatusIcon size={9} />
                                 {config.label}
                               </Badge>
@@ -508,10 +539,10 @@ export default function RepRewardsPage() {
                               )}
                             </p>
                             {reward?.custom_value && (
-                              <p className="text-[11px] text-foreground/80 mt-1">{reward.custom_value}</p>
+                              <p className="text-xs text-foreground/80 mt-1">{reward.custom_value}</p>
                             )}
                             {reward?.product?.name && (
-                              <p className="text-[11px] text-foreground/80 mt-1">Product: {reward.product.name}</p>
+                              <p className="text-xs text-foreground/80 mt-1">Product: {reward.product.name}</p>
                             )}
                             {claim.notes && (
                               <p className="text-[10px] text-muted-foreground mt-1 italic">&ldquo;{claim.notes}&rdquo;</p>
@@ -532,11 +563,11 @@ export default function RepRewardsPage() {
       )}
 
       {rewards.length === 0 && claims.length === 0 && (
-        <EmptyState icon={Gift} text="No rewards yet" sub="Rewards will appear here once they're set up" />
+        <EmptyState icon={Gift} title="No rewards yet" subtitle="Rewards will appear here once they're set up" />
       )}
 
-      {/* ── Confirmation Modal ── */}
-      {confirmReward && (
+      {/* ── Confirmation Modal (portalled) ── */}
+      {confirmReward && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm rep-fade-in">
           <div className="w-full max-w-sm mx-4 mb-4 md:mb-0 rounded-2xl border border-border bg-background p-6 rep-slide-up">
             <div className="flex items-center justify-between mb-4">
@@ -559,7 +590,7 @@ export default function RepRewardsPage() {
               <div>
                 <p className="text-sm font-medium text-foreground">{confirmReward.name}</p>
                 {confirmReward.description && (
-                  <p className="text-[11px] text-muted-foreground line-clamp-2">{confirmReward.description}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{confirmReward.description}</p>
                 )}
               </div>
             </div>
@@ -609,11 +640,12 @@ export default function RepRewardsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.getElementById("rep-portal-root") || document.body
       )}
 
-      {/* ── Success Animation with Confetti ── */}
-      {successReward && (
+      {/* ── Success Animation with Confetti (portalled) ── */}
+      {successReward && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           {/* Confetti burst */}
           <div className="rep-confetti-container" aria-hidden>
@@ -670,34 +702,10 @@ export default function RepRewardsPage() {
               Dismiss
             </button>
           </div>
-        </div>
+        </div>,
+        document.getElementById("rep-portal-root") || document.body
       )}
     </div>
   );
 }
 
-// ─── Empty State ────────────────────────────────────────────────────────────
-
-function EmptyState({
-  icon: Icon,
-  text,
-  sub,
-}: {
-  icon: typeof Gift;
-  text: string;
-  sub: string;
-}) {
-  return (
-    <div className="text-center py-16">
-      <div className="rep-empty-icon h-14 w-14 mx-auto mb-4">
-        <div className="rep-empty-ring" />
-        <div className="rep-empty-ring" />
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-          <Icon size={22} className="text-primary/50" />
-        </div>
-      </div>
-      <p className="text-sm text-foreground font-medium mb-1">{text}</p>
-      <p className="text-xs text-muted-foreground">{sub}</p>
-    </div>
-  );
-}

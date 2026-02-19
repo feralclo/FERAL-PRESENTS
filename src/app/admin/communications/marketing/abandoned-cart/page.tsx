@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { saveSettings } from "@/lib/settings";
 import {
+  ChevronDown,
   ChevronLeft,
   ShoppingCart,
   Clock,
@@ -541,8 +542,40 @@ function RecoveryFlow({
 
             {/* Timeline arrow connector (between cards) */}
             {i < steps.length - 1 && (
-              <div className="hidden items-center justify-center px-2 sm:flex">
-                <ArrowRight size={16} className="text-muted-foreground/20" />
+              <div className="hidden flex-col items-center justify-center gap-1 px-3 sm:flex">
+                <div className="flex items-center gap-1">
+                  <div
+                    className="h-px w-3 transition-all duration-300"
+                    style={{
+                      backgroundColor: stepActive
+                        ? step.color
+                        : "rgba(255,255,255,0.08)",
+                    }}
+                  />
+                  <ArrowRight
+                    size={14}
+                    className="transition-all duration-300"
+                    style={{
+                      color: stepActive
+                        ? step.color
+                        : "rgba(255,255,255,0.15)",
+                      filter: stepActive
+                        ? `drop-shadow(0 0 4px ${step.glowColor})`
+                        : "none",
+                    }}
+                  />
+                  <div
+                    className="h-px w-3 transition-all duration-300"
+                    style={{
+                      backgroundColor: steps[i + 1]?.enabled && automationEnabled
+                        ? steps[i + 1].color
+                        : "rgba(255,255,255,0.08)",
+                    }}
+                  />
+                </div>
+                <span className="text-[8px] font-medium tabular-nums text-muted-foreground/40">
+                  {steps[i + 1]?.delay_label}
+                </span>
               </div>
             )}
             </React.Fragment>
@@ -834,7 +867,66 @@ function CreateDiscountInline({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   STEP SETTINGS — timing, incentive, and branding (compact)
+   COLLAPSIBLE SECTION — reusable accordion panel for settings
+   ═══════════════════════════════════════════════════════════ */
+function SettingsSection({
+  icon: Icon,
+  label,
+  badge,
+  defaultOpen = false,
+  accentColor,
+  children,
+}: {
+  icon: typeof Clock;
+  label: string;
+  badge?: React.ReactNode;
+  defaultOpen?: boolean;
+  accentColor?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div
+      className="overflow-hidden rounded-lg border transition-all duration-200"
+      style={{
+        borderColor: open && accentColor ? `${accentColor}20` : "var(--color-border)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-card/80"
+      >
+        <div className="flex items-center gap-2">
+          <Icon size={12} style={{ color: accentColor || "#71717a" }} />
+          <span className="text-[11px] font-semibold text-foreground">{label}</span>
+          {badge}
+        </div>
+        <ChevronDown
+          size={13}
+          className="text-muted-foreground/50 transition-transform duration-200"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        />
+      </button>
+      <div
+        className="transition-all duration-200"
+        style={{
+          maxHeight: open ? "800px" : "0px",
+          opacity: open ? 1 : 0,
+          overflow: "hidden",
+        }}
+      >
+        <div className="border-t border-border/50 px-3.5 py-3">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STEP SETTINGS — collapsible sections for clean UX
    ═══════════════════════════════════════════════════════════ */
 function StepSettings({
   step,
@@ -889,38 +981,50 @@ function StepSettings({
 
   const logoSrc = displayLogoUrl || branding.logo_url;
 
+  const timingOptions =
+    step.id === "email_1" ? [
+      { label: "15 min", minutes: 15 },
+      { label: "30 min", minutes: 30 },
+      { label: "1 hour", minutes: 60 },
+    ] : step.id === "email_2" ? [
+      { label: "12 hours", minutes: 720 },
+      { label: "24 hours", minutes: 1440 },
+      { label: "36 hours", minutes: 2160 },
+    ] : [
+      { label: "48 hours", minutes: 2880 },
+      { label: "72 hours", minutes: 4320 },
+      { label: "5 days", minutes: 7200 },
+    ];
+
   return (
-    <Card
-      className="overflow-hidden transition-all duration-300"
-      style={{
-        borderColor: isActive ? `${step.color}20` : undefined,
-      }}
-    >
-      {/* Step header */}
+    <div className="space-y-3">
+      {/* Step header card */}
       <div
-        className="relative border-b px-5 py-3"
+        className="relative overflow-hidden rounded-xl border px-4 py-3 transition-all duration-300"
         style={{
-          borderColor: isActive ? `${step.color}15` : "var(--color-border)",
+          borderColor: isActive ? `${step.color}25` : "var(--color-border)",
           background: isActive
             ? `linear-gradient(135deg, ${step.color}08, transparent)`
-            : "transparent",
+            : "var(--color-card)",
         }}
       >
         <div className="flex items-center gap-3">
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-all"
             style={{
               backgroundColor: isActive ? `${step.color}15` : "rgba(255,255,255,0.04)",
-              boxShadow: isActive ? `inset 0 0 0 1.5px ${step.color}40` : "none",
+              boxShadow: isActive
+                ? `inset 0 0 0 1.5px ${step.color}40, 0 0 12px ${step.glowColor}`
+                : "inset 0 0 0 1px rgba(255,255,255,0.06)",
             }}
           >
-            <StepIcon size={14} style={{ color: isActive ? step.color : "#71717a" }} />
+            <StepIcon size={15} style={{ color: isActive ? step.color : "#71717a" }} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3
-                className="text-[12px] font-bold uppercase tracking-wider"
-                style={{ color: isActive ? step.color : "#71717a" }}
+                className="text-[13px] font-bold"
+                style={{ color: isActive ? step.color : "var(--color-foreground)" }}
               >
                 {step.label}
               </h3>
@@ -928,149 +1032,119 @@ function StepSettings({
                 variant={isActive ? "success" : "secondary"}
                 className="text-[8px] font-bold uppercase"
               >
-                {isActive ? "Active" : "Disabled"}
+                {isActive ? "Active" : "Off"}
               </Badge>
             </div>
             <p className="text-[10px] text-muted-foreground/50">
-              Sent {step.delay_label} after abandonment
+              Sent {step.delay_label} after cart abandonment
             </p>
           </div>
         </div>
       </div>
 
-      <CardContent className="space-y-4 p-4">
-        {/* ── CONTENT ── */}
-        <div>
-          <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Pencil size={10} />
-            Content
-          </Label>
-          <div className="mt-2 space-y-2.5">
-            <div>
-              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
-                Subject Line
-              </Label>
-              <Input
-                className="mt-1 text-xs"
-                value={step.subject}
-                onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
-                placeholder="Email subject..."
-              />
-            </div>
-            <div>
-              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
-                Preview Text
-              </Label>
-              <Input
-                className="mt-1 text-xs"
-                value={step.preview_text}
-                onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
-                placeholder="Inbox preview..."
-              />
-            </div>
-            <div>
-              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
-                Heading
-              </Label>
-              <Input
-                className="mt-1 text-xs"
-                value={step.greeting}
-                onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
-                placeholder="Greeting headline..."
-              />
-            </div>
-            <div>
-              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
-                Body Message
-              </Label>
-              <Textarea
-                className="mt-1 text-xs"
-                value={step.body_message}
-                onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
-                placeholder="Email body text..."
-                rows={2}
-              />
-            </div>
-            <div>
-              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
-                Button Text
-              </Label>
-              <Input
-                className="mt-1 text-xs"
-                value={step.cta_text}
-                onChange={(e) => onUpdate(step.id, { cta_text: e.target.value })}
-                placeholder="Complete Your Order"
-              />
-            </div>
+      {/* ── CONTENT — always visible (primary editing area) ── */}
+      <SettingsSection
+        icon={Pencil}
+        label="Email Content"
+        defaultOpen={true}
+        accentColor={isActive ? step.color : undefined}
+      >
+        <div className="space-y-2.5">
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Subject Line
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.subject}
+              onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
+              placeholder="Email subject..."
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Preview Text
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.preview_text}
+              onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
+              placeholder="Inbox preview..."
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Heading
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.greeting}
+              onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
+              placeholder="Greeting headline..."
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Body Message
+            </Label>
+            <Textarea
+              className="mt-1 text-xs"
+              value={step.body_message}
+              onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
+              placeholder="Email body text..."
+              rows={2}
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Button Text
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.cta_text}
+              onChange={(e) => onUpdate(step.id, { cta_text: e.target.value })}
+              placeholder="Complete Your Order"
+            />
           </div>
         </div>
+      </SettingsSection>
 
-        {/* ── TIMING ── */}
-        <div>
-          <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Clock size={10} />
-            Timing
-          </Label>
-          <div className="mt-2 grid grid-cols-3 gap-1.5">
-            {step.id === "email_1" && [
-              { label: "15 min", minutes: 15 },
-              { label: "30 min", minutes: 30 },
-              { label: "1 hour", minutes: 60 },
-            ].map((opt) => (
-              <button
-                key={opt.minutes}
-                type="button"
-                onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
-                  step.delay_minutes === opt.minutes
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border bg-transparent text-muted-foreground hover:bg-card"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-            {step.id === "email_2" && [
-              { label: "12 hours", minutes: 720 },
-              { label: "24 hours", minutes: 1440 },
-              { label: "36 hours", minutes: 2160 },
-            ].map((opt) => (
-              <button
-                key={opt.minutes}
-                type="button"
-                onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
-                  step.delay_minutes === opt.minutes
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border bg-transparent text-muted-foreground hover:bg-card"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-            {step.id === "email_3" && [
-              { label: "48 hours", minutes: 2880 },
-              { label: "72 hours", minutes: 4320 },
-              { label: "5 days", minutes: 7200 },
-            ].map((opt) => (
-              <button
-                key={opt.minutes}
-                type="button"
-                onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
-                  step.delay_minutes === opt.minutes
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border bg-transparent text-muted-foreground hover:bg-card"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+      {/* ── TIMING — collapsed by default ── */}
+      <SettingsSection icon={Clock} label="Send Timing" badge={
+        <Badge variant="secondary" className="text-[8px] font-mono font-medium">
+          {step.delay_label}
+        </Badge>
+      }>
+        <div className="grid grid-cols-3 gap-1.5">
+          {timingOptions.map((opt) => (
+            <button
+              key={opt.minutes}
+              type="button"
+              onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
+              className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
+                step.delay_minutes === opt.minutes
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border bg-transparent text-muted-foreground hover:bg-card"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
+      </SettingsSection>
 
-        {/* ── INCENTIVE ── */}
-        <div>
+      {/* ── INCENTIVE — collapsed, shows active badge when discount is on ── */}
+      <SettingsSection
+        icon={Percent}
+        label="Discount Incentive"
+        accentColor={step.include_discount ? "#f59e0b" : undefined}
+        badge={step.include_discount ? (
+          <Badge variant="warning" className="text-[8px] font-bold uppercase">
+            {step.discount_percent}% off
+          </Badge>
+        ) : undefined}
+      >
+        <div className="space-y-3">
           <div
             className="flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all"
             style={{
@@ -1082,10 +1156,7 @@ function StepSettings({
                 : "transparent",
             }}
           >
-            <div className="flex items-center gap-2">
-              <Percent size={12} style={{ color: step.include_discount ? "#f59e0b" : "#71717a" }} />
-              <span className="text-[11px] font-medium text-foreground">Include Discount</span>
-            </div>
+            <span className="text-[11px] font-medium text-foreground">Include discount code</span>
             <Switch
               size="sm"
               checked={step.include_discount}
@@ -1094,7 +1165,7 @@ function StepSettings({
           </div>
 
           {step.include_discount && (
-            <div className="mt-3 space-y-3">
+            <div className="space-y-3">
               <div className="grid grid-cols-5 gap-2">
                 <div className="col-span-3">
                   <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1132,10 +1203,9 @@ function StepSettings({
                   placeholder="Your exclusive offer"
                 />
                 <p className="mt-1.5 text-[9px] text-muted-foreground/40">
-                  Appears above the code in the email. The code and percentage are shown automatically.
+                  Appears above the code in the email
                 </p>
               </div>
-
               <CreateDiscountInline
                 onCreated={(newCode, newPercent) => {
                   onUpdate(step.id, {
@@ -1147,93 +1217,91 @@ function StepSettings({
             </div>
           )}
         </div>
+      </SettingsSection>
 
-        {/* ── BRANDING ── */}
-        <div>
-          <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Palette size={10} />
-            Email Branding
-          </Label>
-          <div className="mt-2 flex items-start gap-4">
-            {/* Logo */}
-            <div className="shrink-0">
-              {logoSrc ? (
-                <div
-                  className="group relative cursor-pointer rounded-lg border border-border bg-[#08080c] p-3"
-                  onClick={() => logoFileRef.current?.click()}
-                >
-                  <img
-                    src={logoSrc}
-                    alt="Logo"
-                    style={{ height: 28, width: "auto", maxWidth: 120, objectFit: "contain" }}
-                  />
-                  <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
-                      className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-primary/80"
-                    >
-                      <Pencil size={9} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); onBrandingChange({ logo_url: "", logo_aspect_ratio: undefined }); setDisplayLogoUrl(null); }}
-                      className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-red-500/80"
-                    >
-                      <Trash2 size={9} />
-                    </button>
-                  </div>
-                  <input
-                    ref={logoFileRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
-                  />
+      {/* ── BRANDING — collapsed, shared across all steps ── */}
+      <SettingsSection icon={Palette} label="Email Branding" badge={
+        <span className="text-[8px] text-muted-foreground/40">All emails</span>
+      }>
+        <div className="flex items-start gap-4">
+          {/* Logo */}
+          <div className="shrink-0">
+            {logoSrc ? (
+              <div
+                className="group relative cursor-pointer rounded-lg border border-border bg-[#08080c] p-3"
+                onClick={() => logoFileRef.current?.click()}
+              >
+                <img
+                  src={logoSrc}
+                  alt="Logo"
+                  style={{ height: 28, width: "auto", maxWidth: 120, objectFit: "contain" }}
+                />
+                <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-primary/80"
+                  >
+                    <Pencil size={9} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onBrandingChange({ logo_url: "", logo_aspect_ratio: undefined }); setDisplayLogoUrl(null); }}
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-red-500/80"
+                  >
+                    <Trash2 size={9} />
+                  </button>
                 </div>
-              ) : (
-                <div
-                  className={`cursor-pointer rounded-lg border-2 border-dashed p-3 text-center transition-all ${
-                    logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                  }`}
-                  style={{ minWidth: "80px" }}
-                  onClick={() => logoFileRef.current?.click()}
-                  onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                  onDragLeave={() => setLogoDragging(false)}
-                  onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
-                >
-                  <ImageIcon size={14} className="mx-auto text-muted-foreground/40" />
-                  <p className="mt-1 text-[9px] text-muted-foreground/50">
-                    {logoProcessing ? "..." : "Logo"}
-                  </p>
-                  <input
-                    ref={logoFileRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Accent color */}
-            <div>
-              <ColorPicker
-                value={branding.accent_color}
-                onChange={(v) => onBrandingChange({ accent_color: v })}
-              />
-              <p className="mt-1 text-[9px] text-muted-foreground/40">
-                Accent color
-              </p>
-            </div>
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                />
+              </div>
+            ) : (
+              <div
+                className={`cursor-pointer rounded-lg border-2 border-dashed p-3 text-center transition-all ${
+                  logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                }`}
+                style={{ minWidth: "80px" }}
+                onClick={() => logoFileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                onDragLeave={() => setLogoDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
+              >
+                <ImageIcon size={14} className="mx-auto text-muted-foreground/40" />
+                <p className="mt-1 text-[9px] text-muted-foreground/50">
+                  {logoProcessing ? "..." : "Logo"}
+                </p>
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                />
+              </div>
+            )}
           </div>
-          <p className="mt-2 text-[9px] text-muted-foreground/30">
-            Shared with all email types
-          </p>
+
+          {/* Accent color */}
+          <div>
+            <ColorPicker
+              value={branding.accent_color}
+              onChange={(v) => onBrandingChange({ accent_color: v })}
+            />
+            <p className="mt-1 text-[9px] text-muted-foreground/40">
+              Accent color
+            </p>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+        <p className="mt-2 text-[9px] text-muted-foreground/30">
+          Shared across all recovery emails
+        </p>
+      </SettingsSection>
+    </div>
   );
 }
 
@@ -1401,7 +1469,12 @@ function HowItWorks() {
                 {i < steps.length - 1 && (
                   <ArrowRight
                     size={14}
-                    className="absolute -right-3 top-6 hidden text-muted-foreground/15 lg:block"
+                    className="absolute -right-3 top-6 hidden lg:block"
+                    style={{
+                      color: step.color,
+                      opacity: 0.4,
+                      filter: `drop-shadow(0 0 3px ${step.color}40)`,
+                    }}
                   />
                 )}
               </div>

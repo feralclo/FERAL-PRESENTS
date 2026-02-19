@@ -80,7 +80,9 @@ export function QuestsTab() {
   const [pointsReward, setPointsReward] = useState("");
   const [maxCompletions, setMaxCompletions] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [notifyReps, setNotifyReps] = useState(true);
+  const [videoPreview, setVideoPreview] = useState("");
 
   // Submissions review
   const [showSubmissions, setShowSubmissions] = useState<string | null>(null);
@@ -104,6 +106,13 @@ export function QuestsTab() {
 
   useEffect(() => { loadQuests(); }, [loadQuests]);
 
+  // Debounce video URL → preview
+  useEffect(() => {
+    if (!videoUrl.trim()) { setVideoPreview(""); return; }
+    const timer = setTimeout(() => setVideoPreview(videoUrl.trim()), 500);
+    return () => clearTimeout(timer);
+  }, [videoUrl]);
+
   const loadSubmissions = useCallback(async (questId: string) => {
     setLoadingSubs(true);
     try {
@@ -115,7 +124,7 @@ export function QuestsTab() {
   }, []);
 
   const openCreate = () => {
-    setEditId(null); setTitle(""); setDescription("");
+    setEditId(null); setTitle(""); setDescription(""); setInstructions("");
     setQuestType("social_post"); setImageUrl(""); setVideoUrl("");
     setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setShowDialog(true);
@@ -123,7 +132,7 @@ export function QuestsTab() {
 
   const openEdit = (q: RepQuest) => {
     setEditId(q.id); setTitle(q.title); setDescription(q.description || "");
-    setQuestType(q.quest_type);
+    setInstructions(q.instructions || ""); setQuestType(q.quest_type);
     setImageUrl(q.image_url || ""); setVideoUrl(q.video_url || "");
     setPointsReward(String(q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
@@ -136,7 +145,7 @@ export function QuestsTab() {
     setSaving(true);
     const body = {
       title: title.trim(), description: description.trim() || null,
-      quest_type: questType,
+      instructions: instructions.trim() || null, quest_type: questType,
       image_url: imageUrl.trim() || null, video_url: videoUrl.trim() || null,
       points_reward: Number(pointsReward) || 0,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
@@ -262,13 +271,19 @@ export function QuestsTab() {
             <DialogDescription>{editId ? "Update this quest." : "Create a new quest for your reps to complete."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+            {/* ── Quest Content ── */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pt-2">Quest Content</p>
             <div className="space-y-2">
               <Label>Title *</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Share on Instagram Stories" autoFocus />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What should reps do?" rows={2} />
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary shown on quest cards" rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>How to Complete</Label>
+              <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Step-by-step instructions shown to reps in the quest detail view" rows={3} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -288,6 +303,9 @@ export function QuestsTab() {
                 <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
               </div>
             </div>
+
+            {/* ── Reference Media ── */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pt-2">Reference Media</p>
             <div className="space-y-1.5">
               <ImageUpload
                 label="Reference Image"
@@ -299,8 +317,47 @@ export function QuestsTab() {
             </div>
             <div className="space-y-2">
               <Label>Reference Video URL</Label>
-              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="TikTok / YouTube link" />
+              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="TikTok / YouTube / Instagram link" />
+              {videoPreview && (() => {
+                try {
+                  const u = new URL(videoPreview);
+                  // YouTube
+                  const ytId = u.hostname.includes("youtube.com") ? u.searchParams.get("v") : u.hostname === "youtu.be" && u.pathname.length > 1 ? u.pathname.slice(1) : null;
+                  if (ytId) {
+                    return (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                        <iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full border-none" style={{ aspectRatio: "16/9" }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
+                      </div>
+                    );
+                  }
+                  // TikTok
+                  const tiktokMatch = u.pathname.match(/\/video\/(\d+)/);
+                  if (u.hostname.includes("tiktok.com") && tiktokMatch) {
+                    return (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                        <iframe src={`https://www.tiktok.com/embed/v2/${tiktokMatch[1]}`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
+                      </div>
+                    );
+                  }
+                  // Instagram
+                  const instaMatch = u.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
+                  if (u.hostname.includes("instagram.com") && instaMatch) {
+                    return (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                        <iframe src={`https://www.instagram.com/${instaMatch[1]}/${instaMatch[2]}/embed`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
+                      </div>
+                    );
+                  }
+                  // Unknown URL
+                  return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
+                } catch {
+                  return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
+                }
+              })()}
             </div>
+
+            {/* ── Limits & Scheduling ── */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pt-2">Limits & Scheduling</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Max Completions per Rep</Label>

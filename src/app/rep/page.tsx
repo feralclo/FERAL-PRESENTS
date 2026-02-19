@@ -84,7 +84,6 @@ export default function RepDashboardPage() {
           };
           setData(d);
 
-          // Check for level-up
           const lastLevel = parseInt(localStorage.getItem(LEVEL_UP_STORAGE_KEY) || "0", 10);
           const currentLevel = d.rep.level;
 
@@ -94,12 +93,10 @@ export default function RepDashboardPage() {
           }
           localStorage.setItem(LEVEL_UP_STORAGE_KEY, String(currentLevel));
 
-          // Check if first visit (onboarding)
           if (!hasCompletedOnboarding()) {
             setShowWelcome(true);
           }
 
-          // Animate XP bar and stats after load
           setTimeout(() => setXpAnimated(true), 300);
           setTimeout(() => setStatsReady(true), 150);
         }
@@ -124,7 +121,6 @@ export default function RepDashboardPage() {
     try {
       await navigator.share({ text: `Use my code ${code} for a discount!` });
     } catch {
-      // Fallback to copy
       copyCode(code);
     }
   };
@@ -132,22 +128,18 @@ export default function RepDashboardPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
-        {/* Welcome skeleton */}
         <div className="flex flex-col items-center">
           <Skeleton className="h-24 w-24 rounded-full mb-3" />
           <Skeleton className="h-5 w-40 mb-2" />
           <Skeleton className="h-6 w-32 rounded-full" />
-          <Skeleton className="h-2.5 w-48 mt-3 rounded-full" />
+          <Skeleton className="h-3 w-48 mt-3 rounded-full" />
         </div>
-        {/* Discount code skeleton */}
-        <Skeleton className="h-[130px] rounded-2xl" />
-        {/* Stats skeleton */}
+        <Skeleton className="h-[140px] rounded-2xl" />
         <div className="grid grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[160px] rounded-2xl" />
           ))}
         </div>
-        {/* Quick links skeleton */}
         <div className="grid grid-cols-2 gap-3">
           <Skeleton className="h-[88px] rounded-2xl" />
           <Skeleton className="h-[88px] rounded-2xl" />
@@ -187,13 +179,14 @@ export default function RepDashboardPage() {
     : 100;
   const xpToGo = data.next_level_points ? data.next_level_points - rep.points_balance : 0;
 
-  // Gauge max values (for ring fill proportion)
   const maxSales = Math.max(rep.total_sales, 50);
   const maxRank = 20;
 
+  const tierGlow = { "--rep-tier-glow": `${tier.color}20` } as React.CSSProperties;
+  const tierGlowStrong = { "--rep-tier-glow": `${tier.color}35` } as React.CSSProperties;
+
   return (
     <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
-      {/* ── Welcome Onboarding Overlay (first visit) ── */}
       {showWelcome && (
         <WelcomeOverlay
           repName={rep.display_name || rep.first_name}
@@ -202,7 +195,6 @@ export default function RepDashboardPage() {
         />
       )}
 
-      {/* ── Level-Up Celebration Overlay ── */}
       {showLevelUp && levelUpInfo && (
         <LevelUpOverlay
           newLevel={levelUpInfo.level}
@@ -211,9 +203,8 @@ export default function RepDashboardPage() {
       )}
 
       {/* ── Hero Player Card ── */}
-      <div className="relative rep-slide-up rep-hero-banner">
-        <div className="text-center py-2">
-          {/* Avatar with tier ring */}
+      <div className="relative rep-slide-up rep-hero-banner" style={tierGlowStrong}>
+        <div className="text-center py-2 relative z-[1]">
           <div className={cn(
             "inline-flex h-24 w-24 items-center justify-center rounded-full overflow-hidden mx-auto mb-3 rep-avatar-ring",
             tier.ring
@@ -233,17 +224,17 @@ export default function RepDashboardPage() {
             Hey, {rep.display_name || rep.first_name}
           </h1>
 
-          {/* Level badge + rank */}
-          <div className="flex items-center justify-center gap-2 mt-2">
+          <div className="flex items-center justify-center gap-2.5 mt-2">
             <Badge
               className={cn(
-                "gap-1.5 px-4 py-1.5 border",
+                "gap-1.5 px-4 py-1.5 border text-[11px]",
                 tier.name === "Mythic" && "rep-badge-shimmer",
               )}
               style={{
-                backgroundColor: `${tier.color}15`,
-                borderColor: `${tier.color}30`,
+                backgroundColor: `${tier.color}18`,
+                borderColor: `${tier.color}35`,
                 color: tier.color,
+                boxShadow: `0 0 12px ${tier.color}10`,
               }}
             >
               <Zap size={12} />
@@ -252,22 +243,22 @@ export default function RepDashboardPage() {
             {data.leaderboard_position && (
               <span
                 className="text-sm font-bold font-mono tabular-nums"
-                style={{ color: tier.color }}
+                style={{ color: tier.color, textShadow: `0 0 10px ${tier.color}30` }}
               >
                 #{data.leaderboard_position}
               </span>
             )}
           </div>
 
-          {/* XP progress bar */}
-          <div className="mt-4 mx-auto max-w-xs">
+          <div className="mt-5 mx-auto max-w-xs">
             <Progress
               value={xpAnimated ? Math.min(100, Math.max(0, levelProgress)) : 0}
-              className="h-2.5"
+              className="h-3"
               indicatorClassName="rep-xp-fill transition-all duration-1000 ease-out"
+              style={{ boxShadow: `0 0 8px ${tier.color}15` }}
             />
             <div className="flex items-center justify-between mt-1.5">
-              <p className="text-[10px] text-muted-foreground font-mono tabular-nums">
+              <p className="text-[10px] font-mono tabular-nums" style={{ color: `${tier.color}90` }}>
                 {rep.points_balance} XP
               </p>
               <p className="text-[10px] text-muted-foreground">
@@ -280,46 +271,52 @@ export default function RepDashboardPage() {
         </div>
       </div>
 
-      {/* ── Weapon Card (Discount Code) ── */}
+      {/* ── Weapon Card ── */}
       {data.discount_codes.length > 0 && (
         <div
           className={cn(
-            "rep-surface-2 rounded-2xl border-primary/15 rep-slide-up",
+            "rep-surface-2 rep-weapon-card rounded-2xl rep-slide-up",
             copyFlash && "rep-copy-flash"
           )}
-          style={{ animationDelay: "50ms" }}
+          style={{ animationDelay: "50ms", borderColor: `${tier.color}20`, ...tierGlow }}
         >
-          <div className="p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Flame size={14} className="text-primary" />
-              <span
-                className="text-[10px] uppercase tracking-[2px] font-bold px-2 py-0.5 rounded-md"
-                style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
-              >
-                Your Weapon
-              </span>
+          <div className="p-5 relative z-[1]">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: `${tier.color}18` }}>
+                  <Flame size={14} style={{ color: tier.color }} />
+                </div>
+                <span className="text-[10px] uppercase tracking-[2px] font-bold" style={{ color: tier.color }}>
+                  Your Weapon
+                </span>
+              </div>
+              <span className="text-[10px] font-bold" style={{ color: `${tier.color}80` }}>+10 XP per sale</span>
             </div>
             <p
-              className="text-[28px] font-black font-mono tracking-[6px] text-foreground mb-1"
+              className="text-[28px] font-black font-mono tracking-[6px] text-foreground mb-1 rep-weapon-code"
+              style={{ "--rep-tier-glow": `${tier.color}25` } as React.CSSProperties}
             >
               {data.discount_codes[0].code}
             </p>
             <p className="text-xs text-muted-foreground mb-4">
-              Share this code — every sale earns you <span className="text-primary font-bold">+10 XP</span>
+              Share this code — every sale earns you <span className="font-bold" style={{ color: tier.color }}>+10 XP</span>
             </p>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 onClick={() => copyCode(data.discount_codes[0].code)}
+                style={{ background: `linear-gradient(135deg, ${tier.color}, ${tier.color}CC)`, boxShadow: `0 4px 14px ${tier.color}30` }}
+                className="border-0 text-white"
               >
                 {copiedCode ? <Check size={12} /> : <Copy size={12} />}
-                {copiedCode ? "Copied" : "Copy"}
+                {copiedCode ? "Copied" : "Copy Code"}
               </Button>
               {typeof navigator !== "undefined" && "share" in navigator && (
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => shareCode(data.discount_codes[0].code)}
+                  style={{ borderColor: `${tier.color}30`, color: tier.color }}
                 >
                   <Share2 size={12} />
                   Share
@@ -330,74 +327,60 @@ export default function RepDashboardPage() {
         </div>
       )}
 
-      {/* ── Stats Grid — Radial HUD Gauges ── */}
+      <div className="rep-section-line" />
+
+      {/* ── Stats Grid ── */}
       <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <Link href="/rep/points">
-          <GaugeWithCounter
-            value={rep.points_balance}
-            max={data.next_level_points || rep.points_balance || 100}
-            color="#8B5CF6"
-            icon={Zap}
-            label="XP"
-            enabled={statsReady}
-          />
+          <div className="rep-stat-glow" style={{ "--rep-stat-color": "rgba(139, 92, 246, 0.25)" } as React.CSSProperties}>
+            <GaugeWithCounter value={rep.points_balance} max={data.next_level_points || rep.points_balance || 100} color="#8B5CF6" icon={Zap} label="XP" enabled={statsReady} />
+          </div>
         </Link>
         <Link href="/rep/sales">
-          <GaugeWithCounter
-            value={rep.total_sales}
-            max={maxSales}
-            color="#F97316"
-            icon={Flame}
-            label="Sold"
-            enabled={statsReady}
-          />
+          <div className="rep-stat-glow" style={{ "--rep-stat-color": "rgba(249, 115, 22, 0.25)" } as React.CSSProperties}>
+            <GaugeWithCounter value={rep.total_sales} max={maxSales} color="#F97316" icon={Flame} label="Sold" enabled={statsReady} />
+          </div>
         </Link>
         <Link href="/rep/leaderboard">
-          <RadialGauge
-            value={statsReady ? (data.leaderboard_position ? maxRank - data.leaderboard_position + 1 : 0) : 0}
-            max={maxRank}
-            color="#F59E0B"
-            icon={Trophy}
-            label="Rank"
-            displayValue={data.leaderboard_position ? `#${data.leaderboard_position}` : "—"}
-          />
+          <div className="rep-stat-glow" style={{ "--rep-stat-color": "rgba(245, 158, 11, 0.25)" } as React.CSSProperties}>
+            <RadialGauge value={statsReady ? (data.leaderboard_position ? maxRank - data.leaderboard_position + 1 : 0) : 0} max={maxRank} color="#F59E0B" icon={Trophy} label="Rank" displayValue={data.leaderboard_position ? `#${data.leaderboard_position}` : "—"} />
+          </div>
         </Link>
       </div>
 
-      {/* ── Active Missions (Battle Feed) ── */}
+      {/* ── Active Missions ── */}
       {data.active_events.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>
           <HudSectionHeader label="Active Missions" />
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {data.active_events.map((event) => (
               <Link key={event.id} href="/rep/sales">
-                <div className="rep-mission-card rep-mission-card-hover">
-                  {/* Ambient event cover image */}
+                <div className="rep-mission-card-vivid">
                   {event.cover_image && (
                     <div className="rep-mission-ambient">
-                      <img src={event.cover_image} alt="" />
+                      <img src={event.cover_image} alt="" style={{ opacity: 0.22, filter: "blur(1px) brightness(0.85) saturate(1.2)" }} />
                     </div>
                   )}
-                  <div className="rep-mission-content p-4 flex items-center justify-between">
+                  <div className="relative z-[1] p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="rep-live-dot shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{event.name}</p>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Flame size={10} className="text-orange-400" />
-                            {event.sales_count} ticket{event.sales_count !== 1 ? "s" : ""}
+                        <p className="text-sm font-semibold text-foreground truncate">{event.name}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Flame size={11} className="text-orange-400" />
+                            <span className="font-mono font-bold text-foreground">{event.sales_count}</span> ticket{event.sales_count !== 1 ? "s" : ""}
                           </span>
                           {event.revenue > 0 && (
-                            <span className="inline-flex items-center gap-1 text-xs font-mono text-success">
-                              <TrendingUp size={10} />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-success">
+                              <TrendingUp size={11} />
                               £{Number(event.revenue).toFixed(0)}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
-                    <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+                    <ChevronRight size={16} className="text-muted-foreground/50 shrink-0" />
                   </div>
                 </div>
               </Link>
@@ -411,12 +394,12 @@ export default function RepDashboardPage() {
         <Link href="/rep/quests">
           <Card className="py-0 gap-0 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0 rep-action-icon-purple">
                 <Compass size={20} className="text-primary" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">Side Quests</p>
+                  <p className="text-sm font-semibold text-foreground">Side Quests</p>
                   {data.active_quests > 0 && (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[9px] font-bold text-white rep-notification-badge">
                       {data.active_quests}
@@ -432,12 +415,12 @@ export default function RepDashboardPage() {
         <Link href="/rep/rewards">
           <Card className="py-0 gap-0 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0 rep-action-icon-amber">
                 <Gift size={20} className="text-amber-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">Rewards</p>
+                  <p className="text-sm font-semibold text-foreground">Rewards</p>
                   {data.pending_rewards > 0 && (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white rep-notification-badge">
                       {data.pending_rewards}
@@ -454,16 +437,13 @@ export default function RepDashboardPage() {
         </Link>
       </div>
 
-      {/* ── Recent Activity (Battle Log) ── */}
+      {/* ── Recent Activity ── */}
       {data.recent_sales.length > 0 && (
         <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
           <HudSectionHeader label="Recent Activity" />
           <div className="space-y-2">
             {data.recent_sales.map((sale) => (
-              <Card
-                key={sale.id}
-                className="py-0 gap-0 rep-battle-log-entry"
-              >
+              <Card key={sale.id} className="py-0 gap-0 rep-battle-log-entry">
                 <CardContent className="px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-success/10">
@@ -471,14 +451,12 @@ export default function RepDashboardPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
+                      <p className="text-[10px] text-muted-foreground">{formatRelativeTime(sale.created_at)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
-                      <Zap size={9} />+10
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span className="rep-xp-gain inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-primary" style={{ background: `${tier.color}12` }}>
+                      <Zap size={9} />+10 XP
                     </span>
                     <p className="text-sm font-bold font-mono text-success tabular-nums">
                       £{Number(sale.total).toFixed(2)}
@@ -488,32 +466,46 @@ export default function RepDashboardPage() {
               </Card>
             ))}
           </div>
-          <Link
-            href="/rep/sales"
-            className="flex items-center justify-center gap-1 mt-3 text-xs text-primary hover:underline"
-          >
+          <Link href="/rep/sales" className="flex items-center justify-center gap-1 mt-3 text-xs hover:underline" style={{ color: tier.color }}>
             View all sales <ChevronRight size={12} />
           </Link>
         </div>
       )}
 
-      {/* ── Arena CTA (Leaderboard) ── */}
+      {/* ── Arena CTA ── */}
       <Link href="/rep/leaderboard">
         <Card
-          className="py-0 gap-0 rep-surface-1 border-warning/15 rep-slide-up"
+          className={cn(
+            "py-0 gap-0 rep-surface-1 rep-slide-up",
+            data.leaderboard_position && data.leaderboard_position <= 3 ? "rep-arena-top3" : "border-warning/15",
+          )}
           style={{ animationDelay: "300ms" }}
         >
           <CardContent className="p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/15">
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-xl"
+                style={{
+                  background: data.leaderboard_position && data.leaderboard_position <= 3
+                    ? "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.08))"
+                    : "rgba(245, 158, 11, 0.12)",
+                  boxShadow: data.leaderboard_position && data.leaderboard_position <= 3
+                    ? "0 0 16px rgba(245, 158, 11, 0.1)" : undefined,
+                }}
+              >
                 <Trophy size={22} className="text-warning" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Arena</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">Arena</p>
+                  {data.leaderboard_position && (
+                    <span className="text-base font-bold font-mono tabular-nums text-warning" style={{ textShadow: "0 0 10px rgba(245, 158, 11, 0.25)" }}>
+                      #{data.leaderboard_position}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  {data.leaderboard_position
-                    ? <>Ranked <span className="font-mono font-bold text-warning">#{data.leaderboard_position}</span> — challenge your crew</>
-                    : "See where you stand"}
+                  {data.leaderboard_position ? "Challenge your crew" : "See where you stand"}
                 </p>
               </div>
             </div>
@@ -524,8 +516,6 @@ export default function RepDashboardPage() {
     </div>
   );
 }
-
-// ─── Gauge with Animated Counter ─────────────────────────────────────────────
 
 function GaugeWithCounter({
   value, max, color, icon, label, enabled,
@@ -544,4 +534,19 @@ function GaugeWithCounter({
       displayValue={String(animatedValue)}
     />
   );
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHr = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }

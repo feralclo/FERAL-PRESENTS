@@ -146,7 +146,10 @@ function getMilestone(count: number): number | null {
 function resolveEventName(page: string, slugMap: Record<string, string>): string {
   const match = page?.match(/\/event\/([^/]+)/);
   if (!match) return page || "—";
-  return slugMap[match[1]] || match[1];
+  const slug = match[1];
+  if (slugMap[slug]) return slugMap[slug];
+  // Fallback: format raw slug as readable text (e.g. "liverpool-27-march" → "Liverpool 27 March")
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -185,56 +188,60 @@ function AnimatedCounter({ value }: { value: number }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   GAUGE — circular progress ring via conic-gradient
+   PERFORMANCE BAR — clean horizontal stat bar
    ═══════════════════════════════════════════════════════════ */
-function Gauge({
+function PerformanceBar({
   value,
   color,
   label,
   threshold,
+  icon: Icon,
 }: {
   value: number;
   color: string;
   label: string;
   threshold: { label: string; color: string };
+  icon: typeof Eye;
 }) {
   const clampedValue = Math.min(Math.max(value, 0), 100);
-  const gradientDeg = (clampedValue / 100) * 360;
 
   return (
-    <Card className="py-0 gap-0">
-      <CardContent className="flex flex-col items-center p-6">
-        {/* Ring */}
-        <div className="relative h-28 w-28">
-          <div
-            className="absolute inset-0 rounded-full transition-all duration-700 ease-out"
-            style={{
-              background: `conic-gradient(${color} ${gradientDeg}deg, rgba(255,255,255,0.06) ${gradientDeg}deg)`,
-              mask: "radial-gradient(farthest-side, transparent 70%, #000 71%)",
-              WebkitMask: "radial-gradient(farthest-side, transparent 70%, #000 71%)",
-            }}
-          />
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-mono text-2xl font-bold tabular-nums text-foreground">
+    <div className="flex items-center gap-4">
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+        style={{ backgroundColor: `${color}15` }}
+      >
+        <Icon size={14} style={{ color }} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between mb-1.5">
+          <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm font-bold tabular-nums text-foreground">
               {clampedValue.toFixed(1)}%
+            </span>
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{ color: threshold.color, backgroundColor: `${threshold.color}15` }}
+            >
+              {threshold.label}
             </span>
           </div>
         </div>
-
-        {/* Label */}
-        <p className="mt-4 font-mono text-[10px] font-bold uppercase tracking-[2px] text-muted-foreground">
-          {label}
-        </p>
-
-        {/* Threshold */}
-        <span
-          className="mt-1.5 text-[10px] font-semibold"
-          style={{ color: threshold.color }}
-        >
-          {threshold.label}
-        </span>
-      </CardContent>
-    </Card>
+        <div className="h-2 w-full rounded-full bg-foreground/[0.06] overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700 ease-out"
+            style={{
+              width: `${Math.max(clampedValue, 1)}%`,
+              background: `linear-gradient(90deg, ${color}90, ${color})`,
+              boxShadow: clampedValue > 5 ? `0 0 8px ${color}40` : "none",
+            }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -726,27 +733,35 @@ export default function PopupAnalytics() {
           </CardContent>
         </Card>
 
-        {/* Performance Gauges */}
-        <div className="grid gap-4 grid-cols-3">
-          <Gauge
-            value={engagementRate}
-            color="#8B5CF6"
-            label="Engagement"
-            threshold={getThreshold(engagementRate, "engagement")}
-          />
-          <Gauge
-            value={conversionRate}
-            color="#34D399"
-            label="Conversion"
-            threshold={getThreshold(conversionRate, "conversion")}
-          />
-          <Gauge
-            value={dismissRate}
-            color="#71717a"
-            label="Dismiss"
-            threshold={getThreshold(dismissRate, "dismiss")}
-          />
-        </div>
+        {/* Performance */}
+        <Card className="py-0 gap-0">
+          <CardHeader className="px-6 pt-5 pb-4">
+            <CardTitle className="text-sm">Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="px-6 pb-6 space-y-5">
+            <PerformanceBar
+              value={engagementRate}
+              color="#8B5CF6"
+              label="Engagement"
+              icon={MousePointerClick}
+              threshold={getThreshold(engagementRate, "engagement")}
+            />
+            <PerformanceBar
+              value={conversionRate}
+              color="#34D399"
+              label="Conversion"
+              icon={CheckCircle2}
+              threshold={getThreshold(conversionRate, "conversion")}
+            />
+            <PerformanceBar
+              value={dismissRate}
+              color="#71717a"
+              label="Dismiss"
+              icon={XCircle}
+              threshold={getThreshold(dismissRate, "dismiss")}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Activity Feed — Enhanced */}

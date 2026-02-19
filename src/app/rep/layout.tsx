@@ -45,7 +45,7 @@ const HUD_RIGHT = [
   { href: "/rep/profile", label: "Me", icon: User },
 ];
 
-const PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite", "/rep/verify-email"];
+const PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite", "/rep/verify-email", "/rep/dev-access", "/rep/test"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PAGES.some((p) => pathname.startsWith(p));

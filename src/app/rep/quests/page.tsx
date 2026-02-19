@@ -41,8 +41,8 @@ function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpan
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onExpand(); }}
-      className="group relative w-full rounded-lg overflow-hidden bg-black cursor-pointer border-0 p-0 text-left"
-      style={{ maxHeight: "min(140px, 22vh)" }}
+      className="group relative w-full rounded-xl overflow-hidden bg-black cursor-pointer border-0 p-0 text-left"
+      style={{ height: 200 }}
     >
       <MuxPlayer
         playbackId={playbackId}
@@ -58,9 +58,8 @@ function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpan
           style: {
             width: "100%",
             height: "100%",
-            maxHeight: "min(140px, 22vh)",
             "--controls": "none",
-            "--media-object-fit": "contain",
+            "--media-object-fit": "cover",
             "--media-object-position": "center",
             pointerEvents: "none",
           },
@@ -73,7 +72,7 @@ function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpan
         src={getMuxThumbnailUrl(playbackId)}
         alt=""
         className={cn(
-          "absolute inset-0 w-full h-full object-contain z-[5] transition-opacity duration-300 pointer-events-none",
+          "absolute inset-0 w-full h-full object-cover z-[5] transition-opacity duration-300 pointer-events-none",
           videoReady ? "opacity-0" : "opacity-100"
         )}
       />
@@ -938,13 +937,13 @@ export default function RepQuestsPage() {
               <X size={20} />
             </button>
 
-            {/* Video area — centered, respects aspect ratio */}
+            {/* Video area — fills available space, aspect ratio preserved via contain */}
             <div
               ref={fullscreenVideoRef}
-              className="flex-1 flex items-center justify-center px-4 pt-14"
+              className="flex-1 flex items-center justify-center"
               onClick={(e) => { if (e.target === e.currentTarget) { setVideoFullscreen(false); setFullscreenMuted(true); } }}
             >
-              <div className="relative w-full" style={{ maxHeight: "calc(100dvh - 120px)" }}>
+              <div className="relative w-full h-full">
                 <MuxPlayer
                   playbackId={detailQuest.video_url!}
                   streamType="on-demand"
@@ -957,7 +956,6 @@ export default function RepQuestsPage() {
                     style: {
                       width: "100%",
                       height: "100%",
-                      maxHeight: "calc(100dvh - 120px)",
                       "--controls": "none",
                       "--media-object-fit": "contain",
                       "--media-object-position": "center",
@@ -965,15 +963,27 @@ export default function RepQuestsPage() {
                   } as any)}
                 />
 
+              </div>
+            </div>
+
+            {/* Bottom gradient overlay with gamification */}
+            <div className="shrink-0 px-5 pb-6 pt-8 bg-gradient-to-t from-black via-black/80 to-transparent">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <span className={tier.badgeClass}>{tier.label}</span>
+                  <span className={cn(tier.xpBadgeClass, "flex items-center gap-1")}>
+                    <Zap size={12} />
+                    +{detailQuest.points_reward} XP
+                  </span>
+                </div>
                 {/* Mute toggle */}
                 <button
                   type="button"
-                  className="absolute bottom-3 right-3 z-10 w-9 h-9 bg-black/60 border border-white/15 rounded-full flex items-center justify-center text-white/80 hover:bg-black/80 hover:text-white transition-all cursor-pointer"
+                  className="w-9 h-9 bg-white/8 border border-white/12 rounded-full flex items-center justify-center text-white/70 hover:bg-white/15 hover:text-white transition-all cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     const newMuted = !fullscreenMuted;
                     setFullscreenMuted(newMuted);
-                    // Direct DOM toggle for immediate response
                     const player = fullscreenVideoRef.current?.querySelector("mux-player");
                     if (player) (player as HTMLMediaElement).muted = newMuted;
                   }}
@@ -981,17 +991,6 @@ export default function RepQuestsPage() {
                 >
                   {fullscreenMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
-              </div>
-            </div>
-
-            {/* Bottom gradient overlay with gamification */}
-            <div className="shrink-0 px-5 pb-6 pt-8 bg-gradient-to-t from-black via-black/80 to-transparent">
-              <div className="flex items-center gap-2.5 mb-2">
-                <span className={tier.badgeClass}>{tier.label}</span>
-                <span className={cn(tier.xpBadgeClass, "flex items-center gap-1")}>
-                  <Zap size={12} />
-                  +{detailQuest.points_reward} XP
-                </span>
               </div>
               <h3 className={cn("text-lg font-extrabold tracking-tight", titleColorClass)}>
                 {detailQuest.title}

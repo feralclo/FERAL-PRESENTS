@@ -681,16 +681,15 @@ export default function RepQuestsPage() {
                     {hasMuxVideo ? (
                       <MuxPlayer
                         playbackId={detailQuest.video_url!}
+                        streamType="on-demand"
                         muted
-                        autoPlay="muted"
-                        loop
-                        style={{
-                          aspectRatio: "16/9",
+                        preload="metadata"
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        {...{ style: {
+                          width: "100%",
                           maxHeight: "min(200px, 30vh)",
-                          "--controls": "none",
                           "--media-object-fit": "contain",
-                        } as Record<string, string>}
-                        className="md:[&]:!max-h-[min(280px,35vh)]"
+                        } } as any}
                       />
                     ) : hasLegacyVideoUrl ? (
                       <a

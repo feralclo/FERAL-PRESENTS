@@ -51,6 +51,12 @@ import {
   Settings2,
   Upload,
   CheckCircle2,
+  ExternalLink,
+  Music,
+  Camera,
+  Link as LinkIcon,
+  Type,
+  Image as ImageLucide,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as tus from "tus-js-client";
@@ -615,7 +621,15 @@ export function QuestsTab() {
       <Dialog open={!!showSubmissions} onOpenChange={(open) => !open && setShowSubmissions(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Quest Submissions</DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              Quest Submissions
+              {(() => {
+                const pendingCount = submissions.filter((s) => s.status === "pending").length;
+                return pendingCount > 0 ? (
+                  <Badge variant="warning" className="tabular-nums">{pendingCount} pending</Badge>
+                ) : null;
+              })()}
+            </DialogTitle>
             <DialogDescription>Review proof submitted by reps.</DialogDescription>
           </DialogHeader>
           {loadingSubs ? (
@@ -623,65 +637,128 @@ export function QuestsTab() {
           ) : submissions.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No submissions yet</p>
           ) : (
-            <div className="max-h-[60vh] overflow-y-auto space-y-3">
-              {submissions.map((sub) => (
-                <div key={sub.id} className="rounded-lg border border-border p-4">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {new Date(sub.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                    <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"}>
-                      {sub.status}
-                    </Badge>
-                  </div>
-                  <div className="rounded-md bg-muted/30 p-3 mb-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Proof ({sub.proof_type})</p>
-                    {sub.proof_type === "screenshot" && sub.proof_url && <img src={sub.proof_url} alt="Proof" className="max-h-40 rounded-md" />}
-                    {sub.proof_type === "url" && sub.proof_text && (
-                      <a href={sub.proof_text} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">{sub.proof_text}</a>
-                    )}
-                    {sub.proof_type === "text" && sub.proof_text && <p className="text-sm text-foreground">{sub.proof_text}</p>}
-                  </div>
-                  {sub.status === "pending" && (
-                    <div className="space-y-2">
-                      {rejectingId === sub.id ? (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="Reason for rejection..."
-                            className="text-sm min-h-[60px]"
-                            autoFocus
-                          />
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="destructive" disabled={!rejectReason.trim() || reviewingId === sub.id}
-                              onClick={() => { handleReview(sub.id, "rejected", rejectReason.trim()); setRejectingId(null); setRejectReason(""); }}>
-                              {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Confirm Reject
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancel</Button>
+            <>
+              {/* Batch approve — only when 2+ pending */}
+              {submissions.filter((s) => s.status === "pending").length >= 2 && (
+                <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+                  <span className="text-xs text-muted-foreground">
+                    {submissions.filter((s) => s.status === "pending").length} submissions awaiting review
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={reviewingId !== null}
+                    onClick={async () => {
+                      const pending = submissions.filter((s) => s.status === "pending");
+                      for (const sub of pending) {
+                        await handleReview(sub.id, "approved");
+                      }
+                    }}
+                  >
+                    <CheckCircle2 size={12} /> Approve All
+                  </Button>
+                </div>
+              )}
+              <div className="max-h-[60vh] overflow-y-auto space-y-3">
+                {/* Sort: pending first, then approved, then rejected */}
+                {[...submissions].sort((a, b) => {
+                  const order = { pending: 0, approved: 1, rejected: 2 };
+                  return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+                }).map((sub) => {
+                  const proofUrl = sub.proof_url || sub.proof_text || "";
+                  const isTikTok = sub.proof_type === "tiktok_link";
+                  const isInstagram = sub.proof_type === "instagram_link";
+                  const isPlatformLink = isTikTok || isInstagram;
+                  const ProofIcon = isTikTok ? Music : isInstagram ? Camera : sub.proof_type === "screenshot" ? ImageLucide : sub.proof_type === "url" ? LinkIcon : Type;
+                  const proofLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram" : sub.proof_type === "screenshot" ? "Screenshot" : sub.proof_type === "url" ? "URL" : "Text";
+
+                  return (
+                    <div key={sub.id} className={`rounded-lg border p-4 ${sub.status === "pending" ? "border-warning/30 bg-warning/[0.02]" : "border-border"}`}>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2.5">
+                          {sub.rep?.photo_url ? (
+                            <img src={sub.rep.photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                              {sub.rep?.first_name?.charAt(0) || "?"}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {sub.rep?.display_name || `${sub.rep?.first_name || ""} ${sub.rep?.last_name || ""}`.trim() || "Unknown"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {new Date(sub.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </p>
                           </div>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id}>
-                            {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Approve
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setRejectingId(sub.id)} disabled={reviewingId === sub.id}>
-                            <X size={12} /> Reject
-                          </Button>
+                        <Badge variant={sub.status === "approved" ? "success" : sub.status === "rejected" ? "destructive" : "warning"}>
+                          {sub.status}
+                        </Badge>
+                      </div>
+
+                      {/* Proof preview — handles all types including tiktok_link & instagram_link */}
+                      <div className="rounded-md bg-muted/30 p-3 mb-3">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <ProofIcon size={11} className="text-muted-foreground" />
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{proofLabel}</p>
+                        </div>
+                        {sub.proof_type === "screenshot" && sub.proof_url && (
+                          <img src={sub.proof_url} alt="Proof" className="max-h-40 rounded-md" />
+                        )}
+                        {(isPlatformLink || sub.proof_type === "url") && proofUrl && (
+                          <a
+                            href={proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline break-all"
+                          >
+                            <ExternalLink size={12} className="shrink-0" />
+                            {proofUrl}
+                          </a>
+                        )}
+                        {sub.proof_type === "text" && sub.proof_text && (
+                          <p className="text-sm text-foreground">{sub.proof_text}</p>
+                        )}
+                      </div>
+
+                      {/* Actions for pending submissions */}
+                      {sub.status === "pending" && (
+                        <div className="space-y-2">
+                          {rejectingId === sub.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="Reason for rejection..."
+                                className="text-sm min-h-[60px]"
+                                autoFocus
+                              />
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="destructive" disabled={!rejectReason.trim() || reviewingId === sub.id}
+                                  onClick={() => { handleReview(sub.id, "rejected", rejectReason.trim()); setRejectingId(null); setRejectReason(""); }}>
+                                  {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Confirm Reject
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancel</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" onClick={() => handleReview(sub.id, "approved")} disabled={reviewingId === sub.id}>
+                                {reviewingId === sub.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Approve
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setRejectingId(sub.id)} disabled={reviewingId === sub.id}>
+                                <X size={12} /> Reject
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
+                      {sub.rejection_reason && <p className="mt-2 text-xs text-destructive">Reason: {sub.rejection_reason}</p>}
                     </div>
-                  )}
-                  {sub.rejection_reason && <p className="mt-2 text-xs text-destructive">Reason: {sub.rejection_reason}</p>}
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
           <DialogFooter><Button variant="outline" onClick={() => setShowSubmissions(null)}>Close</Button></DialogFooter>
         </DialogContent>

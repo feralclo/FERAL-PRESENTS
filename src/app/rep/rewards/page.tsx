@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Gift,
   Lock,
@@ -80,6 +81,30 @@ const CLAIM_STATUS_CONFIG: Record<string, { label: string; variant: "default" | 
   cancelled: { label: "Cancelled", variant: "destructive", icon: XCircle },
 };
 
+// ─── Success sound ──────────────────────────────────────────────────────────
+
+function playSuccessSound() {
+  try {
+    const ctx = new AudioContext();
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      const t = ctx.currentTime + i * 0.09;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.13, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      osc.start(t);
+      osc.stop(t + 0.3);
+    });
+    setTimeout(() => ctx.close(), 1500);
+  } catch { /* AudioContext not available */ }
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function RepRewardsPage() {
@@ -136,6 +161,7 @@ export default function RepRewardsPage() {
       if (res.ok) {
         setError("");
         setSuccessReward(reward);
+        playSuccessSound();
         // Refresh data
         const [rewardsRes, meRes, claimsRes] = await Promise.all([
           fetch("/api/rep-portal/rewards"),
@@ -540,8 +566,8 @@ export default function RepRewardsPage() {
         <EmptyState icon={Gift} title="No rewards yet" subtitle="Rewards will appear here once they're set up" />
       )}
 
-      {/* ── Confirmation Modal ── */}
-      {confirmReward && (
+      {/* ── Confirmation Modal (portalled) ── */}
+      {confirmReward && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm rep-fade-in">
           <div className="w-full max-w-sm mx-4 mb-4 md:mb-0 rounded-2xl border border-border bg-background p-6 rep-slide-up">
             <div className="flex items-center justify-between mb-4">
@@ -614,11 +640,12 @@ export default function RepRewardsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.getElementById("rep-portal-root") || document.body
       )}
 
-      {/* ── Success Animation with Confetti ── */}
-      {successReward && (
+      {/* ── Success Animation with Confetti (portalled) ── */}
+      {successReward && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           {/* Confetti burst */}
           <div className="rep-confetti-container" aria-hidden>
@@ -675,7 +702,8 @@ export default function RepRewardsPage() {
               Dismiss
             </button>
           </div>
-        </div>
+        </div>,
+        document.getElementById("rep-portal-root") || document.body
       )}
     </div>
   );

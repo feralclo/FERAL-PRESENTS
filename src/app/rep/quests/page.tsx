@@ -90,13 +90,14 @@ function MuxVideoPreview({ playbackId, onExpand }: { playbackId: string; onExpan
 // ─── Fullscreen video: thumbnail crossfade → MuxPlayer ───────────────────────
 
 function FullscreenVideo({
-  playbackId, tier, titleColorClass, title, points, muted, onMuteToggle, videoRef, onClose,
+  playbackId, tier, titleColorClass, title, points, platform, muted, onMuteToggle, videoRef, onClose,
 }: {
   playbackId: string;
   tier: TierConfig;
   titleColorClass: string;
   title: string;
   points: number;
+  platform?: "tiktok" | "instagram" | "any";
   muted: boolean;
   onMuteToggle: () => void;
   videoRef: React.RefObject<HTMLDivElement | null>;
@@ -188,28 +189,32 @@ function FullscreenVideo({
           {title}
         </h3>
 
-        {/* Create Now — deep link to apps */}
+        {/* Create Now — platform-specific deep links */}
         <div className="flex gap-2 mt-3">
-          <a
-            href="https://www.tiktok.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/[0.12] text-white/80 text-xs font-semibold hover:bg-white/[0.15] active:scale-[0.97] transition-all"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Music size={14} />
-            Create on TikTok
-          </a>
-          <a
-            href="https://www.instagram.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/[0.12] text-white/80 text-xs font-semibold hover:bg-white/[0.15] active:scale-[0.97] transition-all"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Camera size={14} />
-            Create on Instagram
-          </a>
+          {(platform === "tiktok" || platform === "any" || !platform) && (
+            <a
+              href="https://www.tiktok.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/[0.12] text-white/80 text-xs font-semibold hover:bg-white/[0.15] active:scale-[0.97] transition-all"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Music size={14} />
+              Create on TikTok
+            </a>
+          )}
+          {(platform === "instagram" || platform === "any" || !platform) && (
+            <a
+              href="https://www.instagram.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/[0.08] border border-white/[0.12] text-white/80 text-xs font-semibold hover:bg-white/[0.15] active:scale-[0.97] transition-all"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Camera size={14} />
+              Create on Instagram
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -249,6 +254,7 @@ interface Quest {
   description?: string;
   instructions?: string;
   quest_type: string;
+  platform?: "tiktok" | "instagram" | "any";
   image_url?: string;
   video_url?: string;
   points_reward: number;
@@ -506,8 +512,13 @@ export default function RepQuestsPage() {
 
   const openSubmitModal = (quest: Quest) => {
     const mapping = QUEST_PROOF_MAP[quest.quest_type] || QUEST_PROOF_MAP.custom;
+    // Determine default proof type based on quest platform
+    const platform = quest.platform || "any";
+    let defaultType = mapping.default;
+    if (platform === "tiktok") defaultType = "tiktok_link";
+    else if (platform === "instagram") defaultType = "instagram_link";
     setSubmitQuestId(quest.id);
-    setProofType(mapping.default);
+    setProofType(defaultType);
     setSubmitted(false);
     setProofText("");
     setUploadedUrl("");
@@ -568,9 +579,17 @@ export default function RepQuestsPage() {
 
   // Get current quest for submit modal context
   const submitQuest = submitQuestId ? quests.find((q) => q.id === submitQuestId) : null;
-  const availableProofTypes = submitQuest
-    ? (QUEST_PROOF_MAP[submitQuest.quest_type] || QUEST_PROOF_MAP.custom).types
-    : [];
+  const availableProofTypes = (() => {
+    if (!submitQuest) return [];
+    const mapping = QUEST_PROOF_MAP[submitQuest.quest_type] || QUEST_PROOF_MAP.custom;
+    const platform = submitQuest.platform || "any";
+    // Filter platform link types based on quest platform
+    return mapping.types.filter((pt) => {
+      if (pt === "tiktok_link") return platform === "tiktok" || platform === "any";
+      if (pt === "instagram_link") return platform === "instagram" || platform === "any";
+      return true; // screenshot, etc.
+    });
+  })();
 
   if (loading) {
     return (
@@ -655,7 +674,12 @@ export default function RepQuestsPage() {
           >
             {t.label}
             {t.count > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-bold min-w-[18px]">{t.count}</span>
+              <span className={cn(
+                "ml-1.5 inline-flex items-center justify-center rounded-full px-1.5 text-[10px] font-bold min-w-[18px]",
+                t.id === "active"
+                  ? "bg-primary/20 text-primary animate-pulse"
+                  : "bg-white/10 text-muted-foreground"
+              )}>{t.count}</span>
             )}
           </button>
         ))}
@@ -1052,7 +1076,7 @@ export default function RepQuestsPage() {
                     className={cn("rep-quest-detail-cta", `rep-quest-detail-cta-${tier.tier}`)}
                   >
                     <Zap size={16} />
-                    Submit Proof — Earn {detailQuest.points_reward} XP
+                    Submit Proof
                   </button>
                 )}
               </div>
@@ -1100,6 +1124,7 @@ export default function RepQuestsPage() {
             titleColorClass={titleColorClass}
             title={detailQuest.title}
             points={detailQuest.points_reward}
+            platform={detailQuest.platform}
             muted={fullscreenMuted}
             onMuteToggle={() => {
               setFullscreenMuted((m) => !m);
@@ -1187,8 +1212,8 @@ export default function RepQuestsPage() {
               ) : (
                 <div className="px-5 pb-5 pt-3 space-y-4">
 
-                  {/* ══ Platform selector — two big cards ══ */}
-                  {platformTypes.length > 0 && isPlatformLink && (
+                  {/* ══ Platform selector — big cards (only if multiple) ══ */}
+                  {platformTypes.length > 1 && isPlatformLink && (
                     <div>
                       <p className="text-[10px] font-bold text-muted-foreground mb-2 uppercase tracking-widest">Where did you post?</p>
                       <div className="grid grid-cols-2 gap-2">

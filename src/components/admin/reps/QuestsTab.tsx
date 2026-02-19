@@ -93,6 +93,7 @@ export function QuestsTab() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [questType, setQuestType] = useState<QuestType>("social_post");
+  const [platform, setPlatform] = useState<"tiktok" | "instagram" | "any">("any");
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [pointsReward, setPointsReward] = useState("");
@@ -281,7 +282,7 @@ export function QuestsTab() {
 
   const openCreate = () => {
     setEditId(null); setTitle(""); setDescription(""); setInstructions("");
-    setQuestType("social_post"); setImageUrl(""); setVideoUrl("");
+    setQuestType("social_post"); setPlatform("any"); setImageUrl(""); setVideoUrl("");
     setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setVideoError(""); setPreviewError(false);
     setShowDialog(true);
@@ -290,6 +291,7 @@ export function QuestsTab() {
   const openEdit = (q: RepQuest) => {
     setEditId(q.id); setTitle(q.title); setDescription(q.description || "");
     setInstructions(q.instructions || ""); setQuestType(q.quest_type);
+    setPlatform(q.platform || "any");
     setImageUrl(q.image_url || ""); setVideoUrl(q.video_url || "");
     setPointsReward(String(q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
@@ -303,7 +305,7 @@ export function QuestsTab() {
     setSaving(true);
     const body = {
       title: title.trim(), description: description.trim() || null,
-      instructions: instructions.trim() || null, quest_type: questType,
+      instructions: instructions.trim() || null, quest_type: questType, platform,
       image_url: imageUrl.trim() || null, video_url: videoUrl.trim() || null,
       points_reward: Number(pointsReward) || 0,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
@@ -449,7 +451,7 @@ export function QuestsTab() {
                 <Label>How to Complete</Label>
                 <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Step-by-step instructions shown to reps in the quest detail view" rows={3} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Type</Label>
                   <Select value={questType} onValueChange={(v) => setQuestType(v as QuestType)}>
@@ -459,6 +461,17 @@ export function QuestsTab() {
                       <SelectItem value="story_share">Story Share</SelectItem>
                       <SelectItem value="content_creation">Content Creation</SelectItem>
                       <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Platform</Label>
+                  <Select value={platform} onValueChange={(v) => setPlatform(v as "tiktok" | "instagram" | "any")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any Platform</SelectItem>
+                      <SelectItem value="tiktok">TikTok</SelectItem>
+                      <SelectItem value="instagram">Instagram</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

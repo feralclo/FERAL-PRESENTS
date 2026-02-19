@@ -70,6 +70,7 @@ export async function PUT(
       "description",
       "instructions",
       "quest_type",
+      "platform",
       "image_url",
       "video_url",
       "points_reward",
@@ -106,6 +107,12 @@ export async function PUT(
     if (updates.status && !["active", "paused", "archived", "draft"].includes(updates.status as string)) {
       return NextResponse.json(
         { error: "status must be 'active', 'paused', 'archived', or 'draft'" },
+        { status: 400 }
+      );
+    }
+    if (updates.platform && !["tiktok", "instagram", "any"].includes(updates.platform as string)) {
+      return NextResponse.json(
+        { error: "platform must be 'tiktok', 'instagram', or 'any'" },
         { status: 400 }
       );
     }

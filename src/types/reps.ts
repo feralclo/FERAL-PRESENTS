@@ -118,6 +118,7 @@ export type QuestType =
   | "story_share"
   | "content_creation"
   | "custom";
+export type QuestPlatform = "tiktok" | "instagram" | "any";
 export type QuestStatus = "active" | "paused" | "archived" | "draft";
 
 export interface RepQuest {
@@ -127,6 +128,7 @@ export interface RepQuest {
   description?: string | null;
   instructions?: string | null;
   quest_type: QuestType;
+  platform: QuestPlatform;
   image_url?: string | null;
   video_url?: string | null;
   points_reward: number;

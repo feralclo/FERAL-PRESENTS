@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
       description,
       instructions,
       quest_type,
+      platform = "any",
       image_url,
       video_url,
       points_reward,
@@ -113,6 +114,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!["tiktok", "instagram", "any"].includes(platform)) {
+      return NextResponse.json(
+        { error: "platform must be 'tiktok', 'instagram', or 'any'" },
+        { status: 400 }
+      );
+    }
+
     if (Number(points_reward) <= 0) {
       return NextResponse.json(
         { error: "points_reward must be a positive number" },
@@ -136,6 +144,7 @@ export async function POST(request: NextRequest) {
         description: description?.trim() || null,
         instructions: instructions?.trim() || null,
         quest_type,
+        platform,
         image_url: image_url || null,
         video_url: video_url || null,
         points_reward: Number(points_reward),

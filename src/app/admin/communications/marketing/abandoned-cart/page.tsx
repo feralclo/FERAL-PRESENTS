@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,6 @@ import {
   Send,
   Flame,
   Zap,
-  Check,
   PartyPopper,
   Power,
   Timer,
@@ -94,7 +93,7 @@ const DEFAULT_STEPS: EmailStep[] = [
     enabled: true,
     subject: "You left something behind...",
     preview_text: "Your tickets are still waiting for you",
-    greeting: "{{name}}, your order is on hold",
+    greeting: "Your order is on hold",
     body_message: "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.",
     include_discount: false,
     discount_code: "",
@@ -112,7 +111,7 @@ const DEFAULT_STEPS: EmailStep[] = [
     enabled: true,
     subject: "Tickets selling fast \u2014 don\u2019t miss out",
     preview_text: "Your tickets are still available, but not for long",
-    greeting: "{{name}}, tickets are going fast",
+    greeting: "Tickets are going fast",
     body_message: "The event you were looking at is selling quickly. Don\u2019t let someone else take your spot.",
     include_discount: false,
     discount_code: "",
@@ -130,7 +129,7 @@ const DEFAULT_STEPS: EmailStep[] = [
     enabled: true,
     subject: "Last chance \u2014 your order expires soon",
     preview_text: "This is your final reminder before your order expires",
-    greeting: "{{name}}, this is your last chance",
+    greeting: "This is your last chance",
     body_message: "Your order is about to expire. We\u2019ve saved a special offer just for you \u2014 use it before it\u2019s gone.",
     include_discount: true,
     discount_code: "COMEBACK10",
@@ -147,6 +146,81 @@ const DEFAULT_SETTINGS: AutomationSettings = {
 };
 
 const SETTINGS_KEY = "feral_abandoned_cart_automation";
+
+/* ── Save Toast — floating notification ── */
+function SaveToast({ saving, status }: { saving: boolean; status: "idle" | "saved" | "error" }) {
+  const [visible, setVisible] = useState(false);
+  const [displayState, setDisplayState] = useState<"saving" | "saved" | "error">("saving");
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (saving) {
+      setDisplayState("saving");
+      setVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    }
+  }, [saving]);
+
+  useEffect(() => {
+    if (status === "saved") {
+      setDisplayState("saved");
+      setVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setVisible(false), 2200);
+    } else if (status === "error") {
+      setDisplayState("error");
+      setVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setVisible(false), 4000);
+    }
+  }, [status]);
+
+  return (
+    <div
+      className="pointer-events-none fixed bottom-6 left-0 right-0 z-50 flex justify-center"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(12px)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
+    >
+      <div
+        className="pointer-events-auto flex items-center gap-2.5 rounded-full border px-5 py-2.5"
+        style={{
+          backgroundColor: displayState === "saving"
+            ? "rgba(17,17,23,0.95)"
+            : displayState === "saved"
+            ? "rgba(17,17,23,0.95)"
+            : "rgba(17,17,23,0.95)",
+          borderColor: displayState === "saving"
+            ? "rgba(139,92,246,0.25)"
+            : displayState === "saved"
+            ? "rgba(16,185,129,0.25)"
+            : "rgba(239,68,68,0.25)",
+          boxShadow: displayState === "saving"
+            ? "0 4px 24px rgba(139,92,246,0.15)"
+            : displayState === "saved"
+            ? "0 4px 24px rgba(16,185,129,0.15)"
+            : "0 4px 24px rgba(239,68,68,0.15)",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        {displayState === "saving" ? (
+          <>
+            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+            <span className="text-[12px] font-medium text-white/70">Saving changes...</span>
+          </>
+        ) : displayState === "saved" ? (
+          <>
+            <CheckCircle2 size={14} className="text-emerald-400" />
+            <span className="text-[12px] font-medium text-white/70">Update saved</span>
+          </>
+        ) : (
+          <>
+            <AlertTriangle size={14} className="text-red-400" />
+            <span className="text-[12px] font-medium text-white/70">Save failed</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* ── Helpers ── */
 function formatCurrency(amount: number) {
@@ -340,15 +414,15 @@ function RecoveryFlow({
           {steps.filter((s) => s.enabled).length} of {steps.length} emails active
         </span>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-0 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
         {steps.map((step, i) => {
           const isSelected = activeStepId === step.id;
           const stepActive = step.enabled && automationEnabled;
           const StepIcon = step.icon;
 
           return (
+            <React.Fragment key={step.id}>
             <button
-              key={step.id}
               type="button"
               onClick={() => onSelectStep(step.id)}
               className={`group relative cursor-pointer overflow-hidden rounded-xl border-2 p-4 text-left transition-all duration-200 ${
@@ -456,6 +530,14 @@ function RecoveryFlow({
                 />
               )}
             </button>
+
+            {/* Timeline arrow connector (between cards) */}
+            {i < steps.length - 1 && (
+              <div className="hidden items-center justify-center px-2 sm:flex">
+                <ArrowRight size={16} className="text-muted-foreground/20" />
+              </div>
+            )}
+            </React.Fragment>
           );
         })}
       </div>
@@ -658,9 +740,6 @@ function EmailEditor({
                       placeholder="Greeting headline..."
                       style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
                     />
-                    <p className="mt-1 text-center text-[9px] text-white/25">
-                      Use {"{{name}}"} for customer&apos;s name
-                    </p>
                   </div>
 
                   {/* Editable message — clear hover/focus affordance */}
@@ -676,45 +755,51 @@ function EmailEditor({
                   </div>
                 </div>
 
-                {/* White content area */}
-                <div style={{ backgroundColor: "#ffffff", padding: "0" }}>
-                  {/* Event card (non-editable — pulled from real data) */}
-                  <div className="px-8 pt-6">
+                {/* White content area — non-editable sections with "auto" labels */}
+                <div className="relative" style={{ backgroundColor: "#ffffff", padding: "0" }}>
+                  {/* Event card — auto-generated */}
+                  <div className="relative px-8 pt-6" style={{ opacity: 0.55 }}>
+                    <div className="absolute right-9 top-7 rounded-full border border-gray-200 bg-white px-2 py-0.5">
+                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 600, color: "#999", letterSpacing: "0.5px" }}>
+                        Auto-generated
+                      </span>
+                    </div>
                     <div style={{ backgroundColor: "#111111", borderRadius: "10px", padding: "16px 20px" }}>
                       <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "8px" }}>
                         EVENT
                       </div>
                       <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "16px", fontWeight: 700, color: "#ffffff", lineHeight: "1.3" }}>
-                        Pulled from your live event
+                        Event name, date &amp; venue
                       </div>
                       <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "12px", color: "#888888", marginTop: "4px" }}>
-                        Real event data, tickets, and pricing shown in actual email
+                        Pulled from your live event automatically
                       </div>
                     </div>
                   </div>
 
-                  {/* Order items placeholder */}
-                  <div className="px-8 pt-5">
+                  {/* Order items — auto-generated */}
+                  <div className="relative px-8 pt-5" style={{ opacity: 0.55 }}>
+                    <div className="absolute right-9 top-6 rounded-full border border-gray-200 bg-white px-2 py-0.5">
+                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 600, color: "#999", letterSpacing: "0.5px" }}>
+                        Auto-generated
+                      </span>
+                    </div>
                     <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#aaaaaa" }}>
                       YOUR ORDER
                     </div>
                     <div className="mt-3 space-y-2">
                       <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", color: "#222" }}>Customer&apos;s ticket selection</span>
+                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", color: "#222" }}>Customer&apos;s tickets &amp; items</span>
                         <span style={{ fontFamily: "'Courier New', monospace", fontSize: "13px", fontWeight: 700, color: "#333" }}>£XX.XX</span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Total */}
-                  <div className="px-8 pt-3">
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-3">
                       <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "14px", fontWeight: 600, color: "#111" }}>Total</span>
                       <span style={{ fontFamily: "'Courier New', monospace", fontSize: "20px", fontWeight: 700, color: "#111" }}>£XX.XX</span>
                     </div>
                   </div>
 
-                  {/* Discount block (conditional) */}
+                  {/* Discount block (conditional) — shows live data from settings */}
                   {step.include_discount && (
                     <div className="px-8 pt-5">
                       <div style={{ backgroundColor: "#0e0e0e", borderRadius: "10px", padding: "20px", textAlign: "center" as const }}>
@@ -752,8 +837,8 @@ function EmailEditor({
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div style={{ backgroundColor: "#fafafa", padding: "20px 32px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0" }}>
+                {/* Footer — auto-generated */}
+                <div style={{ backgroundColor: "#fafafa", padding: "20px 32px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0", opacity: 0.55 }}>
                   <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#bbbbbb" }}>
                     {branding.from_name || "YOUR BRAND"}
                   </div>
@@ -766,8 +851,8 @@ function EmailEditor({
           </div>
         </CardContent>
       ) : (
-        /* ─── PREVIEW MODE: Rendered iframe ─── */
-        <CardContent className="relative flex-1 overflow-hidden p-4">
+        /* ─── PREVIEW MODE: Rendered iframe — full height ─── */
+        <CardContent className="relative flex-1 p-4" style={{ minHeight: "600px" }}>
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
               <div className="flex flex-col items-center gap-2">
@@ -777,10 +862,9 @@ function EmailEditor({
             </div>
           )}
           <div
-            className="mx-auto overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
+            className="mx-auto h-full overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
             style={{
               width: previewMode === "mobile" ? "375px" : "100%",
-              height: "100%",
             }}
           >
             {previewUrl && (
@@ -1559,7 +1643,6 @@ export default function AbandonedCartPage() {
       } else {
         setSaveStatus("saved");
       }
-      setTimeout(() => setSaveStatus("idle"), 2000);
     }, 600);
   }, []);
 
@@ -1660,48 +1743,6 @@ export default function AbandonedCartPage() {
             </p>
           </div>
 
-          {/* Save status — always visible, Google Docs style */}
-          <div
-            className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 transition-all duration-300"
-            style={{
-              borderColor: saving
-                ? "rgba(139,92,246,0.2)"
-                : saveStatus === "saved"
-                ? "rgba(16,185,129,0.2)"
-                : saveStatus === "error"
-                ? "rgba(239,68,68,0.2)"
-                : "var(--color-border)",
-              backgroundColor: saving
-                ? "rgba(139,92,246,0.05)"
-                : saveStatus === "saved"
-                ? "rgba(16,185,129,0.05)"
-                : saveStatus === "error"
-                ? "rgba(239,68,68,0.05)"
-                : "transparent",
-            }}
-          >
-            {saving ? (
-              <>
-                <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-                <span className="text-[11px] font-medium text-primary/70">Saving...</span>
-              </>
-            ) : saveStatus === "saved" ? (
-              <>
-                <CheckCircle2 size={12} className="text-emerald-400" />
-                <span className="text-[11px] font-medium text-emerald-400">All changes saved</span>
-              </>
-            ) : saveStatus === "error" ? (
-              <>
-                <AlertTriangle size={12} className="text-red-400" />
-                <span className="text-[11px] font-medium text-red-400">Save failed</span>
-              </>
-            ) : (
-              <>
-                <Check size={12} className="text-muted-foreground/30" />
-                <span className="text-[11px] font-medium text-muted-foreground/40">Up to date</span>
-              </>
-            )}
-          </div>
         </div>
       </div>
 
@@ -1797,6 +1838,9 @@ export default function AbandonedCartPage() {
       <div className="mt-6">
         <HowItWorks />
       </div>
+
+      {/* Floating save toast */}
+      <SaveToast saving={saving} status={saveStatus} />
     </div>
   );
 }

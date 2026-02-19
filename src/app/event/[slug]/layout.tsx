@@ -1,11 +1,11 @@
 import { fetchSettings } from "@/lib/settings";
-import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
+import { TABLES, ORG_ID, SETTINGS_KEYS, brandingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
-import { fetchMarketingSettings } from "@/lib/meta";
 import { SettingsProvider } from "@/hooks/useSettings";
 import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
 import type { BrandingSettings } from "@/types/settings";
+import type { MarketingSettings } from "@/types/marketing";
 import type { ReactNode } from "react";
 import "@/styles/event.css";
 
@@ -94,8 +94,19 @@ export default async function EventLayout({
   // Fetch active template in parallel (for Aurora detection)
   const templatePromise = getActiveTemplate();
 
-  // Fetch marketing settings for pixel injection (org-scoped when multi-tenant)
-  const marketingPromise = fetchMarketingSettings().catch(() => null);
+  // Fetch marketing settings for pixel injection — uses the same admin client
+  // as all other layout queries (not the separate anon-key fetch which was flaky)
+  const marketingPromise: Promise<MarketingSettings | null> = supabase
+    ? Promise.resolve(
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", SETTINGS_KEYS.MARKETING)
+          .single()
+      )
+        .then(({ data }) => (data?.data as MarketingSettings) || null)
+        .catch(() => null)
+    : Promise.resolve(null);
 
   // Wait for all in parallel
   const [settings, , branding, activeTemplate, marketing] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise, marketingPromise]);

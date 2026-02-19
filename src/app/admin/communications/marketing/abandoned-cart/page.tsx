@@ -546,25 +546,19 @@ function RecoveryFlow({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   EMAIL EDITOR — inline-editable email visual + iframe preview
+   EMAIL PREVIEW — live rendered iframe of the actual email
    ═══════════════════════════════════════════════════════════ */
-function EmailEditor({
+function EmailPreview({
   step,
   previewVersion,
-  branding,
-  onUpdate,
 }: {
   step: EmailStep | null;
   previewVersion: number;
-  branding: EmailBrandingState;
-  onUpdate: (id: string, updates: Partial<EmailStep>) => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState<"visual" | "preview">("visual");
 
-  // Build preview URL from step config + version counter for cache-busting
   const previewUrl = useMemo(() => {
     if (!step) return null;
     const params = new URLSearchParams();
@@ -591,286 +585,73 @@ function EmailEditor({
         <CardContent className="py-16 text-center">
           <Mail size={28} className="mx-auto text-muted-foreground/20" />
           <p className="mt-3 text-sm text-muted-foreground">
-            Select a step to edit the email
+            Select a step to preview the email
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const accentColor = branding.accent_color || "#ff0033";
-
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <CardHeader className="shrink-0 border-b border-border pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Pencil size={15} className="text-primary" />
-            Email Editor
+            <Mail size={15} className="text-primary" />
+            Email Preview
           </CardTitle>
-          <div className="flex items-center gap-3">
-            {/* Edit mode toggle */}
-            <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-              <button
-                type="button"
-                onClick={() => setEditMode("visual")}
-                className={`rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all ${
-                  editMode === "visual"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditMode("preview")}
-                className={`rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all ${
-                  editMode === "preview"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Preview
-              </button>
-            </div>
-            {/* Device toggle (preview only) */}
-            {editMode === "preview" && (
-              <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode("desktop")}
-                  className={`rounded-md px-2 py-1 transition-all ${
-                    previewMode === "desktop"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Monitor size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode("mobile")}
-                  className={`rounded-md px-2 py-1 transition-all ${
-                    previewMode === "mobile"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Smartphone size={13} />
-                </button>
-              </div>
-            )}
+          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              onClick={() => setPreviewMode("desktop")}
+              className={`rounded-md px-2 py-1 transition-all ${
+                previewMode === "desktop"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Monitor size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewMode("mobile")}
+              className={`rounded-md px-2 py-1 transition-all ${
+                previewMode === "mobile"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Smartphone size={13} />
+            </button>
           </div>
         </div>
       </CardHeader>
 
-      {editMode === "visual" ? (
-        /* ─── VISUAL EDITOR: looks like the real email, fields blend in ─── */
-        <CardContent className="flex-1 overflow-y-auto p-0">
-          <div className="mx-auto max-w-[520px]">
-            {/* Email client chrome — subject + preview */}
-            <div className="border-b border-border/50 bg-secondary/30 px-5 py-3">
-              <div className="space-y-1.5">
-                <div className="flex items-start gap-2">
-                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Sub</span>
-                  <input
-                    type="text"
-                    value={step.subject}
-                    onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
-                    className="w-full rounded bg-transparent px-1.5 py-0.5 text-[13px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground/30 hover:bg-white/5 focus:bg-white/5 focus:ring-1 focus:ring-primary/30"
-                    placeholder="Email subject line..."
-                  />
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Pre</span>
-                  <input
-                    type="text"
-                    value={step.preview_text}
-                    onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
-                    className="w-full rounded bg-transparent px-1.5 py-0.5 text-[12px] text-muted-foreground/50 outline-none transition-colors placeholder:text-muted-foreground/20 hover:bg-white/5 focus:bg-white/5 focus:ring-1 focus:ring-primary/30"
-                    placeholder="Inbox preview text..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Email body — looks like the actual rendered email */}
-            <div className="bg-[#f4f4f5] p-4">
-              <div className="overflow-hidden rounded-xl" style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.12)" }}>
-                {/* Dark hero block */}
-                <div style={{ backgroundColor: "#0e0e0e" }}>
-                  <div style={{ height: "4px", backgroundColor: accentColor }} />
-
-                  {/* Logo */}
-                  <div className="px-8 pt-8 text-center">
-                    {branding.logo_url ? (
-                      <img
-                        src={branding.logo_url}
-                        alt="Logo"
-                        style={{ height: 40, width: "auto", maxWidth: 200, display: "inline-block" }}
-                      />
-                    ) : (
-                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 700, letterSpacing: "4px", textTransform: "uppercase" as const, color: "#ffffff" }}>
-                        {branding.from_name || "YOUR BRAND"}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Editable greeting — invisible input, subtle hover */}
-                  <div className="px-7 pt-6 pb-1">
-                    <input
-                      type="text"
-                      value={step.greeting}
-                      onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
-                      className="w-full rounded bg-transparent px-1 py-1 text-center text-[20px] font-bold leading-tight text-white outline-none transition-colors placeholder:text-white/15 hover:bg-white/[0.04] focus:bg-white/[0.06] focus:ring-1 focus:ring-white/20"
-                      placeholder="Greeting headline..."
-                      style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
-                    />
-                  </div>
-
-                  {/* Editable body message */}
-                  <div className="px-7 pb-8">
-                    <textarea
-                      value={step.body_message}
-                      onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
-                      className="w-full resize-none rounded bg-transparent px-1 py-1 text-center text-[14px] leading-relaxed outline-none transition-colors placeholder:text-white/10 hover:bg-white/[0.04] focus:bg-white/[0.06] focus:ring-1 focus:ring-white/20"
-                      style={{ color: "#999999", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
-                      placeholder="Body message..."
-                      rows={2}
-                    />
-                  </div>
-                </div>
-
-                {/* White content area */}
-                <div style={{ backgroundColor: "#ffffff" }}>
-                  {/* Event card */}
-                  <div style={{ padding: "24px 28px 0" }}>
-                    <div style={{ backgroundColor: "#111111", borderRadius: "10px", padding: "18px 22px" }}>
-                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "2.5px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "10px" }}>
-                        EVENT
-                      </div>
-                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "17px", fontWeight: 700, color: "#ffffff", lineHeight: "1.3" }}>
-                        Midnight Rave — Vol. 3
-                      </div>
-                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", color: "#888888", marginTop: "6px", lineHeight: "1.5" }}>
-                        Saturday 15 March 2026<br />
-                        The Warehouse, London &middot; Doors 10:00 PM
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Order items */}
-                  <div style={{ padding: "20px 28px 0" }}>
-                    <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "2.5px", textTransform: "uppercase" as const, color: "#aaaaaa", marginBottom: "12px" }}>
-                      YOUR ORDER
-                    </div>
-                    <div style={{ borderTop: "1px solid #f0f0f0" }}>
-                      <div className="flex items-center justify-between" style={{ padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}>
-                        <div>
-                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 500, color: "#222" }}>Early Bird Ticket</div>
-                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#999", marginTop: "1px" }}>Qty: 2</div>
-                        </div>
-                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 600, color: "#333" }}>£50.00</span>
-                      </div>
-                      <div className="flex items-center justify-between" style={{ padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}>
-                        <div>
-                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 500, color: "#222" }}>VIP + Merch Bundle</div>
-                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#999", marginTop: "1px" }}>Qty: 1 &middot; Size M</div>
-                        </div>
-                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 600, color: "#333" }}>£55.00</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between" style={{ padding: "14px 0 0" }}>
-                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "14px", fontWeight: 600, color: "#111" }}>Total</span>
-                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "20px", fontWeight: 700, color: "#111" }}>£105.00</span>
-                    </div>
-                  </div>
-
-                  {/* Discount — compact, clean */}
-                  {step.include_discount && (
-                    <div style={{ padding: "20px 28px 0", textAlign: "center" as const }}>
-                      <div style={{ display: "inline-block", backgroundColor: "#111", borderRadius: "8px", padding: "12px 24px" }}>
-                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#888" }}>
-                          Use code{" "}
-                        </span>
-                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "15px", fontWeight: 800, color: accentColor, letterSpacing: "2px" }}>
-                          {step.discount_code || "CODE"}
-                        </span>
-                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#888" }}>
-                          {" "}for {step.discount_percent || 0}% off
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* CTA button */}
-                  <div style={{ padding: "24px 28px 28px", textAlign: "center" as const }}>
-                    <div
-                      style={{
-                        display: "inline-block",
-                        backgroundColor: accentColor,
-                        color: "#ffffff",
-                        fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                        fontSize: "13px",
-                        fontWeight: 700,
-                        letterSpacing: "1.5px",
-                        textTransform: "uppercase" as const,
-                        padding: "15px 48px",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      Complete Your Order
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div style={{ backgroundColor: "#fafafa", padding: "18px 28px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0" }}>
-                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#ccc" }}>
-                    {branding.from_name || "YOUR BRAND"}
-                  </div>
-                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#bbb", marginTop: "5px" }}>
-                    You&apos;re receiving this because you started checkout.
-                  </div>
-                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", color: "#ccc", marginTop: "4px", textDecoration: "underline" }}>
-                    Unsubscribe
-                  </div>
-                </div>
-              </div>
+      <CardContent className="relative flex-1 p-4" style={{ minHeight: "600px" }}>
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 size={18} className="animate-spin text-muted-foreground" />
+              <span className="text-[11px] text-muted-foreground">Rendering preview...</span>
             </div>
           </div>
-        </CardContent>
-      ) : (
-        /* ─── PREVIEW MODE: Rendered iframe — full height ─── */
-        <CardContent className="relative flex-1 p-4" style={{ minHeight: "600px" }}>
-          {loading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 size={18} className="animate-spin text-muted-foreground" />
-                <span className="text-[11px] text-muted-foreground">Rendering preview...</span>
-              </div>
-            </div>
+        )}
+        <div
+          className="mx-auto h-full overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
+          style={{ width: previewMode === "mobile" ? "375px" : "100%" }}
+        >
+          {previewUrl && (
+            <iframe
+              ref={iframeRef}
+              src={previewUrl}
+              title="Email Preview"
+              className="h-full w-full border-0"
+              sandbox="allow-same-origin"
+              onLoad={() => setLoading(false)}
+            />
           )}
-          <div
-            className="mx-auto h-full overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
-            style={{
-              width: previewMode === "mobile" ? "375px" : "100%",
-            }}
-          >
-            {previewUrl && (
-              <iframe
-                ref={iframeRef}
-                src={previewUrl}
-                title="Email Preview"
-                className="h-full w-full border-0"
-                sandbox="allow-same-origin"
-                onLoad={() => setLoading(false)}
-              />
-            )}
-          </div>
-        </CardContent>
-      )}
+        </div>
+      </CardContent>
     </Card>
   );
 }
@@ -1148,6 +929,61 @@ function StepSettings({
       </div>
 
       <CardContent className="space-y-4 p-4">
+        {/* ── CONTENT ── */}
+        <div>
+          <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Pencil size={10} />
+            Content
+          </Label>
+          <div className="mt-2 space-y-2.5">
+            <div>
+              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                Subject Line
+              </Label>
+              <Input
+                className="mt-1 text-xs"
+                value={step.subject}
+                onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
+                placeholder="Email subject..."
+              />
+            </div>
+            <div>
+              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                Preview Text
+              </Label>
+              <Input
+                className="mt-1 text-xs"
+                value={step.preview_text}
+                onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
+                placeholder="Inbox preview..."
+              />
+            </div>
+            <div>
+              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                Heading
+              </Label>
+              <Input
+                className="mt-1 text-xs"
+                value={step.greeting}
+                onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
+                placeholder="Greeting headline..."
+              />
+            </div>
+            <div>
+              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                Body Message
+              </Label>
+              <Textarea
+                className="mt-1 text-xs"
+                value={step.body_message}
+                onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
+                placeholder="Email body text..."
+                rows={2}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* ── TIMING ── */}
         <div>
           <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1816,11 +1652,9 @@ export default function AbandonedCartPage() {
         </div>
 
         <div className="xl:col-span-8" style={{ minHeight: "700px" }}>
-          <EmailEditor
+          <EmailPreview
             step={activeStep}
             previewVersion={previewVersion}
-            branding={branding}
-            onUpdate={handleUpdateStep}
           />
         </div>
       </div>

@@ -29,7 +29,7 @@ function isProtectedAdminPage(pathname: string): boolean {
  * Rep portal page routes that require rep authentication.
  * Public pages (login, join, invite) are excluded.
  */
-const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite", "/rep/verify-email"];
+const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite", "/rep/verify-email", "/rep/dev-access"];
 
 function isProtectedRepPage(pathname: string): boolean {
   if (!pathname.startsWith("/rep")) return false;
@@ -65,6 +65,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/verify-email",
   "/api/rep-portal/invite/",
   "/api/rep-portal/push-vapid-key",
+  "/api/rep-portal/dev-login/",
 ];
 
 const PUBLIC_API_EXACT_GETS = [

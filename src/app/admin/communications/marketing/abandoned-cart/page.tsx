@@ -61,9 +61,11 @@ interface EmailStep {
   preview_text: string;
   greeting: string;
   body_message: string;
+  cta_text: string;
   include_discount: boolean;
   discount_code: string;
   discount_percent: number;
+  discount_label: string;
   icon: typeof Send;
   color: string;
   glowColor: string;
@@ -95,9 +97,11 @@ const DEFAULT_STEPS: EmailStep[] = [
     preview_text: "Your tickets are still waiting for you",
     greeting: "Your order is on hold",
     body_message: "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.",
+    cta_text: "Complete Your Order",
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
+    discount_label: "Use code {{code}} for {{percent}}% off your order",
     icon: Send,
     color: "#8B5CF6",
     glowColor: "rgba(139,92,246,0.3)",
@@ -113,9 +117,11 @@ const DEFAULT_STEPS: EmailStep[] = [
     preview_text: "Your tickets are still available, but not for long",
     greeting: "Tickets are going fast",
     body_message: "The event you were looking at is selling quickly. Don\u2019t let someone else take your spot.",
+    cta_text: "Complete Your Order",
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
+    discount_label: "Use code {{code}} for {{percent}}% off your order",
     icon: Zap,
     color: "#f97316",
     glowColor: "rgba(249,115,22,0.3)",
@@ -131,9 +137,11 @@ const DEFAULT_STEPS: EmailStep[] = [
     preview_text: "This is your final reminder before your order expires",
     greeting: "This is your last chance",
     body_message: "Your order is about to expire. We\u2019ve saved a special offer just for you \u2014 use it before it\u2019s gone.",
+    cta_text: "Complete Your Order",
     include_discount: true,
     discount_code: "COMEBACK10",
     discount_percent: 10,
+    discount_label: "Use code {{code}} for {{percent}}% off your order",
     icon: Flame,
     color: "#ef4444",
     glowColor: "rgba(239,68,68,0.3)",
@@ -566,9 +574,11 @@ function EmailPreview({
     params.set("preview_text", step.preview_text);
     if (step.greeting) params.set("greeting", step.greeting);
     if (step.body_message) params.set("body_message", step.body_message);
+    if (step.cta_text) params.set("cta_text", step.cta_text);
     if (step.include_discount && step.discount_code) {
       params.set("discount_code", step.discount_code);
       params.set("discount_percent", String(step.discount_percent));
+      if (step.discount_label) params.set("discount_label", step.discount_label);
     }
     params.set("use_real_event", "1");
     params.set("t", String(previewVersion));
@@ -981,6 +991,17 @@ function StepSettings({
                 rows={2}
               />
             </div>
+            <div>
+              <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                Button Text
+              </Label>
+              <Input
+                className="mt-1 text-xs"
+                value={step.cta_text}
+                onChange={(e) => onUpdate(step.id, { cta_text: e.target.value })}
+                placeholder="Complete Your Order"
+              />
+            </div>
           </div>
         </div>
 
@@ -1099,6 +1120,20 @@ function StepSettings({
                     onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
                   />
                 </div>
+              </div>
+              <div>
+                <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                  Discount Copy
+                </Label>
+                <Input
+                  className="mt-1 text-xs"
+                  value={step.discount_label}
+                  onChange={(e) => onUpdate(step.id, { discount_label: e.target.value })}
+                  placeholder="Use code {{code}} for {{percent}}% off your order"
+                />
+                <p className="mt-1 text-[9px] text-muted-foreground/30">
+                  {"{{code}}"} and {"{{percent}}"} are replaced automatically
+                </p>
               </div>
 
               <CreateDiscountInline
@@ -1456,6 +1491,8 @@ export default function AbandonedCartPage() {
   // Auto-save automation settings with debounce
   const persistSettings = useCallback(async (newSettings: AutomationSettings) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    // Reset to idle so the next saved/error transition always fires the useEffect
+    setSaveStatus("idle");
 
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
@@ -1498,36 +1535,42 @@ export default function AbandonedCartPage() {
     });
   }, [persistBranding]);
 
-  // Toggle master automation
+  // Toggle master automation (functional update prevents stale closure)
   const handleToggleAutomation = useCallback((val: boolean) => {
-    const updated = { ...settings, enabled: val };
-    setSettings(updated);
-    persistSettings(updated);
-  }, [settings, persistSettings]);
+    setSettings((prev) => {
+      const updated = { ...prev, enabled: val };
+      persistSettings(updated);
+      return updated;
+    });
+  }, [persistSettings]);
 
-  // Toggle individual step
+  // Toggle individual step (functional update prevents stale closure)
   const handleToggleStep = useCallback((id: string) => {
-    const updated = {
-      ...settings,
-      steps: settings.steps.map((s) =>
-        s.id === id ? { ...s, enabled: !s.enabled } : s
-      ),
-    };
-    setSettings(updated);
-    persistSettings(updated);
-  }, [settings, persistSettings]);
+    setSettings((prev) => {
+      const updated = {
+        ...prev,
+        steps: prev.steps.map((s) =>
+          s.id === id ? { ...s, enabled: !s.enabled } : s
+        ),
+      };
+      persistSettings(updated);
+      return updated;
+    });
+  }, [persistSettings]);
 
-  // Update step fields
+  // Update step fields (functional update prevents stale closure)
   const handleUpdateStep = useCallback((id: string, updates: Partial<EmailStep>) => {
-    const updated = {
-      ...settings,
-      steps: settings.steps.map((s) =>
-        s.id === id ? { ...s, ...updates } : s
-      ),
-    };
-    setSettings(updated);
-    persistSettings(updated);
-  }, [settings, persistSettings]);
+    setSettings((prev) => {
+      const updated = {
+        ...prev,
+        steps: prev.steps.map((s) =>
+          s.id === id ? { ...s, ...updates } : s
+        ),
+      };
+      persistSettings(updated);
+      return updated;
+    });
+  }, [persistSettings]);
 
   const activeStep = settings.steps.find((s) => s.id === activeStepId) || null;
 

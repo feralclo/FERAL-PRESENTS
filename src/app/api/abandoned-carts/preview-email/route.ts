@@ -34,8 +34,10 @@ export async function GET(request: NextRequest) {
     const previewText = searchParams.get("preview_text") || "Your tickets are still waiting";
     const greeting = searchParams.get("greeting") || "";
     const bodyMessage = searchParams.get("body_message") || "";
+    const ctaText = searchParams.get("cta_text") || "";
     const discountCode = searchParams.get("discount_code") || "";
     const discountPercent = parseInt(searchParams.get("discount_percent") || "0", 10);
+    const discountLabel = searchParams.get("discount_label") || "";
     const useRealEvent = searchParams.get("use_real_event") === "1";
 
     // Load org email settings
@@ -153,6 +155,8 @@ export async function GET(request: NextRequest) {
       preview_text: previewText,
       greeting: greeting || undefined,
       body_message: bodyMessage || undefined,
+      cta_text: ctaText || undefined,
+      discount_label: discountLabel || undefined,
     });
 
     return new NextResponse(html, {

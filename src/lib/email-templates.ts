@@ -499,6 +499,8 @@ export function buildAbandonedCartRecoveryEmail(
     preview_text: string;
     greeting?: string;
     body_message?: string;
+    cta_text?: string;
+    discount_label?: string;
   },
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
@@ -525,6 +527,7 @@ export function buildAbandonedCartRecoveryEmail(
     ? stepConfig.greeting.replace(/\{\{name\}\}/g, cart.customer_first_name || "there")
     : defaultGreeting;
   const message = stepConfig.body_message || "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.";
+  const ctaText = stepConfig.cta_text || "Complete Your Order";
 
   // Event details line
   const eventDetails = [cart.event_date, cart.venue_name]
@@ -727,22 +730,30 @@ export function buildAbandonedCartRecoveryEmail(
                   </td>
                 </tr>
 
-                ${hasDiscount ? `
-                <!-- Discount Code — compact inline pill -->
+                ${hasDiscount ? (() => {
+                  const discountLabel = (stepConfig.discount_label || "Use code {{code}} for {{percent}}% off your order")
+                    .replace(/\{\{code\}\}/g, cart.discount_code!)
+                    .replace(/\{\{percent\}\}/g, String(cart.discount_percent));
+                  return `
+                <!-- Discount Code -->
                 <tr>
-                  <td style="padding: 20px 40px 0; text-align: center;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                  <td style="padding: 24px 40px 0; text-align: center;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
                       <tr>
-                        <td style="background-color: #111111; border-radius: 8px; padding: 12px 24px;">
-                          <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #888888;">Use code </span>
-                          <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 800; color: ${accent}; letter-spacing: 2px;">${escapeHtml(cart.discount_code!)}</span>
-                          <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #888888;"> for ${cart.discount_percent}% off</span>
+                        <td style="background-color: #111111; background-image: linear-gradient(135deg, #111111, #1a1a1a); border-radius: 10px; padding: 20px 24px; text-align: center;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #888888; margin-bottom: 12px;">
+                            ${escapeHtml(discountLabel)}
+                          </div>
+                          <div style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 800; color: ${accent}; letter-spacing: 4px; line-height: 1;">
+                            ${escapeHtml(cart.discount_code!)}
+                          </div>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
-                ` : ""}
+                `;
+                })() : ""}
 
                 <!-- CTA Button -->
                 <tr>
@@ -751,12 +762,12 @@ export function buildAbandonedCartRecoveryEmail(
                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:54px;v-text-anchor:middle;width:340px;" arcsize="16%" fill="t">
                       <v:fill type="tile" color="${accent}" />
                       <w:anchorlock/>
-                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:1.5px;">Complete Your Order</center>
+                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:1.5px;">${escapeHtml(ctaText)}</center>
                     </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-->
                     <a href="${escapeHtml(cart.recovery_url)}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; padding: 18px 52px; border-radius: 10px; mso-padding-alt: 0;">
-                      Complete Your Order
+                      ${escapeHtml(ctaText)}
                     </a>
                     <!--<![endif]-->
                   </td>
@@ -805,8 +816,8 @@ YOUR ORDER
 ${cartItemsText}
 ${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
 Total: ${cart.currency_symbol}${total.toFixed(2)}
-${hasDiscount ? `\nYour exclusive offer: ${cart.discount_code} — ${cart.discount_percent}% off your order\n` : ""}
-Complete your order: ${cart.recovery_url}
+${hasDiscount ? `\n${(stepConfig.discount_label || "Use code {{code}} for {{percent}}% off your order").replace(/\{\{code\}\}/g, cart.discount_code!).replace(/\{\{percent\}\}/g, String(cart.discount_percent))}\n${cart.discount_code}\n` : ""}
+${ctaText}: ${cart.recovery_url}
 
 ---
 ${s.footer_text || s.from_name}

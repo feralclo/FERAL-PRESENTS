@@ -31,7 +31,7 @@ export function MidnightLineup({
     if (!container) return;
 
     const pills = container.querySelectorAll<HTMLElement>(".midnight-lineup-pill");
-    const stagger = Math.min(160, 2400 / Math.max(pills.length, 1)); // slower, more elegant wave
+    const stagger = Math.min(200, 3000 / Math.max(pills.length, 1)); // unhurried wave
 
     pills.forEach((pill, i) => {
       pill.style.animationDelay = `${i * stagger}ms`;
@@ -40,7 +40,7 @@ export function MidnightLineup({
 
     // Trigger "tap to explore" hint glow partway through the cascade
     if (hintRef.current) {
-      const hintDelay = Math.min(pills.length * stagger * 0.6, 1600);
+      const hintDelay = Math.min(pills.length * stagger * 0.65, 2000);
       hintRef.current.style.animationDelay = `${hintDelay}ms`;
       hintRef.current.classList.add("lineup-hint-glow");
     }

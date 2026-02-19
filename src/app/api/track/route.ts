@@ -36,6 +36,7 @@ const POPUP_ALLOWED_FIELDS = new Set([
   "event_type",
   "page",
   "user_agent",
+  "email",
 ]);
 
 /**
@@ -87,6 +88,14 @@ export async function POST(request: NextRequest) {
         { error: "event_type is required" },
         { status: 400 }
       );
+    }
+
+    // Inject Vercel geo headers for popup events (only available on Vercel deployment)
+    if (isPopup) {
+      const city = request.headers.get("x-vercel-ip-city");
+      const country = request.headers.get("x-vercel-ip-country");
+      if (city) sanitized.city = decodeURIComponent(city);
+      if (country) sanitized.country = country;
     }
 
     const supabase = await getSupabaseAdmin();

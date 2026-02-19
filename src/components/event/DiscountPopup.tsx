@@ -2,28 +2,22 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { subscribeToKlaviyo, identifyInKlaviyo } from "@/lib/klaviyo";
-import { DISCOUNT_CODE, POPUP_DISMISS_DAYS, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { DISCOUNT_CODE, POPUP_DISMISS_DAYS } from "@/lib/constants";
 import "@/styles/popup.css";
 
 type Screen = "commitment" | "email" | "code";
 
-function trackPopupEvent(eventType: string, page: string) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return; // Env vars not configured
-  fetch(`${SUPABASE_URL}/rest/v1/popup_events`, {
+function trackPopupEvent(eventType: string, page: string, email?: string) {
+  fetch("/api/track", {
     method: "POST",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      table: "popup",
       event_type: eventType,
       page,
       user_agent: navigator.userAgent,
-      org_id: ORG_ID,
+      ...(email ? { email: email.toLowerCase().trim() } : {}),
     }),
-    cache: "no-store",
   }).catch(() => {});
 }
 
@@ -155,7 +149,7 @@ export function DiscountPopup({
       await subscribeToKlaviyo(email);
       identifyInKlaviyo(email);
 
-      trackPopupEvent("conversions", page);
+      trackPopupEvent("conversions", page, email.trim());
 
       // Store code expiry (24h)
       try {

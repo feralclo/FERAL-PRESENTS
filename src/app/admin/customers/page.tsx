@@ -25,6 +25,7 @@ import {
   Crown,
   Music,
   Sparkles,
+  ArrowUpDown,
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
 import type { Customer } from "@/types/orders";
@@ -60,6 +61,31 @@ function getCustomerTier(totalSpent: number, totalOrders: number): {
   return { label: "New Fan", variant: "secondary", color: "#60a5fa", icon: Sparkles };
 }
 
+type SortOption = "newest" | "most_spent" | "most_orders" | "oldest";
+type PeriodOption = "all" | "7d" | "30d" | "90d";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "newest", label: "Newest First" },
+  { value: "most_spent", label: "Most Spent" },
+  { value: "most_orders", label: "Most Orders" },
+  { value: "oldest", label: "Oldest First" },
+];
+
+const PERIOD_OPTIONS: { value: PeriodOption; label: string }[] = [
+  { value: "all", label: "All Time" },
+  { value: "7d", label: "This Week" },
+  { value: "30d", label: "This Month" },
+  { value: "90d", label: "Last 3 Months" },
+];
+
+function getPeriodDate(period: PeriodOption): string | null {
+  if (period === "all") return null;
+  const now = new Date();
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+  now.setDate(now.getDate() - days);
+  return now.toISOString();
+}
+
 /* ════════════════════════════════════════════════════════
    CUSTOMERS PAGE
    ════════════════════════════════════════════════════════ */
@@ -70,6 +96,8 @@ export default function CustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [total, setTotal] = useState(0);
+  const [sort, setSort] = useState<SortOption>("newest");
+  const [period, setPeriod] = useState<PeriodOption>("all");
 
   // Derived stats
   const totalRevenue = customers.reduce((s, c) => s + Number(c.total_spent), 0);
@@ -79,8 +107,10 @@ export default function CustomersPage() {
   const loadCustomers = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const params = new URLSearchParams({ limit: "100" });
+    const params = new URLSearchParams({ limit: "100", sort });
     if (search) params.set("search", search);
+    const since = getPeriodDate(period);
+    if (since) params.set("since", since);
 
     try {
       const res = await fetch(`/api/customers?${params}`);
@@ -100,7 +130,7 @@ export default function CustomersPage() {
       setError(`Network error: ${e instanceof Error ? e.message : "Failed to fetch customers"}`);
     }
     setLoading(false);
-  }, [search]);
+  }, [search, sort, period]);
 
   useEffect(() => {
     const debounce = setTimeout(loadCustomers, 300);
@@ -145,9 +175,10 @@ export default function CustomersPage() {
         />
       </div>
 
-      {/* Search */}
-      <div className="mt-6">
-        <div className="relative">
+      {/* Search + Filters */}
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Search */}
+        <div className="relative flex-1">
           <Search
             size={14}
             className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground"
@@ -158,6 +189,43 @@ export default function CustomersPage() {
             placeholder="Search by name, email, or phone..."
             className="pl-9"
           />
+        </div>
+
+        {/* Sort Dropdown */}
+        <div className="relative">
+          <ArrowUpDown
+            size={13}
+            className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortOption)}
+            className="h-9 appearance-none rounded-md border border-border bg-card pl-9 pr-8 font-mono text-xs text-foreground outline-none focus:border-primary/50 transition-colors cursor-pointer"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Period Pills */}
+        <div className="flex rounded-lg border border-border bg-card p-0.5">
+          {PERIOD_OPTIONS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => setPeriod(p.value)}
+              className={`rounded-md px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-all ${
+                period === p.value
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
       </div>
 

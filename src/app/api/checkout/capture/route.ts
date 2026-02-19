@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Read Vercel geo headers (only available on Vercel deployment)
+    const geoCity = request.headers.get("x-vercel-ip-city");
+    const geoCountry = request.headers.get("x-vercel-ip-country");
+
     // ── 1. Upsert customer ──
     // Check if customer already exists by email
     const { data: existing } = await supabase
@@ -93,6 +97,8 @@ export async function POST(request: NextRequest) {
           source: "checkout",
           total_orders: 0,
           total_spent: 0,
+          city: geoCity ? decodeURIComponent(geoCity) : null,
+          country: geoCountry || null,
         })
         .select("id")
         .single();

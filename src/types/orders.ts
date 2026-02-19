@@ -98,6 +98,8 @@ export interface Customer {
   last_order_at?: string;
   source?: string;
   notes?: string;
+  city?: string;
+  country?: string;
   created_at: string;
   updated_at: string;
 }

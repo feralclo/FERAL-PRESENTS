@@ -17,6 +17,10 @@ import {
   Settings,
   Trash2,
   AlertTriangle,
+  Flame,
+  Trophy,
+  Target,
+  Loader2,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -31,7 +35,28 @@ interface RecentEvent {
   id: string;
   event_type: string;
   page: string;
+  city?: string | null;
+  country?: string | null;
   timestamp: string;
+}
+
+interface Lead {
+  id: string;
+  email: string;
+  city: string | null;
+  country: string | null;
+  timestamp: string;
+  event_name: string | null;
+  customer: { id: string; total_orders: number; total_spent: number } | null;
+}
+
+interface LeadsData {
+  leads: Lead[];
+  total: number;
+  total_captures: number;
+  streak: number;
+  page: number;
+  limit: number;
 }
 
 type Period = "today" | "7d" | "30d" | "all";
@@ -43,6 +68,13 @@ const EVENT_COLORS: Record<string, string> = {
   engaged: "#38BDF8",
   conversions: "#34D399",
   dismissed: "#71717a",
+};
+
+const EVENT_ICONS: Record<string, typeof Eye> = {
+  impressions: Eye,
+  engaged: MousePointerClick,
+  conversions: CheckCircle2,
+  dismissed: XCircle,
 };
 
 /* ── Helpers ── */
@@ -70,6 +102,19 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+function countryFlag(code: string | null): string {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(
+    ...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
+  );
+}
+
+function isToday(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.toDateString() === now.toDateString();
+}
+
 function getThreshold(rate: number, type: "engagement" | "conversion" | "dismiss"): {
   label: string;
   color: string;
@@ -88,6 +133,55 @@ function getThreshold(rate: number, type: "engagement" | "conversion" | "dismiss
   if (rate > 15) return { label: "Excellent", color: "#34D399" };
   if (rate > 5) return { label: "Good", color: "#FBBF24" };
   return { label: "Needs work", color: "#F43F5E" };
+}
+
+function getMilestone(count: number): number | null {
+  const milestones = [50, 100, 250, 500, 1000, 2500, 5000];
+  for (const m of milestones) {
+    if (count >= m - 5 && count <= m + 2) return m;
+  }
+  return null;
+}
+
+function resolveEventName(page: string, slugMap: Record<string, string>): string {
+  const match = page?.match(/\/event\/([^/]+)/);
+  if (!match) return page || "—";
+  return slugMap[match[1]] || match[1];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANIMATED COUNT-UP
+   ═══════════════════════════════════════════════════════════ */
+function AnimatedCounter({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (value === 0) { setDisplay(0); return; }
+    const start = display;
+    const diff = value - start;
+    if (diff === 0) return;
+    const duration = 800;
+    const startTime = performance.now();
+
+    function tick(now: number) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(start + diff * eased));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+    // Only animate when value changes, not display
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return <>{display.toLocaleString()}</>;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -161,12 +255,68 @@ export default function PopupAnalytics() {
   const [resetting, setResetting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
+  // Leads state
+  const [leadsData, setLeadsData] = useState<LeadsData | null>(null);
+  const [leadsLoading, setLeadsLoading] = useState(true);
+  const [leadsPage, setLeadsPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Slug→name map for activity feed
+  const [slugMap, setSlugMap] = useState<Record<string, string>>({});
+
   // Load popup active status
   useEffect(() => {
     fetch(`/api/settings?key=${SETTINGS_KEYS.POPUP}`)
       .then((r) => r.json())
       .then((json) => setPopupActive(json?.data?.enabled ?? false))
       .catch(() => setPopupActive(false));
+  }, []);
+
+  // Load slug→name map for activity feed (once on mount)
+  useEffect(() => {
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.data) {
+          const map: Record<string, string> = {};
+          for (const e of json.data) {
+            if (e.slug && e.name) map[e.slug] = e.name;
+          }
+          setSlugMap(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Load leads
+  const loadLeads = useCallback(async (page = 1, append = false) => {
+    if (page === 1) setLeadsLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const res = await fetch(`/api/popup/leads?page=${page}&limit=20`);
+      const json: LeadsData = await res.json();
+
+      if (append && leadsData) {
+        setLeadsData({
+          ...json,
+          leads: [...leadsData.leads, ...json.leads],
+        });
+      } else {
+        setLeadsData(json);
+      }
+      setLeadsPage(page);
+    } catch {
+      // Silently fail — leads section shows empty state
+    }
+
+    setLeadsLoading(false);
+    setLoadingMore(false);
+  }, [leadsData]);
+
+  useEffect(() => {
+    loadLeads(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Data loader — runs queries in parallel
@@ -185,10 +335,10 @@ export default function PopupAnalytics() {
       return q;
     });
 
-    // Also fetch recent events
+    // Also fetch recent events (with new city/country columns)
     let recentQuery = supabase
       .from(TABLES.POPUP_EVENTS)
-      .select("id, event_type, page, timestamp")
+      .select("id, event_type, page, city, country, timestamp")
       .order("timestamp", { ascending: false })
       .limit(20);
     if (periodStart) recentQuery = recentQuery.gte("timestamp", periodStart);
@@ -230,15 +380,44 @@ export default function PopupAnalytics() {
           if (POPUP_TYPES.includes(type as typeof POPUP_TYPES[number])) {
             setStats((prev) => ({ ...prev, [type]: prev[type as keyof PopupStats] + 1 }));
             // Prepend to recent events
-            setRecentEvents((prev) => [
-              {
+            const newEvent: RecentEvent = {
+              id: payload.new.id as string,
+              event_type: type,
+              page: (payload.new.page as string) || "",
+              city: (payload.new.city as string) || null,
+              country: (payload.new.country as string) || null,
+              timestamp: (payload.new.timestamp as string) || new Date().toISOString(),
+            };
+            setRecentEvents((prev) => [newEvent, ...prev.slice(0, 19)]);
+
+            // If it's a conversion with email, prepend to leads
+            if (type === "conversions" && payload.new.email) {
+              const newLead: Lead = {
                 id: payload.new.id as string,
-                event_type: type,
-                page: (payload.new.page as string) || "",
+                email: payload.new.email as string,
+                city: (payload.new.city as string) || null,
+                country: (payload.new.country as string) || null,
                 timestamp: (payload.new.timestamp as string) || new Date().toISOString(),
-              },
-              ...prev.slice(0, 19),
-            ]);
+                event_name: null, // Will be resolved from slug map on render
+                customer: null,
+              };
+              setLeadsData((prev) => {
+                if (!prev) return {
+                  leads: [newLead],
+                  total: 1,
+                  total_captures: 1,
+                  streak: 0,
+                  page: 1,
+                  limit: 20,
+                };
+                return {
+                  ...prev,
+                  leads: [newLead, ...prev.leads],
+                  total: prev.total + 1,
+                  total_captures: prev.total_captures + 1,
+                };
+              });
+            }
           }
         }
       )
@@ -262,6 +441,7 @@ export default function PopupAnalytics() {
 
     setStats({ impressions: 0, engaged: 0, dismissed: 0, conversions: 0 });
     setRecentEvents([]);
+    setLeadsData(null);
     setResetConfirm("");
     setResetting(false);
   };
@@ -283,6 +463,9 @@ export default function PopupAnalytics() {
     { value: "30d", label: "30 Days" },
     { value: "all", label: "All Time" },
   ];
+
+  const milestone = leadsData ? getMilestone(leadsData.total_captures) : null;
+  const hasMore = leadsData ? leadsData.leads.length < leadsData.total : false;
 
   return (
     <div className="space-y-6">
@@ -370,6 +553,142 @@ export default function PopupAnalytics() {
         />
       </div>
 
+      {/* ★ Captured Leads Section */}
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-sm">Captured Leads</CardTitle>
+              {leadsData && (
+                <span className="font-mono text-lg font-bold tabular-nums text-primary">
+                  <AnimatedCounter value={leadsData.total_captures} />
+                </span>
+              )}
+              {leadsData && leadsData.streak >= 2 && (
+                <Badge variant="warning" className="gap-1 text-[10px] font-bold">
+                  <Flame size={11} />
+                  {leadsData.streak} day streak
+                </Badge>
+              )}
+              {milestone && (
+                <Badge className="gap-1 text-[10px] font-bold bg-warning/10 text-warning border-warning/20">
+                  <Trophy size={11} />
+                  {milestone}th capture!
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          {leadsLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+              <p className="mt-2 text-xs text-muted-foreground">Loading leads...</p>
+            </div>
+          ) : !leadsData || leadsData.leads.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Target size={24} className="text-muted-foreground/20" />
+              <p className="mt-2 text-xs text-muted-foreground">No captures yet</p>
+              <p className="mt-1 text-[10px] text-muted-foreground/60">
+                Popup conversions with emails will appear here
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="divide-y divide-border">
+                {leadsData.leads.map((lead, i) => {
+                  const isNew = isToday(lead.timestamp);
+                  const isFirst = i === 0;
+                  // Resolve event name from slugMap if not provided by API
+                  const eventName = lead.event_name || (lead.email && resolveEventName(
+                    // Extract page from the lead's context — for realtime leads we don't have page
+                    "", slugMap
+                  )) || null;
+                  const flag = countryFlag(lead.country);
+                  const initials = lead.email.slice(0, 2).toUpperCase();
+
+                  return (
+                    <div
+                      key={lead.id}
+                      className={`flex items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20 ${
+                        isFirst ? "border-l-2 border-l-primary animate-pulse" : ""
+                      }`}
+                    >
+                      {/* Avatar */}
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[10px] font-bold text-primary">
+                        {initials}
+                      </span>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {lead.email}
+                          </span>
+                          {isNew && (
+                            <Badge variant="success" className="text-[9px] font-bold px-1.5 py-0">
+                              New!
+                            </Badge>
+                          )}
+                          {lead.customer && lead.customer.total_orders > 0 && (
+                            <Link
+                              href={`/admin/customers/${lead.customer.id}/`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Badge
+                                variant={lead.customer.total_orders >= 5 ? "warning" : "secondary"}
+                                className="text-[9px] font-bold cursor-pointer hover:opacity-80 transition-opacity"
+                              >
+                                {lead.customer.total_orders} order{lead.customer.total_orders !== 1 ? "s" : ""}
+                              </Badge>
+                            </Link>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {eventName && (
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {eventName}
+                            </span>
+                          )}
+                          {(lead.city || lead.country) && (
+                            <span className="text-[11px] text-muted-foreground/60">
+                              {eventName ? "·" : ""} {flag} {lead.city || ""}{lead.city && lead.country ? ", " : ""}{lead.country || ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Timestamp */}
+                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">
+                        {timeAgo(lead.timestamp)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Load More */}
+              {hasMore && (
+                <div className="flex justify-center py-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadLeads(leadsPage + 1, true)}
+                    disabled={loadingMore}
+                    className="gap-1.5 text-xs"
+                  >
+                    {loadingMore ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : null}
+                    Load More
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Funnel + Gauges */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Conversion Funnel */}
@@ -430,7 +749,7 @@ export default function PopupAnalytics() {
         </div>
       </div>
 
-      {/* Recent Activity Feed */}
+      {/* Recent Activity Feed — Enhanced */}
       <Card className="py-0 gap-0">
         <CardHeader className="px-6 pt-5 pb-4">
           <CardTitle className="text-sm">Recent Activity</CardTitle>
@@ -445,26 +764,43 @@ export default function PopupAnalytics() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {recentEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
-                >
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: EVENT_COLORS[event.event_type] || "#71717a" }}
-                  />
-                  <span className="text-[12px] font-medium capitalize text-foreground w-24 shrink-0">
-                    {event.event_type}
-                  </span>
-                  <span className="flex-1 truncate text-[11px] text-muted-foreground font-mono">
-                    {event.page || "—"}
-                  </span>
-                  <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">
-                    {timeAgo(event.timestamp)}
-                  </span>
-                </div>
-              ))}
+              {recentEvents.map((event) => {
+                const IconComponent = EVENT_ICONS[event.event_type] || Eye;
+                const color = EVENT_COLORS[event.event_type] || "#71717a";
+                const eventName = resolveEventName(event.page, slugMap);
+                const flag = countryFlag(event.country || null);
+
+                return (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
+                  >
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: `${color}15` }}
+                    >
+                      <IconComponent size={12} style={{ color }} />
+                    </span>
+                    <span
+                      className="text-[12px] font-medium capitalize w-24 shrink-0"
+                      style={{ color }}
+                    >
+                      {event.event_type}
+                    </span>
+                    <span className="flex-1 truncate text-[11px] text-muted-foreground">
+                      {eventName}
+                    </span>
+                    {(event.city || event.country) && (
+                      <span className="shrink-0 text-[11px] text-muted-foreground/60">
+                        {flag} {event.city || event.country || ""}
+                      </span>
+                    )}
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">
+                      {timeAgo(event.timestamp)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

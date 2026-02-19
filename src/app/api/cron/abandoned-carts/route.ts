@@ -31,6 +31,11 @@ const DEFAULT_SETTINGS: AutomationSettings = {
 /** 7 days in minutes */
 const EXPIRY_MINUTES = 7 * 24 * 60;
 
+/** Grace period before a cart is considered truly abandoned (minutes).
+ *  Carts stay "pending" during this window — if the customer completes
+ *  checkout the pending row is simply deleted and never counts as abandoned. */
+const PENDING_GRACE_MINUTES = 15;
+
 /** Max carts to process per run (prevent timeout) */
 const BATCH_LIMIT = 100;
 
@@ -91,6 +96,7 @@ export async function GET(request: NextRequest) {
   }
 
   const summary = {
+    promoted: 0,
     expired: 0,
     processed: 0,
     sent: 0,
@@ -100,22 +106,29 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    // ── 2. Load automation settings ──
-    const { data: settingsRow } = await supabase
-      .from(TABLES.SITE_SETTINGS)
-      .select("data")
-      .eq("key", abandonedCartAutomationKey(ORG_ID))
-      .single();
+    // ── 2. Promote + expire carts (always runs, even if email automation is off) ──
 
-    const settings: AutomationSettings = settingsRow?.data
-      ? { ...DEFAULT_SETTINGS, ...(settingsRow.data as Partial<AutomationSettings>) }
-      : DEFAULT_SETTINGS;
+    // 2a. Promote "pending" carts → "abandoned" after grace period
+    // Carts start as "pending" when the customer enters their email at checkout.
+    // If they don't complete purchase within the grace period, they become truly abandoned.
+    const pendingThreshold = new Date(
+      Date.now() - PENDING_GRACE_MINUTES * 60 * 1000,
+    ).toISOString();
 
-    if (!settings.enabled || settings.steps.length === 0) {
-      return NextResponse.json({ status: "skipped", reason: "automation disabled" });
-    }
+    const { data: promotedCarts } = await supabase
+      .from(TABLES.ABANDONED_CARTS)
+      .update({
+        status: "abandoned",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("org_id", ORG_ID)
+      .eq("status", "pending")
+      .lt("created_at", pendingThreshold)
+      .select("id");
 
-    // ── 3. Expire stale carts (>7 days old, still abandoned) ──
+    summary.promoted = promotedCarts?.length ?? 0;
+
+    // 2b. Expire stale carts (>7 days old, still abandoned)
     const expiryThreshold = new Date(
       Date.now() - EXPIRY_MINUTES * 60 * 1000,
     ).toISOString();
@@ -132,6 +145,26 @@ export async function GET(request: NextRequest) {
       .select("id");
 
     summary.expired = expiredCarts?.length ?? 0;
+
+    // ── 3. Load automation settings (email sending only) ──
+    const { data: settingsRow } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", abandonedCartAutomationKey(ORG_ID))
+      .single();
+
+    const settings: AutomationSettings = settingsRow?.data
+      ? { ...DEFAULT_SETTINGS, ...(settingsRow.data as Partial<AutomationSettings>) }
+      : DEFAULT_SETTINGS;
+
+    if (!settings.enabled || settings.steps.length === 0) {
+      return NextResponse.json({
+        status: "ok",
+        reason: "email automation disabled — promotions and expiry still ran",
+        promoted: summary.promoted,
+        expired: summary.expired,
+      });
+    }
 
     // ── 4. Collect unsubscribed emails (carts with unsubscribed_at set) ──
     const unsubscribedEmails = new Set<string>();

@@ -37,25 +37,35 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Read Vercel geo headers (only available on Vercel deployment)
+    const geoCity = request.headers.get("x-vercel-ip-city");
+    const geoCountry = request.headers.get("x-vercel-ip-country");
+
     // Check if customer already exists
     const { data: existing } = await supabase
       .from(TABLES.CUSTOMERS)
-      .select("id")
+      .select("id, city")
       .eq("org_id", ORG_ID)
       .eq("email", normalizedEmail)
       .single();
 
     if (existing) {
-      // Existing customer — update timestamp only (don't overwrite source)
+      // Existing customer — update timestamp + backfill geo if missing
+      const updates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (!existing.city && geoCity) updates.city = decodeURIComponent(geoCity);
+      if (!existing.city && geoCountry) updates.country = geoCountry;
+
       await supabase
         .from(TABLES.CUSTOMERS)
-        .update({ updated_at: new Date().toISOString() })
+        .update(updates)
         .eq("id", existing.id);
 
       return NextResponse.json({ customer_id: existing.id, created: false });
     }
 
-    // New customer — create with popup source attribution
+    // New customer — create with popup source attribution + geo
     const nickname = generateNickname(normalizedEmail);
     const { data: newCustomer, error: custErr } = await supabase
       .from(TABLES.CUSTOMERS)
@@ -66,6 +76,8 @@ export async function POST(request: NextRequest) {
         source: "popup",
         total_orders: 0,
         total_spent: 0,
+        city: geoCity ? decodeURIComponent(geoCity) : null,
+        country: geoCountry || null,
       })
       .select("id")
       .single();

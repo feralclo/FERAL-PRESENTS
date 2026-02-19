@@ -100,6 +100,8 @@ export async function POST(request: NextRequest) {
         discount_percent: step_config.discount_percent || undefined,
         cta_text: step_config.cta_text || undefined,
         discount_label: step_config.discount_label || undefined,
+        greeting: step_config.greeting || undefined,
+        body_message: step_config.body_message || undefined,
       },
     });
 

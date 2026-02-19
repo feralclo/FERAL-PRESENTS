@@ -137,7 +137,7 @@ const DEFAULT_STEPS: EmailStep[] = [
     subject: "Last chance \u2014 your order expires soon",
     preview_text: "This is your final reminder before your order expires",
     greeting: "This is your last chance",
-    body_message: "Your order is about to expire. We\u2019ve saved a special offer just for you \u2014 use it before it\u2019s gone.",
+    body_message: "Your order is about to expire. We\u2019ve applied a special discount just for you \u2014 tap below to save.",
     cta_text: "Complete Your Order",
     include_discount: true,
     discount_code: "COMEBACK10",
@@ -1335,6 +1335,8 @@ function SendTestEmail({ step }: { step: EmailStep }) {
           step_config: {
             subject: step.subject,
             preview_text: step.preview_text,
+            greeting: step.greeting || undefined,
+            body_message: step.body_message || undefined,
             include_discount: step.include_discount,
             discount_code: step.discount_code || undefined,
             discount_percent: step.discount_percent || undefined,

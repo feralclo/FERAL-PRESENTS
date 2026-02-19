@@ -520,13 +520,28 @@ export function buildAbandonedCartRecoveryEmail(
   }
 
   const subject = stepConfig.subject;
+
+  // Template variable replacement for tenant-configurable text
+  const hasDiscount = !!cart.discount_code && (cart.discount_percent || 0) > 0;
+  function replaceVars(text: string): string {
+    let result = text
+      .replace(/\{\{?name\}?\}/g, cart.customer_first_name || "there")
+      .replace(/\{\{?first_?name\}?\}/g, cart.customer_first_name || "there");
+    if (hasDiscount) {
+      result = result
+        .replace(/\{\{?code\}?\}/g, cart.discount_code || "")
+        .replace(/\{\{?percent\}?\}/g, String(cart.discount_percent || ""));
+    }
+    return result;
+  }
+
   const defaultGreeting = cart.customer_first_name
     ? `${cart.customer_first_name}, your order is on hold`
     : "Your order is on hold";
   const greeting = stepConfig.greeting
-    ? stepConfig.greeting.replace(/\{\{name\}\}/g, cart.customer_first_name || "there")
+    ? replaceVars(stepConfig.greeting)
     : defaultGreeting;
-  const message = stepConfig.body_message || "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.";
+  const message = replaceVars(stepConfig.body_message || "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.");
   const ctaText = stepConfig.cta_text || "Complete Your Order";
 
   // Event details line
@@ -537,7 +552,6 @@ export function buildAbandonedCartRecoveryEmail(
 
   // Cart totals
   const subtotalNum = parseFloat(cart.subtotal);
-  const hasDiscount = !!cart.discount_code && (cart.discount_percent || 0) > 0;
   const discountAmt = hasDiscount ? subtotalNum * ((cart.discount_percent || 0) / 100) : 0;
   const total = subtotalNum - discountAmt;
 
@@ -730,31 +744,25 @@ export function buildAbandonedCartRecoveryEmail(
                   </td>
                 </tr>
 
-                ${hasDiscount ? (() => {
-                  const discountLabel = stepConfig.discount_label || "Your exclusive offer";
-                  return `
-                <!-- Discount Code -->
+                ${hasDiscount ? `
+                <!-- Discount Applied Banner -->
                 <tr>
-                  <td style="padding: 28px 40px 0; text-align: center;">
-                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaaaaa; margin-bottom: 16px;">
-                      ${escapeHtml(discountLabel)}
-                    </div>
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                  <td style="padding: 24px 40px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
                       <tr>
-                        <td style="border: 2px dashed ${accent}40; border-radius: 8px; padding: 14px 32px; text-align: center;">
-                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 20px; font-weight: 800; color: ${accent}; letter-spacing: 3px; line-height: 1;">
-                            ${escapeHtml(cart.discount_code!)}
+                        <td style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 18px 24px; text-align: center;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #166534; line-height: 1.3;">
+                            &#10003; ${cart.discount_percent}% off &mdash; discount automatically applied
+                          </div>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #4ade80; margin-top: 6px; letter-spacing: 0.5px;">
+                            Code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> &middot; saving you ${cart.currency_symbol}${discountAmt.toFixed(2)}
                           </div>
                         </td>
                       </tr>
                     </table>
-                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #666666; margin-top: 10px;">
-                      ${cart.discount_percent}% off your order
-                    </div>
                   </td>
                 </tr>
-                `;
-                })() : ""}
+                ` : ""}
 
                 <!-- CTA Button -->
                 <tr>
@@ -817,7 +825,7 @@ YOUR ORDER
 ${cartItemsText}
 ${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
 Total: ${cart.currency_symbol}${total.toFixed(2)}
-${hasDiscount ? `\n${stepConfig.discount_label || "Your exclusive offer"}\n${cart.discount_code} — ${cart.discount_percent}% off your order\n` : ""}
+${hasDiscount ? `\n✓ ${cart.discount_percent}% off — discount automatically applied (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n` : ""}
 ${ctaText}: ${cart.recovery_url}
 
 ---

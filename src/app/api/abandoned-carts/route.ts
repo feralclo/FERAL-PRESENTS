@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       query = query.eq("status", status);
+    } else {
+      // Default: exclude "pending" carts (active checkouts, not yet abandoned)
+      query = query.neq("status", "pending");
     }
 
     if (eventId) {
@@ -68,11 +71,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Also fetch aggregate stats (include notification_count for pipeline breakdown)
+    // Also fetch aggregate stats (exclude "pending" — those are active checkouts, not abandoned)
     const { data: allCarts } = await supabase
       .from(TABLES.ABANDONED_CARTS)
       .select("status, subtotal, notification_count")
-      .eq("org_id", ORG_ID);
+      .eq("org_id", ORG_ID)
+      .neq("status", "pending");
 
     type CartRow = { status: string; subtotal: number; notification_count: number };
 

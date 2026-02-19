@@ -668,41 +668,37 @@ function EmailEditor({
       {editMode === "visual" ? (
         /* ─── VISUAL EDITOR: Styled email representation with editable fields ─── */
         <CardContent className="flex-1 overflow-y-auto p-0">
-          {/* Editable hint banner */}
-          <div className="flex items-center gap-2 border-b border-primary/10 bg-primary/5 px-4 py-2">
-            <Pencil size={11} className="shrink-0 text-primary/60" />
-            <p className="text-[11px] text-primary/70">
-              Click any <span className="font-semibold">highlighted field</span> to edit. Changes save automatically.
+          {/* Subtle hint */}
+          <div className="flex items-center gap-2 border-b border-primary/10 bg-primary/5 px-4 py-1.5">
+            <Pencil size={10} className="shrink-0 text-primary/50" />
+            <p className="text-[10px] text-primary/60">
+              Hover over <span className="font-semibold text-primary/80">purple-bordered fields</span> to edit
             </p>
           </div>
 
           <div className="mx-auto max-w-[520px]">
-            {/* Email client chrome — subject + preview editable */}
+            {/* Email client chrome — subject + preview */}
             <div className="border-b border-border/50 bg-secondary/30 px-5 py-3">
-              <div className="space-y-2">
-                <div className="group/field flex items-start gap-2">
-                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Subject</span>
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={step.subject}
-                      onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
-                      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-[13px] font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/40 hover:border-primary/20 hover:bg-primary/5 focus:border-primary/40 focus:bg-primary/5"
-                      placeholder="Email subject line..."
-                    />
-                  </div>
+              <div className="space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Subject</span>
+                  <input
+                    type="text"
+                    value={step.subject}
+                    onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
+                    className="w-full rounded-md border-l-2 border-y-0 border-r-0 border-primary/25 bg-transparent px-2.5 py-1 text-[13px] font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/40 hover:border-l-2 hover:border-primary/60 hover:bg-primary/5 focus:border-l-2 focus:border-primary focus:bg-primary/5"
+                    placeholder="Email subject line..."
+                  />
                 </div>
-                <div className="group/field flex items-start gap-2">
-                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview</span>
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={step.preview_text}
-                      onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
-                      className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-[12px] text-muted-foreground/60 outline-none transition-all placeholder:text-muted-foreground/30 hover:border-primary/20 hover:bg-primary/5 focus:border-primary/40 focus:bg-primary/5"
-                      placeholder="Inbox preview text..."
-                    />
-                  </div>
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Preview</span>
+                  <input
+                    type="text"
+                    value={step.preview_text}
+                    onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
+                    className="w-full rounded-md border-l-2 border-y-0 border-r-0 border-primary/25 bg-transparent px-2.5 py-1 text-[12px] text-muted-foreground/60 outline-none transition-all placeholder:text-muted-foreground/30 hover:border-l-2 hover:border-primary/60 hover:bg-primary/5 focus:border-l-2 focus:border-primary focus:bg-primary/5"
+                    placeholder="Inbox preview text..."
+                  />
                 </div>
               </div>
             </div>
@@ -711,7 +707,7 @@ function EmailEditor({
             <div className="bg-[#f4f4f5] p-4">
               <div className="overflow-hidden rounded-xl" style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.12)" }}>
                 {/* Dark hero block */}
-                <div style={{ backgroundColor: "#0e0e0e", padding: "0" }}>
+                <div style={{ backgroundColor: "#0e0e0e" }}>
                   {/* Accent bar */}
                   <div style={{ height: "4px", backgroundColor: accentColor }} />
 
@@ -730,24 +726,24 @@ function EmailEditor({
                     )}
                   </div>
 
-                  {/* Editable greeting — clear hover/focus affordance */}
-                  <div className="px-6 pt-6 pb-1">
+                  {/* Editable greeting — purple left border affordance */}
+                  <div className="px-5 pt-6 pb-1">
                     <input
                       type="text"
                       value={step.greeting}
                       onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
-                      className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-center text-[20px] font-bold leading-tight text-white outline-none transition-all placeholder:text-white/20 hover:border-white/15 hover:bg-white/5 focus:border-primary/50 focus:bg-white/5"
+                      className="w-full rounded-md border-l-2 border-y-0 border-r-0 border-primary/30 bg-transparent px-3 py-1.5 text-center text-[20px] font-bold leading-tight text-white outline-none transition-all placeholder:text-white/20 hover:border-primary/70 hover:bg-white/5 focus:border-primary focus:bg-white/5"
                       placeholder="Greeting headline..."
                       style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
                     />
                   </div>
 
-                  {/* Editable message — clear hover/focus affordance */}
-                  <div className="px-6 pb-7">
+                  {/* Editable message — purple left border affordance */}
+                  <div className="px-5 pb-7">
                     <textarea
                       value={step.body_message}
                       onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
-                      className="w-full resize-none rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-center text-[14px] leading-relaxed outline-none transition-all placeholder:text-white/15 hover:border-white/15 hover:bg-white/5 focus:border-primary/50 focus:bg-white/5"
+                      className="w-full resize-none rounded-md border-l-2 border-y-0 border-r-0 border-primary/30 bg-transparent px-3 py-1.5 text-center text-[14px] leading-relaxed outline-none transition-all placeholder:text-white/15 hover:border-primary/70 hover:bg-white/5 focus:border-primary focus:bg-white/5"
                       style={{ color: "#999999", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
                       placeholder="Body message..."
                       rows={2}
@@ -755,95 +751,122 @@ function EmailEditor({
                   </div>
                 </div>
 
-                {/* White content area — non-editable sections with "auto" labels */}
-                <div className="relative" style={{ backgroundColor: "#ffffff", padding: "0" }}>
-                  {/* Event card — auto-generated */}
-                  <div className="relative px-8 pt-6" style={{ opacity: 0.55 }}>
-                    <div className="absolute right-9 top-7 rounded-full border border-gray-200 bg-white px-2 py-0.5">
-                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 600, color: "#999", letterSpacing: "0.5px" }}>
-                        Auto-generated
-                      </span>
-                    </div>
-                    <div style={{ backgroundColor: "#111111", borderRadius: "10px", padding: "16px 20px" }}>
-                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "8px" }}>
+                {/* White content area — realistic sample data */}
+                <div style={{ backgroundColor: "#ffffff" }}>
+                  {/* Event card — realistic preview */}
+                  <div className="px-7 pt-6">
+                    <div style={{ backgroundColor: "#111111", borderRadius: "10px", padding: "18px 22px" }}>
+                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "2.5px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "10px" }}>
                         EVENT
                       </div>
-                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "16px", fontWeight: 700, color: "#ffffff", lineHeight: "1.3" }}>
-                        Event name, date &amp; venue
+                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "17px", fontWeight: 700, color: "#ffffff", lineHeight: "1.3" }}>
+                        Midnight Rave — Vol. 3
                       </div>
-                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "12px", color: "#888888", marginTop: "4px" }}>
-                        Pulled from your live event automatically
+                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", color: "#888888", marginTop: "6px", lineHeight: "1.5" }}>
+                        Saturday 15 March 2026<br />
+                        The Warehouse, London &middot; Doors 10:00 PM
                       </div>
                     </div>
                   </div>
 
-                  {/* Order items — auto-generated */}
-                  <div className="relative px-8 pt-5" style={{ opacity: 0.55 }}>
-                    <div className="absolute right-9 top-6 rounded-full border border-gray-200 bg-white px-2 py-0.5">
-                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 600, color: "#999", letterSpacing: "0.5px" }}>
-                        Auto-generated
-                      </span>
-                    </div>
-                    <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#aaaaaa" }}>
+                  {/* Order items — realistic preview */}
+                  <div className="px-7 pt-5">
+                    <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "2.5px", textTransform: "uppercase" as const, color: "#aaaaaa", marginBottom: "12px" }}>
                       YOUR ORDER
                     </div>
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", color: "#222" }}>Customer&apos;s tickets &amp; items</span>
-                        <span style={{ fontFamily: "'Courier New', monospace", fontSize: "13px", fontWeight: 700, color: "#333" }}>£XX.XX</span>
+                    {/* Item rows */}
+                    <div style={{ borderTop: "1px solid #f0f0f0" }}>
+                      <div className="flex items-center justify-between" style={{ padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}>
+                        <div>
+                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 500, color: "#222" }}>Early Bird Ticket</div>
+                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#999", marginTop: "1px" }}>Qty: 2</div>
+                        </div>
+                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 600, color: "#333" }}>£50.00</span>
+                      </div>
+                      <div className="flex items-center justify-between" style={{ padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}>
+                        <div>
+                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 500, color: "#222" }}>VIP + Merch Bundle</div>
+                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#999", marginTop: "1px" }}>Qty: 1 &middot; Size M</div>
+                        </div>
+                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 600, color: "#333" }}>£55.00</span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-3">
+                    {/* Total */}
+                    <div className="flex items-center justify-between" style={{ padding: "14px 0 4px" }}>
                       <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "14px", fontWeight: 600, color: "#111" }}>Total</span>
-                      <span style={{ fontFamily: "'Courier New', monospace", fontSize: "20px", fontWeight: 700, color: "#111" }}>£XX.XX</span>
+                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "20px", fontWeight: 700, color: "#111" }}>£105.00</span>
                     </div>
                   </div>
 
-                  {/* Discount block (conditional) — shows live data from settings */}
+                  {/* Discount block — premium coupon-style design */}
                   {step.include_discount && (
-                    <div className="px-8 pt-5">
-                      <div style={{ backgroundColor: "#0e0e0e", borderRadius: "10px", padding: "20px", textAlign: "center" as const }}>
-                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "8px" }}>
-                          YOUR EXCLUSIVE CODE
-                        </div>
-                        <div style={{ fontFamily: "'Courier New', monospace", fontSize: "24px", fontWeight: 700, color: "#ffffff", letterSpacing: "4px" }}>
-                          {step.discount_code || "CODE"}
-                        </div>
-                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "12px", color: "#777777", marginTop: "4px" }}>
-                          {step.discount_percent || 0}% off your order
+                    <div className="px-7 pt-5">
+                      <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden" }}>
+                        {/* Dark gradient background */}
+                        <div style={{
+                          background: `linear-gradient(135deg, #0e0e0e 0%, ${accentColor}15 100%)`,
+                          border: `1px dashed ${accentColor}40`,
+                          borderRadius: "12px",
+                          padding: "24px 20px",
+                          textAlign: "center" as const,
+                        }}>
+                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase" as const, color: "#888", marginBottom: "12px" }}>
+                            Your exclusive offer
+                          </div>
+                          <div style={{
+                            display: "inline-block",
+                            backgroundColor: accentColor,
+                            borderRadius: "8px",
+                            padding: "10px 28px",
+                            marginBottom: "10px",
+                          }}>
+                            <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "22px", fontWeight: 800, color: "#ffffff", letterSpacing: "3px" }}>
+                              {step.discount_code || "CODE"}
+                            </span>
+                          </div>
+                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "14px", fontWeight: 600, color: "#ffffff", marginTop: "4px" }}>
+                            {step.discount_percent || 0}% off your order
+                          </div>
+                          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#666", marginTop: "6px" }}>
+                            Apply at checkout &middot; Limited time
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* CTA button */}
-                  <div className="px-8 py-6 text-center">
+                  {/* CTA button — premium with shadow */}
+                  <div className="px-7 py-7 text-center">
                     <div
                       style={{
                         display: "inline-block",
                         backgroundColor: accentColor,
                         color: "#ffffff",
                         fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                        fontSize: "13px",
+                        fontSize: "14px",
                         fontWeight: 700,
-                        letterSpacing: "2px",
+                        letterSpacing: "1.5px",
                         textTransform: "uppercase" as const,
-                        padding: "16px 48px",
+                        padding: "16px 52px",
                         borderRadius: "10px",
+                        boxShadow: `0 4px 14px ${accentColor}40`,
                       }}
                     >
-                      COMPLETE YOUR ORDER
+                      Complete Your Order
                     </div>
                   </div>
                 </div>
 
-                {/* Footer — auto-generated */}
-                <div style={{ backgroundColor: "#fafafa", padding: "20px 32px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0", opacity: 0.55 }}>
-                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#bbbbbb" }}>
+                {/* Footer */}
+                <div style={{ backgroundColor: "#fafafa", padding: "20px 32px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0" }}>
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#cccccc" }}>
                     {branding.from_name || "YOUR BRAND"}
                   </div>
                   <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#bbbbbb", marginTop: "6px" }}>
                     You&apos;re receiving this because you started checkout.
+                  </div>
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", color: "#cccccc", marginTop: "4px", textDecoration: "underline" }}>
+                    Unsubscribe
                   </div>
                 </div>
               </div>

@@ -728,20 +728,29 @@ export function buildAbandonedCartRecoveryEmail(
                 </tr>
 
                 ${hasDiscount ? `
-                <!-- Discount Code — dark premium card -->
+                <!-- Discount Code — premium coupon-style card -->
                 <tr>
                   <td style="padding: 24px 40px 0;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 12px; overflow: hidden;">
                       <tr>
-                        <td style="background-color: #0e0e0e; background-image: linear-gradient(135deg, #111111, #1a1a1a); border-radius: 10px; padding: 24px; text-align: center;">
-                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 10px;">
-                            YOUR EXCLUSIVE CODE
+                        <td style="background-color: #0e0e0e; background-image: linear-gradient(135deg, #0e0e0e, #1a1a1a); border: 1px dashed ${accent}40; border-radius: 12px; padding: 28px 24px; text-align: center;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #888888; margin-bottom: 14px;">
+                            Your exclusive offer
                           </div>
-                          <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: 4px; margin-bottom: 6px;">
-                            ${escapeHtml(cart.discount_code!)}
-                          </div>
-                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #777777;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                            <tr>
+                              <td style="background-color: ${accent}; border-radius: 8px; padding: 10px 28px;">
+                                <span style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 3px;">
+                                  ${escapeHtml(cart.discount_code!)}
+                                </span>
+                              </td>
+                            </tr>
+                          </table>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff; margin-top: 12px;">
                             ${cart.discount_percent}% off your order
+                          </div>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #666666; margin-top: 6px;">
+                            Apply at checkout &middot; Limited time
                           </div>
                         </td>
                       </tr>
@@ -757,12 +766,12 @@ export function buildAbandonedCartRecoveryEmail(
                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:54px;v-text-anchor:middle;width:340px;" arcsize="16%" fill="t">
                       <v:fill type="tile" color="${accent}" />
                       <w:anchorlock/>
-                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2px;">COMPLETE YOUR ORDER</center>
+                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:1.5px;">Complete Your Order</center>
                     </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-->
-                    <a href="${escapeHtml(cart.recovery_url)}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; padding: 18px 52px; border-radius: 10px; mso-padding-alt: 0;">
-                      COMPLETE YOUR ORDER
+                    <a href="${escapeHtml(cart.recovery_url)}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; padding: 18px 52px; border-radius: 10px; mso-padding-alt: 0;">
+                      Complete Your Order
                     </a>
                     <!--<![endif]-->
                   </td>
@@ -811,8 +820,8 @@ YOUR ORDER
 ${cartItemsText}
 ${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
 Total: ${cart.currency_symbol}${total.toFixed(2)}
-${hasDiscount ? `\nYOUR EXCLUSIVE CODE: ${cart.discount_code} — ${cart.discount_percent}% off your order\n` : ""}
-SECURE YOUR ORDER: ${cart.recovery_url}
+${hasDiscount ? `\nYour exclusive offer: ${cart.discount_code} — ${cart.discount_percent}% off your order\n` : ""}
+Complete your order: ${cart.recovery_url}
 
 ---
 ${s.footer_text || s.from_name}

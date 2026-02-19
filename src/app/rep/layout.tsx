@@ -329,7 +329,7 @@ export default function RepLayout({ children }: { children: ReactNode }) {
       {/* Mobile bottom nav — Glass Nav */}
       {showNav && (
         <div className="fixed bottom-0 inset-x-0 z-50 md:hidden pb-[max(env(safe-area-inset-bottom),8px)] px-4 pointer-events-none">
-          <nav className="rep-glass-nav flex items-center justify-around px-2 py-2.5 pointer-events-auto">
+          <nav className="rep-glass-nav flex items-center justify-around px-2 py-3 pointer-events-auto">
             {MOBILE_NAV.map((item) => {
               const active = matchRoute(pathname, item.href);
               const Icon = item.icon;

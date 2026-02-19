@@ -1142,29 +1142,40 @@ body:has([data-rep]) > .noise {
    ══════════════════════════════════════════════════════════════════════ */
 
 .rep-glass-nav {
-  border-radius: 22px;
-  background:
-    linear-gradient(135deg, rgba(139, 92, 246, 0.04), transparent 40%, rgba(139, 92, 246, 0.03)),
-    rgba(10, 8, 20, 0.55);
-  backdrop-filter: blur(24px) saturate(1.3);
-  -webkit-backdrop-filter: blur(24px) saturate(1.3);
-  border: 1px solid rgba(139, 92, 246, 0.12);
+  border-radius: 28px;
+  /* Light-tinted — glass LIGHTENS, never darkens */
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  /* Visible purple border — defines the glass shape */
+  border: 1.5px solid rgba(139, 92, 246, 0.22);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 0 24px rgba(139, 92, 246, 0.07),
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 2px 8px rgba(0, 0, 0, 0.2);
+    /* White edge catch along top — light reflecting off glass surface */
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    /* Subtle bottom edge */
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.05),
+    /* Outer white halo — second edge layer */
+    0 0 0 0.5px rgba(255, 255, 255, 0.06),
+    /* Purple ambient glow */
+    0 0 20px rgba(139, 92, 246, 0.08),
+    /* Floating depth */
+    0 8px 32px rgba(0, 0, 0, 0.25);
   position: relative;
   overflow: hidden;
 }
 
-/* Overhead light — purple-tinted light falling across the glass surface */
+/* Light reflection across top of glass — like overhead light hitting curved surface */
 .rep-glass-nav::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(to bottom, rgba(139, 92, 246, 0.06), transparent 55%);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.03) 35%,
+    transparent 60%
+  );
   pointer-events: none;
 }
 
@@ -1173,8 +1184,8 @@ body:has([data-rep]) > .noise {
   content: "";
   position: absolute;
   inset: 4px 4px;
-  border-radius: 14px;
-  background: radial-gradient(ellipse at 50% 60%, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.04) 70%, transparent);
+  border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 55%, rgba(139, 92, 246, 0.16), rgba(139, 92, 246, 0.05) 65%, transparent);
   opacity: 0;
   transition: opacity 250ms ease;
   pointer-events: none;

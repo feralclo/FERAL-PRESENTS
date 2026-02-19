@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,8 +49,13 @@ import {
   FileText,
   ImageIcon,
   Settings2,
+  Upload,
+  CheckCircle2,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import * as tus from "tus-js-client";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, ORG_ID } from "@/lib/constants";
 import { isMuxPlaybackId } from "@/lib/mux";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 
@@ -95,7 +100,16 @@ export function QuestsTab() {
   const [expiresAt, setExpiresAt] = useState("");
   const [instructions, setInstructions] = useState("");
   const [notifyReps, setNotifyReps] = useState(true);
-  const [videoPreview, setVideoPreview] = useState("");
+
+  // Video upload state
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStatus, setVideoStatus] = useState("");
+  const [videoError, setVideoError] = useState("");
+  const [previewError, setPreviewError] = useState(false);
+  const [videoDragging, setVideoDragging] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
 
   // Submissions review
   const [showSubmissions, setShowSubmissions] = useState<string | null>(null);
@@ -119,12 +133,141 @@ export function QuestsTab() {
 
   useEffect(() => { loadQuests(); }, [loadQuests]);
 
-  // Debounce video URL → preview
-  useEffect(() => {
-    if (!videoUrl.trim()) { setVideoPreview(""); return; }
-    const timer = setTimeout(() => setVideoPreview(videoUrl.trim()), 500);
-    return () => clearTimeout(timer);
-  }, [videoUrl]);
+  // ── Video upload handlers ──
+
+  /** Poll Mux status every 3s until asset is ready */
+  const pollMuxStatus = useCallback(async (assetId: string): Promise<string> => {
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const res = await fetch(`/api/mux/status?assetId=${assetId}`);
+      const data = await res.json();
+      if (data.status === "ready" && data.playbackId) return data.playbackId;
+      if (data.status === "errored") throw new Error("Mux processing failed");
+      setVideoStatus("Processing video...");
+    }
+    throw new Error("Processing timed out");
+  }, []);
+
+  const handleVideoUpload = useCallback(async (file: File) => {
+    setVideoError("");
+    if (!file.type.startsWith("video/")) {
+      setVideoError("Please upload a video file (MP4, MOV, or WebM).");
+      return;
+    }
+    const MAX_SIZE = 200 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setVideoError(`Video is ${Math.round(file.size / 1024 / 1024)}MB — max is 200MB.`);
+      return;
+    }
+    setVideoUploading(true);
+    setVideoProgress(0);
+    setVideoStatus("Preparing upload...");
+    try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase not configured");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
+      const storagePath = `${ORG_ID}/quests/${Date.now()}_${safeName}`;
+      const tusEndpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
+
+      setVideoStatus("Uploading...");
+      await new Promise<void>((resolve, reject) => {
+        const upload = new tus.Upload(file, {
+          endpoint: tusEndpoint,
+          retryDelays: [0, 3000, 5000, 10000, 20000],
+          headers: {
+            authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+            "x-upsert": "true",
+          },
+          uploadDataDuringCreation: true,
+          removeFingerprintOnSuccess: true,
+          chunkSize: 6 * 1024 * 1024,
+          metadata: {
+            bucketName: "artist-media",
+            objectName: storagePath,
+            contentType: file.type,
+            cacheControl: "3600",
+          },
+          onError: (error) => reject(new Error(error.message || "Upload failed")),
+          onProgress: (bytesUploaded, bytesTotal) => {
+            const pct = Math.round((bytesUploaded / bytesTotal) * 70);
+            setVideoProgress(pct);
+            const mbUp = (bytesUploaded / 1024 / 1024).toFixed(0);
+            const mbTotal = (bytesTotal / 1024 / 1024).toFixed(0);
+            setVideoStatus(`Uploading... ${mbUp}/${mbTotal} MB`);
+          },
+          onSuccess: () => resolve(),
+          onShouldRetry: (err) => {
+            const status = err.originalResponse?.getStatus();
+            if (status === 403 || status === 401) return false;
+            return true;
+          },
+        });
+        upload.findPreviousUploads().then((prev) => {
+          if (prev.length) upload.resumeFromPreviousUpload(prev[0]);
+          upload.start();
+        });
+      });
+
+      setVideoProgress(70);
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/artist-media/${storagePath}`;
+
+      setVideoStatus("Processing video...");
+      const muxRes = await fetch("/api/mux/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrl: publicUrl }),
+      });
+      const muxData = await muxRes.json();
+      if (!muxRes.ok) throw new Error(muxData.error || "Failed to start processing");
+
+      const playbackId = await pollMuxStatus(muxData.assetId);
+      setVideoUrl(playbackId);
+      setPreviewError(false);
+      setVideoProgress(100);
+      setVideoStatus("");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setVideoError(`Upload failed — ${msg}`);
+      setVideoStatus("");
+    }
+    setVideoUploading(false);
+    setVideoProgress(0);
+  }, [pollMuxStatus]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes("Files")) setVideoDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setVideoDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+  }, []);
+
+  const handleVideoDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current = 0;
+    setVideoDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("video/")) handleVideoUpload(file);
+  }, [handleVideoUpload]);
+
+  const handleVideoFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleVideoUpload(file);
+    e.target.value = "";
+  }, [handleVideoUpload]);
 
   const loadSubmissions = useCallback(async (questId: string) => {
     setLoadingSubs(true);
@@ -140,6 +283,7 @@ export function QuestsTab() {
     setEditId(null); setTitle(""); setDescription(""); setInstructions("");
     setQuestType("social_post"); setImageUrl(""); setVideoUrl("");
     setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
+    setVideoError(""); setPreviewError(false);
     setShowDialog(true);
   };
 
@@ -150,6 +294,7 @@ export function QuestsTab() {
     setPointsReward(String(q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
     setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
+    setVideoError(""); setPreviewError(false);
     setShowDialog(true);
   };
 
@@ -278,12 +423,12 @@ export function QuestsTab() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit Quest" : "Create Quest"}</DialogTitle>
             <DialogDescription>{editId ? "Update this quest." : "Create a new quest for your reps."}</DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="content" className="w-full">
+          <Tabs defaultValue="content" className="w-full min-h-0 flex-1 flex flex-col [&>[role=tabpanel]]:flex-1 [&>[role=tabpanel]]:overflow-y-auto">
             <TabsList className="w-full">
               <TabsTrigger value="content"><FileText size={14} /> Content</TabsTrigger>
               <TabsTrigger value="media"><ImageIcon size={14} /> Media</TabsTrigger>
@@ -326,67 +471,99 @@ export function QuestsTab() {
 
             {/* ── Media Tab ── */}
             <TabsContent value="media" className="space-y-4 pt-2">
-              <div className="space-y-1.5">
-                <ImageUpload
-                  label="Reference Image"
-                  value={imageUrl}
-                  onChange={setImageUrl}
-                  uploadKey={editId ? `quest_${editId}_image` : undefined}
-                />
-                <p className="text-[11px] text-muted-foreground">Recommended: 800 &times; 450px landscape (16:9). Shown as an ambient background on quest cards.</p>
-              </div>
+              <ImageUpload
+                label="Quest Image"
+                value={imageUrl}
+                onChange={setImageUrl}
+                uploadKey={editId ? `quest_${editId}_image` : undefined}
+              />
+
               <div className="space-y-2">
-                <Label>Reference Video URL</Label>
-                <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Mux playback ID, TikTok, YouTube, or Instagram link" />
-                {videoPreview && (() => {
-                  // Mux playback ID
-                  if (isMuxPlaybackId(videoPreview)) {
-                    return (
-                      <div className="mt-2 rounded-lg overflow-hidden border border-border">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quest Video</span>
+                <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoFileChange} className="hidden" />
+
+                {videoUrl && isMuxPlaybackId(videoUrl) ? (
+                  /* Video is set — show preview */
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-primary">
+                      <CheckCircle2 size={12} />
+                      Video ready
+                    </div>
+                    <div className="relative rounded-lg overflow-hidden bg-black border border-border">
+                      <div style={{ display: previewError ? "none" : undefined }}>
                         <MuxPlayer
-                          playbackId={videoPreview}
+                          playbackId={videoUrl}
+                          streamType="on-demand"
                           muted
-                          autoPlay="muted"
-                          loop
-                          style={{ aspectRatio: "16/9", "--controls": "none" } as Record<string, string>}
+                          preload="metadata"
+                          onError={() => setPreviewError(true)}
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          {...{ style: { width: "100%", maxHeight: "220px", "--controls": "none", "--media-object-fit": "contain" } } as any}
                         />
                       </div>
-                    );
-                  }
-                  try {
-                    const u = new URL(videoPreview);
-                    // YouTube
-                    const ytId = u.hostname.includes("youtube.com") ? u.searchParams.get("v") : u.hostname === "youtu.be" && u.pathname.length > 1 ? u.pathname.slice(1) : null;
-                    if (ytId) {
-                      return (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-border">
-                          <iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full border-none" style={{ aspectRatio: "16/9" }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
+                      {previewError && (
+                        <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
+                          Video saved — preview may take a moment
                         </div>
-                      );
-                    }
-                    // TikTok
-                    const tiktokMatch = u.pathname.match(/\/video\/(\d+)/);
-                    if (u.hostname.includes("tiktok.com") && tiktokMatch) {
-                      return (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-border">
-                          <iframe src={`https://www.tiktok.com/embed/v2/${tiktokMatch[1]}`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
-                        </div>
-                      );
-                    }
-                    // Instagram
-                    const instaMatch = u.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
-                    if (u.hostname.includes("instagram.com") && instaMatch) {
-                      return (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-border">
-                          <iframe src={`https://www.instagram.com/${instaMatch[1]}/${instaMatch[2]}/embed`} className="w-full border-none" style={{ height: 400 }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen />
-                        </div>
-                      );
-                    }
-                    return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
-                  } catch {
-                    return <p className="mt-2 text-[11px] text-amber-400">Unrecognized URL — reps will see a link</p>;
-                  }
-                })()}
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setVideoUrl(""); setPreviewError(false); }}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/70 border border-white/20 rounded-md flex items-center justify-center text-white/70 hover:bg-black/90 hover:text-white transition-colors cursor-pointer z-10"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ) : videoUploading ? (
+                  /* Upload in progress */
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-secondary/30 px-4 py-6">
+                    <Loader2 size={20} className="animate-spin text-primary" />
+                    <span className="text-xs text-muted-foreground">
+                      {videoStatus || "Uploading..."}{videoProgress > 0 && videoProgress < 100 ? ` ${videoProgress}%` : ""}
+                    </span>
+                    {videoProgress > 0 && (
+                      <div className="w-full max-w-[200px] h-1 rounded-full bg-border overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${videoProgress}%` }} />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Drag & drop zone */
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => videoInputRef.current?.click()}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") videoInputRef.current?.click(); }}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleVideoDrop}
+                    className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 cursor-pointer transition-all duration-150 ${
+                      videoDragging
+                        ? "border-primary bg-primary/[0.06] scale-[1.01]"
+                        : "border-border/60 bg-secondary/20 hover:border-border hover:bg-secondary/40"
+                    }`}
+                  >
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+                      videoDragging ? "bg-primary/15 text-primary" : "bg-muted/30 text-muted-foreground"
+                    }`}>
+                      <Upload size={16} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-medium text-foreground/80">
+                        {videoDragging ? "Drop video here" : "Drag & drop or click to upload"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">Max 200MB</p>
+                    </div>
+                  </div>
+                )}
+                {videoError && (
+                  <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/[0.06] px-3 py-2.5">
+                    <X size={10} className="text-destructive mt-0.5 shrink-0" />
+                    <p className="text-[11px] text-destructive">{videoError}</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
 

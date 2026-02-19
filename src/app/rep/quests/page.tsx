@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
-import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
+import { isMuxPlaybackId } from "@/lib/mux";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 
@@ -152,37 +152,6 @@ function formatDate(dateStr: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-// ─── Video embed parser ─────────────────────────────────────────────────────
-
-function parseVideoEmbed(url: string): { type: "iframe" | "link"; src: string } {
-  try {
-    const u = new URL(url);
-
-    // TikTok: tiktok.com/@user/video/123 → iframe embed
-    const tiktokMatch = u.pathname.match(/\/video\/(\d+)/);
-    if (u.hostname.includes("tiktok.com") && tiktokMatch) {
-      return { type: "iframe", src: `https://www.tiktok.com/embed/v2/${tiktokMatch[1]}` };
-    }
-
-    // YouTube: youtube.com/watch?v=xyz or youtu.be/xyz
-    if (u.hostname.includes("youtube.com") && u.searchParams.get("v")) {
-      return { type: "iframe", src: `https://www.youtube.com/embed/${u.searchParams.get("v")}` };
-    }
-    if (u.hostname === "youtu.be" && u.pathname.length > 1) {
-      return { type: "iframe", src: `https://www.youtube.com/embed${u.pathname}` };
-    }
-
-    // Instagram: instagram.com/reel/abc → iframe embed
-    const instaMatch = u.pathname.match(/\/(reel|reels|p|tv)\/([\w-]+)/);
-    if (u.hostname.includes("instagram.com") && instaMatch) {
-      return { type: "iframe", src: `https://www.instagram.com/${instaMatch[1]}/${instaMatch[2]}/embed` };
-    }
-  } catch { /* invalid URL — fall through */ }
-
-  // Fallback: external link card
-  return { type: "link", src: url };
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -667,7 +636,7 @@ export default function RepQuestsPage() {
         const isCompleted = detailQuest.max_completions ? approvedCount >= detailQuest.max_completions : false;
         const isRepeatable = detailQuest.max_completions && detailQuest.max_completions > 1;
         const hasMuxVideo = detailQuest.video_url && isMuxPlaybackId(detailQuest.video_url);
-        const videoEmbed = detailQuest.video_url && !hasMuxVideo ? parseVideoEmbed(detailQuest.video_url) : null;
+        const hasLegacyVideoUrl = detailQuest.video_url && !hasMuxVideo;
 
         const titleColorClass =
           tier.tier === "legendary" ? "rep-gradient-text-gold"
@@ -683,7 +652,7 @@ export default function RepQuestsPage() {
             <div
               className={cn(
                 "rep-quest-detail-sheet relative w-full max-w-md rounded-t-2xl md:rounded-2xl",
-                `max-h-[calc(85vh-env(safe-area-inset-bottom))] md:max-h-[90vh]`,
+                "max-h-[80dvh] md:max-h-[85dvh]",
                 `rep-quest-detail-${tier.tier}`,
               )}
               role="dialog"
@@ -716,36 +685,24 @@ export default function RepQuestsPage() {
                         loop
                         style={{
                           aspectRatio: "16/9",
-                          maxHeight: "min(280px, 40vh)",
+                          maxHeight: "min(200px, 30vh)",
                           "--controls": "none",
                           "--media-object-fit": "contain",
                         } as Record<string, string>}
+                        className="md:[&]:!max-h-[min(280px,35vh)]"
                       />
-                    ) : detailQuest.video_url && videoEmbed ? (
-                      videoEmbed.type === "iframe" ? (
-                        <iframe
-                          src={videoEmbed.src}
-                          allow="accelerometer; autoplay; encrypted-media; gyroscope"
-                          allowFullScreen
-                          style={
-                            videoEmbed.src.includes("youtube.com") ? { aspectRatio: "16/9", maxHeight: "min(280px, 40vh)" }
-                            : videoEmbed.src.includes("tiktok.com") ? { height: "min(350px, 45vh)" }
-                            : { height: "min(350px, 45vh)" }
-                          }
-                        />
-                      ) : (
-                        <a
-                          href={videoEmbed.src}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rep-quest-video-link"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Play size={24} />
-                          <span>View Video</span>
-                          <ExternalLink size={14} className="ml-auto opacity-50" />
-                        </a>
-                      )
+                    ) : hasLegacyVideoUrl ? (
+                      <a
+                        href={detailQuest.video_url!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rep-quest-video-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Play size={24} />
+                        <span>View Video</span>
+                        <ExternalLink size={14} className="ml-auto opacity-50" />
+                      </a>
                     ) : detailQuest.image_url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
@@ -892,10 +849,10 @@ export default function RepQuestsPage() {
       {/* Submit Proof Modal */}
       {submitQuestId && (
         <div
-          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4"
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
           onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSubmitQuestId(null); }}
         >
-          <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6">
+          <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-bold text-foreground">Submit Proof</h3>
               <button

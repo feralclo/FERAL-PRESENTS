@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { Scanlines } from "@/components/layout/Scanlines";
-import { GTM_ID, TABLES, SETTINGS_KEYS } from "@/lib/constants";
+import { GTM_ID, TABLES, ORG_ID, marketingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { MarketingSettings } from "@/types/marketing";
 import "@/styles/base.css";
@@ -32,7 +32,7 @@ export default async function RootLayout({
       const { data } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", SETTINGS_KEYS.MARKETING)
+        .eq("key", marketingKey(ORG_ID))
         .single();
       const marketing = data?.data as MarketingSettings | null;
       if (marketing?.meta_tracking_enabled && marketing.meta_pixel_id) {

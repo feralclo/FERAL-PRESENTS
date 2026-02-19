@@ -76,6 +76,11 @@ export function popupKey(orgId: string): string {
   return `${orgId}_popup`;
 }
 
+/** Generate the marketing settings key for a given org */
+export function marketingKey(orgId: string): string {
+  return `${orgId}_marketing`;
+}
+
 // Klaviyo
 export const KLAVIYO_LIST_ID =
   process.env.NEXT_PUBLIC_KLAVIYO_LIST_ID || "SnE86f";

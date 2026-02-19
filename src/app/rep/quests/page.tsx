@@ -10,62 +10,66 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/rep";
 import { cn } from "@/lib/utils";
-import { isMuxPlaybackId, getMuxThumbnailUrl, getMuxStreamUrl } from "@/lib/mux";
+import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), { ssr: false });
 
-// ─── Mux video: thumbnail → tap to play ──────────────────────────────────────
+// ─── Mux video: auto-play with thumbnail overlay (matches MidnightArtistModal) ─
 
 function MuxVideoPreview({ playbackId }: { playbackId: string }) {
-  const [playing, setPlaying] = useState(false);
-  const [error, setError] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
-  if (playing && !error) {
+  if (videoError) {
     return (
-      <MuxPlayer
-        playbackId={playbackId}
-        streamType="on-demand"
-        muted
-        autoPlay
-        preload="auto"
-        onError={() => setError(true)}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...{ style: {
-          width: "100%",
-          maxHeight: "min(200px, 30vh)",
-          "--media-object-fit": "contain",
-        } } as any}
-      />
+      <a
+        href={`https://stream.mux.com/${playbackId}.m3u8`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 text-muted-foreground hover:text-foreground hover:border-white/[0.15] transition-colors"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Play size={20} />
+        <span className="text-sm font-medium">View Video</span>
+        <ExternalLink size={14} className="ml-auto opacity-50" />
+      </a>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => setPlaying(true)}
-      className="relative w-full cursor-pointer bg-black rounded-lg overflow-hidden border-none p-0"
-      style={{ maxHeight: "min(200px, 30vh)" }}
-    >
+    <div className="relative w-full rounded-lg overflow-hidden bg-black" style={{ maxHeight: "min(220px, 30vh)" }}>
+      <MuxPlayer
+        playbackId={playbackId}
+        streamType="on-demand"
+        loop
+        preload="auto"
+        onError={() => setVideoError(true)}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {...({
+          autoPlay: "any",
+          onPlaying: () => setVideoReady(true),
+          style: {
+            width: "100%",
+            height: "100%",
+            maxHeight: "min(220px, 30vh)",
+            "--controls": "none",
+            "--media-object-fit": "contain",
+            "--media-object-position": "center",
+          },
+        } as any)}
+      />
+
+      {/* Thumbnail overlay — masks initialization jank, fades out when playing */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={getMuxThumbnailUrl(playbackId)}
-        alt="Video thumbnail"
-        className="w-full object-contain"
-        style={{ maxHeight: "min(200px, 30vh)" }}
+        alt=""
+        className={cn(
+          "absolute inset-0 w-full h-full object-contain z-[5] transition-opacity duration-300",
+          videoReady ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
       />
-      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-          <Play size={22} className="text-white ml-0.5" />
-        </div>
-      </div>
-      {error && (
-        <div className="absolute bottom-2 inset-x-2 text-center">
-          <span className="text-[10px] text-white/70 bg-black/60 px-2 py-1 rounded">
-            Tap to retry
-          </span>
-        </div>
-      )}
-    </button>
+    </div>
   );
 }
 

@@ -122,107 +122,115 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <>
-      <div className={`cookie-banner ${visible ? "cookie-banner--visible" : ""}`}>
-        <div className="cookie-banner__inner">
-          <div className="cookie-banner__text">
-            <p className="cookie-banner__message">
-              We use cookies to improve your experience and for analytics &amp;
-              marketing. You can accept all or manage your preferences.
-            </p>
-          </div>
-          <div className="cookie-banner__actions">
-            <button
-              className="cookie-banner__btn cookie-banner__btn--accept"
-              onClick={acceptAll}
-            >
-              Accept All
-            </button>
-            <button
-              className="cookie-banner__btn cookie-banner__btn--manage"
-              onClick={() => setShowPanel(true)}
-            >
-              Manage
-            </button>
-          </div>
+    <aside className={`cookie-consent${visible ? " cookie-consent--visible" : ""}`}>
+      {/* Banner view */}
+      <div className={`cookie-consent__banner${showPanel ? " cookie-consent__banner--hidden" : ""}`}>
+        <p className="cookie-consent__message">
+          We use cookies for analytics &amp; marketing to improve your
+          experience. You can accept all or manage your preferences.
+        </p>
+        <div className="cookie-consent__actions">
+          <button
+            className="cookie-consent__btn cookie-consent__btn--accept"
+            onClick={acceptAll}
+          >
+            Accept All
+          </button>
+          <button
+            className="cookie-consent__btn cookie-consent__btn--manage"
+            onClick={() => setShowPanel(true)}
+          >
+            Manage
+          </button>
         </div>
       </div>
 
-      <div
-        className={`cookie-panel ${showPanel ? "cookie-panel--visible" : ""}`}
-      >
-        <div className="cookie-panel__inner">
-          <div className="cookie-panel__header">
-            <span className="cookie-panel__title">Cookie Preferences</span>
-            <button
-              className="cookie-panel__close"
-              onClick={() => setShowPanel(false)}
-            >
-              &times;
-            </button>
+      {/* Preferences panel */}
+      <div className={`cookie-consent__prefs${showPanel ? " cookie-consent__prefs--visible" : ""}`}>
+        <div className="cookie-consent__prefs-header">
+          <span className="cookie-consent__prefs-title">Cookie Preferences</span>
+          <button
+            className="cookie-consent__prefs-close"
+            onClick={() => setShowPanel(false)}
+            aria-label="Close preferences"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="cookie-consent__categories">
+          {/* Necessary — locked */}
+          <div className="cookie-consent__category">
+            <div className="cookie-consent__category-info">
+              <span className="cookie-consent__category-name">Necessary</span>
+              <span className="cookie-consent__category-desc">
+                Required for the site to function
+              </span>
+            </div>
+            <label className="cookie-toggle cookie-toggle--locked">
+              <input type="checkbox" checked disabled />
+              <span className="cookie-toggle__track" />
+            </label>
           </div>
-          <div className="cookie-panel__categories">
-            <div className="cookie-panel__category">
-              <div className="cookie-panel__category-info">
-                <span className="cookie-panel__category-name">Necessary</span>
-                <span className="cookie-panel__category-desc">
-                  Required for the site to function. Cannot be disabled.
-                </span>
-              </div>
-              <div className="cookie-panel__toggle cookie-panel__toggle--locked">
-                <input type="checkbox" checked disabled />
-                <span className="cookie-panel__slider cookie-panel__slider--locked" />
-              </div>
+
+          <div className="cookie-consent__divider" />
+
+          {/* Analytics */}
+          <div className="cookie-consent__category">
+            <div className="cookie-consent__category-info">
+              <span className="cookie-consent__category-name">Analytics</span>
+              <span className="cookie-consent__category-desc">
+                Helps us understand how visitors use the site
+              </span>
             </div>
-            <div className="cookie-panel__category">
-              <div className="cookie-panel__category-info">
-                <span className="cookie-panel__category-name">Analytics</span>
-                <span className="cookie-panel__category-desc">
-                  Helps us understand how visitors use the site.
-                </span>
-              </div>
-              <div className="cookie-panel__toggle">
-                <input
-                  type="checkbox"
-                  checked={analyticsChecked}
-                  onChange={(e) => setAnalyticsChecked(e.target.checked)}
-                />
-                <span className="cookie-panel__slider" />
-              </div>
-            </div>
-            <div className="cookie-panel__category">
-              <div className="cookie-panel__category-info">
-                <span className="cookie-panel__category-name">Marketing</span>
-                <span className="cookie-panel__category-desc">
-                  Used to deliver relevant ads and track campaign performance.
-                </span>
-              </div>
-              <div className="cookie-panel__toggle">
-                <input
-                  type="checkbox"
-                  checked={marketingChecked}
-                  onChange={(e) => setMarketingChecked(e.target.checked)}
-                />
-                <span className="cookie-panel__slider" />
-              </div>
-            </div>
+            <label className="cookie-toggle">
+              <input
+                type="checkbox"
+                checked={analyticsChecked}
+                onChange={(e) => setAnalyticsChecked(e.target.checked)}
+              />
+              <span className="cookie-toggle__track" />
+            </label>
           </div>
-          <div className="cookie-panel__actions">
-            <button
-              className="cookie-banner__btn cookie-banner__btn--accept"
-              onClick={savePrefs}
-            >
-              Save Preferences
-            </button>
-            <button
-              className="cookie-banner__btn cookie-banner__btn--manage"
-              onClick={rejectAll}
-            >
-              Reject All
-            </button>
+
+          <div className="cookie-consent__divider" />
+
+          {/* Marketing */}
+          <div className="cookie-consent__category">
+            <div className="cookie-consent__category-info">
+              <span className="cookie-consent__category-name">Marketing</span>
+              <span className="cookie-consent__category-desc">
+                Used to deliver relevant ads and track campaigns
+              </span>
+            </div>
+            <label className="cookie-toggle">
+              <input
+                type="checkbox"
+                checked={marketingChecked}
+                onChange={(e) => setMarketingChecked(e.target.checked)}
+              />
+              <span className="cookie-toggle__track" />
+            </label>
           </div>
         </div>
+
+        <div className="cookie-consent__actions">
+          <button
+            className="cookie-consent__btn cookie-consent__btn--accept"
+            onClick={savePrefs}
+          >
+            Save Preferences
+          </button>
+          <button
+            className="cookie-consent__btn cookie-consent__btn--manage"
+            onClick={rejectAll}
+          >
+            Reject All
+          </button>
+        </div>
       </div>
-    </>
+    </aside>
   );
 }

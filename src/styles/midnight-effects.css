@@ -121,11 +121,12 @@ body:has([data-theme="midnight"]) .header {
     0 1px 0 rgba(255, 255, 255, 0.03) inset;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   [data-theme="midnight"] .glass {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: var(--color-card);
+    box-shadow: none;
   }
 }
 
@@ -476,6 +477,83 @@ body:has([data-theme="midnight"]) .header {
 
 
 /* ═══════════════════════════════════════════════
+   ARTIST PROFILE DIALOG — Transparent shell
+   DialogContent is invisible; visual card is inside.
+   Cards swipe as full visual units (bg, border, shadow).
+   ═══════════════════════════════════════════════ */
+
+.midnight-artist-dialog {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  max-width: 500px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+}
+
+.midnight-artist-dialog,
+.midnight-artist-dialog * {
+  outline: none !important;
+}
+.midnight-artist-dialog *:focus,
+.midnight-artist-dialog:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+/* Hide default Radix close button — custom one lives inside the card */
+.midnight-artist-dialog > button:last-child {
+  display: none !important;
+}
+
+/* Premium glass button — close, mute (utility actions) */
+[data-theme="midnight"] .midnight-btn-glass {
+  background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    0 2px 8px rgba(0,0,0,0.25);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="midnight"] .midnight-btn-glass:hover {
+  background: linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 100%);
+  border-color: color-mix(in srgb, var(--accent) 40%, rgba(255,255,255,0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    0 0 14px color-mix(in srgb, var(--accent) 12%, transparent),
+    0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Nav button — primary interaction, accent-tinted at rest */
+[data-theme="midnight"] .midnight-btn-nav {
+  background: linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,0.06));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 0 6px color-mix(in srgb, var(--accent) 5%, transparent);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="midnight"] .midnight-btn-nav:hover {
+  background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 0 18px color-mix(in srgb, var(--accent) 18%, transparent);
+  color: rgba(255,255,255,0.85);
+}
+
+[data-theme="midnight"] .midnight-btn-nav:disabled {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+
+/* ═══════════════════════════════════════════════
    METALLIC CTA — Platinum gradient button
    ═══════════════════════════════════════════════ */
 
@@ -508,11 +586,29 @@ body:has([data-theme="midnight"]) .header {
   transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-[data-theme="midnight"] .midnight-lineup-pill:hover {
+[data-theme="midnight"] button.midnight-lineup-pill:hover {
   border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
   color: var(--color-foreground);
   background: color-mix(in srgb, var(--color-primary) 4%, transparent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+
+/* ═══════════════════════════════════════════════
+   CONTENT ZONE — Full-width dark section below tickets
+   Premium dark atmosphere for lineup + event info.
+   Gradient + radial light pool creates depth without
+   backdrop-filter (mobile-safe). Mobile only.
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 1023px) {
+  [data-theme="midnight"] .midnight-content-zone {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.015) 0%, transparent 60%),
+      linear-gradient(180deg, rgba(16, 16, 20, 1) 0%, rgba(13, 13, 17, 1) 50%, rgba(14, 14, 14, 1) 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
 }
 
 
@@ -763,6 +859,80 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
+   ARTIST MODAL — Swipe navigation transitions
+   ═══════════════════════════════════════════════ */
+
+/* Premium slide — exit/enter animation on navigate.
+   Transform-only — no opacity fade. Cards slide as solid objects
+   (like iOS photo gallery). will-change promotes to GPU layer. */
+.midnight-artist-swipe {
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Fast slide — for swipe-triggered navigation where the user's finger
+   already moved the card partway. Shorter duration = consistent velocity. */
+.midnight-artist-swipe-fast {
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Snap-back — rubber-band release with overshoot */
+.midnight-artist-snapback {
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+/* During drag — kill transitions for raw 1:1 tracking */
+.midnight-artist-dragging {
+  transition: none !important;
+  will-change: transform;
+}
+
+/* Desktop crossfade — quick opacity swap for button/keyboard nav.
+   No sliding — arrow buttons provide directional context. */
+.midnight-artist-crossfade {
+  transition: opacity 120ms ease;
+}
+
+/* Hint nudge — smooth deceleration like a finger pushing */
+.midnight-artist-hint {
+  transition: transform 450ms cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
+}
+
+/* Card shadow transition (smooth lift on drag start/end) */
+.midnight-artist-card {
+  transition: box-shadow 300ms ease;
+}
+
+/* ── Swipe affordance: edge glow + nav arrow pulse ── */
+
+/* Right edge glow — fades in and out once to suggest "swipe right" */
+@keyframes midnight-edge-hint {
+  0%   { opacity: 0; }
+  35%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.midnight-artist-edge-hint {
+  animation: midnight-edge-hint 1.4s ease 0.1s both;
+}
+
+/* Nav arrow pulse — draws eye to the right arrow */
+@keyframes midnight-nav-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15);
+             border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+             box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 20%, transparent); }
+}
+
+.midnight-artist-nav-hint {
+  animation: midnight-nav-pulse 500ms ease 0.3s 2 both;
+}
+
+
+/* ═══════════════════════════════════════════════
    SCROLL REVEAL — Subtle entrance for content sections
    Overrides base.css data-reveal (30px is too aggressive).
    Midnight uses 12px translate for a softer, premium feel.
@@ -802,6 +972,18 @@ html.checkout-active .noise {
   [data-theme="midnight"] .midnight-lineup-pill,
   [data-theme="midnight"] [data-reveal] {
     transition: none;
+    animation: none;
+  }
+  .midnight-artist-swipe,
+  .midnight-artist-swipe-fast,
+  .midnight-artist-snapback,
+  .midnight-artist-hint,
+  .midnight-artist-crossfade {
+    transition: none;
+  }
+  .midnight-artist-edge-hint,
+  .midnight-artist-nav-hint {
+    animation: none;
   }
   /* Ensure revealed content is visible without animation */
   [data-theme="midnight"] [data-reveal] {

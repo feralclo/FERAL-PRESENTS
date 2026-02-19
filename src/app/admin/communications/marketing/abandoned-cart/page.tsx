@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,14 +8,14 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { saveSettings } from "@/lib/settings";
 import {
+  ChevronDown,
   ChevronLeft,
   ShoppingCart,
   Clock,
-  Tag,
   MailWarning,
   TrendingUp,
   DollarSign,
@@ -23,23 +23,23 @@ import {
   Send,
   Flame,
   Zap,
-  Check,
   PartyPopper,
-  CircleDot,
   Power,
   Timer,
   Mail,
   Percent,
   AlertTriangle,
-  Eye,
   Sparkles,
-  Target,
   ArrowRight,
   Plus,
   Loader2,
   CheckCircle2,
   Monitor,
   Smartphone,
+  ImageIcon,
+  Pencil,
+  Trash2,
+  Palette,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -60,9 +60,13 @@ interface EmailStep {
   enabled: boolean;
   subject: string;
   preview_text: string;
+  greeting: string;
+  body_message: string;
+  cta_text: string;
   include_discount: boolean;
   discount_code: string;
   discount_percent: number;
+  discount_label: string;
   icon: typeof Send;
   color: string;
   glowColor: string;
@@ -71,6 +75,14 @@ interface EmailStep {
 interface AutomationSettings {
   enabled: boolean;
   steps: EmailStep[];
+}
+
+interface EmailBrandingState {
+  logo_url: string;
+  logo_height: number;
+  logo_aspect_ratio?: number;
+  accent_color: string;
+  from_name: string;
 }
 
 /* ── Defaults ── */
@@ -84,9 +96,13 @@ const DEFAULT_STEPS: EmailStep[] = [
     enabled: true,
     subject: "You left something behind...",
     preview_text: "Your tickets are still waiting for you",
+    greeting: "Your order is on hold",
+    body_message: "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.",
+    cta_text: "Complete Your Order",
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
+    discount_label: "Your exclusive offer",
     icon: Send,
     color: "#8B5CF6",
     glowColor: "rgba(139,92,246,0.3)",
@@ -98,11 +114,15 @@ const DEFAULT_STEPS: EmailStep[] = [
     delay_label: "24 hours",
     delay_minutes: 1440,
     enabled: true,
-    subject: "Tickets selling fast — don't miss out",
-    preview_text: "Your cart items are still available, but not for long",
+    subject: "Tickets selling fast \u2014 don\u2019t miss out",
+    preview_text: "Your tickets are still available, but not for long",
+    greeting: "Tickets are going fast",
+    body_message: "The event you were looking at is selling quickly. Don\u2019t let someone else take your spot.",
+    cta_text: "Complete Your Order",
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
+    discount_label: "Your exclusive offer",
     icon: Zap,
     color: "#f97316",
     glowColor: "rgba(249,115,22,0.3)",
@@ -114,11 +134,15 @@ const DEFAULT_STEPS: EmailStep[] = [
     delay_label: "48 hours",
     delay_minutes: 2880,
     enabled: true,
-    subject: "Last chance — your cart expires soon",
-    preview_text: "This is your final reminder before your cart expires",
+    subject: "Last chance \u2014 your order expires soon",
+    preview_text: "This is your final reminder before your order expires",
+    greeting: "This is your last chance",
+    body_message: "Your order is about to expire. We\u2019ve saved a special offer just for you \u2014 use it before it\u2019s gone.",
+    cta_text: "Complete Your Order",
     include_discount: true,
     discount_code: "COMEBACK10",
     discount_percent: 10,
+    discount_label: "Your exclusive offer",
     icon: Flame,
     color: "#ef4444",
     glowColor: "rgba(239,68,68,0.3)",
@@ -132,9 +156,151 @@ const DEFAULT_SETTINGS: AutomationSettings = {
 
 const SETTINGS_KEY = "feral_abandoned_cart_automation";
 
+/* ── Save Toast — floating notification ── */
+function SaveToast({ saving, status }: { saving: boolean; status: "idle" | "saved" | "error" }) {
+  const [visible, setVisible] = useState(false);
+  const [displayState, setDisplayState] = useState<"saving" | "saved" | "error">("saving");
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (saving) {
+      setDisplayState("saving");
+      setVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    }
+  }, [saving]);
+
+  useEffect(() => {
+    if (status === "saved") {
+      setDisplayState("saved");
+      setVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setVisible(false), 2200);
+    } else if (status === "error") {
+      setDisplayState("error");
+      setVisible(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setVisible(false), 4000);
+    }
+  }, [status]);
+
+  return (
+    <div
+      className="pointer-events-none fixed bottom-6 left-0 right-0 z-50 flex justify-center"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(12px)", transition: "opacity 0.25s ease, transform 0.25s ease" }}
+    >
+      <div
+        className="pointer-events-auto flex items-center gap-2.5 rounded-full border px-5 py-2.5"
+        style={{
+          backgroundColor: displayState === "saving"
+            ? "rgba(17,17,23,0.95)"
+            : displayState === "saved"
+            ? "rgba(17,17,23,0.95)"
+            : "rgba(17,17,23,0.95)",
+          borderColor: displayState === "saving"
+            ? "rgba(139,92,246,0.25)"
+            : displayState === "saved"
+            ? "rgba(16,185,129,0.25)"
+            : "rgba(239,68,68,0.25)",
+          boxShadow: displayState === "saving"
+            ? "0 4px 24px rgba(139,92,246,0.15)"
+            : displayState === "saved"
+            ? "0 4px 24px rgba(16,185,129,0.15)"
+            : "0 4px 24px rgba(239,68,68,0.15)",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        {displayState === "saving" ? (
+          <>
+            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+            <span className="text-[12px] font-medium text-white/70">Saving changes...</span>
+          </>
+        ) : displayState === "saved" ? (
+          <>
+            <CheckCircle2 size={14} className="text-emerald-400" />
+            <span className="text-[12px] font-medium text-white/70">Update saved</span>
+          </>
+        ) : (
+          <>
+            <AlertTriangle size={14} className="text-red-400" />
+            <span className="text-[12px] font-medium text-white/70">Save failed</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Helpers ── */
 function formatCurrency(amount: number) {
   return `£${Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/* ── Logo processing: auto-trim transparent pixels + resize ── */
+function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const src = document.createElement("canvas");
+          const sCtx = src.getContext("2d")!;
+          src.width = img.width;
+          src.height = img.height;
+          sCtx.drawImage(img, 0, 0);
+
+          const pixels = sCtx.getImageData(0, 0, src.width, src.height).data;
+          let top = src.height, bottom = 0, left = src.width, right = 0;
+          for (let y = 0; y < src.height; y++) {
+            for (let x = 0; x < src.width; x++) {
+              if (pixels[(y * src.width + x) * 4 + 3] > 10) {
+                if (y < top) top = y;
+                if (y > bottom) bottom = y;
+                if (x < left) left = x;
+                if (x > right) right = x;
+              }
+            }
+          }
+
+          if (top > bottom || left > right) {
+            top = 0; bottom = src.height - 1;
+            left = 0; right = src.width - 1;
+          }
+
+          top = Math.max(0, top - 2);
+          left = Math.max(0, left - 2);
+          bottom = Math.min(src.height - 1, bottom + 2);
+          right = Math.min(src.width - 1, right + 2);
+
+          const cropW = right - left + 1;
+          const cropH = bottom - top + 1;
+          let outW = cropW, outH = cropH;
+          if (outW > maxWidth) {
+            outH = Math.round((outH * maxWidth) / outW);
+            outW = maxWidth;
+          }
+
+          const out = document.createElement("canvas");
+          out.width = outW;
+          out.height = outH;
+          out.getContext("2d")!.drawImage(src, left, top, cropW, cropH, 0, 0, outW, outH);
+          resolve(out.toDataURL("image/png"));
+        } catch { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function processLogoFile(file: File): Promise<string | null> {
+  if (file.size > 5 * 1024 * 1024) { alert("Image too large. Maximum is 5MB."); return null; }
+  const result = await trimAndResizeLogo(file, 400);
+  if (!result) alert("Failed to process image. Try a smaller file.");
+  return result;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -232,9 +398,9 @@ function MasterToggle({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   RECOVERY PIPELINE — visual flow of email steps
+   RECOVERY FLOW — horizontal sequence of email steps
    ═══════════════════════════════════════════════════════════ */
-function RecoveryPipeline({
+function RecoveryFlow({
   steps,
   automationEnabled,
   onToggleStep,
@@ -248,220 +414,209 @@ function RecoveryPipeline({
   onSelectStep: (id: string) => void;
 }) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="border-b border-border pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <CircleDot size={15} className="text-primary" />
-            Recovery Pipeline
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {steps.filter((s) => s.enabled).length > 0 && (
-              <Badge variant="info" className="text-[9px] font-bold uppercase">
-                {steps.filter((s) => s.enabled).length} of {steps.length} active
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-5">
-        <div className="relative space-y-0">
-          {/* Cart abandoned — origin node */}
-          <div className="relative flex items-start gap-4">
-            <div
-              className="absolute left-[15px] top-[32px] w-0.5"
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Select an email to edit
+        </h3>
+        <span className="text-[10px] text-muted-foreground/50">
+          {steps.filter((s) => s.enabled).length} of {steps.length} emails active
+        </span>
+      </div>
+      <div className="grid grid-cols-1 gap-0 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        {steps.map((step, i) => {
+          const isSelected = activeStepId === step.id;
+          const stepActive = step.enabled && automationEnabled;
+          const StepIcon = step.icon;
+
+          return (
+            <React.Fragment key={step.id}>
+            <button
+              type="button"
+              onClick={() => onSelectStep(step.id)}
+              className={`group relative cursor-pointer overflow-hidden rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                isSelected
+                  ? "ring-1"
+                  : "border-transparent hover:border-border"
+              }`}
               style={{
-                height: "calc(100% - 8px)",
-                background: automationEnabled
-                  ? "linear-gradient(to bottom, #f59e0b, #8B5CF6)"
-                  : "rgba(255,255,255,0.06)",
+                borderColor: isSelected
+                  ? stepActive ? step.color : "var(--color-border)"
+                  : undefined,
+                backgroundColor: isSelected
+                  ? stepActive ? `${step.color}08` : "rgba(255,255,255,0.02)"
+                  : "var(--color-card)",
+                boxShadow: isSelected && stepActive
+                  ? `0 0 20px ${step.glowColor}, inset 0 1px 0 ${step.color}15`
+                  : "none",
+                outline: isSelected
+                  ? stepActive ? `1px solid ${step.color}30` : "1px solid var(--color-border)"
+                  : "none",
+                outlineOffset: "-1px",
               }}
-            />
-            <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
-                style={{
-                  backgroundColor: "rgba(245,158,11,0.15)",
-                  boxShadow: "inset 0 0 0 1.5px rgba(245,158,11,0.5)",
-                }}
-              >
-                <ShoppingCart size={13} style={{ color: "#f59e0b" }} />
-              </div>
-            </div>
-            <div className="min-w-0 flex-1 pb-5">
-              <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: "#f59e0b" }}>
-                Cart Abandoned
-              </span>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/50">
-                Customer leaves checkout without completing purchase
-              </p>
-            </div>
-          </div>
-
-          {/* Email steps */}
-          {steps.map((step, i) => {
-            const StepIcon = step.icon;
-            const isLast = i === steps.length - 1;
-            const isSelected = activeStepId === step.id;
-            const isDisabled = !automationEnabled;
-
-            return (
-              <div key={step.id} className="relative flex items-start gap-4">
-                {!isLast && (
+            >
+              {/* Step number + selected indicator */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
                   <div
-                    className="absolute left-[15px] top-[32px] w-0.5"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200"
                     style={{
-                      height: "calc(100% - 8px)",
-                      background: step.enabled && automationEnabled
-                        ? `linear-gradient(to bottom, ${step.color}, ${steps[i + 1]?.color || step.color})`
-                        : "rgba(255,255,255,0.06)",
-                    }}
-                  />
-                )}
-                {isLast && (
-                  <div
-                    className="absolute left-[15px] top-[32px] w-0.5"
-                    style={{
-                      height: "calc(100% - 8px)",
-                      background: step.enabled && automationEnabled
-                        ? `linear-gradient(to bottom, ${step.color}, #10b981)`
-                        : "rgba(255,255,255,0.06)",
-                    }}
-                  />
-                )}
-
-                <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
-                    style={{
-                      backgroundColor: step.enabled && automationEnabled ? `${step.color}18` : "rgba(255,255,255,0.04)",
-                      boxShadow: isSelected && step.enabled && automationEnabled
-                        ? `0 0 16px ${step.glowColor}, inset 0 0 0 1.5px ${step.color}`
-                        : step.enabled && automationEnabled
-                          ? `inset 0 0 0 1.5px ${step.color}60`
-                          : "none",
+                      backgroundColor: isSelected
+                        ? stepActive ? `${step.color}20` : "rgba(255,255,255,0.06)"
+                        : "rgba(255,255,255,0.04)",
+                      boxShadow: isSelected && stepActive
+                        ? `inset 0 0 0 1.5px ${step.color}50`
+                        : "inset 0 0 0 1px rgba(255,255,255,0.06)",
                     }}
                   >
-                    {step.enabled && automationEnabled ? (
-                      <Check size={12} style={{ color: step.color }} />
-                    ) : (
-                      <StepIcon size={13} style={{ color: isDisabled ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.25)" }} />
-                    )}
+                    <StepIcon
+                      size={15}
+                      style={{
+                        color: isSelected
+                          ? stepActive ? step.color : "var(--color-foreground)"
+                          : "var(--color-muted-foreground)",
+                      }}
+                    />
                   </div>
-                  {isSelected && step.enabled && automationEnabled && (
-                    <span className="absolute inset-0 animate-ping rounded-full opacity-15" style={{ backgroundColor: step.color }} />
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onSelectStep(step.id)}
-                  className={`group min-w-0 flex-1 rounded-lg border px-4 py-3 text-left transition-all duration-300 ${
-                    isLast ? "mb-0" : "mb-3"
-                  } ${
-                    isSelected
-                      ? ""
-                      : "border-transparent hover:border-border/40 hover:bg-muted/20"
-                  }`}
-                  style={isSelected ? {
-                    borderColor: step.enabled && automationEnabled ? `${step.color}30` : "var(--color-border)",
-                    backgroundColor: step.enabled && automationEnabled ? `${step.color}06` : "rgba(255,255,255,0.02)",
-                  } : {}}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-[12px] font-semibold uppercase tracking-wider transition-colors"
-                        style={{
-                          color: step.enabled && automationEnabled ? step.color : "rgba(255,255,255,0.3)",
-                        }}
-                      >
-                        {step.label}
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50">
+                        Email {i + 1}
                       </span>
-                      {step.include_discount && step.enabled && (
-                        <Badge variant="warning" className="text-[8px] font-bold uppercase">
-                          <Percent size={7} /> {step.discount_percent}% off
-                        </Badge>
+                      {isSelected && (
+                        <span
+                          className="rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white"
+                          style={{ backgroundColor: stepActive ? step.color : "#71717a" }}
+                        >
+                          Editing
+                        </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-medium text-muted-foreground/40">
-                        <Timer size={10} className="mr-1 inline" />
-                        {step.delay_label}
-                      </span>
-                      <Switch
-                        size="sm"
-                        checked={step.enabled}
-                        onCheckedChange={() => onToggleStep(step.id)}
-                        disabled={!automationEnabled}
-                      />
-                    </div>
+                    <span
+                      className="text-[13px] font-semibold transition-colors"
+                      style={{
+                        color: isSelected
+                          ? stepActive ? step.color : "var(--color-foreground)"
+                          : "var(--color-foreground)",
+                      }}
+                    >
+                      {step.label}
+                    </span>
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground/50">
-                    {step.description}
-                  </p>
-                  {isSelected && (
-                    <div className="mt-2 flex items-center gap-1 text-[10px]" style={{ color: step.color }}>
-                      <Eye size={10} />
-                      <span>Editing below</span>
-                    </div>
-                  )}
-                </button>
+                </div>
+                <Switch
+                  size="sm"
+                  checked={step.enabled}
+                  onCheckedChange={() => onToggleStep(step.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={!automationEnabled}
+                />
               </div>
-            );
-          })}
 
-          {/* Recovery outcome node */}
-          <div className="relative flex items-start gap-4">
-            <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
-                style={{
-                  backgroundColor: automationEnabled ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
-                  boxShadow: automationEnabled ? "inset 0 0 0 1.5px rgba(16,185,129,0.5)" : "none",
-                }}
-              >
-                <PartyPopper size={13} style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.15)" }} />
+              {/* Metadata badges */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <Badge variant="secondary" className="text-[8px] font-medium">
+                  <Timer size={7} className="mr-0.5" />
+                  {step.delay_label}
+                </Badge>
+                {step.include_discount && step.enabled && (
+                  <Badge variant="warning" className="text-[8px] font-bold uppercase">
+                    <Percent size={7} className="mr-0.5" /> {step.discount_percent}%
+                  </Badge>
+                )}
+                {!step.enabled && (
+                  <Badge variant="secondary" className="text-[8px] text-muted-foreground/40">
+                    Disabled
+                  </Badge>
+                )}
               </div>
-            </div>
-            <div className="min-w-0 flex-1">
-              <span
-                className="text-[12px] font-semibold uppercase tracking-wider"
-                style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.3)" }}
-              >
-                Cart Recovered
-              </span>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/50">
-                Customer completes their purchase
-              </p>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+
+              {/* Left accent bar when selected */}
+              {isSelected && (
+                <div
+                  className="absolute left-0 top-0 h-full w-1 rounded-l-xl"
+                  style={{ backgroundColor: stepActive ? step.color : "#71717a" }}
+                />
+              )}
+            </button>
+
+            {/* Timeline arrow connector (between cards) */}
+            {i < steps.length - 1 && (
+              <div className="hidden flex-col items-center justify-center gap-1 px-3 sm:flex">
+                <div className="flex items-center gap-1">
+                  <div
+                    className="h-px w-3 transition-all duration-300"
+                    style={{
+                      backgroundColor: stepActive
+                        ? step.color
+                        : "rgba(255,255,255,0.08)",
+                    }}
+                  />
+                  <ArrowRight
+                    size={14}
+                    className="transition-all duration-300"
+                    style={{
+                      color: stepActive
+                        ? step.color
+                        : "rgba(255,255,255,0.15)",
+                      filter: stepActive
+                        ? `drop-shadow(0 0 4px ${step.glowColor})`
+                        : "none",
+                    }}
+                  />
+                  <div
+                    className="h-px w-3 transition-all duration-300"
+                    style={{
+                      backgroundColor: steps[i + 1]?.enabled && automationEnabled
+                        ? steps[i + 1].color
+                        : "rgba(255,255,255,0.08)",
+                    }}
+                  />
+                </div>
+                <span className="text-[8px] font-medium tabular-nums text-muted-foreground/40">
+                  {steps[i + 1]?.delay_label}
+                </span>
+              </div>
+            )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════
-   EMAIL PREVIEW — live rendered email in iframe
+   EMAIL PREVIEW — live rendered iframe of the actual email
    ═══════════════════════════════════════════════════════════ */
-function EmailPreview({ step }: { step: EmailStep | null }) {
+function EmailPreview({
+  step,
+  previewVersion,
+}: {
+  step: EmailStep | null;
+  previewVersion: number;
+}) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [loading, setLoading] = useState(true);
 
-  // Build preview URL from step config
   const previewUrl = useMemo(() => {
     if (!step) return null;
     const params = new URLSearchParams();
     params.set("subject", step.subject);
     params.set("preview_text", step.preview_text);
+    if (step.greeting) params.set("greeting", step.greeting);
+    if (step.body_message) params.set("body_message", step.body_message);
+    if (step.cta_text) params.set("cta_text", step.cta_text);
     if (step.include_discount && step.discount_code) {
       params.set("discount_code", step.discount_code);
       params.set("discount_percent", String(step.discount_percent));
+      if (step.discount_label) params.set("discount_label", step.discount_label);
     }
+    params.set("use_real_event", "1");
+    params.set("t", String(previewVersion));
     return `/api/abandoned-carts/preview-email?${params.toString()}`;
-  }, [step?.subject, step?.preview_text, step?.include_discount, step?.discount_code, step?.discount_percent]);
+  }, [step, previewVersion]);
 
   useEffect(() => {
     setLoading(true);
@@ -485,7 +640,7 @@ function EmailPreview({ step }: { step: EmailStep | null }) {
       <CardHeader className="shrink-0 border-b border-border pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Eye size={15} className="text-primary" />
+            <Mail size={15} className="text-primary" />
             Email Preview
           </CardTitle>
           <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
@@ -513,21 +668,9 @@ function EmailPreview({ step }: { step: EmailStep | null }) {
             </button>
           </div>
         </div>
-        {/* Fake email client header */}
-        <div className="mt-3 space-y-1.5 rounded-lg border border-border/50 bg-secondary/50 px-3 py-2.5">
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="shrink-0 font-semibold text-muted-foreground">Subject:</span>
-            <span className="truncate text-foreground">{step.subject}</span>
-          </div>
-          {step.preview_text && (
-            <div className="flex items-center gap-2 text-[11px]">
-              <span className="shrink-0 font-semibold text-muted-foreground">Preview:</span>
-              <span className="truncate text-muted-foreground/70">{step.preview_text}</span>
-            </div>
-          )}
-        </div>
       </CardHeader>
-      <CardContent className="relative flex-1 overflow-hidden p-4">
+
+      <CardContent className="relative flex-1 p-4" style={{ minHeight: "600px" }}>
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
             <div className="flex flex-col items-center gap-2">
@@ -537,11 +680,8 @@ function EmailPreview({ step }: { step: EmailStep | null }) {
           </div>
         )}
         <div
-          className="mx-auto overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
-          style={{
-            width: previewMode === "mobile" ? "375px" : "100%",
-            height: "100%",
-          }}
+          className="mx-auto h-full overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
+          style={{ width: previewMode === "mobile" ? "375px" : "100%" }}
         >
           {previewUrl && (
             <iframe
@@ -564,10 +704,8 @@ function EmailPreview({ step }: { step: EmailStep | null }) {
    ═══════════════════════════════════════════════════════════ */
 function CreateDiscountInline({
   onCreated,
-  disabled,
 }: {
   onCreated: (code: string, percent: number) => void;
-  disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -629,9 +767,8 @@ function CreateDiscountInline({
     return (
       <button
         type="button"
-        disabled={disabled}
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
       >
         <Plus size={12} />
         Create New Discount Code
@@ -730,275 +867,441 @@ function CreateDiscountInline({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   STEP EDITOR — configure individual email step
+   COLLAPSIBLE SECTION — reusable accordion panel for settings
    ═══════════════════════════════════════════════════════════ */
-function StepEditor({
+function SettingsSection({
+  icon: Icon,
+  label,
+  badge,
+  defaultOpen = false,
+  accentColor,
+  children,
+}: {
+  icon: typeof Clock;
+  label: string;
+  badge?: React.ReactNode;
+  defaultOpen?: boolean;
+  accentColor?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div
+      className="overflow-hidden rounded-lg border transition-all duration-200"
+      style={{
+        borderColor: open && accentColor ? `${accentColor}20` : "var(--color-border)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-card/80"
+      >
+        <div className="flex items-center gap-2">
+          <Icon size={12} style={{ color: accentColor || "#71717a" }} />
+          <span className="text-[11px] font-semibold text-foreground">{label}</span>
+          {badge}
+        </div>
+        <ChevronDown
+          size={13}
+          className="text-muted-foreground/50 transition-transform duration-200"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        />
+      </button>
+      <div
+        className="transition-all duration-200"
+        style={{
+          maxHeight: open ? "800px" : "0px",
+          opacity: open ? 1 : 0,
+          overflow: "hidden",
+        }}
+      >
+        <div className="border-t border-border/50 px-3.5 py-3">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STEP SETTINGS — collapsible sections for clean UX
+   ═══════════════════════════════════════════════════════════ */
+function StepSettings({
   step,
   automationEnabled,
   onUpdate,
+  branding,
+  onBrandingChange,
 }: {
   step: EmailStep;
   automationEnabled: boolean;
   onUpdate: (id: string, updates: Partial<EmailStep>) => void;
+  branding: EmailBrandingState;
+  onBrandingChange: (updates: Partial<EmailBrandingState>) => void;
 }) {
-  const isDisabled = !automationEnabled || !step.enabled;
+  const logoFileRef = useRef<HTMLInputElement>(null);
+  const [logoProcessing, setLogoProcessing] = useState(false);
+  const [logoDragging, setLogoDragging] = useState(false);
+  const [displayLogoUrl, setDisplayLogoUrl] = useState<string | null>(null);
+
   const StepIcon = step.icon;
+  const isActive = automationEnabled && step.enabled;
+
+  const handleLogoFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setLogoProcessing(true);
+    const compressed = await processLogoFile(file);
+    if (!compressed) { setLogoProcessing(false); return; }
+    setDisplayLogoUrl(compressed);
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: compressed, key: "email-logo" }),
+      });
+      const json = await res.json();
+      if (res.ok && json.url) {
+        const aspectImg = new Image();
+        aspectImg.onload = () => {
+          const ratio = aspectImg.width / aspectImg.height;
+          onBrandingChange({ logo_url: json.url, logo_aspect_ratio: ratio });
+          setDisplayLogoUrl(null);
+        };
+        aspectImg.onerror = () => {
+          onBrandingChange({ logo_url: json.url });
+          setDisplayLogoUrl(null);
+        };
+        aspectImg.src = compressed;
+      }
+    } catch { /* upload failed */ }
+    setLogoProcessing(false);
+  }, [onBrandingChange]);
+
+  const logoSrc = displayLogoUrl || branding.logo_url;
+
+  const timingOptions =
+    step.id === "email_1" ? [
+      { label: "15 min", minutes: 15 },
+      { label: "30 min", minutes: 30 },
+      { label: "1 hour", minutes: 60 },
+    ] : step.id === "email_2" ? [
+      { label: "12 hours", minutes: 720 },
+      { label: "24 hours", minutes: 1440 },
+      { label: "36 hours", minutes: 2160 },
+    ] : [
+      { label: "48 hours", minutes: 2880 },
+      { label: "72 hours", minutes: 4320 },
+      { label: "5 days", minutes: 7200 },
+    ];
 
   return (
-    <Card
-      className="overflow-hidden transition-all duration-300"
-      style={{
-        borderColor: !isDisabled ? `${step.color}20` : undefined,
-      }}
-    >
-      {/* Step header with color accent */}
+    <div className="space-y-3">
+      {/* Step header card */}
       <div
-        className="relative border-b px-5 py-4"
+        className="relative overflow-hidden rounded-xl border px-4 py-3 transition-all duration-300"
         style={{
-          borderColor: !isDisabled ? `${step.color}15` : "var(--color-border)",
-          background: !isDisabled
+          borderColor: isActive ? `${step.color}25` : "var(--color-border)",
+          background: isActive
             ? `linear-gradient(135deg, ${step.color}08, transparent)`
-            : "transparent",
+            : "var(--color-card)",
         }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-all"
-              style={{
-                backgroundColor: !isDisabled ? `${step.color}15` : "rgba(255,255,255,0.04)",
-                boxShadow: !isDisabled ? `inset 0 0 0 1.5px ${step.color}40` : "none",
-              }}
-            >
-              <StepIcon size={15} style={{ color: !isDisabled ? step.color : "#71717a" }} />
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-all"
+            style={{
+              backgroundColor: isActive ? `${step.color}15` : "rgba(255,255,255,0.04)",
+              boxShadow: isActive
+                ? `inset 0 0 0 1.5px ${step.color}40, 0 0 12px ${step.glowColor}`
+                : "inset 0 0 0 1px rgba(255,255,255,0.06)",
+            }}
+          >
+            <StepIcon size={15} style={{ color: isActive ? step.color : "#71717a" }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3
+                className="text-[13px] font-bold"
+                style={{ color: isActive ? step.color : "var(--color-foreground)" }}
+              >
+                {step.label}
+              </h3>
+              <Badge
+                variant={isActive ? "success" : "secondary"}
+                className="text-[8px] font-bold uppercase"
+              >
+                {isActive ? "Active" : "Off"}
+              </Badge>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3
-                  className="font-mono text-[13px] font-bold uppercase tracking-wider"
-                  style={{ color: !isDisabled ? step.color : "#71717a" }}
-                >
-                  {step.label}
-                </h3>
-                <Badge
-                  variant={step.enabled && automationEnabled ? "success" : "secondary"}
-                  className="text-[8px] font-bold uppercase"
-                >
-                  {step.enabled && automationEnabled ? "Active" : "Disabled"}
-                </Badge>
-              </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/50">
-                Sent {step.delay_label} after cart abandoned
-              </p>
-            </div>
+            <p className="text-[10px] text-muted-foreground/50">
+              Sent {step.delay_label} after cart abandonment
+            </p>
           </div>
         </div>
       </div>
 
-      <CardContent className="space-y-5 p-5">
-        <Tabs defaultValue="content">
-          <TabsList variant="line" className="mb-4">
-            <TabsTrigger value="content" className="text-xs">
-              <Mail size={12} className="mr-1.5" />
-              Content
-            </TabsTrigger>
-            <TabsTrigger value="incentive" className="text-xs">
-              <Tag size={12} className="mr-1.5" />
-              Incentive
-            </TabsTrigger>
-            <TabsTrigger value="timing" className="text-xs">
-              <Clock size={12} className="mr-1.5" />
-              Timing
-            </TabsTrigger>
-          </TabsList>
+      {/* ── CONTENT — always visible (primary editing area) ── */}
+      <SettingsSection
+        icon={Pencil}
+        label="Email Content"
+        defaultOpen={true}
+        accentColor={isActive ? step.color : undefined}
+      >
+        <div className="space-y-2.5">
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Subject Line
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.subject}
+              onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
+              placeholder="Email subject..."
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Preview Text
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.preview_text}
+              onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
+              placeholder="Inbox preview..."
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Heading
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.greeting}
+              onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
+              placeholder="Greeting headline..."
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Body Message
+            </Label>
+            <Textarea
+              className="mt-1 text-xs"
+              value={step.body_message}
+              onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
+              placeholder="Email body text..."
+              rows={2}
+            />
+          </div>
+          <div>
+            <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Button Text
+            </Label>
+            <Input
+              className="mt-1 text-xs"
+              value={step.cta_text}
+              onChange={(e) => onUpdate(step.id, { cta_text: e.target.value })}
+              placeholder="Complete Your Order"
+            />
+          </div>
+        </div>
+      </SettingsSection>
 
-          {/* Content tab */}
-          <TabsContent value="content" className="space-y-4">
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Subject Line
-              </Label>
-              <Input
-                className="mt-1.5"
-                value={step.subject}
-                onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
-                placeholder="Email subject line..."
-                disabled={isDisabled}
-              />
-            </div>
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Preview Text
-              </Label>
-              <Textarea
-                className="mt-1.5"
-                value={step.preview_text}
-                onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
-                placeholder="Shows in email client preview..."
-                rows={2}
-                disabled={isDisabled}
-              />
-              <p className="mt-1 text-[10px] text-muted-foreground/40">
-                Appears as preview text in the customer&apos;s inbox
-              </p>
-            </div>
-          </TabsContent>
-
-          {/* Incentive tab */}
-          <TabsContent value="incentive" className="space-y-4">
-            <div
-              className="flex items-center justify-between rounded-lg border p-4 transition-all"
-              style={{
-                borderColor: step.include_discount && !isDisabled
-                  ? "rgba(245,158,11,0.2)"
-                  : "var(--color-border)",
-                background: step.include_discount && !isDisabled
-                  ? "rgba(245,158,11,0.04)"
-                  : "transparent",
-              }}
+      {/* ── TIMING — collapsed by default ── */}
+      <SettingsSection icon={Clock} label="Send Timing" badge={
+        <Badge variant="secondary" className="text-[8px] font-mono font-medium">
+          {step.delay_label}
+        </Badge>
+      }>
+        <div className="grid grid-cols-3 gap-1.5">
+          {timingOptions.map((opt) => (
+            <button
+              key={opt.minutes}
+              type="button"
+              onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
+              className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
+                step.delay_minutes === opt.minutes
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border bg-transparent text-muted-foreground hover:bg-card"
+              }`}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full"
-                  style={{
-                    backgroundColor: step.include_discount && !isDisabled ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)",
-                  }}
-                >
-                  <Percent size={14} style={{ color: step.include_discount && !isDisabled ? "#f59e0b" : "#71717a" }} />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </SettingsSection>
+
+      {/* ── INCENTIVE — collapsed, shows active badge when discount is on ── */}
+      <SettingsSection
+        icon={Percent}
+        label="Discount Incentive"
+        accentColor={step.include_discount ? "#f59e0b" : undefined}
+        badge={step.include_discount ? (
+          <Badge variant="warning" className="text-[8px] font-bold uppercase">
+            {step.discount_percent}% off
+          </Badge>
+        ) : undefined}
+      >
+        <div className="space-y-3">
+          <div
+            className="flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all"
+            style={{
+              borderColor: step.include_discount
+                ? "rgba(245,158,11,0.2)"
+                : "var(--color-border)",
+              background: step.include_discount
+                ? "rgba(245,158,11,0.04)"
+                : "transparent",
+            }}
+          >
+            <span className="text-[11px] font-medium text-foreground">Include discount code</span>
+            <Switch
+              size="sm"
+              checked={step.include_discount}
+              onCheckedChange={(val) => onUpdate(step.id, { include_discount: val })}
+            />
+          </div>
+
+          {step.include_discount && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-5 gap-2">
+                <div className="col-span-3">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Code
+                  </Label>
+                  <Input
+                    className="mt-1 font-mono text-xs"
+                    value={step.discount_code}
+                    onChange={(e) => onUpdate(step.id, { discount_code: e.target.value.toUpperCase() })}
+                    placeholder="COMEBACK10"
+                  />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">Include Discount</p>
-                  <p className="text-[11px] text-muted-foreground/50">
-                    Add a discount code to incentivize purchase
-                  </p>
+                <div className="col-span-2">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Discount %
+                  </Label>
+                  <Input
+                    className="mt-1 font-mono text-xs"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={step.discount_percent}
+                    onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
+                  />
                 </div>
               </div>
-              <Switch
-                size="sm"
-                checked={step.include_discount}
-                onCheckedChange={(val) => onUpdate(step.id, { include_discount: val })}
-                disabled={isDisabled}
+              <div>
+                <Label className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/50">
+                  Heading Text
+                </Label>
+                <Input
+                  className="mt-1 text-xs"
+                  value={step.discount_label}
+                  onChange={(e) => onUpdate(step.id, { discount_label: e.target.value })}
+                  placeholder="Your exclusive offer"
+                />
+                <p className="mt-1.5 text-[9px] text-muted-foreground/40">
+                  Appears above the code in the email
+                </p>
+              </div>
+              <CreateDiscountInline
+                onCreated={(newCode, newPercent) => {
+                  onUpdate(step.id, {
+                    discount_code: newCode,
+                    discount_percent: newPercent,
+                  });
+                }}
               />
             </div>
+          )}
+        </div>
+      </SettingsSection>
 
-            {step.include_discount && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Discount Code
-                    </Label>
-                    <Input
-                      className="mt-1.5 font-mono"
-                      value={step.discount_code}
-                      onChange={(e) => onUpdate(step.id, { discount_code: e.target.value.toUpperCase() })}
-                      placeholder="COMEBACK10"
-                      disabled={isDisabled}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Discount %
-                    </Label>
-                    <Input
-                      className="mt-1.5 font-mono"
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={step.discount_percent}
-                      onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
-                      disabled={isDisabled}
-                    />
-                  </div>
-                </div>
-
-                {/* Inline discount creation */}
-                <CreateDiscountInline
-                  disabled={isDisabled}
-                  onCreated={(newCode, newPercent) => {
-                    onUpdate(step.id, {
-                      discount_code: newCode,
-                      discount_percent: newPercent,
-                    });
-                  }}
+      {/* ── BRANDING — collapsed, shared across all steps ── */}
+      <SettingsSection icon={Palette} label="Email Branding" badge={
+        <span className="text-[8px] text-muted-foreground/40">All emails</span>
+      }>
+        <div className="flex items-start gap-4">
+          {/* Logo */}
+          <div className="shrink-0">
+            {logoSrc ? (
+              <div
+                className="group relative cursor-pointer rounded-lg border border-border bg-[#08080c] p-3"
+                onClick={() => logoFileRef.current?.click()}
+              >
+                <img
+                  src={logoSrc}
+                  alt="Logo"
+                  style={{ height: 28, width: "auto", maxWidth: 120, objectFit: "contain" }}
                 />
-              </>
-            )}
-          </TabsContent>
-
-          {/* Timing tab */}
-          <TabsContent value="timing" className="space-y-4">
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Delay After Cart Abandoned
-              </Label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {step.id === "email_1" && [
-                  { label: "15 min", minutes: 15 },
-                  { label: "30 min", minutes: 30 },
-                  { label: "1 hour", minutes: 60 },
-                ].map((opt) => (
+                <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                   <button
-                    key={opt.minutes}
                     type="button"
-                    disabled={isDisabled}
-                    onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                    className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
-                      step.delay_minutes === opt.minutes
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    } disabled:opacity-40`}
+                    onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-primary/80"
                   >
-                    {opt.label}
+                    <Pencil size={9} />
                   </button>
-                ))}
-                {step.id === "email_2" && [
-                  { label: "12 hours", minutes: 720 },
-                  { label: "24 hours", minutes: 1440 },
-                  { label: "36 hours", minutes: 2160 },
-                ].map((opt) => (
                   <button
-                    key={opt.minutes}
                     type="button"
-                    disabled={isDisabled}
-                    onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                    className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
-                      step.delay_minutes === opt.minutes
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    } disabled:opacity-40`}
+                    onClick={(e) => { e.stopPropagation(); onBrandingChange({ logo_url: "", logo_aspect_ratio: undefined }); setDisplayLogoUrl(null); }}
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-red-500/80"
                   >
-                    {opt.label}
+                    <Trash2 size={9} />
                   </button>
-                ))}
-                {step.id === "email_3" && [
-                  { label: "48 hours", minutes: 2880 },
-                  { label: "72 hours", minutes: 4320 },
-                  { label: "5 days", minutes: 7200 },
-                ].map((opt) => (
-                  <button
-                    key={opt.minutes}
-                    type="button"
-                    disabled={isDisabled}
-                    onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                    className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
-                      step.delay_minutes === opt.minutes
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    } disabled:opacity-40`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                </div>
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                />
               </div>
-              <p className="mt-2 text-[10px] text-muted-foreground/40">
-                Time between cart abandonment and when this email is sent
-              </p>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+            ) : (
+              <div
+                className={`cursor-pointer rounded-lg border-2 border-dashed p-3 text-center transition-all ${
+                  logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                }`}
+                style={{ minWidth: "80px" }}
+                onClick={() => logoFileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                onDragLeave={() => setLogoDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
+              >
+                <ImageIcon size={14} className="mx-auto text-muted-foreground/40" />
+                <p className="mt-1 text-[9px] text-muted-foreground/50">
+                  {logoProcessing ? "..." : "Logo"}
+                </p>
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Accent color */}
+          <div>
+            <ColorPicker
+              value={branding.accent_color}
+              onChange={(v) => onBrandingChange({ accent_color: v })}
+            />
+            <p className="mt-1 text-[9px] text-muted-foreground/40">
+              Accent color
+            </p>
+          </div>
+        </div>
+        <p className="mt-2 text-[9px] text-muted-foreground/30">
+          Shared across all recovery emails
+        </p>
+      </SettingsSection>
+    </div>
   );
 }
 
@@ -1104,7 +1407,7 @@ function HowItWorks() {
       color: "#f59e0b",
     },
     {
-      icon: Target,
+      icon: Sparkles,
       label: "Automation Triggers",
       detail: "Your configured email sequence begins — each step fires automatically at the delay you set",
       color: "#8B5CF6",
@@ -1166,7 +1469,12 @@ function HowItWorks() {
                 {i < steps.length - 1 && (
                   <ArrowRight
                     size={14}
-                    className="absolute -right-3 top-6 hidden text-muted-foreground/15 lg:block"
+                    className="absolute -right-3 top-6 hidden lg:block"
+                    style={{
+                      color: step.color,
+                      opacity: 0.4,
+                      filter: `drop-shadow(0 0 3px ${step.color}40)`,
+                    }}
                   />
                 )}
               </div>
@@ -1190,6 +1498,16 @@ export default function AbandonedCartPage() {
   const [activeStepId, setActiveStepId] = useState<string | null>("email_1");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Email branding state (loaded from feral_email settings)
+  const [branding, setBranding] = useState<EmailBrandingState>({
+    logo_url: "",
+    logo_height: 48,
+    accent_color: "#ff0033",
+    from_name: "FERAL PRESENTS",
+  });
+  // Preview version counter — increment to force iframe reload when branding changes
+  const [previewVersion, setPreviewVersion] = useState(0);
+
   // Load stats
   const loadStats = useCallback(async () => {
     try {
@@ -1201,19 +1519,35 @@ export default function AbandonedCartPage() {
     }
   }, []);
 
-  // Load settings
+  // Load settings (automation + email branding in parallel)
   const loadSettings = useCallback(async () => {
     try {
-      const res = await fetch(`/api/settings?key=${SETTINGS_KEY}`);
-      const json = await res.json();
-      if (json?.data) {
-        const loaded = json.data as AutomationSettings;
+      const [automationRes, emailRes] = await Promise.all([
+        fetch(`/api/settings?key=${SETTINGS_KEY}`),
+        fetch(`/api/settings?key=feral_email`),
+      ]);
+      const automationJson = await automationRes.json();
+      const emailJson = await emailRes.json();
+
+      if (automationJson?.data) {
+        const loaded = automationJson.data as AutomationSettings;
         setSettings({
           enabled: loaded.enabled ?? false,
           steps: DEFAULT_STEPS.map((def) => {
             const saved = loaded.steps?.find((s: EmailStep) => s.id === def.id);
             return saved ? { ...def, ...saved, icon: def.icon } : def;
           }),
+        });
+      }
+
+      if (emailJson?.data) {
+        const e = emailJson.data as Record<string, unknown>;
+        setBranding({
+          logo_url: (e.logo_url as string) || "",
+          logo_height: (e.logo_height as number) || 48,
+          logo_aspect_ratio: e.logo_aspect_ratio as number | undefined,
+          accent_color: (e.accent_color as string) || "#ff0033",
+          from_name: (e.from_name as string) || "FERAL PRESENTS",
         });
       }
     } catch {
@@ -1227,9 +1561,11 @@ export default function AbandonedCartPage() {
     loadSettings();
   }, [loadStats, loadSettings]);
 
-  // Auto-save with debounce
+  // Auto-save automation settings with debounce
   const persistSettings = useCallback(async (newSettings: AutomationSettings) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    // Reset to idle so the next saved/error transition always fires the useEffect
+    setSaveStatus("idle");
 
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
@@ -1244,40 +1580,70 @@ export default function AbandonedCartPage() {
       } else {
         setSaveStatus("saved");
       }
-      setTimeout(() => setSaveStatus("idle"), 2000);
     }, 600);
   }, []);
 
-  // Toggle master automation
+  // Save email branding settings (separate settings key)
+  const persistBranding = useCallback(async (updated: EmailBrandingState) => {
+    // Load existing email settings, merge, and save
+    try {
+      const res = await fetch("/api/settings?key=feral_email");
+      const json = await res.json();
+      const existing = json?.data || {};
+      const merged = { ...existing, ...updated };
+      await saveSettings("feral_email", merged as unknown as Record<string, unknown>);
+      // Bump preview version to force iframe reload
+      setPreviewVersion((v) => v + 1);
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  // Handle branding changes
+  const handleBrandingChange = useCallback((updates: Partial<EmailBrandingState>) => {
+    setBranding((prev) => {
+      const updated = { ...prev, ...updates };
+      persistBranding(updated);
+      return updated;
+    });
+  }, [persistBranding]);
+
+  // Toggle master automation (functional update prevents stale closure)
   const handleToggleAutomation = useCallback((val: boolean) => {
-    const updated = { ...settings, enabled: val };
-    setSettings(updated);
-    persistSettings(updated);
-  }, [settings, persistSettings]);
+    setSettings((prev) => {
+      const updated = { ...prev, enabled: val };
+      persistSettings(updated);
+      return updated;
+    });
+  }, [persistSettings]);
 
-  // Toggle individual step
+  // Toggle individual step (functional update prevents stale closure)
   const handleToggleStep = useCallback((id: string) => {
-    const updated = {
-      ...settings,
-      steps: settings.steps.map((s) =>
-        s.id === id ? { ...s, enabled: !s.enabled } : s
-      ),
-    };
-    setSettings(updated);
-    persistSettings(updated);
-  }, [settings, persistSettings]);
+    setSettings((prev) => {
+      const updated = {
+        ...prev,
+        steps: prev.steps.map((s) =>
+          s.id === id ? { ...s, enabled: !s.enabled } : s
+        ),
+      };
+      persistSettings(updated);
+      return updated;
+    });
+  }, [persistSettings]);
 
-  // Update step fields
+  // Update step fields (functional update prevents stale closure)
   const handleUpdateStep = useCallback((id: string, updates: Partial<EmailStep>) => {
-    const updated = {
-      ...settings,
-      steps: settings.steps.map((s) =>
-        s.id === id ? { ...s, ...updates } : s
-      ),
-    };
-    setSettings(updated);
-    persistSettings(updated);
-  }, [settings, persistSettings]);
+    setSettings((prev) => {
+      const updated = {
+        ...prev,
+        steps: prev.steps.map((s) =>
+          s.id === id ? { ...s, ...updates } : s
+        ),
+      };
+      persistSettings(updated);
+      return updated;
+    });
+  }, [persistSettings]);
 
   const activeStep = settings.steps.find((s) => s.id === activeStepId) || null;
 
@@ -1320,27 +1686,6 @@ export default function AbandonedCartPage() {
             </p>
           </div>
 
-          {/* Save status indicator */}
-          <div className="flex items-center gap-2">
-            {saving && (
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
-                Saving...
-              </span>
-            )}
-            {saveStatus === "saved" && (
-              <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-                <Check size={10} />
-                Saved
-              </span>
-            )}
-            {saveStatus === "error" && (
-              <span className="flex items-center gap-1 text-[10px] text-red-400">
-                <AlertTriangle size={10} />
-                Save failed
-              </span>
-            )}
-          </div>
         </div>
       </div>
 
@@ -1388,42 +1733,45 @@ export default function AbandonedCartPage() {
         </div>
       )}
 
-      {/* Pipeline + Step Editor + Email Preview — three-column on xl */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        {/* Recovery Pipeline */}
-        <div className="xl:col-span-3">
-          <RecoveryPipeline
-            steps={settings.steps}
-            automationEnabled={settings.enabled}
-            onToggleStep={handleToggleStep}
-            activeStepId={activeStepId}
-            onSelectStep={setActiveStepId}
-          />
-        </div>
+      {/* Row 1: Recovery Flow (full width, horizontal strip) */}
+      <div className="mb-6">
+        <RecoveryFlow
+          steps={settings.steps}
+          automationEnabled={settings.enabled}
+          onToggleStep={handleToggleStep}
+          activeStepId={activeStepId}
+          onSelectStep={setActiveStepId}
+        />
+      </div>
 
-        {/* Step Editor */}
+      {/* Row 2: Step Settings (4/12) | Email Editor (8/12) */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <div className="xl:col-span-4">
           {activeStep ? (
-            <StepEditor
+            <StepSettings
               step={activeStep}
               automationEnabled={settings.enabled}
               onUpdate={handleUpdateStep}
+              branding={branding}
+              onBrandingChange={handleBrandingChange}
             />
           ) : (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <Mail size={28} className="text-muted-foreground/20" />
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Select a step from the pipeline to configure it
+                  Select a step to configure
                 </p>
               </CardContent>
             </Card>
           )}
         </div>
 
-        {/* Email Preview */}
-        <div className="xl:col-span-5" style={{ minHeight: "640px" }}>
-          <EmailPreview step={activeStep} />
+        <div className="xl:col-span-8" style={{ minHeight: "700px" }}>
+          <EmailPreview
+            step={activeStep}
+            previewVersion={previewVersion}
+          />
         </div>
       </div>
 
@@ -1431,6 +1779,9 @@ export default function AbandonedCartPage() {
       <div className="mt-6">
         <HowItWorks />
       </div>
+
+      {/* Floating save toast */}
+      <SaveToast saving={saving} status={saveStatus} />
     </div>
   );
 }

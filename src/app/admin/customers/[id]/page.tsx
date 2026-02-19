@@ -53,6 +53,7 @@ import {
   PartyPopper,
   CircleDot,
   X,
+  MapPin,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -238,6 +239,13 @@ function memberSince(dateStr?: string): string {
   return `${Math.floor(days / 365)}+ years ago`;
 }
 
+function countryFlag(code: string | null): string {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(
+    ...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
+  );
+}
+
 /* ── Timeline ── */
 interface TimelineEntry {
   label: string;
@@ -258,11 +266,14 @@ function buildCustomerTimeline(
   const fmt = (d: string) => formatDateTime(d);
 
   const isDiscoverer = customer.total_orders === 0;
+  const isPopupSource = customer.source === "popup";
   entries.push({
-    label: isDiscoverer ? "Discoverer captured" : "Customer created",
-    detail: isDiscoverer
-      ? `${customer.nickname || customer.email} entered the funnel`
-      : `${customer.first_name || ""} ${customer.last_name || ""} joined the movement`.trim(),
+    label: isPopupSource ? "Captured via popup" : isDiscoverer ? "Discoverer captured" : "Customer created",
+    detail: isPopupSource
+      ? `${customer.nickname || customer.email} entered via discount popup`
+      : isDiscoverer
+        ? `${customer.nickname || customer.email} entered the funnel`
+        : `${customer.first_name || ""} ${customer.last_name || ""} joined the movement`.trim(),
     time: fmt(customer.created_at),
     icon: isDiscoverer ? Target : UserPlus,
     sortDate: new Date(customer.created_at),
@@ -1436,6 +1447,11 @@ export default function CustomerProfilePage() {
                       <Repeat size={10} /> Loyal
                     </Badge>
                   )}
+                  {customer.source === "popup" && (
+                    <Badge variant="info" className="text-[10px] font-semibold">
+                      Via Popup
+                    </Badge>
+                  )}
                 </div>
 
                 {/* Discoverer: show real name as subtitle if available */}
@@ -1460,6 +1476,13 @@ export default function CustomerProfilePage() {
                     <CalendarDays size={13} className="text-muted-foreground/50" />
                     {isDiscoverer ? "First seen" : "Member since"} {memberSince(customer.first_order_at || customer.created_at)}
                   </div>
+                  {(customer.city || customer.country) && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin size={13} className="text-muted-foreground/50" />
+                      {countryFlag(customer.country || null)}{" "}
+                      {customer.city ? `Last seen in ${customer.city}` : customer.country || ""}
+                    </div>
+                  )}
                   {activeAbandonedCarts.length > 0 && (
                     <div className="flex items-center gap-1.5 text-sm text-amber-400">
                       <ShoppingCart size={13} />

@@ -26,6 +26,8 @@ interface ExpressCheckoutProps {
   onError: (message: string) => void;
   /** Called when express payment methods are confirmed available */
   onAvailable?: () => void;
+  /** Discount code to apply (validated server-side during payment-intent creation) */
+  discountCode?: string;
 }
 
 /**
@@ -39,6 +41,7 @@ function ExpressCheckoutInner({
   onSuccess,
   onError,
   onAvailable,
+  discountCode,
 }: ExpressCheckoutProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -92,6 +95,7 @@ function ExpressCheckoutInner({
               email: email.toLowerCase(),
               phone: phone || undefined,
             },
+            discount_code: discountCode || undefined,
           }),
         });
 
@@ -153,7 +157,7 @@ function ExpressCheckoutInner({
         onError("An error occurred. Please try again.");
       }
     },
-    [stripe, elements, eventId, items, amount, currency, onSuccess, onError]
+    [stripe, elements, eventId, items, amount, currency, onSuccess, onError, discountCode]
   );
 
   if (!available) return null;

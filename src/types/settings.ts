@@ -22,6 +22,9 @@ export interface EventSettings {
   // Map ticket_type ID → group name (null = default ungrouped section)
   ticket_group_map?: Record<string, string | null>;
 
+  /** Show sticky checkout bar on mobile (default: true) */
+  sticky_checkout_bar?: boolean;
+
   // Any additional dynamic fields
   [key: string]: unknown;
 }
@@ -129,6 +132,37 @@ export interface VatSettings {
    * Checkout shows "VAT (20%): £X.XX" — total increases.
    */
   prices_include_vat: boolean;
+}
+
+/**
+ * Discount popup settings — stored in site_settings under key `{org_id}_popup`.
+ * Controls the 3-screen discount popup on event pages.
+ */
+export interface PopupSettings {
+  /** Master on/off toggle */
+  enabled: boolean;
+  /** Discount code to reveal after email capture */
+  discount_code: string;
+  /** Screen 1 headline */
+  headline: string;
+  /** Screen 1 subheadline */
+  subheadline: string;
+  /** Screen 1 CTA button text */
+  cta_text: string;
+  /** Screen 1 dismiss button text */
+  dismiss_text: string;
+  /** Delay before popup shows on mobile (ms) */
+  mobile_delay: number;
+  /** Delay before popup shows on desktop (ms) */
+  desktop_delay: number;
+  /** Days to suppress popup after dismiss */
+  dismiss_days: number;
+  /** Countdown timer starting value in seconds */
+  countdown_seconds: number;
+  /** Whether to trigger on desktop exit intent (mouse leaves viewport) */
+  exit_intent: boolean;
+  /** Whether to subscribe emails to Klaviyo */
+  klaviyo_enabled: boolean;
 }
 
 /** Row shape from site_settings table */

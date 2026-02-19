@@ -36,6 +36,8 @@ import {
   Tags,
   UsersRound,
   ShoppingCart,
+  Mic2,
+  SlidersHorizontal,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -58,6 +60,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/admin/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/events/", label: "Events", icon: CalendarDays },
+      { href: "/admin/artists/", label: "Artists", icon: Mic2 },
     ],
   },
   {
@@ -94,6 +97,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Platform",
     items: [
+      { href: "/admin/event-page/", label: "Event Page", icon: SlidersHorizontal },
       { href: "/admin/ticketstore/", label: "Ticket Store", icon: Store },
       { href: "/admin/finance/", label: "Finance", icon: CreditCard },
       { href: "/admin/connect/", label: "Stripe Connect", icon: Zap },

@@ -43,25 +43,26 @@ src/
 │   │                          # merch, discounts, abandoned-carts, reps, ticketstore, finance,
 │   │                          # traffic, popup, payments, connect, marketing, communications,
 │   │                          # settings, health). Layout: sidebar + Entry-branded shell
-│   └── api/                   # 85 endpoints — see API Routes section for full list
+│   └── api/                   # API routes — see API Routes section for full list
 ├── components/
-│   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
+│   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, ArtistLineupEditor, TierSelector
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
 │   │   └── dashboard/         # ActivityFeed, FunnelChart, TopEventsTable
-│   ├── aura/                  # Aura theme components (full event page + checkout variant)
-│   ├── midnight/              # Midnight theme (default): MidnightEventPage, MidnightHero,
+│   ├── aura/                  # Aura theme (DORMANT — not in active use, future consideration)
+│   ├── midnight/              # Midnight theme (default, active): MidnightEventPage, MidnightHero,
 │   │                          # MidnightTicketWidget, MidnightTicketCard, MidnightMerchModal,
-│   │                          # MidnightBottomBar, MidnightEventInfo, MidnightLineup,
-│   │                          # MidnightCartSummary, MidnightTierProgression, MidnightFooter,
-│   │                          # MidnightSocialProof, MidnightFloatingHearts
+│   │                          # MidnightEventInfo, MidnightLineup, MidnightCartSummary,
+│   │                          # MidnightCartToast, MidnightSizeSelector, MidnightTierProgression,
+│   │                          # MidnightFooter, MidnightArtistModal, MidnightSocialProof,
+│   │                          # MidnightFloatingHearts, tier-styles.ts (tier gradient helpers)
 │   ├── event/                 # Shared: DiscountPopup, EngagementTracker, ThemeEditorBridge,
-│   │                          # KompassEventPage (legacy). Old BEM components (DynamicEventPage,
-│   │                          # EventHero, TeeModal, etc.) retained but no longer routed
+│   │                          # BottomBar (shared mobile CTA bar, used by Midnight),
+│   │                          # KompassEventPage (legacy). Old BEM components retained but no longer routed
 │   ├── checkout/              # NativeCheckout, StripePaymentForm, ExpressCheckout,
 │   │                          # OrderConfirmation, OrderSummary, CheckoutTimer, LoadingScreen
 │   ├── landing/               # LandingPage, HeroSection, ParticleCanvas, EventsSection, etc.
 │   ├── layout/                # Header, Footer, Scanlines, CookieConsent
-│   └── ui/                    # shadcn/ui (27 components — see Admin UI section)
+│   └── ui/                    # shadcn/ui (28 components — see Admin UI section)
 ├── hooks/
 │   ├── useBranding.ts         # Org branding (module-level cache, single fetch)
 │   ├── useSettings.tsx        # Settings context + realtime subscription
@@ -83,10 +84,14 @@ src/
 │   ├── pdf.ts, qr.ts, ticket-utils.ts, wallet-passes.ts  # Ticket delivery (PDF, QR, Apple/Google Wallet)
 │   ├── discount-codes.ts, vat.ts, rate-limit.ts  # Pricing + security
 │   ├── themes.ts              # Theme system helpers (getActiveTemplate, etc.)
+│   ├── checkout-guards.ts     # Checkout validation + guards
+│   ├── date-utils.ts, image-utils.ts, nicknames.ts  # Shared utilities
+│   ├── merch-images.ts        # Merch image normalization (normalizeMerchImages, hasMerchImages)
+│   ├── mux.ts                 # Mux video API helpers
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications
 │   ├── klaviyo.ts, meta.ts    # Marketing integrations
 │   └── utils.ts               # cn() helper (clsx + tailwind-merge)
-├── types/                     # TypeScript types per domain (settings, events, orders, tickets,
+├── types/                     # TypeScript types per domain (settings, events, artists, orders, tickets,
 │                              # products, discounts, reps, email, analytics, marketing)
 └── styles/
     ├── base.css               # Reset, CSS variables, typography, reveal animations
@@ -96,9 +101,8 @@ src/
     ├── event.css              # Legacy: KompassEventPage + minimal theme only
     ├── midnight.css           # Midnight theme: Tailwind v4 tokens + scoped reset
     ├── midnight-effects.css   # Midnight effects: glass, metallic tiers, keyframes
-    ├── aura.css               # Aura theme styles
-    ├── aura-effects.css       # Aura theme effects
-    ├── checkout-page.css      # Checkout + payment form
+    ├── aura.css               # Aura theme styles (dormant)
+    ├── aura-effects.css       # Aura theme effects (dormant)
     ├── cookie.css             # Cookie consent banner
     ├── popup.css              # Discount popup
     ├── rep-portal.css         # Rep portal: legacy hybrid CSS (2,600+ lines, needs modernization)
@@ -127,11 +131,12 @@ Event pages route to different component trees based on the **active template**:
 ```
 event/[slug]/page.tsx
   → getActiveTemplate() reads from site_settings ({org_id}_themes)
-  → template === "aura"    → AuraEventPage / AuraCheckout
-  → template === "midnight" → MidnightEventPage / NativeCheckout (default)
+  → template === "midnight" → MidnightEventPage / NativeCheckout (default, active)
+  → template === "aura"    → AuraEventPage / AuraCheckout (dormant — code exists but not in use)
 ```
 
-- Default template: `midnight` (falls back if no theme configured)
+- Default and only active template: `midnight` (falls back if no theme configured)
+- Aura theme is dormant — fully built but not in active use. Future plan: allow color customization within Midnight rather than separate themes
 - Admin can preview non-active themes via `?editor=1&template=aura`
 - Theme store managed in `/admin/ticketstore/` with Shopify-style editor
 
@@ -188,6 +193,8 @@ Each tenant can fully customize their visual identity:
 | `feral_wallet_passes` | Wallet pass configuration |
 | `feral_events_list` | Events list configuration |
 | `feral_stripe_account` | Global Stripe Connect account (fallback) |
+| `feral_pdf_ticket` | PDF ticket design settings (`PdfTicketSettings` in `types/email.ts`) |
+| `feral_event_{slug}` | Dynamic per-event settings (e.g. `feral_event_liverpool`) — pattern, not a single key |
 
 ### Request Flow (Event Pages)
 ```
@@ -262,6 +269,8 @@ EventPage [Server Component, force-dynamic]
 | `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in, checked_in_at |
 | `discounts` | Discount codes | code, type (percentage/fixed), value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at, min_order_amount |
 | `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |
+| `artists` | Reusable artist catalog per org | name, description, instagram_handle, image |
+| `event_artists` | Event↔Artist junction (many-to-many, ordered) | event_id (FK→events, CASCADE), artist_id (FK→artists, CASCADE), sort_order, UNIQUE(event_id, artist_id) |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 
@@ -273,6 +282,14 @@ EventPage [Server Component, force-dynamic]
 - `orders.payment_ref` — used for idempotency (Stripe PaymentIntent ID)
 - `products.product_id` on `ticket_types` — FK to `products` table (ON DELETE SET NULL)
 - All tables have `org_id` column
+- `reps` table has `email_verified` (bool) and `email_verification_token` (text) columns for rep email verification flow
+
+### PostgreSQL RPCs (Database Functions)
+| Function | Purpose |
+|----------|---------|
+| `claim_reward_atomic(rep_id, reward_id, points_cost)` | Atomic reward claiming — deducts points + creates claim in one transaction |
+| `reverse_rep_attribution(order_id)` | Reverses rep points/sales when an order is refunded |
+| `get_rep_program_stats(org_id)` | Aggregate stats for the rep program (total reps, active, points issued, etc.) |
 
 ### Supabase Client Rules (CRITICAL — Data Access)
 Using the wrong client causes silent data loss (empty arrays instead of errors when RLS blocks).
@@ -286,13 +303,23 @@ Using the wrong client causes silent data loss (empty arrays instead of errors w
 **Rules:** Use `getSupabaseAdmin()` for all data queries. Use `getSupabaseServer()` only for auth. Never create raw `createClient()` with anon key server-side. Add new tables to health check. Show API errors in admin pages.
 
 ### External Service Changes Rule (CRITICAL)
-Claude has MCP access to **Supabase** (schema, queries, migrations) and **Stripe** (products, prices, customers, refunds). Use MCP tools directly — don't tell the user to go to dashboards. **Vercel** has no MCP — tell user to use dashboard for env vars, builds, domains.
+Claude has MCP access to **Supabase** and **Vercel**. Use MCP tools directly — **NEVER** give the user SQL to run manually or tell them to go to dashboards. Always execute migrations and queries via MCP yourself.
 
-**Rules:** Never hardcode secrets. Document changes in this file. If MCP can't do something, provide copy-paste instructions. Never assume it exists unless documented here.
+**If Supabase or Vercel MCP token has expired**, do NOT fall back to giving the user raw SQL or manual instructions. Instead, stop and display a highly visible reconnection prompt:
+
+```
+## ⚠️  SUPABASE MCP DISCONNECTED
+
+Run /mcp in this terminal to re-authorize, then I'll continue.
+```
+
+**Stripe** has no MCP — tell user to use dashboard or provide copy-paste instructions.
+
+**Rules:** Never hardcode secrets. Document changes in this file. Never assume a table/column exists unless documented here. Never give the user SQL to run — that's Claude's job via MCP.
 
 ---
 
-## API Routes (85 endpoints)
+## API Routes (~105 route files)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -309,7 +336,8 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Stripe
 ### Standard CRUD Groups
 | Group | Routes | Operations |
 |-------|--------|------------|
-| Events | `/api/events`, `/api/events/[id]` | GET/POST/PUT/DELETE + ticket types |
+| Events | `/api/events`, `/api/events/[id]`, `/api/events/[id]/artists` | GET/POST/PUT/DELETE + ticket types + artist lineup |
+| Artists | `/api/artists`, `/api/artists/[id]` | GET (list + search)/POST/PUT/DELETE |
 | Merch | `/api/merch`, `/api/merch/[id]`, `/api/merch/[id]/linked-tickets` | GET/POST/PUT/DELETE |
 | Customers | `/api/customers` | GET (list + search) |
 | Guest List | `/api/guest-list`, `/api/guest-list/[eventId]` | POST/GET/PUT/DELETE |
@@ -320,8 +348,9 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Stripe
 ### Other Route Groups
 - **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
 - **Stripe Connect**: `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
-- **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
-- **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
+- **Reps Program**: `/api/reps/*` (admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard, claims, stats, settings), `/api/rep-portal/*` (rep-facing routes — auth, auth-check, verify-email, signup, login, logout, dashboard, sales, quests, submissions, rewards, claims, leaderboard, notifications, profile, discount, upload, invite/[token])
+- **Video (Mux)**: `/api/upload-video` (POST — signed Supabase upload URL), `/api/mux/upload` (POST — create Mux asset from URL), `/api/mux/status` (GET — poll asset processing status). Flow: browser→Supabase Storage (signed URL) → Mux ingests server-to-server → poll until ready → store playback ID
+- **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*` (login, logout, recover), `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*` (test, status), `/api/wallet/status`, `/api/health`
 
 ---
 
@@ -362,8 +391,10 @@ Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pix
 **Required**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (bypasses RLS)
 **Payments**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 **Selling path**: `RESEND_API_KEY` (emails), `NEXT_PUBLIC_SITE_URL` (used in emails, PDFs, CAPI)
+**Video**: `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` (Mux API credentials for video upload/processing — graceful degradation if missing, upload returns 503)
 **Cron**: `CRON_SECRET` (Vercel cron auth, set automatically)
 **Optional**: `NEXT_PUBLIC_GTM_ID`, `NEXT_PUBLIC_KLAVIYO_LIST_ID`, `NEXT_PUBLIC_KLAVIYO_COMPANY_ID` (all have fallbacks)
+**URL fallback chain** (for emails, PDFs, wallet passes): `NEXT_PUBLIC_SITE_URL` → `VERCEL_PROJECT_PRODUCTION_URL` → `VERCEL_URL` → `localhost:3000`
 **Wallet passes**: `APPLE_PASS_CERTIFICATE`, `APPLE_PASS_CERTIFICATE_PASSWORD`, `APPLE_WWDR_CERTIFICATE`, `APPLE_PASS_TYPE_IDENTIFIER`, `APPLE_PASS_TEAM_IDENTIFIER`, `GOOGLE_WALLET_SERVICE_ACCOUNT_KEY`, `GOOGLE_WALLET_ISSUER_ID`
 
 ---
@@ -376,8 +407,8 @@ Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pix
 - **Setup**: `src/__tests__/setup.ts` — localStorage mock, crypto.randomUUID mock, jest-dom
 - **Run**: `npm test` (single run) or `npm run test:watch` (watch mode)
 
-### Test Suites (11 suites)
-`auth`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`
+### Test Suites (12 suites)
+`auth`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`, `merch-images`
 
 ### Rules for Writing Tests
 1. Every new hook must have a test file — `src/__tests__/useHookName.test.ts`
@@ -390,11 +421,12 @@ Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pix
 ---
 
 ## Known Gaps
-1. **Rep portal CSS modernization** — Currently a hybrid of shadcn + hand-written CSS + inline styles. Needs rebuild to pure Tailwind + shadcn (see Rep Portal Architecture section)
+1. **Rep portal CSS modernization** — Hybrid of shadcn + hand-written CSS + inline styles. Needs rebuild to pure Tailwind + shadcn
 2. **Scanner PWA** — API endpoints exist (`/api/tickets/[code]` + `/api/tickets/[code]/scan`) but no frontend
 3. **Multi-tenant promoter dashboard** — Stripe Connect is built, but no separate promoter-facing dashboard yet
 4. **Google Ads + TikTok tracking** — placeholders exist in marketing admin but no implementation
-5. **Supabase RLS policies** — should be configured to enforce org_id isolation at database level
+5. **Supabase RLS policies** — should enforce org_id isolation at database level
+6. **Aura theme dormant** — Fully built (16 components) but not in active use. Future direction: color customization within Midnight rather than separate themes
 
 ---
 
@@ -414,8 +446,8 @@ Defaults defined in `base.css :root`, overridable per-tenant via branding system
 ```
 Each theme's `{theme}.css` maps these to Tailwind semantic tokens (`--color-primary`, `--color-background`, `--color-card`, etc.) so Tailwind classes like `bg-background`, `text-primary`, `border-border` automatically reflect tenant branding.
 
-- **Midnight visual identity**: Cyberpunk — glassmorphism (`backdrop-filter: blur`), metallic tier gradients (platinum shimmer, obsidian silver, valentine pink), CRT suppression, red glow accents
-- **Aura visual identity**: Clean, modern — rounded cards, soft shadows, minimal animation, purple-tinted neutrals
+- **Midnight visual identity** (active): Cyberpunk — glassmorphism (`backdrop-filter: blur`), metallic tier gradients (platinum shimmer, obsidian silver, valentine pink), CRT suppression, red glow accents
+- **Aura visual identity** (dormant): Clean, modern — rounded cards, soft shadows, minimal animation, purple-tinted neutrals
 - **Mobile-first**: Most ticket buyers are on phones — design for 375px, enhance up
 
 ---
@@ -426,8 +458,8 @@ Each theme's `{theme}.css` maps these to Tailwind semantic tokens (`--color-prim
 | Area | CSS System | Entry Point |
 |------|-----------|-------------|
 | Public site (landing, legacy) | Hand-written CSS (`base.css`, `header.css`) | `app/layout.tsx` |
-| Event pages: Midnight | Tailwind v4 + effects layer (`midnight.css`, `midnight-effects.css`) | Imported by `MidnightEventPage` |
-| Event pages: Aura | Tailwind v4 (`aura.css`) | Imported by `AuraEventPage` |
+| Event pages: Midnight (active) | Tailwind v4 + effects layer (`midnight.css`, `midnight-effects.css`) | Imported by `MidnightEventPage` |
+| Event pages: Aura (dormant) | Tailwind v4 (`aura.css`, `aura-effects.css`) | Imported by `AuraEventPage` |
 | Admin dashboard (`/admin/*`) | Tailwind v4 + shadcn/ui utilities | `app/admin/layout.tsx` via `tailwind.css` |
 
 **Isolation mechanism**: Admin layout renders `<div data-admin>`. All Tailwind preflight resets are scoped to `[data-admin]` via `@layer admin-reset` so they never affect public pages. Event themes are scoped via `[data-theme="themename"]` on the layout wrapper div.
@@ -455,86 +487,42 @@ Each theme's `{theme}.css` maps these to Tailwind semantic tokens (`--color-prim
 
 ---
 
-## Event Theme Architecture (Public-Facing UI)
+## Midnight Theme Architecture (Active Event UI)
 
-Event pages are the revenue-generating surface — where ticket buyers browse, explore, and purchase. Every theme must be polished, fast, accessible, and mobile-first. Both Midnight and Aura serve as reference implementations.
+Event pages are the revenue-generating surface. **Midnight is the only active theme.** Aura exists as dormant code (16 components in `src/components/aura/`) but is not in use. Future direction: color customization within Midnight rather than adding more themes.
 
-### Theme Component Pattern
-Each theme lives in `src/components/{themename}/` with a consistent structure:
+### Midnight Component Structure
+All in `src/components/midnight/`. `MidnightEventPage` is the orchestrator — it imports `midnight.css` + `midnight-effects.css` and composes all child components. The shared `BottomBar` lives in `components/event/BottomBar.tsx`.
 
-| Component | Role | shadcn/ui Used |
-|-----------|------|---------------|
-| `{Theme}EventPage` | Orchestrator — hooks, state, layout composition | — |
-| `{Theme}Hero` | Full-bleed banner, title, metadata, CTA | Button |
-| `{Theme}TicketWidget` | Ticket selection, cart, size popup, checkout CTA | Card, Button, Dialog, Badge, Separator |
-| `{Theme}TicketCard` | Individual ticket tier with qty controls | Button, Badge |
-| `{Theme}MerchModal` | Merchandise viewer with image gallery + size selector | Dialog, Button, Badge, Separator |
-| `{Theme}EventInfo` | About, details, venue sections | Separator |
-| `{Theme}Lineup` | Artist names (flex-wrap or grid) | Badge (optional) |
-| `{Theme}CartSummary` | Line-item breakdown with merch sizes | Badge |
-| `{Theme}TierProgression` | Ticket tier status indicators | Badge |
-| `{Theme}BottomBar` | Fixed mobile CTA bar (`lg:hidden`) | Button |
-| `{Theme}SocialProof` | "Last ticket sold X min ago" toast | — |
-| `{Theme}Footer` | Copyright, status, branding | Separator |
-
-### Rules for New Event Theme Components
+### Rules for Midnight Components
 1. **Tailwind for layout** — all spacing, responsive, grid, flex via utility classes
-2. **shadcn/ui for interactive elements** — Dialog (modals), Button, Card, Badge, Separator. Never build custom overlays, buttons, or cards from scratch
-3. **Effects CSS for visual identity** — glassmorphism, metallic gradients, animations go in `{theme}-effects.css`, applied via `cn()` class composition. Keep layout and visual identity separate
-4. **Theme CSS for tokens** — each theme has a `{theme}.css` with `@theme inline {}` mapping `base.css` CSS vars to Tailwind semantic tokens (`--color-primary`, `--color-background`, etc.) and a scoped reset in `@layer {theme}-reset`
-5. **Scope everything** — all theme CSS scoped to `[data-theme="{themename}"]`. Never leak styles between themes
-6. **Mobile-first** — most ticket buyers are on phones. Design for 375px first, enhance up. Bottom bar for mobile CTA, responsive grid reordering
-7. **Accessibility** — Radix Dialog provides focus trap + `aria-modal` + Escape close. Use `role="article"` + `aria-label` on ticket cards. Support `prefers-reduced-motion: reduce`
-8. **Shared hooks** — use `useCart()` for cart state, `useEventTracking()` for analytics, `useSettings()` for config, `useBranding()` for tenant identity, `useHeaderScroll()` for nav behavior
-9. **Shared components** — `DiscountPopup`, `EngagementTracker`, `ExpressCheckout`, `Header` are theme-agnostic. Import from `components/event/`, `components/checkout/`, or `components/layout/`
-10. **CSS imports at orchestrator level** — the `{Theme}EventPage` orchestrator imports both `{theme}.css` and `{theme}-effects.css`. Child components don't import CSS
+2. **shadcn/ui for interactive elements** — Dialog, Button, Card, Badge, Separator. Never build custom overlays from scratch
+3. **Effects in `midnight-effects.css`** — glassmorphism, metallic gradients, animations. Applied via `cn()`. Keep layout and visual identity separate
+4. **Scoped to `[data-theme="midnight"]`** — never leak styles. Token mapping in `midnight.css` via `@theme inline {}`
+5. **Mobile-first** — design for 375px, enhance up. BottomBar for mobile CTA
+6. **Shared hooks** — `useCart()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useHeaderScroll()`
+7. **Shared components** — `DiscountPopup`, `EngagementTracker`, `ExpressCheckout`, `Header`, `BottomBar` are theme-agnostic
+8. **CSS imports at orchestrator level only** — child components don't import CSS
 
 ### Theme Design Tokens Flow
 ```
 base.css :root (--accent, --bg-dark, --card-bg, --text-primary, --font-mono, --font-sans)
   ↓ overridden by server-injected branding CSS vars (event layout.tsx)
-  ↓ consumed by {theme}.css @theme inline {} mapping to Tailwind tokens
+  ↓ consumed by midnight.css @theme inline {} mapping to Tailwind tokens
   ↓ available as Tailwind classes: bg-background, text-foreground, text-primary, border-border
-  ↓ effects CSS uses var() directly for animations/gradients that Tailwind can't express
+  ↓ midnight-effects.css uses var() directly for animations/gradients
 ```
 
-This flow means: change the accent color in admin branding → every component in every theme updates automatically. No prop drilling, no context, no re-renders — pure CSS cascade.
-
-### Adding a New Theme
-To add a new template (e.g. "nova"), update these files:
-1. **Components**: Create `src/components/nova/` with orchestrator + child components following the pattern above
-2. **CSS**: Create `nova.css` (Tailwind tokens + scoped reset) and `nova-effects.css` (visual effects)
-3. **Routing**: Add `if (template === "nova") return <NovaEventPage />` in `page.tsx` and `checkout/page.tsx`
-4. **Types**: Add `"nova"` to `StoreTheme.template` union in `src/types/settings.ts`
-5. **Admin UI**: Add to `TEMPLATES` array in `src/app/admin/ticketstore/page.tsx`
-6. **API preset** (optional): Add branding preset in `src/app/api/themes/route.ts`
-
-The layout.tsx `data-theme` attribute is dynamic — it uses `activeTemplate` directly, so new themes get correct CSS scoping automatically.
+Change the accent color in admin branding → every Midnight component updates automatically. Pure CSS cascade — no prop drilling, no re-renders.
 
 ---
 
 ## Rep Portal Architecture (Social App)
 
-The rep portal (`/rep/*`) is the brand ambassador / street team app. It will evolve into a full social platform. Currently at 13 pages with its own layout, auth system (`requireRepAuth()`), and API routes (`/api/rep-portal/*`).
+The rep portal (`/rep/*`) is the brand ambassador / street team app. It will evolve into a full social platform. Has its own layout, auth system (`requireRepAuth()`), and API routes (`/api/rep-portal/*`).
 
 ### Current State (Needs Modernization)
-The rep portal currently uses a **hybrid CSS approach** that mixes three systems:
-- **shadcn/ui components** (~70% coverage): Card, Button, Badge, Input, Progress, Skeleton
-- **Hand-written CSS** (`rep-portal.css`, 2,600+ lines): Custom `.rep-*` BEM classes, scoped to `[data-rep]`
-- **Inline styles**: Extensive `style={{}}` for dynamic colors and positioning
-
-It also has its own parallel CSS variable system (`--rep-bg`, `--rep-surface`, `--rep-accent`, etc.) that duplicates admin Tailwind tokens.
-
-### Target Architecture
-The rep portal should follow the **admin dashboard pattern** — pure Tailwind + shadcn/ui — with a dedicated effects file for gaming-specific visuals:
-
-| Aspect | Current | Target |
-|--------|---------|--------|
-| Layout/spacing | Mix of Tailwind + `.rep-*` classes + inline styles | Tailwind utilities only |
-| Interactive elements | ~70% shadcn, ~30% custom | 100% shadcn/ui |
-| Colors/tokens | `--rep-*` CSS vars + Tailwind tokens (duplicated) | Tailwind tokens only (admin design tokens) |
-| Gaming effects | Scattered across `rep-portal.css` | Extracted to `rep-effects.css` |
-| Animations | 150+ `@keyframes` in CSS | Keep in `rep-effects.css`, applied via `cn()` |
+Hybrid CSS: ~70% shadcn/ui + `rep-portal.css` (2,600+ lines of `.rep-*` BEM classes scoped to `[data-rep]`) + inline styles. Has its own `--rep-*` CSS variables that duplicate admin Tailwind tokens. **Target**: pure Tailwind + shadcn/ui (admin dashboard pattern), gaming effects extracted to `rep-effects.css`.
 
 ### Rep Portal Pages
 | Page | Route | Purpose |
@@ -545,26 +533,26 @@ The rep portal should follow the **admin dashboard pattern** — pure Tailwind +
 | Rewards | `/rep/rewards` | Milestones, points shop, reward claims |
 | Points | `/rep/points` | Points ledger, balance history |
 | Leaderboard | `/rep/leaderboard` | Per-event and global rankings |
-| Profile | `/rep/profile` | Avatar, bio, level badge, settings |
+| Profile | `/rep/profile` | Own profile. `/rep/profile/[id]` for viewing other reps |
+| Verify Email | `/rep/verify-email` | Email verification flow for new reps |
+| Accept Invite | `/rep/invite/[token]` | Accept admin invitation via token |
 | Login/Join | `/rep/login`, `/rep/join` | Auth (separate from admin) |
 
 ### Rules for New Rep Portal Pages
-1. **Use shadcn/ui components** — Card, Button, Badge, Input, Progress, Skeleton, Dialog, Tabs. No custom overlays or form elements
-2. **Use Tailwind classes** — all layout via utilities. No new `.rep-*` CSS classes
-3. **Use admin design tokens** — `bg-background`, `text-foreground`, `border-border`, `text-primary`. Do NOT create new `--rep-*` CSS variables
-4. **Gaming effects only in `rep-effects.css`** — gauges, level-up animations, confetti, glow pulses. Applied via class names, not inline styles
-5. **No inline `style={{}}`** — use Tailwind arbitrary values (`bg-[#hex]`, `w-[120px]`) or CSS variables via effects classes
-6. **Mobile-first** — reps use their phones. Design for 375px, enhance up
-7. **Auth**: All pages use `requireRepAuth()`. Layout handles unverified email and pending review gates
+1. **Use shadcn/ui** — Card, Button, Badge, Input, Progress, Skeleton, Dialog, Tabs. No custom overlays
+2. **Use Tailwind classes** — no new `.rep-*` CSS classes, no inline `style={{}}`
+3. **Use admin design tokens** — `bg-background`, `text-foreground`, `border-border`. Do NOT create new `--rep-*` CSS variables
+4. **Mobile-first** — reps use their phones. Design for 375px, enhance up
+5. **Auth**: All pages use `requireRepAuth()`. Layout handles unverified email and pending review gates
 
 ---
 
 ## Shared UI Primitives (shadcn/ui)
 
 ### shadcn/ui Components
-**Location**: `src/components/ui/*.tsx` (27 components) — used by admin pages AND event themes
+**Location**: `src/components/ui/*.tsx` (28 components) — used by admin pages AND event themes
 
-Alert, Avatar, Badge, Button, Calendar, Card, Collapsible, ColorPicker, DatePicker, Dialog, Input, Label, LiveIndicator, LiveStatCard, NativeSelect, Popover, Progress, Select, Separator, Slider, StatCard, Switch, Table, Tabs, Textarea, Tooltip, TrendBadge
+Alert, Avatar, Badge, Button, Calendar, Card, Collapsible, ColorPicker, DatePicker, Dialog, Input, Label, LiveIndicator, LiveStatCard, NativeSelect, Popover, Progress, Select, Separator, Skeleton, Slider, StatCard, Switch, Table, Tabs, Textarea, Tooltip, TrendBadge
 
 **How to add new shadcn components**:
 1. Create in `src/components/ui/` following the pattern below

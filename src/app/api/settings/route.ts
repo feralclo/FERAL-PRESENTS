@@ -18,6 +18,8 @@ function isPublicSettingsKey(key: string): boolean {
   if (key.match(/^[a-z0-9_]+_marketing$/)) return true;
   // VAT settings (e.g., feral_vat) — needed by checkout + event pages
   if (key.match(/^[a-z0-9_]+_vat$/)) return true;
+  // Popup settings (e.g., feral_popup) — needed by event page discount popup
+  if (key.match(/^[a-z0-9_]+_popup$/)) return true;
   return false;
 }
 

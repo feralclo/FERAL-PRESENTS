@@ -23,6 +23,8 @@ import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import type { UseCartResult } from "@/hooks/useCart";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
+import type { DiscountDisplay } from "./discount-utils";
+import { getDiscountAmount } from "./discount-utils";
 
 interface MidnightTicketWidgetProps {
   eventSlug: string;
@@ -34,6 +36,8 @@ interface MidnightTicketWidgetProps {
   ticketGroups?: string[];
   ticketGroupMap?: Record<string, string | null>;
   onViewMerch?: (ticketType: TicketTypeRow) => void;
+  discount?: DiscountDisplay | null;
+  onApplyDiscount?: (d: DiscountDisplay) => void;
 }
 
 export function MidnightTicketWidget({
@@ -46,6 +50,8 @@ export function MidnightTicketWidget({
   ticketGroups,
   ticketGroupMap,
   onViewMerch,
+  discount,
+  onApplyDiscount,
 }: MidnightTicketWidgetProps) {
   const isStripe = paymentMethod === "stripe";
   const [expressError, setExpressError] = useState("");
@@ -55,6 +61,13 @@ export function MidnightTicketWidget({
   const [ctaGlow, setCtaGlow] = useState(false);
   const [expressRevealed, setExpressRevealed] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(false);
+
+  // Manual discount code entry
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeValue, setCodeValue] = useState("");
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeError, setCodeError] = useState("");
+  const codeInputRef = useRef<HTMLInputElement>(null);
 
   const {
     activeTypes,
@@ -71,6 +84,11 @@ export function MidnightTicketWidget({
     handleSizeConfirm,
     handleCheckout,
   } = cart;
+
+  // Compute discounted total for CTA display
+  const discountedTotal = discount
+    ? Math.max(0, Math.round((totalPrice - getDiscountAmount(totalPrice, discount)) * 100) / 100)
+    : totalPrice;
 
   // Detect first item added → trigger one-shot CTA glow + express reveal
   useEffect(() => {
@@ -91,6 +109,28 @@ export function MidnightTicketWidget({
     if (isStripe) preloadStripe();
   }, [isStripe]);
 
+  // Position discount code input above the mobile keyboard when opened.
+  // Default autoFocus scrolls aggressively and pushes checkout out of view.
+  // preventScroll hides the input behind the keyboard entirely.
+  // Instead: scroll input to ~30% from viewport top (safely above keyboard),
+  // then focus after a short delay so keyboard appears with input visible.
+  useEffect(() => {
+    if (!codeOpen || !codeInputRef.current) return;
+    const el = codeInputRef.current;
+    const rect = el.getBoundingClientRect();
+    const targetY = window.innerHeight * 0.3;
+    const scrollBy = rect.top - targetY;
+    if (scrollBy > 20) {
+      window.scrollBy({ top: scrollBy, behavior: "smooth" });
+      // Focus after scroll settles so keyboard doesn't fight the scroll
+      const timer = setTimeout(() => el.focus({ preventScroll: true }), 350);
+      return () => clearTimeout(timer);
+    } else {
+      // Already in a good position — just focus
+      el.focus({ preventScroll: true });
+    }
+  }, [codeOpen]);
+
   // Express checkout success → redirect
   const handleExpressSuccess = useCallback(
     (order: Order) => {
@@ -104,6 +144,38 @@ export function MidnightTicketWidget({
     },
     [eventSlug]
   );
+
+  // Handle manual discount code submission
+  const handleCodeApply = useCallback(async () => {
+    const code = codeValue.trim();
+    if (!code) return;
+    setCodeError("");
+    setCodeLoading(true);
+    try {
+      const res = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, event_id: eventId }),
+      });
+      const data = await res.json();
+      if (data.valid && data.discount) {
+        sessionStorage.setItem("feral_popup_discount", data.discount.code);
+        setCodeOpen(false);
+        setCodeValue("");
+        onApplyDiscount?.({
+          code: data.discount.code,
+          type: data.discount.type,
+          value: data.discount.value,
+        });
+      } else {
+        setCodeError(data.error || "Invalid code");
+      }
+    } catch {
+      setCodeError("Something went wrong");
+    } finally {
+      setCodeLoading(false);
+    }
+  }, [codeValue, eventId, onApplyDiscount]);
 
   // Progression tickets: standard-tier ungrouped, not archived
   const groupMap = ticketGroupMap || {};
@@ -132,7 +204,7 @@ export function MidnightTicketWidget({
   if (activeTypes.length === 0) {
     return (
       <aside
-        className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[calc(var(--header-height,80px)+24px)] max-lg:scroll-mt-[var(--header-height,80px)] max-lg:relative [overflow-anchor:none]"
+        className="sticky top-[calc(var(--header-height,80px)+24px)] lg:z-50 scroll-mt-[var(--header-height,80px)] max-lg:scroll-mt-[calc(var(--header-height,80px)-20px)] max-lg:relative [overflow-anchor:none]"
         id="tickets"
       >
         <Card className="glass rounded-2xl p-8 max-lg:rounded-none max-lg:p-6 max-lg:shadow-none max-lg:bg-transparent max-lg:border-0">
@@ -160,7 +232,7 @@ export function MidnightTicketWidget({
   return (
     <>
       <aside
-        className="sticky top-[calc(var(--header-height,80px)+24px)] z-50 scroll-mt-[calc(var(--header-height,80px)+24px)] max-lg:scroll-mt-[var(--header-height,80px)] max-lg:relative [overflow-anchor:none]"
+        className="sticky top-[calc(var(--header-height,80px)+24px)] lg:z-50 scroll-mt-[var(--header-height,80px)] max-lg:scroll-mt-[calc(var(--header-height,80px)-20px)] max-lg:relative [overflow-anchor:none]"
         id="tickets"
       >
         {/* Desktop: glass card. Mobile: transparent — tickets float on page bg */}
@@ -187,6 +259,7 @@ export function MidnightTicketWidget({
                 onAdd={addTicket}
                 onRemove={removeTicket}
                 onViewMerch={onViewMerch}
+                discount={discount}
               />
             ))}
 
@@ -208,6 +281,7 @@ export function MidnightTicketWidget({
                     onAdd={addTicket}
                     onRemove={removeTicket}
                     onViewMerch={onViewMerch}
+                    discount={discount}
                   />
                 ))}
               </div>
@@ -231,7 +305,7 @@ export function MidnightTicketWidget({
                 : <span className="flex items-center justify-center gap-2.5">
                     <span>Checkout</span>
                     <span className="w-px h-3.5 bg-white/20" />
-                    <span key={totalPrice} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{currSymbol}{totalPrice.toFixed(2)}</span>
+                    <span key={discountedTotal} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{currSymbol}{discountedTotal.toFixed(2)}</span>
                   </span>}
             </button>
 
@@ -265,11 +339,12 @@ export function MidnightTicketWidget({
                     <ExpressCheckout
                       eventId={eventId}
                       currency={currency}
-                      amount={totalPrice}
+                      amount={discountedTotal}
                       items={expressItems}
                       onSuccess={handleExpressSuccess}
                       onError={setExpressError}
                       onAvailable={() => setExpressAvailable(true)}
+                      discountCode={discount?.code}
                     />
                   </div>
                 </div>
@@ -287,7 +362,60 @@ export function MidnightTicketWidget({
               totalPrice={totalPrice}
               totalQty={totalQty}
               currSymbol={currSymbol}
+              discount={discount}
             />
+
+            {/* Manual discount code entry — visible only with items and no active discount */}
+            {totalQty > 0 && !discount && (
+              <div className="mt-3">
+                {!codeOpen ? (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[12px] tracking-[0.06em] text-emerald-400/70 hover:text-emerald-400 border-b border-dashed border-emerald-400/30 hover:border-emerald-400/50 transition-colors duration-200 cursor-pointer bg-transparent border-t-0 border-x-0 p-0 pb-px"
+                    onClick={() => setCodeOpen(true)}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
+                    Have a code?
+                  </button>
+                ) : (
+                  <div className="overflow-hidden animate-in slide-in-from-top-1 fade-in duration-200">
+                    <div className="flex gap-2">
+                      <input
+                        ref={codeInputRef}
+                        type="text"
+                        value={codeValue}
+                        onChange={(e) => { setCodeValue(e.target.value.toUpperCase()); setCodeError(""); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCodeApply(); } }}
+                        placeholder="Enter code"
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.10] rounded-lg text-foreground font-[family-name:var(--font-mono)] text-[16px] tracking-[0.04em] py-2.5 px-3 outline-none transition-colors duration-150 placeholder:text-foreground/25 focus:border-white/[0.25] focus:bg-white/[0.06]"
+                        disabled={codeLoading}
+                      />
+                      <button
+                        type="button"
+                        className={cn(
+                          "shrink-0 px-4 py-2.5 rounded-lg font-[family-name:var(--font-mono)] text-[10px] tracking-[0.1em] uppercase font-bold transition-all duration-150 cursor-pointer",
+                          codeLoading
+                            ? "bg-white/[0.06] text-foreground/30 cursor-wait"
+                            : "bg-white/[0.10] border border-white/[0.15] text-foreground/70 hover:bg-white/[0.16] hover:text-foreground active:scale-[0.97]"
+                        )}
+                        onClick={handleCodeApply}
+                        disabled={codeLoading || !codeValue.trim()}
+                      >
+                        {codeLoading ? "..." : "Apply"}
+                      </button>
+                    </div>
+                    {codeError && (
+                      <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.04em] text-red-400/70 mt-2 m-0">
+                        {codeError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </aside>

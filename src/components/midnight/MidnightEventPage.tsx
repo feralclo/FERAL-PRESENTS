@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/Header";
-import { DiscountPopup } from "@/components/event/DiscountPopup";
+import { MidnightDiscountPopup } from "./MidnightDiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { isEditorPreview } from "@/components/event/ThemeEditorBridge";
 import { useEventTracking } from "@/hooks/useEventTracking";
@@ -17,14 +17,19 @@ import { MidnightTicketWidget } from "./MidnightTicketWidget";
 import { MidnightMerchModal } from "./MidnightMerchModal";
 import { normalizeMerchImages } from "@/lib/merch-images";
 
+import { MidnightArtistModal } from "./MidnightArtistModal";
 import { MidnightFooter } from "./MidnightFooter";
+import { isMuxPlaybackId, getMuxStreamUrl, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Event, TicketTypeRow } from "@/types/events";
+import type { Artist, EventArtist } from "@/types/artists";
+import type { DiscountDisplay } from "./discount-utils";
+import { getDiscountAmount } from "./discount-utils";
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
 
 interface MidnightEventPageProps {
-  event: Event & { ticket_types: TicketTypeRow[] };
+  event: Event & { ticket_types: TicketTypeRow[]; event_artists?: EventArtist[] };
 }
 
 export function MidnightEventPage({ event }: MidnightEventPageProps) {
@@ -72,6 +77,200 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     });
   }, [event.ticket_types]);
 
+  // ── Discount display state ──────────────────────────────────────────
+  const [activeDiscount, setActiveDiscount] = useState<DiscountDisplay | null>(null);
+
+  // Validate popup discount code from sessionStorage
+  useEffect(() => {
+    function checkDiscount() {
+      try {
+        const code = sessionStorage.getItem("feral_popup_discount");
+        if (!code || activeDiscount) return;
+        fetch("/api/discounts/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, event_id: event.id }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.valid && data.discount) {
+              setActiveDiscount({
+                code: data.discount.code,
+                type: data.discount.type,
+                value: data.discount.value,
+              });
+            }
+          })
+          .catch(() => {});
+      } catch {
+        // sessionStorage unavailable
+      }
+    }
+
+    // Check on mount (page reload with existing sessionStorage)
+    checkDiscount();
+
+    // Also check when popup stores a new discount code
+    function handlePopupEmail() {
+      checkDiscount();
+    }
+    window.addEventListener("feral_popup_email_captured", handlePopupEmail);
+    return () => window.removeEventListener("feral_popup_email_captured", handlePopupEmail);
+  }, [event.id, activeDiscount]);
+
+  // ── Abandoned cart bridge ──────────────────────────────────────────
+  // When popup captures email + cart has items → create abandoned cart
+  // Uses sendBeacon on page exit to survive tab close / navigation
+  const abandonedCartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep a ref to the latest cart payload so beforeunload can access it
+  const cartPayloadRef = useRef<{
+    email: string;
+    event_id: string;
+    items: { ticket_type_id: string; qty: number; name: string; price: number; merch_size?: string }[];
+    subtotal: number;
+    currency: string;
+  } | null>(null);
+
+  // Build the cart payload (shared between debounced sync + page exit flush)
+  const buildCartPayload = useCallback(() => {
+    try {
+      const popupEmail = sessionStorage.getItem("feral_popup_email");
+      if (!popupEmail || cart.totalQty === 0) return null;
+
+      const ttMap = new Map(
+        (event.ticket_types || []).map((tt) => [tt.id, tt])
+      );
+      const items = cart.expressItems.map((ei) => {
+        const tt = ttMap.get(ei.ticket_type_id);
+        return {
+          ticket_type_id: ei.ticket_type_id,
+          qty: ei.qty,
+          name: tt?.name || "Ticket",
+          price: tt ? Number(tt.price) : 0,
+          merch_size: ei.merch_size,
+        };
+      });
+
+      return {
+        email: popupEmail,
+        event_id: event.id,
+        items,
+        subtotal: cart.totalPrice,
+        currency: event.currency || "GBP",
+      };
+    } catch {
+      return null;
+    }
+  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+
+  // Update the ref whenever cart changes so page exit handler has fresh data
+  useEffect(() => {
+    cartPayloadRef.current = buildCartPayload();
+  }, [buildCartPayload]);
+
+  // Debounced sync: fires 2s after cart stabilizes
+  useEffect(() => {
+    function syncAbandonedCart() {
+      const payload = buildCartPayload();
+      if (!payload) return;
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+      // Clear ref so page exit doesn't double-send
+      cartPayloadRef.current = null;
+    }
+
+    if (abandonedCartTimer.current) clearTimeout(abandonedCartTimer.current);
+    abandonedCartTimer.current = setTimeout(syncAbandonedCart, 2000);
+
+    return () => {
+      if (abandonedCartTimer.current) clearTimeout(abandonedCartTimer.current);
+    };
+  }, [buildCartPayload]);
+
+  // Flush on page exit — survives tab close / back navigation
+  useEffect(() => {
+    function flushOnExit() {
+      const payload = cartPayloadRef.current;
+      if (!payload) return;
+      // sendBeacon survives page unload — fire and forget
+      navigator.sendBeacon(
+        "/api/checkout/capture",
+        new Blob([JSON.stringify(payload)], { type: "application/json" })
+      );
+      cartPayloadRef.current = null;
+    }
+
+    window.addEventListener("beforeunload", flushOnExit);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushOnExit();
+    });
+
+    return () => {
+      window.removeEventListener("beforeunload", flushOnExit);
+      // Note: visibilitychange cleanup not strictly needed as component unmounts
+    };
+  }, []);
+
+  // Also sync immediately when popup email is first captured
+  useEffect(() => {
+    function handlePopupCapture(e: globalThis.Event) {
+      const detail = (e as unknown as CustomEvent<{ email: string }>).detail;
+      if (!detail?.email || cart.totalQty === 0) return;
+
+      const ttMap = new Map(
+        (event.ticket_types || []).map((tt) => [tt.id, tt])
+      );
+      const items = cart.expressItems.map((ei) => {
+        const tt = ttMap.get(ei.ticket_type_id);
+        return {
+          ticket_type_id: ei.ticket_type_id,
+          qty: ei.qty,
+          name: tt?.name || "Ticket",
+          price: tt ? Number(tt.price) : 0,
+          merch_size: ei.merch_size,
+        };
+      });
+
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: detail.email,
+          event_id: event.id,
+          items,
+          subtotal: cart.totalPrice,
+          currency: event.currency || "GBP",
+        }),
+      }).catch(() => {});
+    }
+
+    window.addEventListener("feral_popup_email_captured", handlePopupCapture);
+    return () => window.removeEventListener("feral_popup_email_captured", handlePopupCapture);
+  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+
+  // Compute discounted total for bottom bar
+  const discountedTotal = activeDiscount
+    ? Math.max(0, Math.round((cart.totalPrice - getDiscountAmount(cart.totalPrice, activeDiscount)) * 100) / 100)
+    : cart.totalPrice;
+
+  // Artist profiles — build a name→Artist map for the lineup component
+  const artistProfiles = useMemo(() => {
+    const map = new Map<string, Artist>();
+    const eventArtists = event.event_artists;
+    if (eventArtists && eventArtists.length > 0) {
+      for (const ea of eventArtists) {
+        if (ea.artist) {
+          map.set(ea.artist.name, ea.artist);
+        }
+      }
+    }
+    return map;
+  }, [event.event_artists]);
+
   // Merch modal state
   const [teeModalOpen, setTeeModalOpen] = useState(false);
   const [teeModalTicketType, setTeeModalTicketType] = useState<TicketTypeRow | null>(null);
@@ -115,7 +314,69 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
   const currSymbol = cart.currSymbol;
 
-  const lineup = event.lineup || [];
+  // Derive lineup: prefer event_artists (sorted), fall back to events.lineup
+  const isAlphabetical = !!event.lineup_sort_alphabetical;
+  const lineup = useMemo(() => {
+    const ea = event.event_artists;
+    if (ea && ea.length > 0) {
+      const names = ea
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((e) => e.artist?.name)
+        .filter(Boolean) as string[];
+      if (isAlphabetical) {
+        return names.sort((a, b) => a.localeCompare(b));
+      }
+      return names;
+    }
+    const fallback = event.lineup || [];
+    return isAlphabetical ? [...fallback].sort((a, b) => a.localeCompare(b)) : fallback;
+  }, [event.event_artists, event.lineup, isAlphabetical]);
+
+  // Ordered list of artists that have profiles (clickable in lineup)
+  const artistsWithProfiles = useMemo(() => {
+    const result: Artist[] = [];
+    for (const name of lineup) {
+      const profile = artistProfiles.get(name);
+      if (profile) result.push(profile);
+    }
+    return result;
+  }, [lineup, artistProfiles]);
+
+  // Preload artist videos — fetch HLS manifests + first segments into
+  // browser cache so MuxPlayer finds data ready when the modal opens.
+  useEffect(() => {
+    if (artistsWithProfiles.length === 0) return;
+    const videos = artistsWithProfiles.filter(
+      (a) => a.video_url && isMuxPlaybackId(a.video_url)
+    );
+    if (videos.length === 0) return;
+
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 2000);
+
+    const cancel =
+      typeof cancelIdleCallback === "function"
+        ? cancelIdleCallback
+        : clearTimeout;
+
+    const id = idle(() => {
+      for (const a of videos) preloadMuxVideo(a.video_url!);
+    });
+
+    return () => cancel(id as number);
+  }, [artistsWithProfiles]);
+
+  // Artist modal state — index-based for swipe navigation
+  const [artistModalOpen, setArtistModalOpen] = useState(false);
+  const [selectedArtistIndex, setSelectedArtistIndex] = useState(0);
+
+  const handleArtistClick = useCallback((artist: Artist) => {
+    const idx = artistsWithProfiles.findIndex((a) => a.id === artist.id);
+    setSelectedArtistIndex(idx >= 0 ? idx : 0);
+    setArtistModalOpen(true);
+  }, [artistsWithProfiles]);
 
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
   const ticketGroupMap =
@@ -148,14 +409,14 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
               {/* Left: Event Info — on mobile, show below tickets */}
               <div className="max-lg:order-2 max-lg:px-[var(--midnight-content-px)] max-lg:pb-24 max-lg:flex max-lg:flex-col">
                 {/* Mobile section divider — single gradient line */}
-                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-2">
-                  <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent" />
+                <div className="lg:hidden order-[-2] mb-14 max-[480px]:mb-10 pt-6 max-[480px]:pt-5">
+                  <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent" />
                 </div>
 
                 {/* Lineup on mobile (above about) */}
                 {lineup.length > 0 && (
                   <div className="lg:hidden order-[-1] mb-12 max-md:mb-10" data-reveal="1">
-                    <MidnightLineup artists={lineup} />
+                    <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}
 
@@ -170,7 +431,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
                   <div className="hidden lg:block mt-16" data-reveal="3">
-                    <MidnightLineup artists={lineup} />
+                    <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}
               </div>
@@ -187,6 +448,8 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                   ticketGroups={ticketGroups}
                   ticketGroupMap={ticketGroupMap}
                   onViewMerch={handleViewMerch}
+                  discount={activeDiscount}
+                  onApplyDiscount={setActiveDiscount}
                 />
               </div>
             </div>
@@ -198,33 +461,36 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
       {/* Fixed bottom bar — mobile checkout CTA
            Synced with header scroll: hides on scroll down, shows on scroll up.
-           will-change + no backdrop-filter prevents Instagram in-app browser jank. */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar will-change-transform ${
-          cart.totalQty > 0 && !headerHidden ? "translate-y-0" : "translate-y-full"
-        }`}
-        style={{ transition: "transform 400ms cubic-bezier(0.25, 1, 0.5, 1)" }}
-      >
-        <div className="px-5 pt-3.5 pb-[max(16px,calc(12px+env(safe-area-inset-bottom)))]">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-baseline gap-2 min-w-0">
-              <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold text-foreground tracking-[0.01em]">
-                {currSymbol}{cart.totalPrice.toFixed(2)}
-              </span>
-              <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35">
-                {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
-              </span>
+           will-change + no backdrop-filter prevents Instagram in-app browser jank.
+           Controlled via admin Event Page settings (sticky_checkout_bar). */}
+      {settings?.sticky_checkout_bar !== false && (
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar will-change-transform ${
+            cart.totalQty > 0 && !headerHidden ? "translate-y-0" : "translate-y-full"
+          }`}
+          style={{ transition: "transform 400ms cubic-bezier(0.25, 1, 0.5, 1)" }}
+        >
+          <div className="px-5 pt-3.5 pb-[max(16px,calc(12px+env(safe-area-inset-bottom)))]">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold text-foreground tracking-[0.01em]">
+                  {currSymbol}{discountedTotal.toFixed(2)}
+                </span>
+                <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35">
+                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="h-11 px-7 text-[13px] font-bold tracking-[0.03em] rounded-xl shrink-0 bg-white text-[#0e0e0e] active:scale-[0.97] transition-transform duration-150 cursor-pointer"
+                onClick={cart.handleCheckout}
+              >
+                Checkout
+              </button>
             </div>
-            <button
-              type="button"
-              className="h-11 px-7 text-[13px] font-bold tracking-[0.03em] rounded-xl shrink-0 bg-white text-[#0e0e0e] active:scale-[0.97] transition-transform duration-150 cursor-pointer"
-              onClick={cart.handleCheckout}
-            >
-              Checkout
-            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Merch Modal */}
       {teeModalTicketType && (
@@ -263,9 +529,35 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
         />
       )}
 
+      {/* Artist Profile Modal */}
+      <MidnightArtistModal
+        artists={artistsWithProfiles}
+        currentIndex={selectedArtistIndex}
+        isOpen={artistModalOpen}
+        onClose={() => setArtistModalOpen(false)}
+        onNavigate={setSelectedArtistIndex}
+      />
+
       {/* Engagement features */}
-      <DiscountPopup />
+      <MidnightDiscountPopup />
       <EngagementTracker />
     </>
   );
+}
+
+/**
+ * Lightweight preload — fetch HLS master manifest + thumbnail only.
+ * Manifests are ~1KB, thumbnails ~20KB. No segment fetching here —
+ * that would compete with MuxPlayer for bandwidth and cause video
+ * freezes. The actual video prebuffering happens via a hidden
+ * MuxPlayer instance in the artist modal.
+ */
+async function preloadMuxVideo(playbackId: string) {
+  try {
+    const img = new Image();
+    img.src = getMuxThumbnailUrl(playbackId);
+    await fetch(getMuxStreamUrl(playbackId));
+  } catch {
+    // Best-effort — silent fail
+  }
 }

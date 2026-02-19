@@ -497,6 +497,10 @@ export function buildAbandonedCartRecoveryEmail(
   stepConfig: {
     subject: string;
     preview_text: string;
+    greeting?: string;
+    body_message?: string;
+    cta_text?: string;
+    discount_label?: string;
   },
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
@@ -516,10 +520,14 @@ export function buildAbandonedCartRecoveryEmail(
   }
 
   const subject = stepConfig.subject;
-  const greeting = cart.customer_first_name
-    ? `Hey ${cart.customer_first_name}, you left something behind`
-    : "You left something behind";
-  const message = "Your tickets are still waiting. Complete your order before they\u2019re gone.";
+  const defaultGreeting = cart.customer_first_name
+    ? `${cart.customer_first_name}, your order is on hold`
+    : "Your order is on hold";
+  const greeting = stepConfig.greeting
+    ? stepConfig.greeting.replace(/\{\{name\}\}/g, cart.customer_first_name || "there")
+    : defaultGreeting;
+  const message = stepConfig.body_message || "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.";
+  const ctaText = stepConfig.cta_text || "Complete Your Order";
 
   // Event details line
   const eventDetails = [cart.event_date, cart.venue_name]
@@ -533,22 +541,23 @@ export function buildAbandonedCartRecoveryEmail(
   const discountAmt = hasDiscount ? subtotalNum * ((cart.discount_percent || 0) / 100) : 0;
   const total = subtotalNum - discountAmt;
 
-  // Build cart item rows
+  // Build cart item rows — clean, minimal
   const cartItemsHtml = cart.cart_items
-    .map((item) => {
+    .map((item, idx) => {
       const lineTotal = item.unit_price * item.qty;
+      const isLast = idx === cart.cart_items.length - 1;
       return `
       <tr>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
-          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111; margin-bottom: 2px;">
+        <td style="padding: 10px 0;${!isLast ? " border-bottom: 1px solid #f0f0f0;" : ""}">
+          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #222;">
             ${escapeHtml(item.name)}${item.qty > 1 ? ` \u00D7 ${item.qty}` : ""}
           </div>${item.merch_size ? `
-          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #888; margin-top: 2px;">
+          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #999; margin-top: 2px;">
             Includes merch \u00B7 Size ${escapeHtml(item.merch_size)}
           </div>` : ""}
         </td>
-        <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; text-align: right; vertical-align: top; white-space: nowrap;">
-          <div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #111;">
+        <td style="padding: 10px 0;${!isLast ? " border-bottom: 1px solid #f0f0f0;" : ""} text-align: right; vertical-align: top; white-space: nowrap;">
+          <div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #333;">
             ${cart.currency_symbol}${lineTotal.toFixed(2)}
           </div>
         </td>
@@ -589,188 +598,197 @@ export function buildAbandonedCartRecoveryEmail(
   <!-- Wrapper -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
     <tr>
-      <td align="center" style="padding: 32px 16px;">
+      <td align="center" style="padding: 40px 16px;">
 
         <!-- Container -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12);">
 
-          <!-- Accent Bar -->
+          <!-- ═══ DARK HERO BLOCK ═══ -->
+          <!-- Extended dark header: logo + greeting + message — cinematic feel -->
+          <!-- Uses background-image gradient trick so dark mode engines treat as image and don't invert -->
           <tr>
-            <td style="height: 4px; background-color: ${accent};"></td>
-          </tr>
-
-          <!-- Header -->
-          <tr>
-            <td style="height: 120px; padding: 0 32px; text-align: center; vertical-align: middle;${logoUrl ? " background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #0e0e0e);" : ""}">
-              ${
-                logoUrl
-                  ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}"${logoW ? ` width="${logoW}"` : ""} height="${logoH}" style="${logoW ? `width: ${logoW}px` : "width: auto"}; height: ${logoH}px; display: inline-block;">`
-                  : `<div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #111;">${escapeHtml(s.from_name)}</div>`
-              }
-            </td>
-          </tr>
-
-          <!-- Heading -->
-          <tr>
-            <td style="padding: 20px 32px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; letter-spacing: 1px;">
-                ${escapeHtml(greeting)}
-              </h1>
-            </td>
-          </tr>
-
-          <!-- Message -->
-          <tr>
-            <td style="padding: 0 32px 24px; text-align: center;">
-              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #555;">
-                ${escapeHtml(message)}
-              </p>
-            </td>
-          </tr>
-
-          <!-- Divider -->
-          <tr>
-            <td style="padding: 0 32px;">
-              <div style="height: 1px; background-color: #eee;"></div>
-            </td>
-          </tr>
-
-          <!-- Event Details -->
-          <tr>
-            <td style="padding: 24px 32px;">
+            <td style="background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #111111); padding: 0;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+
+                <!-- Accent bar -->
                 <tr>
-                  <td>
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 8px;">
-                      EVENT
-                    </div>
-                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 17px; font-weight: 600; color: #111; margin-bottom: 4px;">
-                      ${escapeHtml(cart.event_name)}
-                    </div>
+                  <td style="height: 4px; background-color: ${accent};"></td>
+                </tr>
+
+                <!-- Logo -->
+                <tr>
+                  <td style="padding: 40px 40px 0; text-align: center;">
                     ${
-                      eventDetails
-                        ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666; margin-bottom: 2px;">${escapeHtml(eventDetails)}</div>`
-                        : ""
-                    }
-                    ${
-                      doorsLine
-                        ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666;">${escapeHtml(doorsLine)}</div>`
-                        : ""
+                      logoUrl
+                        ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}"${logoW ? ` width="${logoW}"` : ""} height="${logoH}" style="${logoW ? `width: ${logoW}px` : "width: auto"}; height: ${logoH}px; display: inline-block;">`
+                        : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #ffffff;">${escapeHtml(s.from_name)}</div>`
                     }
                   </td>
                 </tr>
+
+                <!-- Heading -->
+                <tr>
+                  <td style="padding: 32px 40px 12px; text-align: center;">
+                    <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 26px; font-weight: 700; color: #ffffff; line-height: 1.25;">
+                      ${escapeHtml(greeting)}
+                    </h1>
+                  </td>
+                </tr>
+
+                <!-- Message -->
+                <tr>
+                  <td style="padding: 0 40px 36px; text-align: center;">
+                    <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #999999;">
+                      ${escapeHtml(message)}
+                    </p>
+                  </td>
+                </tr>
+
               </table>
             </td>
           </tr>
 
-          <!-- Divider -->
+          <!-- ═══ WHITE CONTENT AREA ═══ -->
           <tr>
-            <td style="padding: 0 32px;">
-              <div style="height: 1px; background-color: #eee;"></div>
-            </td>
-          </tr>
-
-          <!-- Cart Items -->
-          <tr>
-            <td style="padding: 24px 32px 16px;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
-                YOUR CART
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 32px 24px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #fafafa; border-radius: 6px; border: 1px solid #f0f0f0;">
-                ${cartItemsHtml}
-              </table>
-            </td>
-          </tr>
-
-          <!-- Cart Total -->
-          <tr>
-            <td style="padding: 0 32px 24px;">
+            <td style="background-color: #ffffff; padding: 0;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                ${hasDiscount ? `
-                <tr>
-                  <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666; padding: 4px 0;">
-                    Subtotal
-                  </td>
-                  <td style="font-family: 'Courier New', monospace; font-size: 14px; color: #111; text-align: right; padding: 4px 0;">
-                    ${cart.currency_symbol}${subtotalNum.toFixed(2)}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: ${accent}; padding: 4px 0;">
-                    Discount (${escapeHtml(cart.discount_code!)})
-                  </td>
-                  <td style="font-family: 'Courier New', monospace; font-size: 14px; color: ${accent}; text-align: right; padding: 4px 0;">
-                    -${cart.currency_symbol}${discountAmt.toFixed(2)}
-                  </td>
-                </tr>` : ""}
-                <tr>
-                  <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111; padding: ${hasDiscount ? "8px" : "4px"} 0 4px;${hasDiscount ? " border-top: 1px solid #eee; padding-top: 12px;" : ""}">
-                    Total
-                  </td>
-                  <td style="font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; color: #111; text-align: right; padding: ${hasDiscount ? "8px" : "4px"} 0 4px;${hasDiscount ? " border-top: 1px solid #eee; padding-top: 12px;" : ""}">
-                    ${cart.currency_symbol}${total.toFixed(2)}
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
 
-          ${hasDiscount ? `
-          <!-- Discount Highlight -->
-          <tr>
-            <td style="padding: 0 32px 24px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 6px; overflow: hidden;">
+                <!-- Event Details — dark mini-card -->
                 <tr>
-                  <td style="background: linear-gradient(135deg, ${accent}08, ${accent}14); border: 1px solid ${accent}33; border-radius: 6px; padding: 16px; text-align: center;">
-                    <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 6px;">
-                      EXCLUSIVE OFFER
+                  <td style="padding: 32px 40px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
+                      <tr>
+                        <td style="background-color: #111111; background-image: linear-gradient(135deg, #111111, #1a1a1a); border-radius: 10px; padding: 20px 24px;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 10px;">
+                            EVENT
+                          </div>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 6px; line-height: 1.3;">
+                            ${escapeHtml(cart.event_name)}
+                          </div>
+                          ${
+                            eventDetails
+                              ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888888; margin-bottom: 2px;">${escapeHtml(eventDetails)}</div>`
+                              : ""
+                          }
+                          ${
+                            doorsLine
+                              ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888888;">${escapeHtml(doorsLine)}</div>`
+                              : ""
+                          }
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Order Items -->
+                <tr>
+                  <td style="padding: 28px 40px 8px;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaaaaa;">
+                      YOUR ORDER
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 20px; font-weight: 700; color: #111; letter-spacing: 1px; margin-bottom: 4px;">
-                      ${escapeHtml(cart.discount_code!)}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 40px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      ${cartItemsHtml}
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Total -->
+                <tr>
+                  <td style="padding: 16px 40px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      ${hasDiscount ? `
+                      <tr>
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #999; padding: 3px 0;">
+                          Subtotal
+                        </td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 14px; color: #555; text-align: right; padding: 3px 0;">
+                          ${cart.currency_symbol}${subtotalNum.toFixed(2)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: ${accent}; padding: 3px 0;">
+                          Discount (${escapeHtml(cart.discount_code!)})
+                        </td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 14px; color: ${accent}; text-align: right; padding: 3px 0;">
+                          -${cart.currency_symbol}${discountAmt.toFixed(2)}
+                        </td>
+                      </tr>` : ""}
+                      <tr>
+                        <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #111; padding: 12px 0 4px;${hasDiscount ? " border-top: 1px solid #eeeeee;" : ""}">
+                          Total
+                        </td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; text-align: right; padding: 12px 0 4px;${hasDiscount ? " border-top: 1px solid #eeeeee;" : ""}">
+                          ${cart.currency_symbol}${total.toFixed(2)}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                ${hasDiscount ? (() => {
+                  const discountLabel = stepConfig.discount_label || "Your exclusive offer";
+                  return `
+                <!-- Discount Code -->
+                <tr>
+                  <td style="padding: 28px 40px 0; text-align: center;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaaaaa; margin-bottom: 16px;">
+                      ${escapeHtml(discountLabel)}
                     </div>
-                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #555;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                      <tr>
+                        <td style="border: 2px dashed ${accent}40; border-radius: 8px; padding: 14px 32px; text-align: center;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 20px; font-weight: 800; color: ${accent}; letter-spacing: 3px; line-height: 1;">
+                            ${escapeHtml(cart.discount_code!)}
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #666666; margin-top: 10px;">
                       ${cart.discount_percent}% off your order
                     </div>
                   </td>
                 </tr>
+                `;
+                })() : ""}
+
+                <!-- CTA Button -->
+                <tr>
+                  <td style="padding: 32px 40px 36px; text-align: center;">
+                    <!--[if mso]>
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="14%" fill="t">
+                      <v:fill type="tile" color="${accent}" />
+                      <w:anchorlock/>
+                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:0.5px;">${escapeHtml(ctaText)}</center>
+                    </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-->
+                    <a href="${escapeHtml(cart.recovery_url)}" style="display: block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; padding: 16px 24px; border-radius: 10px; text-align: center; mso-padding-alt: 0;">
+                      ${escapeHtml(ctaText)}
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+
               </table>
             </td>
           </tr>
-          ` : ""}
 
-          <!-- CTA Button -->
+          <!-- ═══ FOOTER ═══ -->
           <tr>
-            <td style="padding: ${hasDiscount ? "0" : "8px"} 32px 32px; text-align: center;">
-              <!--[if mso]>
-              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:52px;v-text-anchor:middle;width:300px;" arcsize="12%" fill="t">
-                <v:fill type="tile" color="${accent}" />
-                <w:anchorlock/>
-                <center style="color:#ffffff;font-family:'Courier New',monospace;font-size:14px;font-weight:bold;letter-spacing:1.5px;">COMPLETE YOUR ORDER</center>
-              </v:roundrect>
-              <![endif]-->
-              <!--[if !mso]><!-->
-              <a href="${escapeHtml(cart.recovery_url)}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; padding: 16px 40px; border-radius: 6px; mso-padding-alt: 0;">
-                COMPLETE YOUR ORDER
-              </a>
-              <!--<![endif]-->
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 24px 32px; background-color: #fafafa; border-top: 1px solid #f0f0f0; text-align: center;">
-              <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 4px;">
+            <td style="background-color: #fafafa; padding: 24px 40px; text-align: center;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #bbbbbb; margin-bottom: 8px;">
                 ${escapeHtml(s.footer_text || s.from_name)}
               </div>
-              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #bbb;">
-                You\u2019re receiving this because you started a checkout. If this wasn\u2019t you, you can safely ignore this email.
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #bbbbbb;">
+                You\u2019re receiving this because you started checkout.<br>You can safely ignore this email if it wasn\u2019t you.
               </div>${cart.unsubscribe_url ? `
-              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #bbb; margin-top: 8px;">
-                <a href="${escapeHtml(cart.unsubscribe_url)}" style="color: #999; text-decoration: underline;">Unsubscribe</a> from cart recovery emails
+              <div style="margin-top: 10px;">
+                <a href="${escapeHtml(cart.unsubscribe_url)}" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #999999; text-decoration: underline;">Unsubscribe</a>
               </div>` : ""}
             </td>
           </tr>
@@ -795,12 +813,12 @@ EVENT
 ${cart.event_name}
 ${eventDetails}${doorsLine ? `\n${doorsLine}` : ""}
 
-YOUR CART
+YOUR ORDER
 ${cartItemsText}
 ${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
 Total: ${cart.currency_symbol}${total.toFixed(2)}
-${hasDiscount ? `\nEXCLUSIVE OFFER: Use code ${cart.discount_code} for ${cart.discount_percent}% off\n` : ""}
-COMPLETE YOUR ORDER: ${cart.recovery_url}
+${hasDiscount ? `\n${stepConfig.discount_label || "Your exclusive offer"}\n${cart.discount_code} — ${cart.discount_percent}% off your order\n` : ""}
+${ctaText}: ${cart.recovery_url}
 
 ---
 ${s.footer_text || s.from_name}

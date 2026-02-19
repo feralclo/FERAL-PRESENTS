@@ -16,6 +16,8 @@ interface EmailStepConfig {
   include_discount: boolean;
   discount_code: string;
   discount_percent: number;
+  cta_text?: string;
+  discount_label?: string;
 }
 
 interface AutomationSettings {
@@ -320,6 +322,8 @@ export async function GET(request: NextRequest) {
             include_discount: step.include_discount,
             discount_code: step.discount_code || undefined,
             discount_percent: step.discount_percent || undefined,
+            cta_text: step.cta_text || undefined,
+            discount_label: step.discount_label || undefined,
           },
         });
 

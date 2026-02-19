@@ -17,6 +17,8 @@ import {
   TIER_MERCH_BADGE_CLASSES,
 } from "./tier-styles";
 import type { TicketTypeRow } from "@/types/events";
+import type { DiscountDisplay } from "./discount-utils";
+import { getDiscountedPrice } from "./discount-utils";
 
 /** Tier → effects class mapping */
 const TIER_EFFECT: Record<string, string> = {
@@ -32,6 +34,7 @@ interface MidnightTicketCardProps {
   onAdd: (tt: TicketTypeRow) => void;
   onRemove: (tt: TicketTypeRow) => void;
   onViewMerch?: (tt: TicketTypeRow) => void;
+  discount?: DiscountDisplay | null;
 }
 
 export function MidnightTicketCard({
@@ -41,6 +44,7 @@ export function MidnightTicketCard({
   onAdd,
   onRemove,
   onViewMerch,
+  discount,
 }: MidnightTicketCardProps) {
   const tier = tt.tier || "standard";
   const tierEffect = TIER_EFFECT[tier] || "";
@@ -105,14 +109,30 @@ export function MidnightTicketCard({
             {tt.description || "Standard entry"}
           </span>
         </div>
-        <span
-          className={cn(
-            "relative z-[2] font-[family-name:var(--font-mono)] text-base max-[480px]:text-[14px] font-bold tracking-[0.5px] shrink-0 mt-0.5",
-            TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
-          )}
-        >
-          {priceDisplay}
-        </span>
+        {discount && discount.type === "percentage" ? (
+          <div className="relative z-[2] flex flex-col items-end shrink-0 mt-0.5">
+            <span className="font-[family-name:var(--font-mono)] text-[11px] max-[480px]:text-[10px] font-medium tracking-[0.3px] text-foreground/25 line-through">
+              {priceDisplay}
+            </span>
+            <span
+              className={cn(
+                "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[14px] font-bold tracking-[0.5px]",
+                TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
+              )}
+            >
+              {currSymbol}{formatPrice(getDiscountedPrice(Number(tt.price), discount))}
+            </span>
+          </div>
+        ) : (
+          <span
+            className={cn(
+              "relative z-[2] font-[family-name:var(--font-mono)] text-base max-[480px]:text-[14px] font-bold tracking-[0.5px] shrink-0 mt-0.5",
+              TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
+            )}
+          >
+            {priceDisplay}
+          </span>
+        )}
       </div>
 
       {/* Bottom row: view merch + qty controls */}

@@ -30,6 +30,8 @@ export const TABLES = {
   REP_EVENT_POSITION_REWARDS: "rep_event_position_rewards",
   REP_NOTIFICATIONS: "rep_notifications",
   ABANDONED_CARTS: "abandoned_carts",
+  ARTISTS: "artists",
+  EVENT_ARTISTS: "event_artists",
 } as const;
 
 // Settings keys stored in site_settings table
@@ -41,6 +43,7 @@ export const SETTINGS_KEYS = {
   BRANDING: "feral_branding",
   VAT: "feral_vat",
   REPS: "feral_reps",
+  POPUP: "feral_popup",
 } as const;
 
 /** Generate the branding settings key for a given org */
@@ -66,6 +69,11 @@ export function repsKey(orgId: string): string {
 /** Generate the abandoned cart automation settings key for a given org */
 export function abandonedCartAutomationKey(orgId: string): string {
   return `${orgId}_abandoned_cart_automation`;
+}
+
+/** Generate the popup settings key for a given org */
+export function popupKey(orgId: string): string {
+  return `${orgId}_popup`;
 }
 
 // Klaviyo

@@ -23,12 +23,16 @@ const cspDirectives = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Fonts: Google Fonts CDN
   "font-src 'self' https://fonts.gstatic.com",
-  // Images: self + data URIs (QR codes, base64 logos)
-  `img-src 'self' data: blob:`,
+  // Images: self + data URIs (QR codes, base64 logos) + Mux thumbnails
+  `img-src 'self' data: blob: https://image.mux.com`,
+  // Media: Mux HLS video segments + blob URIs for player internals
+  "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
+  // Workers: Mux Player uses Web Workers for HLS parsing
+  "worker-src 'self' blob:",
   // Iframes: GTM noscript, Stripe Connect onboarding, Stripe.js, Google Pay
   "frame-src 'self' https://www.googletagmanager.com https://connect.stripe.com https://js.stripe.com https://pay.google.com",
-  // API calls: Supabase REST/Realtime, Stripe, Google Pay, Meta, Klaviyo, GTM
-  `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace("https://", "")} https://api.stripe.com https://pay.google.com https://www.googleapis.com https://www.gstatic.com https://www.googletagmanager.com https://connect.facebook.net https://graph.facebook.com https://manage.kmail-lists.com`,
+  // API calls: Supabase REST/Realtime, Stripe, Google Pay, Meta, Klaviyo, GTM, Mux streaming + analytics
+  `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace("https://", "")} https://api.stripe.com https://pay.google.com https://www.googleapis.com https://www.gstatic.com https://www.googletagmanager.com https://connect.facebook.net https://graph.facebook.com https://manage.kmail-lists.com https://stream.mux.com https://*.mux.com https://inferred.litix.io`,
   // Forms only submit to same origin
   "form-action 'self'",
   // Prevent <base> tag hijacking

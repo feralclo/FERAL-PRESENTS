@@ -185,7 +185,16 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           sessionStorage.removeItem("feral_checkout_email");
           return "";
         }
-        return stored;
+        if (stored) return stored;
+        // Fall back to popup email — if the user already entered their email
+        // in the discount popup, skip the email capture gate
+        const popupEmail = sessionStorage.getItem("feral_popup_email") || "";
+        if (popupEmail && !isRestrictedCheckoutEmail(popupEmail)) {
+          // Promote to checkout email so it persists correctly
+          sessionStorage.setItem("feral_checkout_email", popupEmail);
+          return popupEmail;
+        }
+        return "";
       } catch {
         return "";
       }
@@ -201,8 +210,18 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       } catch {}
     }
   }, [restoreData?.email]);
+
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
   const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
+
+  // Wrap setCompletedOrder to clean up popup discount after successful purchase
+  const handleOrderComplete = useCallback((order: Order) => {
+    setCompletedOrder(order);
+    try {
+      sessionStorage.removeItem("feral_popup_discount");
+      sessionStorage.removeItem("feral_popup_email");
+    } catch {}
+  }, []);
 
   // Track PageView on checkout page load
   useEffect(() => {
@@ -279,6 +298,37 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   const symbol = getCurrencySymbol(event.currency);
   const isStripe = event.payment_method === "stripe";
 
+  // Fire capture API when popup email was used to skip the email gate.
+  // The normal EmailCapture onContinue handler fires this, but when we
+  // skip the gate entirely we need to fire it ourselves.
+  useEffect(() => {
+    if (!capturedEmail || cartLines.length === 0) return;
+    try {
+      const alreadyCaptured = sessionStorage.getItem("feral_checkout_captured");
+      if (alreadyCaptured) return;
+      const popupEmail = sessionStorage.getItem("feral_popup_email");
+      if (!popupEmail || popupEmail !== capturedEmail) return;
+      sessionStorage.setItem("feral_checkout_captured", "1");
+      fetch("/api/checkout/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: capturedEmail,
+          event_id: event.id,
+          items: cartLines.map((l) => ({
+            ticket_type_id: l.ticket_type_id,
+            qty: l.qty,
+            name: l.name,
+            price: l.price,
+            merch_size: l.merch_size,
+          })),
+          subtotal,
+          currency: event.currency || "GBP",
+        }),
+      }).catch(() => {});
+    } catch {}
+  }, [capturedEmail, cartLines, subtotal, event.id, event.currency]);
+
   // ── Stripe pre-initialization ─────────────────────────────────────────
   const [stripeReady, setStripeReady] = useState(false);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
@@ -305,7 +355,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           });
           const data = await res.json();
           if (res.ok && data.data) {
-            setCompletedOrder(data.data);
+            handleOrderComplete(data.data);
           }
         } catch {
           // Will show checkout form as fallback
@@ -425,7 +475,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
         totalQty={totalQty}
         symbol={symbol}
         vatSettings={vatSettings}
-        onComplete={setCompletedOrder}
+        onComplete={handleOrderComplete}
         capturedEmail={capturedEmail}
         onChangeEmail={() => setCapturedEmail("")}
       />
@@ -442,7 +492,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       totalQty={totalQty}
       symbol={symbol}
       vatSettings={vatSettings}
-      onComplete={setCompletedOrder}
+      onComplete={handleOrderComplete}
       capturedEmail={capturedEmail}
       onChangeEmail={() => setCapturedEmail("")}
       restoreData={restoreData}
@@ -594,6 +644,40 @@ function StripeCheckoutPage({
   stripePromise: Promise<Stripe | null> | null;
 }) {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
+
+  // Auto-apply popup discount code on mount
+  useEffect(() => {
+    try {
+      const popupCode = sessionStorage.getItem("feral_popup_discount");
+      if (!popupCode || appliedDiscount) return;
+
+      fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: popupCode, event_id: event.id, subtotal }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.valid && data.discount) {
+            const d = data.discount;
+            const amount =
+              d.type === "percentage"
+                ? Math.round(((subtotal * d.value) / 100) * 100) / 100
+                : Math.min(d.value, subtotal);
+            setAppliedDiscount({
+              code: d.code,
+              type: d.type,
+              value: d.value,
+              amount,
+            });
+          }
+        })
+        .catch(() => {});
+    } catch {
+      // sessionStorage unavailable
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!stripeReady || !stripePromise) {
     return (
@@ -818,6 +902,17 @@ function SinglePageCheckoutForm({
           return;
         }
 
+        trackAddPaymentInfo(
+          {
+            content_ids: cartLines.map((l) => l.ticket_type_id),
+            content_type: "product",
+            value: totalAmount,
+            currency: event.currency || "GBP",
+            num_items: totalQty,
+          },
+          { em: walletEmail.toLowerCase(), fn: walletFirstName, ln: walletLastName }
+        );
+
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -896,7 +991,7 @@ function SinglePageCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty]
   );
 
   const handleSubmit = useCallback(
@@ -1157,6 +1252,12 @@ function SinglePageCheckoutForm({
             <span className="checkout-divider__line flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
           </div>
         )}
+
+        {/* ── Step indicator ── */}
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
+          <div className="w-5 h-[3px] rounded-full bg-white/60" />
+        </div>
 
         {/* ── CHECKOUT FORM ── */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -1649,6 +1750,12 @@ function TestModeCheckout({
         <div className="flex flex-col lg:flex-row max-w-[1200px] mx-auto w-full">
           <div className="flex-1 min-w-0 lg:pr-8">
             <div className="max-w-[620px] mx-auto py-8 px-6 pb-[max(48px,env(safe-area-inset-bottom))]">
+              {/* ── Step indicator ── */}
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
+                <div className="w-5 h-[3px] rounded-full bg-white/60" />
+              </div>
+
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <div className="flex flex-col gap-4">
                   <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">
@@ -1785,11 +1892,38 @@ function EmailCapture({
 }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [discount, setDiscount] = useState<DiscountInfo | null>(null);
   const { trackEngagement } = useTraffic();
 
   useEffect(() => {
     document.documentElement.classList.add("checkout-active");
     return () => document.documentElement.classList.remove("checkout-active");
+  }, []);
+
+  // Read popup discount from sessionStorage and validate
+  useEffect(() => {
+    try {
+      const code = sessionStorage.getItem("feral_popup_discount");
+      if (!code) return;
+      fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, event_id: event.id, subtotal }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.valid && data.discount) {
+            const d = data.discount;
+            const amount =
+              d.type === "percentage"
+                ? Math.round(((subtotal * d.value) / 100) * 100) / 100
+                : Math.min(d.value, subtotal);
+            setDiscount({ code: d.code, type: d.type, value: d.value, amount });
+          }
+        })
+        .catch(() => {});
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = useCallback(
@@ -1858,19 +1992,58 @@ function EmailCapture({
             {/* Gradient divider */}
             <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
 
-            {/* Total */}
-            <div className="flex items-center justify-between pt-4">
-              <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
-                Total
-              </span>
-              <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
-                {symbol}{subtotal.toFixed(2)}
-              </span>
+            {/* Total — with optional discount breakdown */}
+            <div className="pt-4">
+              {discount ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
+                      Subtotal
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-sm text-foreground/50 tracking-[0.5px]">
+                      {symbol}{subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="font-[family-name:var(--font-mono)] text-[8px] tracking-[1.5px] uppercase bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/15 rounded px-1.5 py-0.5">
+                        {discount.code}
+                      </span>
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-sm text-emerald-400/70 tracking-[0.5px]">
+                      &minus;{symbol}{discount.amount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.05]">
+                    <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
+                      Total
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
+                      {symbol}{Math.max(0, subtotal - discount.amount).toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/40">
+                    Total
+                  </span>
+                  <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-foreground tracking-[0.5px]">
+                    {symbol}{subtotal.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* ── Step indicator ────────────────────────────────────── */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-5 h-[3px] rounded-full bg-white/60" />
+            <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
+          </div>
+
           {/* ── Email capture section ────────────────────────────── */}
-          <div className="mt-8 max-sm:mt-7">
+          <div className="mt-6 max-sm:mt-5">
             <h1 className="font-[family-name:var(--font-sans)] text-lg font-semibold tracking-[-0.2px] text-foreground leading-snug m-0 mb-1.5">
               Where should we send your tickets?
             </h1>

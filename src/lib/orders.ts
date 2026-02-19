@@ -369,8 +369,18 @@ export async function createOrder(
   }
 
   // ------------------------------------------------------------------
-  // 6.5 Recover abandoned cart (if one exists for this customer + event)
+  // 6.5 Clean up abandoned cart entries for this customer + event
   // ------------------------------------------------------------------
+  // Delete "pending" carts — customer completed checkout normally, never abandoned
+  await supabase
+    .from(TABLES.ABANDONED_CARTS)
+    .delete()
+    .eq("org_id", orgId)
+    .eq("customer_id", customerId)
+    .eq("event_id", event.id)
+    .eq("status", "pending");
+
+  // Recover "abandoned" carts — customer left and came back
   await supabase
     .from(TABLES.ABANDONED_CARTS)
     .update({

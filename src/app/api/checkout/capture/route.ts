@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Read Vercel geo headers (only available on Vercel deployment)
+    const geoCity = request.headers.get("x-vercel-ip-city");
+    const geoCountry = request.headers.get("x-vercel-ip-country");
+
     // ── 1. Upsert customer ──
     // Check if customer already exists by email
     const { data: existing } = await supabase
@@ -90,8 +94,11 @@ export async function POST(request: NextRequest) {
           email: normalizedEmail,
           first_name: first_name || null,
           last_name: last_name || null,
+          source: "checkout",
           total_orders: 0,
           total_spent: 0,
+          city: geoCity ? decodeURIComponent(geoCity) : null,
+          country: geoCountry || null,
         })
         .select("id")
         .single();
@@ -123,14 +130,14 @@ export async function POST(request: NextRequest) {
     let cartError: string | null = null;
 
     if (event_id && items && Array.isArray(items)) {
-      // Check for existing abandoned cart for this customer + event
+      // Check for existing cart for this customer + event (pending or abandoned)
       const { data: existingCart, error: findErr } = await supabase
         .from(TABLES.ABANDONED_CARTS)
         .select("id")
         .eq("org_id", ORG_ID)
         .eq("customer_id", customerId)
         .eq("event_id", event_id)
-        .eq("status", "abandoned")
+        .in("status", ["pending", "abandoned"])
         .single();
 
       if (findErr && findErr.code !== "PGRST116") {
@@ -173,7 +180,7 @@ export async function POST(request: NextRequest) {
             items,
             subtotal: subtotal || 0,
             currency: currency || "GBP",
-            status: "abandoned",
+            status: "pending",
             notification_count: 0,
             cart_token: crypto.randomUUID(),
           });

@@ -467,6 +467,8 @@ export async function sendAbandonedCartRecoveryEmail(params: {
     include_discount: boolean;
     discount_code?: string;
     discount_percent?: number;
+    cta_text?: string;
+    discount_label?: string;
   };
 }): Promise<boolean> {
   try {
@@ -543,6 +545,8 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       {
         subject: params.stepConfig.subject,
         preview_text: params.stepConfig.preview_text,
+        cta_text: params.stepConfig.cta_text,
+        discount_label: params.stepConfig.discount_label,
       },
     );
 

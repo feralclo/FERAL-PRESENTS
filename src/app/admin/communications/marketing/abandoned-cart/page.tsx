@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { saveSettings } from "@/lib/settings";
 import {
   ChevronLeft,
@@ -33,13 +34,16 @@ import {
   AlertTriangle,
   Eye,
   Sparkles,
-  Target,
   ArrowRight,
   Plus,
   Loader2,
   CheckCircle2,
   Monitor,
   Smartphone,
+  ImageIcon,
+  Pencil,
+  Trash2,
+  Palette,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -71,6 +75,14 @@ interface EmailStep {
 interface AutomationSettings {
   enabled: boolean;
   steps: EmailStep[];
+}
+
+interface EmailBrandingState {
+  logo_url: string;
+  logo_height: number;
+  logo_aspect_ratio?: number;
+  accent_color: string;
+  from_name: string;
 }
 
 /* ── Defaults ── */
@@ -135,6 +147,73 @@ const SETTINGS_KEY = "feral_abandoned_cart_automation";
 /* ── Helpers ── */
 function formatCurrency(amount: number) {
   return `£${Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/* ── Logo processing: auto-trim transparent pixels + resize ── */
+function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const src = document.createElement("canvas");
+          const sCtx = src.getContext("2d")!;
+          src.width = img.width;
+          src.height = img.height;
+          sCtx.drawImage(img, 0, 0);
+
+          const pixels = sCtx.getImageData(0, 0, src.width, src.height).data;
+          let top = src.height, bottom = 0, left = src.width, right = 0;
+          for (let y = 0; y < src.height; y++) {
+            for (let x = 0; x < src.width; x++) {
+              if (pixels[(y * src.width + x) * 4 + 3] > 10) {
+                if (y < top) top = y;
+                if (y > bottom) bottom = y;
+                if (x < left) left = x;
+                if (x > right) right = x;
+              }
+            }
+          }
+
+          if (top > bottom || left > right) {
+            top = 0; bottom = src.height - 1;
+            left = 0; right = src.width - 1;
+          }
+
+          top = Math.max(0, top - 2);
+          left = Math.max(0, left - 2);
+          bottom = Math.min(src.height - 1, bottom + 2);
+          right = Math.min(src.width - 1, right + 2);
+
+          const cropW = right - left + 1;
+          const cropH = bottom - top + 1;
+          let outW = cropW, outH = cropH;
+          if (outW > maxWidth) {
+            outH = Math.round((outH * maxWidth) / outW);
+            outW = maxWidth;
+          }
+
+          const out = document.createElement("canvas");
+          out.width = outW;
+          out.height = outH;
+          out.getContext("2d")!.drawImage(src, left, top, cropW, cropH, 0, 0, outW, outH);
+          resolve(out.toDataURL("image/png"));
+        } catch { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function processLogoFile(file: File): Promise<string | null> {
+  if (file.size > 5 * 1024 * 1024) { alert("Image too large. Maximum is 5MB."); return null; }
+  const result = await trimAndResizeLogo(file, 400);
+  if (!result) alert("Failed to process image. Try a smaller file.");
+  return result;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -232,7 +311,159 @@ function MasterToggle({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   RECOVERY PIPELINE — visual flow of email steps
+   EMAIL BRANDING — logo upload + accent color
+   ═══════════════════════════════════════════════════════════ */
+function EmailBranding({
+  branding,
+  onBrandingChange,
+}: {
+  branding: EmailBrandingState;
+  onBrandingChange: (updates: Partial<EmailBrandingState>) => void;
+}) {
+  const logoFileRef = useRef<HTMLInputElement>(null);
+  const [logoDragging, setLogoDragging] = useState(false);
+  const [logoProcessing, setLogoProcessing] = useState(false);
+  const [displayLogoUrl, setDisplayLogoUrl] = useState<string | null>(null);
+
+  const handleLogoFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setLogoProcessing(true);
+    const compressed = await processLogoFile(file);
+    if (!compressed) { setLogoProcessing(false); return; }
+    // Show immediate preview
+    setDisplayLogoUrl(compressed);
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: compressed, key: "email-logo" }),
+      });
+      const json = await res.json();
+      if (res.ok && json.url) {
+        // Measure aspect ratio
+        const aspectImg = new Image();
+        aspectImg.onload = () => {
+          const ratio = aspectImg.width / aspectImg.height;
+          onBrandingChange({ logo_url: json.url, logo_aspect_ratio: ratio });
+          setDisplayLogoUrl(null);
+        };
+        aspectImg.onerror = () => {
+          onBrandingChange({ logo_url: json.url });
+          setDisplayLogoUrl(null);
+        };
+        aspectImg.src = compressed;
+      }
+    } catch { /* upload failed */ }
+    setLogoProcessing(false);
+  }, [onBrandingChange]);
+
+  const handleDeleteLogo = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onBrandingChange({ logo_url: "", logo_aspect_ratio: undefined });
+    setDisplayLogoUrl(null);
+  }, [onBrandingChange]);
+
+  const logoSrc = displayLogoUrl || branding.logo_url;
+
+  return (
+    <Card>
+      <CardHeader className="border-b border-border pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Palette size={15} className="text-primary" />
+          Email Branding
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-5">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+          {/* Logo upload */}
+          <div className="shrink-0">
+            <Label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Logo
+            </Label>
+            {logoSrc ? (
+              <div
+                className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
+                onClick={() => logoFileRef.current?.click()}
+              >
+                <img
+                  src={logoSrc}
+                  alt="Logo"
+                  style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
+                />
+                <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-primary/80 hover:text-white"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteLogo}
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-red-500/80 hover:text-white"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                />
+              </div>
+            ) : (
+              <div
+                className={`max-w-[200px] cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-all ${
+                  logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                }`}
+                onClick={() => logoFileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                onDragLeave={() => setLogoDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
+              >
+                <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
+                <p className="text-xs text-muted-foreground">
+                  {logoProcessing ? "Processing..." : "Drop or click"}
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground/40">PNG, JPG, WebP</p>
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Accent color */}
+          <div>
+            <Label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Accent Color
+            </Label>
+            <ColorPicker
+              value={branding.accent_color}
+              onChange={(v) => onBrandingChange({ accent_color: v })}
+            />
+            <p className="mt-1.5 text-[10px] text-muted-foreground/40">
+              Used for buttons, links, and highlights
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 text-[10px] text-muted-foreground/40">
+          Shared with order confirmation emails. Changes apply to all email types.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RECOVERY PIPELINE — horizontal flow of email steps
    ═══════════════════════════════════════════════════════════ */
 function RecoveryPipeline({
   steps,
@@ -265,176 +496,157 @@ function RecoveryPipeline({
         </div>
       </CardHeader>
       <CardContent className="p-5">
-        <div className="relative space-y-0">
-          {/* Cart abandoned — origin node */}
-          <div className="relative flex items-start gap-4">
+        {/* Horizontal pipeline: Cart → Email 1 → Email 2 → Email 3 → Recovered */}
+        <div className="flex items-stretch gap-0 overflow-x-auto">
+          {/* Cart Abandoned — origin node */}
+          <div className="flex shrink-0 flex-col items-center" style={{ width: "72px" }}>
             <div
-              className="absolute left-[15px] top-[32px] w-0.5"
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300"
               style={{
-                height: "calc(100% - 8px)",
-                background: automationEnabled
-                  ? "linear-gradient(to bottom, #f59e0b, #8B5CF6)"
-                  : "rgba(255,255,255,0.06)",
+                backgroundColor: "rgba(245,158,11,0.15)",
+                boxShadow: "inset 0 0 0 1.5px rgba(245,158,11,0.5)",
               }}
-            />
-            <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
-                style={{
-                  backgroundColor: "rgba(245,158,11,0.15)",
-                  boxShadow: "inset 0 0 0 1.5px rgba(245,158,11,0.5)",
-                }}
-              >
-                <ShoppingCart size={13} style={{ color: "#f59e0b" }} />
-              </div>
+            >
+              <ShoppingCart size={15} style={{ color: "#f59e0b" }} />
             </div>
-            <div className="min-w-0 flex-1 pb-5">
-              <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: "#f59e0b" }}>
-                Cart Abandoned
-              </span>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/50">
-                Customer leaves checkout without completing purchase
-              </p>
-            </div>
+            <span className="mt-2 text-center text-[9px] font-semibold uppercase leading-tight tracking-wider" style={{ color: "#f59e0b" }}>
+              Cart<br />Abandoned
+            </span>
           </div>
 
           {/* Email steps */}
           {steps.map((step, i) => {
-            const StepIcon = step.icon;
-            const isLast = i === steps.length - 1;
             const isSelected = activeStepId === step.id;
-            const isDisabled = !automationEnabled;
+            const stepActive = step.enabled && automationEnabled;
+            const nextStep = steps[i + 1];
+            const nextColor = nextStep ? nextStep.color : "#10b981";
 
             return (
-              <div key={step.id} className="relative flex items-start gap-4">
-                {!isLast && (
+              <div key={step.id} className="flex min-w-0 flex-1 items-stretch">
+                {/* Connector line */}
+                <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
                   <div
-                    className="absolute left-[15px] top-[32px] w-0.5"
+                    className="h-0.5 w-full transition-colors duration-300"
                     style={{
-                      height: "calc(100% - 8px)",
-                      background: step.enabled && automationEnabled
-                        ? `linear-gradient(to bottom, ${step.color}, ${steps[i + 1]?.color || step.color})`
+                      background: stepActive
+                        ? `linear-gradient(to right, ${i === 0 ? "#f59e0b" : steps[i - 1]?.color || "#f59e0b"}, ${step.color})`
                         : "rgba(255,255,255,0.06)",
                     }}
                   />
-                )}
-                {isLast && (
-                  <div
-                    className="absolute left-[15px] top-[32px] w-0.5"
-                    style={{
-                      height: "calc(100% - 8px)",
-                      background: step.enabled && automationEnabled
-                        ? `linear-gradient(to bottom, ${step.color}, #10b981)`
-                        : "rgba(255,255,255,0.06)",
-                    }}
-                  />
-                )}
-
-                <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
-                    style={{
-                      backgroundColor: step.enabled && automationEnabled ? `${step.color}18` : "rgba(255,255,255,0.04)",
-                      boxShadow: isSelected && step.enabled && automationEnabled
-                        ? `0 0 16px ${step.glowColor}, inset 0 0 0 1.5px ${step.color}`
-                        : step.enabled && automationEnabled
-                          ? `inset 0 0 0 1.5px ${step.color}60`
-                          : "none",
-                    }}
-                  >
-                    {step.enabled && automationEnabled ? (
-                      <Check size={12} style={{ color: step.color }} />
-                    ) : (
-                      <StepIcon size={13} style={{ color: isDisabled ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.25)" }} />
-                    )}
-                  </div>
-                  {isSelected && step.enabled && automationEnabled && (
-                    <span className="absolute inset-0 animate-ping rounded-full opacity-15" style={{ backgroundColor: step.color }} />
-                  )}
                 </div>
 
+                {/* Step card */}
                 <button
                   type="button"
                   onClick={() => onSelectStep(step.id)}
-                  className={`group min-w-0 flex-1 rounded-lg border px-4 py-3 text-left transition-all duration-300 ${
-                    isLast ? "mb-0" : "mb-3"
-                  } ${
+                  className={`group relative flex min-w-[120px] flex-1 flex-col rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ${
                     isSelected
                       ? ""
                       : "border-transparent hover:border-border/40 hover:bg-muted/20"
                   }`}
                   style={isSelected ? {
-                    borderColor: step.enabled && automationEnabled ? `${step.color}30` : "var(--color-border)",
-                    backgroundColor: step.enabled && automationEnabled ? `${step.color}06` : "rgba(255,255,255,0.02)",
+                    borderColor: stepActive ? `${step.color}40` : "var(--color-border)",
+                    backgroundColor: stepActive ? `${step.color}08` : "rgba(255,255,255,0.02)",
+                    boxShadow: stepActive ? `0 0 12px ${step.glowColor}` : "none",
                   } : {}}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-[12px] font-semibold uppercase tracking-wider transition-colors"
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300"
                         style={{
-                          color: step.enabled && automationEnabled ? step.color : "rgba(255,255,255,0.3)",
+                          backgroundColor: stepActive ? `${step.color}18` : "rgba(255,255,255,0.04)",
+                          boxShadow: stepActive ? `inset 0 0 0 1px ${step.color}60` : "none",
                         }}
+                      >
+                        {stepActive ? (
+                          <Check size={10} style={{ color: step.color }} />
+                        ) : (
+                          <step.icon size={10} style={{ color: "rgba(255,255,255,0.25)" }} />
+                        )}
+                      </div>
+                      <span
+                        className="text-[11px] font-semibold uppercase tracking-wider"
+                        style={{ color: stepActive ? step.color : "rgba(255,255,255,0.3)" }}
                       >
                         {step.label}
                       </span>
-                      {step.include_discount && step.enabled && (
-                        <Badge variant="warning" className="text-[8px] font-bold uppercase">
-                          <Percent size={7} /> {step.discount_percent}% off
-                        </Badge>
-                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-medium text-muted-foreground/40">
-                        <Timer size={10} className="mr-1 inline" />
-                        {step.delay_label}
-                      </span>
-                      <Switch
-                        size="sm"
-                        checked={step.enabled}
-                        onCheckedChange={() => onToggleStep(step.id)}
-                        disabled={!automationEnabled}
-                      />
-                    </div>
+                    <Switch
+                      size="sm"
+                      checked={step.enabled}
+                      onCheckedChange={(e) => { e; onToggleStep(step.id); }}
+                      onClick={(e) => e.stopPropagation()}
+                      disabled={!automationEnabled}
+                    />
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground/50">
-                    {step.description}
-                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="secondary" className="text-[8px] font-medium">
+                      <Timer size={7} className="mr-0.5" />
+                      {step.delay_label}
+                    </Badge>
+                    {step.include_discount && step.enabled && (
+                      <Badge variant="warning" className="text-[8px] font-bold uppercase">
+                        <Percent size={7} className="mr-0.5" /> {step.discount_percent}%
+                      </Badge>
+                    )}
+                  </div>
                   {isSelected && (
-                    <div className="mt-2 flex items-center gap-1 text-[10px]" style={{ color: step.color }}>
-                      <Eye size={10} />
-                      <span>Editing below</span>
+                    <div className="mt-1 flex items-center gap-1 text-[9px]" style={{ color: step.color }}>
+                      <Eye size={8} />
+                      <span>Editing</span>
                     </div>
                   )}
                 </button>
+
+                {/* Connector after last step → recovered */}
+                {i === steps.length - 1 && (
+                  <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
+                    <div
+                      className="h-0.5 w-full transition-colors duration-300"
+                      style={{
+                        background: stepActive
+                          ? `linear-gradient(to right, ${step.color}, #10b981)`
+                          : "rgba(255,255,255,0.06)",
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Connector between steps (not last) */}
+                {i < steps.length - 1 && (
+                  <div className="flex items-center" style={{ width: "24px", minWidth: "16px" }}>
+                    <div
+                      className="h-0.5 w-full transition-colors duration-300"
+                      style={{
+                        background: stepActive
+                          ? `linear-gradient(to right, ${step.color}, ${nextColor})`
+                          : "rgba(255,255,255,0.06)",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
 
           {/* Recovery outcome node */}
-          <div className="relative flex items-start gap-4">
-            <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
-                style={{
-                  backgroundColor: automationEnabled ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
-                  boxShadow: automationEnabled ? "inset 0 0 0 1.5px rgba(16,185,129,0.5)" : "none",
-                }}
-              >
-                <PartyPopper size={13} style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.15)" }} />
-              </div>
+          <div className="flex shrink-0 flex-col items-center" style={{ width: "72px" }}>
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300"
+              style={{
+                backgroundColor: automationEnabled ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+                boxShadow: automationEnabled ? "inset 0 0 0 1.5px rgba(16,185,129,0.5)" : "none",
+              }}
+            >
+              <PartyPopper size={15} style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.15)" }} />
             </div>
-            <div className="min-w-0 flex-1">
-              <span
-                className="text-[12px] font-semibold uppercase tracking-wider"
-                style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.3)" }}
-              >
-                Cart Recovered
-              </span>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/50">
-                Customer completes their purchase
-              </p>
-            </div>
+            <span
+              className="mt-2 text-center text-[9px] font-semibold uppercase leading-tight tracking-wider"
+              style={{ color: automationEnabled ? "#10b981" : "rgba(255,255,255,0.3)" }}
+            >
+              Cart<br />Recovered
+            </span>
           </div>
         </div>
       </CardContent>
@@ -445,12 +657,18 @@ function RecoveryPipeline({
 /* ═══════════════════════════════════════════════════════════
    EMAIL PREVIEW — live rendered email in iframe
    ═══════════════════════════════════════════════════════════ */
-function EmailPreview({ step }: { step: EmailStep | null }) {
+function EmailPreview({
+  step,
+  previewVersion,
+}: {
+  step: EmailStep | null;
+  previewVersion: number;
+}) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [loading, setLoading] = useState(true);
 
-  // Build preview URL from step config
+  // Build preview URL from step config + version counter for cache-busting
   const previewUrl = useMemo(() => {
     if (!step) return null;
     const params = new URLSearchParams();
@@ -460,8 +678,9 @@ function EmailPreview({ step }: { step: EmailStep | null }) {
       params.set("discount_code", step.discount_code);
       params.set("discount_percent", String(step.discount_percent));
     }
+    params.set("t", String(previewVersion));
     return `/api/abandoned-carts/preview-email?${params.toString()}`;
-  }, [step?.subject, step?.preview_text, step?.include_discount, step?.discount_code, step?.discount_percent]);
+  }, [step?.subject, step?.preview_text, step?.include_discount, step?.discount_code, step?.discount_percent, previewVersion]);
 
   useEffect(() => {
     setLoading(true);
@@ -564,10 +783,8 @@ function EmailPreview({ step }: { step: EmailStep | null }) {
    ═══════════════════════════════════════════════════════════ */
 function CreateDiscountInline({
   onCreated,
-  disabled,
 }: {
   onCreated: (code: string, percent: number) => void;
-  disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -629,9 +846,8 @@ function CreateDiscountInline({
     return (
       <button
         type="button"
-        disabled={disabled}
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
       >
         <Plus size={12} />
         Create New Discount Code
@@ -741,22 +957,22 @@ function StepEditor({
   automationEnabled: boolean;
   onUpdate: (id: string, updates: Partial<EmailStep>) => void;
 }) {
-  const isDisabled = !automationEnabled || !step.enabled;
   const StepIcon = step.icon;
+  const isActive = automationEnabled && step.enabled;
 
   return (
     <Card
       className="overflow-hidden transition-all duration-300"
       style={{
-        borderColor: !isDisabled ? `${step.color}20` : undefined,
+        borderColor: isActive ? `${step.color}20` : undefined,
       }}
     >
       {/* Step header with color accent */}
       <div
         className="relative border-b px-5 py-4"
         style={{
-          borderColor: !isDisabled ? `${step.color}15` : "var(--color-border)",
-          background: !isDisabled
+          borderColor: isActive ? `${step.color}15` : "var(--color-border)",
+          background: isActive
             ? `linear-gradient(135deg, ${step.color}08, transparent)`
             : "transparent",
         }}
@@ -766,25 +982,25 @@ function StepEditor({
             <div
               className="flex h-9 w-9 items-center justify-center rounded-full transition-all"
               style={{
-                backgroundColor: !isDisabled ? `${step.color}15` : "rgba(255,255,255,0.04)",
-                boxShadow: !isDisabled ? `inset 0 0 0 1.5px ${step.color}40` : "none",
+                backgroundColor: isActive ? `${step.color}15` : "rgba(255,255,255,0.04)",
+                boxShadow: isActive ? `inset 0 0 0 1.5px ${step.color}40` : "none",
               }}
             >
-              <StepIcon size={15} style={{ color: !isDisabled ? step.color : "#71717a" }} />
+              <StepIcon size={15} style={{ color: isActive ? step.color : "#71717a" }} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3
                   className="font-mono text-[13px] font-bold uppercase tracking-wider"
-                  style={{ color: !isDisabled ? step.color : "#71717a" }}
+                  style={{ color: isActive ? step.color : "#71717a" }}
                 >
                   {step.label}
                 </h3>
                 <Badge
-                  variant={step.enabled && automationEnabled ? "success" : "secondary"}
+                  variant={isActive ? "success" : "secondary"}
                   className="text-[8px] font-bold uppercase"
                 >
-                  {step.enabled && automationEnabled ? "Active" : "Disabled"}
+                  {isActive ? "Active" : "Disabled"}
                 </Badge>
               </div>
               <p className="mt-0.5 text-[11px] text-muted-foreground/50">
@@ -812,7 +1028,7 @@ function StepEditor({
             </TabsTrigger>
           </TabsList>
 
-          {/* Content tab */}
+          {/* Content tab — inputs always enabled for configuration */}
           <TabsContent value="content" className="space-y-4">
             <div>
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -823,7 +1039,6 @@ function StepEditor({
                 value={step.subject}
                 onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
                 placeholder="Email subject line..."
-                disabled={isDisabled}
               />
             </div>
             <div>
@@ -836,7 +1051,6 @@ function StepEditor({
                 onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
                 placeholder="Shows in email client preview..."
                 rows={2}
-                disabled={isDisabled}
               />
               <p className="mt-1 text-[10px] text-muted-foreground/40">
                 Appears as preview text in the customer&apos;s inbox
@@ -844,15 +1058,15 @@ function StepEditor({
             </div>
           </TabsContent>
 
-          {/* Incentive tab */}
+          {/* Incentive tab — inputs always enabled */}
           <TabsContent value="incentive" className="space-y-4">
             <div
               className="flex items-center justify-between rounded-lg border p-4 transition-all"
               style={{
-                borderColor: step.include_discount && !isDisabled
+                borderColor: step.include_discount
                   ? "rgba(245,158,11,0.2)"
                   : "var(--color-border)",
-                background: step.include_discount && !isDisabled
+                background: step.include_discount
                   ? "rgba(245,158,11,0.04)"
                   : "transparent",
               }}
@@ -861,10 +1075,10 @@ function StepEditor({
                 <div
                   className="flex h-8 w-8 items-center justify-center rounded-full"
                   style={{
-                    backgroundColor: step.include_discount && !isDisabled ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)",
+                    backgroundColor: step.include_discount ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)",
                   }}
                 >
-                  <Percent size={14} style={{ color: step.include_discount && !isDisabled ? "#f59e0b" : "#71717a" }} />
+                  <Percent size={14} style={{ color: step.include_discount ? "#f59e0b" : "#71717a" }} />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Include Discount</p>
@@ -877,7 +1091,6 @@ function StepEditor({
                 size="sm"
                 checked={step.include_discount}
                 onCheckedChange={(val) => onUpdate(step.id, { include_discount: val })}
-                disabled={isDisabled}
               />
             </div>
 
@@ -893,7 +1106,6 @@ function StepEditor({
                       value={step.discount_code}
                       onChange={(e) => onUpdate(step.id, { discount_code: e.target.value.toUpperCase() })}
                       placeholder="COMEBACK10"
-                      disabled={isDisabled}
                     />
                   </div>
                   <div>
@@ -907,14 +1119,12 @@ function StepEditor({
                       max={100}
                       value={step.discount_percent}
                       onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
-                      disabled={isDisabled}
                     />
                   </div>
                 </div>
 
                 {/* Inline discount creation */}
                 <CreateDiscountInline
-                  disabled={isDisabled}
                   onCreated={(newCode, newPercent) => {
                     onUpdate(step.id, {
                       discount_code: newCode,
@@ -926,7 +1136,7 @@ function StepEditor({
             )}
           </TabsContent>
 
-          {/* Timing tab */}
+          {/* Timing tab — inputs always enabled */}
           <TabsContent value="timing" className="space-y-4">
             <div>
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -941,13 +1151,12 @@ function StepEditor({
                   <button
                     key={opt.minutes}
                     type="button"
-                    disabled={isDisabled}
                     onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
                     className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
                       step.delay_minutes === opt.minutes
                         ? "border-primary/30 bg-primary/10 text-primary"
                         : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    } disabled:opacity-40`}
+                    }`}
                   >
                     {opt.label}
                   </button>
@@ -960,13 +1169,12 @@ function StepEditor({
                   <button
                     key={opt.minutes}
                     type="button"
-                    disabled={isDisabled}
                     onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
                     className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
                       step.delay_minutes === opt.minutes
                         ? "border-primary/30 bg-primary/10 text-primary"
                         : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    } disabled:opacity-40`}
+                    }`}
                   >
                     {opt.label}
                   </button>
@@ -979,13 +1187,12 @@ function StepEditor({
                   <button
                     key={opt.minutes}
                     type="button"
-                    disabled={isDisabled}
                     onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
                     className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
                       step.delay_minutes === opt.minutes
                         ? "border-primary/30 bg-primary/10 text-primary"
                         : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    } disabled:opacity-40`}
+                    }`}
                   >
                     {opt.label}
                   </button>
@@ -1104,7 +1311,7 @@ function HowItWorks() {
       color: "#f59e0b",
     },
     {
-      icon: Target,
+      icon: Sparkles,
       label: "Automation Triggers",
       detail: "Your configured email sequence begins — each step fires automatically at the delay you set",
       color: "#8B5CF6",
@@ -1190,6 +1397,16 @@ export default function AbandonedCartPage() {
   const [activeStepId, setActiveStepId] = useState<string | null>("email_1");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Email branding state (loaded from feral_email settings)
+  const [branding, setBranding] = useState<EmailBrandingState>({
+    logo_url: "",
+    logo_height: 48,
+    accent_color: "#ff0033",
+    from_name: "FERAL PRESENTS",
+  });
+  // Preview version counter — increment to force iframe reload when branding changes
+  const [previewVersion, setPreviewVersion] = useState(0);
+
   // Load stats
   const loadStats = useCallback(async () => {
     try {
@@ -1201,19 +1418,35 @@ export default function AbandonedCartPage() {
     }
   }, []);
 
-  // Load settings
+  // Load settings (automation + email branding in parallel)
   const loadSettings = useCallback(async () => {
     try {
-      const res = await fetch(`/api/settings?key=${SETTINGS_KEY}`);
-      const json = await res.json();
-      if (json?.data) {
-        const loaded = json.data as AutomationSettings;
+      const [automationRes, emailRes] = await Promise.all([
+        fetch(`/api/settings?key=${SETTINGS_KEY}`),
+        fetch(`/api/settings?key=feral_email`),
+      ]);
+      const automationJson = await automationRes.json();
+      const emailJson = await emailRes.json();
+
+      if (automationJson?.data) {
+        const loaded = automationJson.data as AutomationSettings;
         setSettings({
           enabled: loaded.enabled ?? false,
           steps: DEFAULT_STEPS.map((def) => {
             const saved = loaded.steps?.find((s: EmailStep) => s.id === def.id);
             return saved ? { ...def, ...saved, icon: def.icon } : def;
           }),
+        });
+      }
+
+      if (emailJson?.data) {
+        const e = emailJson.data as Record<string, unknown>;
+        setBranding({
+          logo_url: (e.logo_url as string) || "",
+          logo_height: (e.logo_height as number) || 48,
+          logo_aspect_ratio: e.logo_aspect_ratio as number | undefined,
+          accent_color: (e.accent_color as string) || "#ff0033",
+          from_name: (e.from_name as string) || "FERAL PRESENTS",
         });
       }
     } catch {
@@ -1227,7 +1460,7 @@ export default function AbandonedCartPage() {
     loadSettings();
   }, [loadStats, loadSettings]);
 
-  // Auto-save with debounce
+  // Auto-save automation settings with debounce
   const persistSettings = useCallback(async (newSettings: AutomationSettings) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
@@ -1247,6 +1480,31 @@ export default function AbandonedCartPage() {
       setTimeout(() => setSaveStatus("idle"), 2000);
     }, 600);
   }, []);
+
+  // Save email branding settings (separate settings key)
+  const persistBranding = useCallback(async (updated: EmailBrandingState) => {
+    // Load existing email settings, merge, and save
+    try {
+      const res = await fetch("/api/settings?key=feral_email");
+      const json = await res.json();
+      const existing = json?.data || {};
+      const merged = { ...existing, ...updated };
+      await saveSettings("feral_email", merged as unknown as Record<string, unknown>);
+      // Bump preview version to force iframe reload
+      setPreviewVersion((v) => v + 1);
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  // Handle branding changes
+  const handleBrandingChange = useCallback((updates: Partial<EmailBrandingState>) => {
+    setBranding((prev) => {
+      const updated = { ...prev, ...updates };
+      persistBranding(updated);
+      return updated;
+    });
+  }, [persistBranding]);
 
   // Toggle master automation
   const handleToggleAutomation = useCallback((val: boolean) => {
@@ -1367,6 +1625,14 @@ export default function AbandonedCartPage() {
         />
       </div>
 
+      {/* Email Branding — logo + accent color */}
+      <div className="mb-6">
+        <EmailBranding
+          branding={branding}
+          onBrandingChange={handleBrandingChange}
+        />
+      </div>
+
       {/* Disabled overlay hint */}
       {!settings.enabled && stats && stats.abandoned > 0 && (
         <div className="mb-6 flex items-center gap-4 rounded-xl border border-amber-500/20 bg-amber-500/4 px-5 py-4">
@@ -1388,21 +1654,20 @@ export default function AbandonedCartPage() {
         </div>
       )}
 
-      {/* Pipeline + Step Editor + Email Preview — three-column on xl */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        {/* Recovery Pipeline */}
-        <div className="xl:col-span-3">
-          <RecoveryPipeline
-            steps={settings.steps}
-            automationEnabled={settings.enabled}
-            onToggleStep={handleToggleStep}
-            activeStepId={activeStepId}
-            onSelectStep={setActiveStepId}
-          />
-        </div>
+      {/* Row 1: Recovery Pipeline (full width, horizontal strip) */}
+      <div className="mb-6">
+        <RecoveryPipeline
+          steps={settings.steps}
+          automationEnabled={settings.enabled}
+          onToggleStep={handleToggleStep}
+          activeStepId={activeStepId}
+          onSelectStep={setActiveStepId}
+        />
+      </div>
 
-        {/* Step Editor */}
-        <div className="xl:col-span-4">
+      {/* Row 2: Step Editor (5/12) | Email Preview (7/12) */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div className="xl:col-span-5">
           {activeStep ? (
             <StepEditor
               step={activeStep}
@@ -1421,9 +1686,8 @@ export default function AbandonedCartPage() {
           )}
         </div>
 
-        {/* Email Preview */}
-        <div className="xl:col-span-5" style={{ minHeight: "640px" }}>
-          <EmailPreview step={activeStep} />
+        <div className="xl:col-span-7" style={{ minHeight: "640px" }}>
+          <EmailPreview step={activeStep} previewVersion={previewVersion} />
         </div>
       </div>
 

@@ -29,7 +29,7 @@ import { AuraCheckoutHeader } from "./AuraCheckoutHeader";
 import { AuraOrderConfirmation } from "./AuraOrderConfirmation";
 import { AuraFooter } from "./AuraFooter";
 import { getStripeClient } from "@/lib/stripe/client";
-import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { Lock, Mail, CreditCard, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
@@ -457,6 +457,19 @@ function AuraCheckoutForm({
         if (!walletEmail) { setError("Email is required."); setProcessing(false); return; }
         if (isRestrictedCheckoutEmail(walletEmail)) { setServiceUnavailable(true); setProcessing(false); return; }
 
+        // Store wallet PII for Meta Advanced Matching + fire missing AddPaymentInfo
+        storeMetaMatchData({ em: walletEmail, fn: walletFirstName, ln: walletLastName });
+        trackAddPaymentInfo(
+          {
+            content_ids: cartLines.map((l) => l.ticket_type_id),
+            content_type: "product",
+            value: subtotal,
+            currency: event.currency || "GBP",
+            num_items: totalQty,
+          },
+          { em: walletEmail.toLowerCase(), fn: walletFirstName, ln: walletLastName }
+        );
+
         const res = await fetch("/api/stripe/payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -514,6 +527,9 @@ function AuraCheckoutForm({
       if (isRestrictedCheckoutEmail(email)) { setServiceUnavailable(true); return; }
       if (!firstName.trim() || !lastName.trim()) { setError("First name and last name are required."); return; }
       if (cartLines.length === 0) { setError("Your cart is empty."); return; }
+
+      // Store PII for Meta Advanced Matching (enriches CAPI events + future visits)
+      storeMetaMatchData({ em: email, fn: firstName, ln: lastName });
 
       // Track AddPaymentInfo — user submitted the checkout form with payment details
       trackAddPaymentInfo(

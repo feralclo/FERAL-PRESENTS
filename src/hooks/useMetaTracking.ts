@@ -16,6 +16,18 @@ declare global {
 let _settings: MarketingSettings | null = null;
 let _fetchPromise: Promise<MarketingSettings | null> | null = null;
 let _pixelLoaded = false;
+let _fbclidCaptured = false;
+
+// Pixel script load tracking — resolves when fbevents.js has loaded and
+// set the _fbp cookie, so CAPI events can include it for matching.
+let _pixelScriptReady = false;
+let _resolvePixelReady: (() => void) | null = null;
+const _pixelReadyPromise = new Promise<void>((resolve) => {
+  _resolvePixelReady = resolve;
+});
+
+/** localStorage key for stored customer match data (persists across sessions) */
+const META_MATCH_KEY = "feral_meta_match";
 
 /** Fetch marketing settings from our API (cached for the page lifecycle).
  *  Failed fetches are NOT cached — the next call will retry. */
@@ -79,6 +91,90 @@ function getCookie(name: string): string | undefined {
   return match ? decodeURIComponent(match[2]) : undefined;
 }
 
+// ─── fbclid capture ─────────────────────────────────────────────────────────
+// Meta's pixel sets _fbc from the fbclid URL parameter, but if the pixel
+// loads late (after settings fetch + consent check), the fbclid may be lost.
+// We capture it ourselves immediately on first mount to ensure coverage.
+
+/**
+ * Capture fbclid from the URL and set the _fbc cookie if not already present.
+ * Format: fb.1.{creation_timestamp_ms}.{fbclid}
+ * Runs once per page load, before settings or pixel are loaded.
+ */
+function captureFbclid() {
+  if (_fbclidCaptured) return;
+  _fbclidCaptured = true;
+
+  try {
+    // Don't overwrite an existing _fbc cookie
+    if (getCookie("_fbc")) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const fbclid = params.get("fbclid");
+    if (!fbclid) return;
+
+    // Meta _fbc format: fb.{subdomainIndex}.{creationTime}.{fbclid}
+    const fbc = `fb.1.${Date.now()}.${fbclid}`;
+    const expires = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = `_fbc=${encodeURIComponent(fbc)}; expires=${expires}; path=/; SameSite=Lax`;
+    console.debug("[Meta] Captured fbclid → _fbc cookie set:", fbc);
+  } catch {
+    // Silent — cookie write failures shouldn't break anything
+  }
+}
+
+// ─── Advanced Matching (stored customer data) ───────────────────────────────
+// Stores customer PII in localStorage so returning visitors and subsequent
+// events get better match quality. Data is raw (unhashed) — the pixel JS
+// hashes it during init, and the CAPI route hashes it server-side.
+
+interface StoredMatchData {
+  em?: string;
+  fn?: string;
+  ln?: string;
+  ph?: string;
+  external_id?: string;
+}
+
+/** Read stored customer match data from localStorage */
+function getStoredMatchData(): StoredMatchData {
+  try {
+    const raw = localStorage.getItem(META_MATCH_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Store customer data for Meta Advanced Matching.
+ * Persists in localStorage so returning visitors get better EMQ scores.
+ * Merges with existing data (never overwrites with empty values).
+ * Call this from checkout components when customer PII becomes available.
+ */
+export function storeMetaMatchData(data: StoredMatchData) {
+  try {
+    const existing = getStoredMatchData();
+    const merged = { ...existing };
+
+    // Only overwrite with non-empty values
+    if (data.em) merged.em = data.em.toLowerCase().trim();
+    if (data.fn) merged.fn = data.fn.trim();
+    if (data.ln) merged.ln = data.ln.trim();
+    if (data.ph) merged.ph = data.ph.trim();
+    if (data.external_id) merged.external_id = data.external_id;
+
+    // Only store if we have at least one value
+    const hasValues = Object.values(merged).some(Boolean);
+    if (hasValues) {
+      localStorage.setItem(META_MATCH_KEY, JSON.stringify(merged));
+    }
+  } catch {
+    // Silent — localStorage write failures shouldn't break anything
+  }
+}
+
 /** Load Meta Pixel base code and init with pixel ID (once per page) */
 function loadPixel(pixelId: string) {
   if (_pixelLoaded) return;
@@ -103,14 +199,46 @@ function loadPixel(pixelId: string) {
     const script = document.createElement("script");
     script.async = true;
     script.src = "https://connect.facebook.net/en_US/fbevents.js";
+
+    // Signal when the pixel script has loaded — CAPI events wait for this
+    // so they can include the _fbp cookie that the pixel sets on load.
+    script.onload = () => {
+      // Small delay to ensure fbevents.js has finished initializing and
+      // set the _fbp cookie (init runs synchronously after script load).
+      setTimeout(() => {
+        _pixelScriptReady = true;
+        _resolvePixelReady?.();
+        console.debug("[Meta] Pixel script loaded — _fbp:", getCookie("_fbp") ? "set" : "not set");
+      }, 100);
+    };
+    script.onerror = () => {
+      // Don't block CAPI events forever if the pixel script fails to load
+      _pixelScriptReady = true;
+      _resolvePixelReady?.();
+      console.warn("[Meta] Pixel script failed to load");
+    };
+
     document.head.appendChild(script);
   }
 
-  // Init pixel — always call init even if fbq was loaded externally (e.g. GTM).
-  // Calling init multiple times with the same ID is safe — Meta deduplicates.
-  // Do NOT fire automatic PageView (components handle it with event_id).
-  w.fbq("init", pixelId);
-  console.debug("[Meta] Pixel loaded and initialized:", pixelId);
+  // Advanced Matching: pass any stored customer data during init.
+  // The pixel JS hashes raw PII automatically before sending to Meta.
+  const matchData = getStoredMatchData();
+  const hasMatchData = matchData.em || matchData.fn || matchData.ln || matchData.ph || matchData.external_id;
+
+  if (hasMatchData) {
+    w.fbq("init", pixelId, {
+      em: matchData.em || undefined,
+      fn: matchData.fn || undefined,
+      ln: matchData.ln || undefined,
+      ph: matchData.ph || undefined,
+      external_id: matchData.external_id || undefined,
+    });
+    console.debug("[Meta] Pixel initialized with Advanced Matching:", Object.keys(matchData).filter(k => matchData[k as keyof StoredMatchData]).join(", "));
+  } else {
+    w.fbq("init", pixelId);
+    console.debug("[Meta] Pixel loaded and initialized:", pixelId);
+  }
 }
 
 /**
@@ -157,35 +285,56 @@ interface CAPIUserData {
   ph?: string;  // raw phone — will be hashed server-side
 }
 
-/** Send a CAPI event via our server route (fire-and-forget) */
+/**
+ * Send a CAPI event via our server route (fire-and-forget).
+ * Waits for the pixel script to load so _fbp is available for matching.
+ * Max wait: 3 seconds — after that, sends without _fbp rather than blocking.
+ */
 function sendCAPI(
   eventName: string,
   eventId: string,
   customData?: Record<string, unknown>,
   userData?: CAPIUserData
 ) {
-  const browserUserData: CAPIUserData = {
-    fbp: getCookie("_fbp"),
-    fbc: getCookie("_fbc"),
-  };
+  const eventSourceUrl = window.location.href;
 
-  // Merge browser cookies with any explicit PII
-  const mergedUserData = { ...browserUserData, ...userData };
+  // Wait for the pixel script to load (so _fbp cookie exists), but don't
+  // wait forever — cap at 3 seconds, then send without _fbp.
+  const waitForFbp = _pixelScriptReady
+    ? Promise.resolve()
+    : Promise.race([
+        _pixelReadyPromise,
+        new Promise<void>((r) => setTimeout(r, 3000)),
+      ]);
 
-  const payload: MetaCAPIRequest = {
-    event_name: eventName,
-    event_id: eventId,
-    event_source_url: window.location.href,
-    user_data: mergedUserData,
-    custom_data: customData,
-  };
+  waitForFbp.then(() => {
+    // Layer 1: Browser cookies (_fbp, _fbc) — now _fbp should be available
+    const browserUserData: CAPIUserData = {
+      fbp: getCookie("_fbp"),
+      fbc: getCookie("_fbc"),
+    };
 
-  fetch("/api/meta/capi", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    keepalive: true, // Survive page navigations
-  }).catch(() => {}); // Fire and forget
+    // Layer 2: Stored match data from localStorage (returning visitors)
+    const storedMatch = getStoredMatchData();
+
+    // Merge: browser cookies → stored match data → explicit PII (explicit wins)
+    const mergedUserData = { ...browserUserData, ...storedMatch, ...userData };
+
+    const payload: MetaCAPIRequest = {
+      event_name: eventName,
+      event_id: eventId,
+      event_source_url: eventSourceUrl,
+      user_data: mergedUserData,
+      custom_data: customData,
+    };
+
+    fetch("/api/meta/capi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true, // Survive page navigations
+    }).catch(() => {}); // Fire and forget
+  });
 }
 
 /**
@@ -196,6 +345,12 @@ function sendCAPI(
  *
  * Full funnel coverage:
  *   PageView → ViewContent → AddToCart → InitiateCheckout → AddPaymentInfo → Purchase
+ *
+ * Advanced Matching:
+ *   - Captures fbclid from URL → _fbc cookie (before pixel loads)
+ *   - Passes stored customer data to fbq('init') for pixel-side matching
+ *   - Merges stored customer data into all CAPI events for server-side matching
+ *   - Components call storeMetaMatchData() to persist customer PII
  *
  * IMPORTANT: Returns a referentially-stable object so it can safely
  * be used in useEffect / useCallback dependency arrays without
@@ -208,6 +363,10 @@ export function useMetaTracking() {
   useEffect(() => {
     if (initialised.current) return;
     initialised.current = true;
+
+    // Capture fbclid IMMEDIATELY — before settings fetch or pixel load.
+    // This ensures we never lose the click ID even if the pixel loads late.
+    captureFbclid();
 
     getSettings().then(() => {
       // Load pixel immediately — hasMarketingConsent() defaults to true

@@ -24,7 +24,7 @@ import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
 import { useBranding } from "@/hooks/useBranding";
-import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
@@ -442,6 +442,9 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           } catch {}
           setCapturedEmail(email);
 
+          // Store email for Meta Advanced Matching (improves EMQ on subsequent events)
+          storeMetaMatchData({ em: email });
+
           // Fire-and-forget: create customer + abandoned cart
           fetch("/api/checkout/capture", {
             method: "POST",
@@ -845,6 +848,10 @@ function SinglePageCheckoutForm({
       const fn = firstName.trim();
       const ln = lastName.trim();
       if (!fn && !ln) return;
+
+      // Store name for Meta Advanced Matching (enriches all subsequent CAPI events)
+      storeMetaMatchData({ em: capturedEmail || email, fn, ln });
+
       fetch("/api/checkout/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -903,6 +910,9 @@ function SinglePageCheckoutForm({
           setProcessing(false);
           return;
         }
+
+        // Store wallet PII for Meta Advanced Matching
+        storeMetaMatchData({ em: walletEmail, fn: walletFirstName, ln: walletLastName, ph: walletPhone || undefined });
 
         trackAddPaymentInfo(
           {
@@ -1658,6 +1668,10 @@ function TestModeCheckout({
       const fn = firstName.trim();
       const ln = lastName.trim();
       if (!fn && !ln) return;
+
+      // Store name for Meta Advanced Matching (enriches all subsequent CAPI events)
+      storeMetaMatchData({ em: capturedEmail || email, fn, ln });
+
       fetch("/api/checkout/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

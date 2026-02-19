@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AuraCheckoutHeader } from "./AuraCheckoutHeader";
 import { AuraFooter } from "./AuraFooter";
-import { useMetaTracking } from "@/hooks/useMetaTracking";
+import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { CheckCircle2, Download, Wallet, ArrowLeft, Mail } from "lucide-react";
 import type { Order } from "@/types/orders";
@@ -40,6 +40,16 @@ export function AuraOrderConfirmation({
     const ticketTypeIds = order.items?.map((i) => i.ticket_type_id) || [];
     const numItems = order.tickets?.length || order.items?.reduce((sum, i) => sum + i.qty, 0) || 0;
     const customer = order.customer;
+    // Store full customer PII for Meta Advanced Matching on future visits
+    if (customer) {
+      storeMetaMatchData({
+        em: customer.email || undefined,
+        fn: customer.first_name || undefined,
+        ln: customer.last_name || undefined,
+        external_id: order.customer_id || undefined,
+      });
+    }
+
     trackPurchase(
       {
         content_ids: ticketTypeIds,

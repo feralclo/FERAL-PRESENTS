@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { saveSettings } from "@/lib/settings";
@@ -16,7 +15,6 @@ import {
   ChevronLeft,
   ShoppingCart,
   Clock,
-  Tag,
   MailWarning,
   TrendingUp,
   DollarSign,
@@ -32,7 +30,6 @@ import {
   Mail,
   Percent,
   AlertTriangle,
-  Eye,
   Sparkles,
   ArrowRight,
   Plus,
@@ -64,6 +61,8 @@ interface EmailStep {
   enabled: boolean;
   subject: string;
   preview_text: string;
+  greeting: string;
+  body_message: string;
   include_discount: boolean;
   discount_code: string;
   discount_percent: number;
@@ -96,6 +95,8 @@ const DEFAULT_STEPS: EmailStep[] = [
     enabled: true,
     subject: "You left something behind...",
     preview_text: "Your tickets are still waiting for you",
+    greeting: "{{name}}, your order is on hold",
+    body_message: "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.",
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
@@ -110,8 +111,10 @@ const DEFAULT_STEPS: EmailStep[] = [
     delay_label: "24 hours",
     delay_minutes: 1440,
     enabled: true,
-    subject: "Tickets selling fast — don't miss out",
-    preview_text: "Your cart items are still available, but not for long",
+    subject: "Tickets selling fast \u2014 don\u2019t miss out",
+    preview_text: "Your tickets are still available, but not for long",
+    greeting: "{{name}}, tickets are going fast",
+    body_message: "The event you were looking at is selling quickly. Don\u2019t let someone else take your spot.",
     include_discount: false,
     discount_code: "",
     discount_percent: 0,
@@ -126,8 +129,10 @@ const DEFAULT_STEPS: EmailStep[] = [
     delay_label: "48 hours",
     delay_minutes: 2880,
     enabled: true,
-    subject: "Last chance — your cart expires soon",
-    preview_text: "This is your final reminder before your cart expires",
+    subject: "Last chance \u2014 your order expires soon",
+    preview_text: "This is your final reminder before your order expires",
+    greeting: "{{name}}, this is your last chance",
+    body_message: "Your order is about to expire. We\u2019ve saved a special offer just for you \u2014 use it before it\u2019s gone.",
     include_discount: true,
     discount_code: "COMEBACK10",
     discount_percent: 10,
@@ -307,158 +312,6 @@ function MasterToggle({
         </>
       )}
     </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   EMAIL BRANDING — logo upload + accent color
-   ═══════════════════════════════════════════════════════════ */
-function EmailBranding({
-  branding,
-  onBrandingChange,
-}: {
-  branding: EmailBrandingState;
-  onBrandingChange: (updates: Partial<EmailBrandingState>) => void;
-}) {
-  const logoFileRef = useRef<HTMLInputElement>(null);
-  const [logoDragging, setLogoDragging] = useState(false);
-  const [logoProcessing, setLogoProcessing] = useState(false);
-  const [displayLogoUrl, setDisplayLogoUrl] = useState<string | null>(null);
-
-  const handleLogoFile = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    setLogoProcessing(true);
-    const compressed = await processLogoFile(file);
-    if (!compressed) { setLogoProcessing(false); return; }
-    // Show immediate preview
-    setDisplayLogoUrl(compressed);
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData: compressed, key: "email-logo" }),
-      });
-      const json = await res.json();
-      if (res.ok && json.url) {
-        // Measure aspect ratio
-        const aspectImg = new Image();
-        aspectImg.onload = () => {
-          const ratio = aspectImg.width / aspectImg.height;
-          onBrandingChange({ logo_url: json.url, logo_aspect_ratio: ratio });
-          setDisplayLogoUrl(null);
-        };
-        aspectImg.onerror = () => {
-          onBrandingChange({ logo_url: json.url });
-          setDisplayLogoUrl(null);
-        };
-        aspectImg.src = compressed;
-      }
-    } catch { /* upload failed */ }
-    setLogoProcessing(false);
-  }, [onBrandingChange]);
-
-  const handleDeleteLogo = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onBrandingChange({ logo_url: "", logo_aspect_ratio: undefined });
-    setDisplayLogoUrl(null);
-  }, [onBrandingChange]);
-
-  const logoSrc = displayLogoUrl || branding.logo_url;
-
-  return (
-    <Card>
-      <CardHeader className="border-b border-border pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Palette size={15} className="text-primary" />
-          Email Branding
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-5">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
-          {/* Logo upload */}
-          <div className="shrink-0">
-            <Label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Logo
-            </Label>
-            {logoSrc ? (
-              <div
-                className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
-                onClick={() => logoFileRef.current?.click()}
-              >
-                <img
-                  src={logoSrc}
-                  alt="Logo"
-                  style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
-                />
-                <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-primary/80 hover:text-white"
-                  >
-                    <Pencil size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeleteLogo}
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-red-500/80 hover:text-white"
-                  >
-                    <Trash2 size={11} />
-                  </button>
-                </div>
-                <input
-                  ref={logoFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
-                />
-              </div>
-            ) : (
-              <div
-                className={`max-w-[200px] cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-all ${
-                  logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                }`}
-                onClick={() => logoFileRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                onDragLeave={() => setLogoDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
-              >
-                <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
-                <p className="text-xs text-muted-foreground">
-                  {logoProcessing ? "Processing..." : "Drop or click"}
-                </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground/40">PNG, JPG, WebP</p>
-                <input
-                  ref={logoFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Accent color */}
-          <div>
-            <Label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Accent Color
-            </Label>
-            <ColorPicker
-              value={branding.accent_color}
-              onChange={(v) => onBrandingChange({ accent_color: v })}
-            />
-            <p className="mt-1.5 text-[10px] text-muted-foreground/40">
-              Used for buttons, links, and highlights
-            </p>
-          </div>
-        </div>
-        <p className="mt-4 text-[10px] text-muted-foreground/40">
-          Shared with order confirmation emails. Changes apply to all email types.
-        </p>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -668,18 +521,23 @@ function RecoveryFlow({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   EMAIL PREVIEW — live rendered email in iframe
+   EMAIL EDITOR — inline-editable email visual + iframe preview
    ═══════════════════════════════════════════════════════════ */
-function EmailPreview({
+function EmailEditor({
   step,
   previewVersion,
+  branding,
+  onUpdate,
 }: {
   step: EmailStep | null;
   previewVersion: number;
+  branding: EmailBrandingState;
+  onUpdate: (id: string, updates: Partial<EmailStep>) => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState<"visual" | "preview">("visual");
 
   // Build preview URL from step config + version counter for cache-busting
   const previewUrl = useMemo(() => {
@@ -687,13 +545,16 @@ function EmailPreview({
     const params = new URLSearchParams();
     params.set("subject", step.subject);
     params.set("preview_text", step.preview_text);
+    if (step.greeting) params.set("greeting", step.greeting);
+    if (step.body_message) params.set("body_message", step.body_message);
     if (step.include_discount && step.discount_code) {
       params.set("discount_code", step.discount_code);
       params.set("discount_percent", String(step.discount_percent));
     }
+    params.set("use_real_event", "1");
     params.set("t", String(previewVersion));
     return `/api/abandoned-carts/preview-email?${params.toString()}`;
-  }, [step?.subject, step?.preview_text, step?.include_discount, step?.discount_code, step?.discount_percent, previewVersion]);
+  }, [step, previewVersion]);
 
   useEffect(() => {
     setLoading(true);
@@ -705,88 +566,281 @@ function EmailPreview({
         <CardContent className="py-16 text-center">
           <Mail size={28} className="mx-auto text-muted-foreground/20" />
           <p className="mt-3 text-sm text-muted-foreground">
-            Select a step to preview the email
+            Select a step to edit the email
           </p>
         </CardContent>
       </Card>
     );
   }
 
+  const accentColor = branding.accent_color || "#ff0033";
+
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <CardHeader className="shrink-0 border-b border-border pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Eye size={15} className="text-primary" />
-            Email Preview
+            <Pencil size={15} className="text-primary" />
+            Email Editor
           </CardTitle>
-          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-            <button
-              type="button"
-              onClick={() => setPreviewMode("desktop")}
-              className={`rounded-md px-2 py-1 transition-all ${
-                previewMode === "desktop"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Monitor size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewMode("mobile")}
-              className={`rounded-md px-2 py-1 transition-all ${
-                previewMode === "mobile"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Smartphone size={13} />
-            </button>
-          </div>
-        </div>
-        {/* Fake email client header */}
-        <div className="mt-3 space-y-1.5 rounded-lg border border-border/50 bg-secondary/50 px-3 py-2.5">
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="shrink-0 font-semibold text-muted-foreground">Subject:</span>
-            <span className="truncate text-foreground">{step.subject}</span>
-          </div>
-          {step.preview_text && (
-            <div className="flex items-center gap-2 text-[11px]">
-              <span className="shrink-0 font-semibold text-muted-foreground">Preview:</span>
-              <span className="truncate text-muted-foreground/70">{step.preview_text}</span>
+          <div className="flex items-center gap-3">
+            {/* Edit mode toggle */}
+            <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+              <button
+                type="button"
+                onClick={() => setEditMode("visual")}
+                className={`rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all ${
+                  editMode === "visual"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditMode("preview")}
+                className={`rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-all ${
+                  editMode === "preview"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Preview
+              </button>
             </div>
-          )}
+            {/* Device toggle (preview only) */}
+            {editMode === "preview" && (
+              <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode("desktop")}
+                  className={`rounded-md px-2 py-1 transition-all ${
+                    previewMode === "desktop"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Monitor size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode("mobile")}
+                  className={`rounded-md px-2 py-1 transition-all ${
+                    previewMode === "mobile"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Smartphone size={13} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="relative flex-1 overflow-hidden p-4">
-        {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 size={18} className="animate-spin text-muted-foreground" />
-              <span className="text-[11px] text-muted-foreground">Rendering preview...</span>
+
+      {editMode === "visual" ? (
+        /* ─── VISUAL EDITOR: Styled email representation with editable fields ─── */
+        <CardContent className="flex-1 overflow-y-auto p-0">
+          <div className="mx-auto max-w-[520px]">
+            {/* Email client chrome */}
+            <div className="border-b border-border/50 bg-secondary/30 px-5 py-3">
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Subject</span>
+                  <input
+                    type="text"
+                    value={step.subject}
+                    onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
+                    className="flex-1 border-0 bg-transparent px-0 text-[13px] font-medium text-foreground outline-none placeholder:text-muted-foreground/40 focus:ring-0"
+                    placeholder="Email subject line..."
+                  />
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview</span>
+                  <input
+                    type="text"
+                    value={step.preview_text}
+                    onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
+                    className="flex-1 border-0 bg-transparent px-0 text-[12px] text-muted-foreground/60 outline-none placeholder:text-muted-foreground/30 focus:ring-0"
+                    placeholder="Inbox preview text..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Email body visual */}
+            <div className="bg-[#f4f4f5] p-4">
+              <div className="overflow-hidden rounded-xl" style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.12)" }}>
+                {/* Dark hero block */}
+                <div style={{ backgroundColor: "#0e0e0e", padding: "0" }}>
+                  {/* Accent bar */}
+                  <div style={{ height: "4px", backgroundColor: accentColor }} />
+
+                  {/* Logo area */}
+                  <div className="px-8 pt-8 text-center">
+                    {branding.logo_url ? (
+                      <img
+                        src={branding.logo_url}
+                        alt="Logo"
+                        style={{ height: 40, width: "auto", maxWidth: 200, display: "inline-block" }}
+                      />
+                    ) : (
+                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", fontWeight: 700, letterSpacing: "4px", textTransform: "uppercase" as const, color: "#ffffff" }}>
+                        {branding.from_name || "YOUR BRAND"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Editable greeting */}
+                  <div className="px-8 pt-6 pb-2">
+                    <input
+                      type="text"
+                      value={step.greeting}
+                      onChange={(e) => onUpdate(step.id, { greeting: e.target.value })}
+                      className="w-full border-0 bg-transparent text-center text-[20px] font-bold leading-tight text-white outline-none placeholder:text-white/20"
+                      placeholder="Greeting headline..."
+                      style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
+                    />
+                    <p className="mt-1 text-center text-[9px] text-white/25">
+                      Use {"{{name}}"} for customer&apos;s name
+                    </p>
+                  </div>
+
+                  {/* Editable message */}
+                  <div className="px-8 pb-8">
+                    <textarea
+                      value={step.body_message}
+                      onChange={(e) => onUpdate(step.id, { body_message: e.target.value })}
+                      className="w-full resize-none border-0 bg-transparent text-center text-[14px] leading-relaxed outline-none placeholder:text-white/15"
+                      style={{ color: "#999999", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
+                      placeholder="Body message..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+
+                {/* White content area */}
+                <div style={{ backgroundColor: "#ffffff", padding: "0" }}>
+                  {/* Event card (non-editable — pulled from real data) */}
+                  <div className="px-8 pt-6">
+                    <div style={{ backgroundColor: "#111111", borderRadius: "10px", padding: "16px 20px" }}>
+                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "8px" }}>
+                        EVENT
+                      </div>
+                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "16px", fontWeight: 700, color: "#ffffff", lineHeight: "1.3" }}>
+                        Pulled from your live event
+                      </div>
+                      <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "12px", color: "#888888", marginTop: "4px" }}>
+                        Date, venue, and ticket details shown automatically
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Order items placeholder */}
+                  <div className="px-8 pt-5">
+                    <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#aaaaaa" }}>
+                      YOUR ORDER
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", color: "#222" }}>Customer&apos;s ticket selection</span>
+                        <span style={{ fontFamily: "'Courier New', monospace", fontSize: "13px", fontWeight: 700, color: "#333" }}>£XX.XX</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="px-8 pt-3">
+                    <div className="flex items-center justify-between pt-2">
+                      <span style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "14px", fontWeight: 600, color: "#111" }}>Total</span>
+                      <span style={{ fontFamily: "'Courier New', monospace", fontSize: "20px", fontWeight: 700, color: "#111" }}>£XX.XX</span>
+                    </div>
+                  </div>
+
+                  {/* Discount block (conditional) */}
+                  {step.include_discount && (
+                    <div className="px-8 pt-5">
+                      <div style={{ backgroundColor: "#0e0e0e", borderRadius: "10px", padding: "20px", textAlign: "center" as const }}>
+                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: accentColor, marginBottom: "8px" }}>
+                          YOUR EXCLUSIVE CODE
+                        </div>
+                        <div style={{ fontFamily: "'Courier New', monospace", fontSize: "24px", fontWeight: 700, color: "#ffffff", letterSpacing: "4px" }}>
+                          {step.discount_code || "CODE"}
+                        </div>
+                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "12px", color: "#777777", marginTop: "4px" }}>
+                          {step.discount_percent || 0}% off your order
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CTA button */}
+                  <div className="px-8 py-6 text-center">
+                    <div
+                      style={{
+                        display: "inline-block",
+                        backgroundColor: accentColor,
+                        color: "#ffffff",
+                        fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        letterSpacing: "2px",
+                        textTransform: "uppercase" as const,
+                        padding: "16px 48px",
+                        borderRadius: "10px",
+                      }}
+                    >
+                      COMPLETE YOUR ORDER
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{ backgroundColor: "#fafafa", padding: "20px 32px", textAlign: "center" as const, borderTop: "1px solid #f0f0f0" }}>
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" as const, color: "#bbbbbb" }}>
+                    {branding.from_name || "YOUR BRAND"}
+                  </div>
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "11px", color: "#bbbbbb", marginTop: "6px" }}>
+                    You&apos;re receiving this because you started checkout.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-        <div
-          className="mx-auto overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
-          style={{
-            width: previewMode === "mobile" ? "375px" : "100%",
-            height: "100%",
-          }}
-        >
-          {previewUrl && (
-            <iframe
-              ref={iframeRef}
-              src={previewUrl}
-              title="Email Preview"
-              className="h-full w-full border-0"
-              sandbox="allow-same-origin"
-              onLoad={() => setLoading(false)}
-            />
+        </CardContent>
+      ) : (
+        /* ─── PREVIEW MODE: Rendered iframe ─── */
+        <CardContent className="relative flex-1 overflow-hidden p-4">
+          {loading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 size={18} className="animate-spin text-muted-foreground" />
+                <span className="text-[11px] text-muted-foreground">Rendering preview...</span>
+              </div>
+            </div>
           )}
-        </div>
-      </CardContent>
+          <div
+            className="mx-auto overflow-hidden rounded-lg border border-border/50 bg-white transition-all duration-300"
+            style={{
+              width: previewMode === "mobile" ? "375px" : "100%",
+              height: "100%",
+            }}
+          >
+            {previewUrl && (
+              <iframe
+                ref={iframeRef}
+                src={previewUrl}
+                title="Email Preview"
+                className="h-full w-full border-0"
+                sandbox="allow-same-origin"
+                onLoad={() => setLoading(false)}
+              />
+            )}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -959,19 +1013,60 @@ function CreateDiscountInline({
 }
 
 /* ═══════════════════════════════════════════════════════════
-   STEP EDITOR — configure individual email step
+   STEP SETTINGS — timing, incentive, and branding (compact)
    ═══════════════════════════════════════════════════════════ */
-function StepEditor({
+function StepSettings({
   step,
   automationEnabled,
   onUpdate,
+  branding,
+  onBrandingChange,
 }: {
   step: EmailStep;
   automationEnabled: boolean;
   onUpdate: (id: string, updates: Partial<EmailStep>) => void;
+  branding: EmailBrandingState;
+  onBrandingChange: (updates: Partial<EmailBrandingState>) => void;
 }) {
+  const logoFileRef = useRef<HTMLInputElement>(null);
+  const [logoProcessing, setLogoProcessing] = useState(false);
+  const [logoDragging, setLogoDragging] = useState(false);
+  const [displayLogoUrl, setDisplayLogoUrl] = useState<string | null>(null);
+
   const StepIcon = step.icon;
   const isActive = automationEnabled && step.enabled;
+
+  const handleLogoFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setLogoProcessing(true);
+    const compressed = await processLogoFile(file);
+    if (!compressed) { setLogoProcessing(false); return; }
+    setDisplayLogoUrl(compressed);
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: compressed, key: "email-logo" }),
+      });
+      const json = await res.json();
+      if (res.ok && json.url) {
+        const aspectImg = new Image();
+        aspectImg.onload = () => {
+          const ratio = aspectImg.width / aspectImg.height;
+          onBrandingChange({ logo_url: json.url, logo_aspect_ratio: ratio });
+          setDisplayLogoUrl(null);
+        };
+        aspectImg.onerror = () => {
+          onBrandingChange({ logo_url: json.url });
+          setDisplayLogoUrl(null);
+        };
+        aspectImg.src = compressed;
+      }
+    } catch { /* upload failed */ }
+    setLogoProcessing(false);
+  }, [onBrandingChange]);
+
+  const logoSrc = displayLogoUrl || branding.logo_url;
 
   return (
     <Card
@@ -980,9 +1075,9 @@ function StepEditor({
         borderColor: isActive ? `${step.color}20` : undefined,
       }}
     >
-      {/* Step header with color accent */}
+      {/* Step header */}
       <div
-        className="relative border-b px-5 py-4"
+        className="relative border-b px-5 py-3"
         style={{
           borderColor: isActive ? `${step.color}15` : "var(--color-border)",
           background: isActive
@@ -990,233 +1085,252 @@ function StepEditor({
             : "transparent",
         }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-all"
-              style={{
-                backgroundColor: isActive ? `${step.color}15` : "rgba(255,255,255,0.04)",
-                boxShadow: isActive ? `inset 0 0 0 1.5px ${step.color}40` : "none",
-              }}
-            >
-              <StepIcon size={15} style={{ color: isActive ? step.color : "#71717a" }} />
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-all"
+            style={{
+              backgroundColor: isActive ? `${step.color}15` : "rgba(255,255,255,0.04)",
+              boxShadow: isActive ? `inset 0 0 0 1.5px ${step.color}40` : "none",
+            }}
+          >
+            <StepIcon size={14} style={{ color: isActive ? step.color : "#71717a" }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3
+                className="text-[12px] font-bold uppercase tracking-wider"
+                style={{ color: isActive ? step.color : "#71717a" }}
+              >
+                {step.label}
+              </h3>
+              <Badge
+                variant={isActive ? "success" : "secondary"}
+                className="text-[8px] font-bold uppercase"
+              >
+                {isActive ? "Active" : "Disabled"}
+              </Badge>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3
-                  className="font-mono text-[13px] font-bold uppercase tracking-wider"
-                  style={{ color: isActive ? step.color : "#71717a" }}
-                >
-                  {step.label}
-                </h3>
-                <Badge
-                  variant={isActive ? "success" : "secondary"}
-                  className="text-[8px] font-bold uppercase"
-                >
-                  {isActive ? "Active" : "Disabled"}
-                </Badge>
-              </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/50">
-                Sent {step.delay_label} after cart abandoned
-              </p>
-            </div>
+            <p className="text-[10px] text-muted-foreground/50">
+              Sent {step.delay_label} after abandonment
+            </p>
           </div>
         </div>
       </div>
 
-      <CardContent className="space-y-5 p-5">
-        <Tabs defaultValue="content">
-          <TabsList variant="line" className="mb-4">
-            <TabsTrigger value="content" className="text-xs">
-              <Mail size={12} className="mr-1.5" />
-              Content
-            </TabsTrigger>
-            <TabsTrigger value="incentive" className="text-xs">
-              <Tag size={12} className="mr-1.5" />
-              Incentive
-            </TabsTrigger>
-            <TabsTrigger value="timing" className="text-xs">
-              <Clock size={12} className="mr-1.5" />
-              Timing
-            </TabsTrigger>
-          </TabsList>
+      <CardContent className="space-y-4 p-4">
+        {/* ── TIMING ── */}
+        <div>
+          <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Clock size={10} />
+            Timing
+          </Label>
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
+            {step.id === "email_1" && [
+              { label: "15 min", minutes: 15 },
+              { label: "30 min", minutes: 30 },
+              { label: "1 hour", minutes: 60 },
+            ].map((opt) => (
+              <button
+                key={opt.minutes}
+                type="button"
+                onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
+                className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
+                  step.delay_minutes === opt.minutes
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-transparent text-muted-foreground hover:bg-card"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+            {step.id === "email_2" && [
+              { label: "12 hours", minutes: 720 },
+              { label: "24 hours", minutes: 1440 },
+              { label: "36 hours", minutes: 2160 },
+            ].map((opt) => (
+              <button
+                key={opt.minutes}
+                type="button"
+                onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
+                className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
+                  step.delay_minutes === opt.minutes
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-transparent text-muted-foreground hover:bg-card"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+            {step.id === "email_3" && [
+              { label: "48 hours", minutes: 2880 },
+              { label: "72 hours", minutes: 4320 },
+              { label: "5 days", minutes: 7200 },
+            ].map((opt) => (
+              <button
+                key={opt.minutes}
+                type="button"
+                onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
+                className={`rounded-lg border px-2.5 py-2 font-mono text-[10px] font-semibold transition-all ${
+                  step.delay_minutes === opt.minutes
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-transparent text-muted-foreground hover:bg-card"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Content tab — inputs always enabled for configuration */}
-          <TabsContent value="content" className="space-y-4">
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Subject Line
-              </Label>
-              <Input
-                className="mt-1.5"
-                value={step.subject}
-                onChange={(e) => onUpdate(step.id, { subject: e.target.value })}
-                placeholder="Email subject line..."
+        {/* ── INCENTIVE ── */}
+        <div>
+          <div
+            className="flex items-center justify-between rounded-lg border px-3 py-2.5 transition-all"
+            style={{
+              borderColor: step.include_discount
+                ? "rgba(245,158,11,0.2)"
+                : "var(--color-border)",
+              background: step.include_discount
+                ? "rgba(245,158,11,0.04)"
+                : "transparent",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <Percent size={12} style={{ color: step.include_discount ? "#f59e0b" : "#71717a" }} />
+              <span className="text-[11px] font-medium text-foreground">Include Discount</span>
+            </div>
+            <Switch
+              size="sm"
+              checked={step.include_discount}
+              onCheckedChange={(val) => onUpdate(step.id, { include_discount: val })}
+            />
+          </div>
+
+          {step.include_discount && (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-5 gap-2">
+                <div className="col-span-3">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Code
+                  </Label>
+                  <Input
+                    className="mt-1 font-mono text-xs"
+                    value={step.discount_code}
+                    onChange={(e) => onUpdate(step.id, { discount_code: e.target.value.toUpperCase() })}
+                    placeholder="COMEBACK10"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Discount %
+                  </Label>
+                  <Input
+                    className="mt-1 font-mono text-xs"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={step.discount_percent}
+                    onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <CreateDiscountInline
+                onCreated={(newCode, newPercent) => {
+                  onUpdate(step.id, {
+                    discount_code: newCode,
+                    discount_percent: newPercent,
+                  });
+                }}
               />
             </div>
-            <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Preview Text
-              </Label>
-              <Textarea
-                className="mt-1.5"
-                value={step.preview_text}
-                onChange={(e) => onUpdate(step.id, { preview_text: e.target.value })}
-                placeholder="Shows in email client preview..."
-                rows={2}
-              />
-              <p className="mt-1 text-[10px] text-muted-foreground/40">
-                Appears as preview text in the customer&apos;s inbox
-              </p>
-            </div>
-          </TabsContent>
+          )}
+        </div>
 
-          {/* Incentive tab — inputs always enabled */}
-          <TabsContent value="incentive" className="space-y-4">
-            <div
-              className="flex items-center justify-between rounded-lg border p-4 transition-all"
-              style={{
-                borderColor: step.include_discount
-                  ? "rgba(245,158,11,0.2)"
-                  : "var(--color-border)",
-                background: step.include_discount
-                  ? "rgba(245,158,11,0.04)"
-                  : "transparent",
-              }}
-            >
-              <div className="flex items-center gap-3">
+        {/* ── BRANDING ── */}
+        <div>
+          <Label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Palette size={10} />
+            Email Branding
+          </Label>
+          <div className="mt-2 flex items-start gap-4">
+            {/* Logo */}
+            <div className="shrink-0">
+              {logoSrc ? (
                 <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full"
-                  style={{
-                    backgroundColor: step.include_discount ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.04)",
-                  }}
+                  className="group relative cursor-pointer rounded-lg border border-border bg-[#08080c] p-3"
+                  onClick={() => logoFileRef.current?.click()}
                 >
-                  <Percent size={14} style={{ color: step.include_discount ? "#f59e0b" : "#71717a" }} />
+                  <img
+                    src={logoSrc}
+                    alt="Logo"
+                    style={{ height: 28, width: "auto", maxWidth: 120, objectFit: "contain" }}
+                  />
+                  <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-primary/80"
+                    >
+                      <Pencil size={9} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onBrandingChange({ logo_url: "", logo_aspect_ratio: undefined }); setDisplayLogoUrl(null); }}
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 transition-colors hover:bg-red-500/80"
+                    >
+                      <Trash2 size={9} />
+                    </button>
+                  </div>
+                  <input
+                    ref={logoFileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                  />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">Include Discount</p>
-                  <p className="text-[11px] text-muted-foreground/50">
-                    Add a discount code to incentivize purchase
+              ) : (
+                <div
+                  className={`cursor-pointer rounded-lg border-2 border-dashed p-3 text-center transition-all ${
+                    logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                  }`}
+                  style={{ minWidth: "80px" }}
+                  onClick={() => logoFileRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                  onDragLeave={() => setLogoDragging(false)}
+                  onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
+                >
+                  <ImageIcon size={14} className="mx-auto text-muted-foreground/40" />
+                  <p className="mt-1 text-[9px] text-muted-foreground/50">
+                    {logoProcessing ? "..." : "Logo"}
                   </p>
+                  <input
+                    ref={logoFileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); }}
+                  />
                 </div>
-              </div>
-              <Switch
-                size="sm"
-                checked={step.include_discount}
-                onCheckedChange={(val) => onUpdate(step.id, { include_discount: val })}
-              />
+              )}
             </div>
 
-            {step.include_discount && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Discount Code
-                    </Label>
-                    <Input
-                      className="mt-1.5 font-mono"
-                      value={step.discount_code}
-                      onChange={(e) => onUpdate(step.id, { discount_code: e.target.value.toUpperCase() })}
-                      placeholder="COMEBACK10"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Discount %
-                    </Label>
-                    <Input
-                      className="mt-1.5 font-mono"
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={step.discount_percent}
-                      onChange={(e) => onUpdate(step.id, { discount_percent: Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-
-                {/* Inline discount creation */}
-                <CreateDiscountInline
-                  onCreated={(newCode, newPercent) => {
-                    onUpdate(step.id, {
-                      discount_code: newCode,
-                      discount_percent: newPercent,
-                    });
-                  }}
-                />
-              </>
-            )}
-          </TabsContent>
-
-          {/* Timing tab — inputs always enabled */}
-          <TabsContent value="timing" className="space-y-4">
+            {/* Accent color */}
             <div>
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Delay After Cart Abandoned
-              </Label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {step.id === "email_1" && [
-                  { label: "15 min", minutes: 15 },
-                  { label: "30 min", minutes: 30 },
-                  { label: "1 hour", minutes: 60 },
-                ].map((opt) => (
-                  <button
-                    key={opt.minutes}
-                    type="button"
-                    onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                    className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
-                      step.delay_minutes === opt.minutes
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-                {step.id === "email_2" && [
-                  { label: "12 hours", minutes: 720 },
-                  { label: "24 hours", minutes: 1440 },
-                  { label: "36 hours", minutes: 2160 },
-                ].map((opt) => (
-                  <button
-                    key={opt.minutes}
-                    type="button"
-                    onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                    className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
-                      step.delay_minutes === opt.minutes
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-                {step.id === "email_3" && [
-                  { label: "48 hours", minutes: 2880 },
-                  { label: "72 hours", minutes: 4320 },
-                  { label: "5 days", minutes: 7200 },
-                ].map((opt) => (
-                  <button
-                    key={opt.minutes}
-                    type="button"
-                    onClick={() => onUpdate(step.id, { delay_minutes: opt.minutes, delay_label: opt.label })}
-                    className={`rounded-lg border px-3 py-2.5 font-mono text-[11px] font-semibold transition-all ${
-                      step.delay_minutes === opt.minutes
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-border bg-transparent text-muted-foreground hover:border-border hover:bg-card"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[10px] text-muted-foreground/40">
-                Time between cart abandonment and when this email is sent
+              <ColorPicker
+                value={branding.accent_color}
+                onChange={(v) => onBrandingChange({ accent_color: v })}
+              />
+              <p className="mt-1 text-[9px] text-muted-foreground/40">
+                Accent color
               </p>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+          <p className="mt-2 text-[9px] text-muted-foreground/30">
+            Shared with all email types
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
@@ -1659,7 +1773,7 @@ export default function AbandonedCartPage() {
         </div>
       )}
 
-      {/* Row 1: Recovery Pipeline (full width, horizontal strip) */}
+      {/* Row 1: Recovery Flow (full width, horizontal strip) */}
       <div className="mb-6">
         <RecoveryFlow
           steps={settings.steps}
@@ -1670,37 +1784,36 @@ export default function AbandonedCartPage() {
         />
       </div>
 
-      {/* Email Branding — logo + accent color (near editor/preview where it's relevant) */}
-      <div className="mb-6">
-        <EmailBranding
-          branding={branding}
-          onBrandingChange={handleBrandingChange}
-        />
-      </div>
-
-      {/* Row 2: Step Editor (5/12) | Email Preview (7/12) */}
+      {/* Row 2: Step Settings (4/12) | Email Editor (8/12) */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <div className="xl:col-span-5">
+        <div className="xl:col-span-4">
           {activeStep ? (
-            <StepEditor
+            <StepSettings
               step={activeStep}
               automationEnabled={settings.enabled}
               onUpdate={handleUpdateStep}
+              branding={branding}
+              onBrandingChange={handleBrandingChange}
             />
           ) : (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <Mail size={28} className="text-muted-foreground/20" />
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Select a step from the pipeline to configure it
+                  Select a step to configure
                 </p>
               </CardContent>
             </Card>
           )}
         </div>
 
-        <div className="xl:col-span-7" style={{ minHeight: "640px" }}>
-          <EmailPreview step={activeStep} previewVersion={previewVersion} />
+        <div className="xl:col-span-8" style={{ minHeight: "700px" }}>
+          <EmailEditor
+            step={activeStep}
+            previewVersion={previewVersion}
+            branding={branding}
+            onUpdate={handleUpdateStep}
+          />
         </div>
       </div>
 

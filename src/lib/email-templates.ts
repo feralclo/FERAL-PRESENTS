@@ -497,6 +497,8 @@ export function buildAbandonedCartRecoveryEmail(
   stepConfig: {
     subject: string;
     preview_text: string;
+    greeting?: string;
+    body_message?: string;
   },
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
@@ -516,10 +518,13 @@ export function buildAbandonedCartRecoveryEmail(
   }
 
   const subject = stepConfig.subject;
-  const greeting = cart.customer_first_name
+  const defaultGreeting = cart.customer_first_name
     ? `${cart.customer_first_name}, your order is on hold`
     : "Your order is on hold";
-  const message = "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.";
+  const greeting = stepConfig.greeting
+    ? stepConfig.greeting.replace(/\{\{name\}\}/g, cart.customer_first_name || "there")
+    : defaultGreeting;
+  const message = stepConfig.body_message || "We\u2019re holding your spot \u2014 but not forever. Complete your order before availability changes.";
 
   // Event details line
   const eventDetails = [cart.event_date, cart.venue_name]
@@ -613,7 +618,7 @@ export function buildAbandonedCartRecoveryEmail(
                     ${
                       logoUrl
                         ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(s.from_name)}"${logoW ? ` width="${logoW}"` : ""} height="${logoH}" style="${logoW ? `width: ${logoW}px` : "width: auto"}; height: ${logoH}px; display: inline-block;">`
-                        : `<div style="font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #ffffff;">${escapeHtml(s.from_name)}</div>`
+                        : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #ffffff;">${escapeHtml(s.from_name)}</div>`
                     }
                   </td>
                 </tr>
@@ -651,7 +656,7 @@ export function buildAbandonedCartRecoveryEmail(
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
                       <tr>
                         <td style="background-color: #111111; background-image: linear-gradient(135deg, #111111, #1a1a1a); border-radius: 10px; padding: 20px 24px;">
-                          <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: ${accent}; margin-bottom: 10px;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 10px;">
                             EVENT
                           </div>
                           <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 6px; line-height: 1.3;">
@@ -676,7 +681,7 @@ export function buildAbandonedCartRecoveryEmail(
                 <!-- Order Items -->
                 <tr>
                   <td style="padding: 28px 40px 8px;">
-                    <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #aaaaaa;">
+                    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaaaaa;">
                       YOUR ORDER
                     </div>
                   </td>
@@ -729,7 +734,7 @@ export function buildAbandonedCartRecoveryEmail(
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
                       <tr>
                         <td style="background-color: #0e0e0e; background-image: linear-gradient(135deg, #111111, #1a1a1a); border-radius: 10px; padding: 24px; text-align: center;">
-                          <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: ${accent}; margin-bottom: 10px;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 10px;">
                             YOUR EXCLUSIVE CODE
                           </div>
                           <div style="font-family: 'Courier New', monospace; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: 4px; margin-bottom: 6px;">
@@ -752,12 +757,12 @@ export function buildAbandonedCartRecoveryEmail(
                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:54px;v-text-anchor:middle;width:340px;" arcsize="16%" fill="t">
                       <v:fill type="tile" color="${accent}" />
                       <w:anchorlock/>
-                      <center style="color:#ffffff;font-family:'Courier New',monospace;font-size:13px;font-weight:bold;letter-spacing:2px;">SECURE YOUR ORDER</center>
+                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2px;">COMPLETE YOUR ORDER</center>
                     </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-->
-                    <a href="${escapeHtml(cart.recovery_url)}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; padding: 18px 52px; border-radius: 8px; mso-padding-alt: 0;">
-                      SECURE YOUR ORDER
+                    <a href="${escapeHtml(cart.recovery_url)}" style="display: inline-block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; padding: 18px 52px; border-radius: 10px; mso-padding-alt: 0;">
+                      COMPLETE YOUR ORDER
                     </a>
                     <!--<![endif]-->
                   </td>
@@ -770,7 +775,7 @@ export function buildAbandonedCartRecoveryEmail(
           <!-- ═══ FOOTER ═══ -->
           <tr>
             <td style="background-color: #fafafa; padding: 24px 40px; text-align: center;">
-              <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #bbbbbb; margin-bottom: 8px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #bbbbbb; margin-bottom: 8px;">
                 ${escapeHtml(s.footer_text || s.from_name)}
               </div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #bbbbbb;">

@@ -48,7 +48,7 @@ export function FullscreenVideo({
 
       <div
         ref={videoRef}
-        className="flex-1 flex items-center justify-center"
+        className="flex-1 min-h-0 flex items-center justify-center overflow-hidden"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <div className="relative w-full h-full">
@@ -96,7 +96,7 @@ export function FullscreenVideo({
         </div>
       </div>
 
-      <div className="shrink-0 px-5 pb-6 pt-8 bg-gradient-to-t from-black via-black/80 to-transparent">
+      <div className="shrink-0 px-5 pt-8 bg-gradient-to-t from-black via-black/80 to-transparent" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
         <div className="flex items-center justify-between mb-2">
           <span className={cn("flex items-center gap-1 text-sm font-extrabold", accent.color)}>
             <Zap size={14} />

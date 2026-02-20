@@ -63,7 +63,7 @@ export function QuestDetailSheet({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="rep-quest-detail-sheet relative w-full max-w-md rounded-t-2xl md:rounded-2xl max-h-[80dvh] md:max-h-[85dvh]"
+        className="rep-quest-detail-sheet relative w-full max-w-md rounded-t-2xl md:rounded-2xl max-h-[80dvh] md:max-h-[85dvh] overflow-hidden"
         role="dialog"
         aria-label={quest.title}
       >
@@ -82,7 +82,7 @@ export function QuestDetailSheet({
         </button>
 
         {/* Scrollable content area */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {/* Media section */}
           {(quest.video_url || quest.image_url) && (
             <div className="rep-quest-detail-media pt-2">

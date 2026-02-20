@@ -173,7 +173,7 @@ export function MidnightExternalPage({ event }: MidnightExternalPageProps) {
           tag={event.tag_line || ""}
         />
 
-        <section className="relative z-10 pt-16 pb-16 max-lg:-mt-[var(--midnight-hero-overlap)] max-lg:pt-0 max-md:pb-10 pointer-events-none">
+        <section className="relative z-10 pt-16 pb-16 max-md:pt-6 max-md:pb-10 pointer-events-none">
           <div className="max-w-[1200px] mx-auto px-6 max-md:px-0 pointer-events-auto">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-[var(--midnight-section-gap)]">
               {/* Left: Event Info */}
@@ -221,7 +221,7 @@ export function MidnightExternalPage({ event }: MidnightExternalPageProps) {
 
               {/* Right: External Ticket CTA — replaces MidnightTicketWidget */}
               <div className="max-lg:order-1">
-                <div className="lg:sticky lg:top-[calc(var(--header-height)+24px)]">
+                <div>
                   <div className="rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] shadow-[0_2px_24px_rgba(0,0,0,0.4)] backdrop-blur-sm p-8 max-md:mx-[var(--midnight-content-px)] max-md:p-6">
                     {/* Heading */}
                     <h3 className="font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.18em] uppercase text-foreground/50 mb-6">

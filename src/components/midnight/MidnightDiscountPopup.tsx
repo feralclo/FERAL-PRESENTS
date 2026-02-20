@@ -289,9 +289,15 @@ export function MidnightDiscountPopup() {
                 className="h-8 w-auto mb-5 opacity-70"
               />
 
-              {/* Section label — red accent with pulsing dot */}
-              <p className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/70 mb-3">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#ff0033] midnight-popup-pulse" />
+              {/* Section label — accent with pulsing dot */}
+              <p
+                className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] opacity-70 mb-3"
+                style={{ color: config.cta_color }}
+              >
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full midnight-popup-pulse"
+                  style={{ backgroundColor: config.cta_color }}
+                />
                 Limited Time Offer
               </p>
 
@@ -310,16 +316,16 @@ export function MidnightDiscountPopup() {
                 "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5",
                 "bg-white/[0.04] border border-white/[0.08]"
               )}>
-                <span className={cn(
-                  "font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.04em]",
-                  timerUrgent ? "text-[#ff0033]/90" : "text-white/60"
-                )}>
+                <span
+                  className="font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.04em]"
+                  style={{ color: timerUrgent ? config.cta_color : "rgba(255,255,255,0.6)" }}
+                >
                   Expires in
                 </span>
-                <span className={cn(
-                  "font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] tabular-nums",
-                  timerUrgent ? "text-[#ff0033]" : "text-white/80"
-                )}>
+                <span
+                  className="font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] tabular-nums"
+                  style={{ color: timerUrgent ? config.cta_color : "rgba(255,255,255,0.8)" }}
+                >
                   {timerMinutes}:{timerSeconds}
                 </span>
               </div>
@@ -335,6 +341,7 @@ export function MidnightDiscountPopup() {
                   "active:scale-[0.97]",
                   "cursor-pointer touch-manipulation"
                 )}
+                style={{ "--popup-accent": config.cta_color } as React.CSSProperties}
               >
                 {config.cta_text}
               </button>
@@ -369,8 +376,11 @@ export function MidnightDiscountPopup() {
                 className="h-8 w-auto mb-5 opacity-70"
               />
 
-              {/* Section label — red accent */}
-              <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/50 mb-3">
+              {/* Section label — accent */}
+              <p
+                className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] opacity-50 mb-3"
+                style={{ color: config.cta_color }}
+              >
                 Almost There
               </p>
 
@@ -381,7 +391,7 @@ export function MidnightDiscountPopup() {
 
               {/* Subheadline */}
               <p className="font-[family-name:var(--font-sans)] text-[15px] text-white/50 mb-3.5">
-                We&apos;ll send your exclusive code
+                {config.email_subheadline}
               </p>
 
               {/* Timer pill */}
@@ -389,16 +399,16 @@ export function MidnightDiscountPopup() {
                 "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4",
                 "bg-white/[0.04] border border-white/[0.08]"
               )}>
-                <span className={cn(
-                  "font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.04em]",
-                  timerUrgent ? "text-[#ff0033]/90" : "text-white/60"
-                )}>
+                <span
+                  className="font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.04em]"
+                  style={{ color: timerUrgent ? config.cta_color : "rgba(255,255,255,0.6)" }}
+                >
                   Expires in
                 </span>
-                <span className={cn(
-                  "font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] tabular-nums",
-                  timerUrgent ? "text-[#ff0033]" : "text-white/80"
-                )}>
+                <span
+                  className="font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] tabular-nums"
+                  style={{ color: timerUrgent ? config.cta_color : "rgba(255,255,255,0.8)" }}
+                >
                   {timerMinutes}:{timerSeconds}
                 </span>
               </div>
@@ -444,8 +454,9 @@ export function MidnightDiscountPopup() {
                     "active:scale-[0.97]",
                     "cursor-pointer touch-manipulation"
                   )}
+                  style={{ "--popup-accent": config.cta_color } as React.CSSProperties}
                 >
-                  Get My Discount
+                  {config.email_cta_text}
                 </button>
               </form>
 

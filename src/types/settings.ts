@@ -151,6 +151,12 @@ export interface PopupSettings {
   cta_text: string;
   /** Screen 1 dismiss button text */
   dismiss_text: string;
+  /** Screen 2 subheadline (email capture) */
+  email_subheadline: string;
+  /** Screen 2 CTA button text (email capture) */
+  email_cta_text: string;
+  /** CTA button accent color (hex) */
+  cta_color: string;
   /** Delay before popup shows on mobile (ms) */
   mobile_delay: number;
   /** Delay before popup shows on desktop (ms) */

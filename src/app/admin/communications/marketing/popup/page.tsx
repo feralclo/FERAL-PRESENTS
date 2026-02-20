@@ -13,6 +13,7 @@ import { saveSettings } from "@/lib/settings";
 import { SETTINGS_KEYS } from "@/lib/constants";
 import { DEFAULT_POPUP_SETTINGS } from "@/hooks/usePopupSettings";
 import type { PopupSettings } from "@/types/settings";
+import { ColorPicker } from "@/components/ui/color-picker";
 import {
   ChevronLeft,
   Power,
@@ -21,6 +22,7 @@ import {
   Type,
   Timer,
   Sparkles,
+  Palette,
   BarChart3,
   Plus,
   CheckCircle2,
@@ -557,7 +559,8 @@ export default function PopupConfigPage() {
                 Content
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5 p-5">
+            <CardContent className="space-y-6 p-5">
+              {/* Discount Code */}
               <div>
                 <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Discount Code
@@ -583,53 +586,149 @@ export default function PopupConfigPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Headline
-                  </Label>
-                  <Input
-                    className="mt-1.5"
-                    value={settings.headline}
-                    onChange={(e) => update({ headline: e.target.value })}
-                    placeholder="Unlock Feral Raver Discount"
-                  />
+              {/* ── Screen 1: Get Attention ── */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-md bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                    1
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    First Impression
+                  </span>
                 </div>
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Subheadline
-                  </Label>
-                  <Input
-                    className="mt-1.5"
-                    value={settings.subheadline}
-                    onChange={(e) => update({ subheadline: e.target.value })}
-                    placeholder="Save it before it's gone"
-                  />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Headline
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      value={settings.headline}
+                      onChange={(e) => update({ headline: e.target.value })}
+                      placeholder="Unlock Feral Raver Discount"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Subheadline
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      value={settings.subheadline}
+                      onChange={(e) => update({ subheadline: e.target.value })}
+                      placeholder="Save it before it's gone"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      CTA Button Text
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      value={settings.cta_text}
+                      onChange={(e) => update({ cta_text: e.target.value })}
+                      placeholder="Save My Discount"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Dismiss Button Text
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      value={settings.dismiss_text}
+                      onChange={(e) => update({ dismiss_text: e.target.value })}
+                      placeholder="Nah, I'll Pay Full Price"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    CTA Button Text
-                  </Label>
-                  <Input
-                    className="mt-1.5"
-                    value={settings.cta_text}
-                    onChange={(e) => update({ cta_text: e.target.value })}
-                    placeholder="Save My Discount"
-                  />
+              {/* Divider */}
+              <div className="h-px bg-border" />
+
+              {/* ── Screen 2: Email Capture ── */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-md bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                    2
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Email Capture
+                  </span>
                 </div>
-                <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Dismiss Button Text
-                  </Label>
-                  <Input
-                    className="mt-1.5"
-                    value={settings.dismiss_text}
-                    onChange={(e) => update({ dismiss_text: e.target.value })}
-                    placeholder="Nah, I'll Pay Full Price"
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Subheadline
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      value={settings.email_subheadline}
+                      onChange={(e) => update({ email_subheadline: e.target.value })}
+                      placeholder="We'll send your exclusive code"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      CTA Button Text
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      value={settings.email_cta_text}
+                      onChange={(e) => update({ email_cta_text: e.target.value })}
+                      placeholder="Get My Discount"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Appearance Card */}
+          <Card>
+            <CardHeader className="border-b border-border pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Palette size={15} className="text-primary" />
+                Appearance
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5">
+              <div>
+                <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  CTA Button Color
+                </Label>
+                <p className="mt-0.5 mb-2.5 text-[10px] text-muted-foreground/40">
+                  Accent color for the CTA button, timer, and labels
+                </p>
+                <div className="flex items-center gap-4">
+                  <ColorPicker
+                    value={settings.cta_color || "#ff0033"}
+                    onChange={(color) => update({ cta_color: color })}
                   />
+                  {/* Live preview — mini button swatch */}
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="h-9 rounded-lg px-4 flex items-center"
+                      style={{
+                        background: `linear-gradient(180deg, color-mix(in srgb, ${settings.cta_color || "#ff0033"} 18%, transparent) 0%, color-mix(in srgb, ${settings.cta_color || "#ff0033"} 8%, transparent) 100%)`,
+                        border: `1px solid color-mix(in srgb, ${settings.cta_color || "#ff0033"} 22%, transparent)`,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 0 16px color-mix(in srgb, ${settings.cta_color || "#ff0033"} 8%, transparent)`,
+                      }}
+                    >
+                      <span className="text-[11px] font-bold text-white/90 whitespace-nowrap">
+                        Preview
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/40">
+                      Live preview
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>

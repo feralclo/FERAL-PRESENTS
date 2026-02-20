@@ -127,7 +127,7 @@ export function QuestDetailSheet({
                 +{quest.points_reward} XP
               </span>
               {quest.currency_reward > 0 && (
-                <span className="flex items-center gap-1 text-base font-extrabold text-[#ff0033]">
+                <span className="flex items-center gap-1 text-base font-extrabold text-amber-400">
                   <CurrencyIcon size={16} />
                   +{quest.currency_reward} {currencyName}
                 </span>

@@ -120,15 +120,15 @@ export function QuestCard({
 
       {/* Card content */}
       <div className="rep-quest-glass">
-        {/* Reward badges — XP + currency */}
-        <div className="flex justify-end items-center gap-2">
-          <span className={cn("flex items-center gap-1 text-sm font-extrabold", accent.color)}>
-            <Zap size={13} />
+        {/* Reward badges — XP + currency (with backdrop pills for readability over images) */}
+        <div className="flex justify-end items-center gap-1.5">
+          <span className={cn("flex items-center gap-1 text-xs font-extrabold rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm", accent.color)}>
+            <Zap size={12} />
             +{quest.points_reward} XP
           </span>
           {quest.currency_reward > 0 && (
-            <span className="flex items-center gap-1 text-sm font-extrabold text-[#ff0033]">
-              <CurrencyIcon size={13} />
+            <span className="flex items-center gap-1 text-xs font-extrabold text-amber-400 rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm">
+              <CurrencyIcon size={12} />
               +{quest.currency_reward} {currencyName}
             </span>
           )}

@@ -156,7 +156,7 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
               <Zap size={14} /> +{quest.points_reward} XP
             </span>
             {quest.currency_reward > 0 && (
-              <span className="flex items-center gap-1 text-sm font-extrabold text-[#ff0033]">
+              <span className="flex items-center gap-1 text-sm font-extrabold text-amber-400">
                 <CurrencyIcon size={14} /> +{quest.currency_reward} {currencyName}
               </span>
             )}
@@ -177,7 +177,7 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
           <p className="text-xs text-muted-foreground mt-0.5">
             Submit your proof to earn <span className="font-bold text-primary">{quest.points_reward} XP</span>
             {quest.currency_reward > 0 && (
-              <> + <span className="font-bold text-[#ff0033]">{quest.currency_reward} {currencyName}</span></>
+              <> + <span className="font-bold text-amber-400">{quest.currency_reward} {currencyName}</span></>
             )}
           </p>
         </div>
@@ -201,9 +201,9 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "
                 <span className="text-sm font-bold text-primary">+{quest.points_reward} XP pending</span>
               </div>
               {quest.currency_reward > 0 && (
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#ff0033]/10 border border-[#ff0033]/20 px-4 py-2">
-                  <CurrencyIcon size={14} className="text-[#ff0033]" />
-                  <span className="text-sm font-bold text-[#ff0033]">+{quest.currency_reward} {currencyName}</span>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 px-4 py-2">
+                  <CurrencyIcon size={14} className="text-amber-400" />
+                  <span className="text-sm font-bold text-amber-400">+{quest.currency_reward} {currencyName}</span>
                 </div>
               )}
             </div>

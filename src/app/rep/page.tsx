@@ -313,7 +313,7 @@ export default function RepDashboardPage() {
             <p className="text-xs text-muted-foreground mb-4">
               Share this code — every sale earns you{" "}
               <span className="text-primary font-bold">+{data.settings?.points_per_sale ?? 10} XP</span>{" "}
-              <span className="text-[#ff0033] font-bold">+{data.settings?.currency_per_sale ?? 10} {data.currency_name}</span>
+              <span className="text-amber-400 font-bold">+{data.settings?.currency_per_sale ?? 10} {data.currency_name}</span>
             </p>
             <div className="flex gap-2">
               <Button
@@ -338,8 +338,8 @@ export default function RepDashboardPage() {
         </div>
       )}
 
-      {/* ── Stats Grid — Radial HUD Gauges (2×2) ── */}
-      <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
+      {/* ── Stats Grid — XP gauge, Currency card, Sold gauge ── */}
+      <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <Link href="/rep/points">
           <GaugeWithCounter
             value={rep.points_balance}
@@ -351,11 +351,8 @@ export default function RepDashboardPage() {
           />
         </Link>
         <Link href="/rep/rewards">
-          <GaugeWithCounter
+          <CurrencyStatCard
             value={rep.currency_balance ?? 0}
-            max={Math.max(rep.currency_balance ?? 0, 500)}
-            color="#ff0033"
-            icon={CurrencyIcon}
             label={data.currency_name}
             enabled={statsReady}
           />
@@ -370,17 +367,22 @@ export default function RepDashboardPage() {
             enabled={statsReady}
           />
         </Link>
-        <Link href="/rep/leaderboard">
-          <RadialGauge
-            value={statsReady ? (data.leaderboard_position ? maxRank - data.leaderboard_position + 1 : 0) : 0}
-            max={maxRank}
-            color="#F59E0B"
-            icon={Trophy}
-            label="Rank"
-            displayValue={data.leaderboard_position ? `#${data.leaderboard_position}` : "—"}
-          />
-        </Link>
       </div>
+
+      {/* ── Rank Bar ── */}
+      <Link href="/rep/leaderboard" className="block rep-slide-up" style={{ animationDelay: "120ms" }}>
+        <div className="rep-surface-1 rounded-2xl px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+              <Trophy size={16} className="text-amber-400" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground">Leaderboard Rank</span>
+          </div>
+          <span className="text-lg font-extrabold font-mono tabular-nums text-amber-400">
+            {data.leaderboard_position ? `#${data.leaderboard_position}` : "—"}
+          </span>
+        </div>
+      </Link>
 
       {/* ── Quick Actions ── */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "200ms" }}>
@@ -408,14 +410,14 @@ export default function RepDashboardPage() {
         <Link href="/rep/rewards">
           <Card className="py-0 gap-0 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#ff0033]/20 to-[#ff0033]/10 shrink-0">
-                <Gift size={20} className="text-[#ff0033]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-400/10 shrink-0">
+                <Gift size={20} className="text-amber-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-foreground">Rewards</p>
                   {data.pending_rewards > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ff0033] px-1.5 text-[9px] font-bold text-white rep-notification-badge">
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white rep-notification-badge">
                       {data.pending_rewards}
                     </span>
                   )}
@@ -454,7 +456,7 @@ export default function RepDashboardPage() {
                   <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
                     <Zap size={9} />+{data.settings?.points_per_sale ?? 10}
                   </span>
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#ff0033]">
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-400">
                     <CurrencyIcon size={9} />+{data.settings?.currency_per_sale ?? 10}
                   </span>
                   <p className="text-sm font-bold font-mono text-success tabular-nums">
@@ -489,5 +491,28 @@ function GaugeWithCounter({
       label={label}
       displayValue={String(animatedValue)}
     />
+  );
+}
+
+// ─── Currency Stat Card (no ring — balance grows indefinitely) ───────────────
+
+function CurrencyStatCard({
+  value, label, enabled,
+}: {
+  value: number; label: string; enabled: boolean;
+}) {
+  const animatedValue = useCountUp(enabled ? value : 0, 900, enabled);
+  return (
+    <div className="relative flex flex-col items-center rounded-2xl rep-surface-1 px-2 pt-4 pb-3">
+      <div className="flex h-[72px] w-[72px] items-center justify-center">
+        <CurrencyIcon size={28} className="text-amber-400" />
+      </div>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-2">
+        {label}
+      </p>
+      <p className="text-lg font-extrabold tabular-nums leading-none mt-0.5 text-amber-400">
+        {animatedValue}
+      </p>
+    </div>
   );
 }

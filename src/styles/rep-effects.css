@@ -1017,6 +1017,98 @@ body:has([data-rep]) > .noise {
   pointer-events: none;
 }
 
+/* ── Quest detail — hero backdrop (Spotify-style atmospheric wash) ── */
+.rep-quest-detail-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  bottom: 55%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.rep-quest-detail-hero-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(24px) brightness(0.7) saturate(1.3);
+  opacity: 0.55;
+  transform: scale(1.1);
+}
+.rep-quest-detail-hero-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 30%, var(--color-card) 100%);
+  pointer-events: none;
+}
+
+/* ── Quest detail — hero spacer ── */
+.rep-quest-detail-hero-spacer {
+  height: clamp(80px, 22dvh, 160px);
+  flex-shrink: 0;
+}
+
+/* ── Quest detail — reference URL button ── */
+.rep-quest-reference-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.rep-quest-reference-btn:active {
+  transform: scale(0.98);
+}
+
+/* TikTok variant — aqua tint */
+.rep-quest-reference-btn--tiktok {
+  background: rgba(37, 244, 238, 0.06);
+  border-color: rgba(37, 244, 238, 0.2);
+  color: #25F4EE;
+}
+.rep-quest-reference-btn--tiktok:hover {
+  background: rgba(37, 244, 238, 0.1);
+  box-shadow: 0 0 20px rgba(37, 244, 238, 0.1);
+}
+
+/* Instagram variant — pink tint */
+.rep-quest-reference-btn--instagram {
+  background: rgba(225, 48, 108, 0.06);
+  border-color: rgba(225, 48, 108, 0.2);
+  color: #E1306C;
+}
+.rep-quest-reference-btn--instagram:hover {
+  background: rgba(225, 48, 108, 0.1);
+  box-shadow: 0 0 20px rgba(225, 48, 108, 0.1);
+}
+
+/* ── Quest detail — uses-sound callout ── */
+.rep-quest-sound-callout {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(37, 244, 238, 0.06);
+  border: 1px solid rgba(37, 244, 238, 0.15);
+  color: #25F4EE;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Reduced motion: keep blur but remove transform ── */
+@media (prefers-reduced-motion: reduce) {
+  .rep-quest-detail-hero-backdrop img {
+    transform: none;
+  }
+}
+
 /* ── Quest progress bar ── */
 .rep-quest-progress {
   height: 8px;

@@ -2,12 +2,13 @@
 
 import {
   X, Check, Clock, Zap, Play, BookOpen, ExternalLink,
-  Camera, Share2, Sparkles,
+  Camera, Share2, Sparkles, Music, Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
 import { isMuxPlaybackId } from "@/lib/mux";
 import { MuxVideoPreview } from "./MuxVideoPreview";
+import { TikTokIcon } from "./TikTokIcon";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,8 @@ interface Quest {
   platform?: "tiktok" | "instagram" | "any";
   image_url?: string;
   video_url?: string;
+  reference_url?: string | null;
+  uses_sound?: boolean;
   points_reward: number;
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };
@@ -32,6 +35,14 @@ const QUEST_TYPE_ICONS: Record<string, typeof Camera> = {
   content_creation: Sparkles,
   custom: Zap,
 };
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function getReferenceUrlPlatform(url: string): "tiktok" | "instagram" | null {
+  if (/tiktok\.com/i.test(url)) return "tiktok";
+  if (/instagram\.com/i.test(url)) return "instagram";
+  return null;
+}
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -56,6 +67,9 @@ export function QuestDetailSheet({
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
   const hasMuxVideo = quest.video_url && isMuxPlaybackId(quest.video_url);
   const hasLegacyVideoUrl = quest.video_url && !hasMuxVideo;
+  const hasImage = !!quest.image_url;
+  const hasRefUrl = !!quest.reference_url;
+  const refPlatform = quest.reference_url ? getReferenceUrlPlatform(quest.reference_url) : (quest.platform !== "any" ? quest.platform : null);
 
   return (
     <div
@@ -67,8 +81,16 @@ export function QuestDetailSheet({
         role="dialog"
         aria-label={quest.title}
       >
+        {/* Hero backdrop — blurred image wash (Spotify-style) */}
+        {hasImage && (
+          <div className="rep-quest-detail-hero-backdrop" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={quest.image_url!} alt="" />
+          </div>
+        )}
+
         {/* Drag handle (mobile) */}
-        <div className="rep-quest-drag-handle-zone md:hidden shrink-0">
+        <div className="rep-quest-drag-handle-zone md:hidden shrink-0 relative z-10">
           <div className="rep-quest-drag-handle" />
         </div>
 
@@ -82,9 +104,12 @@ export function QuestDetailSheet({
         </button>
 
         {/* Scrollable content area */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          {/* Media section */}
-          {(quest.video_url || quest.image_url) && (
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain relative z-[1]">
+          {/* Hero spacer — pushes content below the blurred backdrop */}
+          {hasImage && <div className="rep-quest-detail-hero-spacer" />}
+
+          {/* Media section — primary position when no reference URL */}
+          {!hasRefUrl && (quest.video_url || quest.image_url) && (
             <div className="rep-quest-detail-media pt-2">
               {hasMuxVideo ? (
                 <MuxVideoPreview playbackId={quest.video_url!} onExpand={onExpandVideo} />
@@ -139,6 +164,36 @@ export function QuestDetailSheet({
               </p>
             )}
 
+            {/* Reference URL button + uses-sound callout */}
+            {hasRefUrl && refPlatform && (
+              <div className="space-y-2">
+                {/* Uses sound callout */}
+                {quest.uses_sound && refPlatform === "tiktok" && (
+                  <div className="rep-quest-sound-callout">
+                    <Music size={11} />
+                    Uses a specific sound
+                  </div>
+                )}
+
+                {/* Platform-branded deep link */}
+                <a
+                  href={quest.reference_url!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "rep-quest-reference-btn",
+                    refPlatform === "tiktok" && "rep-quest-reference-btn--tiktok",
+                    refPlatform === "instagram" && "rep-quest-reference-btn--instagram"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {refPlatform === "tiktok" ? <TikTokIcon size={18} /> : <Instagram size={18} />}
+                  <span>View on {refPlatform === "tiktok" ? "TikTok" : "Instagram"}</span>
+                  <ExternalLink size={13} className="ml-auto opacity-50" />
+                </a>
+              </div>
+            )}
+
             {/* Instructions */}
             {quest.instructions && (
               <div className="rep-quest-detail-instructions rounded-xl p-4">
@@ -149,6 +204,36 @@ export function QuestDetailSheet({
                 <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                   {quest.instructions}
                 </p>
+              </div>
+            )}
+
+            {/* Secondary media — deprioritized when reference URL exists */}
+            {hasRefUrl && (quest.video_url || quest.image_url) && (
+              <div className="opacity-75">
+                <div className="rep-quest-detail-media">
+                  {hasMuxVideo ? (
+                    <MuxVideoPreview playbackId={quest.video_url!} onExpand={onExpandVideo} />
+                  ) : hasLegacyVideoUrl ? (
+                    <a
+                      href={quest.video_url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rep-quest-video-link"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Play size={24} />
+                      <span>View Video</span>
+                      <ExternalLink size={14} className="ml-auto opacity-50" />
+                    </a>
+                  ) : quest.image_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={quest.image_url}
+                      alt={quest.title}
+                      onClick={onExpandImage}
+                    />
+                  ) : null}
+                </div>
               </div>
             )}
 

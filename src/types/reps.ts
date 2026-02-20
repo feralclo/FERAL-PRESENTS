@@ -140,6 +140,8 @@ export interface RepQuest {
   expires_at?: string | null;
   status: QuestStatus;
   notify_reps: boolean;
+  reference_url?: string | null;
+  uses_sound: boolean;
   created_at: string;
   updated_at: string;
   // Joined

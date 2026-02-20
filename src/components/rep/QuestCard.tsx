@@ -19,6 +19,8 @@ interface Quest {
   platform?: "tiktok" | "instagram" | "any";
   image_url?: string;
   video_url?: string;
+  reference_url?: string | null;
+  uses_sound?: boolean;
   points_reward: number;
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };

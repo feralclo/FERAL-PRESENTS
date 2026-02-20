@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
       expires_at,
       status = "active",
       notify_reps = false,
+      reference_url,
+      uses_sound = false,
     } = body;
 
     if (!title || !quest_type || points_reward == null) {
@@ -156,6 +158,8 @@ export async function POST(request: NextRequest) {
         expires_at: expires_at || null,
         status,
         notify_reps,
+        reference_url: reference_url?.trim() || null,
+        uses_sound: Boolean(uses_sound),
       })
       .select()
       .single();

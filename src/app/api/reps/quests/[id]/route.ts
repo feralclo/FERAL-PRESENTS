@@ -81,6 +81,8 @@ export async function PUT(
       "expires_at",
       "status",
       "notify_reps",
+      "reference_url",
+      "uses_sound",
     ];
 
     const updates: Record<string, unknown> = {};

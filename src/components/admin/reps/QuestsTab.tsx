@@ -107,6 +107,8 @@ export function QuestsTab() {
   const [expiresAt, setExpiresAt] = useState("");
   const [instructions, setInstructions] = useState("");
   const [notifyReps, setNotifyReps] = useState(true);
+  const [referenceUrl, setReferenceUrl] = useState("");
+  const [usesSound, setUsesSound] = useState(false);
 
   // Video upload state
   const [videoUploading, setVideoUploading] = useState(false);
@@ -290,6 +292,7 @@ export function QuestsTab() {
     setEditId(null); setTitle(""); setDescription(""); setInstructions("");
     setQuestType("social_post"); setPlatform("any"); setImageUrl(""); setVideoUrl("");
     setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
+    setReferenceUrl(""); setUsesSound(false);
     setVideoError(""); setPreviewError(false);
     setShowDialog(true);
   };
@@ -302,6 +305,7 @@ export function QuestsTab() {
     setPointsReward(String(q.points_reward));
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
     setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
+    setReferenceUrl(q.reference_url || ""); setUsesSound(q.uses_sound ?? false);
     setVideoError(""); setPreviewError(false);
     setShowDialog(true);
   };
@@ -316,6 +320,7 @@ export function QuestsTab() {
       points_reward: Number(pointsReward) || 0,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
       expires_at: expiresAt || null, notify_reps: notifyReps,
+      reference_url: referenceUrl.trim() || null, uses_sound: usesSound,
     };
     try {
       const url = editId ? `/api/reps/quests/${editId}` : "/api/reps/quests";
@@ -486,6 +491,38 @@ export function QuestsTab() {
                   <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
                 </div>
               </div>
+
+              {/* Reference URL — shown when a specific platform is selected */}
+              {platform !== "any" && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <ExternalLink size={12} />
+                    Reference Post URL
+                  </Label>
+                  <Input
+                    value={referenceUrl}
+                    onChange={(e) => setReferenceUrl(e.target.value)}
+                    placeholder={platform === "tiktok" ? "https://www.tiktok.com/@user/video/..." : "https://www.instagram.com/reel/..."}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Link to the reference {platform === "tiktok" ? "TikTok" : "Instagram"} post reps should recreate
+                  </p>
+                </div>
+              )}
+
+              {/* Uses Sound — shown for TikTok quests */}
+              {platform === "tiktok" && (
+                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Music size={14} className="text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Uses a Specific Sound</p>
+                      <p className="text-[11px] text-muted-foreground">The reference post has a sound reps should use</p>
+                    </div>
+                  </div>
+                  <Switch checked={usesSound} onCheckedChange={setUsesSound} />
+                </div>
+              )}
             </TabsContent>
 
             {/* ── Media Tab ── */}

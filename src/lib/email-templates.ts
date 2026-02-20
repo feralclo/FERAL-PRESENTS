@@ -772,13 +772,13 @@ export function buildAbandonedCartRecoveryEmail(
                   <td style="padding: 32px 40px 36px; text-align: center;">
                     <!--[if mso]>
                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(cart.recovery_url)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="14%" fill="t">
-                      <v:fill type="tile" color="${accent}" />
+                      <v:fill type="tile" color="#111111" />
                       <w:anchorlock/>
                       <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:0.5px;">${escapeHtml(ctaText)}</center>
                     </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-->
-                    <a href="${escapeHtml(cart.recovery_url)}" style="display: block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; padding: 16px 24px; border-radius: 10px; text-align: center; mso-padding-alt: 0;">
+                    <a href="${escapeHtml(cart.recovery_url)}" style="display: block; background-color: #111111; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; padding: 16px 24px; border-radius: 10px; text-align: center; mso-padding-alt: 0;">
                       ${escapeHtml(ctaText)}
                     </a>
                     <!--<![endif]-->

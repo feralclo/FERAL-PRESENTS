@@ -958,6 +958,31 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
+   POPUP — CTA glow + urgency pulse
+   ═══════════════════════════════════════════════ */
+
+/* Pulsing dot — reuses existing midnight-pulse keyframe */
+.midnight-popup-pulse {
+  animation: midnight-pulse 2s ease-in-out infinite;
+}
+
+/* CTA ambient glow — slow breathing box-shadow */
+@keyframes midnight-popup-glow {
+  0%, 100% { box-shadow: 0 0 16px rgba(255, 255, 255, 0.06); }
+  50%      { box-shadow: 0 0 24px 4px rgba(255, 255, 255, 0.12), 0 0 40px 8px rgba(255, 255, 255, 0.04); }
+}
+
+.midnight-popup-cta {
+  animation: midnight-popup-glow 3s ease-in-out infinite;
+}
+
+.midnight-popup-cta:hover {
+  animation: none;
+  box-shadow: 0 0 28px 6px rgba(255, 255, 255, 0.14);
+}
+
+
+/* ═══════════════════════════════════════════════
    REDUCED MOTION — Accessibility
    ═══════════════════════════════════════════════ */
 
@@ -966,7 +991,9 @@ html.checkout-active .noise {
   [data-theme="midnight"] .midnight-metallic-obsidian::after,
   [data-theme="midnight"] .midnight-qty-pop,
   [data-theme="midnight"] .midnight-cta-ready,
-  [data-theme="midnight"] .midnight-reveal-glow {
+  [data-theme="midnight"] .midnight-reveal-glow,
+  .midnight-popup-pulse,
+  .midnight-popup-cta {
     animation: none;
   }
   [data-theme="midnight"] .midnight-lineup-pill,

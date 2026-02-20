@@ -57,9 +57,23 @@ export function MidnightDiscountPopup() {
   const [screen, setScreen] = useState<Screen>("commitment");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [countdown, setCountdown] = useState(config.countdown_seconds || 299);
   const exitIntentRef = useRef<((e: MouseEvent) => void) | null>(null);
   const hasOpenedRef = useRef(false);
   const page = typeof window !== "undefined" ? window.location.pathname : "";
+
+  // Countdown timer — ticks while popup is open, stops on code reveal
+  useEffect(() => {
+    if (!isOpen || screen === "code") return;
+    const id = setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isOpen, screen]);
+
+  const timerMinutes = String(Math.floor(countdown / 60)).padStart(2, "0");
+  const timerSeconds = String(countdown % 60).padStart(2, "0");
+  const timerUrgent = countdown < 60;
 
   // Show popup after delay (if not dismissed and enabled).
   // Waits for cookie consent to be resolved first so the two
@@ -275,8 +289,9 @@ export function MidnightDiscountPopup() {
                 className="h-8 w-auto mb-5 opacity-70"
               />
 
-              {/* Section label */}
-              <p className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20 mb-3">
+              {/* Section label — red accent with pulsing dot */}
+              <p className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[9px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/70 mb-3">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#ff0033] midnight-popup-pulse" />
                 Limited Time Offer
               </p>
 
@@ -286,16 +301,35 @@ export function MidnightDiscountPopup() {
               </h2>
 
               {/* Subheadline */}
-              <p className="font-[family-name:var(--font-sans)] text-[13px] text-white/50 mb-6">
+              <p className="font-[family-name:var(--font-sans)] text-[13px] text-white/50 mb-4">
                 {config.subheadline}
               </p>
 
-              {/* CTA Button — solid white */}
+              {/* Timer pill */}
+              <div className={cn(
+                "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5",
+                "bg-white/[0.04] border border-white/[0.08]"
+              )}>
+                <span className={cn(
+                  "font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.04em]",
+                  timerUrgent ? "text-[#ff0033]/90" : "text-white/60"
+                )}>
+                  Expires in
+                </span>
+                <span className={cn(
+                  "font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] tabular-nums",
+                  timerUrgent ? "text-[#ff0033]" : "text-white/80"
+                )}>
+                  {timerMinutes}:{timerSeconds}
+                </span>
+              </div>
+
+              {/* CTA Button — solid white + ambient glow */}
               <button
                 type="button"
                 onClick={handleCommit}
                 className={cn(
-                  "w-full h-12 rounded-xl",
+                  "w-full h-12 rounded-xl midnight-popup-cta",
                   "bg-white text-[#0e0e0e]",
                   "font-[family-name:var(--font-sans)] text-[13px] font-bold tracking-[0.02em]",
                   "active:scale-[0.97] transition-transform duration-150",
@@ -335,8 +369,8 @@ export function MidnightDiscountPopup() {
                 className="h-8 w-auto mb-5 opacity-70"
               />
 
-              {/* Section label */}
-              <p className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20 mb-3">
+              {/* Section label — red accent */}
+              <p className="font-[family-name:var(--font-mono)] text-[9px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/50 mb-3">
                 Almost There
               </p>
 
@@ -346,9 +380,28 @@ export function MidnightDiscountPopup() {
               </h2>
 
               {/* Subheadline */}
-              <p className="font-[family-name:var(--font-sans)] text-[13px] text-white/50 mb-5">
+              <p className="font-[family-name:var(--font-sans)] text-[13px] text-white/50 mb-3.5">
                 We&apos;ll send your exclusive code
               </p>
+
+              {/* Timer pill */}
+              <div className={cn(
+                "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4",
+                "bg-white/[0.04] border border-white/[0.08]"
+              )}>
+                <span className={cn(
+                  "font-[family-name:var(--font-mono)] text-[11px] font-medium tracking-[0.04em]",
+                  timerUrgent ? "text-[#ff0033]/90" : "text-white/60"
+                )}>
+                  Expires in
+                </span>
+                <span className={cn(
+                  "font-[family-name:var(--font-mono)] text-[13px] font-bold tracking-[0.06em] tabular-nums",
+                  timerUrgent ? "text-[#ff0033]" : "text-white/80"
+                )}>
+                  {timerMinutes}:{timerSeconds}
+                </span>
+              </div>
 
               {/* Error */}
               {emailError && (
@@ -381,11 +434,11 @@ export function MidnightDiscountPopup() {
                   )}
                 />
 
-                {/* Submit — solid white */}
+                {/* Submit — solid white + ambient glow */}
                 <button
                   type="submit"
                   className={cn(
-                    "w-full h-12 rounded-xl",
+                    "w-full h-12 rounded-xl midnight-popup-cta",
                     "bg-white text-[#0e0e0e]",
                     "font-[family-name:var(--font-sans)] text-[13px] font-bold tracking-[0.02em]",
                     "active:scale-[0.97] transition-transform duration-150",
@@ -410,8 +463,8 @@ export function MidnightDiscountPopup() {
                 className="h-8 w-auto mb-5 opacity-70"
               />
 
-              {/* Section label */}
-              <p className="font-[family-name:var(--font-mono)] text-[9px] font-medium uppercase tracking-[0.15em] text-white/20 mb-3">
+              {/* Section label — victory state, no urgency */}
+              <p className="font-[family-name:var(--font-mono)] text-[9px] font-bold uppercase tracking-[0.15em] text-white/40 mb-3">
                 Discount Unlocked
               </p>
 
@@ -445,12 +498,12 @@ export function MidnightDiscountPopup() {
                 This code won&apos;t be shown again. It will be applied automatically at checkout.
               </p>
 
-              {/* CTA — solid white */}
+              {/* CTA — solid white + ambient glow */}
               <button
                 type="button"
                 onClick={handleUseCode}
                 className={cn(
-                  "w-full h-12 rounded-xl",
+                  "w-full h-12 rounded-xl midnight-popup-cta",
                   "bg-white text-[#0e0e0e]",
                   "font-[family-name:var(--font-sans)] text-[13px] font-bold tracking-[0.02em]",
                   "active:scale-[0.97] transition-transform duration-150",

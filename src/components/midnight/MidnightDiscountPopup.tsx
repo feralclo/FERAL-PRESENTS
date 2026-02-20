@@ -290,7 +290,7 @@ export function MidnightDiscountPopup() {
               />
 
               {/* Section label — red accent with pulsing dot */}
-              <p className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[9px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/70 mb-3">
+              <p className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/70 mb-3">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#ff0033] midnight-popup-pulse" />
                 Limited Time Offer
               </p>
@@ -370,7 +370,7 @@ export function MidnightDiscountPopup() {
               />
 
               {/* Section label — red accent */}
-              <p className="font-[family-name:var(--font-mono)] text-[9px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/50 mb-3">
+              <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-[#ff0033]/50 mb-3">
                 Almost There
               </p>
 
@@ -464,7 +464,7 @@ export function MidnightDiscountPopup() {
               />
 
               {/* Section label — victory state, no urgency */}
-              <p className="font-[family-name:var(--font-mono)] text-[9px] font-bold uppercase tracking-[0.15em] text-white/40 mb-3">
+              <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mb-3">
                 Discount Unlocked
               </p>
 

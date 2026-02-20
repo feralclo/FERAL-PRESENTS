@@ -6,58 +6,16 @@ import {
   TrendingUp,
   Compass,
   Gift,
-  RefreshCw,
   ArrowDownLeft,
   ArrowUpRight,
   UserCheck,
   RotateCcw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/rep";
+import { RadialGauge, EmptyState, RepPageError } from "@/components/rep";
+import { formatRelativeTime } from "@/lib/rep-utils";
 import { cn } from "@/lib/utils";
-
-// ─── Hero Radial Gauge ────────────────────────────────────────────────────────
-
-const HERO_CIRCUMFERENCE = 2 * Math.PI * 50;
-
-function HeroGauge({ value, max, color }: { value: number; max: number; color: string }) {
-  const percent = max > 0 ? Math.min(value / max, 1) : 0;
-  const offset = HERO_CIRCUMFERENCE * (1 - percent);
-
-  return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: 120, height: 120 }}>
-      <svg className="-rotate-90" viewBox="0 0 120 120" width={120} height={120}>
-        <circle
-          fill="none"
-          stroke="rgba(255, 255, 255, 0.04)"
-          strokeWidth={6}
-          cx="60" cy="60" r="50"
-        />
-        <circle
-          fill="none"
-          stroke={color}
-          strokeDasharray={HERO_CIRCUMFERENCE}
-          strokeDashoffset={offset}
-          strokeWidth={6}
-          strokeLinecap="round"
-          cx="60" cy="60" r="50"
-          className="transition-[stroke-dashoffset] duration-1000 ease-out"
-          style={{ filter: `drop-shadow(0 0 3px ${color}60)` }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
-          <Zap size={16} className="mx-auto mb-1" style={{ color }} />
-          <p className="text-2xl font-bold font-mono tabular-nums" style={{ color }}>
-            {value}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface PointsEntry {
   id: string;
@@ -112,20 +70,6 @@ const SOURCE_CONFIG: Record<string, {
     bgColor: "bg-destructive/10",
   },
 };
-
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "Just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
 
 export default function RepPointsPage() {
   const [entries, setEntries] = useState<PointsEntry[]>([]);
@@ -187,21 +131,12 @@ export default function RepPointsPage() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
-        <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
-            <Zap size={22} className="text-destructive" />
-          </div>
-          <p className="text-sm text-foreground font-medium mb-1">Failed to load points</p>
-          <p className="text-xs text-muted-foreground mb-4">{error}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
-          >
-            <RefreshCw size={12} />
-            Try again
-          </Button>
-        </div>
+        <RepPageError
+          icon={Zap}
+          title="Failed to load points"
+          message={error}
+          onRetry={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+        />
       </div>
     );
   }
@@ -212,8 +147,15 @@ export default function RepPointsPage() {
       <div className="text-center rep-slide-up">
         <h1 className="text-xl font-bold text-foreground mb-1">Points</h1>
         <p className="text-sm text-muted-foreground mb-4">Your points history</p>
-        <HeroGauge value={myPoints} max={Math.max(totalEarned, myPoints, 100)} color="#8B5CF6" />
-        <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold mt-2">Balance</p>
+        <RadialGauge
+          value={myPoints}
+          max={Math.max(totalEarned, myPoints, 100)}
+          color="#8B5CF6"
+          icon={Zap}
+          label="Balance"
+          displayValue={String(myPoints)}
+          variant="hero"
+        />
       </div>
 
       {/* Earned / Spent summary */}
@@ -286,7 +228,7 @@ export default function RepPointsPage() {
                           {config.label}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
-                          {formatTime(entry.created_at)}
+                          {formatRelativeTime(entry.created_at)}
                         </span>
                       </div>
                       {entry.description && (

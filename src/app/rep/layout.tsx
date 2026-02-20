@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTierFromLevel } from "@/lib/rep-tiers";
+import { formatRelativeTimeCompact } from "@/lib/rep-utils";
 import { useRepPWA } from "@/hooks/useRepPWA";
 import { InstallPrompt } from "@/components/rep";
 
@@ -613,19 +614,6 @@ function NotificationCenter() {
     }
   };
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return "now";
-    if (diffMin < 60) return `${diffMin}m`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h`;
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 7) return `${diffDay}d`;
-    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  };
 
   return (
     <div className="relative" ref={panelRef}>
@@ -710,7 +698,7 @@ function NotificationCenter() {
                           {n.title}
                         </p>
                         <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                          {formatTime(n.created_at)}
+                          {formatRelativeTimeCompact(n.created_at)}
                         </span>
                       </div>
                       {n.body && (

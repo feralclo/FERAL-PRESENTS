@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 const CONFETTI_COLORS = ["#8B5CF6", "#A78BFA", "#34D399", "#F59E0B", "#38BDF8", "#F43F5E"];
-const PIECE_COUNT = 20;
+const PIECE_COUNT = 12;
 
 /**
  * Confetti burst overlay — fixed position, pointer-events-none.

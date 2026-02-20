@@ -7,7 +7,6 @@ import {
   Banknote,
   BarChart3,
   Filter,
-  RefreshCw,
   Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { RadialGauge, EmptyState, HudSectionHeader } from "@/components/rep";
+import { formatRelativeTime, getCurrencySymbol } from "@/lib/rep-utils";
+import { RadialGauge, EmptyState, SectionHeader, RepPageError } from "@/components/rep";
 
 interface Sale {
   id: string;
@@ -27,29 +27,6 @@ interface Sale {
   currency: string;
   created_at: string;
   event?: { id: string; name: string; slug: string };
-}
-
-function getCurrencySymbol(currency?: string): string {
-  switch (currency?.toUpperCase()) {
-    case "USD": return "$";
-    case "EUR": return "\u20AC";
-    case "GBP": return "\u00A3";
-    default: return "\u00A3";
-  }
-}
-
-function formatRelativeDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "Just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function groupSalesByDate(sales: Sale[]): { label: string; sales: Sale[] }[] {
@@ -155,21 +132,12 @@ export default function RepSalesPage() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
-        <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
-            <TrendingUp size={22} className="text-destructive" />
-          </div>
-          <p className="text-sm text-foreground font-medium mb-1">Failed to load sales</p>
-          <p className="text-xs text-muted-foreground mb-4">{error}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
-          >
-            <RefreshCw size={12} />
-            Try again
-          </Button>
-        </div>
+        <RepPageError
+          icon={TrendingUp}
+          title="Failed to load sales"
+          message={error}
+          onRetry={() => { setError(""); setLoading(true); setLoadKey((k) => k + 1); }}
+        />
       </div>
     );
   }
@@ -269,7 +237,7 @@ export default function RepSalesPage() {
         <div className="space-y-5 rep-slide-up" style={{ animationDelay: "100ms" }}>
           {groups.map((group) => (
             <div key={group.label}>
-              <HudSectionHeader
+              <SectionHeader
                 label={group.label}
                 extra={`${group.sales.length} sale${group.sales.length !== 1 ? "s" : ""}`}
               />
@@ -294,7 +262,7 @@ export default function RepSalesPage() {
                           <p className="text-[10px] text-muted-foreground truncate">
                             {sale.event?.name || "—"}
                             <span className="mx-1.5">·</span>
-                            {formatRelativeDate(sale.created_at)}
+                            {formatRelativeTime(sale.created_at)}
                           </p>
                         </div>
                       </div>

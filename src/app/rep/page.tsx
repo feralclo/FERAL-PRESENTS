@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RadialGauge, HudSectionHeader, LevelUpOverlay, WelcomeOverlay, hasCompletedOnboarding } from "@/components/rep";
+import { RadialGauge, LevelUpOverlay, WelcomeOverlay, hasCompletedOnboarding } from "@/components/rep";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
@@ -296,7 +296,7 @@ export default function RepDashboardPage() {
                 className="text-[10px] uppercase tracking-[2px] font-bold px-2 py-0.5 rounded-md"
                 style={{ backgroundColor: `${tier.color}15`, color: tier.color }}
               >
-                Your Weapon
+                Your Code
               </span>
             </div>
             <p
@@ -364,48 +364,6 @@ export default function RepDashboardPage() {
         </Link>
       </div>
 
-      {/* ── Active Missions (Battle Feed) ── */}
-      {data.active_events.length > 0 && (
-        <div className="rep-slide-up" style={{ animationDelay: "150ms" }}>
-          <HudSectionHeader label="Active Missions" />
-          <div className="space-y-2">
-            {data.active_events.map((event) => (
-              <Link key={event.id} href="/rep/sales">
-                <div className="rep-mission-card rep-mission-card-hover">
-                  {/* Ambient event cover image */}
-                  {event.cover_image && (
-                    <div className="rep-mission-ambient">
-                      <img src={event.cover_image} alt="" />
-                    </div>
-                  )}
-                  <div className="rep-mission-content p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="rep-live-dot shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{event.name}</p>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Flame size={10} className="text-orange-400" />
-                            {event.sales_count} ticket{event.sales_count !== 1 ? "s" : ""}
-                          </span>
-                          {event.revenue > 0 && (
-                            <span className="inline-flex items-center gap-1 text-xs font-mono text-success">
-                              <TrendingUp size={10} />
-                              £{Number(event.revenue).toFixed(0)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-muted-foreground shrink-0" />
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── Quick Actions ── */}
       <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "200ms" }}>
         <Link href="/rep/quests">
@@ -416,7 +374,7 @@ export default function RepDashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">Side Quests</p>
+                  <p className="text-sm font-medium text-foreground">Quests</p>
                   {data.active_quests > 0 && (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[9px] font-bold text-white rep-notification-badge">
                       {data.active_quests}
@@ -454,73 +412,40 @@ export default function RepDashboardPage() {
         </Link>
       </div>
 
-      {/* ── Recent Activity (Battle Log) ── */}
+      {/* ── Recent Sales (max 2) ── */}
       {data.recent_sales.length > 0 && (
-        <div className="rep-slide-up" style={{ animationDelay: "250ms" }}>
-          <HudSectionHeader label="Recent Activity" />
-          <div className="space-y-2">
-            {data.recent_sales.map((sale) => (
-              <Card
-                key={sale.id}
-                className="py-0 gap-0 rep-battle-log-entry"
-              >
-                <CardContent className="px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-success/10">
-                      <TrendingUp size={14} className="text-success" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
+        <div className="space-y-2 rep-slide-up" style={{ animationDelay: "250ms" }}>
+          {data.recent_sales.slice(0, 2).map((sale) => (
+            <Card
+              key={sale.id}
+              className="py-0 gap-0 rep-battle-log-entry"
+            >
+              <CardContent className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-success/10">
+                    <TrendingUp size={14} className="text-success" />
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
-                      <Zap size={9} />+10
-                    </span>
-                    <p className="text-sm font-bold font-mono text-success tabular-nums">
-                      £{Number(sale.total).toFixed(2)}
+                  <div className="min-w-0">
+                    <p className="text-xs font-mono text-foreground">{sale.order_number}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(sale.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <Link
-            href="/rep/sales"
-            className="flex items-center justify-center gap-1 mt-3 text-xs text-primary hover:underline"
-          >
-            View all sales <ChevronRight size={12} />
-          </Link>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
+                    <Zap size={9} />+10
+                  </span>
+                  <p className="text-sm font-bold font-mono text-success tabular-nums">
+                    £{Number(sale.total).toFixed(2)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* ── Arena CTA (Leaderboard) ── */}
-      <Link href="/rep/leaderboard">
-        <Card
-          className="py-0 gap-0 rep-surface-1 border-warning/15 rep-slide-up"
-          style={{ animationDelay: "300ms" }}
-        >
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/15">
-                <Trophy size={22} className="text-warning" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Arena</p>
-                <p className="text-xs text-muted-foreground">
-                  {data.leaderboard_position
-                    ? <>Ranked <span className="font-mono font-bold text-warning">#{data.leaderboard_position}</span> — challenge your crew</>
-                    : "See where you stand"}
-                </p>
-              </div>
-            </div>
-            <ChevronRight size={18} className="text-warning/60" />
-          </CardContent>
-        </Card>
-      </Link>
     </div>
   );
 }

@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/rep";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { EmptyState, RepPageError } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -113,8 +114,6 @@ function getPositionChange(entryId: string, currentPosition: number, prefix: str
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export default function RepLeaderboardPage() {
-  const [tab, setTab] = useState<"all-time" | "events">("all-time");
-
   return (
     <div className="max-w-2xl mx-auto px-5 py-6 md:py-8">
       {/* Header */}
@@ -126,27 +125,18 @@ export default function RepLeaderboardPage() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-0.5 bg-secondary rounded-xl p-[3px] border border-border mb-5">
-        {([
-          { id: "all-time" as const, label: "All Time" },
-          { id: "events" as const, label: "Events" },
-        ]).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
-              "hover:text-foreground",
-              tab === t.id && "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "all-time" ? <AllTimeLeaderboard /> : <EventsLeaderboard />}
+      <Tabs defaultValue="all-time" className="gap-4">
+        <TabsList className="w-full bg-secondary rounded-xl border border-border mb-1">
+          <TabsTrigger value="all-time" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            All Time
+          </TabsTrigger>
+          <TabsTrigger value="events" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            Events
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="all-time"><AllTimeLeaderboard /></TabsContent>
+        <TabsContent value="events"><EventsLeaderboard /></TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -862,19 +852,7 @@ function LeaderboardSkeleton() {
 
 
 function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 mb-4">
-        <Trophy size={22} className="text-destructive" />
-      </div>
-      <p className="text-sm text-foreground font-medium mb-1">Something went wrong</p>
-      <p className="text-xs text-muted-foreground mb-4">{error}</p>
-      <Button size="sm" variant="outline" onClick={onRetry}>
-        <RefreshCw size={12} />
-        Try again
-      </Button>
-    </div>
-  );
+  return <RepPageError icon={Trophy} message={error} onRetry={onRetry} />;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

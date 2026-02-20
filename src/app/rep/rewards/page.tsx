@@ -22,7 +22,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/rep";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { EmptyState, RepPageError } from "@/components/rep";
+import { playSuccessSound } from "@/lib/rep-utils";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -80,30 +82,6 @@ const CLAIM_STATUS_CONFIG: Record<string, { label: string; variant: "default" | 
   fulfilled: { label: "Fulfilled", variant: "default", icon: CheckCircle2 },
   cancelled: { label: "Cancelled", variant: "destructive", icon: XCircle },
 };
-
-// ─── Success sound ──────────────────────────────────────────────────────────
-
-function playSuccessSound() {
-  try {
-    const ctx = new AudioContext();
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = "sine";
-      const t = ctx.currentTime + i * 0.09;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.13, t + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-      osc.start(t);
-      osc.stop(t + 0.3);
-    });
-    setTimeout(() => ctx.close(), 1500);
-  } catch { /* AudioContext not available */ }
-}
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
@@ -261,35 +239,6 @@ export default function RepRewardsPage() {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-0.5 bg-secondary rounded-xl p-[3px] border border-border rep-slide-up" style={{ animationDelay: "50ms" }}>
-        {[
-          { id: "earned" as TabId, label: "Earned", count: milestoneRewards.length },
-          { id: "shop" as TabId, label: "Shop", count: shopRewards.length },
-          { id: "history" as TabId, label: "History", count: claims.length },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold text-muted-foreground text-center transition-all duration-200",
-              "hover:text-foreground",
-              tab === t.id && "bg-white/[0.10] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-            )}
-          >
-            {t.label}
-            {t.count > 0 && (
-              <span className={cn(
-                "ml-1.5 text-[10px]",
-                tab === t.id ? "text-white/70" : "text-muted-foreground"
-              )}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
       {/* Inline error */}
       {error && (
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
@@ -297,8 +246,25 @@ export default function RepRewardsPage() {
         </div>
       )}
 
+      {/* Tab bar */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="gap-4 rep-slide-up" style={{ animationDelay: "50ms" }}>
+        <TabsList className="w-full bg-secondary rounded-xl border border-border">
+          <TabsTrigger value="earned" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            Earned
+            {milestoneRewards.length > 0 && <span className="ml-1.5 text-[10px] text-muted-foreground data-[state=active]:text-white/70">{milestoneRewards.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="shop" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            Shop
+            {shopRewards.length > 0 && <span className="ml-1.5 text-[10px] text-muted-foreground data-[state=active]:text-white/70">{shopRewards.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            History
+            {claims.length > 0 && <span className="ml-1.5 text-[10px] text-muted-foreground data-[state=active]:text-white/70">{claims.length}</span>}
+          </TabsTrigger>
+        </TabsList>
+
       {/* ── Earned (Milestones) Tab ── */}
-      {tab === "earned" && (
+      <TabsContent value="earned">
         <div className="space-y-3 rep-slide-up">
           {milestoneRewards.length === 0 ? (
             <EmptyState icon={Target} title="No milestones yet" subtitle="Milestones will appear as the team sets them up" />
@@ -386,10 +352,10 @@ export default function RepRewardsPage() {
             })
           )}
         </div>
-      )}
+      </TabsContent>
 
       {/* ── Shop (Points Shop) Tab ── */}
-      {tab === "shop" && (
+      <TabsContent value="shop">
         <div className="rep-slide-up">
           {shopRewards.length === 0 ? (
             <EmptyState icon={ShoppingCart} title="Shop is empty" subtitle="Rewards will appear here when they're available" />
@@ -469,10 +435,10 @@ export default function RepRewardsPage() {
             </div>
           )}
         </div>
-      )}
+      </TabsContent>
 
       {/* ── History Tab ── */}
-      {tab === "history" && (
+      <TabsContent value="history">
         <div className="space-y-2 rep-slide-up">
           {claims.length === 0 ? (
             <EmptyState icon={Clock} title="No claim history" subtitle="Your reward claims will show up here" />
@@ -560,8 +526,8 @@ export default function RepRewardsPage() {
             })
           )}
         </div>
-      )}
-
+      </TabsContent>
+      </Tabs>
       {rewards.length === 0 && claims.length === 0 && (
         <EmptyState icon={Gift} title="No rewards yet" subtitle="Rewards will appear here once they're set up" />
       )}
@@ -649,8 +615,8 @@ export default function RepRewardsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           {/* Confetti burst */}
           <div className="rep-confetti-container" aria-hidden>
-            {[...Array(24)].map((_, i) => {
-              const angle = (i / 24) * 360;
+            {[...Array(8)].map((_, i) => {
+              const angle = (i / 8) * 360;
               const distance = 60 + Math.random() * 140;
               const cx = Math.cos((angle * Math.PI) / 180) * distance;
               const cy = Math.sin((angle * Math.PI) / 180) * distance - 40;
@@ -685,7 +651,7 @@ export default function RepRewardsPage() {
               </div>
               {/* Particles */}
               <div className="rep-success-particles" aria-hidden>
-                {[...Array(6)].map((_, i) => (
+                {[...Array(3)].map((_, i) => (
                   <div key={i} className="rep-success-particle" style={{ '--i': i } as React.CSSProperties} />
                 ))}
               </div>

@@ -1,4 +1,3 @@
-import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 30;
@@ -7,7 +6,7 @@ interface RadialGaugeProps {
   value: number;
   max: number;
   color: string;
-  icon: LucideIcon;
+  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
   label: string;
   displayValue: string;
   variant?: "standard" | "hero";

@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RadialGauge, EmptyState, RepPageError } from "@/components/rep";
 import { formatRelativeTime } from "@/lib/rep-utils";
+import { CurrencyIcon } from "@/components/rep";
 import { cn } from "@/lib/utils";
 
 interface PointsEntry {
@@ -256,9 +257,10 @@ export default function RepPointsPage() {
                         )}
                         {(entry.currency_amount != null && entry.currency_amount !== 0) && (
                           <span className={cn(
-                            "text-[11px] font-bold font-mono tabular-nums block",
-                            entry.currency_amount > 0 ? "text-amber-400" : "text-destructive"
+                            "text-[11px] font-bold font-mono tabular-nums flex items-center gap-0.5",
+                            entry.currency_amount > 0 ? "text-[#ff0033]" : "text-destructive"
                           )}>
+                            <CurrencyIcon size={10} />
                             {entry.currency_amount > 0 ? "+" : ""}{entry.currency_amount} {currencyName}
                           </span>
                         )}

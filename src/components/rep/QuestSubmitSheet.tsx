@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
 import { playSuccessSound } from "@/lib/rep-utils";
+import { CurrencyIcon } from "./CurrencyIcon";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,7 @@ interface Quest {
   quest_type: string;
   platform?: "tiktok" | "instagram" | "any";
   points_reward: number;
+  currency_reward: number;
 }
 
 type ProofType = "tiktok_link" | "instagram_link" | "screenshot" | "url" | "text";
@@ -42,9 +44,10 @@ interface QuestSubmitSheetProps {
   quest: Quest;
   onClose: () => void;
   onSubmitted: () => void;
+  currencyName?: string;
 }
 
-export function QuestSubmitSheet({ quest, onClose, onSubmitted }: QuestSubmitSheetProps) {
+export function QuestSubmitSheet({ quest, onClose, onSubmitted, currencyName = "FRL" }: QuestSubmitSheetProps) {
   const accent = getQuestAccent(quest.points_reward);
   const mapping = QUEST_PROOF_MAP[quest.quest_type] || QUEST_PROOF_MAP.custom;
   const platform = quest.platform || "any";
@@ -146,11 +149,18 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted }: QuestSubmitShe
     >
       <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/[0.08] bg-[var(--color-card)]">
 
-        {/* Header: XP, close */}
+        {/* Header: rewards, close */}
         <div className="flex items-center justify-between px-5 pt-5">
-          <span className={cn("flex items-center gap-1 text-sm font-extrabold", accent.color)}>
-            <Zap size={14} /> +{quest.points_reward} XP
-          </span>
+          <div className="flex items-center gap-3">
+            <span className={cn("flex items-center gap-1 text-sm font-extrabold", accent.color)}>
+              <Zap size={14} /> +{quest.points_reward} XP
+            </span>
+            {quest.currency_reward > 0 && (
+              <span className="flex items-center gap-1 text-sm font-extrabold text-[#ff0033]">
+                <CurrencyIcon size={14} /> +{quest.currency_reward} {currencyName}
+              </span>
+            )}
+          </div>
           <button
             onClick={() => { if (!submitting) onClose(); }}
             className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -166,6 +176,9 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted }: QuestSubmitShe
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Submit your proof to earn <span className="font-bold text-primary">{quest.points_reward} XP</span>
+            {quest.currency_reward > 0 && (
+              <> + <span className="font-bold text-[#ff0033]">{quest.currency_reward} {currencyName}</span></>
+            )}
           </p>
         </div>
 
@@ -182,9 +195,17 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted }: QuestSubmitShe
             </div>
             <p className="text-base font-extrabold text-foreground mb-1">Quest Submitted!</p>
             <p className="text-xs text-muted-foreground mb-3">Your proof is being reviewed</p>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-2">
-              <Zap size={14} className="text-primary" />
-              <span className="text-sm font-bold text-primary">+{quest.points_reward} XP pending</span>
+            <div className="flex items-center justify-center gap-3">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-2">
+                <Zap size={14} className="text-primary" />
+                <span className="text-sm font-bold text-primary">+{quest.points_reward} XP pending</span>
+              </div>
+              {quest.currency_reward > 0 && (
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#ff0033]/10 border border-[#ff0033]/20 px-4 py-2">
+                  <CurrencyIcon size={14} className="text-[#ff0033]" />
+                  <span className="text-sm font-bold text-[#ff0033]">+{quest.currency_reward} {currencyName}</span>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -345,7 +366,7 @@ export function QuestSubmitSheet({ quest, onClose, onSubmitted }: QuestSubmitShe
               ) : (
                 <>
                   <Zap size={16} />
-                  Submit for +{quest.points_reward} XP
+                  Submit for +{quest.points_reward} XP{quest.currency_reward > 0 ? ` +${quest.currency_reward} ${currencyName}` : ""}
                 </>
               )}
             </button>

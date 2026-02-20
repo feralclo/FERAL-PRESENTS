@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
+import { CurrencyIcon } from "./CurrencyIcon";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -81,10 +82,11 @@ interface QuestCardProps {
   expandedQuestId: string | null;
   onToggleSubmissions: (questId: string) => void;
   loadingSubs: string | null;
+  currencyName?: string;
 }
 
 export function QuestCard({
-  quest, index, onSelect, submissions, expandedQuestId, onToggleSubmissions, loadingSubs,
+  quest, index, onSelect, submissions, expandedQuestId, onToggleSubmissions, loadingSubs, currencyName = "FRL",
 }: QuestCardProps) {
   const expiry = quest.expires_at ? getExpiryInfo(quest.expires_at) : null;
   const subs = quest.my_submissions;
@@ -125,8 +127,9 @@ export function QuestCard({
             +{quest.points_reward} XP
           </span>
           {quest.currency_reward > 0 && (
-            <span className="flex items-center gap-1 text-sm font-extrabold text-amber-400">
-              +{quest.currency_reward}
+            <span className="flex items-center gap-1 text-sm font-extrabold text-[#ff0033]">
+              <CurrencyIcon size={13} />
+              +{quest.currency_reward} {currencyName}
             </span>
           )}
         </div>

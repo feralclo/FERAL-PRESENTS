@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { EmptyState, RepPageError } from "@/components/rep";
+import { EmptyState, RepPageError, CurrencyIcon } from "@/components/rep";
 import { playSuccessSound } from "@/lib/rep-utils";
 import { cn } from "@/lib/utils";
 
@@ -256,12 +256,12 @@ export default function RepRewardsPage() {
           <h1 className="text-xl font-bold text-foreground">Rewards</h1>
           <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl rep-surface-2 border-amber-500/15 px-5 py-3">
+        <div className="rounded-xl rep-surface-2 border-[#ff0033]/15 px-5 py-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <Zap size={12} className="text-amber-400" />
-            <p className="text-[10px] uppercase tracking-[2px] text-amber-400 font-bold">{currencyName}</p>
+            <CurrencyIcon size={12} className="text-[#ff0033]" />
+            <p className="text-[10px] uppercase tracking-[2px] text-[#ff0033] font-bold">{currencyName}</p>
           </div>
-          <p className="text-xl font-bold font-mono text-amber-400 tabular-nums">{myBalance}</p>
+          <p className="text-xl font-bold font-mono text-[#ff0033] tabular-nums">{myBalance}</p>
         </div>
       </div>
 
@@ -422,8 +422,8 @@ export default function RepRewardsPage() {
                         <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{reward.description}</p>
                       )}
                       <div className="flex items-baseline gap-1 mb-3">
-                        <Zap size={10} className="text-amber-400" />
-                        <span className="text-lg font-bold font-mono text-amber-400 tabular-nums">
+                        <CurrencyIcon size={10} className="text-[#ff0033]" />
+                        <span className="text-lg font-bold font-mono text-[#ff0033] tabular-nums">
                           {reward.points_cost}
                         </span>
                         <span className="text-[10px] text-muted-foreground">{currencyName}</span>
@@ -591,8 +591,8 @@ export default function RepRewardsPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Cost</span>
                 <div className="flex items-center gap-1">
-                  <Zap size={10} className="text-amber-400" />
-                  <span className="text-sm font-bold font-mono text-amber-400">{confirmReward.points_cost}</span>
+                  <CurrencyIcon size={10} className="text-[#ff0033]" />
+                  <span className="text-sm font-bold font-mono text-[#ff0033]">{confirmReward.points_cost}</span>
                   <span className="text-[10px] text-muted-foreground">{currencyName}</span>
                 </div>
               </div>
@@ -688,7 +688,7 @@ export default function RepRewardsPage() {
               Reward Claimed!
             </h3>
             <p className="text-sm text-muted-foreground mb-1">{successReward.name}</p>
-            <p className="text-xs text-amber-400 font-mono">-{successReward.points_cost} {currencyName}</p>
+            <p className="text-xs text-[#ff0033] font-mono">-{successReward.points_cost} {currencyName}</p>
             <button
               onClick={() => setSuccessReward(null)}
               className="mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"

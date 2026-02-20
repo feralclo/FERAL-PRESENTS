@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RadialGauge, LevelUpOverlay, WelcomeOverlay, hasCompletedOnboarding } from "@/components/rep";
+import { RadialGauge, LevelUpOverlay, WelcomeOverlay, hasCompletedOnboarding, CurrencyIcon } from "@/components/rep";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
@@ -282,13 +282,6 @@ export default function RepDashboardPage() {
                   : "Max level!"}
               </p>
             </div>
-            {/* Currency balance */}
-            <div className="flex items-center justify-center gap-1.5 mt-2">
-              <span className="text-[11px] font-bold font-mono text-amber-400 tabular-nums">
-                {rep.currency_balance ?? 0} {data.currency_name}
-              </span>
-              <span className="text-[10px] text-muted-foreground">available</span>
-            </div>
           </div>
         </div>
       </div>
@@ -320,7 +313,7 @@ export default function RepDashboardPage() {
             <p className="text-xs text-muted-foreground mb-4">
               Share this code — every sale earns you{" "}
               <span className="text-primary font-bold">+{data.settings?.points_per_sale ?? 10} XP</span>{" "}
-              <span className="text-amber-400 font-bold">+{data.settings?.currency_per_sale ?? 10} {data.currency_name}</span>
+              <span className="text-[#ff0033] font-bold">+{data.settings?.currency_per_sale ?? 10} {data.currency_name}</span>
             </p>
             <div className="flex gap-2">
               <Button
@@ -345,8 +338,8 @@ export default function RepDashboardPage() {
         </div>
       )}
 
-      {/* ── Stats Grid — Radial HUD Gauges ── */}
-      <div className="grid grid-cols-3 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
+      {/* ── Stats Grid — Radial HUD Gauges (2×2) ── */}
+      <div className="grid grid-cols-2 gap-3 rep-slide-up" style={{ animationDelay: "100ms" }}>
         <Link href="/rep/points">
           <GaugeWithCounter
             value={rep.points_balance}
@@ -354,6 +347,16 @@ export default function RepDashboardPage() {
             color="#8B5CF6"
             icon={Zap}
             label="XP"
+            enabled={statsReady}
+          />
+        </Link>
+        <Link href="/rep/rewards">
+          <GaugeWithCounter
+            value={rep.currency_balance ?? 0}
+            max={Math.max(rep.currency_balance ?? 0, 500)}
+            color="#ff0033"
+            icon={CurrencyIcon}
+            label={data.currency_name}
             enabled={statsReady}
           />
         </Link>
@@ -405,14 +408,14 @@ export default function RepDashboardPage() {
         <Link href="/rep/rewards">
           <Card className="py-0 gap-0 rep-action-hover" style={{ minHeight: "88px" }}>
             <CardContent className="p-4 flex items-center gap-3 h-full">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 shrink-0">
-                <Gift size={20} className="text-amber-400" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#ff0033]/20 to-[#ff0033]/10 shrink-0">
+                <Gift size={20} className="text-[#ff0033]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-foreground">Rewards</p>
                   {data.pending_rewards > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white rep-notification-badge">
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ff0033] px-1.5 text-[9px] font-bold text-white rep-notification-badge">
                       {data.pending_rewards}
                     </span>
                   )}
@@ -451,6 +454,9 @@ export default function RepDashboardPage() {
                   <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
                     <Zap size={9} />+{data.settings?.points_per_sale ?? 10}
                   </span>
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#ff0033]">
+                    <CurrencyIcon size={9} />+{data.settings?.currency_per_sale ?? 10}
+                  </span>
                   <p className="text-sm font-bold font-mono text-success tabular-nums">
                     £{Number(sale.total).toFixed(2)}
                   </p>
@@ -471,7 +477,7 @@ function GaugeWithCounter({
   value, max, color, icon, label, enabled,
 }: {
   value: number; max: number; color: string;
-  icon: typeof Zap; label: string; enabled: boolean;
+  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>; label: string; enabled: boolean;
 }) {
   const animatedValue = useCountUp(enabled ? value : 0, 900, enabled);
   return (

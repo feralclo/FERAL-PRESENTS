@@ -7,6 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
 import { TikTokIcon } from "./TikTokIcon";
+import { CurrencyIcon } from "./CurrencyIcon";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -50,10 +51,11 @@ interface QuestDetailSheetProps {
   onClose: () => void;
   onSubmit: (quest: Quest) => void;
   onExpandImage: () => void;
+  currencyName?: string;
 }
 
 export function QuestDetailSheet({
-  quest, onClose, onSubmit, onExpandImage,
+  quest, onClose, onSubmit, onExpandImage, currencyName = "FRL",
 }: QuestDetailSheetProps) {
   const accent = getQuestAccent(quest.points_reward);
   const QuestTypeIcon = QUEST_TYPE_ICONS[quest.quest_type] || Zap;
@@ -125,8 +127,9 @@ export function QuestDetailSheet({
                 +{quest.points_reward} XP
               </span>
               {quest.currency_reward > 0 && (
-                <span className="flex items-center gap-1 text-base font-extrabold text-amber-400">
-                  +{quest.currency_reward}
+                <span className="flex items-center gap-1 text-base font-extrabold text-[#ff0033]">
+                  <CurrencyIcon size={16} />
+                  +{quest.currency_reward} {currencyName}
                 </span>
               )}
             </div>

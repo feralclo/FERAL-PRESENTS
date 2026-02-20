@@ -48,6 +48,7 @@ export default function RepQuestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"active" | "completed">("active");
+  const [currencyName, setCurrencyName] = useState("FRL");
 
   // Detail + submit modals
   const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
@@ -81,7 +82,10 @@ export default function RepQuestsPage() {
 
   const loadQuests = useCallback(async () => {
     try {
-      const res = await fetch("/api/rep-portal/quests");
+      const [res, settingsRes] = await Promise.all([
+        fetch("/api/rep-portal/quests"),
+        fetch("/api/rep-portal/settings"),
+      ]);
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
         setError(errJson?.error || "Failed to load quests (" + res.status + ")");
@@ -90,6 +94,8 @@ export default function RepQuestsPage() {
       }
       const json = await res.json();
       if (json.data) setQuests(json.data);
+      const settingsJson = settingsRes.ok ? await settingsRes.json() : { data: null };
+      if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
     } catch {
       setError("Failed to load quests — check your connection");
     }
@@ -245,6 +251,7 @@ export default function RepQuestsPage() {
                       expandedQuestId={expandedQuestId}
                       onToggleSubmissions={toggleSubmissions}
                       loadingSubs={loadingSubs}
+                      currencyName={currencyName}
                     />
                   ))}
                 </div>
@@ -261,6 +268,7 @@ export default function RepQuestsPage() {
           onClose={() => { setDetailQuest(null); }}
           onSubmit={(q) => setSubmitQuest(q)}
           onExpandImage={() => setMediaFullscreen(true)}
+          currencyName={currencyName}
         />,
         document.getElementById("rep-portal-root") || document.body
       )}
@@ -296,6 +304,7 @@ export default function RepQuestsPage() {
           quest={submitQuest}
           onClose={() => setSubmitQuest(null)}
           onSubmitted={handleSubmitComplete}
+          currencyName={currencyName}
         />,
         document.getElementById("rep-portal-root") || document.body
       )}

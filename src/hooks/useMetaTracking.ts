@@ -292,8 +292,32 @@ interface CAPIUserData {
 }
 
 /**
+ * Wait for the _fbp cookie to exist (set by fbevents.js after it loads).
+ * Polls every 50ms, max wait 3 seconds — then sends without _fbp.
+ *
+ * This is more reliable than tracking script-load state because the HTML
+ * inline snippet creates `window.fbq` as a stub before fbevents.js actually
+ * loads.  Checking `_pixelScriptReady` would resolve immediately (stub exists)
+ * but the cookie wouldn't be set yet.  Polling the cookie directly avoids that.
+ */
+function waitForFbpCookie(): Promise<void> {
+  if (getCookie("_fbp")) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const start = Date.now();
+    const check = () => {
+      if (getCookie("_fbp") || Date.now() - start > 3000) {
+        resolve();
+      } else {
+        setTimeout(check, 50);
+      }
+    };
+    check();
+  });
+}
+
+/**
  * Send a CAPI event via our server route (fire-and-forget).
- * Waits for the pixel script to load so _fbp is available for matching.
+ * Waits for the _fbp cookie to be set by fbevents.js for matching.
  * Max wait: 3 seconds — after that, sends without _fbp rather than blocking.
  */
 function sendCAPI(
@@ -304,17 +328,8 @@ function sendCAPI(
 ) {
   const eventSourceUrl = window.location.href;
 
-  // Wait for the pixel script to load (so _fbp cookie exists), but don't
-  // wait forever — cap at 3 seconds, then send without _fbp.
-  const waitForFbp = _pixelScriptReady
-    ? Promise.resolve()
-    : Promise.race([
-        _pixelReadyPromise,
-        new Promise<void>((r) => setTimeout(r, 3000)),
-      ]);
-
-  waitForFbp.then(() => {
-    // Layer 1: Browser cookies (_fbp, _fbc) — now _fbp should be available
+  waitForFbpCookie().then(() => {
+    // Layer 1: Browser cookies (_fbp, _fbc)
     const browserUserData: CAPIUserData = {
       fbp: getCookie("_fbp"),
       fbc: getCookie("_fbc"),

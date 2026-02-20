@@ -22,6 +22,7 @@ interface Quest {
   reference_url?: string | null;
   uses_sound?: boolean;
   points_reward: number;
+  currency_reward: number;
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };
   max_completions?: number;
@@ -117,12 +118,17 @@ export function QuestDetailSheet({
 
           {/* Quest info */}
           <div className="px-5 pt-4 pb-3 space-y-3">
-            {/* XP badge — prominent, centered */}
-            <div className="flex items-center justify-center">
+            {/* Reward badges — XP + currency, centered */}
+            <div className="flex items-center justify-center gap-3">
               <span className={cn("flex items-center gap-1 text-base font-extrabold", accent.color)}>
                 <Zap size={16} />
                 +{quest.points_reward} XP
               </span>
+              {quest.currency_reward > 0 && (
+                <span className="flex items-center gap-1 text-base font-extrabold text-amber-400">
+                  +{quest.currency_reward}
+                </span>
+              )}
             </div>
 
             {/* Quest type + title */}

@@ -49,15 +49,17 @@ export async function attributeSaleToRep(params: {
 
     if (!rep || rep.status !== "active") return;
 
-    // Get program settings for points calculation
+    // Get program settings for points + currency calculation
     const settings = await getRepSettings(orgId);
     const pointsEarned = settings.points_per_sale * params.ticketCount;
+    const currencyEarned = settings.currency_per_sale * params.ticketCount;
 
-    // 1. Award points
+    // 1. Award XP + currency
     await awardPoints({
       repId,
       orgId,
       points: pointsEarned,
+      currency: currencyEarned,
       sourceType: "sale",
       sourceId: params.orderId,
       description: `Sale: ${params.ticketCount} ticket${params.ticketCount > 1 ? "s" : ""} (${formatCurrency(params.orderTotal)})`,
@@ -106,7 +108,7 @@ export async function attributeSaleToRep(params: {
     await supabase
       .from(TABLES.ORDERS)
       .update({
-        metadata: { ...currentMeta, rep_id: repId, rep_points_awarded: pointsEarned },
+        metadata: { ...currentMeta, rep_id: repId, rep_points_awarded: pointsEarned, rep_currency_awarded: currencyEarned },
       })
       .eq("id", params.orderId)
       .eq("org_id", orgId);
@@ -123,13 +125,13 @@ export async function attributeSaleToRep(params: {
       orgId,
       type: "sale_attributed",
       title: "Sale incoming!",
-      body: `${params.ticketCount} ticket${params.ticketCount > 1 ? "s" : ""} sold — +${pointsEarned} pts`,
+      body: `${params.ticketCount} ticket${params.ticketCount > 1 ? "s" : ""} sold — +${pointsEarned} XP +${currencyEarned} ${settings.currency_name}`,
       link: "/rep/sales",
       metadata: { order_id: params.orderId, ticket_count: params.ticketCount, order_total: params.orderTotal },
     }).catch(() => {});
 
     console.log(
-      `[rep-attribution] Sale attributed to rep ${repId}: ${params.ticketCount} tickets, ${pointsEarned} points`
+      `[rep-attribution] Sale attributed to rep ${repId}: ${params.ticketCount} tickets, ${pointsEarned} XP, ${currencyEarned} ${settings.currency_name}`
     );
   } catch (err) {
     // Never throw — attribution failure must not block the order flow

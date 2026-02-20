@@ -30,10 +30,12 @@ interface DashboardData {
     display_name?: string;
     photo_url?: string;
     points_balance: number;
+    currency_balance: number;
     total_sales: number;
     total_revenue: number;
     level: number;
   };
+  currency_name: string;
   level_name: string;
   next_level_points: number | null;
   current_level_points: number;
@@ -43,6 +45,7 @@ interface DashboardData {
   active_events: { id: string; name: string; sales_count: number; revenue: number; cover_image?: string }[];
   recent_sales: { id: string; order_number: string; total: number; created_at: string; points_earned?: number }[];
   discount_codes: { code: string }[];
+  settings?: { points_per_sale: number; currency_per_sale: number };
 }
 
 const LEVEL_UP_STORAGE_KEY = "rep_last_level";
@@ -63,9 +66,10 @@ export default function RepDashboardPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [dashRes, discountRes] = await Promise.all([
+        const [dashRes, discountRes, settingsRes] = await Promise.all([
           fetch("/api/rep-portal/dashboard"),
           fetch("/api/rep-portal/discount"),
+          fetch("/api/rep-portal/settings"),
         ]);
         if (!dashRes.ok) {
           const errJson = await dashRes.json().catch(() => null);
@@ -76,11 +80,13 @@ export default function RepDashboardPage() {
         }
         const dashJson = await dashRes.json();
         const discountJson = discountRes.ok ? await discountRes.json() : { data: [] };
+        const settingsJson = settingsRes.ok ? await settingsRes.json() : { data: null };
 
         if (dashJson.data) {
           const d = {
             ...dashJson.data,
             discount_codes: discountJson.data || [],
+            settings: settingsJson.data || undefined,
           };
           setData(d);
 
@@ -276,6 +282,13 @@ export default function RepDashboardPage() {
                   : "Max level!"}
               </p>
             </div>
+            {/* Currency balance */}
+            <div className="flex items-center justify-center gap-1.5 mt-2">
+              <span className="text-[11px] font-bold font-mono text-amber-400 tabular-nums">
+                {rep.currency_balance ?? 0} {data.currency_name}
+              </span>
+              <span className="text-[10px] text-muted-foreground">available</span>
+            </div>
           </div>
         </div>
       </div>
@@ -305,7 +318,9 @@ export default function RepDashboardPage() {
               {data.discount_codes[0].code}
             </p>
             <p className="text-xs text-muted-foreground mb-4">
-              Share this code — every sale earns you <span className="text-primary font-bold">+10 XP</span>
+              Share this code — every sale earns you{" "}
+              <span className="text-primary font-bold">+{data.settings?.points_per_sale ?? 10} XP</span>{" "}
+              <span className="text-amber-400 font-bold">+{data.settings?.currency_per_sale ?? 10} {data.currency_name}</span>
             </p>
             <div className="flex gap-2">
               <Button
@@ -434,7 +449,7 @@ export default function RepDashboardPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-primary">
-                    <Zap size={9} />+10
+                    <Zap size={9} />+{data.settings?.points_per_sale ?? 10}
                   </span>
                   <p className="text-sm font-bold font-mono text-success tabular-nums">
                     £{Number(sale.total).toFixed(2)}

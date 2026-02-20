@@ -56,20 +56,22 @@ export async function awardPoints(params: {
   repId: string;
   orgId?: string;
   points: number;
+  currency?: number;
   sourceType: PointsSourceType;
   sourceId?: string;
   description: string;
   createdBy?: string;
-}): Promise<number | null> {
+}): Promise<{ newBalance: number; newCurrencyBalance: number } | null> {
   try {
     const supabase = await getSupabaseAdmin();
     if (!supabase) return null;
     const orgId = params.orgId || ORG_ID;
+    const currencyAmount = params.currency ?? 0;
 
-    // Get current balance
+    // Get current balances
     const { data: rep } = await supabase
       .from(TABLES.REPS)
-      .select("points_balance")
+      .select("points_balance, currency_balance")
       .eq("id", params.repId)
       .eq("org_id", orgId)
       .single();
@@ -77,6 +79,7 @@ export async function awardPoints(params: {
     if (!rep) return null;
 
     const newBalance = rep.points_balance + params.points;
+    const newCurrencyBalance = rep.currency_balance + currencyAmount;
 
     // Insert ledger entry — bail if this fails to prevent balance/ledger drift
     const { error: ledgerError } = await supabase.from(TABLES.REP_POINTS_LOG).insert({
@@ -84,6 +87,8 @@ export async function awardPoints(params: {
       rep_id: params.repId,
       points: params.points,
       balance_after: newBalance,
+      currency_amount: currencyAmount || 0,
+      currency_balance_after: newCurrencyBalance,
       source_type: params.sourceType,
       source_id: params.sourceId || null,
       description: params.description,
@@ -95,7 +100,7 @@ export async function awardPoints(params: {
       return null;
     }
 
-    // Update denormalized balance + recalculate level
+    // Update denormalized balances + recalculate level
     const settings = await getRepSettings(orgId);
 
     // Fetch current level to detect level-up
@@ -113,6 +118,7 @@ export async function awardPoints(params: {
       .from(TABLES.REPS)
       .update({
         points_balance: newBalance,
+        currency_balance: newCurrencyBalance,
         level: newLevel,
         updated_at: new Date().toISOString(),
       })
@@ -151,7 +157,7 @@ export async function awardPoints(params: {
       }).catch(() => {});
     }
 
-    return newBalance;
+    return { newBalance, newCurrencyBalance };
   } catch (err) {
     console.error("[rep-points] Failed to award points:", err);
     return null;
@@ -159,21 +165,43 @@ export async function awardPoints(params: {
 }
 
 /**
- * Deduct points from a rep (for reward claims or revocations).
- * Returns the new balance or null on failure.
+ * Deduct XP from a rep (for refunds/revocations where both XP and currency should decrease).
+ * Returns the result or null on failure.
  */
 export async function deductPoints(params: {
   repId: string;
   orgId?: string;
   points: number;
+  currency?: number;
   sourceType: PointsSourceType;
   sourceId?: string;
   description: string;
   createdBy?: string;
-}): Promise<number | null> {
+}): Promise<{ newBalance: number; newCurrencyBalance: number } | null> {
   return awardPoints({
     ...params,
     points: -Math.abs(params.points),
+    currency: params.currency != null ? -Math.abs(params.currency) : undefined,
+  });
+}
+
+/**
+ * Deduct currency only from a rep (for shop purchases).
+ * XP is untouched. Returns the result or null on failure.
+ */
+export async function deductCurrency(params: {
+  repId: string;
+  orgId?: string;
+  amount: number;
+  sourceType: PointsSourceType;
+  sourceId?: string;
+  description: string;
+  createdBy?: string;
+}): Promise<{ newBalance: number; newCurrencyBalance: number } | null> {
+  return awardPoints({
+    ...params,
+    points: 0,
+    currency: -Math.abs(params.amount),
   });
 }
 

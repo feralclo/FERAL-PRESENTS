@@ -38,7 +38,7 @@ export async function GET() {
       // Full rep row (include name/photo for dashboard display)
       supabase
         .from(TABLES.REPS)
-        .select("first_name, display_name, photo_url, points_balance, total_sales, total_revenue, level")
+        .select("first_name, display_name, photo_url, points_balance, currency_balance, total_sales, total_revenue, level")
         .eq("id", repId)
         .eq("org_id", ORG_ID)
         .single(),
@@ -132,10 +132,12 @@ export async function GET() {
           display_name: rep.display_name,
           photo_url: rep.photo_url,
           points_balance: rep.points_balance,
+          currency_balance: rep.currency_balance ?? 0,
           total_sales: rep.total_sales,
           total_revenue: rep.total_revenue,
           level: rep.level,
         },
+        currency_name: settings.currency_name || "FRL",
         level_name: levelName,
         next_level_points: nextLevelPoints,
         current_level_points: currentLevelPoints,

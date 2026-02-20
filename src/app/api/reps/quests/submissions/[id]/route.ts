@@ -45,7 +45,7 @@ export async function PUT(
     // Fetch the submission with quest and rep info
     const { data: submission, error: fetchErr } = await supabase
       .from(TABLES.REP_QUEST_SUBMISSIONS)
-      .select("*, quest:rep_quests(id, title, points_reward, total_completed), rep:reps(id, first_name, last_name, display_name, email, photo_url)")
+      .select("*, quest:rep_quests(id, title, points_reward, currency_reward, total_completed), rep:reps(id, first_name, last_name, display_name, email, photo_url)")
       .eq("id", id)
       .eq("org_id", ORG_ID)
       .single();
@@ -93,15 +93,17 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Award points and increment counter only after successful status update
+    // Award XP + currency and increment counter only after successful status update
     if (status === "approved") {
       const pointsReward = submission.quest?.points_reward || 0;
+      const currencyReward = submission.quest?.currency_reward || 0;
 
-      if (pointsReward > 0) {
+      if (pointsReward > 0 || currencyReward > 0) {
         await awardPoints({
           repId: submission.rep_id,
           orgId: ORG_ID,
           points: pointsReward,
+          currency: currencyReward,
           sourceType: "quest",
           sourceId: submission.quest_id,
           description: `Quest completed: ${submission.quest?.title || "Unknown quest"}`,
@@ -127,14 +129,17 @@ export async function PUT(
         .eq("org_id", ORG_ID);
 
       // In-app notification for quest approval
+      const notifParts = [];
+      if (pointsReward > 0) notifParts.push(`+${pointsReward} XP`);
+      if (currencyReward > 0) notifParts.push(`+${currencyReward} currency`);
       createNotification({
         repId: submission.rep_id,
         orgId: ORG_ID,
         type: "quest_approved",
         title: "Quest Approved!",
-        body: `${submission.quest?.title || "Quest"} — +${pointsReward} pts`,
+        body: `${submission.quest?.title || "Quest"} — ${notifParts.join(" ")}`,
         link: "/rep/quests",
-        metadata: { quest_id: submission.quest_id, submission_id: id, points_awarded: pointsReward },
+        metadata: { quest_id: submission.quest_id, submission_id: id, points_awarded: pointsReward, currency_awarded: currencyReward },
       }).catch(() => {});
     }
 

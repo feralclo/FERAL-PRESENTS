@@ -101,6 +101,7 @@ export function QuestsTab() {
   const [notifyReps, setNotifyReps] = useState(true);
   const [referenceUrl, setReferenceUrl] = useState("");
   const [usesSound, setUsesSound] = useState(false);
+  const [currencyReward, setCurrencyReward] = useState("");
 
   // Submissions review
   const [showSubmissions, setShowSubmissions] = useState<string | null>(null);
@@ -138,7 +139,7 @@ export function QuestsTab() {
     setEditId(null); setTitle(""); setDescription(""); setInstructions("");
     setQuestType("social_post"); setPlatform("any"); setImageUrl("");
     setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
-    setReferenceUrl(""); setUsesSound(false);
+    setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
     setShowDialog(true);
   };
 
@@ -151,6 +152,7 @@ export function QuestsTab() {
     setMaxCompletions(q.max_completions != null ? String(q.max_completions) : "");
     setExpiresAt(q.expires_at ? q.expires_at.slice(0, 16) : ""); setNotifyReps(q.notify_reps);
     setReferenceUrl(q.reference_url || ""); setUsesSound(q.uses_sound ?? false);
+    setCurrencyReward(String(q.currency_reward || 0));
     setShowDialog(true);
   };
 
@@ -162,6 +164,7 @@ export function QuestsTab() {
       instructions: instructions.trim() || null, quest_type: questType, platform,
       image_url: imageUrl.trim() || null,
       points_reward: Number(pointsReward) || 0,
+      currency_reward: Number(currencyReward) || 0,
       max_completions: maxCompletions ? Number(maxCompletions) : null,
       expires_at: expiresAt || null, notify_reps: notifyReps,
       reference_url: referenceUrl.trim() || null, uses_sound: usesSound,
@@ -306,7 +309,7 @@ export function QuestsTab() {
                 <Label>How to Complete</Label>
                 <Textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Step-by-step instructions shown to reps in the quest detail view" rows={3} />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Type</Label>
                   <Select value={questType} onValueChange={(v) => setQuestType(v as QuestType)}>
@@ -330,9 +333,15 @@ export function QuestsTab() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Points Reward</Label>
+                  <Label>XP Reward</Label>
                   <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Currency Reward</Label>
+                  <Input type="number" value={currencyReward} onChange={(e) => setCurrencyReward(e.target.value)} min="0" />
                 </div>
               </div>
 

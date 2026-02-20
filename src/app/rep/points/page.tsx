@@ -21,6 +21,8 @@ interface PointsEntry {
   id: string;
   points: number;
   balance_after: number;
+  currency_amount?: number;
+  currency_balance_after?: number;
   source_type: "sale" | "quest" | "manual" | "reward_spend" | "revocation" | "refund";
   source_id?: string;
   description?: string;
@@ -77,13 +79,15 @@ export default function RepPointsPage() {
   const [error, setError] = useState("");
   const [loadKey, setLoadKey] = useState(0);
   const [myPoints, setMyPoints] = useState(0);
+  const [currencyName, setCurrencyName] = useState("FRL");
 
   useEffect(() => {
     (async () => {
       try {
-        const [pointsRes, meRes] = await Promise.all([
+        const [pointsRes, meRes, settingsRes] = await Promise.all([
           fetch("/api/rep-portal/points?limit=100"),
           fetch("/api/rep-portal/me"),
+          fetch("/api/rep-portal/settings"),
         ]);
         if (!pointsRes.ok) {
           const errJson = await pointsRes.json().catch(() => null);
@@ -93,9 +97,11 @@ export default function RepPointsPage() {
         }
         const pointsJson = await pointsRes.json();
         const meJson = meRes.ok ? await meRes.json() : { data: null };
+        const settingsJson = settingsRes.ok ? await settingsRes.json() : { data: null };
 
         if (pointsJson.data) setEntries(pointsJson.data);
         if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
+        if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
       } catch { setError("Failed to load points — check your connection"); }
       setLoading(false);
     })();
@@ -145,8 +151,8 @@ export default function RepPointsPage() {
     <div className="max-w-2xl mx-auto px-5 py-6 md:py-8 space-y-6">
       {/* Header with hero gauge */}
       <div className="text-center rep-slide-up">
-        <h1 className="text-xl font-bold text-foreground mb-1">Points</h1>
-        <p className="text-sm text-muted-foreground mb-4">Your points history</p>
+        <h1 className="text-xl font-bold text-foreground mb-1">XP & {currencyName}</h1>
+        <p className="text-sm text-muted-foreground mb-4">Your activity history</p>
         <RadialGauge
           value={myPoints}
           max={Math.max(totalEarned, myPoints, 100)}
@@ -239,15 +245,24 @@ export default function RepPointsPage() {
                     </div>
 
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <span className={cn(
-                        "text-sm font-bold font-mono tabular-nums",
-                        isPositive ? "text-success" : "text-destructive"
-                      )}>
-                        {isPositive ? "+" : ""}{entry.points}
-                      </span>
-                      <span className="text-[10px] font-mono text-muted-foreground/50 tabular-nums w-12 text-right">
-                        {entry.balance_after}
-                      </span>
+                      <div className="text-right">
+                        {entry.points !== 0 && (
+                          <span className={cn(
+                            "text-sm font-bold font-mono tabular-nums block",
+                            isPositive ? "text-success" : "text-destructive"
+                          )}>
+                            {isPositive ? "+" : ""}{entry.points} XP
+                          </span>
+                        )}
+                        {(entry.currency_amount != null && entry.currency_amount !== 0) && (
+                          <span className={cn(
+                            "text-[11px] font-bold font-mono tabular-nums block",
+                            entry.currency_amount > 0 ? "text-amber-400" : "text-destructive"
+                          )}>
+                            {entry.currency_amount > 0 ? "+" : ""}{entry.currency_amount} {currencyName}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

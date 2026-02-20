@@ -93,10 +93,10 @@ export async function POST(
         "Already claimed": { status: 400, message: "You have already claimed this reward" },
       };
 
-      if (result.error === "Insufficient points") {
+      if (result.error === "Insufficient balance") {
         return NextResponse.json(
           {
-            error: `Not enough points. You have ${result.balance} points but this reward costs ${pointsCost} points.`,
+            error: `Not enough balance. You have ${result.balance} but this reward costs ${pointsCost}.`,
           },
           { status: 400 }
         );

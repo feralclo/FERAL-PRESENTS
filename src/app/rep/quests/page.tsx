@@ -23,6 +23,7 @@ interface Quest {
   reference_url?: string | null;
   uses_sound?: boolean;
   points_reward: number;
+  currency_reward: number;
   expires_at?: string;
   my_submissions: { total: number; approved: number; pending: number; rejected: number };
   max_completions?: number;

@@ -129,6 +129,24 @@ export function SettingsTab() {
         </Card>
 
         <Card>
+          <CardHeader><CardTitle className="text-sm">Currency</CardTitle></CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label>Currency Name</Label>
+              <Input value={settings.currency_name} onChange={(e) => update("currency_name", e.target.value)} placeholder="FRL" />
+              <p className="text-[11px] text-muted-foreground">The spendable currency name shown to reps (e.g. &quot;FRL&quot;)</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Currency per Sale (per ticket)</Label>
+              <div className="flex items-center gap-3">
+                <Slider value={[settings.currency_per_sale]} onValueChange={([v]) => update("currency_per_sale", v)} min={1} max={100} step={1} className="flex-1" />
+                <span className="font-mono text-sm font-bold text-amber-400 w-10 text-right tabular-nums">{settings.currency_per_sale}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader><CardTitle className="text-sm">Discount Code Defaults</CardTitle></CardHeader>
           <CardContent className="space-y-5">
             <div className="grid grid-cols-2 gap-4">

@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
       notify_reps = false,
       reference_url,
       uses_sound = false,
+      currency_reward,
     } = body;
 
     if (!title || !quest_type || points_reward == null) {
@@ -150,6 +151,7 @@ export async function POST(request: NextRequest) {
         image_url: image_url || null,
         video_url: video_url || null,
         points_reward: Number(points_reward),
+        currency_reward: Number(currency_reward) || 0,
         event_id: event_id || null,
         max_completions: max_completions != null ? Number(max_completions) : null,
         max_total: max_total != null ? Number(max_total) : null,

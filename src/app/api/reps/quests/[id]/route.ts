@@ -83,6 +83,7 @@ export async function PUT(
       "notify_reps",
       "reference_url",
       "uses_sound",
+      "currency_reward",
     ];
 
     const updates: Record<string, unknown> = {};

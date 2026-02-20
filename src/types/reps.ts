@@ -19,6 +19,7 @@ export interface Rep {
   instagram?: string | null;
   tiktok?: string | null;
   points_balance: number;
+  currency_balance: number;
   total_sales: number;
   total_revenue: number;
   level: number;
@@ -105,6 +106,8 @@ export interface RepPointsLog {
   rep_id: string;
   points: number;
   balance_after: number;
+  currency_amount?: number;
+  currency_balance_after?: number;
   source_type: PointsSourceType;
   source_id?: string | null;
   description: string;
@@ -132,6 +135,7 @@ export interface RepQuest {
   image_url?: string | null;
   video_url?: string | null;
   points_reward: number;
+  currency_reward: number;
   event_id?: string | null;
   max_completions?: number | null;
   max_total?: number | null;
@@ -220,6 +224,10 @@ export interface RepProgramSettings {
   email_from_name: string;
   /** Email sender address for rep emails */
   email_from_address: string;
+  /** Currency awarded per sale (per ticket sold) */
+  currency_per_sale: number;
+  /** Tenant-specific currency name (e.g., "FRL") */
+  currency_name: string;
 }
 
 export const DEFAULT_REP_PROGRAM_SETTINGS: RepProgramSettings = {
@@ -246,11 +254,15 @@ export const DEFAULT_REP_PROGRAM_SETTINGS: RepProgramSettings = {
   welcome_message: null,
   email_from_name: "Entry Reps",
   email_from_address: "reps@feralpresents.com",
+  currency_per_sale: 10,
+  currency_name: "FRL",
 };
 
 // ─── Dashboard Stats ─────────────────────────────────────────────────────────
 export interface RepDashboardStats {
   points_balance: number;
+  currency_balance: number;
+  currency_name: string;
   total_sales: number;
   total_revenue: number;
   level: number;

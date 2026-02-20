@@ -109,7 +109,8 @@ export default function RepRewardsPage() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [myPoints, setMyPoints] = useState(0);
+  const [myBalance, setMyBalance] = useState(0);
+  const [currencyName, setCurrencyName] = useState("FRL");
   const [tab, setTab] = useState<TabId>("shop");
   const hasAutoSelectedTab = useRef(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -119,10 +120,11 @@ export default function RepRewardsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [rewardsRes, meRes, claimsRes] = await Promise.all([
+      const [rewardsRes, meRes, claimsRes, settingsRes] = await Promise.all([
         fetch("/api/rep-portal/rewards"),
         fetch("/api/rep-portal/me"),
         fetch("/api/rep-portal/rewards/claims"),
+        fetch("/api/rep-portal/settings"),
       ]);
       if (!rewardsRes.ok) {
         const errJson = await rewardsRes.json().catch(() => null);
@@ -133,10 +135,12 @@ export default function RepRewardsPage() {
       const rewardsJson = await rewardsRes.json();
       const meJson = meRes.ok ? await meRes.json() : { data: null };
       const claimsJson = claimsRes.ok ? await claimsRes.json() : { data: [] };
+      const settingsJson = settingsRes.ok ? await settingsRes.json() : { data: null };
 
       if (rewardsJson.data) setRewards(rewardsJson.data);
-      if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
+      if (meJson.data) setMyBalance(meJson.data.currency_balance ?? meJson.data.points_balance ?? 0);
       if (claimsJson.data) setClaims(claimsJson.data);
+      if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
     } catch {
       setError("Failed to load rewards — check your connection");
     }
@@ -173,7 +177,7 @@ export default function RepRewardsPage() {
         }
         if (meRes.ok) {
           const meJson = await meRes.json();
-          if (meJson.data) setMyPoints(meJson.data.points_balance || 0);
+          if (meJson.data) setMyBalance(meJson.data.currency_balance ?? meJson.data.points_balance ?? 0);
         }
         if (claimsRes.ok) {
           const claimsJson = await claimsRes.json();
@@ -252,12 +256,12 @@ export default function RepRewardsPage() {
           <h1 className="text-xl font-bold text-foreground">Rewards</h1>
           <p className="text-sm text-muted-foreground">Earn, spend, collect</p>
         </div>
-        <div className="rounded-xl rep-surface-2 border-primary/15 px-5 py-3">
+        <div className="rounded-xl rep-surface-2 border-amber-500/15 px-5 py-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <Zap size={12} className="text-primary" />
-            <p className="text-[10px] uppercase tracking-[2px] text-primary font-bold">Balance</p>
+            <Zap size={12} className="text-amber-400" />
+            <p className="text-[10px] uppercase tracking-[2px] text-amber-400 font-bold">{currencyName}</p>
           </div>
-          <p className="text-xl font-bold font-mono text-primary tabular-nums">{myPoints}</p>
+          <p className="text-xl font-bold font-mono text-amber-400 tabular-nums">{myBalance}</p>
         </div>
       </div>
 
@@ -385,7 +389,7 @@ export default function RepRewardsPage() {
             <div className="grid grid-cols-2 gap-3">
               {shopRewards.map((reward) => {
                 const claimed = hasClaimed(reward);
-                const canAfford = myPoints >= (reward.points_cost || 0);
+                const canAfford = myBalance >= (reward.points_cost || 0);
                 const soldOut = reward.total_available != null && reward.total_claimed >= reward.total_available;
                 const remaining = reward.total_available != null ? reward.total_available - reward.total_claimed : null;
 
@@ -418,11 +422,11 @@ export default function RepRewardsPage() {
                         <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{reward.description}</p>
                       )}
                       <div className="flex items-baseline gap-1 mb-3">
-                        <Zap size={10} className="text-primary" />
-                        <span className="text-lg font-bold font-mono text-primary tabular-nums">
+                        <Zap size={10} className="text-amber-400" />
+                        <span className="text-lg font-bold font-mono text-amber-400 tabular-nums">
                           {reward.points_cost}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">pts</span>
+                        <span className="text-[10px] text-muted-foreground">{currencyName}</span>
                       </div>
 
                       {claimed ? (
@@ -443,10 +447,10 @@ export default function RepRewardsPage() {
                           ) : canAfford ? (
                             <>
                               <ShoppingCart size={12} />
-                              Buy with {reward.points_cost} pts
+                              Buy with {reward.points_cost} {currencyName}
                             </>
                           ) : (
-                            `Need ${(reward.points_cost || 0) - myPoints} more`
+                            `Need ${(reward.points_cost || 0) - myBalance} more`
                           )}
                         </Button>
                       )}
@@ -504,7 +508,7 @@ export default function RepRewardsPage() {
                           <div className="text-right shrink-0">
                             {claim.points_spent > 0 && (
                               <p className="text-xs font-mono text-muted-foreground tabular-nums">
-                                -{claim.points_spent} pts
+                                -{claim.points_spent} {currencyName}
                               </p>
                             )}
                             <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -587,19 +591,19 @@ export default function RepRewardsPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Cost</span>
                 <div className="flex items-center gap-1">
-                  <Zap size={10} className="text-primary" />
-                  <span className="text-sm font-bold font-mono text-primary">{confirmReward.points_cost}</span>
-                  <span className="text-[10px] text-muted-foreground">pts</span>
+                  <Zap size={10} className="text-amber-400" />
+                  <span className="text-sm font-bold font-mono text-amber-400">{confirmReward.points_cost}</span>
+                  <span className="text-[10px] text-muted-foreground">{currencyName}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs text-muted-foreground">Your balance</span>
-                <span className="text-sm font-mono text-foreground tabular-nums">{myPoints} pts</span>
+                <span className="text-sm font-mono text-foreground tabular-nums">{myBalance} {currencyName}</span>
               </div>
               <div className="border-t border-border mt-2 pt-2 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">After purchase</span>
                 <span className="text-sm font-mono text-foreground tabular-nums">
-                  {myPoints - (confirmReward.points_cost || 0)} pts
+                  {myBalance - (confirmReward.points_cost || 0)} {currencyName}
                 </span>
               </div>
             </div>
@@ -684,7 +688,7 @@ export default function RepRewardsPage() {
               Reward Claimed!
             </h3>
             <p className="text-sm text-muted-foreground mb-1">{successReward.name}</p>
-            <p className="text-xs text-primary font-mono">-{successReward.points_cost} pts</p>
+            <p className="text-xs text-amber-400 font-mono">-{successReward.points_cost} {currencyName}</p>
             <button
               onClick={() => setSuccessReward(null)}
               className="mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"

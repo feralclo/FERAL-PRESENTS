@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       doors_time,
       stripe_account_id,
       platform_fee_percent,
+      external_link,
       ticket_types,
     } = body;
 
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
         doors_time,
         stripe_account_id,
         platform_fee_percent,
+        external_link,
       })
       .select()
       .single();

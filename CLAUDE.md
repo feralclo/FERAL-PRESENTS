@@ -54,9 +54,9 @@ src/
 │   │                          # MidnightBottomBar, MidnightEventInfo, MidnightLineup,
 │   │                          # MidnightCartSummary, MidnightTierProgression, MidnightFooter,
 │   │                          # MidnightSocialProof, MidnightFloatingHearts
-│   ├── event/                 # Shared: DiscountPopup, EngagementTracker, ThemeEditorBridge,
-│   │                          # KompassEventPage (legacy). Old BEM components (DynamicEventPage,
-│   │                          # EventHero, TeeModal, etc.) retained but no longer routed
+│   ├── event/                 # Shared: DiscountPopup, EngagementTracker, ThemeEditorBridge.
+│   │                          # Old BEM components (DynamicEventPage, EventHero, TeeModal,
+│   │                          # KompassEventPage) retained but no longer routed
 │   ├── checkout/              # NativeCheckout, StripePaymentForm, ExpressCheckout,
 │   │                          # OrderConfirmation, OrderSummary, CheckoutTimer, LoadingScreen
 │   ├── rep/                   # Rep portal shared: RadialGauge, EmptyState, HudSectionHeader,
@@ -122,13 +122,14 @@ All events use Stripe for payment processing:
 - Apple Pay / Google Pay via Stripe ExpressCheckoutElement
 - Discount codes applied at checkout (validated server-side via `/api/discounts/validate`)
 
-**One legacy exception**: The slug `kompass-klub-7-march` routes to a hardcoded `KompassEventPage` using external ticketing (Paylogic). All other slugs use the DB-driven flow.
+**External ticketing**: Events with `payment_method: "external"` route to `MidnightExternalPage` — a simplified Midnight page that shows the hero, about, lineup, and details but replaces the ticket widget with a single CTA linking to `event.external_link`. No cart, checkout, or payment processing.
 
 ### Theme-Based Routing
 Event pages route to different component trees based on the **active template**:
 
 ```
 event/[slug]/page.tsx
+  → payment_method === "external" → MidnightExternalPage (no checkout)
   → getActiveTemplate() reads from site_settings ({org_id}_themes)
   → template === "aura"    → AuraEventPage / AuraCheckout
   → template === "midnight" → MidnightEventPage / NativeCheckout (default)
@@ -255,7 +256,7 @@ EventPage [Server Component, force-dynamic]
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `site_settings` | Key-value config store (JSONB) | key, data, updated_at |
-| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method, currency, stripe_account_id, platform_fee_percent, about_text, lineup, details_text, tag_line, doors_time, cover_image, hero_image |
+| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method (test/stripe/external), currency, stripe_account_id, platform_fee_percent, external_link, about_text, lineup, details_text, tag_line, doors_time, cover_image, hero_image |
 | `ticket_types` | Ticket pricing/inventory | event_id, name, price, capacity, sold, tier, includes_merch, merch_sizes[], merch_name, merch_description, merch_images, product_id, status |
 | `products` | Standalone merch catalog | name, type, sizes[], price, images, status, sku |
 | `orders` | Purchase records | order_number (FERAL-00001), event_id, customer_id, status, subtotal, fees, total, payment_ref |

@@ -1,6 +1,6 @@
 export type EventStatus = "draft" | "live" | "past" | "cancelled" | "archived";
 export type EventVisibility = "public" | "private" | "unlisted";
-export type PaymentMethod = "test" | "stripe";
+export type PaymentMethod = "test" | "stripe" | "external";
 
 export interface Event {
   id: string;
@@ -34,6 +34,8 @@ export interface Event {
   stripe_account_id?: string;
   /** Platform fee percentage override for this event (default: 5%) */
   platform_fee_percent?: number;
+  /** External ticket link (used when payment_method is "external") */
+  external_link?: string;
   created_at: string;
   updated_at: string;
   /** When true, lineup is displayed alphabetically (A-Z) and manual reordering is locked */

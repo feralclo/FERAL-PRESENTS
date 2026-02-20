@@ -102,6 +102,12 @@ export default async function CheckoutRoute({
     );
   }
 
+  // External ticketing events have no checkout — redirect to external link
+  if (event.payment_method === "external") {
+    const { redirect } = await import("next/navigation");
+    redirect(event.external_link || `/event/${slug}`);
+  }
+
   const activeTemplate = await getActiveTemplate();
   const template = editorTemplate || activeTemplate;
 

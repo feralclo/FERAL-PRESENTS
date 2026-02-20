@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Compass, Zap } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -8,10 +8,6 @@ import { EmptyState, RepPageError } from "@/components/rep";
 import { QuestCard } from "@/components/rep/QuestCard";
 import { QuestDetailSheet } from "@/components/rep/QuestDetailSheet";
 import { QuestSubmitSheet } from "@/components/rep/QuestSubmitSheet";
-import { FullscreenVideo } from "@/components/rep/FullscreenVideo";
-import { MuxVideoPreview } from "@/components/rep/MuxVideoPreview";
-import { isMuxPlaybackId } from "@/lib/mux";
-import { getQuestAccent } from "@/lib/rep-quest-styles";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -56,11 +52,8 @@ export default function RepQuestsPage() {
   const [detailQuest, setDetailQuest] = useState<Quest | null>(null);
   const [submitQuest, setSubmitQuest] = useState<Quest | null>(null);
 
-  // Fullscreen media
+  // Fullscreen image
   const [mediaFullscreen, setMediaFullscreen] = useState(false);
-  const [videoFullscreen, setVideoFullscreen] = useState(false);
-  const [fullscreenMuted, setFullscreenMuted] = useState(true);
-  const fullscreenVideoRef = useRef<HTMLDivElement>(null);
 
   // Submissions expansion
   const [expandedQuestId, setExpandedQuestId] = useState<string | null>(null);
@@ -69,14 +62,13 @@ export default function RepQuestsPage() {
 
   // Modal stack: Escape key + body scroll lock
   useEffect(() => {
-    if (!detailQuest && !mediaFullscreen && !videoFullscreen && !submitQuest) return;
+    if (!detailQuest && !mediaFullscreen && !submitQuest) return;
     document.body.style.overflow = "hidden";
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         if (submitQuest) { setSubmitQuest(null); return; }
-        if (videoFullscreen) { setVideoFullscreen(false); setFullscreenMuted(true); return; }
         if (mediaFullscreen) { setMediaFullscreen(false); return; }
-        if (detailQuest) { setDetailQuest(null); setVideoFullscreen(false); setFullscreenMuted(true); }
+        if (detailQuest) { setDetailQuest(null); }
       }
     }
     window.addEventListener("keydown", onKey);
@@ -84,7 +76,7 @@ export default function RepQuestsPage() {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
-  }, [detailQuest, mediaFullscreen, videoFullscreen, submitQuest]);
+  }, [detailQuest, mediaFullscreen, submitQuest]);
 
   const loadQuests = useCallback(async () => {
     try {
@@ -132,8 +124,6 @@ export default function RepQuestsPage() {
     const questId = submitQuest?.id;
     setSubmitQuest(null);
     setDetailQuest(null);
-    setVideoFullscreen(false);
-    setFullscreenMuted(true);
     loadQuests();
     if (questId && expandedQuestId === questId) {
       loadSubmissions(questId);
@@ -267,9 +257,8 @@ export default function RepQuestsPage() {
       {detailQuest && typeof document !== "undefined" && createPortal(
         <QuestDetailSheet
           quest={detailQuest}
-          onClose={() => { setDetailQuest(null); setVideoFullscreen(false); setFullscreenMuted(true); }}
+          onClose={() => { setDetailQuest(null); }}
           onSubmit={(q) => setSubmitQuest(q)}
-          onExpandVideo={() => setVideoFullscreen(true)}
           onExpandImage={() => setMediaFullscreen(true)}
         />,
         document.getElementById("rep-portal-root") || document.body
@@ -297,22 +286,6 @@ export default function RepQuestsPage() {
             className="max-w-[90vw] max-h-[90vh] object-contain cursor-zoom-out"
           />
         </div>,
-        document.getElementById("rep-portal-root") || document.body
-      )}
-
-      {/* Fullscreen video overlay — portalled */}
-      {videoFullscreen && detailQuest?.video_url && isMuxPlaybackId(detailQuest.video_url) && typeof document !== "undefined" && createPortal(
-        <FullscreenVideo
-          playbackId={detailQuest.video_url}
-          accent={getQuestAccent(detailQuest.points_reward)}
-          title={detailQuest.title}
-          points={detailQuest.points_reward}
-          platform={detailQuest.platform}
-          muted={fullscreenMuted}
-          onMuteToggle={() => setFullscreenMuted((m) => !m)}
-          videoRef={fullscreenVideoRef}
-          onClose={() => { setVideoFullscreen(false); setFullscreenMuted(true); }}
-        />,
         document.getElementById("rep-portal-root") || document.body
       )}
 

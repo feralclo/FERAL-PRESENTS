@@ -1,13 +1,11 @@
 "use client";
 
 import {
-  X, Check, Clock, Zap, Play, BookOpen, ExternalLink,
+  X, Check, Clock, Zap, BookOpen, ExternalLink,
   Camera, Share2, Sparkles, Music, Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
-import { isMuxPlaybackId } from "@/lib/mux";
-import { MuxVideoPreview } from "./MuxVideoPreview";
 import { TikTokIcon } from "./TikTokIcon";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -50,12 +48,11 @@ interface QuestDetailSheetProps {
   quest: Quest;
   onClose: () => void;
   onSubmit: (quest: Quest) => void;
-  onExpandVideo: () => void;
   onExpandImage: () => void;
 }
 
 export function QuestDetailSheet({
-  quest, onClose, onSubmit, onExpandVideo, onExpandImage,
+  quest, onClose, onSubmit, onExpandImage,
 }: QuestDetailSheetProps) {
   const accent = getQuestAccent(quest.points_reward);
   const QuestTypeIcon = QUEST_TYPE_ICONS[quest.quest_type] || Zap;
@@ -65,8 +62,6 @@ export function QuestDetailSheet({
   const approvedCount = subs?.approved ?? 0;
   const isCompleted = quest.max_completions ? approvedCount >= quest.max_completions : false;
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
-  const hasMuxVideo = quest.video_url && isMuxPlaybackId(quest.video_url);
-  const hasLegacyVideoUrl = quest.video_url && !hasMuxVideo;
   const hasImage = !!quest.image_url;
   const hasRefUrl = !!quest.reference_url;
   const refPlatform = quest.reference_url ? getReferenceUrlPlatform(quest.reference_url) : (quest.platform !== "any" ? quest.platform : null);
@@ -108,31 +103,15 @@ export function QuestDetailSheet({
           {/* Hero spacer — pushes content below the blurred backdrop */}
           {hasImage && <div className="rep-quest-detail-hero-spacer" />}
 
-          {/* Media section — primary position when no reference URL */}
-          {!hasRefUrl && (quest.video_url || quest.image_url) && (
+          {/* Tappable image — only when no reference URL (image is backdrop only when ref URL exists) */}
+          {!hasRefUrl && hasImage && (
             <div className="rep-quest-detail-media pt-2">
-              {hasMuxVideo ? (
-                <MuxVideoPreview playbackId={quest.video_url!} onExpand={onExpandVideo} />
-              ) : hasLegacyVideoUrl ? (
-                <a
-                  href={quest.video_url!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rep-quest-video-link"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Play size={24} />
-                  <span>View Video</span>
-                  <ExternalLink size={14} className="ml-auto opacity-50" />
-                </a>
-              ) : quest.image_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={quest.image_url}
-                  alt={quest.title}
-                  onClick={onExpandImage}
-                />
-              ) : null}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={quest.image_url!}
+                alt={quest.title}
+                onClick={onExpandImage}
+              />
             </div>
           )}
 
@@ -204,36 +183,6 @@ export function QuestDetailSheet({
                 <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                   {quest.instructions}
                 </p>
-              </div>
-            )}
-
-            {/* Secondary media — deprioritized when reference URL exists */}
-            {hasRefUrl && (quest.video_url || quest.image_url) && (
-              <div className="opacity-75">
-                <div className="rep-quest-detail-media">
-                  {hasMuxVideo ? (
-                    <MuxVideoPreview playbackId={quest.video_url!} onExpand={onExpandVideo} />
-                  ) : hasLegacyVideoUrl ? (
-                    <a
-                      href={quest.video_url!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rep-quest-video-link"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Play size={24} />
-                      <span>View Video</span>
-                      <ExternalLink size={14} className="ml-auto opacity-50" />
-                    </a>
-                  ) : quest.image_url ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={quest.image_url}
-                      alt={quest.title}
-                      onClick={onExpandImage}
-                    />
-                  ) : null}
-                </div>
               </div>
             )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Gift,
@@ -111,6 +111,7 @@ export default function RepRewardsPage() {
   const [error, setError] = useState("");
   const [myPoints, setMyPoints] = useState(0);
   const [tab, setTab] = useState<TabId>("shop");
+  const hasAutoSelectedTab = useRef(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [confirmReward, setConfirmReward] = useState<Reward | null>(null);
   const [successReward, setSuccessReward] = useState<Reward | null>(null);
@@ -197,9 +198,10 @@ export default function RepRewardsPage() {
   const milestoneRewards = rewards.filter((r) => r.reward_type === "milestone");
   const shopRewards = rewards.filter((r) => r.reward_type === "points_shop");
 
-  // Auto-select tab based on content
+  // Auto-select tab based on content (first load only — don't snap user back after claim)
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !hasAutoSelectedTab.current) {
+      hasAutoSelectedTab.current = true;
       if (shopRewards.length > 0) setTab("shop");
       else if (milestoneRewards.length > 0) setTab("earned");
       else if (claims.length > 0) setTab("history");

@@ -108,8 +108,6 @@ export function FullscreenVideo({
             onClick={(e) => {
               e.stopPropagation();
               onMuteToggle();
-              const player = videoRef.current?.querySelector("mux-player");
-              if (player) (player as HTMLMediaElement).muted = !muted;
             }}
             aria-label={muted ? "Unmute" : "Mute"}
           >

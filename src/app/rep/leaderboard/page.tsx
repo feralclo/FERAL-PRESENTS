@@ -375,8 +375,11 @@ function EventsLeaderboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [loadKey, setLoadKey] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
     (async () => {
       try {
         const res = await fetch("/api/rep-portal/leaderboard/events");
@@ -392,10 +395,10 @@ function EventsLeaderboard() {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [loadKey]);
 
   if (loading) return <LeaderboardSkeleton />;
-  if (error) return <ErrorState error={error} onRetry={() => window.location.reload()} />;
+  if (error) return <ErrorState error={error} onRetry={() => setLoadKey((k) => k + 1)} />;
 
   if (selectedEvent) {
     return (
@@ -550,8 +553,11 @@ function EventLeaderboardView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [positionChanges, setPositionChanges] = useState<Record<string, number>>({});
+  const [loadKey, setLoadKey] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
     (async () => {
       try {
         const res = await fetch(`/api/rep-portal/leaderboard?event_id=${eventId}`);
@@ -578,10 +584,10 @@ function EventLeaderboardView({
       }
       setLoading(false);
     })();
-  }, [eventId]);
+  }, [eventId, loadKey]);
 
   if (loading) return <LeaderboardSkeleton />;
-  if (error) return <ErrorState error={error} onRetry={() => window.location.reload()} />;
+  if (error) return <ErrorState error={error} onRetry={() => setLoadKey((k) => k + 1)} />;
   if (!data) return null;
 
   const isLive = !data.locked && data.event?.date_start && isEventUpcoming(data.event.date_start);

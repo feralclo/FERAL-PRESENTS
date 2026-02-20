@@ -20,6 +20,7 @@ export function MuxVideoPreview({ playbackId, onExpand }: MuxVideoPreviewProps) 
 
   const animatedUrl = `https://image.mux.com/${playbackId}/animated.webp?width=320&fps=12&start=0&end=4`;
   const staticUrl = getMuxThumbnailUrl(playbackId);
+  const [src, setSrc] = useState(animatedUrl);
 
   if (imgError) {
     return (
@@ -44,15 +45,14 @@ export function MuxVideoPreview({ playbackId, onExpand }: MuxVideoPreviewProps) 
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={animatedUrl}
+        src={src}
         alt=""
         onLoad={() => setImgLoaded(true)}
         onError={() => {
-          if (!imgLoaded) {
-            const img = new Image();
-            img.onload = () => setImgLoaded(true);
-            img.onerror = () => setImgError(true);
-            img.src = staticUrl;
+          if (!imgLoaded && src === animatedUrl) {
+            setSrc(staticUrl);
+          } else {
+            setImgError(true);
           }
         }}
         className={cn(

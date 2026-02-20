@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
     const discountCode = searchParams.get("discount_code") || "";
     const discountPercent = parseInt(searchParams.get("discount_percent") || "0", 10);
     const discountLabel = searchParams.get("discount_label") || "";
+    const discountType = searchParams.get("discount_type") || "percentage";
+    const discountFixedAmount = parseFloat(searchParams.get("discount_fixed_amount") || "0");
+    const isOriginalDiscount = searchParams.get("is_original_discount") === "1";
     const useRealEvent = searchParams.get("use_real_event") === "1";
 
     // Load org email settings
@@ -113,6 +116,9 @@ export async function GET(request: NextRequest) {
             unsubscribe_url: "#",
             discount_code: discountCode || undefined,
             discount_percent: discountPercent || undefined,
+            discount_type: discountType,
+            discount_fixed_amount: discountFixedAmount || undefined,
+            is_original_discount: isOriginalDiscount,
           };
         }
       }
@@ -148,6 +154,9 @@ export async function GET(request: NextRequest) {
       unsubscribe_url: "#",
       discount_code: discountCode || undefined,
       discount_percent: discountPercent || undefined,
+      discount_type: discountType,
+      discount_fixed_amount: discountFixedAmount || undefined,
+      is_original_discount: isOriginalDiscount,
     };
 
     const { html } = buildAbandonedCartRecoveryEmail(emailSettings, sampleCart, {

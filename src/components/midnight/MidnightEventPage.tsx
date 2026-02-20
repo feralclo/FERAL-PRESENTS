@@ -158,11 +158,16 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
         items,
         subtotal: cart.totalPrice,
         currency: event.currency || "GBP",
+        ...(activeDiscount ? {
+          discount_code: activeDiscount.code,
+          discount_type: activeDiscount.type,
+          discount_value: activeDiscount.value,
+        } : {}),
       };
     } catch {
       return null;
     }
-  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency, activeDiscount]);
 
   // Update the ref whenever cart changes so page exit handler has fresh data
   useEffect(() => {
@@ -244,13 +249,18 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           items,
           subtotal: cart.totalPrice,
           currency: event.currency || "GBP",
+          ...(activeDiscount ? {
+            discount_code: activeDiscount.code,
+            discount_type: activeDiscount.type,
+            discount_value: activeDiscount.value,
+          } : {}),
         }),
       }).catch(() => {});
     }
 
     window.addEventListener("feral_popup_email_captured", handlePopupCapture);
     return () => window.removeEventListener("feral_popup_email_captured", handlePopupCapture);
-  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency]);
+  }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency, activeDiscount]);
 
   // Compute discounted total for bottom bar
   const discountedTotal = activeDiscount

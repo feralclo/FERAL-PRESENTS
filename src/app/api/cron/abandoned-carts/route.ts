@@ -204,6 +204,7 @@ export async function GET(request: NextRequest) {
         .from(TABLES.ABANDONED_CARTS)
         .select(`
           id, email, first_name, items, subtotal, currency, cart_token, notification_count, status,
+          discount_code, discount_type, discount_value,
           events:event_id ( id, name, slug, venue_name, date_start, doors_time, currency, status )
         `)
         .eq("org_id", ORG_ID)
@@ -302,6 +303,26 @@ export async function GET(request: NextRequest) {
         // Prepare items for the email function
         const items = (cart.items as { name: string; qty: number; price: number; merch_size?: string }[]) || [];
 
+        // ── Determine which discount to include in email ──
+        // Priority: incentive discount (admin-configured) > customer's original discount > none
+        let emailDiscountCode: string | undefined;
+        let emailDiscountType: string | undefined;
+        let emailDiscountValue: number | undefined;
+        let isOriginalDiscount = false;
+
+        if (step.include_discount && step.discount_code) {
+          // Incentive discount from admin step config
+          emailDiscountCode = step.discount_code;
+          emailDiscountType = "percentage";
+          emailDiscountValue = step.discount_percent || 0;
+        } else if (!step.include_discount && cart.discount_code) {
+          // Customer's original discount (popup, rep link, manual entry)
+          emailDiscountCode = cart.discount_code;
+          emailDiscountType = cart.discount_type || "percentage";
+          emailDiscountValue = cart.discount_value ?? undefined;
+          isOriginalDiscount = true;
+        }
+
         // ── Send email ──
         const sent = await sendAbandonedCartRecoveryEmail({
           orgId: ORG_ID,
@@ -324,13 +345,16 @@ export async function GET(request: NextRequest) {
             subject: step.subject,
             preview_text: step.preview_text,
             include_discount: step.include_discount,
-            discount_code: step.discount_code || undefined,
-            discount_percent: step.discount_percent || undefined,
+            discount_code: emailDiscountCode,
+            discount_percent: emailDiscountType === "percentage" ? emailDiscountValue : undefined,
+            discount_type: emailDiscountType,
+            discount_value: emailDiscountValue,
             cta_text: step.cta_text || undefined,
             discount_label: step.discount_label || undefined,
             greeting: step.greeting || undefined,
             body_message: step.body_message || undefined,
           },
+          isOriginalDiscount,
         });
 
         if (sent) {

@@ -467,11 +467,14 @@ export async function sendAbandonedCartRecoveryEmail(params: {
     include_discount: boolean;
     discount_code?: string;
     discount_percent?: number;
+    discount_type?: string;
+    discount_value?: number;
     cta_text?: string;
     discount_label?: string;
     greeting?: string;
     body_message?: string;
   };
+  isOriginalDiscount?: boolean;
 }): Promise<boolean> {
   try {
     const resend = getResendClient();
@@ -489,8 +492,9 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
     ).replace(/\/$/, "");
     // Build recovery URL — include discount code if present so checkout auto-applies it
+    // (works for both incentive discounts AND customer's original discount)
     const hasItems = params.items.length > 0;
-    const discountParam = params.stepConfig.include_discount && params.stepConfig.discount_code
+    const discountParam = params.stepConfig.discount_code
       ? `&discount=${encodeURIComponent(params.stepConfig.discount_code)}`
       : "";
     // Empty carts (popup captures) → link to event page; carts with items → checkout restore
@@ -502,7 +506,8 @@ export async function sendAbandonedCartRecoveryEmail(params: {
     const currency = params.currency || params.event.currency || "GBP";
     const symbol = getCurrencySymbol(currency);
 
-    // Build email data
+    // Build email data — supports both percentage and fixed-amount discounts
+    const discountType = params.stepConfig.discount_type || "percentage";
     const cartEmailData: AbandonedCartEmailData = {
       customer_first_name: params.firstName,
       event_name: params.event.name,
@@ -519,10 +524,13 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       subtotal: params.subtotal.toFixed(2),
       recovery_url: recoveryUrl,
       unsubscribe_url: unsubscribeUrl,
-      ...(params.stepConfig.include_discount && params.stepConfig.discount_code
+      ...(params.stepConfig.discount_code
         ? {
             discount_code: params.stepConfig.discount_code,
-            discount_percent: params.stepConfig.discount_percent || 0,
+            discount_percent: discountType === "percentage" ? (params.stepConfig.discount_value ?? params.stepConfig.discount_percent ?? 0) : 0,
+            discount_type: discountType,
+            discount_fixed_amount: discountType === "fixed" ? (params.stepConfig.discount_value ?? 0) : 0,
+            is_original_discount: params.isOriginalDiscount || false,
           }
         : {}),
     };

@@ -482,6 +482,9 @@ export interface AbandonedCartEmailData {
   unsubscribe_url?: string;
   discount_code?: string;
   discount_percent?: number;
+  discount_type?: string;
+  discount_fixed_amount?: number;
+  is_original_discount?: boolean;
 }
 
 /**
@@ -522,7 +525,12 @@ export function buildAbandonedCartRecoveryEmail(
   const subject = stepConfig.subject;
 
   // Template variable replacement for tenant-configurable text
-  const hasDiscount = !!cart.discount_code && (cart.discount_percent || 0) > 0;
+  const hasDiscount = !!cart.discount_code && ((cart.discount_percent || 0) > 0 || (cart.discount_fixed_amount || 0) > 0);
+  const isFixed = (cart.discount_type || "percentage") === "fixed";
+  // Human-readable discount label: "10%" or "£5.00"
+  const discountLabel = isFixed
+    ? `${cart.currency_symbol}${(cart.discount_fixed_amount || 0).toFixed(2)}`
+    : `${cart.discount_percent || 0}%`;
   function replaceVars(text: string): string {
     let result = text
       .replace(/\{\{?name\}?\}/g, cart.customer_first_name || "there")
@@ -530,7 +538,8 @@ export function buildAbandonedCartRecoveryEmail(
     if (hasDiscount) {
       result = result
         .replace(/\{\{?code\}?\}/g, cart.discount_code || "")
-        .replace(/\{\{?percent\}?\}/g, String(cart.discount_percent || ""));
+        .replace(/\{\{?percent\}?\}/g, String(cart.discount_percent || ""))
+        .replace(/\{\{?discount\}?\}/g, discountLabel);
     }
     return result;
   }
@@ -552,7 +561,11 @@ export function buildAbandonedCartRecoveryEmail(
 
   // Cart totals
   const subtotalNum = parseFloat(cart.subtotal);
-  const discountAmt = hasDiscount ? subtotalNum * ((cart.discount_percent || 0) / 100) : 0;
+  const discountAmt = hasDiscount
+    ? isFixed
+      ? Math.min(cart.discount_fixed_amount || 0, subtotalNum)
+      : subtotalNum * ((cart.discount_percent || 0) / 100)
+    : 0;
   const total = subtotalNum - discountAmt;
 
   const hasItems = cart.cart_items.length > 0;
@@ -755,10 +768,14 @@ export function buildAbandonedCartRecoveryEmail(
                       <tr>
                         <td style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 18px 24px; text-align: center;">
                           <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #166534; line-height: 1.3;">
-                            &#10003; ${cart.discount_percent}% off &mdash; discount automatically applied
+                            &#10003; ${cart.is_original_discount
+                              ? `Your ${discountLabel} discount is still active`
+                              : `${discountLabel} off &mdash; discount automatically applied`}
                           </div>
                           <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #4ade80; margin-top: 6px; letter-spacing: 0.5px;">
-                            Code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> &middot; saving you ${cart.currency_symbol}${discountAmt.toFixed(2)}
+                            ${cart.is_original_discount
+                              ? `Your code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> still applies &middot; saving you ${cart.currency_symbol}${discountAmt.toFixed(2)}`
+                              : `Code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> &middot; saving you ${cart.currency_symbol}${discountAmt.toFixed(2)}`}
                           </div>
                         </td>
                       </tr>
@@ -828,7 +845,9 @@ YOUR ORDER
 ${cartItemsText}
 ${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
 Total: ${cart.currency_symbol}${total.toFixed(2)}
-${hasDiscount ? `\n✓ ${cart.discount_percent}% off — discount automatically applied (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n` : ""}` : ""}
+${hasDiscount ? (cart.is_original_discount
+  ? `\n✓ Your ${discountLabel} discount is still active (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n`
+  : `\n✓ ${discountLabel} off — discount automatically applied (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n`) : ""}` : ""}
 ${ctaText}: ${cart.recovery_url}
 
 ---

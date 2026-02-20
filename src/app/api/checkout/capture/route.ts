@@ -28,6 +28,12 @@ export async function POST(request: NextRequest) {
       currency,
     } = body;
 
+    // Optional discount fields — only included when caller has discount info
+    const hasDiscountFields = "discount_code" in body;
+    const discount_code: string | null = body.discount_code || null;
+    const discount_type: string | null = body.discount_type || null;
+    const discount_value: number | null = body.discount_value ?? null;
+
     if (!email) {
       return NextResponse.json(
         { error: "Email is required" },
@@ -147,9 +153,7 @@ export async function POST(request: NextRequest) {
 
       if (existingCart) {
         // Update existing abandoned cart
-        const { error: updateErr } = await supabase
-          .from(TABLES.ABANDONED_CARTS)
-          .update({
+        const updatePayload: Record<string, unknown> = {
             email: normalizedEmail,
             first_name: first_name || null,
             last_name: last_name || null,
@@ -157,7 +161,17 @@ export async function POST(request: NextRequest) {
             subtotal: subtotal || 0,
             currency: currency || "GBP",
             updated_at: new Date().toISOString(),
-          })
+        };
+        // Only overwrite discount fields when caller explicitly includes them
+        // (prevents name-blur captures from wiping previously stored discount)
+        if (hasDiscountFields) {
+          updatePayload.discount_code = discount_code;
+          updatePayload.discount_type = discount_type;
+          updatePayload.discount_value = discount_value;
+        }
+        const { error: updateErr } = await supabase
+          .from(TABLES.ABANDONED_CARTS)
+          .update(updatePayload)
           .eq("id", existingCart.id);
 
         if (updateErr) {
@@ -183,6 +197,9 @@ export async function POST(request: NextRequest) {
             status: "pending",
             notification_count: 0,
             cart_token: crypto.randomUUID(),
+            discount_code,
+            discount_type,
+            discount_value,
           });
 
         if (insertErr) {

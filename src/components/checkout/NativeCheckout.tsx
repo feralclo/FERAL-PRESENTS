@@ -310,6 +310,9 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       const popupEmail = sessionStorage.getItem("feral_popup_email");
       if (!popupEmail || popupEmail !== capturedEmail) return;
       sessionStorage.setItem("feral_checkout_captured", "1");
+      // Include discount code if available (from recovery email or popup)
+      const popupDiscount = sessionStorage.getItem("feral_popup_discount") || "";
+      const discountCode = restoreData?.discountCode || popupDiscount;
       fetch("/api/checkout/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -325,10 +328,11 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           })),
           subtotal,
           currency: event.currency || "GBP",
+          ...(discountCode ? { discount_code: discountCode } : {}),
         }),
       }).catch(() => {});
     } catch {}
-  }, [capturedEmail, cartLines, subtotal, event.id, event.currency]);
+  }, [capturedEmail, cartLines, subtotal, event.id, event.currency, restoreData?.discountCode]);
 
   // ── Stripe pre-initialization ─────────────────────────────────────────
   const [stripeReady, setStripeReady] = useState(false);
@@ -446,6 +450,11 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
           storeMetaMatchData({ em: email });
 
           // Fire-and-forget: create customer + abandoned cart
+          // Include discount code if available (from recovery email or popup)
+          let captureDiscountCode: string | undefined;
+          try {
+            captureDiscountCode = restoreData?.discountCode || sessionStorage.getItem("feral_popup_discount") || undefined;
+          } catch {}
           fetch("/api/checkout/capture", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -461,6 +470,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
               })),
               subtotal,
               currency: event.currency || "GBP",
+              ...(captureDiscountCode ? { discount_code: captureDiscountCode } : {}),
             }),
           }).catch(() => {});
         }}
@@ -678,6 +688,29 @@ function StripeCheckoutPage({
             value: d.value,
             amount,
           });
+          // Fire capture with validated discount info so abandoned cart gets full type+value
+          if (capturedEmail) {
+            fetch("/api/checkout/capture", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: capturedEmail,
+                event_id: event.id,
+                items: cartLines.map((l) => ({
+                  ticket_type_id: l.ticket_type_id,
+                  qty: l.qty,
+                  name: l.name,
+                  price: l.price,
+                  merch_size: l.merch_size,
+                })),
+                subtotal,
+                currency: event.currency || "GBP",
+                discount_code: d.code,
+                discount_type: d.type,
+                discount_value: d.value,
+              }),
+            }).catch(() => {});
+          }
         }
       })
       .catch(() => {});

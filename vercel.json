@@ -2,7 +2,7 @@
   "framework": "nextjs",
   "crons": [
     {
-      "path": "/api/cron/abandoned-carts",
+      "path": "/api/cron/abandoned-carts/",
       "schedule": "*/10 * * * *"
     }
   ],

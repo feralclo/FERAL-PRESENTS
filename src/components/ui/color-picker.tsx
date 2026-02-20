@@ -30,23 +30,31 @@ function ColorPicker({ value, onChange, className }: ColorPickerProps) {
     setHex(value)
   }, [value])
 
+  // Normalize hex: accept "ff0033" → "#ff0033"
+  const normalize = (input: string) =>
+    input.startsWith("#") ? input : `#${input}`
+
   const handleHexChange = (input: string) => {
     setHex(input)
-    if (/^#[0-9A-Fa-f]{6}$/.test(input)) {
-      onChange(input)
+    const n = normalize(input)
+    if (/^#[0-9A-Fa-f]{6}$/.test(n)) {
+      onChange(n)
     }
   }
 
-  const handleHexBlur = () => {
-    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-      onChange(hex)
+  // Commit current hex or revert to parent value
+  const commitHex = React.useCallback(() => {
+    const n = hex.startsWith("#") ? hex : `#${hex}`
+    if (/^#[0-9A-Fa-f]{6}$/.test(n)) {
+      onChange(n)
+      setHex(n)
     } else {
       setHex(value)
     }
-  }
+  }, [hex, value, onChange])
 
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => { if (!open) commitHex() }}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -90,7 +98,8 @@ function ColorPicker({ value, onChange, className }: ColorPickerProps) {
             <Input
               value={hex}
               onChange={(e) => handleHexChange(e.target.value)}
-              onBlur={handleHexBlur}
+              onBlur={commitHex}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitHex() } }}
               className="h-8 font-mono text-xs uppercase"
               placeholder="#000000"
               maxLength={7}

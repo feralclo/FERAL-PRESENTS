@@ -349,6 +349,8 @@ export default function PopupAnalytics() {
         .from(TABLES.POPUP_EVENTS)
         .select("*", { count: "exact", head: true })
         .eq("event_type", type);
+      // Only count conversions that captured an email — matches the leads list
+      if (type === "conversions") q = q.not("email", "is", null);
       if (periodStart) q = q.gte("timestamp", periodStart);
       return q;
     });
@@ -613,7 +615,7 @@ export default function PopupAnalytics() {
             </div>
           ) : (
             <>
-              <div className="divide-y divide-border">
+              <div className="max-h-[480px] overflow-y-auto divide-y divide-border">
                 {leadsData.leads.map((lead, i) => {
                   const isNew = isToday(lead.timestamp);
                   const isFirst = i === 0;

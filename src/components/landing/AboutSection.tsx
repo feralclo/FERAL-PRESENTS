@@ -45,14 +45,14 @@ function wordReveal(el: HTMLElement, delayStart: number) {
   el.innerHTML = "";
   words.forEach((word, i) => {
     const span = document.createElement("span");
-    span.className = "word";
+    span.className = "about-word";
     span.textContent = word;
     el.appendChild(span);
     if (i < words.length - 1) {
       el.appendChild(document.createTextNode(" "));
     }
   });
-  const wordEls = el.querySelectorAll(".word");
+  const wordEls = el.querySelectorAll(".about-word");
   wordEls.forEach((w, i) => {
     setTimeout(() => {
       w.classList.add("visible");
@@ -74,10 +74,6 @@ function counterSpin(el: HTMLElement, finalNum: string, duration: number) {
   tick();
 }
 
-/**
- * About section with JS-driven pillar animations.
- * Exact port of main.js about section (lines 362-500).
- */
 export function AboutSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const closerTextRef = useRef<HTMLParagraphElement>(null);
@@ -87,7 +83,7 @@ export function AboutSection() {
     if (!section) return;
 
     // Pillar animations
-    const pillars = section.querySelectorAll(".about__pillar");
+    const pillars = section.querySelectorAll(".about-pillar");
     const pillarObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -100,13 +96,13 @@ export function AboutSection() {
 
             const pillar = entry.target;
             const indexSpan = pillar.querySelector(
-              ".about__pillar-index span"
+              ".about-pillar-index span"
             ) as HTMLElement | null;
             const titleEl = pillar.querySelector(
-              ".about__pillar-title"
+              ".about-pillar-title"
             ) as HTMLElement | null;
             const textEl = pillar.querySelector(
-              ".about__pillar-text"
+              ".about-pillar-text"
             ) as HTMLElement | null;
 
             if (indexSpan) {
@@ -132,8 +128,25 @@ export function AboutSection() {
 
     pillars.forEach((p) => pillarObserver.observe(p));
 
+    // Hero title reveal
+    const heroEl = section.querySelector(".about-hero");
+    if (heroEl) {
+      const heroObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("revealed");
+              heroObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1 }
+      );
+      heroObserver.observe(heroEl);
+    }
+
     // Closer animation
-    const closer = section.querySelector(".about__closer");
+    const closer = section.querySelector(".about-closer");
     const closerText = closerTextRef.current;
     if (closer && closerText) {
       const closerFinal = closerText.textContent || "";
@@ -161,98 +174,97 @@ export function AboutSection() {
       closerObserver.observe(closer);
     }
 
-    // Scroll reveal for general data-reveal elements in this section
-    const revealElements = section.querySelectorAll("[data-reveal]");
-    const revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("revealed");
-            revealObserver.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
-    );
-    revealElements.forEach((el) => revealObserver.observe(el));
-
     return () => {
       pillarObserver.disconnect();
-      revealObserver.disconnect();
     };
   }, []);
 
   return (
-    <section className="about" id="about" ref={sectionRef}>
-      <div className="container">
-        <div className="about__hero" data-reveal="">
-          <span className="section-header__label">[ABOUT]</span>
-          <h2 className="about__title">
-            <span className="about__title-line">ENERGY OF THE</span>
-            <span className="about__title-line text-red">FERAL FAMILY</span>
+    <section
+      id="about"
+      ref={sectionRef}
+      className="py-20 max-md:py-14 overflow-hidden bg-background"
+    >
+      <div className="max-w-[1200px] mx-auto px-6 max-md:px-4">
+        {/* Hero heading */}
+        <div className="about-hero text-center mb-24 max-md:mb-14 opacity-0">
+          <span className="about-label font-[family-name:var(--font-mono)] text-[11px] tracking-[0.25em] uppercase text-primary mb-4 block opacity-0 translate-y-3 transition-all duration-700">
+            [ABOUT]
+          </span>
+          <h2 className="font-[family-name:var(--font-mono)] text-[clamp(32px,6vw,72px)] font-bold tracking-[clamp(3px,0.8vw,8px)] uppercase leading-[1.15] mt-5">
+            <span
+              className="about-title-line block"
+              style={{
+                clipPath: "inset(0 100% 0 0)",
+                transition:
+                  "clip-path 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+            >
+              ENERGY OF THE
+            </span>
+            <span
+              className="about-title-line block text-primary"
+              style={{
+                clipPath: "inset(0 100% 0 0)",
+                transition:
+                  "clip-path 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s",
+              }}
+            >
+              FERAL FAMILY
+            </span>
           </h2>
         </div>
 
-        <div className="about__pillars">
-          <div className="about__pillar" data-reveal="">
-            <div className="about__pillar-index">
-              <span>01</span>
+        {/* Pillars */}
+        <div className="flex flex-col max-w-[800px] mx-auto">
+          {[
+            {
+              num: "01",
+              title: "Curated Chaos",
+              text: "We believe a night out should be an insane journey, not a playlist. Our lineups are meticulously crafted to break the mould, constructing a specific narrative that demands your full attention. No filler. No fluff. Just a relentless progression of sound.",
+            },
+            {
+              num: "02",
+              title: "Total Immersion",
+              text: "Production is our obsession. We don\u2019t just book a venue; we terraform it. By hauling in our own external rigs and custom visual architecture, we erase the space you walked into and replace it with the World of Feral.",
+            },
+            {
+              num: "03",
+              title: "The Energy",
+              text: "It\u2019s a frequency you have to feel to understand. The visuals warp reality, the sound hits your chest, and the Feral family brings an energy that doesn\u2019t exist on any other dancefloor.",
+            },
+          ].map((pillar) => (
+            <div
+              key={pillar.num}
+              className="about-pillar flex items-start gap-8 max-md:flex-col max-md:gap-4 py-14 max-md:py-10 relative"
+            >
+              <div className="about-pillar-index shrink-0 w-12 h-12 max-md:w-9 max-md:h-9 flex items-center justify-center border border-primary/10 relative overflow-hidden opacity-0 scale-0">
+                <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-primary tracking-[0.15em] relative z-[1]">
+                  {pillar.num}
+                </span>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <h3 className="about-pillar-title font-[family-name:var(--font-mono)] text-[clamp(20px,3vw,32px)] font-bold tracking-[0.1em] uppercase mb-4 leading-[1.2] opacity-0">
+                  {pillar.title}
+                  <span className="text-primary">.</span>
+                </h3>
+                <p className="about-pillar-text font-[family-name:var(--font-display)] text-[clamp(14px,1.6vw,16px)] leading-[1.9] text-foreground/50 max-w-[600px]">
+                  {pillar.text}
+                </p>
+              </div>
+              <div className="about-pillar-line absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-primary via-primary/30 to-transparent scale-x-0 origin-left" />
             </div>
-            <div className="about__pillar-content">
-              <h3 className="about__pillar-title">
-                Curated Chaos<span className="text-red">.</span>
-              </h3>
-              <p className="about__pillar-text">
-                We believe a night out should be an insane journey, not a
-                playlist. Our lineups are meticulously crafted to break the
-                mould, constructing a specific narrative that demands your full
-                attention. No filler. No fluff. Just a relentless progression of
-                sound.
-              </p>
-            </div>
-            <div className="about__pillar-line" />
-          </div>
-
-          <div className="about__pillar" data-reveal="">
-            <div className="about__pillar-index">
-              <span>02</span>
-            </div>
-            <div className="about__pillar-content">
-              <h3 className="about__pillar-title">
-                Total Immersion<span className="text-red">.</span>
-              </h3>
-              <p className="about__pillar-text">
-                Production is our obsession. We don&apos;t just book a venue; we
-                terraform it. By hauling in our own external rigs and custom
-                visual architecture, we erase the space you walked into and
-                replace it with the World of Feral.
-              </p>
-            </div>
-            <div className="about__pillar-line" />
-          </div>
-
-          <div className="about__pillar" data-reveal="">
-            <div className="about__pillar-index">
-              <span>03</span>
-            </div>
-            <div className="about__pillar-content">
-              <h3 className="about__pillar-title">
-                The Energy<span className="text-red">.</span>
-              </h3>
-              <p className="about__pillar-text">
-                It&apos;s a frequency you have to feel to understand. The
-                visuals warp reality, the sound hits your chest, and the Feral
-                family brings an energy that doesn&apos;t exist on any other
-                dancefloor.
-              </p>
-            </div>
-            <div className="about__pillar-line" />
-          </div>
+          ))}
         </div>
 
-        <div className="about__closer" data-reveal="">
-          <p className="about__closer-text" ref={closerTextRef}>
-            If you know, you know<span className="text-red">.</span>
+        {/* Closer */}
+        <div className="about-closer text-center mt-20 max-md:mt-12 pt-20 max-md:pt-12 relative">
+          <p
+            ref={closerTextRef}
+            className="about-closer-text font-[family-name:var(--font-mono)] text-[clamp(22px,4vw,44px)] font-bold tracking-[clamp(4px,0.8vw,10px)] uppercase opacity-0"
+          >
+            If you know, you know
+            <span className="text-primary">.</span>
           </p>
         </div>
       </div>

@@ -44,6 +44,21 @@ export interface Event {
   event_artists?: import("./artists").EventArtist[];
 }
 
+/** Lightweight event shape for landing page cards (no ticket_types needed) */
+export interface LandingEvent {
+  id: string;
+  slug: string;
+  name: string;
+  date_start: string;
+  venue_name?: string;
+  city?: string;
+  cover_image?: string;
+  tag_line?: string;
+  doors_time?: string;
+  payment_method: string;
+  external_link?: string;
+}
+
 export interface TicketTypeRow {
   id: string;
   org_id: string;

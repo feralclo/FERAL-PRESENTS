@@ -296,12 +296,12 @@ export function MidnightDiscountPopup() {
               </p>
 
               {/* Headline */}
-              <h2 className="font-[family-name:var(--font-sans)] text-[18px] font-bold text-white leading-tight mb-2">
+              <h2 className="font-[family-name:var(--font-sans)] text-[22px] font-bold text-white leading-tight mb-2">
                 {config.headline}
               </h2>
 
               {/* Subheadline */}
-              <p className="font-[family-name:var(--font-sans)] text-[13px] text-white/50 mb-4">
+              <p className="font-[family-name:var(--font-sans)] text-[15px] text-white/50 mb-4">
                 {config.subheadline}
               </p>
 
@@ -324,15 +324,15 @@ export function MidnightDiscountPopup() {
                 </span>
               </div>
 
-              {/* CTA Button — solid white + ambient glow */}
+              {/* CTA Button — frosted accent glass */}
               <button
                 type="button"
                 onClick={handleCommit}
                 className={cn(
-                  "w-full h-12 rounded-xl midnight-popup-cta",
-                  "bg-white text-[#0e0e0e]",
-                  "font-[family-name:var(--font-sans)] text-[13px] font-bold tracking-[0.02em]",
-                  "active:scale-[0.97] transition-transform duration-150",
+                  "w-full h-12 rounded-xl midnight-popup-cta-urgent",
+                  "text-white",
+                  "font-[family-name:var(--font-sans)] text-[14px] font-bold tracking-[0.02em]",
+                  "active:scale-[0.97]",
                   "cursor-pointer touch-manipulation"
                 )}
               >
@@ -346,7 +346,7 @@ export function MidnightDiscountPopup() {
                 className={cn(
                   "w-full h-12 mt-2.5 rounded-xl",
                   "bg-white/[0.04] border border-white/[0.06]",
-                  "font-[family-name:var(--font-sans)] text-[13px] font-medium text-white/30",
+                  "font-[family-name:var(--font-sans)] text-[13px] font-medium text-white/35",
                   "hover:text-white/50 hover:bg-white/[0.06]",
                   "transition-all duration-200",
                   "cursor-pointer touch-manipulation"
@@ -375,12 +375,12 @@ export function MidnightDiscountPopup() {
               </p>
 
               {/* Headline */}
-              <h2 className="font-[family-name:var(--font-sans)] text-[18px] font-bold text-white leading-tight mb-2">
+              <h2 className="font-[family-name:var(--font-sans)] text-[22px] font-bold text-white leading-tight mb-2">
                 Enter Your Email
               </h2>
 
               {/* Subheadline */}
-              <p className="font-[family-name:var(--font-sans)] text-[13px] text-white/50 mb-3.5">
+              <p className="font-[family-name:var(--font-sans)] text-[15px] text-white/50 mb-3.5">
                 We&apos;ll send your exclusive code
               </p>
 
@@ -434,14 +434,14 @@ export function MidnightDiscountPopup() {
                   )}
                 />
 
-                {/* Submit — solid white + ambient glow */}
+                {/* Submit — frosted accent glass */}
                 <button
                   type="submit"
                   className={cn(
-                    "w-full h-12 rounded-xl midnight-popup-cta",
-                    "bg-white text-[#0e0e0e]",
-                    "font-[family-name:var(--font-sans)] text-[13px] font-bold tracking-[0.02em]",
-                    "active:scale-[0.97] transition-transform duration-150",
+                    "w-full h-12 rounded-xl midnight-popup-cta-urgent",
+                    "text-white",
+                    "font-[family-name:var(--font-sans)] text-[14px] font-bold tracking-[0.02em]",
+                    "active:scale-[0.97]",
                     "cursor-pointer touch-manipulation"
                   )}
                 >
@@ -469,12 +469,12 @@ export function MidnightDiscountPopup() {
               </p>
 
               {/* Headline */}
-              <h2 className="font-[family-name:var(--font-sans)] text-[18px] font-bold text-white leading-tight mb-2">
+              <h2 className="font-[family-name:var(--font-sans)] text-[22px] font-bold text-white leading-tight mb-2">
                 You&apos;re In
               </h2>
 
               {/* Subheadline */}
-              <p className="font-[family-name:var(--font-sans)] text-[13px] text-white/50 mb-5">
+              <p className="font-[family-name:var(--font-sans)] text-[15px] text-white/50 mb-5">
                 Here&apos;s your exclusive discount code
               </p>
 

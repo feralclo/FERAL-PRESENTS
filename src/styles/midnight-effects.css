@@ -958,7 +958,7 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
-   POPUP — CTA glow + urgency pulse
+   POPUP — CTA treatments + urgency pulse
    ═══════════════════════════════════════════════ */
 
 /* Pulsing dot — reuses existing midnight-pulse keyframe */
@@ -966,7 +966,44 @@ html.checkout-active .noise {
   animation: midnight-pulse 2s ease-in-out infinite;
 }
 
-/* CTA ambient glow — slow breathing box-shadow */
+/* ── Urgent CTA — frosted accent glass (screens 1 & 2) ──
+   Translucent red-tinted glass with warm breathing glow.
+   Ties visually to the countdown timer + "Limited Time" label.
+   Feels alive without being a flat red button. */
+@keyframes midnight-popup-accent-glow {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 0 16px rgba(255, 0, 51, 0.08);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      0 0 24px 4px rgba(255, 0, 51, 0.14),
+      0 0 48px 8px rgba(255, 0, 51, 0.04);
+  }
+}
+
+.midnight-popup-cta-urgent {
+  background: linear-gradient(180deg, rgba(255, 0, 51, 0.14) 0%, rgba(255, 0, 51, 0.06) 100%);
+  border: 1px solid rgba(255, 0, 51, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 20px rgba(255, 0, 51, 0.08);
+  animation: midnight-popup-accent-glow 3s ease-in-out infinite;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.midnight-popup-cta-urgent:hover {
+  animation: none;
+  background: linear-gradient(180deg, rgba(255, 0, 51, 0.22) 0%, rgba(255, 0, 51, 0.10) 100%);
+  border-color: rgba(255, 0, 51, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 28px rgba(255, 0, 51, 0.15);
+}
+
+/* ── Victory CTA — clean white glow (screen 3) ── */
 @keyframes midnight-popup-glow {
   0%, 100% { box-shadow: 0 0 16px rgba(255, 255, 255, 0.06); }
   50%      { box-shadow: 0 0 24px 4px rgba(255, 255, 255, 0.12), 0 0 40px 8px rgba(255, 255, 255, 0.04); }
@@ -993,7 +1030,8 @@ html.checkout-active .noise {
   [data-theme="midnight"] .midnight-cta-ready,
   [data-theme="midnight"] .midnight-reveal-glow,
   .midnight-popup-pulse,
-  .midnight-popup-cta {
+  .midnight-popup-cta,
+  .midnight-popup-cta-urgent {
     animation: none;
   }
   [data-theme="midnight"] .midnight-lineup-pill,

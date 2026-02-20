@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-interface HudSectionHeaderProps {
+interface SectionHeaderProps {
   label: string;
   /** Optional right-side extra text (e.g. "3 sales") */
   extra?: string;
@@ -8,10 +8,10 @@ interface HudSectionHeaderProps {
 }
 
 /**
- * Diamond + label + horizontal line section header.
+ * Dot + label + horizontal line section header.
  * Used by Dashboard and Sales pages.
  */
-export function HudSectionHeader({ label, extra, className }: HudSectionHeaderProps) {
+export function SectionHeader({ label, extra, className }: SectionHeaderProps) {
   return (
     <div className={cn("flex items-center gap-2.5 mb-3", className)}>
       <div className="size-[3px] rounded-full bg-primary shrink-0" />
@@ -27,3 +27,6 @@ export function HudSectionHeader({ label, extra, className }: HudSectionHeaderPr
     </div>
   );
 }
+
+/** @deprecated Use SectionHeader instead */
+export const HudSectionHeader = SectionHeader;

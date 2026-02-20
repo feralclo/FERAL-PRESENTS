@@ -280,7 +280,7 @@ export default function RepDashboardPage() {
         </div>
       </div>
 
-      {/* ── Weapon Card (Discount Code) ── */}
+      {/* ── Discount Code ── */}
       {data.discount_codes.length > 0 && (
         <div
           className={cn(

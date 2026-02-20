@@ -1,7 +1,7 @@
 export { RadialGauge } from "./RadialGauge";
 export { EmptyState } from "./EmptyState";
 export { RepPageError } from "./RepPageError";
-export { HudSectionHeader, HudSectionHeader as SectionHeader } from "./HudSectionHeader";
+export { SectionHeader, HudSectionHeader } from "./SectionHeader";
 export { ConfettiOverlay } from "./ConfettiOverlay";
 export { LevelUpOverlay } from "./LevelUpOverlay";
 export { TikTokIcon } from "./TikTokIcon";

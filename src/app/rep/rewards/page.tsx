@@ -75,6 +75,25 @@ interface Claim {
 
 type TabId = "earned" | "shop" | "history";
 
+// ─── Claim celebration limiter ──────────────────────────────────────────────
+
+const CLAIM_COUNT_KEY = "rep_reward_claim_count";
+const MAX_CONFETTI_CLAIMS = 3;
+
+function shouldShowConfetti(): boolean {
+  try {
+    const count = parseInt(localStorage.getItem(CLAIM_COUNT_KEY) || "0", 10);
+    return count < MAX_CONFETTI_CLAIMS;
+  } catch { return true; }
+}
+
+function incrementClaimCount(): void {
+  try {
+    const count = parseInt(localStorage.getItem(CLAIM_COUNT_KEY) || "0", 10);
+    localStorage.setItem(CLAIM_COUNT_KEY, String(count + 1));
+  } catch { /* storage unavailable */ }
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const CLAIM_STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Check }> = {
@@ -139,6 +158,7 @@ export default function RepRewardsPage() {
       if (res.ok) {
         setError("");
         setSuccessReward(reward);
+        incrementClaimCount();
         playSuccessSound();
         // Refresh data
         const [rewardsRes, meRes, claimsRes] = await Promise.all([
@@ -613,32 +633,34 @@ export default function RepRewardsPage() {
       {/* ── Success Animation with Confetti (portalled) ── */}
       {successReward && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          {/* Confetti burst */}
-          <div className="rep-confetti-container" aria-hidden>
-            {[...Array(8)].map((_, i) => {
-              const angle = (i / 8) * 360;
-              const distance = 60 + Math.random() * 140;
-              const cx = Math.cos((angle * Math.PI) / 180) * distance;
-              const cy = Math.sin((angle * Math.PI) / 180) * distance - 40;
-              const colors = ["#8B5CF6", "#34D399", "#F59E0B", "#F43F5E", "#38BDF8", "#A78BFA", "#FBBF24"];
-              return (
-                <div
-                  key={i}
-                  className="rep-confetti-piece"
-                  style={{
-                    "--cx": `${cx}px`,
-                    "--cy": `${cy}px`,
-                    "--cr": `${Math.random() * 720 - 360}deg`,
-                    backgroundColor: colors[i % colors.length],
-                    animationDelay: `${i * 25}ms`,
-                    borderRadius: i % 3 === 0 ? "50%" : "2px",
-                    width: `${5 + Math.random() * 5}px`,
-                    height: `${5 + Math.random() * 5}px`,
-                  } as React.CSSProperties}
-                />
-              );
-            })}
-          </div>
+          {/* Confetti burst — skipped after 3rd claim */}
+          {shouldShowConfetti() && (
+            <div className="rep-confetti-container" aria-hidden>
+              {[...Array(8)].map((_, i) => {
+                const angle = (i / 8) * 360;
+                const distance = 60 + Math.random() * 140;
+                const cx = Math.cos((angle * Math.PI) / 180) * distance;
+                const cy = Math.sin((angle * Math.PI) / 180) * distance - 40;
+                const colors = ["#8B5CF6", "#34D399", "#F59E0B", "#F43F5E", "#38BDF8", "#A78BFA", "#FBBF24"];
+                return (
+                  <div
+                    key={i}
+                    className="rep-confetti-piece"
+                    style={{
+                      "--cx": `${cx}px`,
+                      "--cy": `${cy}px`,
+                      "--cr": `${Math.random() * 720 - 360}deg`,
+                      backgroundColor: colors[i % colors.length],
+                      animationDelay: `${i * 25}ms`,
+                      borderRadius: i % 3 === 0 ? "50%" : "2px",
+                      width: `${5 + Math.random() * 5}px`,
+                      height: `${5 + Math.random() * 5}px`,
+                    } as React.CSSProperties}
+                  />
+                );
+              })}
+            </div>
+          )}
 
           <div className="text-center rep-celebrate z-10">
             <div className="relative inline-block mb-4">

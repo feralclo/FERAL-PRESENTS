@@ -120,7 +120,7 @@ export interface GuestListEntry {
   created_at: string;
 }
 
-export type AbandonedCartStatus = "abandoned" | "recovered" | "expired";
+export type AbandonedCartStatus = "pending" | "abandoned" | "recovered" | "expired";
 
 export interface AbandonedCart {
   id: string;

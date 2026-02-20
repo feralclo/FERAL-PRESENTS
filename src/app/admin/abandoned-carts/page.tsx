@@ -93,6 +93,17 @@ function getUrgency(cart: AbandonedCart): {
   icon: typeof Flame;
   pulse: boolean;
 } {
+  if (cart.status === "pending") {
+    return {
+      label: "PENDING",
+      color: "#38bdf8",
+      bg: "rgba(56,189,248,0.04)",
+      border: "rgba(56,189,248,0.15)",
+      glow: "0 0 12px rgba(56,189,248,0.1)",
+      icon: Clock,
+      pulse: true,
+    };
+  }
   if (cart.status === "recovered") {
     return {
       label: "RECOVERED",
@@ -393,6 +404,7 @@ function CartRoadmap({ cart }: { cart: AbandonedCart }) {
 
 interface AbandonedCartStats {
   total: number;
+  pending: number;
   abandoned: number;
   recovered: number;
   total_value: number;
@@ -590,6 +602,7 @@ export default function AbandonedCartsPage() {
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<AbandonedCartStats>({
     total: 0,
+    pending: 0,
     abandoned: 0,
     recovered: 0,
     total_value: 0,
@@ -645,9 +658,9 @@ export default function AbandonedCartsPage() {
     : "0";
   const lostRevenue = stats.total_value - stats.recovered_value;
 
-  // Count hot carts (< 1hr old, still abandoned)
+  // Count hot carts (< 1hr old, pending or abandoned)
   const hotCount = carts.filter((c) => {
-    if (c.status !== "abandoned") return false;
+    if (c.status !== "abandoned" && c.status !== "pending") return false;
     return (Date.now() - new Date(c.created_at).getTime()) < 60 * 60 * 1000;
   }).length;
 
@@ -792,7 +805,8 @@ export default function AbandonedCartsPage() {
         {/* Status filter pills */}
         <div className="flex gap-1.5">
           {[
-            { value: "", label: "All", count: stats.total },
+            { value: "", label: "All", count: stats.total + stats.pending },
+            { value: "pending", label: "Pending", count: stats.pending },
             { value: "abandoned", label: "Abandoned", count: stats.abandoned },
             { value: "recovered", label: "Recovered", count: stats.recovered },
           ].map((opt) => (
@@ -901,7 +915,7 @@ export default function AbandonedCartsPage() {
                         {displayName}
                       </span>
                       <Badge
-                        variant={isRecovered ? "success" : cart.status === "expired" ? "secondary" : "warning"}
+                        variant={isRecovered ? "success" : cart.status === "expired" ? "secondary" : cart.status === "pending" ? "info" : "warning"}
                         className="text-[9px] font-bold uppercase"
                       >
                         {urgency.label}

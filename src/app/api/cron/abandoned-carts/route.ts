@@ -37,8 +37,10 @@ const EXPIRY_MINUTES = 7 * 24 * 60;
 
 /** Grace period before a cart is considered truly abandoned (minutes).
  *  Carts stay "pending" during this window — if the customer completes
- *  checkout the pending row is simply deleted and never counts as abandoned. */
-const PENDING_GRACE_MINUTES = 15;
+ *  checkout the pending row is simply deleted and never counts as abandoned.
+ *  5 minutes is safe: most checkouts complete in 2-3 min. Combined with
+ *  the 10-min cron interval, worst-case promotion delay is ~15 min. */
+const PENDING_GRACE_MINUTES = 5;
 
 /** Max carts to process per run (prevent timeout) */
 const BATCH_LIMIT = 100;

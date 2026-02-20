@@ -7,7 +7,7 @@ import { requireAuth } from "@/lib/auth";
  * GET /api/abandoned-carts — List abandoned carts with stats
  *
  * Query params:
- *   status   — filter by status (abandoned, recovered, expired). Default: all.
+ *   status   — filter by status (pending, abandoned, recovered, expired). Default: all.
  *   event_id — filter by event
  *   search   — search by email or name
  *   page     — pagination (default 1)
@@ -46,10 +46,9 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       query = query.eq("status", status);
-    } else {
-      // Default: exclude "pending" carts (active checkouts, not yet abandoned)
-      query = query.neq("status", "pending");
     }
+    // No default exclusion — show all carts including "pending" so admin
+    // has immediate visibility into carts waiting to be promoted.
 
     if (eventId) {
       query = query.eq("event_id", eventId);
@@ -71,43 +70,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Also fetch aggregate stats (exclude "pending" — those are active checkouts, not abandoned)
+    // Fetch aggregate stats (all carts including pending for full visibility)
     const { data: allCarts } = await supabase
       .from(TABLES.ABANDONED_CARTS)
       .select("status, subtotal, notification_count")
-      .eq("org_id", ORG_ID)
-      .neq("status", "pending");
+      .eq("org_id", ORG_ID);
 
     type CartRow = { status: string; subtotal: number; notification_count: number };
 
+    const pending = allCarts?.filter((c: CartRow) => c.status === "pending") || [];
+    const nonPending = allCarts?.filter((c: CartRow) => c.status !== "pending") || [];
+
     const stats = {
-      total: allCarts?.length || 0,
-      abandoned: allCarts?.filter((c: CartRow) => c.status === "abandoned").length || 0,
-      recovered: allCarts?.filter((c: CartRow) => c.status === "recovered").length || 0,
-      total_value: allCarts
-        ?.filter((c: CartRow) => c.status === "abandoned")
-        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0) || 0,
-      recovered_value: allCarts
-        ?.filter((c: CartRow) => c.status === "recovered")
-        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0) || 0,
+      total: nonPending.length,
+      pending: pending.length,
+      abandoned: nonPending.filter((c: CartRow) => c.status === "abandoned").length,
+      recovered: nonPending.filter((c: CartRow) => c.status === "recovered").length,
+      total_value: nonPending
+        .filter((c: CartRow) => c.status === "abandoned")
+        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0),
+      recovered_value: nonPending
+        .filter((c: CartRow) => c.status === "recovered")
+        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0),
     };
 
     // Per-step pipeline stats: how many emails sent per step and recoveries after each
     const pipeline = [1, 2, 3].map((step) => {
-      const sent = allCarts?.filter((c: CartRow) => c.notification_count >= step).length || 0;
-      const recoveredAfter = allCarts?.filter(
+      const sent = nonPending.filter((c: CartRow) => c.notification_count >= step).length;
+      const recoveredAfter = nonPending.filter(
         (c: CartRow) => c.status === "recovered" && c.notification_count === step
-      ).length || 0;
-      const recoveredValue = allCarts
-        ?.filter((c: CartRow) => c.status === "recovered" && c.notification_count === step)
-        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0) || 0;
+      ).length;
+      const recoveredValue = nonPending
+        .filter((c: CartRow) => c.status === "recovered" && c.notification_count === step)
+        .reduce((sum: number, c: CartRow) => sum + Number(c.subtotal), 0);
       return { step, sent, recovered: recoveredAfter, recovered_value: recoveredValue };
     });
 
     // Carts recovered without any email (notification_count === 0)
-    const recoveredWithoutEmail = allCarts?.filter(
+    const recoveredWithoutEmail = nonPending.filter(
       (c: CartRow) => c.status === "recovered" && c.notification_count === 0
-    ).length || 0;
+    ).length;
 
     return NextResponse.json({
       data: data || [],

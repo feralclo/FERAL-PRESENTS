@@ -255,8 +255,8 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Skip if event is no longer active (cancelled, past, etc.)
-        if (event.status && !["active", "published"].includes(event.status)) {
+        // Skip if event is no longer active (cancelled, past, archived, etc.)
+        if (event.status && !["live", "draft"].includes(event.status)) {
           await supabase
             .from(TABLES.ABANDONED_CARTS)
             .update({

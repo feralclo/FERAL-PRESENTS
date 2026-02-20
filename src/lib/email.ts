@@ -489,10 +489,14 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
     ).replace(/\/$/, "");
     // Build recovery URL — include discount code if present so checkout auto-applies it
+    const hasItems = params.items.length > 0;
     const discountParam = params.stepConfig.include_discount && params.stepConfig.discount_code
       ? `&discount=${encodeURIComponent(params.stepConfig.discount_code)}`
       : "";
-    const recoveryUrl = `${siteUrl}/event/${params.event.slug}/checkout?restore=${params.cartToken}${discountParam}`;
+    // Empty carts (popup captures) → link to event page; carts with items → checkout restore
+    const recoveryUrl = hasItems
+      ? `${siteUrl}/event/${params.event.slug}/checkout?restore=${params.cartToken}${discountParam}`
+      : `${siteUrl}/event/${params.event.slug}`;
     const unsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${encodeURIComponent(params.cartToken)}&type=cart_recovery`;
 
     const currency = params.currency || params.event.currency || "GBP";

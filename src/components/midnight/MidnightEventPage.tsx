@@ -219,7 +219,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   useEffect(() => {
     function handlePopupCapture(e: globalThis.Event) {
       const detail = (e as unknown as CustomEvent<{ email: string }>).detail;
-      if (!detail?.email || cart.totalQty === 0) return;
+      if (!detail?.email) return;
 
       const ttMap = new Map(
         (event.ticket_types || []).map((tt) => [tt.id, tt])

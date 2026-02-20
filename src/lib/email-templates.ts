@@ -555,6 +555,8 @@ export function buildAbandonedCartRecoveryEmail(
   const discountAmt = hasDiscount ? subtotalNum * ((cart.discount_percent || 0) / 100) : 0;
   const total = subtotalNum - discountAmt;
 
+  const hasItems = cart.cart_items.length > 0;
+
   // Build cart item rows — clean, minimal
   const cartItemsHtml = cart.cart_items
     .map((item, idx) => {
@@ -695,6 +697,7 @@ export function buildAbandonedCartRecoveryEmail(
                   </td>
                 </tr>
 
+                ${hasItems ? `
                 <!-- Order Items -->
                 <tr>
                   <td style="padding: 28px 40px 8px;">
@@ -742,7 +745,7 @@ export function buildAbandonedCartRecoveryEmail(
                       </tr>
                     </table>
                   </td>
-                </tr>
+                </tr>` : ""}
 
                 ${hasDiscount ? `
                 <!-- Discount Applied Banner -->
@@ -793,7 +796,7 @@ export function buildAbandonedCartRecoveryEmail(
                 ${escapeHtml(s.footer_text || s.from_name)}
               </div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #bbbbbb;">
-                You\u2019re receiving this because you started checkout.<br>You can safely ignore this email if it wasn\u2019t you.
+                You\u2019re receiving this because you ${hasItems ? "started checkout" : "showed interest in this event"}.<br>You can safely ignore this email if it wasn\u2019t you.
               </div>${cart.unsubscribe_url ? `
               <div style="margin-top: 10px;">
                 <a href="${escapeHtml(cart.unsubscribe_url)}" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #999999; text-decoration: underline;">Unsubscribe</a>
@@ -820,17 +823,17 @@ ${message}
 EVENT
 ${cart.event_name}
 ${eventDetails}${doorsLine ? `\n${doorsLine}` : ""}
-
+${hasItems ? `
 YOUR ORDER
 ${cartItemsText}
 ${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
 Total: ${cart.currency_symbol}${total.toFixed(2)}
-${hasDiscount ? `\n✓ ${cart.discount_percent}% off — discount automatically applied (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n` : ""}
+${hasDiscount ? `\n✓ ${cart.discount_percent}% off — discount automatically applied (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n` : ""}` : ""}
 ${ctaText}: ${cart.recovery_url}
 
 ---
 ${s.footer_text || s.from_name}
-You're receiving this because you started a checkout. If this wasn't you, you can safely ignore this email.${cart.unsubscribe_url ? `\n\nUnsubscribe from cart recovery emails: ${cart.unsubscribe_url}` : ""}`;
+You're receiving this because you ${hasItems ? "started a checkout" : "showed interest in this event"}. If this wasn't you, you can safely ignore this email.${cart.unsubscribe_url ? `\n\nUnsubscribe from cart recovery emails: ${cart.unsubscribe_url}` : ""}`;
 
   return { subject, html, text };
 }

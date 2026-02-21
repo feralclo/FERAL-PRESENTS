@@ -23,6 +23,7 @@ import { MidnightFooter } from "./MidnightFooter";
 import { isMuxPlaybackId, getMuxStreamUrl, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Artist, EventArtist } from "@/types/artists";
+import type { Order } from "@/types/orders";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountAmount } from "./discount-utils";
 
@@ -300,6 +301,17 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     [teeModalTicketType, cart.addMerchExternal]
   );
 
+  const handleMerchExpressSuccess = useCallback(
+    (order: Order) => {
+      if (order.payment_ref) {
+        window.location.assign(`/event/${event.slug}/checkout/?pi=${order.payment_ref}`);
+      } else {
+        window.location.assign(`/event/${event.slug}/checkout/`);
+      }
+    },
+    [event.slug]
+  );
+
   // Format date for hero
   const dateDisplay = useMemo(() => {
     const d = new Date(event.date_start);
@@ -538,6 +550,12 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           ticketName={teeModalTicketType.name}
           ticketDescription={teeModalTicketType.description}
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
+          eventId={event.id}
+          ticketTypeId={teeModalTicketType.id}
+          currency={event.currency}
+          isStripe={event.payment_method === "stripe"}
+          onExpressSuccess={handleMerchExpressSuccess}
+          discountCode={activeDiscount?.code}
         />
       )}
 

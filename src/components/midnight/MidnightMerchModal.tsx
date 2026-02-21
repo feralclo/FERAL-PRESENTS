@@ -8,9 +8,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
+import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
+import type { Order } from "@/types/orders";
 
 interface MidnightMerchModalProps {
   isOpen: boolean;
@@ -25,6 +27,12 @@ interface MidnightMerchModalProps {
   ticketName?: string;
   ticketDescription?: string;
   vipBadge?: string;
+  eventId?: string;
+  ticketTypeId?: string;
+  currency?: string;
+  isStripe?: boolean;
+  onExpressSuccess?: (order: Order) => void;
+  discountCode?: string;
 }
 
 export function MidnightMerchModal({
@@ -40,6 +48,12 @@ export function MidnightMerchModal({
   ticketName,
   ticketDescription,
   vipBadge,
+  eventId,
+  ticketTypeId,
+  currency,
+  isStripe,
+  onExpressSuccess,
+  discountCode,
 }: MidnightMerchModalProps) {
   const images = useMemo(() => {
     return normalizeMerchImages(merchImages).map((src, i) => ({
@@ -63,10 +77,26 @@ export function MidnightMerchModal({
   const [qty, setQty] = useState(1);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
+  const [expressAvailable, setExpressAvailable] = useState(false);
+  const [expressError, setExpressError] = useState("");
+
+  const expressItems = useMemo(() => {
+    if (!ticketTypeId || !selectedSize || qty <= 0) return [];
+    return [{ ticket_type_id: ticketTypeId, qty, merch_size: selectedSize }];
+  }, [ticketTypeId, selectedSize, qty]);
+
+  const handleExpressSuccess = useCallback(
+    (order: Order) => {
+      onClose();
+      onExpressSuccess?.(order);
+    },
+    [onClose, onExpressSuccess]
+  );
 
   // Touch refs for swipe detection
   const mainTouchStartX = useRef(0);
   const fsTouchStartX = useRef(0);
+  const fsDidSwipe = useRef(false);
 
   // Reset active index when images change
   useEffect(() => {
@@ -120,12 +150,14 @@ export function MidnightMerchModal({
   // Fullscreen swipe handlers
   const onFsTouchStart = useCallback((e: React.TouchEvent) => {
     fsTouchStartX.current = e.touches[0].clientX;
+    fsDidSwipe.current = false;
   }, []);
 
   const onFsTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       const delta = e.changedTouches[0].clientX - fsTouchStartX.current;
       if (Math.abs(delta) > 50) {
+        fsDidSwipe.current = true;
         if (delta < 0) {
           setFullscreenIndex((i) => (i + 1) % images.length);
         } else {
@@ -182,6 +214,7 @@ export function MidnightMerchModal({
         <DialogContent
           data-theme="midnight"
           className="midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col bg-[#08080c] border-[rgba(255,255,255,0.06)]"
+          style={{ maxHeight: "85dvh" }}
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -198,7 +231,7 @@ export function MidnightMerchModal({
                 onTouchStart={onMainTouchStart}
                 onTouchEnd={onMainTouchEnd}
               >
-                <div className="flex justify-center items-center px-6 pt-12 pb-3 max-md:px-5 max-md:pt-8 max-md:pb-1.5 min-h-[280px] max-md:min-h-[170px] max-[380px]:min-h-[140px]">
+                <div className="flex justify-center items-center px-4 pt-6 pb-2 max-md:px-3 max-md:pt-5 max-md:pb-1 min-h-[300px] max-md:min-h-[200px] max-[380px]:min-h-[140px]">
                   {images.length > 0 ? (
                     images.map((img, i) => (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -206,7 +239,7 @@ export function MidnightMerchModal({
                         key={`${img.src}-${i}`}
                         src={img.src}
                         alt={img.alt}
-                        className={`max-w-[300px] max-md:max-w-[200px] max-[380px]:max-w-[160px] max-h-[320px] max-md:max-h-[200px] max-[380px]:max-h-[160px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
+                        className={`max-w-[340px] max-md:max-w-[240px] max-[380px]:max-w-[180px] max-h-[360px] max-md:max-h-[240px] max-[380px]:max-h-[180px] w-auto h-auto object-contain cursor-zoom-in transition-opacity duration-300 ${
                           activeIndex === i ? "block opacity-100" : "hidden opacity-0"
                         }`}
                         onClick={() => openFullscreen(i)}
@@ -225,7 +258,7 @@ export function MidnightMerchModal({
                     {activeIndex > 0 && (
                       <button
                         type="button"
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 border border-white/8 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/8 hover:border-white/15 hover:text-white/90 transition-all cursor-pointer"
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-9 h-9 max-md:w-10 max-md:h-10 bg-black/40 border border-white/8 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/8 hover:border-white/15 hover:text-white/90 transition-all cursor-pointer"
                         onClick={goPrev}
                         aria-label="Previous image"
                       >
@@ -235,7 +268,7 @@ export function MidnightMerchModal({
                     {activeIndex < images.length - 1 && (
                       <button
                         type="button"
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 border border-white/8 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/8 hover:border-white/15 hover:text-white/90 transition-all cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 max-md:w-10 max-md:h-10 bg-black/40 border border-white/8 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/8 hover:border-white/15 hover:text-white/90 transition-all cursor-pointer"
                         onClick={goNext}
                         aria-label="Next image"
                       >
@@ -277,14 +310,28 @@ export function MidnightMerchModal({
                   </span>
                 </div>
 
-                {/* What's included — ticket bundle info */}
-                {bundleName && (
-                  <div className="w-full rounded-lg bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] p-3 max-md:p-2.5 mb-3 max-md:mb-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                    <p className="font-[family-name:var(--font-sans)] text-[11px] font-bold tracking-[0.02em] text-white/80 max-md:text-center">
-                      {bundleName}
-                    </p>
+                {/* What's included — bundle badges */}
+                {ticketName && (
+                  <div className="w-full mb-3 max-md:mb-2.5">
+                    <div className="flex flex-wrap gap-2 max-md:justify-center">
+                      <span className="midnight-bundle-badge inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.04em] uppercase text-white/60">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
+                          <rect x="2" y="7" width="20" height="14" rx="2" />
+                          <path d="M16 7V5a4 4 0 0 0-8 0v2" />
+                        </svg>
+                        Includes Ticket
+                      </span>
+                      <span className="midnight-bundle-badge inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.04em] uppercase text-white/60">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                          <line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
+                        Includes Merch
+                      </span>
+                    </div>
                     {ticketDescription && (
-                      <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/30 mt-0.5 max-md:text-center">
+                      <p className="font-[family-name:var(--font-sans)] text-[10px] leading-relaxed text-white/30 mt-2 max-md:text-center">
                         {ticketDescription}
                       </p>
                     )}
@@ -316,7 +363,7 @@ export function MidnightMerchModal({
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
-                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.03)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                  className="w-9 h-9 max-md:w-10 max-md:h-10 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.03)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
                   onClick={() => setQty(Math.max(1, qty - 1))}
                 >
                   &minus;
@@ -326,7 +373,7 @@ export function MidnightMerchModal({
                 </span>
                 <button
                   type="button"
-                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.03)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                  className="w-9 h-9 max-md:w-10 max-md:h-10 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.03)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
                   onClick={() => setQty(qty + 1)}
                 >
                   +
@@ -343,6 +390,43 @@ export function MidnightMerchModal({
               </button>
             </div>
           </div>
+
+          {/* ── Express Pay (Apple Pay / Google Pay) ── */}
+          {isStripe && eventId && currency && expressItems.length > 0 && (
+            <div className="shrink-0 px-5 pb-3.5 max-md:px-4 max-md:pb-3">
+              {/* "or" divider */}
+              {expressAvailable && (
+                <div className="flex items-center gap-3 pb-3">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+                  <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.2em] uppercase text-white/20 shrink-0">
+                    or
+                  </span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+                </div>
+              )}
+
+              {/* Glass enclosure */}
+              <div className={expressAvailable ? "midnight-express-glass rounded-2xl p-3" : ""}>
+                <div className={expressAvailable ? "midnight-express-btn-frame rounded-xl overflow-hidden" : "rounded-xl overflow-hidden"}>
+                  <ExpressCheckout
+                    eventId={eventId}
+                    currency={currency}
+                    amount={price * qty}
+                    items={expressItems}
+                    onSuccess={handleExpressSuccess}
+                    onError={setExpressError}
+                    onAvailable={() => setExpressAvailable(true)}
+                    discountCode={discountCode}
+                  />
+                </div>
+              </div>
+              {expressError && (
+                <div className="mt-2.5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.5px] text-destructive text-center p-2.5 bg-destructive/[0.05] border border-destructive/10 rounded-xl">
+                  {expressError}
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -352,21 +436,26 @@ export function MidnightMerchModal({
       {fullscreenOpen && (
         <div
           className="midnight-fs-overlay fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
-          onClick={() => setFullscreenOpen(false)}
+          onClick={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if (fsDidSwipe.current) { fsDidSwipe.current = false; return; }
+            setFullscreenOpen(false);
+          }}
           onTouchStart={onFsTouchStart}
           onTouchEnd={onFsTouchEnd}
         >
           {/* Close button */}
           <button
             type="button"
-            className="absolute top-4 right-4 z-20 w-9 h-9 bg-white/8 border border-white/12 rounded-lg flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+            className="absolute right-4 z-20 w-11 h-11 bg-black/60 border border-white/15 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+            style={{ top: "max(16px, env(safe-area-inset-top, 16px))" }}
             onClick={(e) => {
               e.stopPropagation();
               setFullscreenOpen(false);
             }}
             aria-label="Close zoom"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -411,6 +500,7 @@ export function MidnightMerchModal({
               src={images[fullscreenIndex].src}
               alt={images[fullscreenIndex].alt}
               className="max-w-[85vw] max-h-[85vh] object-contain cursor-zoom-out"
+              style={{ maxHeight: "85dvh" }}
             />
           )}
 

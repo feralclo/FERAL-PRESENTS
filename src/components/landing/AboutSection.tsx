@@ -86,12 +86,26 @@ export function AboutSection() {
     const pillars = section.querySelectorAll(".about-pillar");
     const pillarObserver = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (
-            entry.isIntersecting &&
-            !(entry.target as HTMLElement).dataset.animated
-          ) {
-            (entry.target as HTMLElement).dataset.animated = "true";
+        // Sort by DOM order and stagger when multiple enter at once
+        const fresh = entries
+          .filter(
+            (e) =>
+              e.isIntersecting &&
+              !(e.target as HTMLElement).dataset.animated
+          )
+          .sort(
+            (a, b) =>
+              parseInt((a.target as HTMLElement).dataset.index || "0") -
+              parseInt((b.target as HTMLElement).dataset.index || "0")
+          );
+
+        fresh.forEach((entry, i) => {
+          (entry.target as HTMLElement).dataset.animated = "true";
+          pillarObserver.unobserve(entry.target);
+
+          const stagger = i * 200;
+
+          setTimeout(() => {
             entry.target.classList.add("revealed");
 
             const pillar = entry.target;
@@ -118,12 +132,10 @@ export function AboutSection() {
             if (textEl) {
               wordReveal(textEl, 500);
             }
-
-            pillarObserver.unobserve(entry.target);
-          }
+          }, stagger);
         });
       },
-      { threshold: 0.2, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.15, rootMargin: "0px 0px -20px 0px" }
     );
 
     pillars.forEach((p) => pillarObserver.observe(p));
@@ -140,7 +152,7 @@ export function AboutSection() {
             }
           });
         },
-        { threshold: 0.1 }
+        { threshold: 0.1, rootMargin: "0px 0px 60px 0px" }
       );
       heroObserver.observe(heroEl);
     }
@@ -169,7 +181,7 @@ export function AboutSection() {
             }
           });
         },
-        { threshold: 0.3 }
+        { threshold: 0.2, rootMargin: "0px 0px 20px 0px" }
       );
       closerObserver.observe(closer);
     }
@@ -222,9 +234,10 @@ export function AboutSection() {
               title: "The Energy",
               text: "It\u2019s a frequency you have to feel to understand. The visuals warp reality, the sound hits your chest, and the Feral family brings an energy that doesn\u2019t exist on any other dancefloor.",
             },
-          ].map((pillar) => (
+          ].map((pillar, i) => (
             <div
               key={pillar.num}
+              data-index={i}
               className="about-pillar flex items-start gap-8 max-md:flex-col max-md:gap-4 py-14 max-md:py-10 relative"
             >
               <div className="about-pillar-index shrink-0 w-12 h-12 max-md:w-9 max-md:h-9 flex items-center justify-center border border-primary/10 relative overflow-hidden opacity-0 scale-0">

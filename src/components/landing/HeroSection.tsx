@@ -73,8 +73,14 @@ export function HeroSection({ settings }: HeroSectionProps) {
         />
         {/* Atmospheric mist + bokeh */}
         <div className="hero__bg-mist absolute inset-0 z-[1] pointer-events-none overflow-hidden" />
+        {/* Spotlight sweep — concert-style beams crossing the frame */}
+        <div className="hero__bg-spotlight absolute inset-0 z-[1] pointer-events-none" />
         {/* Light breathing — warm/cool color shift */}
         <div className="hero__bg-breathe absolute inset-0 z-[1] pointer-events-none" />
+        {/* Bottom warmth — stage footlights bleeding up */}
+        <div className="hero__bg-warmth absolute inset-0 z-[1] pointer-events-none" />
+        {/* Rising embers — tiny warm particles drifting upward */}
+        <div className="hero__bg-embers absolute inset-0 z-[1] pointer-events-none" />
         {/* Film grain — subtle texture for cinematic feel */}
         <div className="hero__bg-grain absolute inset-0 z-[1] pointer-events-none opacity-[0.035]" />
         {/* Cinematic vignette */}

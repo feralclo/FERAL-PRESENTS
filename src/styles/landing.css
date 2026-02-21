@@ -607,6 +607,14 @@
   50% { transform: translateX(6px); opacity: 0.8; }
 }
 
+/* Scan line moving through event card images */
+@keyframes cardScan {
+  0% { top: -5%; opacity: 0; }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.7; }
+  100% { top: 105%; opacity: 0; }
+}
+
 
 /* ============================================
    About Section Animations

@@ -62,8 +62,8 @@ export function EventsSection({ events }: EventsSectionProps) {
             className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-lg:flex max-lg:overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:-mx-6 max-lg:px-6 max-lg:gap-5"
             style={{ scrollbarWidth: "none" }}
           >
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} />
+            {events.map((event, i) => (
+              <EventCard key={event.id} event={event} index={i} />
             ))}
           </div>
         )}
@@ -86,7 +86,13 @@ export function EventsSection({ events }: EventsSectionProps) {
   );
 }
 
-function EventCard({ event }: { event: LandingEvent }) {
+function EventCard({
+  event,
+  index,
+}: {
+  event: LandingEvent;
+  index: number;
+}) {
   const d = new Date(event.date_start);
   const day = String(d.getDate()).padStart(2, "0");
   const month = d
@@ -109,11 +115,11 @@ function EventCard({ event }: { event: LandingEvent }) {
     <Link
       href={href}
       {...linkProps}
-      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_0_40px_rgba(255,0,51,0.06)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[85vw] max-lg:max-w-[400px]"
+      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_rgba(255,0,51,0.1),0_0_0_1px_rgba(255,0,51,0.12)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[85vw] max-lg:max-w-[400px]"
       data-reveal=""
     >
       {/* Date badge */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col items-center bg-background/90 backdrop-blur-sm border border-foreground/[0.10] px-3.5 py-2.5 rounded-lg">
+      <div className="absolute top-4 right-4 z-10 flex flex-col items-center bg-background/90 backdrop-blur-sm border border-foreground/[0.10] px-3.5 py-2.5 rounded-lg transition-all duration-300 group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.1)]">
         <span className="font-[family-name:var(--font-mono)] text-[22px] font-bold leading-none tracking-[0.02em]">
           {day}
         </span>
@@ -128,10 +134,17 @@ function EventCard({ event }: { event: LandingEvent }) {
         <img
           src={imageUrl}
           alt={event.name}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+          className="absolute inset-0 w-full h-full object-cover transition-all duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] saturate-[0.85] group-hover:scale-105 group-hover:saturate-100"
         />
-        {/* Gradient overlay fading to card bg */}
+        {/* Bottom gradient — fades into card */}
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-background)] via-transparent to-transparent z-[1]" />
+        {/* Top vignette — date badge readability */}
+        <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/30 to-transparent z-[1]" />
+        {/* Scan line */}
+        <div
+          className="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent z-[2] pointer-events-none animate-[cardScan_4s_ease-in-out_infinite]"
+          style={index > 0 ? { animationDelay: `${index * 1.5}s` } : undefined}
+        />
       </div>
 
       {/* Content */}
@@ -169,11 +182,14 @@ function EventCard({ event }: { event: LandingEvent }) {
           <span className="font-[family-name:var(--font-mono)] text-[11px] font-bold tracking-[0.15em] uppercase transition-colors duration-300 group-hover:text-primary">
             {isExternal ? "BUY TICKETS" : "GET TICKETS"}
           </span>
-          <span className="text-sm transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary">
+          <span className="text-sm transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-primary">
             {isExternal ? "\u2197" : "\u2192"}
           </span>
         </div>
       </div>
+
+      {/* Inner border glow on hover */}
+      <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-500 group-hover:opacity-100 shadow-[inset_0_0_30px_rgba(255,0,51,0.06)]" />
     </Link>
   );
 }

@@ -59,11 +59,11 @@ export function LandingPage({ events }: LandingPageProps) {
             >
               <path
                 d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
-                fill="currentColor"
+                fill="#ff0033"
               />
               <path
                 d="M10 15.5l-3.5-3.5 1.41-1.41L10 12.67l5.59-5.59L17 8.5l-7 7z"
-                fill="#0e0e0e"
+                fill="#0a0a0a"
               />
             </svg>
             VERIFIED

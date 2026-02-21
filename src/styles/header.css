@@ -172,7 +172,8 @@
   justify-content: center;
   gap: 10px;
   padding: 6px 16px;
-  background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 40%, #A78BFA 100%);
+  background: linear-gradient(90deg, #0a0a0a 0%, #1a0a0e 50%, #0a0a0a 100%);
+  border-bottom: 1px solid rgba(255, 0, 51, 0.15);
   color: var(--white);
   width: 100%;
   position: relative;
@@ -189,7 +190,8 @@
   letter-spacing: 2.5px;
   text-transform: uppercase;
   color: #fff;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 0, 51, 0.12);
+  border: 1px solid rgba(255, 0, 51, 0.25);
   padding: 2px 8px 2px 5px;
   border-radius: 3px;
   flex-shrink: 0;
@@ -204,7 +206,7 @@
 .announcement-banner__divider {
   width: 1px;
   height: 12px;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 0, 51, 0.3);
   flex-shrink: 0;
 }
 
@@ -214,7 +216,7 @@
   letter-spacing: 2px;
   text-transform: uppercase;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* Animated shimmer across the banner */
@@ -224,7 +226,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 0, 51, 0.06) 50%, transparent 100%);
   animation: bannerShimmer 4s ease-in-out infinite;
   pointer-events: none;
 }

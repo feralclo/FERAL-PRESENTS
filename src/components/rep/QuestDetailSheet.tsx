@@ -298,30 +298,15 @@ export function QuestDetailSheet({
             <button
               onClick={() => onSubmit(quest)}
               className={cn(
-                "rep-quest-cta rep-quest-cta-glow w-full flex flex-col items-center gap-1.5 py-5 rounded-2xl text-white transition-all active:scale-[0.97]",
+                "rep-quest-cta w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white transition-all active:scale-[0.97]",
                 accent.ctaGradient
               )}
               style={{
-                ["--cta-glow" as string]: accent.progressColor,
+                boxShadow: `0 4px 20px ${accent.progressColor}30`,
               }}
             >
-              <div className="flex items-center gap-2.5">
-                <Zap size={20} className="drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
-                <span className="text-lg font-extrabold tracking-wide">Submit Proof</span>
-              </div>
-              <div className="flex items-center gap-2 text-white/60 text-xs font-semibold">
-                <span className="flex items-center gap-1">
-                  <Zap size={10} /> +{quest.points_reward} XP
-                </span>
-                {hasDualReward && (
-                  <>
-                    <span className="text-white/25">|</span>
-                    <span className="flex items-center gap-1">
-                      <CurrencyIcon size={10} /> +{quest.currency_reward} {currencyName}
-                    </span>
-                  </>
-                )}
-              </div>
+              <Zap size={16} className="opacity-80" />
+              <span className="text-sm font-bold tracking-wide">Submit Proof</span>
             </button>
           )}
         </div>

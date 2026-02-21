@@ -68,6 +68,7 @@ export function QuestDetailSheet({
   const hasImage = !!quest.image_url;
   const hasRefUrl = !!quest.reference_url;
   const refPlatform = quest.reference_url ? getReferenceUrlPlatform(quest.reference_url) : (quest.platform !== "any" ? quest.platform : null);
+  const hasDualReward = quest.currency_reward > 0;
 
   return (
     <div
@@ -81,13 +82,25 @@ export function QuestDetailSheet({
         )}
         role="dialog"
         aria-label={quest.title}
-        style={hasImage ? {
-          boxShadow: `0 0 100px ${accent.progressColor}18, 0 0 40px ${accent.progressColor}08, 0 25px 60px rgba(0,0,0,0.6)`,
-        } : undefined}
+        style={{
+          ["--quest-accent" as string]: accent.progressColor,
+          boxShadow: hasImage
+            ? `0 0 120px ${accent.progressColor}20, 0 0 40px ${accent.progressColor}08, 0 25px 60px rgba(0,0,0,0.7)`
+            : undefined,
+        }}
       >
+        {/* Top edge accent light */}
+        <div
+          className="absolute top-0 left-[15%] right-[15%] h-px z-10 pointer-events-none"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${accent.progressColor}60, transparent)`,
+            boxShadow: `0 0 16px ${accent.progressColor}30`,
+          }}
+        />
+
         {/* Full-bleed atmospheric backdrop */}
         {hasImage && (
-          <div className="rep-quest-detail-hero-backdrop" aria-hidden="true">
+          <div className="rep-quest-detail-hero-backdrop" aria-hidden="true" onClick={onExpandImage}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={quest.image_url!} alt="" />
           </div>
@@ -102,118 +115,92 @@ export function QuestDetailSheet({
           <X size={16} />
         </button>
 
-        {/* Scrollable content area */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain relative z-[1]">
+        {/* Scrollable content area — hidden scrollbar */}
+        <div className="rep-quest-detail-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain relative z-[1]">
 
-          {/* ── Header section — stagger 1 ── */}
-          <div className="px-5 pt-6 pb-2 text-center rep-quest-reveal-1">
-            {/* Quest type pill */}
+          {/* ── Header — stagger 1 ── */}
+          <div className="px-5 pt-7 pb-2 text-center rep-quest-reveal-1">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] px-3 py-1 mb-3">
               <QuestTypeIcon size={11} className="opacity-60" />
               <span className="text-[10px] font-semibold text-muted-foreground capitalize tracking-wide">{questTypeLabel}</span>
             </div>
 
-            <h3 className={cn("text-xl font-extrabold tracking-tight leading-snug mb-1", accent.titleColor)}>
+            <h3 className={cn("text-xl font-extrabold tracking-tight leading-snug", accent.titleColor)}>
               {quest.title}
             </h3>
 
             {quest.description && (
-              <p className="text-sm text-muted-foreground/80 leading-relaxed mt-2">
+              <p className="text-sm text-muted-foreground/80 leading-relaxed mt-2 max-w-[320px] mx-auto">
                 {quest.description}
               </p>
             )}
           </div>
 
-          {/* ── Compact image preview (tappable) — only when no reference URL ── */}
-          {!hasRefUrl && hasImage && (
-            <div className="px-5 pt-1 pb-1 rep-quest-reveal-1">
-              <div
-                className="mx-auto w-fit rounded-lg overflow-hidden border border-white/[0.12] cursor-zoom-in transition-transform active:scale-95"
-                onClick={onExpandImage}
-                style={{ boxShadow: `0 4px 20px ${accent.progressColor}15` }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={quest.image_url!}
-                  alt={quest.title}
-                  className="max-h-[120px] max-w-[200px] object-contain"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ── Reward Cards — stagger 2, breathing icons ── */}
-          <div className="px-5 py-3 rep-quest-reveal-2">
+          {/* ── Rewards — stagger 2 — THE hero ── */}
+          <div className="px-5 py-4 rep-quest-reveal-2">
             <div className={cn(
-              "grid gap-2.5",
-              quest.currency_reward > 0 ? "grid-cols-2" : "grid-cols-1 max-w-[180px] mx-auto"
+              "flex items-center justify-center",
+              hasDualReward ? "gap-4" : ""
             )}>
-              {/* XP reward card */}
-              <div
-                className="relative rounded-xl border p-3.5 text-center overflow-hidden"
-                style={{
-                  borderColor: `${accent.progressColor}25`,
-                  background: `linear-gradient(135deg, ${accent.progressColor}06, ${accent.progressColor}10)`,
-                }}
-              >
+              {/* XP reward */}
+              <div className="flex flex-col items-center">
                 <div
-                  className="absolute inset-0 opacity-30"
+                  className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5"
                   style={{
-                    background: `radial-gradient(circle at 50% 0%, ${accent.progressColor}40, transparent 70%)`,
+                    backgroundColor: `${accent.progressColor}12`,
+                    boxShadow: `0 0 32px ${accent.progressColor}35, 0 0 12px ${accent.progressColor}20`,
                   }}
-                />
-                <div className="relative">
-                  <div
-                    className="rep-quest-reward-icon inline-flex h-11 w-11 items-center justify-center rounded-full mx-auto mb-2"
-                    style={{
-                      backgroundColor: `${accent.progressColor}15`,
-                      boxShadow: `0 0 28px ${accent.progressColor}30, 0 0 8px ${accent.progressColor}15`,
-                    }}
-                  >
-                    <Zap size={20} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 6px ${accent.progressColor})` }} />
-                  </div>
-                  <p
-                    className="text-2xl font-black tabular-nums"
-                    style={{ color: accent.progressColor, textShadow: `0 0 20px ${accent.progressColor}40` }}
-                  >
-                    +{quest.points_reward}
-                  </p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
-                    XP
-                  </p>
+                >
+                  <Zap size={24} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 8px ${accent.progressColor})` }} />
                 </div>
+                <p
+                  className="text-4xl font-black tabular-nums leading-none"
+                  style={{ color: accent.progressColor, textShadow: `0 0 24px ${accent.progressColor}50` }}
+                >
+                  +{quest.points_reward}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
+                  XP
+                </p>
               </div>
 
-              {/* Currency reward card */}
-              {quest.currency_reward > 0 && (
-                <div className="relative rounded-xl border border-amber-400/25 p-3.5 text-center overflow-hidden bg-gradient-to-br from-amber-400/[0.03] to-amber-400/[0.10]">
+              {/* Divider between rewards */}
+              {hasDualReward && (
+                <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent mx-1" />
+              )}
+
+              {/* Currency reward */}
+              {hasDualReward && (
+                <div className="flex flex-col items-center">
                   <div
-                    className="absolute inset-0 opacity-30"
-                    style={{
-                      background: "radial-gradient(circle at 50% 0%, rgba(251,191,36,0.4), transparent 70%)",
-                    }}
-                  />
-                  <div className="relative">
-                    <div
-                      className="rep-quest-reward-icon inline-flex h-11 w-11 items-center justify-center rounded-full mx-auto mb-2 bg-amber-400/15"
-                      style={{ boxShadow: "0 0 28px rgba(251,191,36,0.3), 0 0 8px rgba(251,191,36,0.15)" }}
-                    >
-                      <CurrencyIcon size={20} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,1)]" />
-                    </div>
-                    <p className="text-2xl font-black tabular-nums text-amber-400" style={{ textShadow: "0 0 20px rgba(251,191,36,0.4)" }}>
-                      +{quest.currency_reward}
-                    </p>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
-                      {currencyName}
-                    </p>
+                    className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5 bg-amber-400/12"
+                    style={{ boxShadow: "0 0 32px rgba(251,191,36,0.35), 0 0 12px rgba(251,191,36,0.2)" }}
+                  >
+                    <CurrencyIcon size={24} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
                   </div>
+                  <p className="text-4xl font-black tabular-nums text-amber-400 leading-none" style={{ textShadow: "0 0 24px rgba(251,191,36,0.5)" }}>
+                    +{quest.currency_reward}
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
+                    {currencyName}
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
+          {/* ── Accent divider ── */}
+          <div className="px-8 rep-quest-reveal-2">
+            <div
+              className="h-px"
+              style={{
+                background: `linear-gradient(90deg, transparent, ${accent.progressColor}25, transparent)`,
+              }}
+            />
+          </div>
+
           {/* ── Action area — stagger 3 ── */}
-          <div className="px-5 pb-4 space-y-3 rep-quest-reveal-3">
+          <div className="px-5 py-4 space-y-3 rep-quest-reveal-3">
             {/* Reference URL button + uses-sound callout */}
             {hasRefUrl && refPlatform && (
               <div className="space-y-2">
@@ -298,10 +285,9 @@ export function QuestDetailSheet({
           </div>
         </div>
 
-        {/* ── Sticky CTA footer — stagger 4 ── */}
-        <div className="shrink-0 px-5 pb-5 pt-3 relative z-[2] rep-quest-reveal-4">
-          {/* Gradient fade for scroll content behind */}
-          <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+        {/* ── CTA footer — stagger 4 ── */}
+        <div className="shrink-0 px-5 pb-5 pt-2 relative z-[2] rep-quest-reveal-4">
+          <div className="absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
 
           {isCompleted ? (
             <div className="rep-quest-detail-complete">
@@ -312,24 +298,24 @@ export function QuestDetailSheet({
             <button
               onClick={() => onSubmit(quest)}
               className={cn(
-                "rep-quest-cta w-full flex flex-col items-center gap-1 py-4 rounded-xl text-white transition-all active:scale-[0.97]",
+                "rep-quest-cta rep-quest-cta-glow w-full flex flex-col items-center gap-1.5 py-5 rounded-2xl text-white transition-all active:scale-[0.97]",
                 accent.ctaGradient
               )}
               style={{
-                boxShadow: `0 8px 32px ${accent.progressColor}40, 0 0 60px ${accent.progressColor}15`,
+                ["--cta-glow" as string]: accent.progressColor,
               }}
             >
-              <div className="flex items-center gap-2">
-                <Zap size={18} className="drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]" />
-                <span className="text-base font-extrabold tracking-wide">Submit Proof</span>
+              <div className="flex items-center gap-2.5">
+                <Zap size={20} className="drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+                <span className="text-lg font-extrabold tracking-wide">Submit Proof</span>
               </div>
-              <div className="flex items-center gap-2 text-white/70 text-xs font-semibold">
+              <div className="flex items-center gap-2 text-white/60 text-xs font-semibold">
                 <span className="flex items-center gap-1">
                   <Zap size={10} /> +{quest.points_reward} XP
                 </span>
-                {quest.currency_reward > 0 && (
+                {hasDualReward && (
                   <>
-                    <span className="text-white/30">|</span>
+                    <span className="text-white/25">|</span>
                     <span className="flex items-center gap-1">
                       <CurrencyIcon size={10} /> +{quest.currency_reward} {currencyName}
                     </span>

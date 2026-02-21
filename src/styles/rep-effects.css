@@ -897,6 +897,15 @@ body:has([data-rep]) > .noise {
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Hidden scrollbar — never flash a scrollbar in the modal */
+.rep-quest-detail-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rep-quest-detail-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Staggered reveal for child sections ── */
 .rep-quest-reveal-1 { animation: questRevealUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.08s; }
 .rep-quest-reveal-2 { animation: questRevealUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.18s; }
@@ -1030,14 +1039,23 @@ body:has([data-rep]) > .noise {
 .rep-quest-cta:hover::before {
   animation-duration: 1.5s;
 }
-/* Breathing glow on CTA between shimmer sweeps */
+/* Inner highlight edge on CTA */
 .rep-quest-cta::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
   pointer-events: none;
+}
+
+/* CTA breathing ambient glow */
+.rep-quest-cta-glow {
+  animation: ctaBreathe 3s ease-in-out infinite;
+}
+@keyframes ctaBreathe {
+  0%, 100% { box-shadow: 0 8px 32px var(--cta-glow, rgba(139,92,246,0.4)), 0 0 60px var(--cta-glow, rgba(139,92,246,0.1)); }
+  50% { box-shadow: 0 12px 48px var(--cta-glow, rgba(139,92,246,0.55)), 0 0 80px var(--cta-glow, rgba(139,92,246,0.2)); }
 }
 
 /* ── Reward icon breathing pulse ── */
@@ -1072,7 +1090,7 @@ body:has([data-rep]) > .noise {
   inset: 0;
   z-index: 0;
   overflow: hidden;
-  pointer-events: none;
+  cursor: zoom-in;
 }
 .rep-quest-detail-hero-backdrop img {
   width: 100%;
@@ -1382,6 +1400,7 @@ body:has([data-rep]) > .noise {
   .rep-quest-detail-sheet,
   .rep-quest-progress-fill::after,
   .rep-quest-reward-icon,
+  .rep-quest-cta-glow,
   .rep-quest-reveal-1,
   .rep-quest-reveal-2,
   .rep-quest-reveal-3,

@@ -67,9 +67,6 @@ export function MidnightMerchModal({
   const price = merchPrice ?? 0;
   const sizes = (availableSizes || TEE_SIZES) as TeeSize[];
 
-  // The ticket name IS the bundle name — no hardcoded merch type suffix
-  const bundleName = ticketName || vipBadge || "";
-
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<TeeSize>(
     sizes.includes("M" as TeeSize) ? ("M" as TeeSize) : sizes[0]
@@ -231,7 +228,7 @@ export function MidnightMerchModal({
                 onTouchStart={onMainTouchStart}
                 onTouchEnd={onMainTouchEnd}
               >
-                <div className="flex justify-center items-center px-4 pt-6 pb-2 max-md:px-3 max-md:pt-5 max-md:pb-1 min-h-[300px] max-md:min-h-[200px] max-[380px]:min-h-[140px]">
+                <div className="flex justify-center items-center px-4 pt-6 pb-2 max-md:px-3 max-md:pt-5 max-md:pb-1 min-h-[300px] max-md:min-h-0 max-[380px]:min-h-0">
                   {images.length > 0 ? (
                     images.map((img, i) => (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -356,7 +353,7 @@ export function MidnightMerchModal({
             </div>
           </div>
 
-          {/* ── CTA bar — qty stepper + frosted glass button ── */}
+          {/* ── CTA bar — qty stepper + buttons ── */}
           <div className="shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.04)]">
             <div className="flex items-center gap-3">
               {/* Qty stepper — compact */}
@@ -389,25 +386,11 @@ export function MidnightMerchModal({
                 Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}
               </button>
             </div>
-          </div>
 
-          {/* ── Express Pay (Apple Pay / Google Pay) ── */}
-          {isStripe && eventId && currency && expressItems.length > 0 && (
-            <div className="shrink-0 px-5 pb-3.5 max-md:px-4 max-md:pb-3">
-              {/* "or" divider */}
-              {expressAvailable && (
-                <div className="flex items-center gap-3 pb-3">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
-                  <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.2em] uppercase text-white/20 shrink-0">
-                    or
-                  </span>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
-                </div>
-              )}
-
-              {/* Glass enclosure */}
-              <div className={expressAvailable ? "midnight-express-glass rounded-2xl p-3" : ""}>
-                <div className={expressAvailable ? "midnight-express-btn-frame rounded-xl overflow-hidden" : "rounded-xl overflow-hidden"}>
+            {/* Express Pay — clean inline button, same width as Add to Cart */}
+            {isStripe && eventId && currency && expressItems.length > 0 && (
+              <div className="mt-2.5">
+                <div className="rounded-xl overflow-hidden">
                   <ExpressCheckout
                     eventId={eventId}
                     currency={currency}
@@ -419,14 +402,14 @@ export function MidnightMerchModal({
                     discountCode={discountCode}
                   />
                 </div>
+                {expressError && (
+                  <div className="mt-2 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.5px] text-destructive text-center p-2 bg-destructive/[0.05] border border-destructive/10 rounded-lg">
+                    {expressError}
+                  </div>
+                )}
               </div>
-              {expressError && (
-                <div className="mt-2.5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.5px] text-destructive text-center p-2.5 bg-destructive/[0.05] border border-destructive/10 rounded-xl">
-                  {expressError}
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

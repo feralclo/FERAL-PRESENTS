@@ -62,7 +62,7 @@ export function HeroSection({ settings }: HeroSectionProps) {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Background image + effects */}
+      {/* Background image + atmospheric effects */}
       <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -71,15 +71,19 @@ export function HeroSection({ settings }: HeroSectionProps) {
           className="hero__bg-image w-full h-full object-cover block"
           style={{ objectPosition: `${focalX}% ${focalY}%` }}
         />
-        <div className="hero__bg-glitch absolute inset-0 z-[1] pointer-events-none overflow-hidden" />
+        {/* Atmospheric mist + bokeh (replaces CRT scanlines) */}
+        <div className="hero__bg-mist absolute inset-0 z-[1] pointer-events-none overflow-hidden" />
+        {/* Light breathing — warm/cool color shift */}
+        <div className="hero__bg-breathe absolute inset-0 z-[1] pointer-events-none" />
+        {/* Cinematic vignette */}
         <div className="hero__bg-overlay absolute inset-0 z-[2]" />
       </div>
 
-      {/* Particle canvas */}
+      {/* Particle canvas — positioned absolutely via .hero__canvas CSS */}
       <ParticleCanvas />
 
-      {/* Content */}
-      <div className="relative z-[2] text-center px-6">
+      {/* Content — w-full ensures centering works on all screen sizes */}
+      <div className="relative z-[2] w-full text-center px-6">
         <HeroGlitchText
           line1={settings.hero_title_line1 || "BORN ON THE"}
           line2={settings.hero_title_line2 || "DANCE FLOOR"}

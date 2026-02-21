@@ -181,7 +181,7 @@ export function MidnightMerchModal({
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent
           data-theme="midnight"
-          className="midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col"
+          className="midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col bg-[#08080c] border-[rgba(255,255,255,0.06)]"
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -194,7 +194,7 @@ export function MidnightMerchModal({
 
               {/* Image area — with swipe + nav arrows */}
               <div
-                className="relative bg-white/[0.04]"
+                className="relative bg-white/[0.02]"
                 onTouchStart={onMainTouchStart}
                 onTouchEnd={onMainTouchEnd}
               >
@@ -213,7 +213,7 @@ export function MidnightMerchModal({
                       />
                     ))
                   ) : (
-                    <div className="w-[140px] h-[140px] rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] flex items-center justify-center">
+                    <div className="w-[140px] h-[140px] rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] flex items-center justify-center">
                       <span className="font-[family-name:var(--font-mono)] text-[10px] text-[rgba(255,255,255,0.2)] uppercase tracking-[0.1em]">No image</span>
                     </div>
                   )}
@@ -225,7 +225,7 @@ export function MidnightMerchModal({
                     {activeIndex > 0 && (
                       <button
                         type="button"
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 border border-white/10 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 border border-white/8 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/8 hover:border-white/15 hover:text-white/90 transition-all cursor-pointer"
                         onClick={goPrev}
                         aria-label="Previous image"
                       >
@@ -235,7 +235,7 @@ export function MidnightMerchModal({
                     {activeIndex < images.length - 1 && (
                       <button
                         type="button"
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 border border-white/10 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white/90 transition-all cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 border border-white/8 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/8 hover:border-white/15 hover:text-white/90 transition-all cursor-pointer"
                         onClick={goNext}
                         aria-label="Next image"
                       >
@@ -266,7 +266,7 @@ export function MidnightMerchModal({
               </div>
 
               {/* Product info */}
-              <div className="p-6 max-md:px-4 max-md:py-3.5 md:border-l border-[rgba(255,255,255,0.06)] flex flex-col max-md:items-center">
+              <div className="p-6 max-md:px-4 max-md:py-3.5 md:border-l border-[rgba(255,255,255,0.04)] flex flex-col max-md:items-center">
                 {/* Title + Price row on mobile */}
                 <div className="flex max-md:items-center max-md:justify-between max-md:w-full md:flex-col md:items-start gap-1 mb-3 max-md:mb-2.5">
                   <h3 className="font-[family-name:var(--font-sans)] text-[15px] max-md:text-[14px] font-bold tracking-[0.02em] uppercase text-white/90">
@@ -279,7 +279,7 @@ export function MidnightMerchModal({
 
                 {/* What's included — ticket bundle info */}
                 {bundleName && (
-                  <div className="w-full rounded-lg bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] p-3 max-md:p-2.5 mb-3 max-md:mb-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <div className="w-full rounded-lg bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] p-3 max-md:p-2.5 mb-3 max-md:mb-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                     <p className="font-[family-name:var(--font-sans)] text-[11px] font-bold tracking-[0.02em] text-white/80 max-md:text-center">
                       {bundleName}
                     </p>
@@ -310,13 +310,13 @@ export function MidnightMerchModal({
           </div>
 
           {/* ── CTA bar — qty stepper + frosted glass button ── */}
-          <div className="shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.06)]">
+          <div className="shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.04)]">
             <div className="flex items-center gap-3">
               {/* Qty stepper — compact */}
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
-                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.03)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
                   onClick={() => setQty(Math.max(1, qty - 1))}
                 >
                   &minus;
@@ -326,7 +326,7 @@ export function MidnightMerchModal({
                 </span>
                 <button
                   type="button"
-                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.04)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
+                  className="w-8 h-8 flex items-center justify-center text-sm text-white/35 hover:text-white/60 rounded-lg border border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] hover:bg-[rgba(255,255,255,0.03)] active:scale-[0.90] transition-all duration-100 cursor-pointer"
                   onClick={() => setQty(qty + 1)}
                 >
                   +
@@ -336,7 +336,7 @@ export function MidnightMerchModal({
               {/* CTA button */}
               <button
                 type="button"
-                className="flex-1 h-11 bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.18)] text-white font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.18)] hover:border-[rgba(255,255,255,0.25)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_24px_rgba(255,255,255,0.05)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                className="flex-1 h-11 bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.10)] text-white font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_0_20px_rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.18)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_0_24px_rgba(255,255,255,0.04)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 onClick={handleAdd}
               >
                 Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}

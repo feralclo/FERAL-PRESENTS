@@ -90,6 +90,12 @@
   color: var(--white);
 }
 
+/* Terminal prefixes — hidden on desktop */
+.nav__link-index,
+.nav__link-slash {
+  display: none;
+}
+
 /* Mobile nav toggle */
 .nav__toggle {
   display: none;
@@ -110,7 +116,13 @@
   width: 100%;
   height: 1.5px;
   background: var(--white);
-  transition: transform var(--transition-base), opacity var(--transition-base);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.3s ease;
+}
+
+.nav__toggle.active span {
+  background: var(--accent);
 }
 
 .nav__toggle.active span:nth-child(1) {
@@ -125,7 +137,33 @@
   transform: translateY(-6.5px) rotate(-45deg);
 }
 
-/* CTA Button */
+/* Nav CTA — desktop baseline (replaces btn btn--primary on this element) */
+.nav__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 12px 24px;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--cta-bg);
+  color: var(--cta-text);
+}
+
+.nav__cta:hover {
+  background: var(--cta-hover);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* CTA Button (legacy — still used by other components) */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -238,6 +276,35 @@
   50%, 100% { left: 100%; }
 }
 
+/* --- Mobile Menu Keyframes --- */
+
+@keyframes menuItemEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes menuItemExit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes navCtaSweep {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
 /* --- Responsive (header) --- */
 
 @media (max-width: 768px) {
@@ -258,20 +325,26 @@
     right: 24px;
   }
 
+  /* --- Mobile menu overlay --- */
   .nav__menu {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.98);
+    height: 100dvh;
+    background:
+      radial-gradient(ellipse at 50% 100%, rgba(255, 0, 51, 0.08) 0%, transparent 60%),
+      rgba(8, 8, 12, 0.92);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
     flex-direction: column;
     justify-content: center;
     align-items: center;
     gap: 40px;
     opacity: 0;
     pointer-events: none;
-    transition: opacity var(--transition-base);
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 1000;
   }
 
@@ -280,15 +353,144 @@
     pointer-events: auto;
   }
 
+  /* --- Staggered entry --- */
+  .nav__menu--enter .nav__item {
+    animation: menuItemEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(0.08s + var(--stagger, 0) * 0.06s);
+  }
+
+  .nav__menu--enter .nav__cta {
+    animation: menuItemEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: 0.38s;
+  }
+
+  /* --- Exit --- */
+  .nav__menu--exit .nav__item {
+    animation: menuItemExit 0.2s ease-in both;
+  }
+
+  .nav__menu--exit .nav__cta {
+    animation: menuItemExit 0.2s ease-in both;
+  }
+
+  /* --- Mobile nav list --- */
   .nav__list {
     flex-direction: column;
     align-items: center;
-    gap: 24px;
+    gap: 28px;
+    position: relative;
+    padding-bottom: 32px;
   }
 
+  /* Red gradient separator between links and CTA */
+  .nav__list::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  /* --- Mobile link styling --- */
   .nav__link {
-    font-size: 16px;
-    letter-spacing: 0.1em;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
   }
 
+  .nav__link:hover {
+    color: var(--white);
+    text-shadow: 0 0 20px rgba(255, 0, 51, 0.3);
+  }
+
+  /* Terminal prefix — visible on mobile */
+  .nav__link-index {
+    display: inline;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--accent);
+    opacity: 0.5;
+    letter-spacing: 0.05em;
+  }
+
+  .nav__link-slash {
+    display: inline;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.15);
+    margin-left: -6px;
+    letter-spacing: 0;
+  }
+
+  /* --- Mobile CTA --- */
+  .nav__cta {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 14px 36px;
+    background: transparent;
+    color: var(--white);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    box-shadow:
+      0 0 12px rgba(255, 0, 51, 0.15),
+      inset 0 0 12px rgba(255, 0, 51, 0.05);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .nav__cta:hover {
+    background: rgba(255, 0, 51, 0.08);
+    box-shadow:
+      0 0 20px rgba(255, 0, 51, 0.25),
+      inset 0 0 20px rgba(255, 0, 51, 0.08);
+    transform: none;
+  }
+
+  /* Shimmer sweep on CTA */
+  .nav__cta::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      transparent 100%
+    );
+    animation: navCtaSweep 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .nav__menu--enter .nav__item,
+  .nav__menu--enter .nav__cta,
+  .nav__menu--exit .nav__item,
+  .nav__menu--exit .nav__cta {
+    animation: none !important;
+  }
+
+  .nav__cta::before {
+    animation: none !important;
+  }
+
+  .nav__menu {
+    transition: opacity 0.01s !important;
+  }
 }

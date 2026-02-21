@@ -1,23 +1,74 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import "@/styles/header.css";
 
+type MenuPhase = "closed" | "opening" | "open" | "closing";
+
+const NAV_LINKS = [
+  { href: "/#events", label: "Events", index: "01" },
+  { href: "/#about", label: "About", index: "02" },
+  { href: "/#contact", label: "Contact", index: "03" },
+  { href: "https://www.feralclo.com/", label: "Apparel", index: "04", external: true },
+];
+
 export function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [phase, setPhase] = useState<MenuPhase>("closed");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isActive = phase !== "closed";
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (phase === "opening") {
+      timerRef.current = setTimeout(() => setPhase("open"), 500);
+    } else if (phase === "closing") {
+      timerRef.current = setTimeout(() => {
+        setPhase("closed");
+        document.body.style.overflow = "";
+      }, 300);
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [phase]);
 
   const toggleMenu = useCallback(() => {
-    setMenuOpen((prev) => {
-      document.body.style.overflow = !prev ? "hidden" : "";
-      return !prev;
+    setPhase((prev) => {
+      if (prev === "closed") {
+        document.body.style.overflow = "hidden";
+        return "opening";
+      }
+      if (prev === "opening" || prev === "open") {
+        return "closing";
+      }
+      return prev;
     });
   }, []);
 
   const closeMenu = useCallback(() => {
-    setMenuOpen(false);
-    document.body.style.overflow = "";
+    setPhase((prev) => {
+      if (prev === "opening" || prev === "open") {
+        return "closing";
+      }
+      return prev;
+    });
   }, []);
+
+  const menuClassName = [
+    "nav__menu",
+    isActive ? "active" : "",
+    phase === "opening" ? "nav__menu--enter" : "",
+    phase === "closing" ? "nav__menu--exit" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <nav className="nav">
@@ -32,7 +83,7 @@ export function Header() {
       </Link>
 
       <button
-        className={`nav__toggle${menuOpen ? " active" : ""}`}
+        className={`nav__toggle${isActive ? " active" : ""}`}
         onClick={toggleMenu}
         aria-label="Toggle menu"
       >
@@ -41,37 +92,38 @@ export function Header() {
         <span></span>
       </button>
 
-      <div className={`nav__menu${menuOpen ? " active" : ""}`}>
+      <div className={menuClassName}>
         <ul className="nav__list">
-          <li className="nav__item">
-            <Link href="/#events" className="nav__link" onClick={closeMenu}>
-              Events
-            </Link>
-          </li>
-          <li className="nav__item">
-            <Link href="/#about" className="nav__link" onClick={closeMenu}>
-              About
-            </Link>
-          </li>
-          <li className="nav__item">
-            <Link href="/#contact" className="nav__link" onClick={closeMenu}>
-              Contact
-            </Link>
-          </li>
-          <li className="nav__item">
-            <a
-              href="https://www.feralclo.com/"
-              className="nav__link"
-              target="_blank"
-              rel="noopener noreferrer"
+          {NAV_LINKS.map((link, i) => (
+            <li
+              key={link.href}
+              className="nav__item"
+              style={{ "--stagger": i } as React.CSSProperties}
             >
-              Apparel
-            </a>
-          </li>
+              {link.external ? (
+                <a
+                  href={link.href}
+                  className="nav__link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="nav__link-index">{link.index}</span>
+                  <span className="nav__link-slash">//</span>
+                  {link.label}
+                </a>
+              ) : (
+                <Link href={link.href} className="nav__link" onClick={closeMenu}>
+                  <span className="nav__link-index">{link.index}</span>
+                  <span className="nav__link-slash">//</span>
+                  {link.label}
+                </Link>
+              )}
+            </li>
+          ))}
         </ul>
         <Link
           href="/#events"
-          className="btn btn--primary nav__cta"
+          className="nav__cta"
           onClick={closeMenu}
         >
           Book Tickets

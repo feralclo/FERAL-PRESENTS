@@ -32,7 +32,6 @@ import { SETTINGS_KEYS } from "@/lib/constants";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { CheckoutServiceUnavailable } from "./CheckoutServiceUnavailable";
-import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -2009,7 +2008,6 @@ function EmailCapture({
 
   return (
     <div className="midnight-checkout min-h-screen flex flex-col">
-      <VerifiedBanner />
       <CheckoutHeader slug={slug} />
       <CheckoutTimer active={true} />
 

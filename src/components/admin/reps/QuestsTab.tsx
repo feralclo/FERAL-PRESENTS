@@ -64,7 +64,9 @@ import type {
   QuestType,
   QuestStatus,
   RepQuestSubmission,
+  PlatformXPConfig,
 } from "@/types/reps";
+import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
 
 const QUEST_TYPE_LABELS: Record<QuestType, string> = {
   social_post: "Social Post",
@@ -103,6 +105,9 @@ export function QuestsTab() {
   const [usesSound, setUsesSound] = useState(false);
   const [currencyReward, setCurrencyReward] = useState("");
 
+  // Platform XP config
+  const [platformConfig, setPlatformConfig] = useState<PlatformXPConfig>(DEFAULT_PLATFORM_XP_CONFIG);
+
   // Submissions review
   const [showSubmissions, setShowSubmissions] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<RepQuestSubmission[]>([]);
@@ -125,6 +130,14 @@ export function QuestsTab() {
 
   useEffect(() => { loadQuests(); }, [loadQuests]);
 
+  // Fetch platform XP config on mount
+  useEffect(() => {
+    fetch("/api/platform/xp-config")
+      .then((r) => r.json())
+      .then((json) => { if (json.data) setPlatformConfig(json.data); })
+      .catch(() => {});
+  }, []);
+
   const loadSubmissions = useCallback(async (questId: string) => {
     setLoadingSubs(true);
     try {
@@ -138,7 +151,8 @@ export function QuestsTab() {
   const openCreate = () => {
     setEditId(null); setTitle(""); setDescription(""); setInstructions("");
     setQuestType("social_post"); setPlatform("any"); setImageUrl("");
-    setPointsReward("50"); setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
+    setPointsReward(String(platformConfig.xp_per_quest_type.social_post));
+    setMaxCompletions(""); setExpiresAt(""); setNotifyReps(true);
     setReferenceUrl(""); setUsesSound(false); setCurrencyReward("0");
     setShowDialog(true);
   };
@@ -336,8 +350,13 @@ export function QuestsTab() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>XP Reward</Label>
-                  <Input type="number" value={pointsReward} onChange={(e) => setPointsReward(e.target.value)} min="0" />
+                  <Label>XP Reward <span className="text-[10px] text-muted-foreground font-normal">(set by quest type)</span></Label>
+                  <Input
+                    type="number"
+                    value={String(platformConfig.xp_per_quest_type[questType] ?? platformConfig.xp_per_quest_type.custom)}
+                    readOnly
+                    className="bg-muted/30 cursor-not-allowed"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Currency Reward</Label>

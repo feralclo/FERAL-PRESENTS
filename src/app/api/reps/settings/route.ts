@@ -48,20 +48,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate specific fields
-    if (settings.points_per_sale !== undefined && (typeof settings.points_per_sale !== "number" || settings.points_per_sale < 0 || settings.points_per_sale > 10000)) {
-      return NextResponse.json({ error: "points_per_sale must be 0-10000" }, { status: 400 });
-    }
     if (settings.default_discount_percent !== undefined && (typeof settings.default_discount_percent !== "number" || settings.default_discount_percent < 0 || settings.default_discount_percent > 100)) {
       return NextResponse.json({ error: "default_discount_percent must be 0-100" }, { status: 400 });
     }
     if (settings.default_discount_type !== undefined && !["percentage", "fixed"].includes(settings.default_discount_type)) {
       return NextResponse.json({ error: "default_discount_type must be 'percentage' or 'fixed'" }, { status: 400 });
-    }
-    if (settings.level_thresholds !== undefined && (!Array.isArray(settings.level_thresholds) || settings.level_thresholds.some((t: unknown) => typeof t !== "number" || t < 0))) {
-      return NextResponse.json({ error: "level_thresholds must be an array of non-negative numbers" }, { status: 400 });
-    }
-    if (settings.level_names !== undefined && (!Array.isArray(settings.level_names) || settings.level_names.some((n: unknown) => typeof n !== "string"))) {
-      return NextResponse.json({ error: "level_names must be an array of strings" }, { status: 400 });
     }
     if (settings.email_from_address !== undefined && typeof settings.email_from_address === "string" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(settings.email_from_address)) {
       return NextResponse.json({ error: "email_from_address must be a valid email" }, { status: 400 });
@@ -70,11 +61,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "email_from_name must be 100 characters or less" }, { status: 400 });
     }
 
-    // Only allow known settings fields — reject unknown keys
+    // Only allow tenant-controlled fields — XP/levels are platform-controlled via /api/platform/xp-config
     const allowedKeys = new Set<string>([
-      "enabled", "points_per_sale", "auto_approve", "default_discount_percent",
-      "default_discount_type", "level_thresholds", "level_names", "leaderboard_visible",
+      "enabled", "auto_approve", "default_discount_percent",
+      "default_discount_type", "leaderboard_visible",
       "max_events_per_rep", "welcome_message", "email_from_name", "email_from_address",
+      "currency_per_sale", "currency_name",
     ]);
     for (const key of Object.keys(settings)) {
       if (!allowedKeys.has(key)) {

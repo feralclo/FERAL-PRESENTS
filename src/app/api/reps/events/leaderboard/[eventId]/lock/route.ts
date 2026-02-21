@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { awardPoints } from "@/lib/rep-points";
+import { getRepSettings } from "@/lib/rep-points";
 
 /**
  * POST /api/reps/events/leaderboard/[eventId]/lock
@@ -10,10 +12,10 @@ import { requireAuth } from "@/lib/auth";
  * 1. Fetches current standings from rep_events
  * 2. Awards position rewards to the top reps
  * 3. Creates rep_reward_claims for each awarded position
- * 4. Awards points for position rewards (optional via body.award_points)
+ * 4. Awards XP + currency from position reward config via awardPoints()
  */
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
@@ -21,8 +23,6 @@ export async function POST(
     if (auth.error) return auth.error;
 
     const { eventId } = await params;
-    const body = await request.json().catch(() => ({}));
-    const awardPoints = body.award_points ?? false;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -78,8 +78,11 @@ export async function POST(
       );
     }
 
+    // Get currency name for descriptions
+    const settings = await getRepSettings(ORG_ID);
+
     const now = new Date().toISOString();
-    const results: { position: number; rep_id: string; reward_name: string }[] = [];
+    const results: { position: number; rep_id: string; reward_name: string; xp_awarded: number; currency_awarded: number }[] = [];
 
     for (const pr of positionRewards) {
       const standingIndex = pr.position - 1;
@@ -115,46 +118,28 @@ export async function POST(
           });
       }
 
-      // Optionally award bonus points
-      if (awardPoints && pr.position <= 3) {
-        const pointsMap: Record<number, number> = { 1: 100, 2: 50, 3: 25 };
-        const pts = pointsMap[pr.position] || 0;
-        if (pts > 0) {
-          // Get current balance
-          const { data: currentRep } = await supabase
-            .from(TABLES.REPS)
-            .select("points_balance")
-            .eq("id", repId)
-            .eq("org_id", ORG_ID)
-            .single();
+      // Award XP + currency from position reward config via awardPoints()
+      const xpAmount = Number(pr.xp_reward) || 0;
+      const currencyAmount = Number(pr.currency_reward) || 0;
 
-          if (currentRep) {
-            const newBalance = currentRep.points_balance + pts;
-            await supabase
-              .from(TABLES.REPS)
-              .update({ points_balance: newBalance })
-              .eq("id", repId)
-              .eq("org_id", ORG_ID);
-
-            await supabase
-              .from(TABLES.REP_POINTS_LOG)
-              .insert({
-                org_id: ORG_ID,
-                rep_id: repId,
-                points: pts,
-                balance_after: newBalance,
-                source_type: "manual",
-                description: `#${pr.position} position reward — event leaderboard`,
-                created_by: "system",
-              });
-          }
-        }
+      if (xpAmount > 0 || currencyAmount > 0) {
+        await awardPoints({
+          repId,
+          orgId: ORG_ID,
+          points: xpAmount,
+          currency: currencyAmount,
+          sourceType: "manual",
+          description: `#${pr.position} position reward — event leaderboard`,
+          createdBy: "system",
+        });
       }
 
       results.push({
         position: pr.position,
         rep_id: repId,
         reward_name: pr.reward_name,
+        xp_awarded: xpAmount,
+        currency_awarded: currencyAmount,
       });
     }
 
@@ -162,6 +147,7 @@ export async function POST(
       data: {
         locked: true,
         awarded: results,
+        currency_name: settings.currency_name,
       },
     });
   } catch {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,10 @@ import {
   Trash2,
   Save,
   Crown,
+  UserPlus,
+  Check,
 } from "lucide-react";
+import { DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -62,6 +65,8 @@ interface PositionReward {
   position: number;
   reward_name: string;
   reward_id?: string | null;
+  xp_reward?: number;
+  currency_reward?: number;
   awarded_rep_id?: string | null;
   awarded_at?: string | null;
   awarded_rep?: { id: string; display_name?: string; first_name: string; photo_url?: string } | null;
@@ -87,6 +92,15 @@ interface LeaderboardEntry {
   points_balance: number;
 }
 
+interface ActiveRep {
+  id: string;
+  first_name: string;
+  last_name: string;
+  display_name?: string | null;
+  email: string;
+  photo_url?: string | null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -95,10 +109,11 @@ export default function EventBoardsPage() {
   const [events, setEvents] = useState<EventWithReps[]>([]);
   const [loading, setLoading] = useState(true);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [currencyName, setCurrencyName] = useState("FRL");
 
   // Position rewards dialog
   const [selectedEvent, setSelectedEvent] = useState<EventWithReps | null>(null);
-  const [editRewards, setEditRewards] = useState<{ position: number; reward_name: string; reward_id: string | null }[]>([]);
+  const [editRewards, setEditRewards] = useState<{ position: number; reward_name: string; reward_id: string | null; xp_reward: number; currency_reward: number }[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -106,27 +121,39 @@ export default function EventBoardsPage() {
   const [lockTarget, setLockTarget] = useState<EventWithReps | null>(null);
   const [locking, setLocking] = useState(false);
   const [lockError, setLockError] = useState("");
-  const [awardPoints, setAwardPoints] = useState(true);
 
   // Leaderboard preview
   const [previewEvent, setPreviewEvent] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<LeaderboardEntry[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+  // Assign reps dialog
+  const [assignEvent, setAssignEvent] = useState<EventWithReps | null>(null);
+  const [activeReps, setActiveReps] = useState<ActiveRep[]>([]);
+  const [assignedRepIds, setAssignedRepIds] = useState<Set<string>>(new Set());
+  const [selectedRepIds, setSelectedRepIds] = useState<Set<string>>(new Set());
+  const [loadingAssign, setLoadingAssign] = useState(false);
+  const [assignSaving, setAssignSaving] = useState(false);
+
   const loadEvents = useCallback(async () => {
     setLoading(true);
     try {
-      // Get all events with rep assignments
-      const [eventsRes, rewardsRes] = await Promise.all([
+      // Get all events, rewards, and settings in parallel
+      const [eventsRes, rewardsRes, settingsRes] = await Promise.all([
         fetch("/api/events"),
         fetch("/api/reps/rewards"),
+        fetch("/api/reps/settings"),
       ]);
 
       const eventsJson = await eventsRes.json();
       const rewardsJson = await rewardsRes.json();
+      const settingsJson = await settingsRes.json();
 
       if (rewardsJson.data) {
         setRewards(rewardsJson.data.filter((r: Reward) => r.status === "active"));
+      }
+      if (settingsJson.data?.currency_name) {
+        setCurrencyName(settingsJson.data.currency_name);
       }
 
       const allEvents = eventsJson.data || [];
@@ -139,8 +166,6 @@ export default function EventBoardsPage() {
         const assignRes = await fetch(`/api/reps/events?event_id=${event.id}`);
         const assignJson = await assignRes.json();
         const assignments = assignJson.data || [];
-
-        if (assignments.length === 0) continue; // Skip events with no reps
 
         // Get position rewards
         const prRes = await fetch(`/api/reps/events/leaderboard/${event.id}/rewards`);
@@ -190,13 +215,15 @@ export default function EventBoardsPage() {
           position: pr.position,
           reward_name: pr.reward_name,
           reward_id: pr.reward_id || null,
+          xp_reward: pr.xp_reward ?? DEFAULT_PLATFORM_XP_CONFIG.position_xp[pr.position] ?? 0,
+          currency_reward: pr.currency_reward ?? 0,
         }))
       );
     } else {
       setEditRewards([
-        { position: 1, reward_name: "", reward_id: null },
-        { position: 2, reward_name: "", reward_id: null },
-        { position: 3, reward_name: "", reward_id: null },
+        { position: 1, reward_name: "", reward_id: null, xp_reward: DEFAULT_PLATFORM_XP_CONFIG.position_xp[1] ?? 500, currency_reward: 0 },
+        { position: 2, reward_name: "", reward_id: null, xp_reward: DEFAULT_PLATFORM_XP_CONFIG.position_xp[2] ?? 250, currency_reward: 0 },
+        { position: 3, reward_name: "", reward_id: null, xp_reward: DEFAULT_PLATFORM_XP_CONFIG.position_xp[3] ?? 100, currency_reward: 0 },
       ]);
     }
   };
@@ -206,7 +233,7 @@ export default function EventBoardsPage() {
     setSaving(true);
     setSaveError("");
     try {
-      const validRewards = editRewards.filter((r) => r.reward_name.trim());
+      const validRewards = editRewards.filter((r) => r.reward_name.trim() || r.xp_reward > 0 || r.currency_reward > 0);
       const res = await fetch(
         `/api/reps/events/leaderboard/${selectedEvent.event_id}/rewards`,
         {
@@ -238,7 +265,7 @@ export default function EventBoardsPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ award_points: awardPoints }),
+          body: JSON.stringify({}),
         }
       );
       if (res.ok) {
@@ -267,6 +294,47 @@ export default function EventBoardsPage() {
     setLoadingPreview(false);
   };
 
+  // ── Assign Reps ──
+  const openAssignDialog = async (event: EventWithReps) => {
+    setAssignEvent(event);
+    setLoadingAssign(true);
+    setSelectedRepIds(new Set());
+    try {
+      const [repsRes, assignRes] = await Promise.all([
+        fetch("/api/reps?status=active"),
+        fetch(`/api/reps/events?event_id=${event.event_id}`),
+      ]);
+      const repsJson = await repsRes.json();
+      const assignJson = await assignRes.json();
+      setActiveReps(repsJson.data || []);
+      const assigned = new Set<string>((assignJson.data || []).map((a: { rep_id: string }) => a.rep_id));
+      setAssignedRepIds(assigned);
+    } catch {
+      setActiveReps([]);
+      setAssignedRepIds(new Set());
+    }
+    setLoadingAssign(false);
+  };
+
+  const handleAssignReps = async () => {
+    if (!assignEvent || selectedRepIds.size === 0) return;
+    setAssignSaving(true);
+    try {
+      for (const repId of selectedRepIds) {
+        await fetch("/api/reps/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rep_id: repId, event_id: assignEvent.event_id }),
+        });
+      }
+      setAssignEvent(null);
+      loadEvents();
+    } catch {
+      /* network */
+    }
+    setAssignSaving(false);
+  };
+
   return (
     <div className="space-y-6 p-6 lg:p-8">
       {/* Header */}
@@ -284,7 +352,7 @@ export default function EventBoardsPage() {
               Event Leaderboards
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Assign position rewards and lock final results for event leaderboards
+              Assign reps, configure position rewards, and lock final results
             </p>
           </div>
         </div>
@@ -304,9 +372,9 @@ export default function EventBoardsPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/8 ring-1 ring-primary/10">
               <Trophy size={20} className="text-primary/60" />
             </div>
-            <p className="mt-4 text-sm font-medium text-foreground">No events with reps</p>
+            <p className="mt-4 text-sm font-medium text-foreground">No events found</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Assign reps to events first, then configure leaderboard rewards here
+              Create events first, then assign reps and configure leaderboard rewards here
             </p>
           </CardContent>
         </Card>
@@ -347,31 +415,51 @@ export default function EventBoardsPage() {
                     {/* Position rewards preview */}
                     {event.position_rewards.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {event.position_rewards.map((pr) => (
-                          <span
-                            key={pr.position}
-                            className="inline-flex items-center gap-1 rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary"
-                          >
-                            <Gift size={10} />
-                            {ordinal(pr.position)}: {pr.reward_name}
-                            {pr.awarded_rep_id && (
-                              <span className="text-success ml-1">✓</span>
-                            )}
-                          </span>
-                        ))}
+                        {event.position_rewards.map((pr) => {
+                          const parts: string[] = [];
+                          if (pr.xp_reward) parts.push(`+${pr.xp_reward} XP`);
+                          if (pr.currency_reward) parts.push(`+${pr.currency_reward} ${currencyName}`);
+                          if (pr.reward_name) parts.push(pr.reward_name);
+                          return (
+                            <span
+                              key={pr.position}
+                              className="inline-flex items-center gap-1 rounded-md bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary"
+                            >
+                              <Gift size={10} />
+                              {ordinal(pr.position)}: {parts.join(" ") || "—"}
+                              {pr.awarded_rep_id && (
+                                <span className="text-success ml-1">✓</span>
+                              )}
+                            </span>
+                          );
+                        })}
                       </div>
+                    )}
+
+                    {/* No reps state */}
+                    {event.reps_count === 0 && (
+                      <p className="text-xs text-muted-foreground/60 italic mt-1">No reps assigned</p>
                     )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => loadPreview(event.event_id)}
+                      onClick={() => openAssignDialog(event)}
                     >
-                      <Trophy size={14} /> Preview
+                      <UserPlus size={14} /> Assign Reps
                     </Button>
+                    {event.reps_count > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadPreview(event.event_id)}
+                      >
+                        <Trophy size={14} /> Preview
+                      </Button>
+                    )}
                     {!event.locked && (
                       <Button
                         variant="outline"
@@ -381,13 +469,12 @@ export default function EventBoardsPage() {
                         <Gift size={14} /> Rewards
                       </Button>
                     )}
-                    {!event.locked && event.position_rewards.length > 0 && (
+                    {!event.locked && event.position_rewards.length > 0 && event.reps_count > 0 && (
                       <Button
                         size="sm"
                         onClick={() => {
                           setLockTarget(event);
                           setLockError("");
-                          setAwardPoints(true);
                         }}
                       >
                         <Lock size={14} /> Lock Results
@@ -410,71 +497,101 @@ export default function EventBoardsPage() {
           <DialogHeader>
             <DialogTitle>Position Rewards — {selectedEvent?.event_name}</DialogTitle>
             <DialogDescription>
-              Assign rewards for 1st, 2nd, and 3rd place. These are shown on the rep leaderboard.
+              Assign XP, {currencyName}, and rewards for podium positions. These are shown on the rep leaderboard.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-4 py-2">
             {editRewards.map((reward, idx) => (
-              <div key={reward.position} className="flex items-end gap-2">
-                <div className="w-14 shrink-0">
-                  <Label className="text-[11px]">{ordinal(reward.position)}</Label>
-                  <div className="flex h-9 items-center justify-center rounded-md bg-muted/30 text-xs font-bold">
-                    <Crown size={14} className={idx === 0 ? "text-yellow-500" : idx === 1 ? "text-slate-400" : "text-orange-500"} />
+              <div key={reward.position} className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Crown size={14} className={idx === 0 ? "text-yellow-500" : idx === 1 ? "text-slate-400" : "text-orange-500"} />
+                  <span className="text-sm font-bold text-foreground">{ordinal(reward.position)} Place</span>
+                  {editRewards.length > 3 && (
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => setEditRewards(editRewards.filter((_, i) => i !== idx))}
+                      className="ml-auto shrink-0"
+                    >
+                      <Trash2 size={12} />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-primary">XP Reward</Label>
+                    <Input
+                      type="number"
+                      value={String(reward.xp_reward)}
+                      onChange={(e) => {
+                        const updated = [...editRewards];
+                        updated[idx] = { ...updated[idx], xp_reward: Number(e.target.value) || 0 };
+                        setEditRewards(updated);
+                      }}
+                      min="0"
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-amber-400">{currencyName} Reward</Label>
+                    <Input
+                      type="number"
+                      value={String(reward.currency_reward)}
+                      onChange={(e) => {
+                        const updated = [...editRewards];
+                        updated[idx] = { ...updated[idx], currency_reward: Number(e.target.value) || 0 };
+                        setEditRewards(updated);
+                      }}
+                      min="0"
+                      className="h-8 text-xs font-mono"
+                    />
                   </div>
                 </div>
-                <div className="flex-1 space-y-1">
-                  <Label className="text-[11px]">Reward Name</Label>
-                  <Input
-                    value={reward.reward_name}
-                    onChange={(e) => {
-                      const updated = [...editRewards];
-                      updated[idx] = { ...updated[idx], reward_name: e.target.value };
-                      setEditRewards(updated);
-                    }}
-                    placeholder="e.g. VIP Weekend Pass"
-                    className="h-9 text-xs"
-                  />
-                </div>
-                <div className="w-40 space-y-1">
-                  <Label className="text-[11px]">Link Reward</Label>
-                  <Select
-                    value={reward.reward_id || "none"}
-                    onValueChange={(v) => {
-                      const updated = [...editRewards];
-                      const rid = v === "none" ? null : v;
-                      updated[idx] = { ...updated[idx], reward_id: rid };
-                      if (rid) {
-                        const r = rewards.find((rw) => rw.id === rid);
-                        if (r && !updated[idx].reward_name) {
-                          updated[idx].reward_name = r.name;
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Catalog Reward Name</Label>
+                    <Input
+                      value={reward.reward_name}
+                      onChange={(e) => {
+                        const updated = [...editRewards];
+                        updated[idx] = { ...updated[idx], reward_name: e.target.value };
+                        setEditRewards(updated);
+                      }}
+                      placeholder="e.g. VIP Pass"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Link Reward</Label>
+                    <Select
+                      value={reward.reward_id || "none"}
+                      onValueChange={(v) => {
+                        const updated = [...editRewards];
+                        const rid = v === "none" ? null : v;
+                        updated[idx] = { ...updated[idx], reward_id: rid };
+                        if (rid) {
+                          const r = rewards.find((rw) => rw.id === rid);
+                          if (r && !updated[idx].reward_name) {
+                            updated[idx].reward_name = r.name;
+                          }
                         }
-                      }
-                      setEditRewards(updated);
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Optional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {rewards.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        setEditRewards(updated);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Optional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {rewards.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                {editRewards.length > 3 && (
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setEditRewards(editRewards.filter((_, i) => i !== idx))}
-                    className="shrink-0"
-                  >
-                    <Trash2 size={12} />
-                  </Button>
-                )}
               </div>
             ))}
             {editRewards.length < 10 && (
@@ -488,6 +605,8 @@ export default function EventBoardsPage() {
                       position: editRewards.length + 1,
                       reward_name: "",
                       reward_id: null,
+                      xp_reward: 0,
+                      currency_reward: 0,
                     },
                   ])
                 }
@@ -523,29 +642,23 @@ export default function EventBoardsPage() {
           <DialogHeader>
             <DialogTitle>Lock Leaderboard — {lockTarget?.event_name}</DialogTitle>
             <DialogDescription>
-              This will finalise the leaderboard standings and award position rewards to the top
+              This will finalise the leaderboard standings and award XP + {currencyName} to the top
               reps. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {lockTarget?.position_rewards.map((pr) => (
-              <div key={pr.position} className="flex items-center gap-3 text-sm">
-                <span className="w-12 font-bold text-primary">{ordinal(pr.position)}</span>
-                <span className="text-foreground">{pr.reward_name}</span>
-              </div>
-            ))}
-            <div className="flex items-center gap-3 pt-2 border-t border-border">
-              <input
-                type="checkbox"
-                id="award-points"
-                checked={awardPoints}
-                onChange={(e) => setAwardPoints(e.target.checked)}
-                className="accent-primary"
-              />
-              <Label htmlFor="award-points" className="text-sm cursor-pointer">
-                Award bonus points (1st: 100, 2nd: 50, 3rd: 25)
-              </Label>
-            </div>
+            {lockTarget?.position_rewards.map((pr) => {
+              const parts: string[] = [];
+              if (pr.xp_reward) parts.push(`+${pr.xp_reward} XP`);
+              if (pr.currency_reward) parts.push(`+${pr.currency_reward} ${currencyName}`);
+              if (pr.reward_name) parts.push(pr.reward_name);
+              return (
+                <div key={pr.position} className="flex items-center gap-3 text-sm">
+                  <span className="w-12 font-bold text-primary">{ordinal(pr.position)}</span>
+                  <span className="text-foreground">{parts.join(" · ") || "—"}</span>
+                </div>
+              );
+            })}
           </div>
           {lockError && (
             <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-2.5 text-sm text-destructive">
@@ -630,6 +743,84 @@ export default function EventBoardsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setPreviewEvent(null); setPreviewData([]); }}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Assign Reps Dialog ─────────────────────────────────────────── */}
+      <Dialog
+        open={!!assignEvent}
+        onOpenChange={(open) => !open && setAssignEvent(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Reps — {assignEvent?.event_name}</DialogTitle>
+            <DialogDescription>
+              Select reps to assign to this event. Already-assigned reps are checked.
+            </DialogDescription>
+          </DialogHeader>
+          {loadingAssign ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={18} className="animate-spin text-primary/60" />
+            </div>
+          ) : activeReps.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No active reps found</p>
+          ) : (
+            <div className="max-h-[50vh] overflow-y-auto space-y-1.5 py-2">
+              {activeReps.map((rep) => {
+                const alreadyAssigned = assignedRepIds.has(rep.id);
+                const isSelected = selectedRepIds.has(rep.id);
+                return (
+                  <button
+                    key={rep.id}
+                    type="button"
+                    disabled={alreadyAssigned}
+                    onClick={() => {
+                      const next = new Set(selectedRepIds);
+                      if (isSelected) next.delete(rep.id);
+                      else next.add(rep.id);
+                      setSelectedRepIds(next);
+                    }}
+                    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                      alreadyAssigned
+                        ? "bg-muted/30 opacity-60 cursor-default"
+                        : isSelected
+                          ? "bg-primary/10 border border-primary/30"
+                          : "border border-border hover:border-primary/20 hover:bg-primary/5"
+                    }`}
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 overflow-hidden text-[10px] font-bold text-primary">
+                      {rep.photo_url ? (
+                        <img src={rep.photo_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        (rep.display_name || rep.first_name || "?").charAt(0)
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {rep.display_name || `${rep.first_name} ${rep.last_name}`}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">{rep.email}</p>
+                    </div>
+                    {alreadyAssigned && (
+                      <Badge variant="secondary" className="text-[10px] shrink-0">Assigned</Badge>
+                    )}
+                    {isSelected && (
+                      <Check size={14} className="text-primary shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAssignReps} disabled={assignSaving || selectedRepIds.size === 0}>
+              {assignSaving && <Loader2 size={14} className="animate-spin" />}
+              <UserPlus size={14} /> Assign {selectedRepIds.size > 0 ? `(${selectedRepIds.size})` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>

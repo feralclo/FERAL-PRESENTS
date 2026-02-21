@@ -40,6 +40,8 @@ interface PositionReward {
   reward_name: string;
   reward_id?: string | null;
   awarded_rep_id?: string | null;
+  xp_reward?: number;
+  currency_reward?: number;
 }
 
 interface EventSummary {
@@ -125,7 +127,7 @@ export default function RepLeaderboardPage() {
       </div>
 
       {/* Tab Bar */}
-      <Tabs defaultValue="all-time" className="gap-4">
+      <Tabs defaultValue="events" className="gap-4">
         <TabsList className="w-full bg-secondary rounded-xl border border-border mb-1">
           <TabsTrigger value="all-time" className="flex-1 rounded-[10px] text-[13px] font-semibold data-[state=active]:bg-white/[0.10] data-[state=active]:text-white data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             All Time
@@ -376,20 +378,26 @@ function EventsLeaderboard() {
   const [error, setError] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
+  const [currencyName, setCurrencyName] = useState("FRL");
 
   useEffect(() => {
     setLoading(true);
     setError("");
     (async () => {
       try {
-        const res = await fetch("/api/rep-portal/leaderboard/events");
-        if (!res.ok) {
+        const [eventsRes, settingsRes] = await Promise.all([
+          fetch("/api/rep-portal/leaderboard/events"),
+          fetch("/api/rep-portal/settings"),
+        ]);
+        if (!eventsRes.ok) {
           setError("Failed to load events");
           setLoading(false);
           return;
         }
-        const json = await res.json();
-        setEvents(json.data || []);
+        const eventsJson = await eventsRes.json();
+        setEvents(eventsJson.data || []);
+        const settingsJson = await settingsRes.json().catch(() => ({}));
+        if (settingsJson.data?.currency_name) setCurrencyName(settingsJson.data.currency_name);
       } catch {
         setError("Failed to load events");
       }
@@ -405,6 +413,7 @@ function EventsLeaderboard() {
       <EventLeaderboardView
         eventId={selectedEvent}
         onBack={() => setSelectedEvent(null)}
+        currencyName={currencyName}
       />
     );
   }
@@ -427,6 +436,7 @@ function EventsLeaderboard() {
         <EventCard
           key={event.event_id}
           event={event}
+          currencyName={currencyName}
           onClick={() => setSelectedEvent(event.event_id)}
         />
       ))}
@@ -436,7 +446,7 @@ function EventsLeaderboard() {
 
 // ─── Event Card ──────────────────────────────────────────────────────────────
 
-function EventCard({ event, onClick }: { event: EventSummary; onClick: () => void }) {
+function EventCard({ event, currencyName, onClick }: { event: EventSummary; currencyName: string; onClick: () => void }) {
   const isLive = !event.locked && isEventUpcoming(event.event_date);
   const isPast = !isEventUpcoming(event.event_date);
 
@@ -527,7 +537,8 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
                 style={i === 0 ? { boxShadow: "0 0 8px rgba(245, 158, 11, 0.15)" } : undefined}
               >
                 <Gift size={10} />
-                {ordinal(pr.position)}: {pr.reward_name}
+                {ordinal(pr.position)}:{" "}
+                {formatRewardPill(pr, currencyName)}
               </span>
             ))}
           </div>
@@ -544,9 +555,11 @@ function EventCard({ event, onClick }: { event: EventSummary; onClick: () => voi
 function EventLeaderboardView({
   eventId,
   onBack,
+  currencyName,
 }: {
   eventId: string;
   onBack: () => void;
+  currencyName: string;
 }) {
   const router = useRouter();
   const [data, setData] = useState<EventLeaderboardData | null>(null);
@@ -754,7 +767,7 @@ function EventLeaderboardView({
               </div>
 
               {/* Reward pill for podium positions */}
-              {reward && reward.reward_name && (
+              {reward && (reward.reward_name || reward.xp_reward || reward.currency_reward) && (
                 <div className="mt-2 ml-11">
                   <span
                     className={`rep-reward-pill ${
@@ -762,7 +775,7 @@ function EventLeaderboardView({
                     }`}
                   >
                     <Gift size={10} />
-                    {ordinal(i + 1)} Prize: {reward.reward_name}
+                    {ordinal(i + 1)} Prize: {formatRewardPill(reward, currencyName)}
                     {reward.awarded_rep_id && entry.id === reward.awarded_rep_id && (
                       <span className="ml-1 opacity-70">✓ Awarded</span>
                     )}
@@ -898,4 +911,12 @@ function ordinal(n: number): string {
   const suffixes = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return n + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+}
+
+function formatRewardPill(pr: PositionReward, currencyName: string): string {
+  const parts: string[] = [];
+  if (pr.xp_reward) parts.push(`+${pr.xp_reward} XP`);
+  if (pr.currency_reward) parts.push(`+${pr.currency_reward} ${currencyName}`);
+  if (pr.reward_name) parts.push(pr.reward_name);
+  return parts.length > 0 ? parts.join(" ") : "—";
 }

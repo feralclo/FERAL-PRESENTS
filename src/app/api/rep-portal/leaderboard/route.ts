@@ -130,7 +130,7 @@ async function getEventLeaderboard(
       .single(),
     supabase
       .from(TABLES.REP_EVENT_POSITION_REWARDS)
-      .select("position, reward_name, reward_id, awarded_rep_id")
+      .select("position, reward_name, reward_id, awarded_rep_id, xp_reward, currency_reward")
       .eq("org_id", ORG_ID)
       .eq("event_id", eventId)
       .order("position", { ascending: true }),
@@ -173,6 +173,8 @@ async function getEventLeaderboard(
     reward_name: pr.reward_name as string,
     reward_id: pr.reward_id as string | null,
     awarded_rep_id: pr.awarded_rep_id as string | null,
+    xp_reward: (pr.xp_reward as number) || 0,
+    currency_reward: (pr.currency_reward as number) || 0,
   }));
 
   const locked = positionRewards.some((pr) => pr.awarded_rep_id !== null);

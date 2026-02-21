@@ -1,7 +1,32 @@
 import { TABLES, ORG_ID, repsKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import type { PointsSourceType, RepProgramSettings } from "@/types/reps";
-import { DEFAULT_REP_PROGRAM_SETTINGS } from "@/types/reps";
+import type { PointsSourceType, RepProgramSettings, PlatformXPConfig } from "@/types/reps";
+import { DEFAULT_REP_PROGRAM_SETTINGS, DEFAULT_PLATFORM_XP_CONFIG } from "@/types/reps";
+
+const PLATFORM_XP_KEY = "entry_platform_xp";
+
+/**
+ * Fetch the platform XP config (shared across all orgs).
+ */
+export async function getPlatformXPConfig(): Promise<PlatformXPConfig> {
+  try {
+    const supabase = await getSupabaseAdmin();
+    if (!supabase) return DEFAULT_PLATFORM_XP_CONFIG;
+
+    const { data } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", PLATFORM_XP_KEY)
+      .single();
+
+    if (data?.data && typeof data.data === "object") {
+      return { ...DEFAULT_PLATFORM_XP_CONFIG, ...(data.data as Partial<PlatformXPConfig>) };
+    }
+  } catch {
+    // Not found — use defaults
+  }
+  return DEFAULT_PLATFORM_XP_CONFIG;
+}
 
 /**
  * Fetch the rep program settings for an org.
@@ -100,8 +125,8 @@ export async function awardPoints(params: {
       return null;
     }
 
-    // Update denormalized balances + recalculate level
-    const settings = await getRepSettings(orgId);
+    // Update denormalized balances + recalculate level using platform config
+    const platformConfig = await getPlatformXPConfig();
 
     // Fetch current level to detect level-up
     const { data: repFull } = await supabase
@@ -112,7 +137,7 @@ export async function awardPoints(params: {
       .single();
     const oldLevel = repFull?.level || 1;
 
-    const newLevel = calculateLevel(newBalance, settings.level_thresholds);
+    const newLevel = calculateLevel(newBalance, platformConfig.level_thresholds);
 
     await supabase
       .from(TABLES.REPS)
@@ -127,8 +152,8 @@ export async function awardPoints(params: {
 
     // Detect level-up and fire notification + email (fire-and-forget)
     if (newLevel > oldLevel && params.points > 0) {
-      const oldLevelName = settings.level_names[oldLevel - 1] || `Level ${oldLevel}`;
-      const newLevelName = settings.level_names[newLevel - 1] || `Level ${newLevel}`;
+      const oldLevelName = platformConfig.level_names[oldLevel - 1] || `Level ${oldLevel}`;
+      const newLevelName = platformConfig.level_names[newLevel - 1] || `Level ${newLevel}`;
 
       import("@/lib/rep-notifications").then(({ createNotification }) => {
         createNotification({

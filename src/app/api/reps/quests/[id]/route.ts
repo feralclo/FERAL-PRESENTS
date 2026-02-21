@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
+import { getPlatformXPConfig } from "@/lib/rep-points";
 
 /**
  * GET /api/reps/quests/[id] — Single quest
@@ -118,6 +119,25 @@ export async function PUT(
         { error: "platform must be 'tiktok', 'instagram', or 'any'" },
         { status: 400 }
       );
+    }
+
+    // Platform controls XP — override points_reward based on quest type
+    if (updates.quest_type || updates.points_reward !== undefined) {
+      const platformConfig = await getPlatformXPConfig();
+      // If quest_type is changing, use the new type; otherwise fetch current quest to get existing type
+      let questType = updates.quest_type as string | undefined;
+      if (!questType) {
+        const { data: currentQuest } = await supabase
+          .from(TABLES.REP_QUESTS)
+          .select("quest_type")
+          .eq("id", id)
+          .eq("org_id", ORG_ID)
+          .single();
+        questType = currentQuest?.quest_type;
+      }
+      if (questType) {
+        updates.points_reward = platformConfig.xp_per_quest_type[questType as keyof typeof platformConfig.xp_per_quest_type] ?? platformConfig.xp_per_quest_type.custom;
+      }
     }
 
     updates.updated_at = new Date().toISOString();

@@ -15,7 +15,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, RotateCcw } from "lucide-react";
+import { Loader2, Save, RotateCcw, Info } from "lucide-react";
 import type { RepProgramSettings } from "@/types/reps";
 import { DEFAULT_REP_PROGRAM_SETTINGS } from "@/types/reps";
 
@@ -40,10 +40,23 @@ export function SettingsTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Only send tenant-controlled fields
+      const payload: Partial<RepProgramSettings> = {
+        enabled: settings.enabled,
+        auto_approve: settings.auto_approve,
+        leaderboard_visible: settings.leaderboard_visible,
+        default_discount_percent: settings.default_discount_percent,
+        default_discount_type: settings.default_discount_type,
+        welcome_message: settings.welcome_message,
+        email_from_name: settings.email_from_name,
+        email_from_address: settings.email_from_address,
+        currency_per_sale: settings.currency_per_sale,
+        currency_name: settings.currency_name,
+      };
       const res = await fetch("/api/reps/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
       if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
     } catch { /* network */ }
@@ -98,32 +111,18 @@ export function SettingsTab() {
           </CardContent>
         </Card>
 
+        {/* XP info card — replaces old Points & Levels card */}
         <Card>
-          <CardHeader><CardTitle className="text-sm">Points & Levels</CardTitle></CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <Label>Points per Sale (per ticket)</Label>
-              <div className="flex items-center gap-3">
-                <Slider value={[settings.points_per_sale]} onValueChange={([v]) => update("points_per_sale", v)} min={1} max={100} step={1} className="flex-1" />
-                <span className="font-mono text-sm font-bold text-primary w-10 text-right tabular-nums">{settings.points_per_sale}</span>
+          <CardHeader><CardTitle className="text-sm">XP & Levels</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-start gap-3 rounded-lg bg-primary/5 border border-primary/10 p-4">
+              <Info size={16} className="text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Managed at the platform level</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  XP rates, level thresholds, and level names are controlled via the Platform tab to ensure consistency across all tenants.
+                </p>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Level Names (comma-separated)</Label>
-              <Input
-                value={settings.level_names.join(", ")}
-                onChange={(e) => update("level_names", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
-                placeholder="Rookie, Starter, Rising, ..." className="text-xs"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Level Thresholds (comma-separated points)</Label>
-              <Input
-                value={settings.level_thresholds.join(", ")}
-                onChange={(e) => update("level_thresholds", e.target.value.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n) && n > 0))}
-                placeholder="100, 300, 600, ..." className="font-mono text-xs"
-              />
-              <p className="text-[11px] text-muted-foreground">L1 starts at 0 points. Each value is the threshold for the next level.</p>
             </div>
           </CardContent>
         </Card>

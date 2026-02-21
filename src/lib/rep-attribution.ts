@@ -1,6 +1,6 @@
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { awardPoints, getRepSettings, calculateLevel } from "@/lib/rep-points";
+import { awardPoints, getRepSettings, calculateLevel, getPlatformXPConfig } from "@/lib/rep-points";
 import { createNotification } from "@/lib/rep-notifications";
 
 /**
@@ -49,9 +49,12 @@ export async function attributeSaleToRep(params: {
 
     if (!rep || rep.status !== "active") return;
 
-    // Get program settings for points + currency calculation
-    const settings = await getRepSettings(orgId);
-    const pointsEarned = settings.points_per_sale * params.ticketCount;
+    // Get platform XP config + tenant settings for currency
+    const [platformConfig, settings] = await Promise.all([
+      getPlatformXPConfig(),
+      getRepSettings(orgId),
+    ]);
+    const pointsEarned = platformConfig.xp_per_sale * params.ticketCount;
     const currencyEarned = settings.currency_per_sale * params.ticketCount;
 
     // 1. Award XP + currency
@@ -320,8 +323,8 @@ export async function reverseRepAttribution(params: {
     const newBalance = result.new_balance || 0;
 
     // Recalculate level from new balance (RPC can't do this — thresholds are in site_settings)
-    const settings = await getRepSettings(orgId);
-    const newLevel = calculateLevel(newBalance, settings.level_thresholds);
+    const platformConfig2 = await getPlatformXPConfig();
+    const newLevel = calculateLevel(newBalance, platformConfig2.level_thresholds);
 
     await supabase
       .from(TABLES.REPS)

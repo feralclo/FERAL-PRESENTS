@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
-import { getRepSettings } from "@/lib/rep-points";
+import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
 
 /**
  * GET /api/rep-portal/dashboard — Dashboard data (protected)
@@ -43,7 +43,7 @@ export async function GET() {
         .eq("org_id", ORG_ID)
         .single(),
 
-      // Program settings
+      // Program settings (tenant)
       getRepSettings(ORG_ID),
 
       // Active quests count (global or assigned to rep's events)
@@ -92,15 +92,16 @@ export async function GET() {
 
     const settings = settingsResult;
 
-    // Calculate level info
+    // Use platform config for level names/thresholds
+    const platformConfig = await getPlatformXPConfig();
     const levelIndex = rep.level - 1;
     const levelName =
-      settings.level_names[levelIndex] || `Level ${rep.level}`;
+      platformConfig.level_names[levelIndex] || `Level ${rep.level}`;
     const currentLevelPoints =
-      levelIndex > 0 ? settings.level_thresholds[levelIndex - 1] : 0;
+      levelIndex > 0 ? platformConfig.level_thresholds[levelIndex - 1] : 0;
     const nextLevelPoints =
-      levelIndex < settings.level_thresholds.length
-        ? settings.level_thresholds[levelIndex]
+      levelIndex < platformConfig.level_thresholds.length
+        ? platformConfig.level_thresholds[levelIndex]
         : null;
 
     // Calculate leaderboard position

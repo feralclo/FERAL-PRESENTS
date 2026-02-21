@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
+import { getPlatformXPConfig } from "@/lib/rep-points";
 
 /**
  * GET /api/reps/quests — List quests
@@ -124,12 +125,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (Number(points_reward) <= 0) {
-      return NextResponse.json(
-        { error: "points_reward must be a positive number" },
-        { status: 400 }
-      );
-    }
+    // Platform controls XP — override client-provided points_reward
+    const platformConfig = await getPlatformXPConfig();
+    const platformXP = platformConfig.xp_per_quest_type[quest_type as keyof typeof platformConfig.xp_per_quest_type] ?? platformConfig.xp_per_quest_type.custom;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -150,7 +148,7 @@ export async function POST(request: NextRequest) {
         platform,
         image_url: image_url || null,
         video_url: video_url || null,
-        points_reward: Number(points_reward),
+        points_reward: platformXP,
         currency_reward: Number(currency_reward) || 0,
         event_id: event_id || null,
         max_completions: max_completions != null ? Number(max_completions) : null,

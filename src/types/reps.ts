@@ -292,6 +292,8 @@ export interface RepEventPositionReward {
   position: number;
   reward_id?: string | null;
   reward_name: string;
+  xp_reward: number;
+  currency_reward: number;
   awarded_rep_id?: string | null;
   awarded_at?: string | null;
   created_at: string;
@@ -299,6 +301,44 @@ export interface RepEventPositionReward {
   reward?: RepReward | null;
   awarded_rep?: { id: string; display_name?: string; first_name: string; photo_url?: string } | null;
 }
+
+// ─── Platform XP Config ────────────────────────────────────────────────────
+export interface PlatformXPConfig {
+  xp_per_sale: number;
+  xp_per_quest_type: {
+    social_post: number;
+    story_share: number;
+    content_creation: number;
+    custom: number;
+  };
+  position_xp: Record<number, number>;
+  level_thresholds: number[];
+  level_names: string[];
+}
+
+export const DEFAULT_PLATFORM_XP_CONFIG: PlatformXPConfig = {
+  xp_per_sale: 10,
+  xp_per_quest_type: {
+    social_post: 50,
+    story_share: 30,
+    content_creation: 100,
+    custom: 50,
+  },
+  position_xp: { 1: 500, 2: 250, 3: 100 },
+  level_thresholds: [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000],
+  level_names: [
+    "Rookie",
+    "Starter",
+    "Rising",
+    "Proven",
+    "Veteran",
+    "Elite",
+    "Champion",
+    "Legend",
+    "Icon",
+    "Mythic",
+  ],
+};
 
 // ─── Notifications ──────────────────────────────────────────────────────────
 export type RepNotificationType =
@@ -339,5 +379,7 @@ export interface EventLeaderboardSummary {
     reward_name: string;
     reward_id?: string | null;
     awarded_rep_id?: string | null;
+    xp_reward?: number;
+    currency_reward?: number;
   }[];
 }

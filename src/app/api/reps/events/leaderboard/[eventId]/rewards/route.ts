@@ -55,7 +55,7 @@ export async function POST(
 
     const { eventId } = await params;
     const body = await request.json();
-    const rewards: { position: number; reward_name: string; reward_id?: string | null }[] =
+    const rewards: { position: number; reward_name: string; reward_id?: string | null; xp_reward?: number; currency_reward?: number }[] =
       body.rewards || [];
 
     if (!Array.isArray(rewards)) {
@@ -112,6 +112,8 @@ export async function POST(
       position: r.position,
       reward_name: r.reward_name || "",
       reward_id: r.reward_id || null,
+      xp_reward: Number(r.xp_reward) || 0,
+      currency_reward: Number(r.currency_reward) || 0,
     }));
 
     const { data: inserted, error: insertErr } = await supabase

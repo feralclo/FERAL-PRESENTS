@@ -9,11 +9,13 @@ import {
   Swords,
   ExternalLink,
   Trophy,
+  Cpu,
 } from "lucide-react";
 import { TeamTab } from "@/components/admin/reps/TeamTab";
 import { RewardsTab } from "@/components/admin/reps/RewardsTab";
 import { QuestsTab } from "@/components/admin/reps/QuestsTab";
 import { SettingsTab } from "@/components/admin/reps/SettingsTab";
+import { PlatformXPTab } from "@/components/admin/reps/PlatformXPTab";
 
 export default function RepsHubPage() {
   const [activeTab, setActiveTab] = useState("team");
@@ -65,6 +67,10 @@ export default function RepsHubPage() {
           <TabsTrigger value="settings">
             Settings
           </TabsTrigger>
+          <TabsTrigger value="platform">
+            <Cpu size={14} className="mr-1.5" />
+            Platform
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="team">
@@ -78,6 +84,9 @@ export default function RepsHubPage() {
         </TabsContent>
         <TabsContent value="settings">
           <SettingsTab />
+        </TabsContent>
+        <TabsContent value="platform">
+          <PlatformXPTab />
         </TabsContent>
       </Tabs>
     </div>

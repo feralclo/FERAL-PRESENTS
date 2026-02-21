@@ -272,21 +272,21 @@ export function MidnightMerchModal({
                 {/* What's included — bundle badges */}
                 {ticketName && (
                   <div className="w-full mb-3 max-md:mb-2.5">
-                    <div className="flex gap-2 max-md:flex-wrap max-md:justify-center">
-                      <span className="midnight-bundle-badge inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.04em] uppercase text-white/60">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
+                    <div className="flex gap-1.5 max-md:justify-center">
+                      <span className="midnight-bundle-badge inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.03em] uppercase text-white/60 whitespace-nowrap">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 shrink-0">
                           <rect x="2" y="7" width="20" height="14" rx="2" />
                           <path d="M16 7V5a4 4 0 0 0-8 0v2" />
                         </svg>
-                        Includes Ticket
+                        Ticket
                       </span>
-                      <span className="midnight-bundle-badge inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.04em] uppercase text-white/60">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
+                      <span className="midnight-bundle-badge inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.03em] uppercase text-white/60 whitespace-nowrap">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 shrink-0">
                           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                           <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                           <line x1="12" y1="22.08" x2="12" y2="12" />
                         </svg>
-                        Includes Merch
+                        Merch
                       </span>
                     </div>
                     {ticketDescription && (
@@ -379,15 +379,15 @@ export function MidnightMerchModal({
             onTouchStart={onFsTouchStart}
             onTouchEnd={onFsTouchEnd}
           >
-            {/* Close button */}
+            {/* Close button — high contrast so it's unmissable on any device */}
             <button
               type="button"
-              className="absolute right-4 z-20 w-12 h-12 bg-black/70 border border-white/20 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/15 hover:border-white/25 hover:text-white transition-all cursor-pointer"
+              className="absolute right-4 z-20 w-11 h-11 bg-white/15 border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/25 hover:border-white/40 transition-all cursor-pointer backdrop-blur-sm"
               style={{ top: "calc(12px + env(safe-area-inset-top, 0px))" }}
               onClick={() => setFullscreenOpen(false)}
               aria-label="Close zoom"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>

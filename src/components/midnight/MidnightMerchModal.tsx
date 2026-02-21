@@ -294,7 +294,7 @@ export function MidnightMerchModal({
                           <rect x="2" y="7" width="20" height="14" rx="2" />
                           <path d="M16 7V5a4 4 0 0 0-8 0v2" />
                         </svg>
-                        Ticket
+                        Includes Ticket
                       </span>
                       <span className="midnight-bundle-badge inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[9px] font-bold tracking-[0.03em] uppercase text-white/60 whitespace-nowrap">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 shrink-0">
@@ -302,7 +302,7 @@ export function MidnightMerchModal({
                           <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                           <line x1="12" y1="22.08" x2="12" y2="12" />
                         </svg>
-                        Merch
+                        Includes Merch
                       </span>
                     </div>
                     {ticketDescription && (

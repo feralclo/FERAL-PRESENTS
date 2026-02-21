@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -283,7 +284,7 @@ export function MidnightMerchModal({
                 {/* What's included — bundle badges */}
                 {ticketName && (
                   <div className="w-full mb-3 max-md:mb-2.5">
-                    <div className="flex flex-wrap gap-2 max-md:justify-center">
+                    <div className="flex gap-2 max-md:flex-wrap max-md:justify-center">
                       <span className="midnight-bundle-badge inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.04em] uppercase text-white/60">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
                           <rect x="2" y="7" width="20" height="14" rx="2" />
@@ -363,10 +364,11 @@ export function MidnightMerchModal({
         </DialogContent>
       </Dialog>
 
-      {/* ── Fullscreen image zoom — simple overlay, NOT a Radix Dialog ──
-           Using a plain overlay avoids the double-dialog bug where closing
-           the fullscreen X also closes the parent merch modal. */}
-      {fullscreenOpen && (
+      {/* ── Fullscreen image zoom — portaled to body so it renders above the
+           Radix Dialog portal (which also renders at body level). Without
+           createPortal, this overlay gets trapped in a lower stacking context
+           than the Radix portal, making it unclickable on desktop. */}
+      {fullscreenOpen && createPortal(
         <div
           className="midnight-fs-overlay fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
           onClick={(e) => {
@@ -426,7 +428,7 @@ export function MidnightMerchModal({
             </button>
           )}
 
-          {/* Zoomed image — click to close */}
+          {/* Zoomed image — tap to zoom out */}
           {images[fullscreenIndex] && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -434,6 +436,11 @@ export function MidnightMerchModal({
               alt={images[fullscreenIndex].alt}
               className="max-w-[85vw] max-h-[85vh] object-contain cursor-zoom-out"
               style={{ maxHeight: "85dvh" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (fsDidSwipe.current) { fsDidSwipe.current = false; return; }
+                setFullscreenOpen(false);
+              }}
             />
           )}
 
@@ -454,7 +461,8 @@ export function MidnightMerchModal({
               ))}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

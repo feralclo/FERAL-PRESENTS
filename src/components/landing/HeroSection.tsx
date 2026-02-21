@@ -12,6 +12,7 @@ interface HeroSectionProps {
 export function HeroSection({ settings }: HeroSectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const trackerRef = useRef<HTMLDivElement>(null);
+  const bgRef = useRef<HTMLDivElement>(null);
 
   const focalX = settings.hero_focal_x ?? 50;
   const focalY = settings.hero_focal_y ?? 50;
@@ -31,17 +32,29 @@ export function HeroSection({ settings }: HeroSectionProps) {
     return () => observer.disconnect();
   }, []);
 
+  // Mouse-reactive parallax on background image (desktop only)
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (trackerRef.current) {
       trackerRef.current.style.left = e.clientX + "px";
       trackerRef.current.style.top = e.clientY + "px";
       trackerRef.current.style.opacity = "0.5";
     }
+    // Parallax: shift background opposite to cursor, max ±12px
+    if (bgRef.current) {
+      const rect = bgRef.current.getBoundingClientRect();
+      const cx = (e.clientX - rect.left) / rect.width - 0.5;  // -0.5 to 0.5
+      const cy = (e.clientY - rect.top) / rect.height - 0.5;
+      bgRef.current.style.transform = `translate(${-cx * 24}px, ${-cy * 16}px) scale(1.04)`;
+    }
   }, []);
 
   const handleMouseLeave = useCallback(() => {
     if (trackerRef.current) {
       trackerRef.current.style.opacity = "0";
+    }
+    // Reset parallax smoothly
+    if (bgRef.current) {
+      bgRef.current.style.transform = "translate(0, 0) scale(1.04)";
     }
   }, []);
 
@@ -64,17 +77,25 @@ export function HeroSection({ settings }: HeroSectionProps) {
     >
       {/* Background image + atmospheric effects */}
       <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={settings.hero_image_url || "/images/banner-1.jpg"}
-          alt=""
-          className="hero__bg-image w-full h-full object-cover block"
-          style={{ objectPosition: `${focalX}% ${focalY}%` }}
-        />
-        {/* Atmospheric mist + bokeh (replaces CRT scanlines) */}
+        {/* Parallax wrapper — shifts on mouse move, scale(1.04) prevents edge gaps */}
+        <div
+          ref={bgRef}
+          className="absolute inset-0 scale-[1.04] transition-transform duration-[600ms] ease-out will-change-transform"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={settings.hero_image_url || "/images/banner-1.jpg"}
+            alt=""
+            className="hero__bg-image w-full h-full object-cover block"
+            style={{ objectPosition: `${focalX}% ${focalY}%` }}
+          />
+        </div>
+        {/* Atmospheric mist + bokeh */}
         <div className="hero__bg-mist absolute inset-0 z-[1] pointer-events-none overflow-hidden" />
         {/* Light breathing — warm/cool color shift */}
         <div className="hero__bg-breathe absolute inset-0 z-[1] pointer-events-none" />
+        {/* Film grain — subtle texture for cinematic feel */}
+        <div className="hero__bg-grain absolute inset-0 z-[1] pointer-events-none opacity-[0.035]" />
         {/* Cinematic vignette */}
         <div className="hero__bg-overlay absolute inset-0 z-[2]" />
       </div>

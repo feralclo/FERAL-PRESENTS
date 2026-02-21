@@ -65,6 +65,7 @@ export function QuestDetailSheet({
   const approvedCount = subs?.approved ?? 0;
   const isCompleted = quest.max_completions ? approvedCount >= quest.max_completions : false;
   const isRepeatable = quest.max_completions && quest.max_completions > 1;
+  const hasPending = subs.pending > 0;
   const hasImage = !!quest.image_url;
   const hasRefUrl = !!quest.reference_url;
   const refPlatform = quest.reference_url ? getReferenceUrlPlatform(quest.reference_url) : (quest.platform !== "any" ? quest.platform : null);
@@ -292,6 +293,11 @@ export function QuestDetailSheet({
             <div className="rep-quest-detail-complete">
               <Check size={16} />
               <span>Completed</span>
+            </div>
+          ) : hasPending ? (
+            <div className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-amber-400/20 bg-amber-400/[0.06]">
+              <Clock size={16} className="text-amber-400" />
+              <span className="text-sm font-bold text-amber-400 tracking-wide">Submission Pending</span>
             </div>
           ) : (
             <button

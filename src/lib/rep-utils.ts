@@ -57,7 +57,8 @@ let _soundPlayCount = 0;
 const MAX_SOUND_PLAYS = 3;
 
 /**
- * Play a success arpeggio via Web Audio API.
+ * Play a layered achievement sound via Web Audio API.
+ * Triangle-wave arpeggio with chorus detune + sparkle chord.
  * Becomes a no-op after the 3rd call in a session to avoid annoyance.
  */
 export function playSuccessSound(): void {
@@ -66,21 +67,47 @@ export function playSuccessSound(): void {
 
   try {
     const ctx = new AudioContext();
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    notes.forEach((freq, i) => {
+
+    // Ascending arpeggio → sparkle chord (C5 E5 G5 C6 + shimmer E6 G6)
+    const tones: { freq: number; time: number; dur: number; vol: number }[] = [
+      { freq: 523.25, time: 0, dur: 0.18, vol: 0.11 },       // C5
+      { freq: 659.25, time: 0.06, dur: 0.18, vol: 0.12 },    // E5
+      { freq: 783.99, time: 0.12, dur: 0.18, vol: 0.13 },    // G5
+      { freq: 1046.50, time: 0.18, dur: 0.30, vol: 0.11 },   // C6 (sustain)
+      { freq: 1318.51, time: 0.24, dur: 0.40, vol: 0.07 },   // E6 sparkle
+      { freq: 1567.98, time: 0.27, dur: 0.35, vol: 0.05 },   // G6 sparkle
+    ];
+
+    tones.forEach(({ freq, time, dur, vol }) => {
+      const t = ctx.currentTime + time;
+
+      // Main tone — triangle (warm)
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
+      osc.type = "triangle";
       osc.frequency.value = freq;
-      osc.type = "sine";
-      const t = ctx.currentTime + i * 0.09;
       gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.13, t + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      gain.gain.linearRampToValueAtTime(vol, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
       osc.start(t);
-      osc.stop(t + 0.3);
+      osc.stop(t + dur);
+
+      // Chorus layer — slightly detuned sine (adds shimmer)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.type = "sine";
+      osc2.frequency.value = freq * 1.004;
+      gain2.gain.setValueAtTime(0, t);
+      gain2.gain.linearRampToValueAtTime(vol * 0.35, t + 0.01);
+      gain2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.7);
+      osc2.start(t);
+      osc2.stop(t + dur);
     });
-    setTimeout(() => ctx.close(), 1500);
+
+    setTimeout(() => ctx.close(), 2000);
   } catch { /* AudioContext not available — silent fallback */ }
 }

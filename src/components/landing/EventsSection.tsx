@@ -18,7 +18,7 @@ export function EventsSection({ events }: EventsSectionProps) {
     if (!grid) return;
 
     function onScroll() {
-      if (grid!.scrollLeft > 30) {
+      if (grid!.scrollLeft > 100) {
         setHintVisible(false);
       }
     }
@@ -59,7 +59,7 @@ export function EventsSection({ events }: EventsSectionProps) {
         {events.length > 0 && (
           <div
             ref={gridRef}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-lg:flex max-lg:overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:-mx-4 max-lg:px-4 max-lg:gap-4 max-lg:overscroll-x-contain"
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-lg:flex max-lg:overflow-x-auto max-lg:snap-x max-lg:snap-proximity max-lg:-mx-4 max-lg:px-4 max-lg:gap-4 max-lg:overscroll-x-contain max-lg:scroll-pl-4"
             style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
           >
             {events.map((event) => (
@@ -109,7 +109,7 @@ function EventCard({ event }: { event: LandingEvent }) {
     <Link
       href={href}
       {...linkProps}
-      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_rgba(255,0,51,0.1),0_0_0_1px_rgba(255,0,51,0.12)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[calc(100vw-48px)]"
+      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_rgba(255,0,51,0.1),0_0_0_1px_rgba(255,0,51,0.12)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[calc(100vw-80px)]"
       data-reveal=""
     >
       {/* Date badge */}

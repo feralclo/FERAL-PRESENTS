@@ -14,16 +14,19 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import type { LandingEvent } from "@/types/events";
+import type { HomepageSettings } from "@/types/settings";
 
+import "@/styles/hero-effects.css";
 import "@/styles/landing.css";
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
 
 interface LandingPageProps {
   events: LandingEvent[];
+  heroSettings: HomepageSettings;
 }
 
-export function LandingPage({ events }: LandingPageProps) {
+export function LandingPage({ events, heroSettings }: LandingPageProps) {
   const { push } = useDataLayer();
   const { trackPageView } = useMetaTracking();
   useTraffic();
@@ -54,8 +57,8 @@ export function LandingPage({ events }: LandingPageProps) {
         <Header />
       </header>
 
-      {/* Hero — stays in old BEM CSS, outside data-theme wrapper */}
-      <HeroSection />
+      {/* Hero — Tailwind layout + hero-effects.css for animations */}
+      <HeroSection settings={heroSettings} />
 
       {/* Everything below hero: Midnight Tailwind theme */}
       <div data-theme="midnight" className="overflow-x-hidden">

@@ -1,0 +1,395 @@
+/* ============================================
+   Hero Section — Visual Effects & Keyframes
+   Layout handled by Tailwind in JSX.
+   ============================================ */
+
+/* --- Background Effects --- */
+
+.hero__bg-image {
+  animation: heroKenBurns 25s ease-in-out infinite alternate;
+}
+
+@keyframes heroKenBurns {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+/* Animated glitch overlay */
+.hero__bg-glitch {
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent calc(50% - 2px),
+      rgba(255, 0, 51, 0.6) 50%,
+      transparent calc(50% + 2px),
+      transparent 100%
+    );
+  background-size: 100% 300%;
+  animation: heroScan 4s linear infinite;
+  mix-blend-mode: screen;
+}
+
+.hero__bg-glitch::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 0, 51, 0.2) 0%,
+    transparent 35%,
+    transparent 65%,
+    rgba(255, 0, 51, 0.15) 100%
+  );
+  animation: heroColorPulse 4s ease-in-out infinite;
+  mix-blend-mode: color;
+}
+
+.hero__bg-glitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 0, 51, 0.2) 0%,
+    transparent 15%,
+    transparent 85%,
+    rgba(0, 180, 255, 0.15) 100%
+  );
+  animation: heroChromaShift 6s ease-in-out infinite;
+}
+
+/* Dark vignette + CRT scanlines */
+.hero__bg-overlay {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    ),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.65) 100%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+@keyframes heroScan {
+  0% { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+
+@keyframes heroColorPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes heroChromaShift {
+  0%, 82%, 100% {
+    opacity: 0;
+    transform: translateX(0);
+    clip-path: none;
+  }
+  84% {
+    opacity: 0.9;
+    transform: translateX(-3px);
+    clip-path: inset(15% 0 60% 0);
+  }
+  86% {
+    opacity: 0.7;
+    transform: translateX(3px);
+    clip-path: inset(50% 0 20% 0);
+  }
+  88% {
+    opacity: 0.8;
+    transform: translateX(-2px);
+    clip-path: inset(30% 0 40% 0);
+  }
+  90% {
+    opacity: 0;
+    transform: translateX(0);
+    clip-path: none;
+  }
+}
+
+@keyframes heroReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Glitch Text Effects --- */
+
+.hero-glitch {
+  text-shadow:
+    0 0 40px rgba(255, 0, 51, 0.4),
+    0 0 80px rgba(255, 0, 51, 0.15),
+    0 0 120px rgba(255, 0, 51, 0.05);
+}
+
+/* Chromatic aberration on each line */
+.hero-glitch__line::before,
+.hero-glitch__line::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hero-glitch__line::before {
+  color: #0ff;
+  z-index: -1;
+  opacity: 0;
+  animation: chromaLeft 8s ease-in-out infinite;
+}
+
+.hero-glitch__line::after {
+  color: #f0f;
+  z-index: -1;
+  opacity: 0;
+  animation: chromaRight 8s ease-in-out infinite;
+}
+
+@keyframes chromaLeft {
+  0%, 100% { opacity: 0; transform: translate(0, 0); }
+  4% { opacity: 0.6; transform: translate(-4px, 1px); }
+  6% { opacity: 0; transform: translate(0, 0); }
+  50% { opacity: 0; transform: translate(0, 0); }
+  52% { opacity: 0.4; transform: translate(-2px, 0); }
+  54% { opacity: 0; transform: translate(0, 0); }
+}
+
+@keyframes chromaRight {
+  0%, 100% { opacity: 0; transform: translate(0, 0); }
+  4% { opacity: 0.6; transform: translate(4px, -1px); }
+  6% { opacity: 0; transform: translate(0, 0); }
+  50% { opacity: 0; transform: translate(0, 0); }
+  52% { opacity: 0.4; transform: translate(2px, 0); }
+  54% { opacity: 0; transform: translate(0, 0); }
+}
+
+/* Hard glitch state — aggressive displacement */
+.hero-glitch--active .hero-glitch__line::before {
+  animation: glitchHardLeft 0.12s steps(2) infinite !important;
+  opacity: 0.9 !important;
+}
+
+.hero-glitch--active .hero-glitch__line::after {
+  animation: glitchHardRight 0.12s steps(2) infinite !important;
+  opacity: 0.9 !important;
+}
+
+@keyframes glitchHardLeft {
+  0% { transform: translate(-6px, 2px); clip-path: inset(15% 0 65% 0); }
+  25% { transform: translate(4px, -1px); clip-path: inset(55% 0 15% 0); }
+  50% { transform: translate(-3px, 3px); clip-path: inset(5% 0 75% 0); }
+  75% { transform: translate(5px, 0); clip-path: inset(75% 0 5% 0); }
+  100% { transform: translate(-4px, -2px); clip-path: inset(35% 0 45% 0); }
+}
+
+@keyframes glitchHardRight {
+  0% { transform: translate(6px, -2px); clip-path: inset(65% 0 15% 0); }
+  25% { transform: translate(-4px, 1px); clip-path: inset(25% 0 55% 0); }
+  50% { transform: translate(3px, -3px); clip-path: inset(85% 0 5% 0); }
+  75% { transform: translate(-5px, 0); clip-path: inset(5% 0 75% 0); }
+  100% { transform: translate(4px, 2px); clip-path: inset(45% 0 35% 0); }
+}
+
+/* Horizontal slice displacement during hard glitch */
+.hero-glitch--active .hero-glitch__line:first-child {
+  animation: sliceShift1 0.2s steps(1) infinite;
+}
+
+.hero-glitch--active .hero-glitch__line:last-child {
+  animation: sliceShift2 0.2s steps(1) infinite;
+}
+
+@keyframes sliceShift1 {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(6px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes sliceShift2 {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(6px); }
+  40% { transform: translateX(-8px); }
+  60% { transform: translateX(4px); }
+  80% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+
+/* Scanning line through text */
+.hero-glitch__scanline {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 0, 51, 0.6) 30%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 0, 51, 0.6) 70%, transparent 100%);
+  animation: scanDown 4s linear infinite;
+}
+
+@keyframes scanDown {
+  0% { top: -5%; opacity: 0; }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.7; }
+  100% { top: 105%; opacity: 0; }
+}
+
+/* Flash overlay for strobe entrance */
+.hero-glitch__flash--active {
+  animation: strobeFlash 0.6s steps(1) forwards;
+}
+
+@keyframes strobeFlash {
+  0% { opacity: 0; }
+  5% { opacity: 0.9; background: white; }
+  10% { opacity: 0; }
+  15% { opacity: 0.7; background: var(--red); }
+  20% { opacity: 0; }
+  28% { opacity: 0.5; background: white; }
+  32% { opacity: 0; }
+  40% { opacity: 0.3; background: var(--red); }
+  45% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Red glow pulse behind text */
+.hero-glitch::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140%;
+  height: 200%;
+  background: radial-gradient(ellipse at center, rgba(255, 0, 51, 0.08), transparent 70%);
+  animation: glowPulse 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -2;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.95); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+/* --- CTA Button Effects --- */
+
+.hero__cta {
+  animation: heroReveal 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+  transition: all 0.3s ease;
+}
+
+.hero__cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.hero__cta:hover::before {
+  left: 100%;
+}
+
+.hero__cta:hover {
+  background: rgba(255, 0, 51, 0.1);
+  box-shadow:
+    0 0 20px rgba(255, 0, 51, 0.4),
+    0 0 40px rgba(255, 0, 51, 0.2),
+    inset 0 0 20px rgba(255, 0, 51, 0.1);
+  text-shadow: 0 0 10px rgba(255, 0, 51, 0.5);
+}
+
+.hero__cta-glow {
+  background: radial-gradient(ellipse at center, rgba(255, 0, 51, 0.15), transparent 70%);
+  animation: ctaPulse 2s ease-in-out infinite;
+}
+
+@keyframes ctaPulse {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+.hero__cta-glitch {
+  background: var(--red);
+}
+
+.hero__cta:hover .hero__cta-glitch {
+  animation: ctaGlitch 0.3s ease;
+}
+
+@keyframes ctaGlitch {
+  0%, 100% { opacity: 0; transform: translateX(0); }
+  20% { opacity: 0.1; transform: translateX(-3px); }
+  40% { opacity: 0; transform: translateX(3px); }
+  60% { opacity: 0.1; transform: translateX(-2px); }
+  80% { opacity: 0; transform: translateX(2px); }
+}
+
+/* Scanline overlay on button */
+.hero__cta::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* --- Scroll Indicator Effects --- */
+
+.hero__scroll-wheel {
+  animation: scrollWheel 2s ease-in-out infinite;
+}
+
+@keyframes scrollWheel {
+  0% { opacity: 1; top: 6px; }
+  50% { opacity: 0.2; top: 16px; }
+  100% { opacity: 1; top: 6px; }
+}
+
+.hero__scroll-arrow {
+  animation: scrollArrows 2s ease-in-out infinite;
+}
+
+.hero__scroll-arrow:nth-child(1) { animation-delay: 0s; }
+.hero__scroll-arrow:nth-child(2) { animation-delay: 0.15s; }
+
+@keyframes scrollArrows {
+  0% { opacity: 0; transform: rotate(45deg) translateY(-3px); }
+  30% { opacity: 0.8; }
+  60% { opacity: 0; transform: rotate(45deg) translateY(3px); }
+  100% { opacity: 0; }
+}
+
+/* --- Mouse Tracker --- */
+
+.hero__mouse-tracker {
+  background: radial-gradient(circle, var(--red-glow) 0%, transparent 70%);
+  transition: opacity 0.3s ease;
+}
+
+/* --- Animation Pause (off-screen) --- */
+
+.hero--paused,
+.hero--paused *,
+.hero--paused *::before,
+.hero--paused *::after {
+  animation-play-state: paused !important;
+}

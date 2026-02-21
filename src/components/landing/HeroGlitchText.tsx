@@ -4,11 +4,16 @@ import { useRef, useEffect } from "react";
 
 const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*<>/\\|=-_";
 
+interface HeroGlitchTextProps {
+  line1: string;
+  line2: string;
+}
+
 /**
  * Scramble-reveal hero text animation with periodic glitch bursts.
  * Exact port of main.js hero text logic (lines 151-275).
  */
-export function HeroGlitchText() {
+export function HeroGlitchText({ line1, line2 }: HeroGlitchTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const flashRef = useRef<HTMLDivElement>(null);
   const line1Ref = useRef<HTMLSpanElement>(null);
@@ -16,7 +21,7 @@ export function HeroGlitchText() {
 
   useEffect(() => {
     const lines = [line1Ref.current, line2Ref.current].filter(Boolean) as HTMLSpanElement[];
-    const lineTexts = ["BORN ON THE", "DANCE FLOOR"];
+    const lineTexts = [line1, line2];
 
     // Blank lines initially
     lines.forEach((line) => (line.textContent = ""));
@@ -133,33 +138,35 @@ export function HeroGlitchText() {
       if (glitchTimer) clearTimeout(glitchTimer);
       if (glitchInterval) clearInterval(glitchInterval);
     };
-  }, []);
+  }, [line1, line2]);
 
   return (
-    <div className="hero__tagline-wrapper">
+    <div className="relative flex items-center justify-center opacity-0 translate-y-10 animate-[heroReveal_1s_cubic-bezier(0.16,1,0.3,1)_0.3s_forwards]">
       <div
-        className="hero-glitch"
+        className="hero-glitch relative flex flex-col items-center gap-0 font-[family-name:var(--font-mono)] text-[clamp(36px,9vw,100px)] font-bold tracking-[clamp(4px,1vw,12px)] leading-[1.1] uppercase text-white"
         ref={containerRef}
-        data-text="BORN ON THE DANCE FLOOR"
-        aria-label="BORN ON THE DANCE FLOOR"
+        data-text={`${line1} ${line2}`}
+        aria-label={`${line1} ${line2}`}
       >
         <span
-          className="hero-glitch__line"
+          className="hero-glitch__line block relative"
           ref={line1Ref}
-          data-text="BORN ON THE"
+          data-text={line1}
         >
-          BORN ON THE
+          {line1}
         </span>
         <span
-          className="hero-glitch__line"
+          className="hero-glitch__line block relative"
           ref={line2Ref}
-          data-text="DANCE FLOOR"
+          data-text={line2}
         >
-          DANCE FLOOR
+          {line2}
         </span>
       </div>
-      <div className="hero-glitch__scanline" />
-      <div className="hero-glitch__flash" ref={flashRef} />
+      {/* Scanning line through text */}
+      <div className="hero-glitch__scanline absolute top-0 -left-[10%] w-[120%] h-[3px] opacity-70 pointer-events-none z-10" />
+      {/* Flash overlay for strobe entrance */}
+      <div className="hero-glitch__flash fixed top-0 left-0 w-screen h-screen bg-white opacity-0 pointer-events-none z-[9999]" ref={flashRef} />
     </div>
   );
 }

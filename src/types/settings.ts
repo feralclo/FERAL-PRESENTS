@@ -171,6 +171,16 @@ export interface PopupSettings {
   klaviyo_enabled: boolean;
 }
 
+/** Homepage hero settings — stored in site_settings under key `{org_id}_homepage` */
+export interface HomepageSettings {
+  hero_title_line1: string;
+  hero_title_line2: string;
+  hero_cta_text: string;
+  hero_image_url: string;
+  hero_focal_x: number;
+  hero_focal_y: number;
+}
+
 /** Row shape from site_settings table */
 export interface SiteSettingsRow {
   key: string;

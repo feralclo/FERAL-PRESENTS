@@ -58,7 +58,7 @@ export function LandingPage({ events }: LandingPageProps) {
       <HeroSection />
 
       {/* Everything below hero: Midnight Tailwind theme */}
-      <div data-theme="midnight">
+      <div data-theme="midnight" className="overflow-x-hidden">
         <EventsSection events={events} />
         <AboutSection />
         <ContactSection />

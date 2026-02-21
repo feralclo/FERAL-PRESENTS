@@ -1067,6 +1067,14 @@ body:has([data-rep]) > .noise {
   50% { transform: scale(1.08); }
 }
 
+/* ── Quest submit sheet (glass modal) ── */
+.rep-quest-submit-sheet {
+  background: rgba(17, 17, 23, 0.92);
+  backdrop-filter: blur(40px) saturate(1.4);
+  -webkit-backdrop-filter: blur(40px) saturate(1.4);
+  animation: questSheetIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* ── Quest detail — completed state ── */
 .rep-quest-detail-complete {
   display: flex;

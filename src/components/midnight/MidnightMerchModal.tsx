@@ -11,6 +11,9 @@ import { MidnightSizeSelector } from "./MidnightSizeSelector";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
+import type { DiscountDisplay } from "./discount-utils";
+import { getDiscountedPrice } from "./discount-utils";
+import { formatPrice } from "@/lib/stripe/config";
 
 interface MidnightMerchModalProps {
   isOpen: boolean;
@@ -25,6 +28,7 @@ interface MidnightMerchModalProps {
   ticketName?: string;
   ticketDescription?: string;
   vipBadge?: string;
+  discount?: DiscountDisplay | null;
 }
 
 export function MidnightMerchModal({
@@ -40,6 +44,7 @@ export function MidnightMerchModal({
   ticketName,
   ticketDescription,
   vipBadge,
+  discount,
 }: MidnightMerchModalProps) {
   const images = useMemo(() => {
     return normalizeMerchImages(merchImages).map((src, i) => ({
@@ -264,9 +269,20 @@ export function MidnightMerchModal({
                   <h3 className="font-[family-name:var(--font-sans)] text-[15px] max-md:text-[14px] font-bold tracking-[0.02em] uppercase text-white/90">
                     {title}
                   </h3>
-                  <span className="font-[family-name:var(--font-mono)] text-lg max-md:text-base font-bold text-white tracking-[0.02em] shrink-0">
-                    {currencySymbol}{price.toFixed(2)}
-                  </span>
+                  {discount && discount.type === "percentage" ? (
+                    <div className="flex flex-col items-end shrink-0">
+                      <span className="font-[family-name:var(--font-mono)] text-[11px] max-md:text-[10px] font-medium tracking-[0.02em] text-white/25 line-through">
+                        {currencySymbol}{price.toFixed(2)}
+                      </span>
+                      <span className="font-[family-name:var(--font-mono)] text-lg max-md:text-base font-bold text-white tracking-[0.02em]">
+                        {currencySymbol}{formatPrice(getDiscountedPrice(price, discount))}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-[family-name:var(--font-mono)] text-lg max-md:text-base font-bold text-white tracking-[0.02em] shrink-0">
+                      {currencySymbol}{price.toFixed(2)}
+                    </span>
+                  )}
                 </div>
 
                 {/* What's included — bundle badges */}
@@ -345,7 +361,7 @@ export function MidnightMerchModal({
                 className="flex-1 h-11 bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.10)] text-white font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_0_20px_rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.18)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_0_24px_rgba(255,255,255,0.04)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 onClick={handleAdd}
               >
-                Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}
+                Add to Cart &mdash; {currencySymbol}{formatPrice((discount && discount.type === "percentage" ? getDiscountedPrice(price, discount) : price) * qty)}
               </button>
             </div>
           </div>

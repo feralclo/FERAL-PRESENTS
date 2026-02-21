@@ -538,6 +538,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           ticketName={teeModalTicketType.name}
           ticketDescription={teeModalTicketType.description}
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
+          discount={activeDiscount}
         />
       )}
 

@@ -62,8 +62,8 @@ export function EventsSection({ events }: EventsSectionProps) {
             className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-lg:flex max-lg:overflow-x-auto max-lg:snap-x max-lg:snap-mandatory max-lg:-mx-6 max-lg:px-6 max-lg:gap-5"
             style={{ scrollbarWidth: "none" }}
           >
-            {events.map((event, i) => (
-              <EventCard key={event.id} event={event} index={i} />
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
             ))}
           </div>
         )}
@@ -86,13 +86,7 @@ export function EventsSection({ events }: EventsSectionProps) {
   );
 }
 
-function EventCard({
-  event,
-  index,
-}: {
-  event: LandingEvent;
-  index: number;
-}) {
+function EventCard({ event }: { event: LandingEvent }) {
   const d = new Date(event.date_start);
   const day = String(d.getDate()).padStart(2, "0");
   const month = d
@@ -140,11 +134,6 @@ function EventCard({
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-background)] via-transparent to-transparent z-[1]" />
         {/* Top vignette — date badge readability */}
         <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/30 to-transparent z-[1]" />
-        {/* Scan line */}
-        <div
-          className="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent z-[2] pointer-events-none animate-[cardScan_4s_ease-in-out_infinite]"
-          style={index > 0 ? { animationDelay: `${index * 1.5}s` } : undefined}
-        />
       </div>
 
       {/* Content */}

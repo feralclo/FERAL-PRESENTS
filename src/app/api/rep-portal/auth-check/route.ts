@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
+import { getRepSettings } from "@/lib/rep-points";
 
 /**
  * GET /api/rep-portal/auth-check — Lightweight rep status check (protected by session)
@@ -75,15 +76,18 @@ export async function GET() {
     }
 
     // For active reps, include stats for the HUD top bar (no extra API call needed)
-    let stats: { xp: number; level: number; rank: number | null; active_quests: number } | undefined;
+    let stats: { xp: number; level: number; rank: number | null; active_quests: number; currency_balance: number; currency_name: string } | undefined;
     if (rep.status === "active") {
       try {
-        // Fetch full rep record for points/level
-        const { data: fullRep } = await adminDb
-          .from(TABLES.REPS)
-          .select("points_balance, level")
-          .eq("id", rep.id)
-          .single();
+        // Fetch full rep record for points/level/currency + settings for currency name
+        const [{ data: fullRep }, settings] = await Promise.all([
+          adminDb
+            .from(TABLES.REPS)
+            .select("points_balance, level, currency_balance")
+            .eq("id", rep.id)
+            .single(),
+          getRepSettings(ORG_ID),
+        ]);
 
         // Get rank (position among active reps by total_sales desc)
         const { data: rankData } = await adminDb
@@ -107,6 +111,8 @@ export async function GET() {
           level: fullRep?.level || 1,
           rank: rankIndex >= 0 ? rankIndex + 1 : null,
           active_quests: questCount || 0,
+          currency_balance: fullRep?.currency_balance || 0,
+          currency_name: settings.currency_name || "FRL",
         };
       } catch {
         // Stats are best-effort — don't fail the auth check

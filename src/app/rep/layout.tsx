@@ -16,7 +16,6 @@ import {
   Clock,
   Loader2,
   Bell,
-  Zap,
   Star,
   ArrowUp,
   CheckCircle2,
@@ -26,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { getTierFromLevel } from "@/lib/rep-tiers";
 import { formatRelativeTimeCompact } from "@/lib/rep-utils";
 import { useRepPWA } from "@/hooks/useRepPWA";
-import { InstallPrompt } from "@/components/rep";
+import { InstallPrompt, CurrencyIcon } from "@/components/rep";
 
 const NAV_ITEMS = [
   { href: "/rep", label: "Home", icon: LayoutDashboard },
@@ -74,6 +73,8 @@ interface RepStats {
   level: number;
   rank: number | null;
   active_quests: number;
+  currency_balance: number;
+  currency_name: string;
 }
 
 export default function RepLayout({ children }: { children: ReactNode }) {
@@ -305,12 +306,12 @@ export default function RepLayout({ children }: { children: ReactNode }) {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            {/* Desktop stats strip */}
+            {/* Desktop stats strip — currency balance + rank */}
             {repStats && tier && (
               <div className="flex items-center gap-2 mr-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-bold tabular-nums text-primary">
-                  <Zap size={11} />
-                  {repStats.xp.toLocaleString()}
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 text-xs font-bold tabular-nums text-amber-400">
+                  <CurrencyIcon size={11} />
+                  {repStats.currency_balance.toLocaleString()} {repStats.currency_name}
                 </span>
                 {repStats.rank && (
                   <span className="text-xs font-bold font-mono tabular-nums" style={{ color: tier.color }}>
@@ -349,12 +350,12 @@ export default function RepLayout({ children }: { children: ReactNode }) {
               )}
             </Link>
             <div className="flex items-center gap-2">
-              {/* XP + Level pills */}
+              {/* Currency balance + Level pills */}
               {repStats && tier && (
                 <>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-bold tabular-nums text-primary">
-                    <Zap size={10} />
-                    {repStats.xp.toLocaleString()}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 text-xs font-bold tabular-nums text-amber-400">
+                    <CurrencyIcon size={10} />
+                    {repStats.currency_balance.toLocaleString()}
                   </span>
                   <span
                     className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums"

@@ -104,8 +104,8 @@ function VerifyEmailContent() {
     return (
       <div className="flex min-h-screen items-center justify-center px-6">
         <div className="text-center max-w-sm rep-fade-in">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/10 border border-success/20 mb-6">
-            <CheckCircle2 size={28} className="text-success" />
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-info/10 border border-info/20 mb-6">
+            <CheckCircle2 size={28} className="text-info" />
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">Email Verified</h2>
           <p className="text-sm text-muted-foreground leading-relaxed mb-8 max-w-[280px] mx-auto">

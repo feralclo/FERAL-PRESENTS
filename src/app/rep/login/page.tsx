@@ -130,9 +130,9 @@ function LoginForm() {
 
         {/* Verified banner */}
         {justVerified && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-success/10 border border-success/20 px-4 py-3 mb-6 rep-slide-up">
-            <CheckCircle2 size={16} className="text-success shrink-0" />
-            <p className="text-sm text-success">
+          <div className="flex items-center gap-2.5 rounded-xl bg-info/10 border border-info/20 px-4 py-3 mb-6 rep-slide-up">
+            <CheckCircle2 size={16} className="text-info shrink-0" />
+            <p className="text-sm text-info">
               Email verified! Sign in to continue.
             </p>
           </div>

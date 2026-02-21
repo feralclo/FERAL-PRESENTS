@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -87,15 +86,6 @@ export function MidnightMerchModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreenOpen, images.length]);
-
-  // Lock body scroll when fullscreen is open
-  useEffect(() => {
-    if (fullscreenOpen) {
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = ""; };
-    }
-  }, [fullscreenOpen]);
-
 
   // Main view swipe handlers
   const onMainTouchStart = useCallback((e: React.TouchEvent) => {
@@ -184,8 +174,6 @@ export function MidnightMerchModal({
           data-theme="midnight"
           className="midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col bg-[#08080c] border-[rgba(255,255,255,0.06)]"
           style={{ maxHeight: "85dvh" }}
-          onPointerDownOutside={(e) => { if (fullscreenOpen) e.preventDefault(); }}
-          onInteractOutside={(e) => { if (fullscreenOpen) e.preventDefault(); }}
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -364,106 +352,109 @@ export function MidnightMerchModal({
         </DialogContent>
       </Dialog>
 
-      {/* ── Fullscreen image zoom — portaled to body so it renders above the
-           Radix Dialog portal (which also renders at body level). Without
-           createPortal, this overlay gets trapped in a lower stacking context
-           than the Radix portal, making it unclickable on desktop. */}
-      {fullscreenOpen && createPortal(
-        <div
-          className="midnight-fs-overlay fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
-          onClick={(e) => {
-            if (e.target !== e.currentTarget) return;
-            if (fsDidSwipe.current) { fsDidSwipe.current = false; return; }
-            setFullscreenOpen(false);
-          }}
-          onTouchStart={onFsTouchStart}
-          onTouchEnd={onFsTouchEnd}
+      {/* ── Fullscreen image zoom — separate Radix Dialog ──
+           Must be its own Dialog (not a plain overlay or createPortal) because
+           the merch modal's Dialog owns a focus trap that captures ALL pointer
+           events at the document level, making any element outside DialogContent
+           completely unclickable. A second Dialog gets its own focus trap +
+           portal, so clicks, swipes, and keyboard all work properly. */}
+      <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
+        <DialogContent
+          data-theme="midnight"
+          className="inset-0 top-0 left-0 translate-x-0 translate-y-0 max-w-none w-screen h-screen max-h-none bg-black/95 border-none rounded-none p-0 gap-0 overflow-hidden z-[200] [&>button:last-child]:hidden"
         >
-          {/* Close button — pinned below safe area so it's always reachable */}
-          <button
-            type="button"
-            className="absolute right-4 z-20 w-12 h-12 bg-black/70 border border-white/20 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/15 hover:border-white/25 hover:text-white transition-all cursor-pointer"
-            style={{ top: "calc(12px + env(safe-area-inset-top, 0px))" }}
+          <DialogTitle className="sr-only">Zoomed image</DialogTitle>
+          <DialogDescription className="sr-only">
+            Full screen view. Tap image or press Escape to close.
+          </DialogDescription>
+
+          {/* Interactive layer — handles background click + swipe */}
+          <div
+            className="w-full h-full flex items-center justify-center relative"
             onClick={(e) => {
-              e.stopPropagation();
+              if (e.target !== e.currentTarget) return;
+              if (fsDidSwipe.current) { fsDidSwipe.current = false; return; }
               setFullscreenOpen(false);
             }}
-            aria-label="Close zoom"
+            onTouchStart={onFsTouchStart}
+            onTouchEnd={onFsTouchEnd}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-
-          {/* Navigation arrows */}
-          {images.length > 1 && fullscreenIndex > 0 && (
+            {/* Close button */}
             <button
               type="button"
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setFullscreenIndex(fullscreenIndex - 1);
-              }}
-              aria-label="Previous"
+              className="absolute right-4 z-20 w-12 h-12 bg-black/70 border border-white/20 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/15 hover:border-white/25 hover:text-white transition-all cursor-pointer"
+              style={{ top: "calc(12px + env(safe-area-inset-top, 0px))" }}
+              onClick={() => setFullscreenOpen(false)}
+              aria-label="Close zoom"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15,18 9,12 15,6" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
-          )}
-          {images.length > 1 && fullscreenIndex < images.length - 1 && (
-            <button
-              type="button"
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setFullscreenIndex(fullscreenIndex + 1);
-              }}
-              aria-label="Next"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="9,6 15,12 9,18" />
-              </svg>
-            </button>
-          )}
 
-          {/* Zoomed image — tap to zoom out */}
-          {images[fullscreenIndex] && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={images[fullscreenIndex].src}
-              alt={images[fullscreenIndex].alt}
-              className="max-w-[85vw] max-h-[85vh] object-contain cursor-zoom-out"
-              style={{ maxHeight: "85dvh" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (fsDidSwipe.current) { fsDidSwipe.current = false; return; }
-                setFullscreenOpen(false);
-              }}
-            />
-          )}
+            {/* Navigation arrows */}
+            {images.length > 1 && fullscreenIndex > 0 && (
+              <button
+                type="button"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10 cursor-pointer"
+                onClick={() => setFullscreenIndex(fullscreenIndex - 1)}
+                aria-label="Previous"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="15,18 9,12 15,6" />
+                </svg>
+              </button>
+            )}
+            {images.length > 1 && fullscreenIndex < images.length - 1 && (
+              <button
+                type="button"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 border border-white/15 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/25 transition-all z-10 cursor-pointer"
+                onClick={() => setFullscreenIndex(fullscreenIndex + 1)}
+                aria-label="Next"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="9,6 15,12 9,18" />
+                </svg>
+              </button>
+            )}
 
-          {/* Dot indicators */}
-          {images.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
-              {images.map((_, i) => (
-                <span
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
-                    i === fullscreenIndex ? "bg-white" : "bg-white/25"
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFullscreenIndex(i);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
+            {/* Zoomed image — tap to zoom out */}
+            {images[fullscreenIndex] && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={images[fullscreenIndex].src}
+                alt={images[fullscreenIndex].alt}
+                className="max-w-[85vw] max-h-[85vh] object-contain cursor-zoom-out"
+                style={{ maxHeight: "85dvh" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (fsDidSwipe.current) { fsDidSwipe.current = false; return; }
+                  setFullscreenOpen(false);
+                }}
+              />
+            )}
+
+            {/* Dot indicators */}
+            {images.length > 1 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
+                {images.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                      i === fullscreenIndex ? "bg-white" : "bg-white/25"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullscreenIndex(i);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

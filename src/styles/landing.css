@@ -577,6 +577,14 @@
   transform: translate(-50%, -50%);
 }
 
+/* Pause all hero animations when section is off-screen */
+.hero.hero--paused,
+.hero.hero--paused *,
+.hero.hero--paused *::before,
+.hero.hero--paused *::after {
+  animation-play-state: paused !important;
+}
+
 /* --- Hero Responsive --- */
 
 @media (max-width: 768px) {

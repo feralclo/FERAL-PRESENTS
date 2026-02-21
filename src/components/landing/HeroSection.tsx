@@ -1,11 +1,27 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { ParticleCanvas } from "./ParticleCanvas";
 import { HeroGlitchText } from "./HeroGlitchText";
 
 export function HeroSection() {
+  const sectionRef = useRef<HTMLElement>(null);
   const trackerRef = useRef<HTMLDivElement>(null);
+
+  // Pause all hero CSS animations when scrolled off-screen
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        section.classList.toggle("hero--paused", !entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (trackerRef.current) {
@@ -33,6 +49,7 @@ export function HeroSection() {
 
   return (
     <section
+      ref={sectionRef}
       className="hero"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}

@@ -109,7 +109,7 @@ function EventCard({ event }: { event: LandingEvent }) {
     <Link
       href={href}
       {...linkProps}
-      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_rgba(255,0,51,0.1),0_0_0_1px_rgba(255,0,51,0.12)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[85vw] max-lg:max-w-[400px]"
+      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_rgba(255,0,51,0.1),0_0_0_1px_rgba(255,0,51,0.12)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[85vw] max-lg:max-w-[400px]"
       data-reveal=""
     >
       {/* Date badge */}
@@ -128,7 +128,9 @@ function EventCard({ event }: { event: LandingEvent }) {
         <img
           src={imageUrl}
           alt={event.name}
-          className="absolute inset-0 w-full h-full object-cover transition-all duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] saturate-[0.85] group-hover:scale-105 group-hover:saturate-100"
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
         />
         {/* Bottom gradient — fades into card */}
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-background)] via-transparent to-transparent z-[1]" />

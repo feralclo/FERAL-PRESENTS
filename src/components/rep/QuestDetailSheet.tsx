@@ -71,11 +71,11 @@ export function QuestDetailSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="rep-quest-detail-sheet relative w-full max-w-md rounded-t-2xl md:rounded-2xl max-h-[80dvh] md:max-h-[85dvh] overflow-hidden"
+        className="rep-quest-detail-sheet relative w-full max-w-md rounded-2xl max-h-[85dvh] overflow-hidden"
         role="dialog"
         aria-label={quest.title}
       >
@@ -86,11 +86,6 @@ export function QuestDetailSheet({
             <img src={quest.image_url!} alt="" />
           </div>
         )}
-
-        {/* Drag handle (mobile) */}
-        <div className="rep-quest-drag-handle-zone md:hidden shrink-0 relative z-10">
-          <div className="rep-quest-drag-handle" />
-        </div>
 
         {/* Close button */}
         <button
@@ -298,18 +293,30 @@ export function QuestDetailSheet({
             <button
               onClick={() => onSubmit(quest)}
               className={cn(
-                "w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]",
+                "rep-quest-cta w-full flex flex-col items-center gap-1 py-4 rounded-xl text-white transition-all active:scale-[0.97]",
                 accent.ctaGradient
               )}
               style={{
-                boxShadow: `0 4px 24px ${accent.progressColor}30`,
+                boxShadow: `0 6px 30px ${accent.progressColor}35, 0 0 60px ${accent.progressColor}10`,
               }}
             >
-              <Zap size={16} />
-              Submit Proof
-              <span className="ml-1 opacity-70 text-xs font-medium">
-                +{quest.points_reward} XP{quest.currency_reward > 0 ? ` +${quest.currency_reward} ${currencyName}` : ""}
-              </span>
+              <div className="flex items-center gap-2">
+                <Zap size={18} className="drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]" />
+                <span className="text-base font-extrabold tracking-wide">Submit Proof</span>
+              </div>
+              <div className="flex items-center gap-2 text-white/70 text-xs font-semibold">
+                <span className="flex items-center gap-1">
+                  <Zap size={10} /> +{quest.points_reward} XP
+                </span>
+                {quest.currency_reward > 0 && (
+                  <>
+                    <span className="text-white/30">|</span>
+                    <span className="flex items-center gap-1">
+                      <CurrencyIcon size={10} /> +{quest.currency_reward} {currencyName}
+                    </span>
+                  </>
+                )}
+              </div>
             </button>
           )}
         </div>

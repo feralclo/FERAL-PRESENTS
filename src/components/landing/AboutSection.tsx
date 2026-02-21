@@ -183,33 +183,22 @@ export function AboutSection() {
     <section
       id="about"
       ref={sectionRef}
-      className="py-20 max-md:py-14 overflow-hidden bg-background"
+      className="pb-20 max-md:pb-14 overflow-hidden bg-background"
     >
+      {/* Top divider */}
+      <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-14 max-md:mb-10" />
+
       <div className="max-w-[1200px] mx-auto px-6 max-md:px-4">
         {/* Hero heading */}
-        <div className="about-hero text-center mb-24 max-md:mb-14 opacity-0">
+        <div className="about-hero text-center mb-14 max-md:mb-10 opacity-0">
           <span className="about-label font-[family-name:var(--font-mono)] text-[11px] tracking-[0.25em] uppercase text-primary mb-4 block opacity-0 translate-y-3 transition-all duration-700">
             [ABOUT]
           </span>
           <h2 className="font-[family-name:var(--font-mono)] text-[clamp(32px,6vw,72px)] font-bold tracking-[clamp(3px,0.8vw,8px)] uppercase leading-[1.15] mt-5">
-            <span
-              className="about-title-line block"
-              style={{
-                clipPath: "inset(0 100% 0 0)",
-                transition:
-                  "clip-path 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-            >
+            <span className="about-title-line block">
               ENERGY OF THE
             </span>
-            <span
-              className="about-title-line block text-primary"
-              style={{
-                clipPath: "inset(0 100% 0 0)",
-                transition:
-                  "clip-path 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s",
-              }}
-            >
+            <span className="about-title-line block text-primary">
               FERAL FAMILY
             </span>
           </h2>
@@ -258,7 +247,7 @@ export function AboutSection() {
         </div>
 
         {/* Closer */}
-        <div className="about-closer text-center mt-20 max-md:mt-12 pt-20 max-md:pt-12 relative">
+        <div className="about-closer text-center mt-14 max-md:mt-10 pt-14 max-md:pt-10 relative">
           <p
             ref={closerTextRef}
             className="about-closer-text font-[family-name:var(--font-mono)] text-[clamp(22px,4vw,44px)] font-bold tracking-[clamp(4px,0.8vw,10px)] uppercase opacity-0"

@@ -637,8 +637,18 @@
   transform: translateY(0);
 }
 
+/* Title line initial state + transition (must be CSS, not inline — inline wins over class rules) */
+[data-theme="midnight"] .about-title-line {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 [data-theme="midnight"] .about-hero.revealed .about-title-line {
   clip-path: inset(0 0% 0 0);
+}
+
+[data-theme="midnight"] .about-hero.revealed .about-title-line:nth-child(2) {
+  transition-delay: 0.15s;
 }
 
 /* --- Pillar reveal animations --- */

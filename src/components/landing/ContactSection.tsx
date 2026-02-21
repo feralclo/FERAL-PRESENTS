@@ -38,9 +38,9 @@ export function ContactSection() {
   );
 
   return (
-    <section id="contact" className="py-28 max-md:py-20 bg-background">
+    <section id="contact" className="py-20 max-md:py-14 bg-background">
       {/* Top divider */}
-      <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-20 max-md:mb-14" />
+      <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-14 max-md:mb-10" />
 
       <div
         className="max-w-[560px] mx-auto px-6 max-md:px-4 text-center"

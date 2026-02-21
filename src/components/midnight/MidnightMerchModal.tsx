@@ -8,11 +8,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
-import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import type { TeeSize } from "@/types/tickets";
 import { TEE_SIZES } from "@/types/tickets";
-import type { Order } from "@/types/orders";
 
 interface MidnightMerchModalProps {
   isOpen: boolean;
@@ -27,12 +25,6 @@ interface MidnightMerchModalProps {
   ticketName?: string;
   ticketDescription?: string;
   vipBadge?: string;
-  eventId?: string;
-  ticketTypeId?: string;
-  currency?: string;
-  isStripe?: boolean;
-  onExpressSuccess?: (order: Order) => void;
-  discountCode?: string;
 }
 
 export function MidnightMerchModal({
@@ -48,12 +40,6 @@ export function MidnightMerchModal({
   ticketName,
   ticketDescription,
   vipBadge,
-  eventId,
-  ticketTypeId,
-  currency,
-  isStripe,
-  onExpressSuccess,
-  discountCode,
 }: MidnightMerchModalProps) {
   const images = useMemo(() => {
     return normalizeMerchImages(merchImages).map((src, i) => ({
@@ -74,21 +60,6 @@ export function MidnightMerchModal({
   const [qty, setQty] = useState(1);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
-  const [expressAvailable, setExpressAvailable] = useState(false);
-  const [expressError, setExpressError] = useState("");
-
-  const expressItems = useMemo(() => {
-    if (!ticketTypeId || !selectedSize || qty <= 0) return [];
-    return [{ ticket_type_id: ticketTypeId, qty, merch_size: selectedSize }];
-  }, [ticketTypeId, selectedSize, qty]);
-
-  const handleExpressSuccess = useCallback(
-    (order: Order) => {
-      onClose();
-      onExpressSuccess?.(order);
-    },
-    [onClose, onExpressSuccess]
-  );
 
   // Touch refs for swipe detection
   const mainTouchStartX = useRef(0);
@@ -212,6 +183,8 @@ export function MidnightMerchModal({
           data-theme="midnight"
           className="midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col bg-[#08080c] border-[rgba(255,255,255,0.06)]"
           style={{ maxHeight: "85dvh" }}
+          onPointerDownOutside={(e) => { if (fullscreenOpen) e.preventDefault(); }}
+          onInteractOutside={(e) => { if (fullscreenOpen) e.preventDefault(); }}
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -386,29 +359,6 @@ export function MidnightMerchModal({
                 Add to Cart &mdash; {currencySymbol}{(price * qty).toFixed(2)}
               </button>
             </div>
-
-            {/* Express Pay — clean inline button, same width as Add to Cart */}
-            {isStripe && eventId && currency && expressItems.length > 0 && (
-              <div className="mt-2.5">
-                <div className="rounded-xl overflow-hidden">
-                  <ExpressCheckout
-                    eventId={eventId}
-                    currency={currency}
-                    amount={price * qty}
-                    items={expressItems}
-                    onSuccess={handleExpressSuccess}
-                    onError={setExpressError}
-                    onAvailable={() => setExpressAvailable(true)}
-                    discountCode={discountCode}
-                  />
-                </div>
-                {expressError && (
-                  <div className="mt-2 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.5px] text-destructive text-center p-2 bg-destructive/[0.05] border border-destructive/10 rounded-lg">
-                    {expressError}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -427,11 +377,11 @@ export function MidnightMerchModal({
           onTouchStart={onFsTouchStart}
           onTouchEnd={onFsTouchEnd}
         >
-          {/* Close button */}
+          {/* Close button — pinned below safe area so it's always reachable */}
           <button
             type="button"
-            className="absolute right-4 z-20 w-11 h-11 bg-black/60 border border-white/15 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/15 hover:border-white/20 hover:text-white transition-all cursor-pointer"
-            style={{ top: "max(16px, env(safe-area-inset-top, 16px))" }}
+            className="absolute right-4 z-20 w-12 h-12 bg-black/70 border border-white/20 rounded-xl flex items-center justify-center text-white/80 hover:bg-white/15 hover:border-white/25 hover:text-white transition-all cursor-pointer"
+            style={{ top: "calc(12px + env(safe-area-inset-top, 0px))" }}
             onClick={(e) => {
               e.stopPropagation();
               setFullscreenOpen(false);

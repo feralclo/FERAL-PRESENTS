@@ -388,7 +388,7 @@ function AuraStripeCheckout({
           </div>
         </div>
       </div>
-      <AuraFooter />
+      <AuraFooter showPaymentMethods={false} />
     </div>
   );
 }
@@ -915,7 +915,7 @@ function AuraTestCheckout({
           </div>
         </div>
       </div>
-      <AuraFooter />
+      <AuraFooter showPaymentMethods={false} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useBranding } from "@/hooks/useBranding";
+import { PaymentMethodsStrip } from "@/components/layout/PaymentMethodsStrip";
 
 export function MidnightFooter() {
   const branding = useBranding();
@@ -9,6 +10,9 @@ export function MidnightFooter() {
     <footer className="py-10 px-6 max-md:py-8 max-md:px-4">
       <div className="max-w-[1200px] mx-auto">
         <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-8 max-md:mb-6" />
+        <div className="mb-6 max-md:mb-5">
+          <PaymentMethodsStrip variant="midnight" />
+        </div>
         <div className="flex items-center justify-between">
           <span
             data-branding="copyright"

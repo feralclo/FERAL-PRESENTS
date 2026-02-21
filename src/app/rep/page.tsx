@@ -351,8 +351,11 @@ export default function RepDashboardPage() {
           />
         </Link>
         <Link href="/rep/rewards">
-          <CurrencyStatCard
+          <GaugeWithCounter
             value={rep.currency_balance ?? 0}
+            max={Math.max((rep.currency_balance ?? 0) * 1.5, 200)}
+            color="#FBBF24"
+            icon={CurrencyIcon}
             label={data.currency_name}
             enabled={statsReady}
           />
@@ -491,28 +494,5 @@ function GaugeWithCounter({
       label={label}
       displayValue={String(animatedValue)}
     />
-  );
-}
-
-// ─── Currency Stat Card (no ring — balance grows indefinitely) ───────────────
-
-function CurrencyStatCard({
-  value, label, enabled,
-}: {
-  value: number; label: string; enabled: boolean;
-}) {
-  const animatedValue = useCountUp(enabled ? value : 0, 900, enabled);
-  return (
-    <div className="relative flex flex-col items-center rounded-2xl rep-surface-1 px-2 pt-4 pb-3">
-      <div className="flex h-[72px] w-[72px] items-center justify-center">
-        <CurrencyIcon size={28} className="text-amber-400" />
-      </div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-2">
-        {label}
-      </p>
-      <p className="text-lg font-extrabold tabular-nums leading-none mt-0.5 text-amber-400">
-        {animatedValue}
-      </p>
-    </div>
   );
 }

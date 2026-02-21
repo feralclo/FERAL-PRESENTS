@@ -119,30 +119,81 @@ export function QuestDetailSheet({
           )}
 
           {/* Quest info */}
-          <div className="px-5 pt-4 pb-3 space-y-3">
-            {/* Reward badges — XP + currency, centered */}
-            <div className="flex items-center justify-center gap-3">
-              <span className={cn("flex items-center gap-1 text-base font-extrabold", accent.color)}>
-                <Zap size={16} />
-                +{quest.points_reward} XP
-              </span>
-              {quest.currency_reward > 0 && (
-                <span className="flex items-center gap-1 text-base font-extrabold text-amber-400">
-                  <CurrencyIcon size={16} />
-                  +{quest.currency_reward} {currencyName}
-                </span>
-              )}
-            </div>
-
+          <div className="px-5 pt-4 pb-3 space-y-4">
             {/* Quest type + title */}
             <div className="text-center">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
                 <QuestTypeIcon size={13} className="opacity-50" />
                 <span className="text-xs text-muted-foreground capitalize">{questTypeLabel}</span>
               </div>
               <h3 className={cn("text-xl font-extrabold tracking-tight leading-snug", accent.titleColor)}>
                 {quest.title}
               </h3>
+            </div>
+
+            {/* ── Reward Cards — prominent, glowing ── */}
+            <div className={cn(
+              "grid gap-2.5",
+              quest.currency_reward > 0 ? "grid-cols-2" : "grid-cols-1 max-w-[180px] mx-auto"
+            )}>
+              {/* XP reward card */}
+              <div
+                className="relative rounded-xl border p-3.5 text-center overflow-hidden"
+                style={{
+                  borderColor: `${accent.progressColor}30`,
+                  background: `linear-gradient(135deg, ${accent.progressColor}08, ${accent.progressColor}15)`,
+                }}
+              >
+                <div
+                  className="absolute inset-0 opacity-20"
+                  style={{
+                    background: `radial-gradient(circle at 50% 0%, ${accent.progressColor}40, transparent 70%)`,
+                  }}
+                />
+                <div className="relative">
+                  <div
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full mx-auto mb-2"
+                    style={{
+                      backgroundColor: `${accent.progressColor}15`,
+                      boxShadow: `0 0 20px ${accent.progressColor}20`,
+                    }}
+                  >
+                    <Zap size={18} style={{ color: accent.progressColor }} />
+                  </div>
+                  <p
+                    className="text-xl font-black tabular-nums"
+                    style={{ color: accent.progressColor }}
+                  >
+                    +{quest.points_reward}
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
+                    XP
+                  </p>
+                </div>
+              </div>
+
+              {/* Currency reward card */}
+              {quest.currency_reward > 0 && (
+                <div className="relative rounded-xl border border-amber-400/30 p-3.5 text-center overflow-hidden bg-gradient-to-br from-amber-400/[0.04] to-amber-400/[0.10]">
+                  <div
+                    className="absolute inset-0 opacity-20"
+                    style={{
+                      background: "radial-gradient(circle at 50% 0%, rgba(251,191,36,0.4), transparent 70%)",
+                    }}
+                  />
+                  <div className="relative">
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-full mx-auto mb-2 bg-amber-400/15" style={{ boxShadow: "0 0 20px rgba(251,191,36,0.2)" }}>
+                      <CurrencyIcon size={18} className="text-amber-400" />
+                    </div>
+                    <p className="text-xl font-black tabular-nums text-amber-400">
+                      +{quest.currency_reward}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
+                      {currencyName}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Full description */}
@@ -155,15 +206,12 @@ export function QuestDetailSheet({
             {/* Reference URL button + uses-sound callout */}
             {hasRefUrl && refPlatform && (
               <div className="space-y-2">
-                {/* Uses sound callout */}
                 {quest.uses_sound && refPlatform === "tiktok" && (
                   <div className="rep-quest-sound-callout">
                     <Music size={11} />
                     Uses a specific sound
                   </div>
                 )}
-
-                {/* Platform-branded deep link */}
                 <a
                   href={quest.reference_url!}
                   target="_blank"
@@ -197,11 +245,11 @@ export function QuestDetailSheet({
 
             {/* Progress bar for repeatable quests */}
             {isRepeatable && (
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-[10px] text-muted-foreground">Progress</span>
-                  <span className="text-[10px] font-semibold text-muted-foreground">
-                    {approvedCount}/{quest.max_completions}
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5">
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Progress</span>
+                  <span className="text-xs font-bold text-foreground tabular-nums">
+                    {approvedCount}<span className="text-muted-foreground">/{quest.max_completions}</span>
                   </span>
                 </div>
                 <div className="rep-quest-progress">
@@ -220,17 +268,17 @@ export function QuestDetailSheet({
             {hasSubs && (
               <div className="flex flex-wrap justify-center gap-1.5">
                 {subs.pending > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[10px] font-semibold text-amber-400">
                     <Clock size={10} /> {subs.pending} pending
                   </span>
                 )}
                 {subs.approved > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-400">
                     <Check size={10} /> {subs.approved} approved
                   </span>
                 )}
                 {subs.rejected > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2.5 py-1 text-[10px] font-semibold text-red-400">
                     <X size={10} /> {subs.rejected} rejected
                   </span>
                 )}
@@ -253,9 +301,15 @@ export function QuestDetailSheet({
                 "w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98]",
                 accent.ctaGradient
               )}
+              style={{
+                boxShadow: `0 4px 24px ${accent.progressColor}30`,
+              }}
             >
               <Zap size={16} />
               Submit Proof
+              <span className="ml-1 opacity-70 text-xs font-medium">
+                +{quest.points_reward} XP{quest.currency_reward > 0 ? ` +${quest.currency_reward} ${currencyName}` : ""}
+              </span>
             </button>
           )}
         </div>

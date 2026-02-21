@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
+import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { isEditorPreview } from "@/components/event/ThemeEditorBridge";
 import { useEventTracking } from "@/hooks/useEventTracking";
@@ -156,6 +157,7 @@ export function MidnightExternalPage({ event }: MidnightExternalPageProps) {
         className={`header${headerHidden ? " header--hidden" : ""}`}
         id="header"
       >
+        <VerifiedBanner />
         <Header />
       </header>
 

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/Header";
+import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { MidnightDiscountPopup } from "./MidnightDiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { isEditorPreview } from "@/components/event/ThemeEditorBridge";
@@ -399,6 +400,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
         className={`header${headerHidden ? " header--hidden" : ""}`}
         id="header"
       >
+        <VerifiedBanner />
         <Header />
       </header>
 

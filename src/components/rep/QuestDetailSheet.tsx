@@ -120,9 +120,9 @@ export function QuestDetailSheet({
 
           {/* ── Header — stagger 1 ── */}
           <div className="px-5 pt-7 pb-2 text-center rep-quest-reveal-1">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] px-3 py-1 mb-3">
-              <QuestTypeIcon size={11} className="opacity-60" />
-              <span className="text-[10px] font-semibold text-muted-foreground capitalize tracking-wide">{questTypeLabel}</span>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-3">
+              <QuestTypeIcon size={11} className="text-primary" />
+              <span className="text-[10px] font-semibold text-primary capitalize tracking-wide">{questTypeLabel}</span>
             </div>
 
             <h3 className={cn("text-xl font-extrabold tracking-tight leading-snug", accent.titleColor)}>
@@ -201,31 +201,30 @@ export function QuestDetailSheet({
 
           {/* ── Action area — stagger 3 ── */}
           <div className="px-5 py-4 space-y-3 rep-quest-reveal-3">
-            {/* Reference URL button + uses-sound callout */}
+            {/* Reference URL button — sound instruction integrated */}
             {hasRefUrl && refPlatform && (
-              <div className="space-y-2">
-                {quest.uses_sound && refPlatform === "tiktok" && (
-                  <div className="rep-quest-sound-callout">
-                    <Music size={11} />
-                    Uses a specific sound
-                  </div>
+              <a
+                href={quest.reference_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "rep-quest-reference-btn",
+                  refPlatform === "tiktok" && "rep-quest-reference-btn--tiktok",
+                  refPlatform === "instagram" && "rep-quest-reference-btn--instagram"
                 )}
-                <a
-                  href={quest.reference_url!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    "rep-quest-reference-btn",
-                    refPlatform === "tiktok" && "rep-quest-reference-btn--tiktok",
-                    refPlatform === "instagram" && "rep-quest-reference-btn--instagram"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {refPlatform === "tiktok" ? <TikTokIcon size={18} /> : <Instagram size={18} />}
+                <div className="flex flex-col min-w-0">
+                  <span>{quest.uses_sound && refPlatform === "tiktok" ? "Open & use this sound" : `View on ${refPlatform === "tiktok" ? "TikTok" : "Instagram"}`}</span>
+                  {quest.uses_sound && refPlatform === "tiktok" && (
+                    <span className="flex items-center gap-1 text-[10px] opacity-60 font-normal">
+                      <Music size={9} /> Sound required for this quest
+                    </span>
                   )}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {refPlatform === "tiktok" ? <TikTokIcon size={18} /> : <Instagram size={18} />}
-                  <span>View on {refPlatform === "tiktok" ? "TikTok" : "Instagram"}</span>
-                  <ExternalLink size={13} className="ml-auto opacity-50" />
-                </a>
-              </div>
+                </div>
+                <ExternalLink size={13} className="ml-auto opacity-50 shrink-0" />
+              </a>
             )}
 
             {/* Instructions — glass card */}

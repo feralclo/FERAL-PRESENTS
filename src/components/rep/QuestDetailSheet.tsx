@@ -82,7 +82,7 @@ export function QuestDetailSheet({
         role="dialog"
         aria-label={quest.title}
         style={hasImage ? {
-          boxShadow: `0 0 80px ${accent.progressColor}12, 0 25px 60px rgba(0,0,0,0.5)`,
+          boxShadow: `0 0 100px ${accent.progressColor}18, 0 0 40px ${accent.progressColor}08, 0 25px 60px rgba(0,0,0,0.6)`,
         } : undefined}
       >
         {/* Full-bleed atmospheric backdrop */}
@@ -105,8 +105,8 @@ export function QuestDetailSheet({
         {/* Scrollable content area */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain relative z-[1]">
 
-          {/* Quest header section */}
-          <div className="px-5 pt-6 pb-2 text-center">
+          {/* ── Header section — stagger 1 ── */}
+          <div className="px-5 pt-6 pb-2 text-center rep-quest-reveal-1">
             {/* Quest type pill */}
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] px-3 py-1 mb-3">
               <QuestTypeIcon size={11} className="opacity-60" />
@@ -124,53 +124,57 @@ export function QuestDetailSheet({
             )}
           </div>
 
-          {/* Tappable image — compact card (only when no reference URL) */}
+          {/* ── Compact image preview (tappable) — only when no reference URL ── */}
           {!hasRefUrl && hasImage && (
-            <div className="px-5 pt-1 pb-2">
-              <div className="rounded-xl overflow-hidden border border-white/[0.08] bg-black/20 cursor-zoom-in" onClick={onExpandImage}>
+            <div className="px-5 pt-1 pb-1 rep-quest-reveal-1">
+              <div
+                className="mx-auto w-fit rounded-lg overflow-hidden border border-white/[0.12] cursor-zoom-in transition-transform active:scale-95"
+                onClick={onExpandImage}
+                style={{ boxShadow: `0 4px 20px ${accent.progressColor}15` }}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={quest.image_url!}
                   alt={quest.title}
-                  className="w-full max-h-[180px] object-contain"
+                  className="max-h-[120px] max-w-[200px] object-contain"
                 />
               </div>
             </div>
           )}
 
-          {/* ── Reward Cards — prominent, glowing ── */}
-          <div className="px-5 py-3">
+          {/* ── Reward Cards — stagger 2, breathing icons ── */}
+          <div className="px-5 py-3 rep-quest-reveal-2">
             <div className={cn(
               "grid gap-2.5",
               quest.currency_reward > 0 ? "grid-cols-2" : "grid-cols-1 max-w-[180px] mx-auto"
             )}>
               {/* XP reward card */}
               <div
-                className="relative rounded-xl border p-3.5 text-center overflow-hidden backdrop-blur-sm"
+                className="relative rounded-xl border p-3.5 text-center overflow-hidden"
                 style={{
-                  borderColor: `${accent.progressColor}30`,
-                  background: `linear-gradient(135deg, ${accent.progressColor}08, ${accent.progressColor}12)`,
+                  borderColor: `${accent.progressColor}25`,
+                  background: `linear-gradient(135deg, ${accent.progressColor}06, ${accent.progressColor}10)`,
                 }}
               >
                 <div
-                  className="absolute inset-0 opacity-25"
+                  className="absolute inset-0 opacity-30"
                   style={{
-                    background: `radial-gradient(circle at 50% 0%, ${accent.progressColor}50, transparent 70%)`,
+                    background: `radial-gradient(circle at 50% 0%, ${accent.progressColor}40, transparent 70%)`,
                   }}
                 />
                 <div className="relative">
                   <div
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full mx-auto mb-2"
+                    className="rep-quest-reward-icon inline-flex h-11 w-11 items-center justify-center rounded-full mx-auto mb-2"
                     style={{
                       backgroundColor: `${accent.progressColor}15`,
-                      boxShadow: `0 0 24px ${accent.progressColor}25`,
+                      boxShadow: `0 0 28px ${accent.progressColor}30, 0 0 8px ${accent.progressColor}15`,
                     }}
                   >
-                    <Zap size={18} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 4px ${accent.progressColor})` }} />
+                    <Zap size={20} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 6px ${accent.progressColor})` }} />
                   </div>
                   <p
                     className="text-2xl font-black tabular-nums"
-                    style={{ color: accent.progressColor }}
+                    style={{ color: accent.progressColor, textShadow: `0 0 20px ${accent.progressColor}40` }}
                   >
                     +{quest.points_reward}
                   </p>
@@ -182,18 +186,21 @@ export function QuestDetailSheet({
 
               {/* Currency reward card */}
               {quest.currency_reward > 0 && (
-                <div className="relative rounded-xl border border-amber-400/30 p-3.5 text-center overflow-hidden backdrop-blur-sm bg-gradient-to-br from-amber-400/[0.04] to-amber-400/[0.12]">
+                <div className="relative rounded-xl border border-amber-400/25 p-3.5 text-center overflow-hidden bg-gradient-to-br from-amber-400/[0.03] to-amber-400/[0.10]">
                   <div
-                    className="absolute inset-0 opacity-25"
+                    className="absolute inset-0 opacity-30"
                     style={{
-                      background: "radial-gradient(circle at 50% 0%, rgba(251,191,36,0.5), transparent 70%)",
+                      background: "radial-gradient(circle at 50% 0%, rgba(251,191,36,0.4), transparent 70%)",
                     }}
                   />
                   <div className="relative">
-                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-full mx-auto mb-2 bg-amber-400/15" style={{ boxShadow: "0 0 24px rgba(251,191,36,0.25)" }}>
-                      <CurrencyIcon size={18} className="text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,1)]" />
+                    <div
+                      className="rep-quest-reward-icon inline-flex h-11 w-11 items-center justify-center rounded-full mx-auto mb-2 bg-amber-400/15"
+                      style={{ boxShadow: "0 0 28px rgba(251,191,36,0.3), 0 0 8px rgba(251,191,36,0.15)" }}
+                    >
+                      <CurrencyIcon size={20} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,1)]" />
                     </div>
-                    <p className="text-2xl font-black tabular-nums text-amber-400">
+                    <p className="text-2xl font-black tabular-nums text-amber-400" style={{ textShadow: "0 0 20px rgba(251,191,36,0.4)" }}>
                       +{quest.currency_reward}
                     </p>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
@@ -205,8 +212,8 @@ export function QuestDetailSheet({
             </div>
           </div>
 
-          {/* ── Action area — reference links, instructions ── */}
-          <div className="px-5 pb-4 space-y-3">
+          {/* ── Action area — stagger 3 ── */}
+          <div className="px-5 pb-4 space-y-3 rep-quest-reveal-3">
             {/* Reference URL button + uses-sound callout */}
             {hasRefUrl && refPlatform && (
               <div className="space-y-2">
@@ -236,7 +243,7 @@ export function QuestDetailSheet({
 
             {/* Instructions — glass card */}
             {quest.instructions && (
-              <div className="rounded-xl p-4 bg-white/[0.03] backdrop-blur-sm border border-white/[0.06]">
+              <div className="rounded-xl p-4 bg-white/[0.04] backdrop-blur-sm border border-white/[0.08]">
                 <div className="flex items-center gap-1.5 mb-2">
                   <BookOpen size={13} className="text-primary" />
                   <span className="text-xs font-semibold text-foreground">How to Complete</span>
@@ -249,7 +256,7 @@ export function QuestDetailSheet({
 
             {/* Progress bar for repeatable quests */}
             {isRepeatable && (
-              <div className="rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] p-3.5">
+              <div className="rounded-xl bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] p-3.5">
                 <div className="flex justify-between mb-1.5">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Progress</span>
                   <span className="text-xs font-bold text-foreground tabular-nums">
@@ -291,8 +298,11 @@ export function QuestDetailSheet({
           </div>
         </div>
 
-        {/* Sticky CTA footer */}
-        <div className="shrink-0 px-5 pb-5 pt-3 relative z-[2] bg-gradient-to-t from-black/60 via-black/30 to-transparent">
+        {/* ── Sticky CTA footer — stagger 4 ── */}
+        <div className="shrink-0 px-5 pb-5 pt-3 relative z-[2] rep-quest-reveal-4">
+          {/* Gradient fade for scroll content behind */}
+          <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+
           {isCompleted ? (
             <div className="rep-quest-detail-complete">
               <Check size={16} />
@@ -306,11 +316,11 @@ export function QuestDetailSheet({
                 accent.ctaGradient
               )}
               style={{
-                boxShadow: `0 6px 30px ${accent.progressColor}35, 0 0 60px ${accent.progressColor}10`,
+                boxShadow: `0 8px 32px ${accent.progressColor}40, 0 0 60px ${accent.progressColor}15`,
               }}
             >
               <div className="flex items-center gap-2">
-                <Zap size={18} className="drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]" />
+                <Zap size={18} className="drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]" />
                 <span className="text-base font-extrabold tracking-wide">Submit Proof</span>
               </div>
               <div className="flex items-center gap-2 text-white/70 text-xs font-semibold">

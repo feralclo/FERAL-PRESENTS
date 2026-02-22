@@ -12,6 +12,9 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { validateVatNumber } from "@/lib/vat";
+import type { VatSettings } from "@/types/settings";
 import type { TabProps } from "./types";
 
 interface StripeAccount {
@@ -25,6 +28,7 @@ interface StripeAccount {
 export function SettingsTab({ event, updateEvent }: TabProps) {
   const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [orgVat, setOrgVat] = useState<VatSettings | null>(null);
 
   // Fetch Stripe Connect accounts when payment method is stripe
   useEffect(() => {
@@ -39,6 +43,35 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
       .catch(() => {})
       .finally(() => setLoadingAccounts(false));
   }, [event.payment_method]);
+
+  // Fetch org-level VAT settings for hint display
+  useEffect(() => {
+    fetch("/api/settings?key=feral_vat")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) setOrgVat(json.data as VatSettings);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Derive VAT override mode: "default" | "enabled" | "disabled"
+  const vatMode =
+    event.vat_registered === true
+      ? "enabled"
+      : event.vat_registered === false
+        ? "disabled"
+        : "default";
+
+  const orgVatHint = orgVat
+    ? orgVat.vat_registered
+      ? `Org default: ${orgVat.vat_rate}%, ${orgVat.prices_include_vat ? "inclusive" : "exclusive"}${orgVat.vat_number ? `, ${orgVat.vat_number}` : ""}`
+      : "Org default: No VAT"
+    : "Loading org settings...";
+
+  const vatNumberError =
+    event.vat_number && !validateVatNumber(event.vat_number)
+      ? "Invalid VAT number format"
+      : null;
 
   return (
     <div className="space-y-6">
@@ -215,6 +248,100 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
                 <p className="text-[10px] text-muted-foreground/60">
                   Platform fee applied on each transaction. Default: 5%
                 </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-4">
+          <CardTitle className="text-sm">Tax</CardTitle>
+        </CardHeader>
+        <CardContent className="px-6 pb-6 space-y-4">
+          <div className="space-y-2">
+            <Label>VAT Configuration</Label>
+            <Select
+              value={vatMode}
+              onValueChange={(v) => {
+                if (v === "default") {
+                  updateEvent("vat_registered", null);
+                  updateEvent("vat_rate", null);
+                  updateEvent("vat_prices_include", null);
+                  updateEvent("vat_number", null);
+                } else if (v === "enabled") {
+                  updateEvent("vat_registered", true);
+                  updateEvent("vat_rate", event.vat_rate ?? 20);
+                  updateEvent("vat_prices_include", event.vat_prices_include ?? true);
+                } else {
+                  updateEvent("vat_registered", false);
+                  updateEvent("vat_rate", null);
+                  updateEvent("vat_prices_include", null);
+                  updateEvent("vat_number", null);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Use Org Default</SelectItem>
+                <SelectItem value="enabled">VAT Enabled</SelectItem>
+                <SelectItem value="disabled">No VAT</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground/60">{orgVatHint}</p>
+          </div>
+
+          {vatMode === "enabled" && (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>VAT Rate (%)</Label>
+                  <Input
+                    type="number"
+                    value={event.vat_rate ?? 20}
+                    onChange={(e) =>
+                      updateEvent(
+                        "vat_rate",
+                        e.target.value ? Number(e.target.value) : 20
+                      )
+                    }
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    className="max-w-[120px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Prices include VAT</Label>
+                  <div className="flex items-center gap-2 pt-1">
+                    <Switch
+                      checked={event.vat_prices_include ?? true}
+                      onCheckedChange={(checked) =>
+                        updateEvent("vat_prices_include", checked)
+                      }
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {(event.vat_prices_include ?? true) ? "Yes" : "No"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>VAT Number (optional)</Label>
+                <Input
+                  type="text"
+                  value={event.vat_number || ""}
+                  onChange={(e) =>
+                    updateEvent("vat_number", e.target.value || null)
+                  }
+                  placeholder="e.g. GB123456789"
+                  className="max-w-[240px]"
+                />
+                {vatNumberError && (
+                  <p className="text-[10px] text-destructive">{vatNumberError}</p>
+                )}
               </div>
             </div>
           )}

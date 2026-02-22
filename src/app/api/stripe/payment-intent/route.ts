@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     // Fetch event (include stripe_account_id and platform_fee_percent for per-event Connect)
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, payment_method, currency, stripe_account_id, platform_fee_percent")
+      .select("id, name, slug, payment_method, currency, stripe_account_id, platform_fee_percent, vat_registered, vat_rate, vat_prices_include, vat_number")
       .eq("id", event_id)
       .eq("org_id", ORG_ID)
       .single();
@@ -232,27 +232,53 @@ export async function POST(request: NextRequest) {
 
     const afterDiscount = Math.max(subtotal - discountAmount, 0);
 
-    // Fetch VAT settings to determine if VAT should be added on top
+    // Resolve VAT settings: event-level overrides take priority over org-level.
+    // event.vat_registered === true  → use event fields (skip org lookup)
+    // event.vat_registered === false → no VAT at all (skip org lookup)
+    // event.vat_registered == null   → fall back to org-level settings
     let vatAmount = 0;
     let vatRate = 0;
     let vatInclusive = true;
-    const { data: vatRow } = await supabase
-      .from(TABLES.SITE_SETTINGS)
-      .select("data")
-      .eq("key", SETTINGS_KEYS.VAT)
-      .single();
 
-    if (vatRow?.data) {
-      const vat: VatSettings = { ...DEFAULT_VAT_SETTINGS, ...(vatRow.data as Partial<VatSettings>) };
-      if (vat.vat_registered && vat.vat_rate > 0) {
-        vatRate = vat.vat_rate;
-        vatInclusive = vat.prices_include_vat;
+    if (event.vat_registered === true) {
+      // Per-event VAT override: enabled
+      const evtRate = event.vat_rate ?? 20;
+      const evtInclusive = event.vat_prices_include ?? true;
+      if (evtRate > 0) {
+        vatRate = evtRate;
+        vatInclusive = evtInclusive;
+        const vat: VatSettings = {
+          vat_registered: true,
+          vat_number: event.vat_number || "",
+          vat_rate: evtRate,
+          prices_include_vat: evtInclusive,
+        };
         const breakdown = calculateCheckoutVat(afterDiscount, vat);
         if (breakdown) {
           vatAmount = breakdown.vat;
         }
       }
+    } else if (event.vat_registered == null) {
+      // No per-event override — fall back to org-level settings
+      const { data: vatRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", SETTINGS_KEYS.VAT)
+        .single();
+
+      if (vatRow?.data) {
+        const vat: VatSettings = { ...DEFAULT_VAT_SETTINGS, ...(vatRow.data as Partial<VatSettings>) };
+        if (vat.vat_registered && vat.vat_rate > 0) {
+          vatRate = vat.vat_rate;
+          vatInclusive = vat.prices_include_vat;
+          const breakdown = calculateCheckoutVat(afterDiscount, vat);
+          if (breakdown) {
+            vatAmount = breakdown.vat;
+          }
+        }
+      }
     }
+    // else: event.vat_registered === false → no VAT (vatAmount stays 0)
 
     // VAT-exclusive: add VAT on top. VAT-inclusive: total unchanged.
     const chargeAmount = vatInclusive ? afterDiscount : afterDiscount + vatAmount;

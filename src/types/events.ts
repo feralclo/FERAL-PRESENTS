@@ -36,6 +36,14 @@ export interface Event {
   platform_fee_percent?: number;
   /** External ticket link (used when payment_method is "external") */
   external_link?: string;
+  /** Per-event VAT override: NULL = use org default, true = VAT enabled, false = no VAT */
+  vat_registered?: boolean | null;
+  /** Per-event VAT rate override (e.g. 20 = 20%). NULL = use org default */
+  vat_rate?: number | null;
+  /** Per-event prices-include-VAT override. NULL = use org default */
+  vat_prices_include?: boolean | null;
+  /** Per-event VAT number override. NULL = use org default */
+  vat_number?: string | null;
   created_at: string;
   updated_at: string;
   /** When true, lineup is displayed alphabetically (A-Z) and manual reordering is locked */

@@ -39,10 +39,10 @@ src/
 │   │   ├── checkout/page.tsx  # NativeCheckout (Stripe Elements)
 │   │   ├── error.tsx          # Error boundary
 │   │   └── loading.tsx        # Loading skeleton
-│   ├── admin/                 # Admin dashboard (25+ pages: events, orders, customers, guest-list,
-│   │                          # merch, discounts, abandoned-carts, reps, ticketstore, finance,
-│   │                          # traffic, popup, payments, connect, marketing, communications,
-│   │                          # settings, health). Layout: sidebar + Entry-branded shell
+│   ├── admin/                 # Admin dashboard (25+ pages). Sidebar groups: Dashboard, Events,
+│   │                          # Commerce, Storefront, Analytics, Marketing, Settings.
+│   │                          # Platform-owner-only "Entry Backend" section (health, connect,
+│   │                          # platform-settings) gated by is_platform_owner flag.
 │   └── api/                   # 85 endpoints — see API Routes section for full list
 ├── components/
 │   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
@@ -149,7 +149,8 @@ event/[slug]/page.tsx
 - **VAT**: `lib/vat.ts` calculates VAT (inclusive or exclusive), configured via `feral_vat` settings key
 - **Discounts**: Validated server-side during PaymentIntent creation. Supports percentage and fixed-amount codes with expiry, usage limits, and per-event restrictions
 - **Rate limiting**: Payment endpoint: 10 requests/minute/IP via `createRateLimiter()`
-- Admin pages: `/admin/payments/` (promoter-facing setup), `/admin/connect/` (platform admin), `/admin/finance/` (finance overview)
+- Admin pages: `/admin/payments/` (promoter-facing setup), `/admin/connect/` (platform owner only — Entry Backend), `/admin/finance/` (finance overview)
+- **Connect API routes** (`/api/stripe/connect/*`): gated by `requirePlatformOwner()` — only accessible to users with `is_platform_owner: true`
 
 ### Multi-Tenancy: org_id on EVERYTHING
 Every database table has an `org_id` column. Every query must filter by it.
@@ -182,6 +183,7 @@ Each tenant can fully customize their visual identity:
 **Settings keys** (stored in `site_settings` table as key → JSONB):
 | Key | Purpose |
 |-----|---------|
+| `{org_id}_general` | Org general settings (name, timezone, support email) |
 | `{org_id}_branding` | Org branding (logo, colors, fonts) — `brandingKey()` |
 | `{org_id}_themes` | Theme store (active template, theme configs) — `themesKey()` |
 | `{org_id}_vat` | VAT configuration — `vatKey()` |
@@ -231,11 +233,19 @@ EventPage [Server Component, force-dynamic]
 **Role flags** (in Supabase `app_metadata`, additive):
 - `is_admin: true` — set on admin login. Grants admin access. Always wins over `is_rep`.
 - `is_rep: true` — set on rep signup/invite. Grants rep portal access.
+- `is_platform_owner: true` — set manually via SQL. Grants Entry Backend access (health, Connect, platform settings). Only for the platform operator.
 - Dual-role users supported (same email can be admin + rep)
+
+**Three auth helpers:**
+| Helper | File | Purpose |
+|--------|------|---------|
+| `requireAuth()` | `lib/auth.ts` | Admin API routes — verifies session + blocks rep-only users |
+| `requireRepAuth()` | `lib/auth.ts` | Rep portal API routes — verifies session + active rep row |
+| `requirePlatformOwner()` | `lib/auth.ts` | Platform-owner-only routes — calls `requireAuth()` then checks `is_platform_owner` flag |
 
 **Two layers of API protection:**
 1. **Middleware** (first layer) — blocks unauthenticated requests to protected routes at the edge
-2. **`requireAuth()` / `requireRepAuth()`** (second layer) — each handler verifies auth + role independently
+2. **`requireAuth()` / `requireRepAuth()` / `requirePlatformOwner()`** (second layer) — each handler verifies auth + role independently
 
 **Public API routes (no auth):** Stripe (`payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`), `checkout/capture`, `GET events|settings|merch|branding|themes|media/[key]|health`, `POST track|meta/capi|discounts/validate`, `/api/cron/*` (CRON_SECRET), `/api/unsubscribe` (token), `orders/[id]/wallet/*` (UUID), rep public auth routes, `auth/*`.
 
@@ -244,7 +254,8 @@ EventPage [Server Component, force-dynamic]
 **Rules for new routes:**
 1. Admin API routes: call `requireAuth()` at the top
 2. Rep portal API routes: call `requireRepAuth()` at the top
-3. New public API routes: add to `PUBLIC_API_PREFIXES` or `PUBLIC_API_EXACT_GETS` in `middleware.ts`
+3. Platform-owner API routes: call `requirePlatformOwner()` at the top (e.g., `/api/stripe/connect/*`)
+4. New public API routes: add to `PUBLIC_API_PREFIXES` or `PUBLIC_API_EXACT_GETS` in `middleware.ts`
 4. Never hardcode secrets — use environment variables only
 5. Stripe webhook must always verify signatures in production
 
@@ -333,7 +344,7 @@ Run /mcp in this terminal to re-authorize, then I'll continue.
 
 ### Other Route Groups
 - **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
-- **Stripe Connect**: `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
+- **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
 - **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
 

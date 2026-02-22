@@ -214,6 +214,52 @@ export async function requireRepAuth(): Promise<
 }
 
 /**
+ * Auth helper for platform-owner-only API routes.
+ *
+ * Verifies the user is an authenticated admin AND has the
+ * `is_platform_owner: true` flag in `app_metadata`. Returns 403
+ * if the user is a regular admin without the flag.
+ *
+ * Use this for routes that should only be accessible to the
+ * platform operator (e.g., Stripe Connect management, data resets).
+ */
+export async function requirePlatformOwner(): Promise<
+  | { user: { id: string; email: string }; error: null }
+  | { user: null; error: NextResponse }
+> {
+  const auth = await requireAuth();
+  if (auth.error) return auth;
+
+  // Check for platform owner flag
+  const supabase = await getSupabaseServer();
+  if (!supabase) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: "Service unavailable" },
+        { status: 503 }
+      ),
+    };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.app_metadata?.is_platform_owner) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: "Platform owner access required" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return auth;
+}
+
+/**
  * Get the current session without enforcing authentication.
  * Returns null if not authenticated.
  */

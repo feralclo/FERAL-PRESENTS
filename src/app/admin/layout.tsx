@@ -35,10 +35,11 @@ import {
   Store,
   Tags,
   UsersRound,
-  ShoppingCart,
   Mic2,
   SlidersHorizontal,
   Home,
+  Shield,
+  Palette,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -57,11 +58,17 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    label: "Overview",
+    label: "Dashboard",
     items: [
       { href: "/admin/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/events/", label: "Events", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Events",
+    items: [
+      { href: "/admin/events/", label: "All Events", icon: CalendarDays },
       { href: "/admin/artists/", label: "Artists", icon: Mic2 },
+      { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
     ],
   },
   {
@@ -76,16 +83,17 @@ const NAV_SECTIONS: NavSection[] = [
           { href: "/admin/abandoned-carts/", label: "Abandoned Carts" },
         ],
       },
+      { href: "/admin/customers/", label: "Customers", icon: Users },
       { href: "/admin/discounts/", label: "Discounts", icon: Tags },
       { href: "/admin/merch/", label: "Merch", icon: Package },
-      { href: "/admin/customers/", label: "Customers", icon: Users },
-      { href: "/admin/guest-list/", label: "Guest List", icon: ClipboardCheck },
     ],
   },
   {
-    label: "Growth",
+    label: "Storefront",
     items: [
-      { href: "/admin/reps/", label: "Reps", icon: UsersRound },
+      { href: "/admin/homepage/", label: "Homepage", icon: Home },
+      { href: "/admin/event-page/", label: "Event Page", icon: SlidersHorizontal },
+      { href: "/admin/ticketstore/", label: "Themes", icon: Palette },
     ],
   },
   {
@@ -96,27 +104,34 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Platform",
+    label: "Marketing",
     items: [
-      { href: "/admin/homepage/", label: "Homepage", icon: Home },
-      { href: "/admin/event-page/", label: "Event Page", icon: SlidersHorizontal },
-      { href: "/admin/ticketstore/", label: "Ticket Store", icon: Store },
-      { href: "/admin/finance/", label: "Finance", icon: CreditCard },
-      { href: "/admin/connect/", label: "Stripe Connect", icon: Zap },
-      { href: "/admin/marketing/", label: "Marketing", icon: Megaphone },
+      { href: "/admin/reps/", label: "Reps", icon: UsersRound },
+      { href: "/admin/marketing/", label: "Meta Pixel", icon: Megaphone },
       { href: "/admin/communications/", label: "Communications", icon: Mail },
     ],
   },
   {
-    label: "System",
+    label: "Settings",
     items: [
-      { href: "/admin/settings/", label: "Settings", icon: Settings },
-      { href: "/admin/health/", label: "Health", icon: HeartPulse },
+      { href: "/admin/settings/", label: "General", icon: Settings },
+      { href: "/admin/finance/", label: "Finance", icon: CreditCard },
     ],
   },
 ];
 
-const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
+const PLATFORM_SECTIONS: NavSection[] = [
+  {
+    label: "Entry Backend",
+    items: [
+      { href: "/admin/health/", label: "Health", icon: HeartPulse },
+      { href: "/admin/connect/", label: "Connect", icon: Zap },
+      { href: "/admin/platform-settings/", label: "Platform Settings", icon: Shield },
+    ],
+  },
+];
+
+const ALL_ITEMS = [...NAV_SECTIONS, ...PLATFORM_SECTIONS].flatMap((s) => s.items);
 
 function matchRoute(pathname: string, href: string): boolean {
   if (href === "/admin/") return pathname === "/admin" || pathname === "/admin/";
@@ -162,6 +177,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const router = useRouter();
@@ -169,7 +185,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Auto-expand nav items whose children match the current path
   useEffect(() => {
-    for (const section of NAV_SECTIONS) {
+    for (const section of [...NAV_SECTIONS, ...PLATFORM_SECTIONS]) {
       for (const item of section.items) {
         if (item.children) {
           const childActive = item.children.some((c) => matchRoute(pathname, c.href));
@@ -190,7 +206,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
   const isBypassRoute = isLoginPage || isEditorPage;
 
-  // Fetch user email on mount
+  // Fetch user email + platform owner flag on mount
   useEffect(() => {
     if (isBypassRoute) return;
     (async () => {
@@ -199,6 +215,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         if (!supabase) return;
         const { data } = await supabase.auth.getUser();
         if (data.user?.email) setUserEmail(data.user.email);
+        if (data.user?.app_metadata?.is_platform_owner === true) {
+          setIsPlatformOwner(true);
+        }
       } catch {
         // Auth call can fail during navigation — ignore gracefully
       }
@@ -282,6 +301,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <div className="mb-2 px-3 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-sidebar-foreground/40">
                 {section.label}
               </div>
+
               <div className="flex flex-col gap-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon;
@@ -398,6 +418,56 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
           ))}
+
+          {/* ── Entry Backend (platform owner only) ── */}
+          {isPlatformOwner && (
+            <>
+              <Separator className="mx-3 my-2" />
+              {PLATFORM_SECTIONS.map((section) => (
+                <div key={section.label} className="mb-5">
+                  <div className="mb-2 flex items-center gap-1.5 px-3 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-warning/60">
+                    <Shield size={11} strokeWidth={2} />
+                    {section.label}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = matchRoute(pathname, item.href);
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setOpen(false)}
+                          className={cn(
+                            "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
+                            active
+                              ? "bg-warning/10 text-foreground"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
+                          )}
+                        >
+                          <Icon
+                            size={16}
+                            strokeWidth={1.75}
+                            className={cn(
+                              "shrink-0 transition-colors duration-200",
+                              active
+                                ? "text-warning"
+                                : "text-sidebar-foreground/60 group-hover:text-foreground/80"
+                            )}
+                          />
+                          <span>{item.label}</span>
+                          {active && (
+                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-warning shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </nav>
 
         {/* ── User footer ── */}

@@ -522,6 +522,108 @@ describe("requireAuth", () => {
   });
 });
 
+// ─── requirePlatformOwner helper tests ───────────────────────────────────
+
+describe("requirePlatformOwner", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: null },
+          error: { message: "Not authenticated" },
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requirePlatformOwner } = await import("@/lib/auth");
+    const result = await requirePlatformOwner();
+
+    expect(result.user).toBeNull();
+    expect(result.error).not.toBeNull();
+    expect(result.error!.status).toBe(401);
+  });
+
+  it("returns 403 when admin but not platform owner", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "admin-1",
+              email: "admin@feral.com",
+              app_metadata: { is_admin: true },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requirePlatformOwner } = await import("@/lib/auth");
+    const result = await requirePlatformOwner();
+
+    expect(result.user).toBeNull();
+    expect(result.error).not.toBeNull();
+    expect(result.error!.status).toBe(403);
+  });
+
+  it("returns user when is_platform_owner is true", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "owner-1",
+              email: "owner@feral.com",
+              app_metadata: { is_admin: true, is_platform_owner: true },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requirePlatformOwner } = await import("@/lib/auth");
+    const result = await requirePlatformOwner();
+
+    expect(result.error).toBeNull();
+    expect(result.user).toEqual({ id: "owner-1", email: "owner@feral.com" });
+  });
+
+  it("returns 403 for rep-only user (blocked by requireAuth first)", async () => {
+    const { getSupabaseServer } = await import("@/lib/supabase/server");
+    vi.mocked(getSupabaseServer).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "rep-1",
+              email: "rep@feral.com",
+              app_metadata: { is_rep: true },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as unknown as Awaited<ReturnType<typeof getSupabaseServer>>);
+
+    const { requirePlatformOwner } = await import("@/lib/auth");
+    const result = await requirePlatformOwner();
+
+    expect(result.user).toBeNull();
+    expect(result.error).not.toBeNull();
+    expect(result.error!.status).toBe(403);
+  });
+});
+
 // ─── Constants security tests ───────────────────────────────────────────
 
 describe("Constants security", () => {

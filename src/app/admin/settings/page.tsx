@@ -1,188 +1,206 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES } from "@/lib/constants";
+import { ORG_ID } from "@/lib/constants";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Settings, Save, Loader2 } from "lucide-react";
 
-export default function AdminSettings() {
-  const [confirmReset, setConfirmReset] = useState("");
+interface OrgSettings {
+  org_name: string;
+  timezone: string;
+  support_email: string;
+}
+
+const DEFAULT_SETTINGS: OrgSettings = {
+  org_name: "",
+  timezone: "Europe/London",
+  support_email: "",
+};
+
+const TIMEZONES = [
+  "Europe/London",
+  "Europe/Berlin",
+  "Europe/Paris",
+  "Europe/Amsterdam",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Asia/Tokyo",
+  "Asia/Singapore",
+  "Australia/Sydney",
+  "Pacific/Auckland",
+];
+
+export default function GeneralSettings() {
+  const [settings, setSettings] = useState<OrgSettings>(DEFAULT_SETTINGS);
+  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
-  // ── Danger zone handlers ──
-  const handleResetTraffic = useCallback(async () => {
-    if (confirmReset !== "RESET") {
-      setStatus('Type "RESET" to confirm');
-      return;
-    }
+  // Load settings on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/settings?key=${ORG_ID}_general`);
+        if (res.ok) {
+          const { data } = await res.json();
+          if (data) {
+            setSettings({ ...DEFAULT_SETTINGS, ...data });
+          }
+        }
+      } catch {
+        // Settings may not exist yet — use defaults
+      }
+    })();
+  }, []);
 
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      setStatus("Error: Supabase not configured");
-      return;
-    }
-    const { error } = await supabase
-      .from(TABLES.TRAFFIC_EVENTS)
-      .delete()
-      .neq("id", 0);
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setStatus("");
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: `${ORG_ID}_general`,
+          data: settings,
+        }),
+      });
 
-    if (error) {
-      setStatus(`Error: ${error.message}`);
-    } else {
-      setStatus("Traffic data reset successfully");
-      setConfirmReset("");
+      if (!res.ok) throw new Error("Failed to save");
+      setStatus("Settings saved");
+    } catch {
+      setStatus("Error saving settings");
+    } finally {
+      setSaving(false);
     }
-  }, [confirmReset]);
-
-  const handleResetPopups = useCallback(async () => {
-    if (confirmReset !== "RESET") {
-      setStatus('Type "RESET" to confirm');
-      return;
-    }
-
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      setStatus("Error: Supabase not configured");
-      return;
-    }
-    const { error } = await supabase
-      .from(TABLES.POPUP_EVENTS)
-      .delete()
-      .neq("id", 0);
-
-    if (error) {
-      setStatus(`Error: ${error.message}`);
-    } else {
-      setStatus("Popup data reset successfully");
-      setConfirmReset("");
-    }
-  }, [confirmReset]);
+  }, [settings]);
 
   return (
-    <div>
-      <h1 className="admin-section__title" style={{ marginBottom: "24px" }}>
-        SETTINGS
-      </h1>
-
-      {/* ── ORDER EMAILS (moved to Communications) ── */}
-      <div className="admin-section">
-        <h2 className="admin-section__title">ORDER EMAILS</h2>
-        <p style={{ color: "#8888a0", fontSize: "0.85rem", marginBottom: "16px" }}>
-          Email settings have moved to the Communications section.
-        </p>
-        <Link
-          href="/admin/communications/transactional/order-confirmation/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            fontFamily: "'Space Mono', monospace",
-            fontSize: "0.75rem",
-            letterSpacing: "1px",
-            color: "#8B5CF6",
-            textDecoration: "none",
-            padding: "10px 16px",
-            border: "1px solid rgba(139,92,246,0.3)",
-            background: "rgba(139,92,246,0.04)",
-            transition: "background 0.15s, border-color 0.15s",
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-            <polyline points="22,6 12,13 2,6" />
-          </svg>
-          Go to Communications &rarr;
-        </Link>
+    <div className="mx-auto max-w-2xl space-y-8 p-6">
+      <div className="flex items-center gap-3">
+        <Settings size={20} className="text-primary" />
+        <div>
+          <h1 className="font-mono text-sm font-bold uppercase tracking-[2px] text-foreground">
+            General Settings
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Organisation settings and preferences
+          </p>
+        </div>
       </div>
 
-      {/* ── PLATFORM INFO ── */}
-      <div className="admin-section">
-        <h2 className="admin-section__title">PLATFORM INFO</h2>
-        <table className="admin-table">
-          <tbody>
-            <tr>
-              <td style={{ color: "#8888a0" }}>Platform</td>
-              <td>Entry</td>
-            </tr>
-            <tr>
-              <td style={{ color: "#8888a0" }}>Framework</td>
-              <td>Next.js (App Router)</td>
-            </tr>
-            <tr>
-              <td style={{ color: "#8888a0" }}>Database</td>
-              <td>Supabase (PostgreSQL)</td>
-            </tr>
-            <tr>
-              <td style={{ color: "#8888a0" }}>Hosting</td>
-              <td>Vercel</td>
-            </tr>
-            <tr>
-              <td style={{ color: "#8888a0" }}>Payments</td>
-              <td>Stripe (Connect)</td>
-            </tr>
-            <tr>
-              <td style={{ color: "#8888a0" }}>Email</td>
-              <td>Resend</td>
-            </tr>
-            <tr>
-              <td style={{ color: "#8888a0" }}>Org ID</td>
-              <td>feral</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <Card className="border-border bg-card p-6">
+        <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
+          Organisation
+        </h2>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="org-name">Organisation Name</Label>
+            <Input
+              id="org-name"
+              value={settings.org_name}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, org_name: e.target.value }))
+              }
+              placeholder="e.g. FERAL"
+            />
+            <p className="text-xs text-muted-foreground">
+              Displayed in emails, receipts, and the admin sidebar
+            </p>
+          </div>
 
-      {/* ── DANGER ZONE ── */}
-      <div className="admin-section">
-        <h2 className="admin-section__title">DANGER ZONE</h2>
-        <p
-          style={{
-            color: "#8888a0",
-            fontSize: "0.85rem",
-            marginBottom: "16px",
-          }}
-        >
-          These actions cannot be undone. Type &quot;RESET&quot; to confirm.
-        </p>
-        <div className="admin-form__group">
-          <input
-            className="admin-form__input"
-            value={confirmReset}
-            onChange={(e) => setConfirmReset(e.target.value)}
-            placeholder='Type "RESET" to confirm'
-            style={{ maxWidth: "300px" }}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="support-email">Support Email</Label>
+            <Input
+              id="support-email"
+              type="email"
+              value={settings.support_email}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, support_email: e.target.value }))
+              }
+              placeholder="e.g. hello@feralpresents.com"
+            />
+            <p className="text-xs text-muted-foreground">
+              Shown in confirmation emails and on event pages
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="timezone">Timezone</Label>
+            <select
+              id="timezone"
+              value={settings.timezone}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, timezone: e.target.value }))
+              }
+              className="flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Used for event times and scheduled automations
+            </p>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
-          <button
-            className="admin-form__save"
-            onClick={handleResetTraffic}
-            style={{
-              background: confirmReset === "RESET" ? "#8B5CF6" : "#333",
-            }}
-          >
-            Reset Traffic Data
-          </button>
-          <button
-            className="admin-form__save"
-            onClick={handleResetPopups}
-            style={{
-              background: confirmReset === "RESET" ? "#8B5CF6" : "#333",
-            }}
-          >
-            Reset Popup Data
-          </button>
+      </Card>
+
+      <Separator />
+
+      <Card className="border-border bg-card p-6">
+        <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
+          Platform Info
+        </h2>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between py-1.5">
+            <span className="text-muted-foreground">Platform</span>
+            <span className="text-foreground">Entry</span>
+          </div>
+          <div className="flex justify-between py-1.5">
+            <span className="text-muted-foreground">Org ID</span>
+            <span className="font-mono text-foreground">{ORG_ID}</span>
+          </div>
+          <div className="flex justify-between py-1.5">
+            <span className="text-muted-foreground">Framework</span>
+            <span className="text-foreground">Next.js (App Router)</span>
+          </div>
+          <div className="flex justify-between py-1.5">
+            <span className="text-muted-foreground">Database</span>
+            <span className="text-foreground">Supabase (PostgreSQL)</span>
+          </div>
+          <div className="flex justify-between py-1.5">
+            <span className="text-muted-foreground">Payments</span>
+            <span className="text-foreground">Stripe (Connect)</span>
+          </div>
         </div>
+      </Card>
+
+      <div className="flex items-center gap-3">
+        <Button onClick={handleSave} disabled={saving} className="gap-2">
+          {saving ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Save size={14} />
+          )}
+          Save Settings
+        </Button>
         {status && (
-          <p
-            style={{
-              color: status.includes("Error") ? "#8B5CF6" : "#34D399",
-              fontSize: "0.85rem",
-              marginTop: "12px",
-            }}
+          <span
+            className={`text-sm ${
+              status.includes("Error") ? "text-destructive" : "text-success"
+            }`}
           >
             {status}
-          </p>
+          </span>
         )}
       </div>
     </div>

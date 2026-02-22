@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, ORG_ID } from "@/lib/constants";
-import { createOrder, type OrderVat } from "@/lib/orders";
+import { createOrder, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import type { MetaEventPayload } from "@/types/marketing";
 
@@ -154,6 +154,17 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
     };
   }
 
+  // Extract discount info from PaymentIntent metadata
+  let discountInfo: OrderDiscount | undefined;
+  if (metadata.discount_code && metadata.discount_amount) {
+    discountInfo = {
+      code: metadata.discount_code,
+      amount: Number(metadata.discount_amount),
+      type: metadata.discount_type || undefined,
+      value: metadata.discount_value ? Number(metadata.discount_value) : undefined,
+    };
+  }
+
   try {
     const result = await createOrder({
       supabase,
@@ -181,6 +192,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
       },
       vat: vatInfo,
       discountCode: metadata.discount_code || undefined,
+      discount: discountInfo,
     });
 
     console.log(

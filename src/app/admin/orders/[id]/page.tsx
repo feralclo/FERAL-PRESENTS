@@ -32,6 +32,8 @@ import {
   XCircle,
   RefreshCw,
   MailCheck,
+  Tag,
+  Percent,
 } from "lucide-react";
 
 /* ── Status styling ── */
@@ -416,59 +418,105 @@ export default function OrderDetailPage() {
       {/* Financial Summary + Customer — 2 column grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Financial Summary */}
-        <Card className="overflow-hidden">
-          <CardHeader className="border-b border-border pb-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <DollarSign size={15} className="text-muted-foreground" />
-              Payment Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              <div className="flex items-center justify-between px-5 py-3.5">
-                <span className="text-sm text-muted-foreground">Subtotal</span>
-                <span className="font-mono text-sm text-foreground">
-                  {formatCurrency(Number(order.subtotal))}
-                </span>
-              </div>
-              <div className="flex items-center justify-between px-5 py-3.5">
-                <span className="text-sm text-muted-foreground">Fees</span>
-                <span className="font-mono text-sm text-foreground">
-                  {formatCurrency(Number(order.fees))}
-                </span>
-              </div>
-              <div className="flex items-center justify-between bg-muted/30 px-5 py-4">
-                <span className="text-sm font-semibold text-foreground">Total</span>
-                <span className="font-mono text-xl font-bold text-foreground">
-                  {formatCurrency(Number(order.total))}
-                </span>
-              </div>
-              <div className="flex items-center justify-between px-5 py-3.5">
-                <span className="text-sm text-muted-foreground">Payment Method</span>
-                <div className="flex items-center gap-2">
-                  <CreditCard size={12} className="text-muted-foreground/50" />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {order.payment_method}
-                  </span>
+        {(() => {
+          const meta = (order.metadata || {}) as Record<string, unknown>;
+          const discountCode = meta.discount_code as string | undefined;
+          const discountAmount = meta.discount_amount != null ? Number(meta.discount_amount) : null;
+          const vatAmount = meta.vat_amount != null ? Number(meta.vat_amount) : null;
+          const vatRate = meta.vat_rate != null ? Number(meta.vat_rate) : null;
+          const vatInclusive = meta.vat_inclusive === true;
+          const fees = Number(order.fees);
+
+          return (
+            <Card className="overflow-hidden">
+              <CardHeader className="border-b border-border pb-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <DollarSign size={15} className="text-muted-foreground" />
+                  Payment Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  <div className="flex items-center justify-between px-5 py-3.5">
+                    <span className="text-sm text-muted-foreground">Subtotal</span>
+                    <span className="font-mono text-sm text-foreground">
+                      {formatCurrency(Number(order.subtotal))}
+                    </span>
+                  </div>
+                  {discountAmount != null && discountAmount > 0 && (
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Tag size={12} className="text-success" />
+                        Discount
+                        {discountCode && (
+                          <Badge variant="secondary" className="text-[10px] font-mono">
+                            {discountCode}
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="font-mono text-sm text-success">
+                        -{formatCurrency(discountAmount)}
+                      </span>
+                    </div>
+                  )}
+                  {vatAmount != null && vatAmount > 0 && (
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Percent size={12} className="text-muted-foreground/50" />
+                        VAT
+                        {vatRate != null && (
+                          <span className="text-xs text-muted-foreground/60">
+                            ({vatRate}%{vatInclusive ? ", included" : ""})
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-mono text-sm text-foreground">
+                        {formatCurrency(vatAmount)}
+                      </span>
+                    </div>
+                  )}
+                  {fees > 0 && (
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="text-sm text-muted-foreground">Fees</span>
+                      <span className="font-mono text-sm text-foreground">
+                        {formatCurrency(fees)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between bg-muted/30 px-5 py-4">
+                    <span className="text-sm font-semibold text-foreground">Total</span>
+                    <span className="font-mono text-xl font-bold text-foreground">
+                      {formatCurrency(Number(order.total))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-5 py-3.5">
+                    <span className="text-sm text-muted-foreground">Payment Method</span>
+                    <div className="flex items-center gap-2">
+                      <CreditCard size={12} className="text-muted-foreground/50" />
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {order.payment_method}
+                      </span>
+                    </div>
+                  </div>
+                  {order.payment_ref && (
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="text-sm text-muted-foreground">Reference</span>
+                      <span className="max-w-[200px] truncate font-mono text-[11px] text-muted-foreground/50">
+                        {order.payment_ref}
+                      </span>
+                    </div>
+                  )}
+                  {order.refund_reason && (
+                    <div className="flex items-center justify-between px-5 py-3.5">
+                      <span className="text-sm text-muted-foreground">Refund Reason</span>
+                      <span className="text-sm text-destructive">{order.refund_reason}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-              {order.payment_ref && (
-                <div className="flex items-center justify-between px-5 py-3.5">
-                  <span className="text-sm text-muted-foreground">Reference</span>
-                  <span className="max-w-[200px] truncate font-mono text-[11px] text-muted-foreground/50">
-                    {order.payment_ref}
-                  </span>
-                </div>
-              )}
-              {order.refund_reason && (
-                <div className="flex items-center justify-between px-5 py-3.5">
-                  <span className="text-sm text-muted-foreground">Refund Reason</span>
-                  <span className="text-sm text-destructive">{order.refund_reason}</span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Customer */}
         <Card className="overflow-hidden">

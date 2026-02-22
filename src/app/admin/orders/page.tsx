@@ -31,6 +31,7 @@ import {
   Filter,
   Package,
   ArrowLeft,
+  Tag,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -47,6 +48,7 @@ interface OrderRow {
   customer: { first_name: string; last_name: string; email: string } | null;
   event: { name: string; slug: string } | null;
   ticket_count: number;
+  metadata?: Record<string, unknown>;
 }
 
 type StatusFilter = "" | "completed" | "pending" | "refunded" | "cancelled";
@@ -461,8 +463,18 @@ function OrdersContent() {
                     <TableCell className="text-sm text-foreground">
                       {order.payment_method}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm font-semibold tabular-nums text-foreground">
-                      {formatCurrency(Number(order.total))}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {typeof order.metadata?.discount_code === "string" && (
+                          <Badge variant="secondary" className="gap-1 text-[9px] font-mono">
+                            <Tag size={9} />
+                            {order.metadata.discount_code}
+                          </Badge>
+                        )}
+                        <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                          {formatCurrency(Number(order.total))}
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

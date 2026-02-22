@@ -59,6 +59,18 @@ export interface OrderVat {
   vat_number?: string;
 }
 
+/** Discount details attached to the order. */
+export interface OrderDiscount {
+  /** Discount code used */
+  code: string;
+  /** Discount amount in major currency units */
+  amount: number;
+  /** Discount type (percentage or fixed) */
+  type?: string;
+  /** Discount value (e.g. 10 for 10% or 5 for £5 off) */
+  value?: number;
+}
+
 /** Full set of parameters for createOrder(). */
 export interface CreateOrderParams {
   /** Supabase server client (already initialized by the caller). */
@@ -75,6 +87,8 @@ export interface CreateOrderParams {
   sendEmail?: boolean;
   /** Discount code used in this order (for rep attribution). */
   discountCode?: string;
+  /** Discount details for financial tracking. */
+  discount?: OrderDiscount;
 }
 
 /** A ticket row as created by createOrder(). */
@@ -151,6 +165,7 @@ export async function createOrder(
     vat,
     sendEmail = true,
     discountCode,
+    discount,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -250,7 +265,12 @@ export async function createOrder(
       orderMetadata.vat_inclusive = vat.inclusive;
       if (vat.vat_number) orderMetadata.vat_number = vat.vat_number;
     }
-    if (discountCode) {
+    if (discount) {
+      orderMetadata.discount_code = discount.code;
+      orderMetadata.discount_amount = discount.amount;
+      if (discount.type) orderMetadata.discount_type = discount.type;
+      if (discount.value != null) orderMetadata.discount_value = discount.value;
+    } else if (discountCode) {
       orderMetadata.discount_code = discountCode;
     }
 

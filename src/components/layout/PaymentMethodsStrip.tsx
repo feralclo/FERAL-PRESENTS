@@ -2,9 +2,10 @@ import { cn } from "@/lib/utils";
 import {
   Visa,
   Mastercard,
+  Maestro,
   Amex,
   Applepay,
-  Googlepay,
+  Paywithgoogle,
   Klarna,
   Discover,
   DinersClub,
@@ -21,9 +22,10 @@ const ICON_STYLE = { width: 38, height: 24 };
 const ICONS = [
   { Component: Visa, label: "Visa" },
   { Component: Mastercard, label: "Mastercard" },
+  { Component: Maestro, label: "Maestro" },
   { Component: Amex, label: "American Express" },
   { Component: Applepay, label: "Apple Pay" },
-  { Component: Googlepay, label: "Google Pay" },
+  { Component: Paywithgoogle, label: "Google Pay" },
   { Component: Klarna, label: "Klarna" },
   { Component: Discover, label: "Discover" },
   { Component: DinersClub, label: "Diners Club" },
@@ -63,7 +65,10 @@ export function PaymentMethodsStrip({ variant = "midnight" }: PaymentMethodsStri
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-center",
+        "mx-auto flex flex-wrap items-center justify-center",
+        // Cap width on mobile so 12 icons wrap into balanced rows (7+5 or 6+6)
+        // instead of 10+2
+        "max-md:max-w-[280px]",
         gapClass
       )}
     >

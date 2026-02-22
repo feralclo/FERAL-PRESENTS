@@ -10,6 +10,7 @@ import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { Separator } from "@/components/ui/separator";
 import { AuraHeader } from "./AuraHeader";
+import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { AuraHero } from "./AuraHero";
 import { AuraTrustBar } from "./AuraTrustBar";
 import { AuraLineup } from "./AuraLineup";
@@ -134,6 +135,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <VerifiedBanner />
       <AuraHeader eventName={event.name} />
 
       <main className="mx-auto max-w-3xl px-4 sm:px-6 pb-24 md:pb-12">

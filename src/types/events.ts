@@ -1,6 +1,6 @@
 export type EventStatus = "draft" | "live" | "past" | "cancelled" | "archived";
 export type EventVisibility = "public" | "private" | "unlisted";
-export type PaymentMethod = "test" | "stripe";
+export type PaymentMethod = "test" | "stripe" | "external";
 
 export interface Event {
   id: string;
@@ -34,12 +34,29 @@ export interface Event {
   stripe_account_id?: string;
   /** Platform fee percentage override for this event (default: 5%) */
   platform_fee_percent?: number;
+  /** External ticket link (used when payment_method is "external") */
+  external_link?: string;
   created_at: string;
   updated_at: string;
   /** When true, lineup is displayed alphabetically (A-Z) and manual reordering is locked */
   lineup_sort_alphabetical?: boolean;
   /** Joined event_artists with artist profiles (populated when fetched with join) */
   event_artists?: import("./artists").EventArtist[];
+}
+
+/** Lightweight event shape for landing page cards (no ticket_types needed) */
+export interface LandingEvent {
+  id: string;
+  slug: string;
+  name: string;
+  date_start: string;
+  venue_name?: string;
+  city?: string;
+  cover_image?: string;
+  tag_line?: string;
+  doors_time?: string;
+  payment_method: string;
+  external_link?: string;
 }
 
 export interface TicketTypeRow {

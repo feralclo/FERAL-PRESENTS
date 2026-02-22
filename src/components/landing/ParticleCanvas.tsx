@@ -123,7 +123,24 @@ export function ParticleCanvas() {
       }
     }
 
+    // Pause animation when hero is scrolled off-screen
+    let visible = true;
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+        if (visible && !animationRef.current) {
+          animationRef.current = requestAnimationFrame(animate);
+        }
+      },
+      { threshold: 0 }
+    );
+    visibilityObserver.observe(canvas);
+
     function animate() {
+      if (!visible) {
+        animationRef.current = undefined;
+        return;
+      }
       drawParticles();
       animationRef.current = requestAnimationFrame(animate);
     }
@@ -170,6 +187,7 @@ export function ParticleCanvas() {
       canvas.removeEventListener("touchmove", onTouchMove);
       canvas.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("resize", resize);
+      visibilityObserver.disconnect();
     };
   }, [initParticles]);
 

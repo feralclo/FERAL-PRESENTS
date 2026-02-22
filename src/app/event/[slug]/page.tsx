@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { KompassEventPage } from "@/components/event/KompassEventPage";
 import { MidnightEventPage } from "@/components/midnight/MidnightEventPage";
+import { MidnightExternalPage } from "@/components/midnight/MidnightExternalPage";
 import { AuraEventPage } from "@/components/aura/AuraEventPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
@@ -84,11 +84,6 @@ export default async function EventPage({
     ? sp.template
     : undefined;
 
-  // Kompass uses Paylogic (external ticketing) — keep hardcoded page for now
-  if (slug === "kompass-klub-7-march") {
-    return <KompassEventPage />;
-  }
-
   // Fetch event + active template in parallel
   const [event, activeTemplate] = await Promise.all([
     getEventFromDB(slug),
@@ -101,6 +96,11 @@ export default async function EventPage({
         <p>Event not found.</p>
       </div>
     );
+  }
+
+  // External ticketing — simplified page with CTA linking out
+  if (event.payment_method === "external") {
+    return <MidnightExternalPage event={event} />;
   }
 
   // Use editor override if present, otherwise use live active template

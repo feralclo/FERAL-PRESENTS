@@ -20,6 +20,8 @@ function isPublicSettingsKey(key: string): boolean {
   if (key.match(/^[a-z0-9_]+_vat$/)) return true;
   // Popup settings (e.g., feral_popup) — needed by event page discount popup
   if (key.match(/^[a-z0-9_]+_popup$/)) return true;
+  // Homepage settings (e.g., feral_homepage) — needed by landing page server component
+  if (key.match(/^[a-z0-9_]+_homepage$/)) return true;
   return false;
 }
 
@@ -114,6 +116,11 @@ export async function POST(request: NextRequest) {
     }
     if (key === "feral_event_kompass") {
       revalidatePath("/event/kompass-klub-7-march");
+    }
+
+    // Revalidate homepage when homepage settings change
+    if (key.match(/^[a-z0-9_]+_homepage$/)) {
+      revalidatePath("/");
     }
 
     return NextResponse.json({ success: true });

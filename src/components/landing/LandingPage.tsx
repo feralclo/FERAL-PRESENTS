@@ -6,24 +6,36 @@ import { EventsSection } from "./EventsSection";
 import { AboutSection } from "./AboutSection";
 import { ContactSection } from "./ContactSection";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
+import { MidnightFooter } from "@/components/midnight/MidnightFooter";
+import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { useDataLayer } from "@/hooks/useDataLayer";
 import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
-import "@/styles/landing.css";
+import type { LandingEvent } from "@/types/events";
+import type { HomepageSettings } from "@/types/settings";
 
-export function LandingPage() {
+import "@/styles/hero-effects.css";
+import "@/styles/landing.css";
+import "@/styles/midnight.css";
+import "@/styles/midnight-effects.css";
+
+interface LandingPageProps {
+  events: LandingEvent[];
+  heroSettings: HomepageSettings;
+}
+
+export function LandingPage({ events, heroSettings }: LandingPageProps) {
   const { push } = useDataLayer();
   const { trackPageView } = useMetaTracking();
   useTraffic();
 
-  // Activate scroll reveal for [data-reveal] elements (Events, Contact sections)
+  // Activate scroll reveal for [data-reveal] elements
   useScrollReveal();
   const headerHidden = useHeaderScroll();
 
-  // Track view_content on mount (matches existing inline script)
+  // Track view_content on mount
   useEffect(() => {
     push({
       event: "view_content",
@@ -34,53 +46,27 @@ export function LandingPage() {
     trackPageView();
   }, [push, trackPageView]);
 
-
   return (
     <>
       {/* Navigation */}
-      <header className={`header${headerHidden ? " header--hidden" : ""}`} id="header">
-        <div className="announcement-banner">
-          <span className="announcement-banner__shield">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
-                fill="#fff"
-              />
-              <path
-                d="M10 15.5l-3.5-3.5 1.41-1.41L10 12.67l5.59-5.59L17 8.5l-7 7z"
-                fill="#ff0033"
-              />
-            </svg>
-          </span>
-          <span className="announcement-banner__verified">
-            Official FERAL ticket store
-          </span>
-        </div>
+      <header
+        className={`header${headerHidden ? " header--hidden" : ""}`}
+        id="header"
+      >
+        <VerifiedBanner />
         <Header />
       </header>
 
-      <HeroSection />
-      <EventsSection />
-      <AboutSection />
-      <ContactSection />
+      {/* Hero — Tailwind layout + hero-effects.css for animations */}
+      <HeroSection settings={heroSettings} />
 
-      {/* Footer */}
-      <footer className="footer">
-        <div className="container">
-          <div className="footer__inner">
-            <span className="footer__copy">
-              &copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.
-            </span>
-            <span className="footer__status">
-              STATUS: <span className="text-red">ONLINE</span>
-            </span>
-          </div>
-        </div>
-      </footer>
+      {/* Everything below hero: Midnight Tailwind theme */}
+      <div data-theme="midnight" className="overflow-x-hidden">
+        <EventsSection events={events} />
+        <AboutSection />
+        <ContactSection />
+        <MidnightFooter />
+      </div>
     </>
   );
 }

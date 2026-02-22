@@ -44,6 +44,7 @@ export const SETTINGS_KEYS = {
   VAT: "feral_vat",
   REPS: "feral_reps",
   POPUP: "feral_popup",
+  HOMEPAGE: "feral_homepage",
 } as const;
 
 /** Generate the branding settings key for a given org */
@@ -59,6 +60,11 @@ export function themesKey(orgId: string): string {
 /** Generate the VAT settings key for a given org */
 export function vatKey(orgId: string): string {
   return `${orgId}_vat`;
+}
+
+/** Generate the homepage settings key for a given org */
+export function homepageKey(orgId: string): string {
+  return `${orgId}_homepage`;
 }
 
 /** Generate the reps program settings key for a given org */

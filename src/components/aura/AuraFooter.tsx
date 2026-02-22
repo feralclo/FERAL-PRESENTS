@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useBranding } from "@/hooks/useBranding";
+import { PaymentMethodsStrip } from "@/components/layout/PaymentMethodsStrip";
 import { Instagram, Twitter, Globe, Mail } from "lucide-react";
 
-export function AuraFooter() {
+export function AuraFooter({ showPaymentMethods = true }: { showPaymentMethods?: boolean }) {
   const branding = useBranding();
 
   const socialLinks = branding?.social_links;
@@ -17,6 +18,11 @@ export function AuraFooter() {
     <footer className="mt-12">
       <Separator />
       <div className="mx-auto max-w-2xl px-5 sm:px-8 py-6">
+        {showPaymentMethods && (
+          <div className="mb-5">
+            <PaymentMethodsStrip variant="aura" />
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Left: Copyright + Support */}
           <div className="flex flex-col items-center sm:items-start gap-1.5">

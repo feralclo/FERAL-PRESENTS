@@ -38,6 +38,7 @@ import {
   ShoppingCart,
   Mic2,
   SlidersHorizontal,
+  Home,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -97,6 +98,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Platform",
     items: [
+      { href: "/admin/homepage/", label: "Homepage", icon: Home },
       { href: "/admin/event-page/", label: "Event Page", icon: SlidersHorizontal },
       { href: "/admin/ticketstore/", label: "Ticket Store", icon: Store },
       { href: "/admin/finance/", label: "Finance", icon: CreditCard },

@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import type { LandingEvent } from "@/types/events";
 
-export function EventsSection() {
+interface EventsSectionProps {
+  events: LandingEvent[];
+}
+
+export function EventsSection({ events }: EventsSectionProps) {
   const gridRef = useRef<HTMLDivElement>(null);
-  const hintRef = useRef<HTMLDivElement>(null);
+  const [hintVisible, setHintVisible] = useState(true);
 
   // Hide swipe hint after user scrolls
   useEffect(() => {
     const grid = gridRef.current;
-    const hint = hintRef.current;
-    if (!grid || !hint) return;
+    if (!grid) return;
 
     function onScroll() {
-      if (grid!.scrollLeft > 30) {
-        hint!.classList.add("events__scroll-hint--hidden");
+      if (grid!.scrollLeft > 100) {
+        setHintVisible(false);
       }
     }
 
@@ -24,116 +28,159 @@ export function EventsSection() {
   }, []);
 
   return (
-    <section className="events" id="events">
-      <div className="container">
-        <div className="section-header">
-          <span className="section-header__label">[UPCOMING]</span>
-          <h2 className="section-header__title">Events</h2>
-          <div className="section-header__line" />
-          <span className="events__count">2 Events</span>
+    <section id="events" className="py-20 max-md:py-14 bg-background">
+      <div className="max-w-[1200px] mx-auto px-6 max-md:px-4">
+        {/* Section header */}
+        <div className="mb-14 max-md:mb-10" data-reveal="">
+          <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.25em] uppercase text-primary mb-4 block">
+            [UPCOMING]
+          </span>
+          <h2 className="font-[family-name:var(--font-mono)] text-[clamp(32px,5vw,56px)] font-bold tracking-[0.15em] uppercase mb-4">
+            Events
+          </h2>
+          <div className="w-[60px] h-0.5 bg-primary" />
+          {events.length > 0 && (
+            <span className="lg:hidden font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-foreground/40 uppercase mt-3 block">
+              {events.length} Event{events.length !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
 
-        <div className="events__grid" ref={gridRef}>
-          {/* Event 1: Kompass Klub */}
-          <Link
-            href="/event/kompass-klub-7-march/"
-            className="event-card"
-            data-reveal=""
+        {/* Empty state */}
+        {events.length === 0 && (
+          <div className="py-16 text-center" data-reveal="">
+            <p className="font-[family-name:var(--font-mono)] text-sm tracking-[0.08em] text-foreground/30">
+              No upcoming events. Check back soon.
+            </p>
+          </div>
+        )}
+
+        {/* Event grid — 2-col on desktop, horizontal snap scroll on mobile */}
+        {events.length > 0 && (
+          <div
+            ref={gridRef}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-lg:flex max-lg:overflow-x-auto max-lg:snap-x max-lg:snap-proximity max-lg:-mx-4 max-lg:px-4 max-lg:gap-4 max-lg:overscroll-x-contain max-lg:scroll-pl-4"
+            style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
           >
-            <div className="event-card__date-badge">
-              <span className="event-card__day">07</span>
-              <span className="event-card__month">MAR</span>
-            </div>
-            <div className="event-card__image-wrapper">
-              <div className="event-card__image event-card__image--1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/kompass-klub-event-tile.jpg"
-                  alt="Kompass Klub"
-                  className="event-card__img"
-                />
-                <div className="event-card__image-overlay" />
-                <div className="event-card__image-noise" />
-                <div className="event-card__scanline" />
-              </div>
-            </div>
-            <div className="event-card__content">
-              <div className="event-card__meta">
-                <span className="event-card__tag">
-                  // SALE OPENS THU 29TH JAN 6PM
-                </span>
-              </div>
-              <h3 className="event-card__title">KOMPASS KLUB</h3>
-              <p className="event-card__details">
-                <span className="event-card__detail">
-                  <span className="event-card__detail-label">LOC:</span> Kompass
-                  Klub, Ghent
-                </span>
-                <span className="event-card__detail">
-                  <span className="event-card__detail-label">TIME:</span> 11PM
-                  &mdash; 7AM
-                </span>
-              </p>
-              <div className="event-card__action">
-                <span className="event-card__action-text">GET TICKETS</span>
-                <span className="event-card__action-arrow">&rarr;</span>
-              </div>
-            </div>
-            <div className="event-card__border-glow" />
-          </Link>
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        )}
 
-          {/* Event 2: Liverpool */}
-          <Link
-            href="/event/liverpool-27-march/"
-            className="event-card"
-            data-reveal=""
+        {/* Swipe hint — mobile only */}
+        {events.length > 1 && (
+          <div
+            className={`lg:hidden flex items-center justify-center gap-2 mt-5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.25em] text-foreground/30 uppercase transition-opacity duration-500 ${
+              hintVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
           >
-            <div className="event-card__date-badge">
-              <span className="event-card__day">27</span>
-              <span className="event-card__month">MAR</span>
-            </div>
-            <div className="event-card__image-wrapper">
-              <div className="event-card__image event-card__image--2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/liverpool-tile.jpg"
-                  alt="Liverpool"
-                  className="event-card__img"
-                />
-                <div className="event-card__image-overlay" />
-                <div className="event-card__image-noise" />
-                <div className="event-card__scanline" />
-              </div>
-            </div>
-            <div className="event-card__content">
-              <div className="event-card__meta">
-                <span className="event-card__tag">// ON SALE NOW</span>
-              </div>
-              <h3 className="event-card__title">LIVERPOOL</h3>
-              <p className="event-card__details">
-                <span className="event-card__detail">
-                  <span className="event-card__detail-label">LOC:</span>{" "}
-                  Invisible Wind Factory, Liverpool
-                </span>
-                <span className="event-card__detail">
-                  <span className="event-card__detail-label">TIME:</span>{" "}
-                  9:30PM &mdash; 4:00AM
-                </span>
-              </p>
-              <div className="event-card__action">
-                <span className="event-card__action-text">GET TICKETS</span>
-                <span className="event-card__action-arrow">&rarr;</span>
-              </div>
-            </div>
-            <div className="event-card__border-glow" />
-          </Link>
-        </div>
-
-        <div className="events__scroll-hint" ref={hintRef}>
-          <span>SWIPE</span>
-          <span className="events__scroll-hint-arrow">&rarr;</span>
-        </div>
+            <span>SWIPE</span>
+            <span className="inline-block animate-[swipeArrow_1.5s_ease-in-out_infinite]">
+              &rarr;
+            </span>
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+function EventCard({ event }: { event: LandingEvent }) {
+  const d = new Date(event.date_start);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = d
+    .toLocaleDateString("en-GB", { month: "short" })
+    .toUpperCase();
+
+  const isExternal = event.payment_method === "external";
+  const href =
+    isExternal && event.external_link
+      ? event.external_link
+      : `/event/${event.slug}/`;
+
+  const imageUrl = event.cover_image || `/api/media/event_${event.id}_cover`;
+
+  const linkProps = isExternal
+    ? { target: "_blank" as const, rel: "noopener noreferrer" }
+    : {};
+
+  return (
+    <Link
+      href={href}
+      {...linkProps}
+      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_rgba(255,0,51,0.1),0_0_0_1px_rgba(255,0,51,0.12)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[calc(100vw-80px)]"
+      data-reveal=""
+    >
+      {/* Date badge */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col items-center bg-background/95 border border-foreground/[0.10] px-3.5 py-2.5 rounded-lg transition-[border-color,box-shadow] duration-300 group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.1)]">
+        <span className="font-[family-name:var(--font-mono)] text-[22px] font-bold leading-none tracking-[0.02em]">
+          {day}
+        </span>
+        <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-primary mt-0.5">
+          {month}
+        </span>
+      </div>
+
+      {/* Image — 16:9 aspect ratio */}
+      <div className="relative aspect-video overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={event.name}
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+        />
+        {/* Bottom gradient — fades into card */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-background)] via-transparent to-transparent z-[1]" />
+        {/* Top vignette — date badge readability */}
+        <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/30 to-transparent z-[1]" />
+      </div>
+
+      {/* Content */}
+      <div className="p-6 max-[480px]:p-4">
+        {/* Tag line */}
+        {event.tag_line && (
+          <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.15em] text-primary uppercase block mb-3">
+            // {event.tag_line}
+          </span>
+        )}
+
+        {/* Event name */}
+        <h3 className="font-[family-name:var(--font-mono)] text-[clamp(20px,3vw,28px)] font-bold tracking-[0.12em] uppercase mb-4 transition-colors duration-300 group-hover:text-primary">
+          {event.name.toUpperCase()}
+        </h3>
+
+        {/* Venue + doors */}
+        <div className="flex flex-col gap-1.5 mb-5">
+          {(event.venue_name || event.city) && (
+            <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/50">
+              <span className="text-foreground/25 mr-1">LOC:</span>
+              {[event.venue_name, event.city].filter(Boolean).join(", ")}
+            </span>
+          )}
+          {event.doors_time && (
+            <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/50">
+              <span className="text-foreground/25 mr-1">TIME:</span>
+              {event.doors_time}
+            </span>
+          )}
+        </div>
+
+        {/* Action row */}
+        <div className="flex items-center gap-2 pt-4 border-t border-foreground/[0.06]">
+          <span className="font-[family-name:var(--font-mono)] text-[11px] font-bold tracking-[0.15em] uppercase transition-colors duration-300 group-hover:text-primary">
+            {isExternal ? "BUY TICKETS" : "GET TICKETS"}
+          </span>
+          <span className="text-sm transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-primary">
+            {isExternal ? "\u2197" : "\u2192"}
+          </span>
+        </div>
+      </div>
+
+      {/* Inner border glow on hover */}
+      <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-500 group-hover:opacity-100 shadow-[inset_0_0_30px_rgba(255,0,51,0.06)]" />
+    </Link>
   );
 }

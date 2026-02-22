@@ -190,7 +190,7 @@ export function MidnightTicketCard({
               "w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg max-[480px]:text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
               TIER_BUTTON_CLASSES[tier],
             )}
-            onClick={() => onAdd(tt)}
+            onClick={() => tt.includes_merch && onViewMerch ? onViewMerch(tt) : onAdd(tt)}
             aria-label={`Add ${tt.name}`}
           >
             +

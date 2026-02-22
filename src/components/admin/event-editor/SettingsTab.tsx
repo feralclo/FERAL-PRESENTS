@@ -95,6 +95,7 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
                 <SelectContent>
                   <SelectItem value="test">Test (Simulated)</SelectItem>
                   <SelectItem value="stripe">Stripe</SelectItem>
+                  <SelectItem value="external">External Link</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -112,6 +113,23 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
               </Select>
             </div>
           </div>
+
+          {event.payment_method === "external" && (
+            <div className="space-y-2">
+              <Label>Ticket Link URL</Label>
+              <Input
+                type="url"
+                value={event.external_link || ""}
+                onChange={(e) => updateEvent("external_link", e.target.value || null)}
+                placeholder="https://example.com/tickets"
+              />
+              <p className="text-[10px] text-muted-foreground/60">
+                Visitors will be redirected to this URL when they click &quot;Buy
+                Tickets&quot;. No ticket types, cart, or checkout will be shown
+                on the event page.
+              </p>
+            </div>
+          )}
 
           {event.payment_method === "stripe" && (
             <div className="space-y-4">

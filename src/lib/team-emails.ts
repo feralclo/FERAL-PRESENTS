@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
+import type { EmailSettings } from "@/types/email";
+import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
 
 function escapeHtml(str: string): string {
   return str
@@ -42,6 +44,18 @@ export async function sendTeamInviteEmail(params: {
       .select("data")
       .eq("key", `${params.orgId}_branding`)
       .single();
+
+    // Fetch email settings for verified from address
+    const { data: emailRow } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", `${params.orgId}_email`)
+      .single();
+
+    const emailSettings: EmailSettings = {
+      ...DEFAULT_EMAIL_SETTINGS,
+      ...((emailRow?.data as Partial<EmailSettings>) || {}),
+    };
 
     const branding = (brandingRow?.data as Record<string, string>) || {};
     const orgName = escapeHtml(branding.org_name || params.orgId.toUpperCase());
@@ -106,7 +120,7 @@ export async function sendTeamInviteEmail(params: {
 </html>`;
 
     await resend.emails.send({
-      from: `Entry <noreply@${process.env.RESEND_DOMAIN || "entry.so"}>`,
+      from: `${emailSettings.from_name} <${emailSettings.from_email}>`,
       to: [params.email],
       subject,
       html,

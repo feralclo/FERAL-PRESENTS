@@ -425,59 +425,6 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     );
   }
 
-  // Email capture gate
-  if (!capturedEmail && cartLines.length > 0) {
-    return (
-      <EmailCapture
-        slug={slug}
-        event={event}
-        cartLines={cartLines}
-        subtotal={subtotal}
-        totalQty={totalQty}
-        symbol={symbol}
-        vatSettings={vatSettings}
-        onContinue={(email) => {
-          if (isRestrictedCheckoutEmail(email)) {
-            setServiceUnavailable(true);
-            return;
-          }
-          try {
-            sessionStorage.setItem("feral_checkout_email", email);
-          } catch {}
-          setCapturedEmail(email);
-
-          // Store email for Meta Advanced Matching (improves EMQ on subsequent events)
-          storeMetaMatchData({ em: email });
-
-          // Fire-and-forget: create customer + abandoned cart
-          // Include discount code if available (from recovery email or popup)
-          let captureDiscountCode: string | undefined;
-          try {
-            captureDiscountCode = restoreData?.discountCode || sessionStorage.getItem("feral_popup_discount") || undefined;
-          } catch {}
-          fetch("/api/checkout/capture", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email,
-              event_id: event.id,
-              items: cartLines.map((l) => ({
-                ticket_type_id: l.ticket_type_id,
-                qty: l.qty,
-                name: l.name,
-                price: l.price,
-                merch_size: l.merch_size,
-              })),
-              subtotal,
-              currency: event.currency || "GBP",
-              ...(captureDiscountCode ? { discount_code: captureDiscountCode } : {}),
-            }),
-          }).catch(() => {});
-        }}
-      />
-    );
-  }
-
   // Test mode checkout
   if (!isStripe) {
     return (
@@ -1298,12 +1245,6 @@ function SinglePageCheckoutForm({
           </div>
         )}
 
-        {/* ── Step indicator ── */}
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
-          <div className="w-5 h-[3px] rounded-full bg-white/60" />
-        </div>
-
         {/* ── CHECKOUT FORM ── */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Contact */}
@@ -1799,12 +1740,6 @@ function TestModeCheckout({
         <div className="flex flex-col lg:flex-row max-w-[1200px] mx-auto w-full">
           <div className="flex-1 min-w-0 lg:pr-8">
             <div className="max-w-[620px] mx-auto py-8 px-6 pb-[max(48px,env(safe-area-inset-bottom))]">
-              {/* ── Step indicator ── */}
-              <div className="flex items-center justify-center gap-2 mb-6">
-                <div className="w-5 h-[3px] rounded-full bg-white/[0.12]" />
-                <div className="w-5 h-[3px] rounded-full bg-white/60" />
-              </div>
-
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <div className="flex flex-col gap-4">
                   <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold m-0 pb-3.5 border-b border-white/[0.06]">

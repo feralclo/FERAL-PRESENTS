@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { subscribeToKlaviyo, identifyInKlaviyo } from "@/lib/klaviyo";
+import { storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { DISCOUNT_CODE, POPUP_DISMISS_DAYS } from "@/lib/constants";
 import "@/styles/popup.css";
 
@@ -148,6 +149,7 @@ export function DiscountPopup({
 
       await subscribeToKlaviyo(email);
       identifyInKlaviyo(email);
+      storeMetaMatchData({ em: email.trim().toLowerCase() });
 
       trackPopupEvent("conversions", page, email.trim());
 

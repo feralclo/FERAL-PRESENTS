@@ -33,6 +33,8 @@ const STATUS_CONFIG = {
   down: { label: "Down", icon: XCircle, variant: "destructive" as const },
 } as const;
 
+export { SystemHealth as AdminHealth };
+
 export default function SystemHealth() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(true);

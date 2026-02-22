@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Shield, AlertTriangle, Loader2 } from "lucide-react";
 
+export { PlatformSettings };
+
 export default function PlatformSettings() {
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const [loading, setLoading] = useState(true);

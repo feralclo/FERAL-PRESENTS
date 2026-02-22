@@ -50,6 +50,8 @@ interface AccountDetails {
  *
  * The promoter-facing equivalent is /admin/payments/ — clean and branded.
  */
+export { StripeConnectPage as ConnectPage };
+
 export default function StripeConnectPage() {
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);

@@ -18,11 +18,9 @@ import {
   MessageSquare,
   Activity,
   CreditCard,
-  Zap,
   Megaphone,
   Mail,
   Settings,
-  HeartPulse,
   LogOut,
   PanelLeft,
   X,
@@ -36,10 +34,7 @@ import {
   Tags,
   UsersRound,
   Mic2,
-  SlidersHorizontal,
-  Home,
   Shield,
-  Palette,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -86,14 +81,16 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/admin/customers/", label: "Customers", icon: Users },
       { href: "/admin/discounts/", label: "Discounts", icon: Tags },
       { href: "/admin/merch/", label: "Merch", icon: Package },
-    ],
-  },
-  {
-    label: "Storefront",
-    items: [
-      { href: "/admin/homepage/", label: "Homepage", icon: Home },
-      { href: "/admin/event-page/", label: "Event Page", icon: SlidersHorizontal },
-      { href: "/admin/ticketstore/", label: "Themes", icon: Palette },
+      {
+        href: "/admin/homepage/",
+        label: "Storefront",
+        icon: Store,
+        children: [
+          { href: "/admin/homepage/", label: "Homepage" },
+          { href: "/admin/event-page/", label: "Event Page" },
+          { href: "/admin/ticketstore/", label: "Themes" },
+        ],
+      },
     ],
   },
   {
@@ -120,18 +117,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-const PLATFORM_SECTIONS: NavSection[] = [
-  {
-    label: "Entry Backend",
-    items: [
-      { href: "/admin/health/", label: "Health", icon: HeartPulse },
-      { href: "/admin/connect/", label: "Connect", icon: Zap },
-      { href: "/admin/platform-settings/", label: "Platform Settings", icon: Shield },
-    ],
-  },
-];
-
-const ALL_ITEMS = [...NAV_SECTIONS, ...PLATFORM_SECTIONS].flatMap((s) => s.items);
+const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
 
 function matchRoute(pathname: string, href: string): boolean {
   if (href === "/admin/") return pathname === "/admin" || pathname === "/admin/";
@@ -185,7 +171,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Auto-expand nav items whose children match the current path
   useEffect(() => {
-    for (const section of [...NAV_SECTIONS, ...PLATFORM_SECTIONS]) {
+    for (const section of NAV_SECTIONS) {
       for (const item of section.items) {
         if (item.children) {
           const childActive = item.children.some((c) => matchRoute(pathname, c.href));
@@ -204,7 +190,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const isLoginPage = pathname.startsWith("/admin/login");
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
-  const isBypassRoute = isLoginPage || isEditorPage;
+  const isBackendRoute = pathname.startsWith("/admin/backend");
+  const isBypassRoute = isLoginPage || isEditorPage || isBackendRoute;
 
   // Fetch user email + platform owner flag on mount
   useEffect(() => {
@@ -240,6 +227,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
   if (isEditorPage) return <>{children}</>;
+
+  // Backend has its own standalone layout
+  if (isBackendRoute) return <>{children}</>;
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();
@@ -419,56 +409,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
           ))}
 
-          {/* ── Entry Backend (platform owner only) ── */}
-          {isPlatformOwner && (
-            <>
-              <Separator className="mx-3 my-2" />
-              {PLATFORM_SECTIONS.map((section) => (
-                <div key={section.label} className="mb-5">
-                  <div className="mb-2 flex items-center gap-1.5 px-3 font-mono text-[10px] font-semibold uppercase tracking-[2px] text-warning/60">
-                    <Shield size={11} strokeWidth={2} />
-                    {section.label}
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    {section.items.map((item) => {
-                      const Icon = item.icon;
-                      const active = matchRoute(pathname, item.href);
-
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setOpen(false)}
-                          className={cn(
-                            "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200",
-                            active
-                              ? "bg-warning/10 text-foreground"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
-                          )}
-                        >
-                          <Icon
-                            size={16}
-                            strokeWidth={1.75}
-                            className={cn(
-                              "shrink-0 transition-colors duration-200",
-                              active
-                                ? "text-warning"
-                                : "text-sidebar-foreground/60 group-hover:text-foreground/80"
-                            )}
-                          />
-                          <span>{item.label}</span>
-                          {active && (
-                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-warning shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
         </nav>
+
+        {/* ── Entry Backend link (platform owner only) ── */}
+        {isPlatformOwner && (
+          <div className="shrink-0 border-t border-sidebar-border/50 px-3 py-2">
+            <a
+              href="/admin/backend/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12px] font-medium text-warning/70 transition-all duration-200 hover:bg-warning/8 hover:text-warning"
+            >
+              <Shield size={14} strokeWidth={1.75} className="shrink-0 text-warning/50 group-hover:text-warning/80" />
+              <span>Entry Backend</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-auto shrink-0 opacity-40 group-hover:opacity-70">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          </div>
+        )}
 
         {/* ── User footer ── */}
         <div ref={menuRef} className="relative shrink-0 border-t border-sidebar-border">

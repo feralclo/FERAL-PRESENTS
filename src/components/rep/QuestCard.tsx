@@ -3,11 +3,12 @@
 import { useState } from "react";
 import {
   Clock, Check, X, ChevronDown, ChevronUp, Loader2,
-  ExternalLink, AlertCircle, Zap, Camera, Share2, Sparkles,
+  ExternalLink, AlertCircle, Zap, Camera, Share2, Sparkles, Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getQuestAccent } from "@/lib/rep-quest-styles";
 import { CurrencyIcon } from "./CurrencyIcon";
+import { TikTokIcon } from "./TikTokIcon";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,12 @@ function getExpiryInfo(expiresAt: string): { text: string; urgent: boolean } | n
   if (diffDays <= 3) return { text: `Expires in ${diffDays} days`, urgent: true };
   if (diffDays <= 7) return { text: `Expires in ${diffDays} days`, urgent: false };
   return { text: `Expires ${expiry.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, urgent: false };
+}
+
+function getRefPlatform(url: string): "tiktok" | "instagram" | null {
+  if (/tiktok\.com/i.test(url)) return "tiktok";
+  if (/instagram\.com/i.test(url)) return "instagram";
+  return null;
 }
 
 function formatDate(dateStr: string): string {
@@ -120,15 +127,15 @@ export function QuestCard({
 
       {/* Card content */}
       <div className="rep-quest-glass">
-        {/* Reward badges — XP + currency (with backdrop pills for readability over images) */}
+        {/* Reward badges — compact pills, secondary to the main CTA */}
         <div className="flex justify-end items-center gap-1.5">
-          <span className={cn("flex items-center gap-1 text-xs font-extrabold rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm", accent.color)}>
-            <Zap size={12} />
+          <span className={cn("flex items-center gap-1 text-[10px] font-bold rounded-md px-1.5 py-0.5 bg-black/40 backdrop-blur-sm", accent.color)}>
+            <Zap size={10} />
             +{quest.points_reward} XP
           </span>
           {quest.currency_reward > 0 && (
-            <span className="flex items-center gap-1 text-xs font-extrabold text-amber-400 rounded-lg px-2 py-1 bg-black/40 backdrop-blur-sm">
-              <CurrencyIcon size={12} />
+            <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 rounded-md px-1.5 py-0.5 bg-black/40 backdrop-blur-sm">
+              <CurrencyIcon size={10} />
               +{quest.currency_reward} {currencyName}
             </span>
           )}
@@ -144,12 +151,12 @@ export function QuestCard({
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-1.5 mb-0.5">
-          <QuestTypeIcon size={13} className="opacity-50" />
-          <h3 className="text-base font-extrabold text-foreground tracking-tight">{quest.title}</h3>
+        <div className="flex items-center justify-center gap-1.5 mb-1">
+          <QuestTypeIcon size={14} className="opacity-50" />
+          <h3 className="text-lg font-extrabold text-foreground tracking-tight leading-tight">{quest.title}</h3>
         </div>
         {quest.description && (
-          <p className="text-xs text-muted-foreground leading-relaxed mb-2.5 line-clamp-2">{quest.description}</p>
+          <p className="text-[13px] text-muted-foreground/90 leading-relaxed mb-3 line-clamp-2">{quest.description}</p>
         )}
 
         {/* Progress bar for repeatable quests */}
@@ -199,10 +206,33 @@ export function QuestCard({
           <p className="text-[10px] text-muted-foreground mt-2">{expiry.text}</p>
         )}
 
-        {/* View Quest CTA */}
-        <div className="mt-3 py-2.5 rounded-xl text-center text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-white/[0.04] border-white/[0.08] text-white/50">
-          View Quest
-        </div>
+        {/* Primary CTA — platform-specific if reference URL exists, otherwise generic */}
+        {quest.reference_url && getRefPlatform(quest.reference_url) ? (() => {
+          const platform = getRefPlatform(quest.reference_url!);
+          return (
+            <a
+              href={quest.reference_url!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "rep-quest-reference-btn mt-3",
+                platform === "tiktok" && "rep-quest-reference-btn--tiktok",
+                platform === "instagram" && "rep-quest-reference-btn--instagram"
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {platform === "tiktok" ? <TikTokIcon size={16} /> : <Instagram size={16} />}
+              <span className="flex-1 text-left">
+                {quest.uses_sound && platform === "tiktok" ? "Open & use this sound" : `View on ${platform === "tiktok" ? "TikTok" : "Instagram"}`}
+              </span>
+              <ExternalLink size={12} className="opacity-50 shrink-0" />
+            </a>
+          );
+        })() : (
+          <div className="mt-3 py-2.5 rounded-xl text-center text-[11px] font-bold uppercase tracking-widest border transition-all duration-200 bg-white/[0.04] border-white/[0.08] text-white/50">
+            View Quest
+          </div>
+        )}
 
         {/* History toggle */}
         {hasSubs && (

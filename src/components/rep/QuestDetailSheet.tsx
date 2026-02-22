@@ -126,65 +126,74 @@ export function QuestDetailSheet({
               <span className="text-[10px] font-semibold text-primary capitalize tracking-wide">{questTypeLabel}</span>
             </div>
 
-            <h3 className={cn("text-xl font-extrabold tracking-tight leading-snug", accent.titleColor)}>
+            <h3 className={cn("text-2xl font-extrabold tracking-tight leading-tight", accent.titleColor)}>
               {quest.title}
             </h3>
 
             {quest.description && (
-              <p className="text-sm text-muted-foreground/80 leading-relaxed mt-2 max-w-[320px] mx-auto">
+              <p className="text-[15px] text-muted-foreground/90 leading-relaxed mt-2.5 max-w-[340px] mx-auto">
                 {quest.description}
               </p>
             )}
           </div>
 
-          {/* ── Rewards — stagger 2 — THE hero ── */}
-          <div className="px-5 py-4 rep-quest-reveal-2">
-            <div className={cn(
-              "flex items-center justify-center",
-              hasDualReward ? "gap-4" : ""
-            )}>
-              {/* XP reward */}
-              <div className="flex flex-col items-center">
-                <div
-                  className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5"
-                  style={{
-                    backgroundColor: `${accent.progressColor}12`,
-                    boxShadow: `0 0 32px ${accent.progressColor}35, 0 0 12px ${accent.progressColor}20`,
-                  }}
-                >
-                  <Zap size={24} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 8px ${accent.progressColor})` }} />
+          {/* ── Platform CTA — stagger 2 — THE hero action ── */}
+          {hasRefUrl && refPlatform && (
+            <div className="px-5 pb-2 rep-quest-reveal-2">
+              <a
+                href={quest.reference_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "rep-quest-reference-btn rep-quest-reference-btn--hero",
+                  refPlatform === "tiktok" && "rep-quest-reference-btn--tiktok",
+                  refPlatform === "instagram" && "rep-quest-reference-btn--instagram"
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {refPlatform === "tiktok" ? <TikTokIcon size={20} /> : <Instagram size={20} />}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[15px]">{quest.uses_sound && refPlatform === "tiktok" ? "Open & use this sound" : `View on ${refPlatform === "tiktok" ? "TikTok" : "Instagram"}`}</span>
+                  {quest.uses_sound && refPlatform === "tiktok" && (
+                    <span className="flex items-center gap-1 text-[10px] opacity-60 font-normal">
+                      <Music size={9} /> Sound required for this quest
+                    </span>
+                  )}
                 </div>
-                <p
-                  className="text-4xl font-black tabular-nums leading-none"
-                  style={{ color: accent.progressColor, textShadow: `0 0 24px ${accent.progressColor}50` }}
+                <ExternalLink size={14} className="ml-auto opacity-50 shrink-0" />
+              </a>
+            </div>
+          )}
+
+          {/* ── Rewards — stagger 2 — compact inline row ── */}
+          <div className="px-5 py-3 rep-quest-reveal-2">
+            <div className="flex items-center justify-center gap-3">
+              {/* XP pill */}
+              <div
+                className="flex items-center gap-2 rounded-xl px-4 py-2.5"
+                style={{
+                  backgroundColor: `${accent.progressColor}10`,
+                  border: `1px solid ${accent.progressColor}20`,
+                }}
+              >
+                <Zap size={16} style={{ color: accent.progressColor, filter: `drop-shadow(0 0 6px ${accent.progressColor})` }} />
+                <span
+                  className="text-xl font-black tabular-nums leading-none"
+                  style={{ color: accent.progressColor }}
                 >
                   +{quest.points_reward}
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
-                  XP
-                </p>
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">XP</span>
               </div>
 
-              {/* Divider between rewards */}
+              {/* Currency pill */}
               {hasDualReward && (
-                <div className="h-16 w-px bg-gradient-to-b from-transparent via-white/[0.12] to-transparent mx-1" />
-              )}
-
-              {/* Currency reward */}
-              {hasDualReward && (
-                <div className="flex flex-col items-center">
-                  <div
-                    className="rep-quest-reward-icon flex h-14 w-14 items-center justify-center rounded-full mb-2.5 bg-amber-400/12"
-                    style={{ boxShadow: "0 0 32px rgba(251,191,36,0.35), 0 0 12px rgba(251,191,36,0.2)" }}
-                  >
-                    <CurrencyIcon size={24} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
-                  </div>
-                  <p className="text-4xl font-black tabular-nums text-amber-400 leading-none" style={{ textShadow: "0 0 24px rgba(251,191,36,0.5)" }}>
+                <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-amber-400/10 border border-amber-400/20">
+                  <CurrencyIcon size={16} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,1)]" />
+                  <span className="text-xl font-black tabular-nums text-amber-400 leading-none">
                     +{quest.currency_reward}
-                  </p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
-                    {currencyName}
-                  </p>
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{currencyName}</span>
                 </div>
               )}
             </div>
@@ -202,31 +211,6 @@ export function QuestDetailSheet({
 
           {/* ── Action area — stagger 3 ── */}
           <div className="px-5 py-4 space-y-3 rep-quest-reveal-3">
-            {/* Reference URL button — sound instruction integrated */}
-            {hasRefUrl && refPlatform && (
-              <a
-                href={quest.reference_url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "rep-quest-reference-btn",
-                  refPlatform === "tiktok" && "rep-quest-reference-btn--tiktok",
-                  refPlatform === "instagram" && "rep-quest-reference-btn--instagram"
-                )}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {refPlatform === "tiktok" ? <TikTokIcon size={18} /> : <Instagram size={18} />}
-                <div className="flex flex-col min-w-0">
-                  <span>{quest.uses_sound && refPlatform === "tiktok" ? "Open & use this sound" : `View on ${refPlatform === "tiktok" ? "TikTok" : "Instagram"}`}</span>
-                  {quest.uses_sound && refPlatform === "tiktok" && (
-                    <span className="flex items-center gap-1 text-[10px] opacity-60 font-normal">
-                      <Music size={9} /> Sound required for this quest
-                    </span>
-                  )}
-                </div>
-                <ExternalLink size={13} className="ml-auto opacity-50 shrink-0" />
-              </a>
-            )}
 
             {/* Instructions — glass card */}
             {quest.instructions && (

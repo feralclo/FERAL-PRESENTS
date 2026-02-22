@@ -2,12 +2,9 @@
 
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 function InviteForm() {
   const router = useRouter();
@@ -84,13 +81,16 @@ function InviteForm() {
         return;
       }
 
-      // Set session if returned
-      if (data.data?.session && SUPABASE_URL && SUPABASE_ANON_KEY) {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        await supabase.auth.setSession({
-          access_token: data.data.session.access_token,
-          refresh_token: data.data.session.refresh_token,
-        });
+      // Set session if returned — use the proper browser client so
+      // cookies are set and middleware picks up the session on redirect
+      if (data.data?.session) {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          await supabase.auth.setSession({
+            access_token: data.data.session.access_token,
+            refresh_token: data.data.session.refresh_token,
+          });
+        }
       }
 
       setState("success");

@@ -30,6 +30,7 @@ import { AuraOrderConfirmation } from "./AuraOrderConfirmation";
 import { AuraFooter } from "./AuraFooter";
 import { getStripeClient } from "@/lib/stripe/client";
 import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
+import { useTraffic } from "@/hooks/useTraffic";
 import { Lock, Mail, CreditCard, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
@@ -419,6 +420,7 @@ function AuraCheckoutForm({
   const stripe = useStripe();
   const elements = useElements();
   const { trackAddPaymentInfo } = useMetaTracking();
+  const { trackEngagement } = useTraffic();
 
   const [email, setEmail] = useState(
     restoreData?.email && !isRestrictedCheckoutEmail(restoreData.email) ? restoreData.email : ""
@@ -500,8 +502,10 @@ function AuraCheckoutForm({
 
         const orderData = await orderRes.json();
         if (orderRes.ok && orderData.data) {
+          trackEngagement("purchase");
           onComplete(orderData.data);
         } else {
+          trackEngagement("purchase");
           onComplete({
             id: "", org_id: "feral", order_number: "Processing...", event_id: event.id,
             customer_id: "", status: "completed", subtotal, fees: 0, total: subtotal,
@@ -514,7 +518,7 @@ function AuraCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, trackEngagement]
   );
 
   const handleSubmit = useCallback(
@@ -577,8 +581,10 @@ function AuraCheckoutForm({
 
         const orderData = await orderRes.json();
         if (orderRes.ok && orderData.data) {
+          trackEngagement("purchase");
           onComplete(orderData.data);
         } else {
+          trackEngagement("purchase");
           onComplete({
             id: "", org_id: "feral", order_number: "Processing...", event_id: event.id,
             customer_id: "", status: "completed", subtotal, fees: 0, total: subtotal,
@@ -591,7 +597,7 @@ function AuraCheckoutForm({
         setProcessing(false);
       }
     },
-    [email, firstName, lastName, nameOnCard, country, cartLines, event, subtotal, onComplete]
+    [email, firstName, lastName, nameOnCard, country, cartLines, event, subtotal, onComplete, trackEngagement]
   );
 
   if (serviceUnavailable) {

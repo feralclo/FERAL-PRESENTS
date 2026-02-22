@@ -1130,9 +1130,11 @@ function SinglePageCheckoutForm({
         const orderData = await orderRes.json();
         if (orderRes.ok && orderData.data) {
           trackEngagement("payment_success");
+          trackEngagement("purchase");
           onComplete(orderData.data);
         } else {
           trackEngagement("payment_success");
+          trackEngagement("purchase");
           onComplete({
             id: "",
             org_id: "feral",

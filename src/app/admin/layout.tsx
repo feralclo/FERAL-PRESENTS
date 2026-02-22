@@ -182,10 +182,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const isLoginPage = pathname.startsWith("/admin/login");
+  const isInvitePage = pathname.startsWith("/admin/invite");
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
   const isBackendRoute = pathname.startsWith("/admin/backend");
   const isSettingsRoute = pathname.startsWith("/admin/settings");
-  const isBypassRoute = isLoginPage || isEditorPage || isBackendRoute || isSettingsRoute;
+  const isBypassRoute = isLoginPage || isInvitePage || isEditorPage || isBackendRoute || isSettingsRoute;
 
   // Fetch user email + platform owner flag on mount
   useEffect(() => {
@@ -218,6 +219,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [userMenuOpen, isBypassRoute]);
 
   if (isLoginPage) return <>{children}</>;
+
+  // Invite acceptance is a standalone page (unauthenticated)
+  if (isInvitePage) return <>{children}</>;
 
   // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
   if (isEditorPage) return <>{children}</>;

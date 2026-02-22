@@ -32,14 +32,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 
-    const { data: member, error } = await supabase
-      .from(TABLES.ORG_USERS)
-      .select("id, email, first_name, last_name, status, auth_user_id, invite_expires_at")
-      .eq("invite_token", token)
-      .eq("org_id", ORG_ID)
-      .single();
+    // Fetch member and org branding in parallel
+    const [memberResult, brandingResult, generalResult] = await Promise.all([
+      supabase
+        .from(TABLES.ORG_USERS)
+        .select("id, email, first_name, last_name, status, auth_user_id, invite_expires_at, perm_events, perm_orders, perm_marketing, perm_finance")
+        .eq("invite_token", token)
+        .eq("org_id", ORG_ID)
+        .single(),
+      supabase
+        .from("site_settings")
+        .select("data")
+        .eq("key", `${ORG_ID}_branding`)
+        .single(),
+      supabase
+        .from("site_settings")
+        .select("data")
+        .eq("key", `${ORG_ID}_general`)
+        .single(),
+    ]);
 
-    if (error || !member) {
+    const member = memberResult.data;
+    if (memberResult.error || !member) {
       return NextResponse.json({ valid: false, reason: "Invalid or expired invite" });
     }
 
@@ -53,12 +67,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, reason: "Invite has expired" });
     }
 
+    // Build org info from branding + general settings
+    const branding = (brandingResult.data?.data as Record<string, string>) || {};
+    const general = (generalResult.data?.data as Record<string, string>) || {};
+    const orgName = branding.org_name || general.org_name || ORG_ID.toUpperCase();
+
     return NextResponse.json({
       valid: true,
       member: {
         email: member.email,
         first_name: member.first_name,
         last_name: member.last_name,
+        perm_events: member.perm_events,
+        perm_orders: member.perm_orders,
+        perm_marketing: member.perm_marketing,
+        perm_finance: member.perm_finance,
+      },
+      org: {
+        name: orgName,
+        accent_color: branding.accent_color || null,
+        logo: branding.logo || null,
       },
     });
   } catch (err) {

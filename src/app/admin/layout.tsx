@@ -17,8 +17,6 @@ import {
   ClipboardCheck,
   MessageSquare,
   Activity,
-  CreditCard,
-  Megaphone,
   Mail,
   Settings,
   LogOut,
@@ -35,6 +33,7 @@ import {
   UsersRound,
   Mic2,
   Shield,
+  TrendingUp,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -94,25 +93,19 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Analytics",
+    label: "Growth",
     items: [
-      { href: "/admin/traffic/", label: "Traffic", icon: Activity },
-      { href: "/admin/popup/", label: "Popup", icon: MessageSquare },
-    ],
-  },
-  {
-    label: "Marketing",
-    items: [
+      {
+        href: "/admin/traffic/",
+        label: "Analytics",
+        icon: TrendingUp,
+        children: [
+          { href: "/admin/traffic/", label: "Traffic" },
+          { href: "/admin/popup/", label: "Popup" },
+        ],
+      },
       { href: "/admin/reps/", label: "Reps", icon: UsersRound },
-      { href: "/admin/marketing/", label: "Meta Pixel", icon: Megaphone },
       { href: "/admin/communications/", label: "Communications", icon: Mail },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { href: "/admin/settings/", label: "General", icon: Settings },
-      { href: "/admin/finance/", label: "Finance", icon: CreditCard },
     ],
   },
 ];
@@ -191,7 +184,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isLoginPage = pathname.startsWith("/admin/login");
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
   const isBackendRoute = pathname.startsWith("/admin/backend");
-  const isBypassRoute = isLoginPage || isEditorPage || isBackendRoute;
+  const isSettingsRoute = pathname.startsWith("/admin/settings");
+  const isBypassRoute = isLoginPage || isEditorPage || isBackendRoute || isSettingsRoute;
 
   // Fetch user email + platform owner flag on mount
   useEffect(() => {
@@ -230,6 +224,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Backend has its own standalone layout
   if (isBackendRoute) return <>{children}</>;
+
+  // Settings has its own standalone layout
+  if (isSettingsRoute) return <>{children}</>;
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();
@@ -411,9 +408,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         </nav>
 
-        {/* ── Entry Backend link (platform owner only) ── */}
-        {isPlatformOwner && (
-          <div className="shrink-0 border-t border-sidebar-border/50 px-3 py-2">
+        {/* ── Pinned bottom: Settings + Entry Backend ── */}
+        <div className="shrink-0 border-t border-sidebar-border/50 px-3 py-2 space-y-0.5">
+          <Link
+            href="/admin/settings/"
+            onClick={() => setOpen(false)}
+            className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12px] font-medium text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent/70 hover:text-foreground"
+          >
+            <Settings size={14} strokeWidth={1.75} className="shrink-0 text-sidebar-foreground/60 group-hover:text-foreground/80" />
+            <span>Settings</span>
+            <ChevronRight size={12} className="ml-auto shrink-0 text-sidebar-foreground/30 group-hover:text-sidebar-foreground/50" />
+          </Link>
+          {isPlatformOwner && (
             <a
               href="/admin/backend/"
               target="_blank"
@@ -428,22 +434,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
             </a>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ── User footer ── */}
         <div ref={menuRef} className="relative shrink-0 border-t border-sidebar-border">
           {/* Dropdown menu — positioned above */}
           {userMenuOpen && (
             <div className="absolute inset-x-3 bottom-full mb-2 rounded-xl border border-sidebar-border bg-sidebar p-1.5 shadow-xl shadow-black/40">
-              <Link
-                href="/admin/settings/"
-                onClick={() => { setUserMenuOpen(false); setOpen(false); }}
-                className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground"
-              >
-                <Settings size={14} className="text-sidebar-foreground/60" />
-                Settings
-              </Link>
               <button
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground"
                 onClick={() => setUserMenuOpen(false)}

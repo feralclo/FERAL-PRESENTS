@@ -21,7 +21,9 @@ const SECURITY_HEADERS: Record<string, string> = {
  */
 function isProtectedAdminPage(pathname: string): boolean {
   return (
-    pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")
+    pathname.startsWith("/admin") &&
+    !pathname.startsWith("/admin/login") &&
+    !pathname.startsWith("/admin/invite")
   );
 }
 
@@ -65,6 +67,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/verify-email",
   "/api/rep-portal/invite/",
   "/api/rep-portal/push-vapid-key",
+  "/api/team/accept-invite",
 ];
 
 const PUBLIC_API_EXACT_GETS = [

@@ -9,6 +9,7 @@ import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 import {
   Settings,
+  Users,
   CreditCard,
   Plug,
   ArrowLeft,
@@ -24,6 +25,7 @@ interface SettingsNavItem {
 
 const SETTINGS_NAV: SettingsNavItem[] = [
   { href: "/admin/settings/general/", label: "General", icon: Settings },
+  { href: "/admin/settings/users/", label: "Users", icon: Users },
   { href: "/admin/settings/finance/", label: "Finance", icon: CreditCard },
   { href: "/admin/settings/integrations/", label: "Integrations", icon: Plug },
 ];

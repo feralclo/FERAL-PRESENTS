@@ -93,6 +93,7 @@ async function checkDataAccess(): Promise<HealthCheck> {
       { name: "tickets", table: TABLES.TICKETS },
       { name: "abandoned_carts", table: TABLES.ABANDONED_CARTS },
       { name: "order_items", table: TABLES.ORDER_ITEMS },
+      { name: "org_users", table: TABLES.ORG_USERS },
     ];
 
     const results = await Promise.all(

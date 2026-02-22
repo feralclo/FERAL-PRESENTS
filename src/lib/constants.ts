@@ -32,6 +32,7 @@ export const TABLES = {
   ABANDONED_CARTS: "abandoned_carts",
   ARTISTS: "artists",
   EVENT_ARTISTS: "event_artists",
+  ORG_USERS: "org_users",
 } as const;
 
 // Settings keys stored in site_settings table

@@ -85,6 +85,8 @@ export function useDashboardRealtime(): DashboardState {
   const purchaseSessions = useRef<Map<string, number>>(new Map());
   const checkoutSessions = useRef<Map<string, number>>(new Map());
   const feedIdCounter = useRef(0);
+  // Slug → display name map (populated from dashboard API, used for realtime events)
+  const eventSlugMap = useRef<Record<string, string>>({});
 
   /* ── Presence recalculation ── */
   const recalcPresence = useCallback(() => {
@@ -250,6 +252,7 @@ export function useDashboardRealtime(): DashboardState {
       setActiveCarts(data.activeCarts ?? 0);
       setInCheckout(data.inCheckout ?? 0);
       if (data.topEvents) setTopEvents(data.topEvents);
+      if (data.eventSlugMap) eventSlugMap.current = data.eventSlugMap;
 
       return true;
     } catch (err) {
@@ -402,6 +405,11 @@ export function useDashboardRealtime(): DashboardState {
             setActiveVisitors(visitorMap.current.size);
           }
 
+          // Resolve slug to display name for the activity feed
+          const displayName = eventName
+            ? eventSlugMap.current[eventName] || eventName
+            : undefined;
+
           // Add to activity feed
           if (eventType === "add_to_cart") {
             const productName = row.product_name as string | undefined;
@@ -411,28 +419,28 @@ export function useDashboardRealtime(): DashboardState {
               title: productName ? `Added ${productName} to cart` : "Added to cart",
               amount: productPrice ? `£${Number(productPrice).toFixed(2)}` : undefined,
               timestamp: new Date(),
-              eventName: eventName || undefined,
+              eventName: displayName,
             });
           } else if (eventType === "landing") {
             addActivity({
               type: "page_view",
               title: "Viewing event page",
               timestamp: new Date(),
-              eventName: eventName || undefined,
+              eventName: displayName,
             });
           } else if (eventType === "purchase") {
             addActivity({
               type: "purchase",
               title: "Purchase completed",
               timestamp: new Date(),
-              eventName: eventName || undefined,
+              eventName: displayName,
             });
           } else if (eventType === "checkout" || eventType === "checkout_start") {
             addActivity({
               type: "checkout",
               title: "Started checkout",
               timestamp: new Date(),
-              eventName: eventName || undefined,
+              eventName: displayName,
             });
           }
         }

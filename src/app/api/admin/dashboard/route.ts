@@ -130,10 +130,22 @@ export async function GET() {
 
     const { data: events } = await supabase
       .from(TABLES.EVENTS)
-      .select("name, slug")
+      .select("name, slug, date_start")
       .eq("org_id", ORG_ID);
 
-    const slugMap = new Map((events || []).map((e) => [e.name, e.slug]));
+    const slugMap = new Map((events || []).map((e: { name: string; slug: string }) => [e.name, e.slug]));
+
+    // Build slug→display name map for resolving activity feed event names
+    const slugToDisplay = new Map<string, string>();
+    for (const e of events || []) {
+      const ev = e as { name: string; slug: string; date_start?: string };
+      let display = ev.name;
+      if (ev.date_start) {
+        const d = new Date(ev.date_start);
+        display += ` - ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+      }
+      slugToDisplay.set(ev.slug, display);
+    }
     const viewCounts = new Map<string, number>();
     for (const row of viewRows || []) {
       if (row.event_name) {
@@ -168,6 +180,20 @@ export async function GET() {
     }
     topEvents.sort((a, b) => b.views - a.views);
 
+    // Resolve slugs to display names in recent activity
+    const recentActivity = (recentActivityRes.data || []).map((row) => ({
+      ...row,
+      event_name: row.event_name
+        ? slugToDisplay.get(row.event_name) || row.event_name
+        : row.event_name,
+    }));
+
+    // Build serializable slug→name map for frontend realtime resolution
+    const eventSlugMap: Record<string, string> = {};
+    for (const [slug, display] of slugToDisplay) {
+      eventSlugMap[slug] = display;
+    }
+
     return NextResponse.json({
       today: {
         revenue: todayRevenue,
@@ -187,12 +213,13 @@ export async function GET() {
       activeVisitors: uniqueSessions.size,
       activeCarts,
       inCheckout,
-      recentActivity: recentActivityRes.data || [],
+      recentActivity,
       recentSessions: recentSessionsRes.data || [],
       recentCartSessions: recentCartsRes.data || [],
       recentPurchaseSessions: recentPurchasesRes.data || [],
       recentCheckoutSessions: recentCheckoutsRes.data || [],
       topEvents: topEvents.slice(0, 5),
+      eventSlugMap,
     });
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

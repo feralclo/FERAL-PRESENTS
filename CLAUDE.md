@@ -40,10 +40,11 @@ src/
 │   │   ├── error.tsx          # Error boundary
 │   │   └── loading.tsx        # Loading skeleton
 │   ├── admin/                 # Admin dashboard (25+ pages). Sidebar groups: Dashboard, Events,
-│   │                          # Commerce, Storefront, Analytics, Marketing, Settings.
+│   │                          # Commerce, Storefront, Analytics, Marketing, Settings (incl. Users).
 │   │                          # Platform-owner-only "Entry Backend" section (health, connect,
 │   │                          # platform-settings) gated by is_platform_owner flag.
-│   └── api/                   # 85 endpoints — see API Routes section for full list
+│   │                          # /admin/invite/[token] — standalone invite acceptance page (no auth).
+│   └── api/                   # 92 endpoints — see API Routes section for full list
 ├── components/
 │   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
@@ -87,10 +88,11 @@ src/
 │   ├── discount-codes.ts, vat.ts, rate-limit.ts  # Pricing + security
 │   ├── themes.ts              # Theme system helpers (getActiveTemplate, etc.)
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications
+│   ├── team-emails.ts         # Team invite emails via Resend (branded, fire-and-forget)
 │   ├── klaviyo.ts, meta.ts    # Marketing integrations
 │   └── utils.ts               # cn() helper (clsx + tailwind-merge)
 ├── types/                     # TypeScript types per domain (settings, events, orders, tickets,
-│                              # products, discounts, reps, email, analytics, marketing)
+│                              # products, discounts, reps, email, analytics, marketing, team)
 └── styles/
     ├── base.css               # Reset, CSS variables, typography, reveal animations
     ├── effects.css            # CRT scanlines + noise texture overlays
@@ -166,12 +168,7 @@ Each tenant can fully customize their visual identity:
 - Logo, org name, accent color, background color, card color, text color
 - Heading font, body font, copyright text
 
-**How it flows — no FOUC:**
-1. Event layout (Server Component) fetches branding from `site_settings` in parallel with other data
-2. CSS variables (`--accent`, `--bg-dark`, `--card-bg`, `--text-primary`, `--font-mono`, `--font-sans`) injected server-side
-3. Client components use `useBranding()` hook (module-level cache, single fetch) for text/logo
-4. `GET /api/branding` serves branding to checkout pages (public, no auth)
-5. `POST /api/branding` saves branding (admin auth required)
+**How it flows — no FOUC:** Event layout (Server Component) fetches branding → injects CSS vars (`--accent`, `--bg-dark`, `--card-bg`, `--text-primary`, `--font-mono`, `--font-sans`) server-side. Client components use `useBranding()` hook (module-level cache). `GET /api/branding` (public), `POST /api/branding` (admin auth).
 
 ### Settings System
 **Event data**: `events` + `ticket_types` tables
@@ -196,24 +193,7 @@ Each tenant can fully customize their visual identity:
 | `feral_stripe_account` | Global Stripe Connect account (fallback) |
 
 ### Request Flow (Event Pages)
-```
-Browser → /event/[slug]/
-  ↓
-RootLayout (fonts, GTM consent, scanlines, cookie consent)
-  ↓
-EventLayout [Server Component, force-dynamic]
-  ├─ Fetch event from events table (theme, cover_image, settings_key)
-  ├─ Fetch settings from site_settings (parallel)
-  ├─ Fetch org branding for CSS variable injection (parallel)
-  ├─ Fetch active template via getActiveTemplate() (parallel)
-  ├─ Inject CSS variables + data-theme attribute
-  ├─ Mount ThemeEditorBridge (live editor support)
-  └─ Wrap children in SettingsProvider
-  ↓
-EventPage [Server Component, force-dynamic]
-  ├─ template === "aura"    → AuraEventPage
-  └─ template === "midnight" → MidnightEventPage (default)
-```
+`/event/[slug]/` → RootLayout → EventLayout (Server Component, force-dynamic: fetches event + settings + branding + template in parallel, injects CSS vars + `data-theme`, wraps in SettingsProvider) → EventPage routes to `AuraEventPage` or `MidnightEventPage` based on active template.
 
 ### Caching Strategy
 - Event + admin pages: `export const dynamic = "force-dynamic"` — every request fetches fresh data
@@ -227,7 +207,7 @@ EventPage [Server Component, force-dynamic]
 
 | System | Middleware protection | Route handler | Users |
 |--------|---------------------|---------------|-------|
-| Admin | `/admin/*` pages, all non-public `/api/*` | `requireAuth()` | Created in Supabase Auth dashboard (invitation-only) |
+| Admin | `/admin/*` pages (except `/admin/invite`), all non-public `/api/*` | `requireAuth()` | Created via team invite flow (`/admin/settings/users/`) or Supabase Auth dashboard |
 | Rep portal | `/rep/*` pages, `/api/rep-portal/*` | `requireRepAuth()` | Self-signup or admin invite via `/api/reps/[id]/invite` |
 
 **Role flags** (in Supabase `app_metadata`, additive):
@@ -247,7 +227,7 @@ EventPage [Server Component, force-dynamic]
 1. **Middleware** (first layer) — blocks unauthenticated requests to protected routes at the edge
 2. **`requireAuth()` / `requireRepAuth()` / `requirePlatformOwner()`** (second layer) — each handler verifies auth + role independently
 
-**Public API routes (no auth):** Stripe (`payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`), `checkout/capture`, `GET events|settings|merch|branding|themes|media/[key]|health`, `POST track|meta/capi|discounts/validate`, `/api/cron/*` (CRON_SECRET), `/api/unsubscribe` (token), `orders/[id]/wallet/*` (UUID), rep public auth routes, `auth/*`.
+**Public API routes (no auth):** Stripe (`payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`), `checkout/capture`, `GET events|settings|merch|branding|themes|media/[key]|health`, `POST track|meta/capi|discounts/validate`, `/api/cron/*` (CRON_SECRET), `/api/unsubscribe` (token), `orders/[id]/wallet/*` (UUID), rep public auth routes, `auth/*`, `/api/team/accept-invite` (rate limited, 5/15min).
 
 **Security headers**: `nosniff`, `SAMEORIGIN`, `XSS-Protection`, HSTS (production), strict-origin referrer, restrictive permissions policy.
 
@@ -278,6 +258,7 @@ EventPage [Server Component, force-dynamic]
 | `discounts` | Discount codes | code, type (percentage/fixed), value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at, min_order_amount |
 | `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
+| `org_users` | Team members + invites | auth_user_id, email, first_name, last_name, role (owner/member), perm_events, perm_orders, perm_marketing, perm_finance, status (invited/active/suspended), invite_token, invite_expires_at |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 
 **Reps Program tables** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. See `src/types/reps.ts` for full column types.
@@ -303,21 +284,13 @@ Using the wrong client causes silent data loss (empty arrays instead of errors w
 ### External Service Changes Rule (CRITICAL)
 Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel** (deployments, logs, projects). Use MCP tools directly — **NEVER** give the user SQL to run manually or tell them to go to dashboards. Always execute migrations and queries via MCP yourself. **Stripe** has no MCP — tell user to use dashboard or provide copy-paste instructions.
 
-**If Supabase or Vercel MCP token has expired**, do NOT fall back to giving the user raw SQL or manual instructions. Instead, stop and display a highly visible reconnection prompt:
-
-```
-## ⚠️  SUPABASE MCP DISCONNECTED
-
-Run /mcp in this terminal to re-authorize, then I'll continue.
-```
-
-**Stripe** has no MCP — tell user to use dashboard or provide copy-paste instructions.
+**If Supabase or Vercel MCP token has expired**, stop and tell the user to run `/mcp` to re-authorize. Do NOT fall back to giving raw SQL or manual instructions. **Stripe** has no MCP — tell user to use dashboard or provide copy-paste instructions.
 
 **Rules:** Never hardcode secrets. Document changes in this file. Never assume a table/column exists unless documented here. Never give the user SQL to run — that's Claude's job via MCP.
 
 ---
 
-## API Routes (85 endpoints)
+## API Routes (92 endpoints)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -346,6 +319,7 @@ Run /mcp in this terminal to re-authorize, then I'll continue.
 - **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
+- **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
 - **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
 
 ---
@@ -363,16 +337,7 @@ Hooks that return objects/functions consumed as `useEffect`/`useCallback` depend
 - `useBranding()` — returns `useMemo(branding)` with module-level cache
 - `useDashboardRealtime()` — returns `useMemo(dashboardState)`
 
-**Consumer pattern:**
-```typescript
-// CORRECT — destructure stable callbacks
-const { trackViewContent } = useMetaTracking();
-useEffect(() => { trackViewContent(...) }, [trackViewContent]);
-
-// WRONG — whole object as dependency causes infinite re-renders
-const meta = useMetaTracking();
-useEffect(() => { meta.trackViewContent(...) }, [meta]);
-```
+**Consumer pattern:** Destructure stable callbacks (`const { trackViewContent } = useMetaTracking()`) and use them as deps. Never use the whole object as a dependency — causes infinite re-renders.
 
 ### Consent Gating (`useMetaTracking`)
 Checks `feral_cookie_consent` in localStorage for `marketing: true`. Listens for consent changes via `storage` event (cross-tab) and `feral_consent_update` custom event (same-tab, dispatched by `CookieConsent.tsx`). Pixel only loads after consent.
@@ -464,12 +429,7 @@ Each theme's `{theme}.css` maps these to Tailwind semantic tokens (`--color-prim
 @import "tailwindcss/utilities";               /* UNLAYERED — intentional! */
 ```
 
-**Why utilities are unlayered**: `base.css` has an unlayered `* { margin: 0; padding: 0; }`. Unlayered styles always beat layered styles. If Tailwind utilities were layered, that `*` reset would override every `p-4`, `m-2`, `gap-3` class. By keeping utilities unlayered, they win on specificity (class > universal selector).
-
-**NEVER**:
-- Add `layer(utilities)` to the Tailwind utilities import
-- Move the utilities import into any `@layer` block
-- Add a global `*` reset that could override Tailwind classes
+**Why utilities are unlayered**: `base.css` has an unlayered `* { margin: 0; padding: 0; }`. Unlayered styles always beat layered styles. Utilities must stay unlayered so class selectors win over the universal `*` reset. **NEVER** add `layer(utilities)`, move utilities into `@layer`, or add global `*` resets that override Tailwind.
 
 ### Rules for New CSS
 1. **Component-level imports** — new components import their own CSS file
@@ -487,20 +447,7 @@ Event pages are the revenue-generating surface — where ticket buyers browse, e
 ### Theme Component Pattern
 Each theme lives in `src/components/{themename}/` with a consistent structure:
 
-| Component | Role | shadcn/ui Used |
-|-----------|------|---------------|
-| `{Theme}EventPage` | Orchestrator — hooks, state, layout composition | — |
-| `{Theme}Hero` | Full-bleed banner, title, metadata, CTA | Button |
-| `{Theme}TicketWidget` | Ticket selection, cart, size popup, checkout CTA | Card, Button, Dialog, Badge, Separator |
-| `{Theme}TicketCard` | Individual ticket tier with qty controls | Button, Badge |
-| `{Theme}MerchModal` | Merchandise viewer with image gallery + size selector | Dialog, Button, Badge, Separator |
-| `{Theme}EventInfo` | About, details, venue sections | Separator |
-| `{Theme}Lineup` | Artist names (flex-wrap or grid) | Badge (optional) |
-| `{Theme}CartSummary` | Line-item breakdown with merch sizes | Badge |
-| `{Theme}TierProgression` | Ticket tier status indicators | Badge |
-| `{Theme}BottomBar` | Fixed mobile CTA bar (`lg:hidden`) | Button |
-| `{Theme}SocialProof` | "Last ticket sold X min ago" toast | — |
-| `{Theme}Footer` | Copyright, status, branding | Separator |
+Each theme has: `{Theme}EventPage` (orchestrator), `{Theme}Hero` (banner + CTA), `{Theme}TicketWidget` (ticket selection + cart), `{Theme}TicketCard` (tier with qty controls), `{Theme}MerchModal` (image gallery + size selector), `{Theme}EventInfo` (about/details/venue), `{Theme}Lineup`, `{Theme}CartSummary`, `{Theme}TierProgression`, `{Theme}BottomBar` (mobile CTA), `{Theme}SocialProof`, `{Theme}Footer`. All use shadcn/ui (Button, Card, Dialog, Badge, Separator).
 
 ### Rules for New Event Theme Components
 1. **Tailwind for layout** — all spacing, responsive, grid, flex via utility classes
@@ -515,26 +462,10 @@ Each theme lives in `src/components/{themename}/` with a consistent structure:
 10. **CSS imports at orchestrator level** — the `{Theme}EventPage` orchestrator imports both `{theme}.css` and `{theme}-effects.css`. Child components don't import CSS
 
 ### Theme Design Tokens Flow
-```
-base.css :root (--accent, --bg-dark, --card-bg, --text-primary, --font-mono, --font-sans)
-  ↓ overridden by server-injected branding CSS vars (event layout.tsx)
-  ↓ consumed by {theme}.css @theme inline {} mapping to Tailwind tokens
-  ↓ available as Tailwind classes: bg-background, text-foreground, text-primary, border-border
-  ↓ effects CSS uses var() directly for animations/gradients that Tailwind can't express
-```
-
-This flow means: change the accent color in admin branding → every component in every theme updates automatically. No prop drilling, no context, no re-renders — pure CSS cascade.
+`base.css :root` → server-injected branding CSS vars → `{theme}.css @theme inline {}` → Tailwind classes (`bg-background`, `text-primary`, etc.) → effects CSS uses `var()` for animations. Change accent color in admin → every theme updates automatically via pure CSS cascade.
 
 ### Adding a New Theme
-To add a new template (e.g. "nova"), update these files:
-1. **Components**: Create `src/components/nova/` with orchestrator + child components following the pattern above
-2. **CSS**: Create `nova.css` (Tailwind tokens + scoped reset) and `nova-effects.css` (visual effects)
-3. **Routing**: Add `if (template === "nova") return <NovaEventPage />` in `page.tsx` and `checkout/page.tsx`
-4. **Types**: Add `"nova"` to `StoreTheme.template` union in `src/types/settings.ts`
-5. **Admin UI**: Add to `TEMPLATES` array in `src/app/admin/ticketstore/page.tsx`
-6. **API preset** (optional): Add branding preset in `src/app/api/themes/route.ts`
-
-The layout.tsx `data-theme` attribute is dynamic — it uses `activeTemplate` directly, so new themes get correct CSS scoping automatically.
+To add a new template (e.g. "nova"): (1) Create `src/components/nova/` with orchestrator + child components, (2) Create `nova.css` + `nova-effects.css`, (3) Add routing in `page.tsx` + `checkout/page.tsx`, (4) Add to `StoreTheme.template` union in `src/types/settings.ts`, (5) Add to `TEMPLATES` in `src/app/admin/ticketstore/page.tsx`. The `data-theme` attribute is dynamic — new themes get CSS scoping automatically.
 
 ---
 
@@ -581,20 +512,7 @@ The rep portal uses the **admin dashboard pattern** — Tailwind + shadcn/ui —
 
 Alert, Avatar, Badge, Button, Calendar, Card, Collapsible, ColorPicker, DatePicker, Dialog, Input, Label, LiveIndicator, LiveStatCard, NativeSelect, Popover, Progress, Select, Separator, Slider, StatCard, Switch, Table, Tabs, Textarea, Tooltip, TrendBadge
 
-**How to add new shadcn components**:
-1. Create in `src/components/ui/` following the pattern below
-2. Use Radix UI primitives from the `radix-ui` package (already installed)
-3. Use `cn()` from `@/lib/utils` for className merging
-
-```tsx
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-function ComponentName({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("base-classes", className)} {...props} />;
-}
-export { ComponentName };
-```
+**How to add new shadcn components**: Create in `src/components/ui/`, use Radix UI primitives (`radix-ui` package), use `cn()` from `@/lib/utils` for className merging. Follow existing component patterns (named export, `className` prop via `cn()`).
 
 ### Admin Design Tokens
 Defined in `tailwind.css` via `@theme inline {}`. Key tokens: `background` (#08080c), `foreground` (#f0f0f5), `primary` (#8B5CF6 Electric Violet), `card` (#111117), `secondary` (#151520), `muted-foreground` (#8888a0), `border` (#1e1e2a), `destructive` (#F43F5E), `success` (#34D399), `warning` (#FBBF24), `info` (#38BDF8). Sidebar variants: `sidebar` (#0a0a10), `sidebar-foreground` (#8888a0), `sidebar-accent` (#141420), `sidebar-border` (#161624).

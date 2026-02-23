@@ -3,6 +3,7 @@ import { requirePlatformOwner } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, planKey, brandingKey, stripeAccountKey } from "@/lib/constants";
 import { PLANS } from "@/lib/plans";
+import { calculateApplicationFee } from "@/lib/stripe/config";
 import type { OrgPlanSettings } from "@/types/plans";
 
 interface TenantOwner {
@@ -208,6 +209,34 @@ export async function GET(request: NextRequest) {
     };
   });
 
+  // Platform-wide summary: GMV + estimated platform fees
+  let summaryRevenue = 0;
+  let summaryFees = 0;
+  let summaryOrders = 0;
+  let summaryEvents = 0;
+
+  for (const orgId of orgIds) {
+    const orgOrders = (orderRows || []).filter((r) => r.org_id === orgId);
+    const orgPlanSettings = settingsMap.get(planKey(orgId)) as OrgPlanSettings | undefined;
+    const orgPlanId = orgPlanSettings?.plan_id ?? "starter";
+    const orgPlan = PLANS[orgPlanId] ?? PLANS.starter;
+
+    for (const order of orgOrders) {
+      const total = order.total || 0;
+      summaryRevenue += total;
+      summaryFees += calculateApplicationFee(total, orgPlan.fee_percent, orgPlan.min_fee);
+    }
+    summaryOrders += orgOrders.length;
+    summaryEvents += eventCountMap.get(orgId) || 0;
+  }
+
+  const summary = {
+    total_revenue: summaryRevenue,
+    estimated_platform_fees: summaryFees,
+    total_orders: summaryOrders,
+    total_events: summaryEvents,
+  };
+
   // Optional search filter
   const search = request.nextUrl.searchParams.get("search")?.toLowerCase();
   const filtered = search
@@ -219,5 +248,5 @@ export async function GET(request: NextRequest) {
       )
     : tenants;
 
-  return NextResponse.json({ data: filtered });
+  return NextResponse.json({ data: filtered, summary });
 }

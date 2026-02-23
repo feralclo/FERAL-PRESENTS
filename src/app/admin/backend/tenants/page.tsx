@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,8 @@ import {
   BarChart3,
   Check,
   X,
+  PoundSterling,
+  TrendingUp,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -55,6 +58,13 @@ interface Tenant {
   display_name: string;
   signup_date: string | null;
   status: "active" | "setup" | "inactive";
+}
+
+interface PlatformSummary {
+  total_revenue: number;
+  estimated_platform_fees: number;
+  total_orders: number;
+  total_events: number;
 }
 
 type SortKey =
@@ -304,6 +314,7 @@ function TenantDetail({ tenant }: { tenant: Tenant }) {
 
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [summary, setSummary] = useState<PlatformSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -319,6 +330,7 @@ export default function TenantsPage() {
       })
       .then((json) => {
         if (json.data) setTenants(json.data);
+        if (json.summary) setSummary(json.summary);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -424,6 +436,26 @@ export default function TenantsPage() {
         />
       </div>
 
+      {/* Revenue Summary Cards */}
+      {summary && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SummaryCard
+            label="Total GMV"
+            value={formatCurrency(summary.total_revenue)}
+            icon={TrendingUp}
+            color="text-foreground"
+            isText
+          />
+          <SummaryCard
+            label="Est. Platform Revenue"
+            value={formatCurrency(summary.estimated_platform_fees)}
+            icon={PoundSterling}
+            color="text-success"
+            isText
+          />
+        </div>
+      )}
+
       {/* Search */}
       <div className="max-w-sm">
         <Input
@@ -508,11 +540,13 @@ function SummaryCard({
   value,
   icon: Icon,
   color,
+  isText,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: typeof Users;
   color: string;
+  isText?: boolean;
 }) {
   return (
     <Card className="py-0 gap-0">
@@ -557,7 +591,13 @@ function TenantRow({
 
         {/* Org */}
         <td className="px-4 py-3">
-          <div className="font-medium text-foreground">{tenant.display_name}</div>
+          <Link
+            href={`/admin/backend/tenants/${encodeURIComponent(tenant.org_id)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="font-medium text-foreground hover:text-primary transition-colors"
+          >
+            {tenant.display_name}
+          </Link>
           {tenant.domain && (
             <div className="text-xs text-muted-foreground">{tenant.domain.hostname}</div>
           )}

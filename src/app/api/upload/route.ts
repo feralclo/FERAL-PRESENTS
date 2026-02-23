@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
     // Detect content type from data URI
     const contentType = imageData.match(/^data:(image\/\w+);/)?.[1] || "image/jpeg";
 
-    // Store in site_settings with a media_ prefix
-    const storageKey = `media_${key}`;
+    // Store in site_settings with org-namespaced media_ prefix
+    const storageKey = `media_${auth.orgId}_${key}`;
     const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(
       {
         key: storageKey,
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the serving URL (cache-bust so browser fetches new version on replace)
-    const url = `/api/media/${key}?v=${Date.now()}`;
+    const url = `/api/media/${auth.orgId}_${key}?v=${Date.now()}`;
     console.log(`[upload] Stored image: key=${storageKey}, size=${Math.round(imageData.length / 1024)}KB, url=${url}`);
 
     return NextResponse.json({ url });

@@ -69,11 +69,14 @@ async function resolveOrgByDomain(hostname: string): Promise<string> {
         return orgId;
       }
     }
-  } catch {
-    // Fall through to fallback
+  } catch (err) {
+    console.error("[middleware] Domain lookup failed:", err instanceof Error ? err.message : err);
   }
 
   // Wildcard subdomain fallback: {slug}.entry.events → use slug as org_id
+  // Note: This trusts the subdomain slug as org_id. If the org doesn't exist,
+  // queries will return empty results (no data leak), but orphaned records could
+  // be created. A future improvement could validate the org exists.
   const subdomainMatch = hostname.match(/^([a-z0-9-]+)\.entry\.events$/);
   if (subdomainMatch && subdomainMatch[1] !== "admin") {
     const slug = subdomainMatch[1];
@@ -96,7 +99,7 @@ async function resolveOrgByUser(userId: string): Promise<string> {
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/org_users?auth_user_id=eq.${encodeURIComponent(userId)}&status=eq.active&select=org_id&limit=1`,
+      `${SUPABASE_URL}/rest/v1/org_users?auth_user_id=eq.${encodeURIComponent(userId)}&status=eq.active&select=org_id&order=created_at.asc&limit=1`,
       {
         headers: {
           apikey: serviceRoleKey,

@@ -179,7 +179,7 @@ export default function PaymentSettingsPage() {
       if (supabase) {
         await supabase.from(TABLES.SITE_SETTINGS).upsert(
           {
-            key: "feral_stripe_account",
+            key: stripeAccountKey(orgId),
             data: { account_id: createJson.account_id },
             updated_at: new Date().toISOString(),
           },

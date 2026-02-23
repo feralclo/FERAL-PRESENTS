@@ -137,11 +137,12 @@ export async function DELETE(
       );
     }
 
-    // Check if product is linked to any active ticket types
+    // Check if product is linked to any active ticket types (scoped to this org)
     const { count } = await supabase
       .from(TABLES.TICKET_TYPES)
       .select("*", { count: "exact", head: true })
       .eq("product_id", id)
+      .eq("org_id", auth.orgId)
       .in("status", ["active", "hidden"]);
 
     if (count && count > 0) {

@@ -113,13 +113,13 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
   const logoH = Math.min(settings.logo_height || 48, 100);
 
   const previewSubject = settings.order_confirmation_subject
-    .replace("{{event_name}}", "FERAL Liverpool").replace("{{order_number}}", "FERAL-00042");
+    .replace("{{event_name}}", "Summer Festival").replace("{{order_number}}", "DEMO-00042");
   const previewHeading = settings.order_confirmation_heading
-    .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "FERAL Liverpool");
+    .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "Summer Festival");
   const previewMessage = settings.order_confirmation_message
-    .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "FERAL Liverpool")
+    .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "Summer Festival")
     .replace("{{venue_name}}", "Invisible Wind Factory").replace("{{event_date}}", "Thursday 27 March 2026")
-    .replace("{{order_number}}", "FERAL-00042").replace("{{ticket_count}}", "2");
+    .replace("{{order_number}}", "DEMO-00042").replace("{{ticket_count}}", "2");
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -167,13 +167,13 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
             <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
             <div className="px-8 py-5">
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Event</div>
-              <div style={{ fontSize: 17, fontWeight: 600, color: "#111", marginBottom: 4 }}>FERAL Liverpool</div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "#111", marginBottom: 4 }}>Summer Festival</div>
               <div style={{ fontSize: 14, color: "#6666a0" }}>Thursday 27 March 2026 · Invisible Wind Factory</div>
             </div>
             <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
             <div className="px-8 py-5">
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 12 }}>Order Details</div>
-              <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>FERAL-00042</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>DEMO-00042</span></div>
               <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Tickets</span><span style={{ color: "#111" }}>2</span></div>
               <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#6666a0" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>£52.92</span></div>
             </div>
@@ -186,17 +186,17 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
               <div style={{ background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
                 <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
                   <div style={{ fontSize: 13, color: "#6666a0" }}>{showMerch ? "GA + Tee" : "General Release"}</div>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-A1B2C3D4</div>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>DEMO-A1B2C3D4</div>
                   {showMerch && (
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed #e8e8e8" }}>
                       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: accent, marginBottom: 2 }}>INCLUDES MERCH</div>
-                      <div style={{ fontSize: 12, color: "#6666a0" }}>FERAL Tee · Size M</div>
+                      <div style={{ fontSize: 12, color: "#6666a0" }}>Event Tee · Size M</div>
                     </div>
                   )}
                 </div>
                 <div style={{ padding: "12px 16px" }}>
                   <div style={{ fontSize: 13, color: "#6666a0" }}>General Release</div>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>FERAL-E5F6G7H8</div>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>DEMO-E5F6G7H8</div>
                 </div>
               </div>
             </div>

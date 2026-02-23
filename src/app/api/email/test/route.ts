@@ -102,11 +102,11 @@ export async function POST(request: NextRequest) {
 
     // Sample order data for the test email
     const sampleOrder: OrderEmailData = {
-      order_number: "FERAL-00042",
+      order_number: "DEMO-00042",
       customer_first_name: "Alex",
       customer_last_name: "Test",
       customer_email: to,
-      event_name: "FERAL Liverpool",
+      event_name: "Summer Festival",
       venue_name: "Invisible Wind Factory",
       event_date: "Thursday 27 March 2026",
       doors_time: "9:30PM — 4:00AM",
@@ -114,12 +114,12 @@ export async function POST(request: NextRequest) {
       total: "52.92",
       tickets: includeMerch
         ? [
-            { ticket_code: "FERAL-A1B2C3D4", ticket_type: "GA + Tee", merch_size: "M", merch_name: "FERAL Tee" },
-            { ticket_code: "FERAL-E5F6G7H8", ticket_type: "General Release" },
+            { ticket_code: "DEMO-A1B2C3D4", ticket_type: "GA + Tee", merch_size: "M", merch_name: "Event Tee" },
+            { ticket_code: "DEMO-E5F6G7H8", ticket_type: "General Release" },
           ]
         : [
-            { ticket_code: "FERAL-A1B2C3D4", ticket_type: "General Release" },
-            { ticket_code: "FERAL-E5F6G7H8", ticket_type: "General Release" },
+            { ticket_code: "DEMO-A1B2C3D4", ticket_type: "General Release" },
+            { ticket_code: "DEMO-E5F6G7H8", ticket_type: "General Release" },
           ],
     };
 

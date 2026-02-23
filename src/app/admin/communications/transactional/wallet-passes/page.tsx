@@ -139,7 +139,7 @@ function WalletPassPreview({ settings: s, large }: { settings: WalletPassSetting
             className="text-lg font-bold tracking-wide"
             style={{ color: text }}
           >
-            FERAL LIVERPOOL
+            Summer Festival
           </div>
         </div>
 
@@ -191,7 +191,7 @@ function WalletPassPreview({ settings: s, large }: { settings: WalletPassSetting
                 MERCH
               </div>
               <div className="text-xs font-medium" style={{ color: text }}>
-                Includes FERAL Tee (L)
+                Includes Event Tee (L)
               </div>
             </div>
           )}
@@ -217,7 +217,7 @@ function WalletPassPreview({ settings: s, large }: { settings: WalletPassSetting
             className="mt-3 font-mono text-xs font-bold tracking-[1.5px]"
             style={{ color: accent }}
           >
-            FERAL-A1B2C3D4
+            DEMO-A1B2C3D4
           </div>
         </div>
       </div>

@@ -161,7 +161,7 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
           className="absolute left-0 right-0 text-center"
           style={{ top: yPct(eventNameY - 4), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(9px, 2.8cqi, 14px)", fontWeight: 700, color: text, letterSpacing: 1, textTransform: "uppercase" }}
         >
-          FERAL LIVERPOOL
+          Summer Festival
         </div>
 
         {/* Venue */}
@@ -189,7 +189,7 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
               INCLUDES MERCH
             </div>
             <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 9), fontSize: "clamp(5px, 1.6cqi, 8px)", color: secondary }}>
-              FERAL Tee · Size M
+              Event Tee · Size M
             </div>
             <div className="absolute left-0 right-0 text-center" style={{ top: yPct(typeY + 14), fontSize: "clamp(3.5px, 1.2cqi, 6px)", color: secondary }}>
               Present QR for entry &amp; merch collection
@@ -217,7 +217,7 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
           className="absolute left-0 right-0 text-center"
           style={{ top: yPct(codeY - 4), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(9px, 2.8cqi, 14px)", fontWeight: 700, color: accent, letterSpacing: 1 }}
         >
-          FERAL-A1B2C3D4
+          DEMO-A1B2C3D4
         </div>
 
         {/* Holder name */}
@@ -233,7 +233,7 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
             className="absolute left-0 right-0 text-center"
             style={{ top: yPct(orderY - 2), fontFamily: "'Space Mono', 'Courier New', monospace", fontSize: "clamp(4px, 1.4cqi, 7px)", color: "#646464" }}
           >
-            ORDER: FERAL-00042
+            ORDER: DEMO-00042
           </div>
         )}
 

@@ -28,9 +28,9 @@ Everything built must serve that multi-tenant future. Every database query filte
 
 ```
 src/
-├── middleware.ts              # Auth session refresh, route protection, security headers
+├── middleware.ts              # Auth, route protection, security headers, org_id resolution
 ├── app/
-│   ├── layout.tsx             # Root layout (fonts, GTM, consent, scanlines)
+│   ├── layout.tsx             # Root layout (fonts, GTM, consent, scanlines, OrgProvider)
 │   ├── page.tsx               # Landing page (/)
 │   ├── global-error.tsx       # Global error boundary
 │   ├── event/[slug]/          # Public event pages
@@ -64,6 +64,7 @@ src/
 │   │                          # ConfettiOverlay, LevelUpOverlay, TikTokIcon
 │   ├── landing/               # LandingPage, HeroSection, ParticleCanvas, EventsSection, etc.
 │   ├── layout/                # Header, Footer, Scanlines, CookieConsent
+│   ├── OrgProvider.tsx        # React context: useOrgId() for client-side org_id access
 │   └── ui/                    # shadcn/ui (27 components — see Admin UI section)
 ├── hooks/
 │   ├── useBranding.ts         # Org branding (module-level cache, single fetch)
@@ -80,8 +81,9 @@ src/
 ├── lib/
 │   ├── supabase/              # admin.ts (data), server.ts (auth only), client.ts (browser), middleware.ts
 │   ├── stripe/                # client.ts (browser), server.ts (platform), config.ts (fees/currency)
-│   ├── auth.ts                # requireAuth(), requireRepAuth(), getSession()
-│   ├── constants.ts           # ORG_ID, TABLES, SETTINGS_KEYS, brandingKey(), abandonedCartAutomationKey()
+│   ├── auth.ts                # requireAuth() → {user, orgId}, requireRepAuth(), getSession()
+│   ├── org.ts                 # getOrgId() (server), getOrgIdFromRequest() (API routes)
+│   ├── constants.ts           # ORG_ID (deprecated fallback), TABLES, key functions
 │   ├── settings.ts            # fetchSettings (server), saveSettings (client)
 │   ├── orders.ts, email.ts, email-templates.ts  # Order creation + email (Resend)
 │   ├── pdf.ts, qr.ts, ticket-utils.ts, wallet-passes.ts  # Ticket delivery (PDF, QR, Apple/Google Wallet)
@@ -145,19 +147,44 @@ event/[slug]/page.tsx
 - **Model**: Direct charges on connected accounts with application fee
 - **Account type**: Custom (white-labeled — promoter never sees Stripe dashboard)
 - **Platform fee**: 5% default, £0.50 minimum (configurable per event via `platform_fee_percent`)
-- **Per-event routing**: `event.stripe_account_id` → fallback to `feral_stripe_account` in site_settings → fallback to platform-only charge
+- **Per-event routing**: `event.stripe_account_id` → fallback to `{org_id}_stripe_account` in site_settings → fallback to platform-only charge
 - **Account verification**: `verifyConnectedAccount()` validates account is accessible; falls back to platform if revoked
 - **Currency**: GBP, EUR, USD. Amounts always in smallest unit (pence/cents) — use `toSmallestUnit()` / `fromSmallestUnit()` from `lib/stripe/config.ts`
-- **VAT**: `lib/vat.ts` calculates VAT (inclusive or exclusive), configured via `feral_vat` settings key
+- **VAT**: `lib/vat.ts` calculates VAT (inclusive or exclusive), configured via `{org_id}_vat` settings key
 - **Discounts**: Validated server-side during PaymentIntent creation. Supports percentage and fixed-amount codes with expiry, usage limits, and per-event restrictions
 - **Rate limiting**: Payment endpoint: 10 requests/minute/IP via `createRateLimiter()`
 - Admin pages: `/admin/payments/` (promoter-facing setup), `/admin/connect/` (platform owner only — Entry Backend), `/admin/finance/` (finance overview)
 - **Connect API routes** (`/api/stripe/connect/*`): gated by `requirePlatformOwner()` — only accessible to users with `is_platform_owner: true`
 
-### Multi-Tenancy: org_id on EVERYTHING
-Every database table has an `org_id` column. Every query must filter by it.
-- Current value: `'feral'` (from `lib/constants.ts`)
-- Every new table, every new query, every new API route must include `org_id`
+### Multi-Tenancy: Dynamic org_id Resolution
+Every database table has an `org_id` column. Every query must filter by it. org_id is resolved dynamically per request — **never hardcode `"feral"`**.
+
+**Resolution flow** (middleware → header → helpers):
+```
+Request → Middleware resolves org_id → sets x-org-id header → downstream reads it
+         ├─ Admin host + logged in → org_users lookup (user.id → org_id)
+         ├─ Tenant host → domains table lookup (hostname → org_id)
+         └─ Fallback → "feral"
+```
+
+**Domain routing:**
+- `admin.entry.events` — admin host (resolves org from user's `org_users` record)
+- `localhost`, `*.vercel.app` — dev/preview (treated as admin host)
+- `feralpresents.com`, `agencyferal.com` — tenant hosts (resolved from `domains` table)
+- Admin pages on tenant hosts redirect to `admin.entry.events`
+
+**Three access patterns:**
+| Context | Helper | Import |
+|---------|--------|--------|
+| Server components | `await getOrgId()` | `@/lib/org` |
+| API routes (authenticated) | `auth.orgId` from `requireAuth()` | `@/lib/auth` |
+| API routes (public) | `getOrgIdFromRequest(request)` | `@/lib/org` |
+| Client components | `useOrgId()` | `@/components/OrgProvider` |
+
+**Caching:** Middleware caches domain→org and user→org lookups in a module-level Map with 60s TTL.
+
+**Cron routes** (`/api/cron/*`) have no request context — they use `ORG_ID` constant as fallback. Future: iterate over all orgs.
+
 - Supabase RLS policies should enforce org_id isolation
 - This is non-negotiable — it's the foundation for the multi-promoter platform
 
@@ -174,26 +201,28 @@ Each tenant can fully customize their visual identity:
 **Event data**: `events` + `ticket_types` tables
 - Event content (name, venue, dates, theme, about, lineup, images) in `events` table
 - Ticket configuration (price, capacity, sold, tier, merch) in `ticket_types` table
-- Marketing settings stored under key `feral_marketing`
+- Marketing settings stored under key `{org_id}_marketing`
 - Branding settings stored under key `{org_id}_branding`
 
-**Settings keys** (stored in `site_settings` table as key → JSONB):
-| Key | Purpose |
-|-----|---------|
-| `{org_id}_general` | Org general settings (name, timezone, support email) |
-| `{org_id}_branding` | Org branding (logo, colors, fonts) — `brandingKey()` |
-| `{org_id}_themes` | Theme store (active template, theme configs) — `themesKey()` |
-| `{org_id}_vat` | VAT configuration — `vatKey()` |
-| `{org_id}_reps` | Reps program settings — `repsKey()` |
-| `{org_id}_abandoned_cart_automation` | Abandoned cart email automation config — `abandonedCartAutomationKey()` |
-| `feral_marketing` | Meta Pixel + CAPI settings |
-| `feral_email` | Email template settings |
-| `feral_wallet_passes` | Wallet pass configuration |
-| `feral_events_list` | Events list configuration |
-| `feral_stripe_account` | Global Stripe Connect account (fallback) |
+**Settings keys** (stored in `site_settings` table as key → JSONB). All keys are dynamic via helper functions in `lib/constants.ts`:
+| Key pattern | Helper | Purpose |
+|-------------|--------|---------|
+| `{org_id}_general` | — | Org general settings (name, timezone, support email) |
+| `{org_id}_branding` | `brandingKey()` | Org branding (logo, colors, fonts) |
+| `{org_id}_themes` | `themesKey()` | Theme store (active template, theme configs) |
+| `{org_id}_vat` | `vatKey()` | VAT configuration |
+| `{org_id}_homepage` | `homepageKey()` | Homepage settings |
+| `{org_id}_reps` | `repsKey()` | Reps program settings |
+| `{org_id}_abandoned_cart_automation` | `abandonedCartAutomationKey()` | Abandoned cart email automation config |
+| `{org_id}_popup` | `popupKey()` | Popup settings |
+| `{org_id}_marketing` | `marketingKey()` | Meta Pixel + CAPI settings |
+| `{org_id}_email` | `emailKey()` | Email template settings |
+| `{org_id}_wallet_passes` | `walletPassesKey()` | Wallet pass configuration |
+| `{org_id}_events_list` | `eventsListKey()` | Events list configuration |
+| `{org_id}_stripe_account` | `stripeAccountKey()` | Stripe Connect account (fallback) |
 
 ### Request Flow (Event Pages)
-`/event/[slug]/` → RootLayout → EventLayout (Server Component, force-dynamic: fetches event + settings + branding + template in parallel, injects CSS vars + `data-theme`, wraps in SettingsProvider) → EventPage routes to `AuraEventPage` or `MidnightEventPage` based on active template.
+`/event/[slug]/` → Middleware (resolves org_id, sets `x-org-id` header) → RootLayout (reads org_id via `getOrgId()`, wraps in `<OrgProvider>`) → EventLayout (Server Component, force-dynamic: fetches event + settings + branding + template in parallel, injects CSS vars + `data-theme`, wraps in SettingsProvider) → EventPage routes to `AuraEventPage` or `MidnightEventPage` based on active template.
 
 ### Caching Strategy
 - Event + admin pages: `export const dynamic = "force-dynamic"` — every request fetches fresh data
@@ -217,11 +246,11 @@ Each tenant can fully customize their visual identity:
 - Dual-role users supported (same email can be admin + rep)
 
 **Three auth helpers:**
-| Helper | File | Purpose |
-|--------|------|---------|
-| `requireAuth()` | `lib/auth.ts` | Admin API routes — verifies session + blocks rep-only users |
-| `requireRepAuth()` | `lib/auth.ts` | Rep portal API routes — verifies session + active rep row |
-| `requirePlatformOwner()` | `lib/auth.ts` | Platform-owner-only routes — calls `requireAuth()` then checks `is_platform_owner` flag |
+| Helper | File | Returns | Purpose |
+|--------|------|---------|---------|
+| `requireAuth()` | `lib/auth.ts` | `{ user, orgId, error }` | Admin API routes — verifies session + blocks rep-only users |
+| `requireRepAuth()` | `lib/auth.ts` | `{ rep, error }` | Rep portal API routes — verifies session + active rep row (rep.org_id available) |
+| `requirePlatformOwner()` | `lib/auth.ts` | `{ user, orgId, error }` | Platform-owner-only routes — calls `requireAuth()` then checks `is_platform_owner` flag |
 
 **Two layers of API protection:**
 1. **Middleware** (first layer) — blocks unauthenticated requests to protected routes at the edge
@@ -232,12 +261,13 @@ Each tenant can fully customize their visual identity:
 **Security headers**: `nosniff`, `SAMEORIGIN`, `XSS-Protection`, HSTS (production), strict-origin referrer, restrictive permissions policy.
 
 **Rules for new routes:**
-1. Admin API routes: call `requireAuth()` at the top
-2. Rep portal API routes: call `requireRepAuth()` at the top
-3. Platform-owner API routes: call `requirePlatformOwner()` at the top (e.g., `/api/stripe/connect/*`)
-4. New public API routes: add to `PUBLIC_API_PREFIXES` or `PUBLIC_API_EXACT_GETS` in `middleware.ts`
-4. Never hardcode secrets — use environment variables only
-5. Stripe webhook must always verify signatures in production
+1. Admin API routes: call `requireAuth()`, use `auth.orgId` for all queries
+2. Rep portal API routes: call `requireRepAuth()`, use `rep.org_id` for all queries
+3. Platform-owner API routes: call `requirePlatformOwner()`, use `auth.orgId`
+4. Public API routes: use `getOrgIdFromRequest(request)` from `@/lib/org`, add to `PUBLIC_API_PREFIXES` or `PUBLIC_API_EXACT_GETS` in `middleware.ts`
+5. **Never import `ORG_ID`** — use dynamic resolution (see Multi-Tenancy section)
+6. Never hardcode secrets — use environment variables only
+7. Stripe webhook must always verify signatures in production
 
 ---
 
@@ -259,6 +289,7 @@ Each tenant can fully customize their visual identity:
 | `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
 | `org_users` | Team members + invites | auth_user_id, email, first_name, last_name, role (owner/member), perm_events, perm_orders, perm_marketing, perm_finance, status (invited/active/suspended), invite_token, invite_expires_at |
+| `domains` | Hostname → org_id mapping | hostname (unique), org_id, is_primary |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 
 **Reps Program tables** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. See `src/types/reps.ts` for full column types.
@@ -381,9 +412,10 @@ Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pix
 
 ## Known Gaps
 1. **Scanner PWA** — API endpoints exist (`/api/tickets/[code]` + `/api/tickets/[code]/scan`) but no frontend
-3. **Multi-tenant promoter dashboard** — Stripe Connect is built, but no separate promoter-facing dashboard yet
-4. **Google Ads + TikTok tracking** — placeholders exist in marketing admin but no implementation
-5. **Supabase RLS policies** — should be configured to enforce org_id isolation at database level
+2. **Multi-tenant promoter dashboard** — Stripe Connect is built, but no separate promoter-facing dashboard yet
+3. **Google Ads + TikTok tracking** — placeholders exist in marketing admin but no implementation
+4. **Supabase RLS policies** — should be configured to enforce org_id isolation at database level
+5. **Cron multi-org** — `/api/cron/*` routes still use `ORG_ID` fallback (no request context). Should iterate over all orgs
 
 ---
 

@@ -41,8 +41,8 @@ src/
 │   │   └── loading.tsx        # Loading skeleton
 │   ├── admin/                 # Admin dashboard (25+ pages). Sidebar groups: Dashboard, Events,
 │   │                          # Commerce, Storefront, Analytics, Marketing, Settings (incl. Users, Domains).
-│   │                          # Platform-owner-only "Entry Backend" section (tenants, health, connect,
-│   │                          # platform-settings, plans) gated by is_platform_owner flag.
+│   │                          # Platform-owner-only "Entry Backend" section (overview dashboard, tenants,
+│   │                          # health, connect, platform-settings, plans) gated by is_platform_owner flag.
 │   │                          # /admin/invite/[token] — standalone invite acceptance page (no auth).
 │   │                          # /admin/signup/ — self-service promoter registration (no auth).
 │   └── api/                   # 97 endpoints — see API Routes section for full list
@@ -334,6 +334,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
 - **Billing** (tenant self-serve — `requireAuth()`): `/api/billing/checkout` (POST — Stripe Checkout Session for Pro upgrade), `/api/billing/portal` (POST — Stripe Customer Portal), `/api/billing/status` (GET — plan + subscription status). Webhook handlers in `/api/stripe/webhook` for subscription lifecycle events.
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
+- **Platform Dashboard** (platform owner only — `requirePlatformOwner()`): `/api/platform/dashboard` (GET aggregated cross-tenant metrics — tenant counts, GMV, platform fees, onboarding funnel, recent signups/orders, top tenants). Dashboard page at `/admin/backend/`
 - **Tenants** (platform owner only — `requirePlatformOwner()`): `/api/platform/tenants` (GET enriched tenant list + platform summary — GMV, estimated fees, counts), `/api/platform/tenants/[orgId]` (GET single tenant detail — team, domains, events, orders, Stripe account, onboarding checklist, estimated fees). Detail page at `/admin/backend/tenants/[orgId]/`
 - **Plans** (platform owner only — `requirePlatformOwner()`): `/api/plans` (GET list orgs + plans, POST assign plan to org)
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)

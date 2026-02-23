@@ -17,6 +17,7 @@ import {
   PanelLeft,
   X,
   Users,
+  LayoutDashboard,
 } from "lucide-react";
 
 interface BackendNavItem {
@@ -26,6 +27,7 @@ interface BackendNavItem {
 }
 
 const BACKEND_NAV: BackendNavItem[] = [
+  { href: "/admin/backend/", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/backend/tenants/", label: "Tenants", icon: Users },
   { href: "/admin/backend/health/", label: "Health", icon: HeartPulse },
   { href: "/admin/backend/connect/", label: "Connect", icon: Zap },
@@ -34,6 +36,10 @@ const BACKEND_NAV: BackendNavItem[] = [
 ];
 
 function matchRoute(pathname: string, href: string): boolean {
+  // Exact match for Overview (/admin/backend/) — don't match all sub-pages
+  if (href === "/admin/backend/") {
+    return pathname === "/admin/backend/" || pathname === "/admin/backend";
+  }
   return pathname === href || pathname === href.slice(0, -1) || pathname.startsWith(href);
 }
 

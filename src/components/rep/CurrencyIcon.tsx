@@ -9,7 +9,7 @@ interface CurrencyIconProps {
 }
 
 /**
- * FERAL currency icon — a sharp, edgy diamond/gem with inner facets.
+ * Currency icon — a sharp, edgy diamond/gem with inner facets.
  * Uses currentColor so it inherits text color from parent.
  *
  * Future: tenants will choose their own icon via admin settings.

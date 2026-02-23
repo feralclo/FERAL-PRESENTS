@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 /**
  * Generate a QR code as a data URL (for inline display in HTML/emails).
  *
- * Encodes the raw ticket code (e.g., "FERAL-A3B4C5D6") rather than a URL.
+ * Encodes the raw ticket code (e.g., "ACME-A3B4C5D6") rather than a URL.
  * This is optimal for scanning speed and cross-platform compatibility:
  * - Smaller QR code = fewer modules = faster scan at any distance
  * - Works with external platforms (Skiddle, RA, etc.) that scan for codes

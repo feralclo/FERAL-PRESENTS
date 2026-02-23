@@ -8,14 +8,14 @@ import { useOrgId } from "@/components/OrgProvider";
 /** Default popup config — matches the hardcoded values from the original DiscountPopup */
 export const DEFAULT_POPUP_SETTINGS: PopupSettings = {
   enabled: true,
-  discount_code: "FERALRAVER10",
-  headline: "Unlock Feral Raver Discount",
+  discount_code: "",
+  headline: "Unlock Your Discount",
   subheadline: "Save it before it's gone",
   cta_text: "Save My Discount",
-  dismiss_text: "Nah, I'll Pay Full Price",
+  dismiss_text: "No Thanks",
   email_subheadline: "We\u2019ll send your exclusive code",
   email_cta_text: "Get My Discount",
-  cta_color: "#ff0033",
+  cta_color: "#8B5CF6",
   mobile_delay: 6000,
   desktop_delay: 12000,
   dismiss_days: 30,

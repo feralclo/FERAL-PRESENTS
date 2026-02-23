@@ -11,10 +11,10 @@ import type { BrandingSettings } from "@/types/settings";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_HERO: HomepageSettings = {
-  hero_title_line1: "BORN ON THE",
-  hero_title_line2: "DANCE FLOOR",
+  hero_title_line1: "UPCOMING",
+  hero_title_line2: "EVENTS",
   hero_cta_text: "SEE EVENTS",
-  hero_image_url: "/images/banner-1.jpg",
+  hero_image_url: "",
   hero_focal_x: 50,
   hero_focal_y: 50,
 };

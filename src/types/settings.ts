@@ -62,6 +62,7 @@ export interface BrandingSettings {
     instagram?: string;
     twitter?: string;
     tiktok?: string;
+    facebook?: string;
     website?: string;
   };
 }

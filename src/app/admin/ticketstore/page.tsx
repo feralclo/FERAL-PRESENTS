@@ -32,7 +32,7 @@ const TEMPLATES = [
     description: "Deep dark theme designed for nightlife and events.",
     tags: ["Dark", "Nightlife", "Events"],
     gradient: "from-[#0e0e0e] via-[#1a0a0a] to-[#0e0e0e]",
-    accent: "#ff0033",
+    accent: "#8B5CF6",
   },
   {
     id: "aura" as const,
@@ -50,7 +50,7 @@ function getTemplateGradient(template: string): string {
 }
 
 function getAccentFromTheme(theme: StoreTheme): string {
-  return theme.branding.accent_color || TEMPLATES.find((t) => t.id === theme.template)?.accent || "#ff0033";
+  return theme.branding.accent_color || TEMPLATES.find((t) => t.id === theme.template)?.accent || "#8B5CF6";
 }
 
 export default function TicketStorePage() {

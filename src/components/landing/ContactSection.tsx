@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useRef } from "react";
 import { subscribeToKlaviyo } from "@/lib/klaviyo";
+import { useBranding } from "@/hooks/useBranding";
 
 export function ContactSection() {
+  const branding = useBranding();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -36,6 +38,13 @@ export function ContactSection() {
     },
     [email]
   );
+
+  // Build social links from branding settings
+  const socialLinks = [
+    branding.social_links?.instagram && { href: branding.social_links.instagram, label: "Instagram", text: "IG" },
+    branding.social_links?.tiktok && { href: branding.social_links.tiktok, label: "TikTok", text: "TK" },
+    branding.social_links?.facebook && { href: branding.social_links.facebook, label: "Facebook", text: "FB" },
+  ].filter(Boolean) as { href: string; label: string; text: string }[];
 
   return (
     <section id="contact" className="py-20 max-md:py-14 bg-background">
@@ -86,36 +95,22 @@ export function ContactSection() {
           </p>
         </form>
 
-        <div className="flex justify-center gap-6">
-          {[
-            {
-              href: "https://www.instagram.com/feralclo/",
-              label: "Instagram",
-              text: "IG",
-            },
-            {
-              href: "https://www.tiktok.com/@feralclo",
-              label: "TikTok",
-              text: "TK",
-            },
-            {
-              href: "https://www.facebook.com/feralclo",
-              label: "Facebook",
-              text: "FB",
-            },
-          ].map((link) => (
-            <a
-              key={link.text}
-              href={link.href}
-              className="font-[family-name:var(--font-mono)] text-xs tracking-[0.25em] text-foreground/40 px-3 py-2 border border-foreground/[0.08] transition-all duration-300 hover:text-primary hover:border-primary hover:shadow-[0_0_20px_rgba(255,0,51,0.15)]"
-              aria-label={link.label}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {link.text}
-            </a>
-          ))}
-        </div>
+        {socialLinks.length > 0 && (
+          <div className="flex justify-center gap-6">
+            {socialLinks.map((link) => (
+              <a
+                key={link.text}
+                href={link.href}
+                className="font-[family-name:var(--font-mono)] text-xs tracking-[0.25em] text-foreground/40 px-3 py-2 border border-foreground/[0.08] transition-all duration-300 hover:text-primary hover:border-primary hover:shadow-[0_0_20px_rgba(255,0,51,0.15)]"
+                aria-label={link.label}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {link.text}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -196,7 +196,7 @@ export function DynamicEventPage({ event }: DynamicEventPageProps) {
         <div className="container">
           <div className="footer__inner">
             <span className="footer__copy" data-branding="copyright">
-              &copy; {new Date().getFullYear()} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
+              &copy; {new Date().getFullYear()} {branding.copyright_text || `${branding.org_name || "Entry"}. ALL RIGHTS RESERVED.`}
             </span>
             <span className="footer__status">
               STATUS: <span className="text-red">ONLINE</span>

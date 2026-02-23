@@ -35,7 +35,7 @@ export default function GlobalError({
           <p style={{ fontSize: 14, color: "#888" }}>Something went wrong.</p>
           <button
             onClick={() => window.location.reload()}
-            style={{ background: "#ff0033", color: "#fff", border: "none", borderRadius: 6, padding: "8px 20px", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+            style={{ background: "#8B5CF6", color: "#fff", border: "none", borderRadius: 6, padding: "8px 20px", fontSize: 14, fontWeight: 500, cursor: "pointer" }}
           >
             Reload
           </button>

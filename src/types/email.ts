@@ -1,5 +1,5 @@
 /**
- * Email settings stored in site_settings table (key: feral_email).
+ * Email settings stored in site_settings table (key: {org_id}_email).
  * Each org/promoter configures their own email branding and templates.
  * Designed for multi-tenant use — promoters customize this from their admin dashboard.
  */
@@ -8,15 +8,15 @@ export interface EmailSettings {
   order_confirmation_enabled: boolean;
 
   // Sender identity
-  from_name: string;       // e.g. "FERAL PRESENTS"
-  from_email: string;      // e.g. "tickets@feralpresents.com"
+  from_name: string;       // e.g. "My Events Co"
+  from_email: string;      // e.g. "tickets@mail.entry.events"
   reply_to?: string;       // Where customer replies go
 
   // Branding
   logo_url?: string;       // Logo for email header (URL)
   logo_height: number;     // Logo height in pixels (20–100, default 48)
   logo_aspect_ratio?: number; // Width/height ratio (auto-calculated on upload)
-  accent_color: string;    // Brand color (hex, e.g. "#ff0033")
+  accent_color: string;    // Brand color (hex, e.g. "#8B5CF6")
 
   // Order confirmation template (supports {{variables}})
   order_confirmation_subject: string;  // e.g. "Your tickets for {{event_name}}"
@@ -24,7 +24,7 @@ export interface EmailSettings {
   order_confirmation_message: string;  // Custom body paragraph
 
   // Footer
-  footer_text: string;     // e.g. "FERAL PRESENTS"
+  footer_text: string;     // e.g. "My Events Co"
   footer_url?: string;     // Link back to site
 }
 
@@ -66,11 +66,11 @@ export interface OrderEmailData {
 }
 
 /**
- * PDF ticket design settings stored in site_settings (key: feral_pdf_ticket).
+ * PDF ticket design settings stored in site_settings (key: {org_id}_pdf_ticket).
  * Controls the visual layout of A5 PDF tickets generated for customers.
  */
 export interface PdfTicketSettings {
-  brand_name: string;            // Text at top of ticket (e.g. "FERAL PRESENTS")
+  brand_name: string;            // Text at top of ticket (e.g. "My Events Co")
   logo_url?: string;             // Optional logo image URL (replaces brand_name text)
   logo_height: number;           // Logo height in mm on the PDF (8–40, default 12)
   accent_color: string;          // Accent bars + ticket code color (hex)
@@ -89,7 +89,7 @@ export interface PdfTicketSettings {
 export const DEFAULT_PDF_TICKET_SETTINGS: PdfTicketSettings = {
   brand_name: "Entry",
   logo_height: 20,
-  accent_color: "#ff0033",
+  accent_color: "#8B5CF6",
   bg_color: "#0e0e0e",
   text_color: "#ffffff",
   secondary_color: "#969696",
@@ -102,7 +102,7 @@ export const DEFAULT_PDF_TICKET_SETTINGS: PdfTicketSettings = {
 };
 
 /**
- * Wallet pass settings stored in site_settings table (key: feral_wallet_passes).
+ * Wallet pass settings stored in site_settings table (key: {org_id}_wallet_passes).
  * Controls Apple Wallet and Google Wallet pass generation for tickets.
  * Disabled by default — promoters opt in from the communications dashboard.
  */
@@ -120,7 +120,7 @@ export interface WalletPassSettings {
   label_color: string;            // Field label color (hex)
 
   // Content
-  organization_name: string;      // Org name shown on pass (e.g. "FERAL PRESENTS")
+  organization_name: string;      // Org name shown on pass (e.g. "My Events Co")
   description: string;            // Pass description (e.g. "Event Ticket")
 
   // Fields shown on back of pass
@@ -142,10 +142,10 @@ export interface WalletPassSettings {
 export const DEFAULT_WALLET_PASS_SETTINGS: WalletPassSettings = {
   apple_wallet_enabled: false,
   google_wallet_enabled: false,
-  accent_color: "#ff0033",
+  accent_color: "#8B5CF6",
   bg_color: "#0e0e0e",
   text_color: "#ffffff",
-  label_color: "#ff0033",
+  label_color: "#8B5CF6",
   organization_name: "Entry",
   description: "Event Ticket",
   show_holder: true,
@@ -160,7 +160,7 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   from_name: "Entry",
   from_email: "tickets@mail.entry.events",
   logo_height: 48,
-  accent_color: "#ff0033",
+  accent_color: "#8B5CF6",
   order_confirmation_subject: "Your tickets for {{event_name}}",
   order_confirmation_heading: "You're in.",
   order_confirmation_message:

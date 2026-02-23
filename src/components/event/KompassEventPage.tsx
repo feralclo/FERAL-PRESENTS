@@ -53,12 +53,12 @@ export function KompassEventPage() {
               />
               <path
                 d="M10 15.5l-3.5-3.5 1.41-1.41L10 12.67l5.59-5.59L17 8.5l-7 7z"
-                fill="#ff0033"
+                fill="currentColor"
               />
             </svg>
           </span>
           <span className="announcement-banner__verified">
-            Official FERAL ticket store
+            Official Ticket Store
           </span>
         </div>
         <Header />
@@ -257,7 +257,7 @@ export function KompassEventPage() {
         <div className="container">
           <div className="footer__inner">
             <span className="footer__copy">
-              &copy; 2026 FERAL PRESENTS. ALL RIGHTS RESERVED.
+              &copy; {new Date().getFullYear()} ALL RIGHTS RESERVED.
             </span>
             <span className="footer__status">
               STATUS: <span className="text-red">ONLINE</span>

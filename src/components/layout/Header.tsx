@@ -11,7 +11,6 @@ const NAV_LINKS = [
   { href: "/#events", label: "Events", index: "01" },
   { href: "/#about", label: "About", index: "02" },
   { href: "/#contact", label: "Contact", index: "03" },
-  { href: "https://www.feralclo.com/", label: "Apparel", index: "04", external: true },
 ];
 
 export function Header() {
@@ -102,24 +101,11 @@ export function Header() {
               className="nav__item"
               style={{ "--stagger": i } as React.CSSProperties}
             >
-              {link.external ? (
-                <a
-                  href={link.href}
-                  className="nav__link"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span className="nav__link-index">{link.index}</span>
-                  <span className="nav__link-slash">//</span>
-                  {link.label}
-                </a>
-              ) : (
-                <Link href={link.href} className="nav__link" onClick={closeMenu}>
-                  <span className="nav__link-index">{link.index}</span>
-                  <span className="nav__link-slash">//</span>
-                  {link.label}
-                </Link>
-              )}
+              <Link href={link.href} className="nav__link" onClick={closeMenu}>
+                <span className="nav__link-index">{link.index}</span>
+                <span className="nav__link-slash">//</span>
+                {link.label}
+              </Link>
             </li>
           ))}
         </ul>

@@ -1626,11 +1626,11 @@ export default function AbandonedCartPage() {
   const [activeStepId, setActiveStepId] = useState<string | null>("email_1");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Email branding state (loaded from feral_email settings)
+  // Email branding state (loaded from {org_id}_email settings)
   const [branding, setBranding] = useState<EmailBrandingState>({
     logo_url: "",
     logo_height: 48,
-    accent_color: "#ff0033",
+    accent_color: "#8B5CF6",
     from_name: "",
   });
   // Preview version counter — increment to force iframe reload when branding changes
@@ -1674,7 +1674,7 @@ export default function AbandonedCartPage() {
           logo_url: (e.logo_url as string) || "",
           logo_height: (e.logo_height as number) || 48,
           logo_aspect_ratio: e.logo_aspect_ratio as number | undefined,
-          accent_color: (e.accent_color as string) || "#ff0033",
+          accent_color: (e.accent_color as string) || "#8B5CF6",
           from_name: (e.from_name as string) || "",
         });
       }

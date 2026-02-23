@@ -7,7 +7,7 @@ const CODE_LENGTH = 8;
 /**
  * Generate a cryptographically random ticket code.
  * Format: {PREFIX}-XXXXXXXX (8 chars from 30-char alphabet, ~40 bits entropy)
- * The prefix defaults to the org_id uppercased (e.g., "FERAL", "ACME").
+ * The prefix defaults to the org_id uppercased (e.g., "ACME", "ENTRY").
  */
 export function generateTicketCode(orgId: string = "ENTRY"): string {
   const bytes = crypto.randomBytes(CODE_LENGTH);
@@ -22,7 +22,7 @@ export function generateTicketCode(orgId: string = "ENTRY"): string {
 /**
  * Generate a sequential, human-readable order number.
  * Format: {PREFIX}-00001, {PREFIX}-00002, etc.
- * The prefix defaults to the org_id uppercased (e.g., "FERAL", "ACME").
+ * The prefix defaults to the org_id uppercased (e.g., "ACME", "ENTRY").
  *
  * Uses a count-based approach instead of parsing the last order number,
  * which avoids race conditions when concurrent orders are created.

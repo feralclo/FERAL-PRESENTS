@@ -572,7 +572,7 @@ export default function PopupConfigPage() {
                     className="font-mono"
                     value={settings.discount_code}
                     onChange={(e) => update({ discount_code: e.target.value.toUpperCase() })}
-                    placeholder="FERALRAVER10"
+                    placeholder="DISCOUNT10"
                   />
                 </div>
                 <CodeValidator code={settings.discount_code} />
@@ -710,7 +710,7 @@ export default function PopupConfigPage() {
                 </p>
                 <div className="flex items-center gap-4">
                   <ColorPicker
-                    value={settings.cta_color || "#ff0033"}
+                    value={settings.cta_color || "#8B5CF6"}
                     onChange={(color) => update({ cta_color: color })}
                   />
                   {/* Live preview — mini button swatch */}
@@ -718,9 +718,9 @@ export default function PopupConfigPage() {
                     <div
                       className="h-9 rounded-lg px-4 flex items-center"
                       style={{
-                        background: `linear-gradient(180deg, color-mix(in srgb, ${settings.cta_color || "#ff0033"} 18%, transparent) 0%, color-mix(in srgb, ${settings.cta_color || "#ff0033"} 8%, transparent) 100%)`,
-                        border: `1px solid color-mix(in srgb, ${settings.cta_color || "#ff0033"} 22%, transparent)`,
-                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 0 16px color-mix(in srgb, ${settings.cta_color || "#ff0033"} 8%, transparent)`,
+                        background: `linear-gradient(180deg, color-mix(in srgb, ${settings.cta_color || "#8B5CF6"} 18%, transparent) 0%, color-mix(in srgb, ${settings.cta_color || "#8B5CF6"} 8%, transparent) 100%)`,
+                        border: `1px solid color-mix(in srgb, ${settings.cta_color || "#8B5CF6"} 22%, transparent)`,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 0 16px color-mix(in srgb, ${settings.cta_color || "#8B5CF6"} 8%, transparent)`,
                       }}
                     >
                       <span className="text-[11px] font-bold text-white/90 whitespace-nowrap">

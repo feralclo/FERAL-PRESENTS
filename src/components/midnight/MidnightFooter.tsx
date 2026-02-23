@@ -19,7 +19,7 @@ export function MidnightFooter() {
             className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.12em] uppercase text-foreground/25"
           >
             &copy; {new Date().getFullYear()}{" "}
-            {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}`}
+            {branding.copyright_text || `${branding.org_name || "Entry"}`}
           </span>
           <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[0.12em] uppercase text-foreground/15">
             Entry

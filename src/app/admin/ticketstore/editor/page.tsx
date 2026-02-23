@@ -432,7 +432,7 @@ function TicketStoreEditorPage() {
               <div className="space-y-3">
                 <ColorField
                   label="Accent"
-                  value={branding.accent_color || "#ff0033"}
+                  value={branding.accent_color || "#8B5CF6"}
                   onChange={(v) => updateColor("accent_color", "--accent", v)}
                 />
                 <ColorField

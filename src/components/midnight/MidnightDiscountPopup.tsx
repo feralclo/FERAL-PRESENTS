@@ -216,7 +216,7 @@ export function MidnightDiscountPopup() {
   // Don't render anything if disabled
   if (!config.enabled) return null;
 
-  const logoUrl = branding.logo_url || "/images/FERAL%20LOGO.svg";
+  const logoUrl = branding.logo_url || "";
 
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={handleOpenChange}>

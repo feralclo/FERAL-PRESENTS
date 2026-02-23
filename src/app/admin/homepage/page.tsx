@@ -318,7 +318,7 @@ function DesktopPreview({ imageUrl, focalX, focalY, line1, line2, ctaText }: Pre
             <div>{line1}</div>
             <div>{line2}</div>
           </div>
-          <div className="mt-6 inline-block border border-[#ff0033] px-6 py-2.5 font-mono text-[10px] font-bold tracking-[3px] uppercase text-white">
+          <div className="mt-6 inline-block border border-primary px-6 py-2.5 font-mono text-[10px] font-bold tracking-[3px] uppercase text-white">
             {ctaText}
           </div>
         </div>
@@ -365,7 +365,7 @@ function MobilePreview({ imageUrl, focalX, focalY, line1, line2, ctaText }: Prev
                 <div>{line1}</div>
                 <div>{line2}</div>
               </div>
-              <div className="mt-5 inline-block border border-[#ff0033] px-5 py-2 font-mono text-[8px] font-bold tracking-[3px] uppercase text-white">
+              <div className="mt-5 inline-block border border-primary px-5 py-2 font-mono text-[8px] font-bold tracking-[3px] uppercase text-white">
                 {ctaText}
               </div>
             </div>

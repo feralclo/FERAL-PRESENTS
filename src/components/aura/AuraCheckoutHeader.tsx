@@ -25,8 +25,8 @@ export function AuraCheckoutHeader({ slug }: AuraCheckoutHeaderProps) {
         <a href={`/event/${slug}/`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={branding.logo_url || "/images/FERAL%20LOGO.svg"}
-            alt={branding.org_name || "FERAL PRESENTS"}
+            src={branding.logo_url || ""}
+            alt={branding.org_name || "Entry"}
             className="h-6"
             data-branding="logo"
             style={branding.logo_width ? { width: branding.logo_width, height: "auto" } : undefined}

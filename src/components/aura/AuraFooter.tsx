@@ -28,7 +28,7 @@ export function AuraFooter({ showPaymentMethods = true }: { showPaymentMethods?:
           <div className="flex flex-col items-center sm:items-start gap-1.5">
             <p className="text-xs text-muted-foreground">
               {branding?.copyright_text ||
-                `\u00A9 ${new Date().getFullYear()} ${branding?.org_name || "FERAL PRESENTS"}. All Rights Reserved.`}
+                `\u00A9 ${new Date().getFullYear()} ${branding?.org_name || "Entry"}. All Rights Reserved.`}
             </p>
             {branding?.support_email && (
               <a

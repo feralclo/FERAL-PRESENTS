@@ -10,17 +10,17 @@ import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
 
 /** Data needed to generate a wallet pass for a single ticket */
 export interface WalletPassTicketData {
-  ticketCode: string;         // e.g. "FERAL-A3B4C5D6" — the QR payload
+  ticketCode: string;         // e.g. "ACME-A3B4C5D6" — the QR payload
   eventName: string;
   venueName: string;
   eventDate: string;          // ISO date string
   doorsTime?: string;         // e.g. "21:00"
   ticketType: string;         // e.g. "General Release"
   holderName?: string;        // e.g. "Alex Test"
-  orderNumber: string;        // e.g. "FERAL-00042"
+  orderNumber: string;        // e.g. "ACME-00042"
   merchSize?: string;         // e.g. "L"
   includesMerch?: boolean;    // Whether this ticket includes merch
-  merchName?: string;         // e.g. "FERAL Tee"
+  merchName?: string;         // e.g. "Event Tee"
   currency?: string;          // e.g. "GBP"
 }
 
@@ -171,7 +171,7 @@ function formatDisplayDate(dateStr: string, doorsTime?: string): string {
 /**
  * Build the pass.json content for an Apple Wallet event ticket.
  *
- * CRITICAL: The barcode message is the raw ticket code (e.g. "FERAL-A3B4C5D6").
+ * CRITICAL: The barcode message is the raw ticket code (e.g. "ACME-A3B4C5D6").
  * This is the EXACT same value used in the PDF QR code and email display.
  * The scanner resolves it server-side via /api/tickets/[code].
  */

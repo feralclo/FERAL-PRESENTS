@@ -57,7 +57,7 @@ export default function EventLoading() {
             left: 0,
             height: "100%",
             width: "30%",
-            background: "#f60434",
+            background: "#8B5CF6",
             animation: "loadSlide 1.2s ease-in-out infinite",
           }}
         />

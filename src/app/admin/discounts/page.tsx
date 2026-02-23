@@ -401,7 +401,7 @@ export default function DiscountsPage() {
               <Input
                 value={newCode}
                 onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                placeholder="e.g. FERAL10"
+                placeholder="e.g. SUMMER10"
                 className="font-mono tracking-wider uppercase"
                 autoFocus
               />

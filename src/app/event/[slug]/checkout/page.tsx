@@ -4,17 +4,36 @@ import { NativeCheckout } from "@/components/checkout/NativeCheckout";
 import { AuraCheckout } from "@/components/aura/AuraCheckout";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
-import { TABLES } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import type { BrandingSettings } from "@/types/settings";
 
 /** Always fetch fresh data — admin changes must appear immediately */
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Checkout — FERAL",
-  description: "Complete your ticket purchase.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let orgName = "Entry";
+  try {
+    const orgId = await getOrgId();
+    const supabase = await getSupabaseAdmin();
+    if (supabase) {
+      const { data } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", brandingKey(orgId))
+        .single();
+      if (data?.data) {
+        const branding = data.data as BrandingSettings;
+        if (branding.org_name) orgName = branding.org_name;
+      }
+    }
+  } catch { /* Fall through with default */ }
+  return {
+    title: `Checkout — ${orgName}`,
+    description: "Complete your ticket purchase.",
+  };
+}
 
 export default async function CheckoutRoute({
   params,

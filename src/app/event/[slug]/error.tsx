@@ -31,7 +31,7 @@ export default function EventError({
       <button
         onClick={reset}
         style={{
-          background: "#ff0033",
+          background: "#8B5CF6",
           color: "#fff",
           border: "none",
           padding: "12px 32px",

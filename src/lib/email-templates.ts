@@ -56,7 +56,7 @@ export function buildOrderConfirmationEmail(
   walletLinks?: EmailWalletLinks,
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
-  const accent = s.accent_color || "#ff0033";
+  const accent = s.accent_color || "#8B5CF6";
   const logoUrl = resolveUrl(s.logo_url);
 
   // Calculate exact logo dimensions (same approach as PDF generator)
@@ -507,7 +507,7 @@ export function buildAbandonedCartRecoveryEmail(
   },
 ): { subject: string; html: string; text: string } {
   const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
-  const accent = s.accent_color || "#ff0033";
+  const accent = s.accent_color || "#8B5CF6";
   const logoUrl = resolveUrl(s.logo_url);
 
   // Logo dimensions (same as order confirmation)

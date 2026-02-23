@@ -1,6 +1,6 @@
 /**
  * Checkout-specific loading state.
- * Shows a simple spinner instead of the FERAL logo + progress bar.
+ * Shows a simple spinner while the checkout page loads.
  * Gets the user into checkout as fast as possible.
  */
 export default function CheckoutLoading() {
@@ -23,7 +23,7 @@ export default function CheckoutLoading() {
           width: 24,
           height: 24,
           border: "2px solid rgba(255, 255, 255, 0.08)",
-          borderTopColor: "#ff0033",
+          borderTopColor: "#8B5CF6",
           borderRadius: "50%",
           animation: "checkoutSpin 0.8s linear infinite",
         }}

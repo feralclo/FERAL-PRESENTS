@@ -16,7 +16,7 @@ export function getSupabaseClient() {
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn(
-      "[FERAL] Supabase env vars not set — NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY required"
+      "[Entry] Supabase env vars not set — NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY required"
     );
     return null;
   }

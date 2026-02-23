@@ -78,7 +78,7 @@ export function OrderConfirmation({
   }, [order, trackPurchase]);
 
   // Generate QR codes client-side for instant display.
-  // CRITICAL: Encodes the raw ticket code (e.g. "FERAL-A3B4C5D6") — NOT a URL.
+  // CRITICAL: Encodes the raw ticket code (e.g. "ACME-A3B4C5D6") — NOT a URL.
   // This must match the PDF and wallet pass QR codes exactly so that the same
   // scanner resolves the same data regardless of which QR the customer presents.
   useEffect(() => {
@@ -190,8 +190,8 @@ export function OrderConfirmation({
         <a href={`/event/${slug}/`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={branding.logo_url || "/images/FERAL%20LOGO.svg"}
-            alt={branding.org_name || "FERAL PRESENTS"}
+            src={branding.logo_url || ""}
+            alt={branding.org_name || "Entry"}
             className="h-[52px] max-sm:h-10 w-auto block"
             style={branding.logo_width ? { width: branding.logo_width } : undefined}
           />
@@ -357,7 +357,7 @@ export function OrderConfirmation({
       <footer className="py-8 px-6">
         <div className="max-w-[1200px] mx-auto text-center">
           <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/20">
-            &copy; {year} {branding.copyright_text || `${branding.org_name || "FERAL PRESENTS"}. ALL RIGHTS RESERVED.`}
+            &copy; {year} {branding.copyright_text || `${branding.org_name || "Entry"}. ALL RIGHTS RESERVED.`}
           </span>
         </div>
       </footer>

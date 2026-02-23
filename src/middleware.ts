@@ -276,7 +276,7 @@ export async function middleware(request: NextRequest) {
 
   // ── Domain routing: admin routes only on admin hosts ──
   // Admin hosts: admin.entry.events, localhost (dev), *.vercel.app (previews)
-  // Tenant hosts: feralpresents.com, agencyferal.com — redirect /admin/* to admin domain
+  // Tenant hosts: custom domains — redirect /admin/* to admin domain
   const isAdminHost =
     hostname.startsWith("admin.entry.events") ||
     hostname.startsWith("localhost") ||

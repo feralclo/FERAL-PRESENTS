@@ -4,8 +4,9 @@ import { MidnightExternalPage } from "@/components/midnight/MidnightExternalPage
 import { AuraEventPage } from "@/components/aura/AuraEventPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
-import { TABLES } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
+import type { BrandingSettings } from "@/types/settings";
 
 /** Force dynamic rendering — every request fetches fresh data from Supabase.
  *  This ensures admin changes (lineup, images, theme, etc.) appear immediately
@@ -41,7 +42,22 @@ export async function generateMetadata({
 
   const event = await getEventFromDB(slug, orgId);
   if (event) {
-    const title = `FERAL — ${event.name}`;
+    let orgName = "Entry";
+    try {
+      const supabase = await getSupabaseAdmin();
+      if (supabase) {
+        const { data } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single();
+        if (data?.data) {
+          const branding = data.data as BrandingSettings;
+          if (branding.org_name) orgName = branding.org_name;
+        }
+      }
+    } catch { /* Fall through with default */ }
+    const title = `${orgName} — ${event.name}`;
     const description =
       event.description || event.about_text || `Get tickets for ${event.name}`;
     return {

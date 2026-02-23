@@ -73,7 +73,7 @@ export async function GET(
         ticket_type?: { name: string };
       }) => ({
         ticketCode: ticket.ticket_code,
-        eventName: order.event?.name || "FERAL Event",
+        eventName: order.event?.name || "Event",
         eventDate,
         venueName: order.event?.venue_name || "",
         ticketType: ticket.ticket_type?.name || "Ticket",

@@ -221,18 +221,18 @@ export function AboutSection() {
           {[
             {
               num: "01",
-              title: "Curated Chaos",
-              text: "We believe a night out should be an insane journey, not a playlist. Our lineups are meticulously crafted to break the mould, constructing a specific narrative that demands your full attention. No filler. No fluff. Just a relentless progression of sound.",
+              title: "The Events",
+              text: "Every event is crafted with intention. From lineup curation to sound design, we build experiences that demand your full attention. No filler. No compromises. Just unforgettable nights.",
             },
             {
               num: "02",
-              title: "Total Immersion",
-              text: "Production is our obsession. We don\u2019t just book a venue; we terraform it. By hauling in our own external rigs and custom visual architecture, we erase the space you walked into and replace it with the World of Feral.",
+              title: "The Production",
+              text: "Production is everything. Custom rigs, immersive visuals, and sound systems that hit different. We don\u2019t just book a venue \u2014 we transform it into something you\u2019ve never seen before.",
             },
             {
               num: "03",
-              title: "The Energy",
-              text: "It\u2019s a frequency you have to feel to understand. The visuals warp reality, the sound hits your chest, and the Feral family brings an energy that doesn\u2019t exist on any other dancefloor.",
+              title: "The Community",
+              text: "It\u2019s the people that make it. A community built on shared passion, collective energy, and moments that only exist on the dancefloor. Come as you are.",
             },
           ].map((pillar, i) => (
             <div

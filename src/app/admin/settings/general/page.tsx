@@ -109,7 +109,7 @@ export default function GeneralSettings() {
               onChange={(e) =>
                 setSettings((s) => ({ ...s, org_name: e.target.value }))
               }
-              placeholder="e.g. FERAL"
+              placeholder="e.g. My Events Co"
             />
             <p className="text-xs text-muted-foreground">
               Displayed in emails, receipts, and the admin sidebar
@@ -125,7 +125,7 @@ export default function GeneralSettings() {
               onChange={(e) =>
                 setSettings((s) => ({ ...s, support_email: e.target.value }))
               }
-              placeholder="e.g. hello@feralpresents.com"
+              placeholder="e.g. hello@yourdomain.com"
             />
             <p className="text-xs text-muted-foreground">
               Shown in confirmation emails and on event pages

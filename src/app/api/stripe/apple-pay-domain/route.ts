@@ -10,7 +10,7 @@ import { requireAuth } from "@/lib/auth";
  * Registers a domain for Apple Pay with Stripe.
  * For Connect (direct charges), registers on the connected account.
  *
- * Body: { domain: "feralpresents.com" }
+ * Body: { domain: "example.com" }
  *
  * Prerequisites:
  *   1. The verification file must be accessible at

@@ -34,9 +34,15 @@ export async function getPlatformXPConfig(): Promise<PlatformXPConfig> {
 export async function getRepSettings(
   orgId: string = ORG_ID
 ): Promise<RepProgramSettings> {
+  // Dynamic defaults: use org_id as email prefix (e.g., feral@mail.entry.events)
+  const orgDefaults = {
+    ...DEFAULT_REP_PROGRAM_SETTINGS,
+    email_from_address: `${orgId}@mail.entry.events`,
+  };
+
   try {
     const supabase = await getSupabaseAdmin();
-    if (!supabase) return DEFAULT_REP_PROGRAM_SETTINGS;
+    if (!supabase) return orgDefaults;
 
     const { data } = await supabase
       .from(TABLES.SITE_SETTINGS)
@@ -45,12 +51,12 @@ export async function getRepSettings(
       .single();
 
     if (data?.data && typeof data.data === "object") {
-      return { ...DEFAULT_REP_PROGRAM_SETTINGS, ...(data.data as Partial<RepProgramSettings>) };
+      return { ...orgDefaults, ...(data.data as Partial<RepProgramSettings>) };
     }
   } catch {
     // Settings not found — use defaults
   }
-  return DEFAULT_REP_PROGRAM_SETTINGS;
+  return orgDefaults;
 }
 
 /**

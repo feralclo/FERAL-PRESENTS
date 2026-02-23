@@ -158,7 +158,7 @@ export const DEFAULT_WALLET_PASS_SETTINGS: WalletPassSettings = {
 export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   order_confirmation_enabled: true,
   from_name: "Entry",
-  from_email: "noreply@mail.entry.events",
+  from_email: "tickets@mail.entry.events",
   logo_height: 48,
   accent_color: "#ff0033",
   order_confirmation_subject: "Your tickets for {{event_name}}",

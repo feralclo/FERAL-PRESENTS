@@ -54,6 +54,7 @@ export async function sendTeamInviteEmail(params: {
 
     const emailSettings: EmailSettings = {
       ...DEFAULT_EMAIL_SETTINGS,
+      from_email: `${params.orgId}@mail.entry.events`,
       ...((emailRow?.data as Partial<EmailSettings>) || {}),
     };
 

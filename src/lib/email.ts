@@ -22,9 +22,15 @@ function getResendClient(): Resend | null {
  * Falls back to defaults if not configured — new orgs get sane defaults out of the box.
  */
 async function getEmailSettings(orgId: string): Promise<EmailSettings> {
+  // Dynamic defaults: use org_id as email prefix (e.g., feral@mail.entry.events)
+  const orgDefaults = {
+    ...DEFAULT_EMAIL_SETTINGS,
+    from_email: `${orgId}@mail.entry.events`,
+  };
+
   try {
     const supabase = await getSupabaseAdmin();
-    if (!supabase) return DEFAULT_EMAIL_SETTINGS;
+    if (!supabase) return orgDefaults;
 
     const { data } = await supabase
       .from(TABLES.SITE_SETTINGS)
@@ -33,12 +39,12 @@ async function getEmailSettings(orgId: string): Promise<EmailSettings> {
       .single();
 
     if (data?.data && typeof data.data === "object") {
-      return { ...DEFAULT_EMAIL_SETTINGS, ...(data.data as Partial<EmailSettings>) };
+      return { ...orgDefaults, ...(data.data as Partial<EmailSettings>) };
     }
   } catch {
     // Settings not found — use defaults
   }
-  return DEFAULT_EMAIL_SETTINGS;
+  return orgDefaults;
 }
 
 /**

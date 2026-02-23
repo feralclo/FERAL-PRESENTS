@@ -13,6 +13,8 @@
   "dependencies": {
     "@mux/mux-node": "^12.8.1",
     "@mux/mux-player-react": "^3.11.4",
+    "@stripe/connect-js": "^3.3.34",
+    "@stripe/react-connect-js": "^3.3.33",
     "@stripe/react-stripe-js": "^5.6.0",
     "@stripe/stripe-js": "^8.7.0",
     "@supabase/ssr": "^0.6.1",

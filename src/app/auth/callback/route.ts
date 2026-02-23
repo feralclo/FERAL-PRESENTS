@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES } from "@/lib/constants";
+import { slugify, validateSlug, provisionOrg } from "@/lib/signup";
 
 /**
  * GET /auth/callback
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest) {
   }
 
   const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
+  const isSignupFlow = searchParams.get("signup") === "1";
 
   // Find user in org_users by email (case-insensitive), active or invited
   const { data: orgUser, error: orgError } = await adminClient
@@ -104,7 +106,86 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (orgError || !orgUser) {
-    // Not in org_users — sign out and redirect with error
+    // ── Signup flow: provision a new org for this Google user ──
+    if (isSignupFlow) {
+      const orgNameCookie = request.cookies.get("entry_signup_org")?.value;
+      const orgName = orgNameCookie ? decodeURIComponent(orgNameCookie) : null;
+
+      if (!orgName || orgName.trim().length < 2) {
+        // No org name cookie — redirect back to signup with error
+        await supabase.auth.signOut();
+        const errorResponse = NextResponse.redirect(
+          `${origin}/admin/signup/?error=${encodeURIComponent("Organization name was lost during sign-in. Please try again.")}`
+        );
+        request.cookies.getAll().forEach((cookie) => {
+          if (cookie.name.startsWith("sb-")) {
+            errorResponse.cookies.delete(cookie.name);
+          }
+        });
+        return errorResponse;
+      }
+
+      try {
+        // Slugify and find available slug
+        let slug = slugify(orgName.trim());
+        if (slug.length < 3) slug = "my-org";
+
+        const validation = await validateSlug(slug);
+        if (!validation.available) {
+          for (let i = 2; i <= 99; i++) {
+            const candidate = `${slug}-${i}`;
+            const check = await validateSlug(candidate);
+            if (check.available) {
+              slug = candidate;
+              break;
+            }
+          }
+        }
+
+        // Provision the org
+        await provisionOrg({
+          authUserId: user.id,
+          email: user.email,
+          orgSlug: slug,
+          orgName: orgName.trim(),
+          firstName: user.user_metadata?.full_name?.split(" ")[0] || undefined,
+          lastName: user.user_metadata?.full_name?.split(" ").slice(1).join(" ") || undefined,
+        });
+
+        // Tag is_admin in app_metadata
+        await adminClient.auth.admin.updateUserById(user.id, {
+          app_metadata: { is_admin: true },
+        });
+
+        // Clear the signup cookie and redirect to dashboard with welcome
+        const signupResponse = NextResponse.redirect(`${origin}/admin/?welcome=1`);
+        // Copy session cookies
+        response.cookies.getAll().forEach((cookie) => {
+          signupResponse.cookies.set(cookie.name, cookie.value, {
+            path: "/",
+            sameSite: "lax" as const,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 60 * 60 * 24 * 30,
+          });
+        });
+        signupResponse.cookies.delete("entry_signup_org");
+        return signupResponse;
+      } catch (err) {
+        console.error("[auth/callback] Signup provisioning failed:", err);
+        await supabase.auth.signOut();
+        const errorResponse = NextResponse.redirect(
+          `${origin}/admin/signup/?error=${encodeURIComponent("Failed to create your organization. Please try again.")}`
+        );
+        request.cookies.getAll().forEach((cookie) => {
+          if (cookie.name.startsWith("sb-")) {
+            errorResponse.cookies.delete(cookie.name);
+          }
+        });
+        return errorResponse;
+      }
+    }
+
+    // Not in org_users and not a signup — sign out and redirect with error
     await supabase.auth.signOut();
     // Clear session cookies on the redirect response
     const errorResponse = NextResponse.redirect(

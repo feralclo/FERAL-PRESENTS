@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { LiveStatCard } from "@/components/ui/live-stat-card";
@@ -20,6 +21,8 @@ import {
   ChevronRight,
   BarChart3,
   UserCheck,
+  X,
+  Rocket,
 } from "lucide-react";
 
 /* ── Skeleton pulse ── */
@@ -67,7 +70,49 @@ function QuickLink({
 /* ════════════════════════════════════════════════════════
    LIVE DASHBOARD
    ════════════════════════════════════════════════════════ */
+function WelcomeBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="mb-6 flex items-center gap-4 rounded-xl border border-primary/20 bg-card p-4 shadow-sm">
+      <div className="h-full w-1 self-stretch rounded-full bg-gradient-to-b from-primary to-primary/50" />
+      <Rocket size={20} className="shrink-0 text-primary" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">
+          Welcome to Entry!
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Create your first event to start selling tickets.
+        </p>
+      </div>
+      <Link
+        href="/admin/events/"
+        className="shrink-0 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary/85"
+      >
+        Create Event
+      </Link>
+      <button
+        onClick={onDismiss}
+        className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("welcome") === "1") {
+      setShowWelcome(true);
+      // Clean the URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("welcome");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
   const {
     activeVisitors,
     activeCarts,
@@ -82,6 +127,9 @@ export default function AdminDashboard() {
 
   return (
     <div>
+      {/* Welcome banner */}
+      {showWelcome && <WelcomeBanner onDismiss={() => setShowWelcome(false)} />}
+
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

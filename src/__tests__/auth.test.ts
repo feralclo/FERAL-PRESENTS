@@ -59,7 +59,7 @@ function isAdminApiRoute(pathname: string, method: string): boolean {
 }
 
 function isProtectedAdminPage(pathname: string): boolean {
-  return pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
+  return pathname.startsWith("/admin") && !pathname.startsWith("/admin/login") && !pathname.startsWith("/admin/invite") && !pathname.startsWith("/admin/signup");
 }
 
 const REP_PUBLIC_PAGES = ["/rep/login", "/rep/join", "/rep/invite"];
@@ -242,6 +242,16 @@ describe("Admin page protection", () => {
   it("does NOT protect /admin/login (must be accessible)", () => {
     expect(isProtectedAdminPage("/admin/login")).toBe(false);
     expect(isProtectedAdminPage("/admin/login/")).toBe(false);
+  });
+
+  it("does NOT protect /admin/invite (must be accessible)", () => {
+    expect(isProtectedAdminPage("/admin/invite")).toBe(false);
+    expect(isProtectedAdminPage("/admin/invite/some-token")).toBe(false);
+  });
+
+  it("does NOT protect /admin/signup (must be accessible)", () => {
+    expect(isProtectedAdminPage("/admin/signup")).toBe(false);
+    expect(isProtectedAdminPage("/admin/signup/")).toBe(false);
   });
 });
 

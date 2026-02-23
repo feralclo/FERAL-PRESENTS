@@ -134,7 +134,8 @@ function isProtectedAdminPage(pathname: string): boolean {
   return (
     pathname.startsWith("/admin") &&
     !pathname.startsWith("/admin/login") &&
-    !pathname.startsWith("/admin/invite")
+    !pathname.startsWith("/admin/invite") &&
+    !pathname.startsWith("/admin/signup")
   );
 }
 

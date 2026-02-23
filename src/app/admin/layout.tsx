@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { useBranding } from "@/hooks/useBranding";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -161,6 +162,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
+  const branding = useBranding();
 
   // Auto-expand nav items whose children match the current path
   useEffect(() => {
@@ -482,7 +484,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
             {/* Org name + email */}
             <div className="flex-1 text-left overflow-hidden">
-              <p className="truncate text-[13px] font-medium text-foreground/90">FERAL</p>
+              <p className="truncate text-[13px] font-medium text-foreground/90">{branding.org_name || "Admin"}</p>
               <p className="truncate text-[11px] text-sidebar-foreground/50">{userEmail || "admin"}</p>
             </div>
             <ChevronsUpDown size={14} className="shrink-0 text-sidebar-foreground/40" />

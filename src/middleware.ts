@@ -164,6 +164,21 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
+  const hostname = request.headers.get("host") || "";
+
+  // ── Domain routing: admin routes only on admin hosts ──
+  // Admin hosts: admin.entry.events, localhost (dev), *.vercel.app (previews)
+  // Tenant hosts: feralpresents.com, agencyferal.com — redirect /admin/* to admin domain
+  const isAdminHost =
+    hostname.startsWith("admin.entry.events") ||
+    hostname.startsWith("localhost") ||
+    hostname.includes(".vercel.app");
+
+  if (!isAdminHost && (isProtectedAdminPage(pathname) || pathname.startsWith("/admin/login"))) {
+    const adminUrl = new URL(`https://admin.entry.events${pathname}`);
+    adminUrl.search = request.nextUrl.search;
+    return applySecurityHeaders(NextResponse.redirect(adminUrl, 302));
+  }
 
   // Create Supabase middleware client (refreshes session cookies)
   const client = createMiddlewareClient(request);

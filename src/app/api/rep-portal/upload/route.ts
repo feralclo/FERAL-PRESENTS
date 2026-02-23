@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
     const contentType =
       imageData.match(/^data:(image\/\w+);/)?.[1] || "image/jpeg";
 
-    const storageKey = `media_${key}`;
+    const orgId = auth.rep.org_id;
+    const storageKey = `media_${orgId}_${key}`;
     const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(
       {
         key: storageKey,
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const url = `/api/media/${key}`;
+    const url = `/api/media/${orgId}_${key}`;
     return NextResponse.json({ url });
   } catch (e) {
     console.error("[rep-portal/upload] Error:", e);

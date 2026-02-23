@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       business_name,
       country = "GB",
       account_type = DEFAULT_ACCOUNT_TYPE,
+      business_type = "individual",
     } = body;
 
     if (!email) {
@@ -66,6 +67,15 @@ export async function POST(request: NextRequest) {
     if (account_type !== "custom") {
       return NextResponse.json(
         { error: "Only custom accounts are supported" },
+        { status: 400 }
+      );
+    }
+
+    const validBusinessTypes = ["individual", "company", "non_profit"] as const;
+    type BusinessType = (typeof validBusinessTypes)[number];
+    if (!validBusinessTypes.includes(business_type as BusinessType)) {
+      return NextResponse.json(
+        { error: "Invalid business type" },
         { status: 400 }
       );
     }
@@ -91,7 +101,7 @@ export async function POST(request: NextRequest) {
         card_payments: { requested: true },
         transfers: { requested: true },
       },
-      business_type: "company",
+      business_type: business_type as BusinessType,
       business_profile: {
         name: business_name || undefined,
         mcc: "7922", // Theatrical Producers and Ticket Agencies

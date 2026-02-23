@@ -82,6 +82,7 @@ export default function PaymentSettingsPage() {
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("GB");
+  const [businessType, setBusinessType] = useState("individual");
 
   // Check URL params on mount (return from hosted onboarding)
   useEffect(() => {
@@ -181,6 +182,7 @@ export default function PaymentSettingsPage() {
           email: email.trim(),
           business_name: businessName.trim() || undefined,
           country,
+          business_type: businessType,
         }),
       });
 
@@ -332,6 +334,8 @@ export default function PaymentSettingsPage() {
           setBusinessName={setBusinessName}
           country={country}
           setCountry={setCountry}
+          businessType={businessType}
+          setBusinessType={setBusinessType}
           settingUp={settingUp}
           onSubmit={handleSetup}
         />
@@ -646,6 +650,8 @@ function SetupForm({
   setBusinessName,
   country,
   setCountry,
+  businessType,
+  setBusinessType,
   settingUp,
   onSubmit,
 }: {
@@ -655,6 +661,8 @@ function SetupForm({
   setBusinessName: (v: string) => void;
   country: string;
   setCountry: (v: string) => void;
+  businessType: string;
+  setBusinessType: (v: string) => void;
   settingUp: boolean;
   onSubmit: (e: React.FormEvent) => void;
 }) {
@@ -698,6 +706,20 @@ function SetupForm({
             onChange={(e) => setBusinessName(e.target.value)}
             placeholder="e.g. Acme Events Ltd"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Account Type</Label>
+          <Select value={businessType} onValueChange={setBusinessType}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="individual">Individual / Sole Trader</SelectItem>
+              <SelectItem value="company">Company</SelectItem>
+              <SelectItem value="non_profit">Non-Profit</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

@@ -408,6 +408,7 @@ export const config = {
     "/",
     "/admin/:path*",
     "/api/:path*",
+    "/auth/:path*",
     "/rep/:path*",
     "/event/:path*",
   ],

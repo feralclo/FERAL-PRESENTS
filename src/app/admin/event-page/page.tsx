@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ORG_ID } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { EventSettings } from "@/types/settings";
 
 interface EventOption {
@@ -20,6 +20,7 @@ interface EventOption {
 }
 
 export default function EventPageSettings() {
+  const orgId = useOrgId();
   const [events, setEvents] = useState<EventOption[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
   const [settingsKey, setSettingsKey] = useState("");
@@ -43,7 +44,7 @@ export default function EventPageSettings() {
             status: e.status as string,
             settings_key:
               (e.settings_key as string) ||
-              `${ORG_ID}_event_${e.slug as string}`,
+              `${orgId}_event_${e.slug as string}`,
           })
         );
         setEvents(list);
@@ -57,7 +58,7 @@ export default function EventPageSettings() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [orgId]);
 
   // Fetch settings when selected event changes
   useEffect(() => {

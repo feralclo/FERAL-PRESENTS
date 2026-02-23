@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
 import { getPlatformXPConfig } from "@/lib/rep-points";
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.REP_QUESTS)
       .select("*, event:events(name, slug)")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const {
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.REP_QUESTS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         title: title.trim(),
         description: description?.trim() || null,
         instructions: instructions?.trim() || null,
@@ -173,7 +175,7 @@ export async function POST(request: NextRequest) {
       let repQuery = supabase
         .from(TABLES.REPS)
         .select("id")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("status", "active");
 
       if (event_id) {
@@ -181,7 +183,7 @@ export async function POST(request: NextRequest) {
         const { data: assignments } = await supabase
           .from(TABLES.REP_EVENTS)
           .select("rep_id")
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("event_id", event_id);
 
         if (assignments && assignments.length > 0) {
@@ -203,7 +205,7 @@ export async function POST(request: NextRequest) {
           sendRepEmail({
             type: "quest_notification",
             repId: rep.id,
-            orgId: ORG_ID,
+            orgId,
             data: {
               quest_title: data.title,
               quest_id: data.id,

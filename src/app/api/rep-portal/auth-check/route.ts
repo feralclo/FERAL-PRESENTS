@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { getRepSettings } from "@/lib/rep-points";
+import { getOrgId } from "@/lib/org";
 
 /**
  * GET /api/rep-portal/auth-check — Lightweight rep status check (protected by session)
@@ -30,6 +31,8 @@ export async function GET() {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
+    const orgId = await getOrgId();
+
     // Use admin client for rep lookup (bypasses RLS)
     const adminDb = await getSupabaseAdmin();
     if (!adminDb) {
@@ -44,7 +47,7 @@ export async function GET() {
       .from(TABLES.REPS)
       .select("id, email, first_name, status, onboarding_completed")
       .eq("auth_user_id", user.id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     // Self-healing: try email-based lookup if auth_user_id not matched
@@ -53,7 +56,7 @@ export async function GET() {
         .from(TABLES.REPS)
         .select("id, email, first_name, status, onboarding_completed")
         .eq("email", user.email.toLowerCase())
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .is("auth_user_id", null)
         .single();
 
@@ -63,7 +66,7 @@ export async function GET() {
           .from(TABLES.REPS)
           .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
           .eq("id", repByEmail.id)
-          .eq("org_id", ORG_ID);
+          .eq("org_id", orgId);
         rep = repByEmail;
       }
     }
@@ -86,14 +89,14 @@ export async function GET() {
             .select("points_balance, level, currency_balance")
             .eq("id", rep.id)
             .single(),
-          getRepSettings(ORG_ID),
+          getRepSettings(orgId),
         ]);
 
         // Get rank (position among active reps by total_sales desc)
         const { data: rankData } = await adminDb
           .from(TABLES.REPS)
           .select("id")
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("status", "active")
           .order("total_sales", { ascending: false });
 
@@ -103,7 +106,7 @@ export async function GET() {
         const { count: questCount } = await adminDb
           .from(TABLES.REP_QUESTS)
           .select("id", { count: "exact", head: true })
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("status", "active");
 
         stats = {

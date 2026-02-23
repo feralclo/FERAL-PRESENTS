@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -13,6 +13,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -44,7 +45,7 @@ export async function PUT(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -73,6 +74,7 @@ export async function DELETE(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
 
@@ -88,7 +90,7 @@ export async function DELETE(
       .from(TABLES.ARTISTS)
       .delete()
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

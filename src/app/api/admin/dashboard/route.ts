@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -17,6 +17,7 @@ export async function GET() {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -53,10 +54,10 @@ export async function GET() {
       recentCheckoutsRes,
       recentActivityRes,
     ] = await Promise.all([
-      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", ORG_ID).eq("status", "completed").gte("created_at", todayStr),
-      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", ORG_ID).gte("created_at", todayStr),
-      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", ORG_ID).eq("status", "completed").gte("created_at", yStart).lt("created_at", yEnd),
-      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", ORG_ID).gte("created_at", yStart).lt("created_at", yEnd),
+      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", orgId).eq("status", "completed").gte("created_at", todayStr),
+      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("created_at", todayStr),
+      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", orgId).eq("status", "completed").gte("created_at", yStart).lt("created_at", yEnd),
+      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("created_at", yStart).lt("created_at", yEnd),
       supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "landing").gte("timestamp", todayStr),
       supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "tickets").gte("timestamp", todayStr),
       supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "add_to_cart").gte("timestamp", todayStr),
@@ -124,14 +125,14 @@ export async function GET() {
     const { data: orderRows } = await supabase
       .from(TABLES.ORDERS)
       .select("event_id, total, event:events(name, slug)")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "completed")
       .gte("created_at", todayStr);
 
     const { data: events } = await supabase
       .from(TABLES.EVENTS)
       .select("name, slug, date_start")
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     const slugMap = new Map((events || []).map((e: { name: string; slug: string }) => [e.name, e.slug]));
 

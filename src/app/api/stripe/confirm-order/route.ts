@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import type { MetaEventPayload } from "@/types/marketing";
@@ -17,6 +18,7 @@ import type { MetaEventPayload } from "@/types/marketing";
  */
 export async function POST(request: NextRequest) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const stripe = getStripe();
     const body = await request.json();
     const { payment_intent_id } = body;
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
         .from(TABLES.EVENTS)
         .select("stripe_account_id")
         .eq("id", body.event_id)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
       if (eventRow?.stripe_account_id) {
         stripeAccountId = eventRow.stripe_account_id;
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.ORDERS)
       .select("id")
       .eq("payment_ref", payment_intent_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (existingOrder) {
@@ -113,7 +115,7 @@ export async function POST(request: NextRequest) {
     // Extract metadata from the PaymentIntent
     const metadata = paymentIntent.metadata;
     const eventId = metadata.event_id;
-    const orgId = metadata.org_id || ORG_ID;
+    const metaOrgId = metadata.org_id || orgId;
     const customerEmail = metadata.customer_email;
     const customerFirstName = metadata.customer_first_name;
     const customerLastName = metadata.customer_last_name;
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.EVENTS)
       .select("id, name, slug, currency, venue_name, date_start, doors_time")
       .eq("id", eventId)
-      .eq("org_id", orgId)
+      .eq("org_id", metaOrgId)
       .single();
 
     if (!event) {
@@ -169,7 +171,7 @@ export async function POST(request: NextRequest) {
     // Create order via shared function
     const result = await createOrder({
       supabase,
-      orgId,
+      orgId: metaOrgId,
       event: {
         id: event.id,
         name: event.name,

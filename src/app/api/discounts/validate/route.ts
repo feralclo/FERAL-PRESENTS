@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 // 20 validations per minute per IP — prevents brute-force code guessing
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest) {
     const blocked = validateLimiter(request);
     if (blocked) return blocked;
 
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const { code, event_id, subtotal } = body;
 
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { data: discount, error } = await supabase
       .from(TABLES.DISCOUNTS)
       .select("*")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .ilike("code", code.trim())
       .eq("status", "active")
       .single();

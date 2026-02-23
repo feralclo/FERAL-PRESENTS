@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -12,6 +12,7 @@ export async function GET() {
   try {
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.rep.org_id;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -25,7 +26,7 @@ export async function GET() {
       .from(TABLES.REPS)
       .select("*")
       .eq("id", auth.rep.id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !rep) {
@@ -54,6 +55,7 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.rep.org_id;
 
     const body = await request.json();
     const {
@@ -123,7 +125,7 @@ export async function PUT(request: NextRequest) {
       .from(TABLES.REPS)
       .update(updatePayload)
       .eq("id", auth.rep.id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select("*")
       .single();
 

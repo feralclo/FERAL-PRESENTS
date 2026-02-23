@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { requireAuth } from "@/lib/auth";
 import type { PdfTicketSettings } from "@/types/email";
@@ -16,6 +16,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -33,7 +34,7 @@ export async function GET(
         "*, event:events(name, venue_name, date_start), tickets:tickets(*, ticket_type:ticket_types(name))"
       )
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !order) {
@@ -90,7 +91,7 @@ export async function GET(
       const { data: settingsRow } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", `${ORG_ID}_pdf_ticket`)
+        .eq("key", `${orgId}_pdf_ticket`)
         .single();
       if (settingsRow?.data && typeof settingsRow.data === "object") {
         pdfSettings = settingsRow.data as Partial<PdfTicketSettings>;

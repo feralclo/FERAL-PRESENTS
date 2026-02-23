@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import type { RepProgramStats } from "@/types/reps";
 
@@ -14,6 +13,7 @@ export async function GET(_request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -24,7 +24,7 @@ export async function GET(_request: NextRequest) {
     }
 
     const { data, error } = await supabase.rpc("get_rep_program_stats", {
-      p_org_id: ORG_ID,
+      p_org_id: orgId,
     });
 
     if (error) {

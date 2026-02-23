@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import type { Rep } from "@/types/reps";
 
@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.REPS)
       .select("*", { count: "exact" })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
       const { data: assignments } = await supabase
         .from(TABLES.REP_EVENTS)
         .select("rep_id")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("event_id", eventId);
 
       if (assignments && assignments.length > 0) {
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const {
@@ -131,7 +133,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from(TABLES.REPS)
       .select("id")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .ilike("email", email.trim())
       .single();
 
@@ -147,7 +149,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.REPS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         email: email.trim().toLowerCase(),
         first_name: first_name.trim(),
         last_name: last_name?.trim() || "",

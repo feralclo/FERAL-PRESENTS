@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { createRepDiscountCode } from "@/lib/discount-codes";
 
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
       .select(
         "*, rep:reps(id, first_name, last_name, display_name, email, photo_url, status), event:events(id, name, slug, date_start, status)"
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("assigned_at", { ascending: false })
       .limit(200);
 
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const { rep_id, event_id } = body;
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.REPS)
       .select("id, first_name, status")
       .eq("id", rep_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (repErr || !rep) {
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.EVENTS)
       .select("id, name")
       .eq("id", event_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (eventErr || !event) {
@@ -113,7 +115,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from(TABLES.REP_EVENTS)
       .select("id")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("rep_id", rep_id)
       .eq("event_id", event_id)
       .maybeSingle();
@@ -130,7 +132,7 @@ export async function POST(request: NextRequest) {
     const { data: existingDiscount } = await supabase
       .from(TABLES.DISCOUNTS)
       .select("id")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("rep_id", rep_id)
       .contains("applicable_event_ids", [event_id])
       .maybeSingle();
@@ -155,7 +157,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.REP_EVENTS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         rep_id,
         event_id,
         discount_id: discountId,

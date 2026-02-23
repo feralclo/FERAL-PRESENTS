@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID, repsKey } from "@/lib/constants";
+import { TABLES, repsKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { getRepSettings } from "@/lib/rep-points";
 import type { RepProgramSettings } from "@/types/reps";
@@ -12,8 +12,9 @@ export async function GET(_request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
-    const settings = await getRepSettings(ORG_ID);
+    const settings = await getRepSettings(orgId);
 
     return NextResponse.json({ data: settings });
   } catch {
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const settings = body as Partial<RepProgramSettings>;
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Merge with existing settings to preserve defaults
-    const currentSettings = await getRepSettings(ORG_ID);
+    const currentSettings = await getRepSettings(orgId);
     const mergedSettings: RepProgramSettings = {
       ...currentSettings,
       ...settings,
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert(
       {
-        key: repsKey(ORG_ID),
+        key: repsKey(orgId),
         data: mergedSettings,
         updated_at: new Date().toISOString(),
       },

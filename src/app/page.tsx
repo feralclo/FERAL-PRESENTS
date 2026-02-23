@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID, homepageKey, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, homepageKey, SETTINGS_KEYS } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import type { LandingEvent } from "@/types/events";
 import type { HomepageSettings } from "@/types/settings";
 
@@ -49,6 +50,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
+  const orgId = await getOrgId();
   let events: LandingEvent[] = [];
   let heroSettings: HomepageSettings = DEFAULT_HERO;
 
@@ -62,14 +64,14 @@ export default async function HomePage() {
           .select(
             "id, slug, name, date_start, venue_name, city, cover_image, tag_line, doors_time, payment_method, external_link"
           )
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("status", "live")
           .eq("visibility", "public")
           .order("date_start", { ascending: true }),
         supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
-          .eq("key", homepageKey(ORG_ID))
+          .eq("key", homepageKey(orgId))
           .single(),
       ]);
 

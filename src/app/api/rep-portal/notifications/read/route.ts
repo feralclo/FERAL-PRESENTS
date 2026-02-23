@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -14,6 +14,7 @@ export async function PUT(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
     const body = await request.json();
 
     const supabase = await getSupabaseAdmin();
@@ -30,7 +31,7 @@ export async function PUT(request: NextRequest) {
         .from(TABLES.REP_NOTIFICATIONS)
         .update({ read: true })
         .eq("rep_id", repId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("read", false);
 
       if (error) {
@@ -43,7 +44,7 @@ export async function PUT(request: NextRequest) {
         .update({ read: true })
         .in("id", body.ids)
         .eq("rep_id", repId)
-        .eq("org_id", ORG_ID);
+        .eq("org_id", orgId);
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

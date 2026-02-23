@@ -1,29 +1,31 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 
 /**
  * Auth helper for admin API routes.
  *
  * Verifies the current request has a valid Supabase Auth session
  * AND that the user is NOT a rep (reps have their own auth via requireRepAuth).
- * Returns the authenticated admin user or an error NextResponse.
+ * Returns the authenticated admin user + orgId or an error NextResponse.
  *
  * Usage in API routes:
  *   const auth = await requireAuth();
  *   if (auth.error) return auth.error;
- *   const user = auth.user;
+ *   const { user, orgId } = auth;
  */
 export async function requireAuth(): Promise<
-  | { user: { id: string; email: string }; error: null }
-  | { user: null; error: NextResponse }
+  | { user: { id: string; email: string }; orgId: string; error: null }
+  | { user: null; orgId: null; error: NextResponse }
 > {
   try {
     const supabase = await getSupabaseServer();
     if (!supabase) {
       return {
         user: null,
+        orgId: null,
         error: NextResponse.json(
           { error: "Service unavailable" },
           { status: 503 }
@@ -39,6 +41,7 @@ export async function requireAuth(): Promise<
     if (error || !user) {
       return {
         user: null,
+        orgId: null,
         error: NextResponse.json(
           { error: "Authentication required" },
           { status: 401 }
@@ -53,6 +56,7 @@ export async function requireAuth(): Promise<
       console.warn("[requireAuth] Blocked rep-only user from admin route:", user.email);
       return {
         user: null,
+        orgId: null,
         error: NextResponse.json(
           { error: "Admin access required" },
           { status: 403 }
@@ -60,13 +64,17 @@ export async function requireAuth(): Promise<
       };
     }
 
+    const orgId = await getOrgId();
+
     return {
       user: { id: user.id, email: user.email || "" },
+      orgId,
       error: null,
     };
   } catch {
     return {
       user: null,
+      orgId: null,
       error: NextResponse.json(
         { error: "Authentication failed" },
         { status: 401 }
@@ -113,6 +121,8 @@ export async function requireRepAuth(): Promise<
       };
     }
 
+    const orgId = await getOrgId();
+
     // Use admin client for rep table lookups (bypasses RLS)
     const adminDb = await getSupabaseAdmin();
     if (!adminDb) {
@@ -130,7 +140,7 @@ export async function requireRepAuth(): Promise<
       .from(TABLES.REPS)
       .select("id, auth_user_id, email, org_id, status")
       .eq("auth_user_id", user.id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (repErr || !rep) {
@@ -143,7 +153,7 @@ export async function requireRepAuth(): Promise<
           .from(TABLES.REPS)
           .select("id, auth_user_id, email, org_id, status")
           .eq("email", user.email.toLowerCase())
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .is("auth_user_id", null)
           .single();
 
@@ -158,7 +168,7 @@ export async function requireRepAuth(): Promise<
             .from(TABLES.REPS)
             .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
             .eq("id", repByEmail.id)
-            .eq("org_id", ORG_ID);
+            .eq("org_id", orgId);
 
           repByEmail.auth_user_id = user.id;
 
@@ -179,7 +189,7 @@ export async function requireRepAuth(): Promise<
       console.error("[requireRepAuth] Rep lookup failed:", {
         authUserId: user.id,
         authEmail: user.email,
-        orgId: ORG_ID,
+        orgId,
         repErr: repErr?.message,
       });
       return {
@@ -224,8 +234,8 @@ export async function requireRepAuth(): Promise<
  * platform operator (e.g., Stripe Connect management, data resets).
  */
 export async function requirePlatformOwner(): Promise<
-  | { user: { id: string; email: string }; error: null }
-  | { user: null; error: NextResponse }
+  | { user: { id: string; email: string }; orgId: string; error: null }
+  | { user: null; orgId: null; error: NextResponse }
 > {
   const auth = await requireAuth();
   if (auth.error) return auth;
@@ -235,6 +245,7 @@ export async function requirePlatformOwner(): Promise<
   if (!supabase) {
     return {
       user: null,
+      orgId: null,
       error: NextResponse.json(
         { error: "Service unavailable" },
         { status: 503 }
@@ -249,6 +260,7 @@ export async function requirePlatformOwner(): Promise<
   if (!user?.app_metadata?.is_platform_owner) {
     return {
       user: null,
+      orgId: null,
       error: NextResponse.json(
         { error: "Platform owner access required" },
         { status: 403 }

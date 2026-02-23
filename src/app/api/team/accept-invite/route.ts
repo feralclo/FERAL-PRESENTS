@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { TABLES, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 const limiter = createRateLimiter("team-accept-invite", { limit: 5, windowSeconds: 900 });
@@ -21,6 +22,7 @@ function getInviteClient() {
  */
 export async function GET(request: NextRequest) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const token = request.nextUrl.searchParams.get("token");
 
     if (!token) {
@@ -38,17 +40,17 @@ export async function GET(request: NextRequest) {
         .from(TABLES.ORG_USERS)
         .select("id, email, first_name, last_name, status, auth_user_id, invite_expires_at, perm_events, perm_orders, perm_marketing, perm_finance")
         .eq("invite_token", token)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single(),
       supabase
         .from("site_settings")
         .select("data")
-        .eq("key", `${ORG_ID}_branding`)
+        .eq("key", `${orgId}_branding`)
         .single(),
       supabase
         .from("site_settings")
         .select("data")
-        .eq("key", `${ORG_ID}_general`)
+        .eq("key", `${orgId}_general`)
         .single(),
     ]);
 
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
     // Build org info from branding + general settings
     const branding = (brandingResult.data?.data as Record<string, string>) || {};
     const general = (generalResult.data?.data as Record<string, string>) || {};
-    const orgName = branding.org_name || general.org_name || ORG_ID.toUpperCase();
+    const orgName = branding.org_name || general.org_name || orgId.toUpperCase();
 
     return NextResponse.json({
       valid: true,
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
   if (blocked) return blocked;
 
   try {
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const { token, password } = body;
 
@@ -124,7 +127,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.ORG_USERS)
       .select("id, email, first_name, last_name, status, auth_user_id, invite_expires_at")
       .eq("invite_token", token)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (memberError || !member) {
@@ -211,7 +214,7 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", member.id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (updateError) {
       console.error("[team/accept-invite] Failed to activate member:", updateError);

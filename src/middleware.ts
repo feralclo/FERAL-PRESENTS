@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware";
+import { SUPABASE_URL } from "@/lib/constants";
 
 /**
  * Security headers applied to all responses.
@@ -12,6 +13,105 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Permissions-Policy":
     "camera=(), microphone=(), geolocation=(), payment=*, interest-cohort=()",
 };
+
+/* ── Org resolution cache ── */
+
+const FALLBACK_ORG = "feral";
+const CACHE_TTL_MS = 60_000; // 60s
+
+interface CacheEntry {
+  orgId: string;
+  expiry: number;
+}
+
+const domainCache = new Map<string, CacheEntry>();
+const userOrgCache = new Map<string, CacheEntry>();
+
+function getCached(cache: Map<string, CacheEntry>, key: string): string | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() < entry.expiry) return entry.orgId;
+  if (entry) cache.delete(key);
+  return null;
+}
+
+function setCache(cache: Map<string, CacheEntry>, key: string, orgId: string): void {
+  cache.set(key, { orgId, expiry: Date.now() + CACHE_TTL_MS });
+}
+
+/**
+ * Resolve org_id from the domains table by hostname.
+ * Uses Supabase REST API directly (service role key) for lightweight lookup.
+ */
+async function resolveOrgByDomain(hostname: string): Promise<string> {
+  const cached = getCached(domainCache, hostname);
+  if (cached) return cached;
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !serviceRoleKey) return FALLBACK_ORG;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/domains?hostname=eq.${encodeURIComponent(hostname)}&select=org_id&limit=1`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        cache: "no-store",
+      }
+    );
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows.length > 0) {
+        const orgId = rows[0].org_id;
+        setCache(domainCache, hostname, orgId);
+        return orgId;
+      }
+    }
+  } catch {
+    // Fall through to fallback
+  }
+
+  return FALLBACK_ORG;
+}
+
+/**
+ * Resolve org_id from org_users table by auth user ID.
+ */
+async function resolveOrgByUser(userId: string): Promise<string> {
+  const cached = getCached(userOrgCache, userId);
+  if (cached) return cached;
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !serviceRoleKey) return FALLBACK_ORG;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/org_users?auth_user_id=eq.${encodeURIComponent(userId)}&status=eq.active&select=org_id&limit=1`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        cache: "no-store",
+      }
+    );
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows.length > 0) {
+        const orgId = rows[0].org_id;
+        setCache(userOrgCache, userId, orgId);
+        return orgId;
+      }
+    }
+  } catch {
+    // Fall through to fallback
+  }
+
+  return FALLBACK_ORG;
+}
 
 /* ── Route classification helpers ── */
 
@@ -191,6 +291,7 @@ export async function middleware(request: NextRequest) {
   if (!client) {
     // Supabase not configured — let the request through but add headers
     const response = NextResponse.next();
+    response.headers.set("x-org-id", FALLBACK_ORG);
     return applySecurityHeaders(response);
   }
 
@@ -201,6 +302,18 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // ── Resolve org_id ──
+  let orgId = FALLBACK_ORG;
+
+  if (isAdminHost && user) {
+    // Admin host + authenticated → resolve from org_users
+    orgId = await resolveOrgByUser(user.id);
+  } else if (!isAdminHost) {
+    // Tenant host → resolve from domains table
+    const cleanHost = hostname.split(":")[0]; // Strip port for local dev
+    orgId = await resolveOrgByDomain(cleanHost);
+  }
 
   // ── Admin pages ──
   // Require authentication. Role-based access is enforced at the API level
@@ -254,11 +367,32 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return applySecurityHeaders(getResponse());
+  // ── Inject x-org-id header for downstream server components/routes ──
+  // Set on request headers so Next.js forwards to server components via headers()
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-org-id", orgId);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
+  // Copy cookies from the auth-refreshed response (Supabase middleware client may
+  // have set refreshed session cookies that we must preserve)
+  const authResponse = getResponse();
+  authResponse.cookies.getAll().forEach((cookie) => {
+    response.cookies.set(cookie.name, cookie.value, {
+      path: cookie.path || "/",
+      sameSite: (cookie.sameSite as "lax" | "strict" | "none") || "lax",
+      secure: cookie.secure,
+      maxAge: 60 * 60 * 24 * 30, // 30 days — match middleware client
+    });
+  });
+
+  return applySecurityHeaders(response);
 }
 
 /**
- * Matcher: run middleware on admin pages, API routes, and rep portal.
+ * Matcher: run middleware on admin pages, API routes, rep portal, and event pages.
  * Static assets, images, and public pages skip middleware entirely.
  */
 export const config = {
@@ -267,5 +401,6 @@ export const config = {
     "/admin/:path*",
     "/api/:path*",
     "/rep/:path*",
+    "/event/:path*",
   ],
 };

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -10,6 +10,7 @@ export async function GET() {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -22,7 +23,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from(TABLES.DISCOUNTS)
       .select("*")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const {
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from(TABLES.DISCOUNTS)
       .select("id")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .ilike("code", code.trim())
       .single();
 
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.DISCOUNTS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         code: code.trim().toUpperCase(),
         description: description || null,
         type,

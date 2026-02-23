@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { createNotification } from "@/lib/rep-notifications";
 
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
       .select(
         "*, reward:rep_rewards(id, name, description, image_url, reward_type, points_cost), rep:reps(id, first_name, last_name, display_name, email, photo_url)"
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const { rep_id, reward_id, notes } = body;
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.REPS)
       .select("id")
       .eq("id", rep_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (repErr || !rep) {
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.REP_REWARDS)
       .select("id, total_available, total_claimed")
       .eq("id", reward_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (rewardErr || !reward) {
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.REP_REWARD_CLAIMS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         rep_id,
         reward_id,
         claim_type: "manual" as const,
@@ -152,20 +154,20 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", reward_id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     // Fetch reward name for notification
     const { data: rewardInfo } = await supabase
       .from(TABLES.REP_REWARDS)
       .select("name")
       .eq("id", reward_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     // Send in-app notification (fire-and-forget)
     createNotification({
       repId: rep_id,
-      orgId: ORG_ID,
+      orgId,
       type: "manual_grant",
       title: "Reward Granted!",
       body: `You've been awarded: ${rewardInfo?.name || "a reward"}`,

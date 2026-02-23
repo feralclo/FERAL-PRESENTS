@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -12,6 +12,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await context.params;
 
@@ -27,7 +28,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       .from(TABLES.DISCOUNTS)
       .select("*")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !data) {
@@ -47,6 +48,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await context.params;
     const body = await request.json();
@@ -86,7 +88,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       const { data: existing } = await supabase
         .from(TABLES.DISCOUNTS)
         .select("id")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .ilike("code", body.code.trim())
         .neq("id", id)
         .single();
@@ -123,7 +125,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       .from(TABLES.DISCOUNTS)
       .update(update)
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -147,6 +149,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await context.params;
 
@@ -162,7 +165,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       .from(TABLES.DISCOUNTS)
       .delete()
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

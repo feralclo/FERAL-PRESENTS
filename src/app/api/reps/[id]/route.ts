@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
+import { TABLES, SUPABASE_URL } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -14,6 +14,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -28,7 +29,7 @@ export async function GET(
       .from(TABLES.REPS)
       .select("*")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !data) {
@@ -51,6 +52,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -106,7 +108,7 @@ export async function PUT(
       .from(TABLES.REPS)
       .update(updates)
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -146,6 +148,7 @@ export async function DELETE(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -161,7 +164,7 @@ export async function DELETE(
       .from(TABLES.REPS)
       .select("id, auth_user_id")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (fetchError || !rep) {
@@ -220,14 +223,14 @@ export async function DELETE(
       .from(TABLES.DISCOUNTS)
       .delete()
       .eq("rep_id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     // Hard delete the rep record (cascade handles points_log, events, submissions, claims)
     const { error: deleteError } = await supabase
       .from(TABLES.REPS)
       .delete()
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (deleteError) {
       console.error("[DELETE /api/reps/[id]] Error:", deleteError.message);

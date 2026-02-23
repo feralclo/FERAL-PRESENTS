@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,7 @@ type EventWithTickets = Event & {
 };
 
 export default function EventsPage() {
+  const orgId = useOrgId();
   const router = useRouter();
   const [events, setEvents] = useState<EventWithTickets[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,12 +102,12 @@ export default function EventsPage() {
     const { data } = await supabase
       .from(TABLES.EVENTS)
       .select("*, ticket_types(sold, capacity, price)")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("date_start", { ascending: false });
 
     setEvents((data as typeof events) || []);
     setLoading(false);
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     loadEvents();

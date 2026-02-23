@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { generateGoogleWalletUrl, type WalletPassTicketData } from "@/lib/wallet-passes";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
@@ -18,11 +19,12 @@ import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
  * to the PDF and email QR codes.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const orgId = getOrgIdFromRequest(request);
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
@@ -34,7 +36,7 @@ export async function GET(
       const { data: settingsRow } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", `${ORG_ID}_wallet_passes`)
+        .eq("key", `${orgId}_wallet_passes`)
         .single();
       if (settingsRow?.data && typeof settingsRow.data === "object") {
         walletSettings = { ...DEFAULT_WALLET_PASS_SETTINGS, ...(settingsRow.data as Partial<WalletPassSettings>) };
@@ -52,7 +54,7 @@ export async function GET(
         "*, event:events(name, venue_name, date_start, doors_time), tickets:tickets(*, ticket_type:ticket_types(name, includes_merch, merch_name))"
       )
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !order) {

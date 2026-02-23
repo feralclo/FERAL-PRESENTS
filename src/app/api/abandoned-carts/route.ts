@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
         "*, customer:customers(*), event:events(name, slug, date_start)",
         { count: "exact" }
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
     const { data: allCarts } = await supabase
       .from(TABLES.ABANDONED_CARTS)
       .select("status, subtotal, notification_count")
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     type CartRow = { status: string; subtotal: number; notification_count: number };
 

@@ -10,6 +10,7 @@ import { TABLES, ORG_ID } from "@/lib/constants";
  */
 export async function createRepDiscountCode(params: {
   repId: string;
+  orgId?: string;
   firstName: string;
   discountType?: string;
   discountValue?: number;
@@ -21,6 +22,7 @@ export async function createRepDiscountCode(params: {
 
   const {
     repId,
+    orgId = ORG_ID,
     firstName,
     discountType = "percentage",
     discountValue = 10,
@@ -55,7 +57,7 @@ export async function createRepDiscountCode(params: {
     const { data, error } = await supabase
       .from(TABLES.DISCOUNTS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         code,
         description: description || `Rep discount for ${firstName}`,
         type: discountType,

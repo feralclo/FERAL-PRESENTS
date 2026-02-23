@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
         .select(
           "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level, points_balance)"
         )
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("event_id", eventId)
         .order("revenue", { ascending: false })
         .limit(50);
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       .select(
         "id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level, points_balance"
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "active")
       .order("total_revenue", { ascending: false })
       .limit(50);

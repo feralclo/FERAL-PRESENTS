@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const { data: completedOrders } = await supabase
       .from(TABLES.ORDERS)
       .select("id, total")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "completed")
       .gte("created_at", from);
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { count: ticketCount } = await supabase
       .from(TABLES.TICKETS)
       .select("*", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .gte("created_at", from);
 
     const orderIds = ords.map((o) => o.id);
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       const { data: merch } = await supabase
         .from(TABLES.ORDER_ITEMS)
         .select("unit_price, qty")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .in("order_id", orderIds)
         .not("merch_size", "is", null);
 

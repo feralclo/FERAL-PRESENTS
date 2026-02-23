@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
 import { GroupManager, GroupHeader } from "./GroupManager";
-import { ORG_ID } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
 import type { TicketsTabProps } from "./types";
@@ -21,6 +21,7 @@ export function TicketsTab({
   deletedTypeIds,
   setDeletedTypeIds,
 }: TicketsTabProps) {
+  const orgId = useOrgId();
   const [products, setProducts] = useState<Product[]>([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -55,7 +56,7 @@ export function TicketsTab({
       ...prev,
       {
         id: "",
-        org_id: ORG_ID,
+        org_id: orgId,
         event_id: event.id || "",
         name: "",
         description: "",
@@ -71,7 +72,7 @@ export function TicketsTab({
         updated_at: new Date().toISOString(),
       } as TicketTypeRow,
     ]);
-  }, [event.id, setTicketTypes]);
+  }, [event.id, setTicketTypes, orgId]);
 
   const removeTicketType = useCallback(
     (index: number) => {

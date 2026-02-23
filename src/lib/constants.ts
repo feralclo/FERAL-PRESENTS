@@ -1,4 +1,8 @@
-// Default org_id for all Supabase queries — every table uses this for future multi-tenancy
+/**
+ * Default org_id fallback — used by middleware when no domain/user match is found,
+ * and by cron jobs that run without request context.
+ * @deprecated Import getOrgId() from "@/lib/org" for server code, or useOrgId() from "@/components/OrgProvider" for client code.
+ */
 export const ORG_ID = "feral";
 
 // Supabase — require env vars, no hardcoded fallbacks
@@ -33,9 +37,13 @@ export const TABLES = {
   ARTISTS: "artists",
   EVENT_ARTISTS: "event_artists",
   ORG_USERS: "org_users",
+  DOMAINS: "domains",
 } as const;
 
-// Settings keys stored in site_settings table
+/**
+ * Hardcoded settings keys for the "feral" org.
+ * @deprecated Use the dynamic key functions (brandingKey, themesKey, etc.) with an orgId parameter instead.
+ */
 export const SETTINGS_KEYS = {
   EVENTS_LIST: "feral_events_list",
   MARKETING: "feral_marketing",
@@ -86,6 +94,26 @@ export function popupKey(orgId: string): string {
 /** Generate the marketing settings key for a given org */
 export function marketingKey(orgId: string): string {
   return `${orgId}_marketing`;
+}
+
+/** Generate the events list settings key for a given org */
+export function eventsListKey(orgId: string): string {
+  return `${orgId}_events_list`;
+}
+
+/** Generate the email settings key for a given org */
+export function emailKey(orgId: string): string {
+  return `${orgId}_email`;
+}
+
+/** Generate the wallet passes settings key for a given org */
+export function walletPassesKey(orgId: string): string {
+  return `${orgId}_wallet_passes`;
+}
+
+/** Generate the Stripe Connect account settings key for a given org */
+export function stripeAccountKey(orgId: string): string {
+  return `${orgId}_stripe_account`;
 }
 
 // Klaviyo

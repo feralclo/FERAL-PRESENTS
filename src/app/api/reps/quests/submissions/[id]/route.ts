@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
 import { createNotification } from "@/lib/rep-notifications";
@@ -15,6 +15,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -47,7 +48,7 @@ export async function PUT(
       .from(TABLES.REP_QUEST_SUBMISSIONS)
       .select("*, quest:rep_quests(id, title, points_reward, currency_reward, total_completed), rep:reps(id, first_name, last_name, display_name, email, photo_url)")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (fetchErr || !submission) {
@@ -85,7 +86,7 @@ export async function PUT(
       .from(TABLES.REP_QUEST_SUBMISSIONS)
       .update(updates)
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -101,7 +102,7 @@ export async function PUT(
       if (pointsReward > 0 || currencyReward > 0) {
         await awardPoints({
           repId: submission.rep_id,
-          orgId: ORG_ID,
+          orgId,
           points: pointsReward,
           currency: currencyReward,
           sourceType: "quest",
@@ -116,7 +117,7 @@ export async function PUT(
         .from(TABLES.REP_QUESTS)
         .select("total_completed")
         .eq("id", submission.quest_id)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       await supabase
@@ -126,7 +127,7 @@ export async function PUT(
           updated_at: new Date().toISOString(),
         })
         .eq("id", submission.quest_id)
-        .eq("org_id", ORG_ID);
+        .eq("org_id", orgId);
 
       // In-app notification for quest approval
       const notifParts = [];
@@ -134,7 +135,7 @@ export async function PUT(
       if (currencyReward > 0) notifParts.push(`+${currencyReward} currency`);
       createNotification({
         repId: submission.rep_id,
-        orgId: ORG_ID,
+        orgId,
         type: "quest_approved",
         title: "Quest Approved!",
         body: `${submission.quest?.title || "Quest"} — ${notifParts.join(" ")}`,

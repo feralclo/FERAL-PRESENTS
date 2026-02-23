@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ORG_ID } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { getPointsHistory, awardPoints } from "@/lib/rep-points";
 
@@ -13,6 +12,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const { searchParams } = request.nextUrl;
@@ -20,7 +20,7 @@ export async function GET(
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const offset = (page - 1) * limit;
 
-    const data = await getPointsHistory(id, ORG_ID, limit, offset);
+    const data = await getPointsHistory(id, orgId, limit, offset);
 
     return NextResponse.json({ data });
   } catch {
@@ -38,6 +38,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -59,7 +60,7 @@ export async function POST(
 
     const newBalance = await awardPoints({
       repId: id,
-      orgId: ORG_ID,
+      orgId,
       points,
       sourceType: "manual",
       description: description.trim(),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 
 /**
  * GET /api/merch/[id]/linked-tickets — List ticket types linked to this merch item
@@ -10,6 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -23,7 +25,7 @@ export async function GET(
       .from(TABLES.TICKET_TYPES)
       .select("id, name, price, event:events(name, slug)")
       .eq("product_id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

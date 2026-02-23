@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       .from(TABLES.REP_EVENTS)
       .select("event_id")
       .eq("rep_id", repId)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const eventIds = (repEvents || [])
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.REP_QUESTS)
       .select("*, event:events(id, name, slug)")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", statusFilter)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
       .from(TABLES.REP_QUEST_SUBMISSIONS)
       .select("quest_id, status")
       .eq("rep_id", repId)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .in("quest_id", questIds);
 
     // Build submission count map: { quest_id: { total, approved, pending, rejected } }

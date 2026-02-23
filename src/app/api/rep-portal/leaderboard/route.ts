@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -30,14 +31,14 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get("event_id");
 
     if (eventId) {
-      return await getEventLeaderboard(supabase, repId, eventId);
+      return await getEventLeaderboard(supabase, repId, eventId, orgId);
     }
 
     // Global leaderboard from reps table
     const { data: reps, error } = await supabase
       .from(TABLES.REPS)
       .select("id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "active")
       .order("total_revenue", { ascending: false })
       .limit(50);
@@ -71,14 +72,14 @@ export async function GET(request: NextRequest) {
         .from(TABLES.REPS)
         .select("total_revenue")
         .eq("id", repId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       if (currentRep && Number(currentRep.total_revenue) > 0) {
         const { count: ahead } = await supabase
           .from(TABLES.REPS)
           .select("id", { count: "exact", head: true })
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("status", "active")
           .gt("total_revenue", Number(currentRep.total_revenue));
 
@@ -109,7 +110,8 @@ export async function GET(request: NextRequest) {
 async function getEventLeaderboard(
   supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseAdmin>>>,
   repId: string,
-  eventId: string
+  eventId: string,
+  orgId: string
 ) {
   // Fetch leaderboard, event info, and position rewards in parallel
   const [leaderboardResult, eventResult, rewardsResult] = await Promise.all([
@@ -118,7 +120,7 @@ async function getEventLeaderboard(
       .select(
         "rep_id, sales_count, revenue, rep:reps(id, display_name, first_name, last_name, photo_url, total_sales, total_revenue, level)"
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_id", eventId)
       .order("revenue", { ascending: false })
       .limit(50),
@@ -126,12 +128,12 @@ async function getEventLeaderboard(
       .from(TABLES.EVENTS)
       .select("id, name, date_start, status")
       .eq("id", eventId)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single(),
     supabase
       .from(TABLES.REP_EVENT_POSITION_REWARDS)
       .select("position, reward_name, reward_id, awarded_rep_id, xp_reward, currency_reward")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_id", eventId)
       .order("position", { ascending: true }),
   ]);

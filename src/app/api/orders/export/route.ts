@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 const BASE_URL =
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       .select(
         "*, customer:customers(email, first_name, last_name, phone), event:events(name, slug, date_start, venue_name, city), order_items:order_items(qty, unit_price, merch_size, ticket_type:ticket_types(name)), tickets:tickets(ticket_code, status, holder_first_name, holder_last_name, holder_email, merch_size, scanned_at)"
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
     if (eventId) query = query.eq("event_id", eventId);

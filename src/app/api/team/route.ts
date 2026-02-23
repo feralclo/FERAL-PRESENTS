@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { sendTeamInviteEmail } from "@/lib/team-emails";
 
 /**
  * Verify the requesting user is an org owner.
  * Returns the owner row or an error response.
  */
-async function requireOwner(userId: string) {
+async function requireOwner(userId: string, orgId: string) {
   const supabase = await getSupabaseAdmin();
   if (!supabase) {
     return { owner: null, error: NextResponse.json({ error: "Service unavailable" }, { status: 503 }) };
@@ -18,7 +18,7 @@ async function requireOwner(userId: string) {
     .from(TABLES.ORG_USERS)
     .select("id, role, first_name, last_name")
     .eq("auth_user_id", userId)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .eq("role", "owner")
     .single();
 
@@ -35,8 +35,9 @@ async function requireOwner(userId: string) {
 export async function GET() {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
+  const orgId = auth.orgId;
 
-  const ownerCheck = await requireOwner(auth.user.id);
+  const ownerCheck = await requireOwner(auth.user.id, orgId);
   if (ownerCheck.error) return ownerCheck.error;
 
   const supabase = await getSupabaseAdmin();
@@ -47,7 +48,7 @@ export async function GET() {
   const { data: members, error } = await supabase
     .from(TABLES.ORG_USERS)
     .select("id, org_id, auth_user_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, status, invite_expires_at, invited_by, created_at, updated_at")
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -64,8 +65,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
+  const orgId = auth.orgId;
 
-  const ownerCheck = await requireOwner(auth.user.id);
+  const ownerCheck = await requireOwner(auth.user.id, orgId);
   if (ownerCheck.error) return ownerCheck.error;
 
   const body = await request.json();
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await supabase
     .from(TABLES.ORG_USERS)
     .select("id, status")
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .ilike("email", cleanEmail)
     .single();
 
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
   const { data: member, error } = await supabase
     .from(TABLES.ORG_USERS)
     .insert({
-      org_id: ORG_ID,
+      org_id: orgId,
       email: cleanEmail,
       first_name: first_name.trim(),
       last_name: (last_name || "").trim(),
@@ -153,7 +155,7 @@ export async function POST(request: NextRequest) {
     sendTeamInviteEmail({
       email: cleanEmail,
       firstName: first_name.trim(),
-      orgId: ORG_ID,
+      orgId,
       inviteToken: tokenRow.invite_token,
       invitedByName: ownerName || undefined,
     }).catch(() => {});

@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -29,6 +30,7 @@ import type { EventSettings } from "@/types/settings";
 import type { EventArtist } from "@/types/artists";
 
 export default function EventEditorPage() {
+  const orgId = useOrgId();
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
@@ -54,7 +56,7 @@ export default function EventEditorPage() {
       const { data } = await supabase
         .from(TABLES.EVENTS)
         .select("*, ticket_types(*, product:products(*))")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("slug", slug)
         .single();
 
@@ -93,7 +95,7 @@ export default function EventEditorPage() {
       setLoading(false);
     }
     load();
-  }, [slug]);
+  }, [slug, orgId]);
 
   const updateEvent = useCallback((field: string, value: unknown) => {
     setEvent((prev) => (prev ? { ...prev, [field]: value } : prev));

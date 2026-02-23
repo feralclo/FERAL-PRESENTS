@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 // 60 tracking events per minute per IP — prevents analytics table flooding
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
     const blocked = trackLimiter(request);
     if (blocked) return blocked;
 
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const { table, ...eventData } = body;
 
@@ -104,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
     const { error } = await supabase
       .from(tableName)
-      .insert({ ...sanitized, org_id: ORG_ID });
+      .insert({ ...sanitized, org_id: orgId });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -14,6 +14,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { eventId } = await params;
     const supabase = await getSupabaseAdmin();
@@ -24,7 +25,7 @@ export async function GET(
     const { data, error } = await supabase
       .from(TABLES.REP_EVENT_POSITION_REWARDS)
       .select("*, reward:rep_rewards(id, name, image_url), awarded_rep:reps(id, display_name, first_name, photo_url)")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_id", eventId)
       .order("position", { ascending: true });
 
@@ -52,6 +53,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { eventId } = await params;
     const body = await request.json();
@@ -72,7 +74,7 @@ export async function POST(
       .from(TABLES.EVENTS)
       .select("id")
       .eq("id", eventId)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (eventErr || !event) {
@@ -83,7 +85,7 @@ export async function POST(
     const { data: existing } = await supabase
       .from(TABLES.REP_EVENT_POSITION_REWARDS)
       .select("id, awarded_rep_id")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_id", eventId);
 
     const isLocked = (existing || []).some((r) => r.awarded_rep_id !== null);
@@ -98,7 +100,7 @@ export async function POST(
     await supabase
       .from(TABLES.REP_EVENT_POSITION_REWARDS)
       .delete()
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_id", eventId);
 
     if (rewards.length === 0) {
@@ -107,7 +109,7 @@ export async function POST(
 
     // Insert new position rewards
     const rows = rewards.map((r) => ({
-      org_id: ORG_ID,
+      org_id: orgId,
       event_id: eventId,
       position: r.position,
       reward_name: r.reward_name || "",

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -19,6 +19,7 @@ export async function POST(
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
     const { id: rewardId } = await params;
 
     const supabase = await getSupabaseAdmin();
@@ -34,7 +35,7 @@ export async function POST(
       .from(TABLES.REP_REWARDS)
       .select("reward_type, points_cost")
       .eq("id", rewardId)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (rewardError || !reward) {
@@ -62,7 +63,7 @@ export async function POST(
     // Call the atomic RPC — handles locking, balance check, deduction, claim creation
     const { data, error } = await supabase.rpc("claim_reward_atomic", {
       p_rep_id: repId,
-      p_org_id: ORG_ID,
+      p_org_id: orgId,
       p_reward_id: rewardId,
       p_points_cost: pointsCost,
     });

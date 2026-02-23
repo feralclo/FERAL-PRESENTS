@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { sendTeamInviteEmail } from "@/lib/team-emails";
 
 /**
@@ -13,6 +13,7 @@ export async function POST(
 ) {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
+  const orgId = auth.orgId;
 
   const supabase = await getSupabaseAdmin();
   if (!supabase) {
@@ -24,7 +25,7 @@ export async function POST(
     .from(TABLES.ORG_USERS)
     .select("id, role, first_name, last_name")
     .eq("auth_user_id", auth.user.id)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .eq("role", "owner")
     .single();
 
@@ -39,7 +40,7 @@ export async function POST(
     .from(TABLES.ORG_USERS)
     .select("id, email, first_name, status, invite_token")
     .eq("id", id)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .single();
 
   if (!member) {
@@ -59,7 +60,7 @@ export async function POST(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .select("invite_token")
     .single();
 
@@ -73,7 +74,7 @@ export async function POST(
   sendTeamInviteEmail({
     email: member.email,
     firstName: member.first_name,
-    orgId: ORG_ID,
+    orgId,
     inviteToken: updated.invite_token,
     invitedByName: ownerName || undefined,
   }).catch(() => {});

@@ -38,7 +38,8 @@ interface PushSubscriptionData {
 export async function savePushSubscription(
   repId: string,
   subscription: PushSubscriptionData,
-  userAgent?: string
+  userAgent?: string,
+  orgId: string = ORG_ID
 ): Promise<void> {
   const supabase = await getSupabaseAdmin();
   if (!supabase) return;
@@ -47,7 +48,7 @@ export async function savePushSubscription(
     .from("rep_push_subscriptions")
     .upsert(
       {
-        org_id: ORG_ID,
+        org_id: orgId,
         rep_id: repId,
         endpoint: subscription.endpoint,
         p256dh: subscription.keys.p256dh,

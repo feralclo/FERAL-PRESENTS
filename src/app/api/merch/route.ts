@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -8,6 +9,7 @@ import { requireAuth } from "@/lib/auth";
  */
 export async function GET(request: NextRequest) {
   try {
+    const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.PRODUCTS)
       .select("*")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
     if (status) {
@@ -47,6 +49,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const {
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.PRODUCTS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         name,
         description: description || null,
         type,

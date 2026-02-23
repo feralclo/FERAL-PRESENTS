@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -13,6 +13,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -29,7 +30,7 @@ export async function GET(
         "*, customer:customers(*), event:events(id, name, slug, date_start, venue_name, city), order_items:order_items(*, ticket_type:ticket_types(name, description)), tickets:tickets(*, ticket_type:ticket_types(name))"
       )
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !data) {

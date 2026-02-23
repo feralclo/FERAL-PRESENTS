@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, SETTINGS_KEYS, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID, ORG_ID } from "@/lib/constants";
+import { TABLES, SETTINGS_KEYS, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { stripe } from "@/lib/stripe/server";
 
 interface HealthCheck {
@@ -17,9 +18,10 @@ interface HealthCheck {
  * Called by the admin System Health dashboard.
  */
 export async function GET() {
+  const orgId = await getOrgId();
   const checks: HealthCheck[] = await Promise.all([
     checkSupabase(),
-    checkDataAccess(),
+    checkDataAccess(orgId),
     checkStripe(),
     checkMetaPixel(),
     checkEnvVars(),
@@ -75,7 +77,7 @@ async function checkSupabase(): Promise<HealthCheck> {
  * This is the early warning system: if data queries silently return empty
  * when they shouldn't, this check flags it before users notice.
  */
-async function checkDataAccess(): Promise<HealthCheck> {
+async function checkDataAccess(orgId: string): Promise<HealthCheck> {
   const start = Date.now();
   try {
     const supabase = await getSupabaseAdmin();
@@ -102,7 +104,7 @@ async function checkDataAccess(): Promise<HealthCheck> {
           const { error, count } = await supabase
             .from(table)
             .select("*", { count: "exact", head: true })
-            .eq("org_id", ORG_ID)
+            .eq("org_id", orgId)
             .limit(1);
           return { name, error: error?.message || null, count: count ?? 0 };
         } catch (e) {

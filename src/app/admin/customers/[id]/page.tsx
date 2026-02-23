@@ -14,7 +14,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { generateNickname } from "@/lib/nicknames";
 import type { Customer, AbandonedCart, CustomerSegment } from "@/types/orders";
 import {
@@ -1283,6 +1284,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
    CUSTOMER PROFILE PAGE
    ════════════════════════════════════════════════════════════ */
 export default function CustomerProfilePage() {
+  const orgId = useOrgId();
   const params = useParams();
   const customerId = params.id as string;
 
@@ -1301,25 +1303,25 @@ export default function CustomerProfilePage() {
         .from(TABLES.CUSTOMERS)
         .select("*")
         .eq("id", customerId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single(),
       supabase
         .from(TABLES.ORDERS)
         .select("id, order_number, status, total, currency, payment_method, created_at, metadata, event:events(name, slug, date_start), items:order_items(qty, merch_size, unit_price)")
         .eq("customer_id", customerId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .order("created_at", { ascending: false }),
       supabase
         .from(TABLES.TICKETS)
         .select("id, ticket_code, status, merch_size, merch_collected, scanned_at, scanned_by, created_at, ticket_type:ticket_types(name), event:events(name, slug, venue_name, date_start)")
         .eq("customer_id", customerId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .order("created_at", { ascending: false }),
       supabase
         .from(TABLES.ABANDONED_CARTS)
         .select("*, event:events(name, slug, date_start)")
         .eq("customer_id", customerId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .order("created_at", { ascending: false }),
     ]);
 
@@ -1329,7 +1331,7 @@ export default function CustomerProfilePage() {
     if (cartsResult.data) setAbandonedCarts(cartsResult.data as unknown as AbandonedCart[]);
 
     setLoading(false);
-  }, [customerId]);
+  }, [customerId, orgId]);
 
   useEffect(() => {
     loadCustomer();

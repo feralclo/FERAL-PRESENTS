@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -15,6 +15,7 @@ export async function GET() {
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -31,7 +32,7 @@ export async function GET() {
         supabase
           .from(TABLES.REP_REWARDS)
           .select("*, product:products(name, images)")
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("status", "active")
           .order("created_at", { ascending: false })
           .limit(100),
@@ -40,7 +41,7 @@ export async function GET() {
         supabase
           .from(TABLES.REP_MILESTONES)
           .select("*, event:events(name)")
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .order("sort_order", { ascending: true }),
 
         // Rep stats for milestone progress
@@ -48,7 +49,7 @@ export async function GET() {
           .from(TABLES.REPS)
           .select("points_balance, total_sales, total_revenue")
           .eq("id", repId)
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .single(),
 
         // Rep's claims
@@ -56,7 +57,7 @@ export async function GET() {
           .from(TABLES.REP_REWARD_CLAIMS)
           .select("id, reward_id, claim_type, milestone_id, points_spent, status, created_at")
           .eq("rep_id", repId)
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .order("created_at", { ascending: false }),
       ]);
 

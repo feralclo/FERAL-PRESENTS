@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
 import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
-import { ORG_ID } from "@/lib/constants";
 
 /**
  * GET /api/rep-portal/settings — Public-facing rep program settings (protected)
@@ -14,9 +13,10 @@ export async function GET() {
   try {
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.rep.org_id;
 
     const [settings, platformConfig] = await Promise.all([
-      getRepSettings(ORG_ID),
+      getRepSettings(orgId),
       getPlatformXPConfig(),
     ]);
 

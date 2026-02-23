@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.REP_MILESTONES)
       .select("*, reward:rep_rewards(id, name), event:events(name)")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("sort_order", { ascending: true })
       .limit(200);
 
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const {
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.REP_REWARDS)
       .select("id")
       .eq("id", reward_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (rewardErr || !reward) {
@@ -114,7 +116,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.REP_MILESTONES)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         reward_id,
         milestone_type,
         threshold_value: Number(threshold_value),

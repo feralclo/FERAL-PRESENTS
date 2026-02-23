@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { TABLES, ORG_ID, SUPABASE_URL } from "@/lib/constants";
+import { TABLES, SUPABASE_URL } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { sendRepEmail } from "@/lib/rep-emails";
 
 /**
@@ -23,6 +24,7 @@ function getAdminClient() {
  */
 export async function POST(request: NextRequest) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const { token, email } = body;
 
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
         .from(TABLES.REPS)
         .select("id, email, status, email_verified, org_id")
         .eq("email_verification_token", token)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       if (repError || !rep) {
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", rep.id)
-        .eq("org_id", ORG_ID);
+        .eq("org_id", orgId);
 
       if (updateError) {
         console.error("[verify-email] Failed to update rep:", updateError);
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
         sendRepEmail({
           type: "welcome",
           repId: rep.id,
-          orgId: ORG_ID,
+          orgId,
         }).catch(() => {});
       }
 
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
         .from(TABLES.REPS)
         .select("id, email, email_verified, email_verification_token, org_id")
         .eq("email", normalizedEmail)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       if (!rep) {
@@ -118,13 +120,13 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", rep.id)
-        .eq("org_id", ORG_ID);
+        .eq("org_id", orgId);
 
       // Send verification email
       sendRepEmail({
         type: "email_verification",
         repId: rep.id,
-        orgId: ORG_ID,
+        orgId,
         data: { verification_token: newToken },
       }).catch(() => {});
 

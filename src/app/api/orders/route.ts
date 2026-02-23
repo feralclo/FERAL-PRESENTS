@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { createOrder, OrderCreationError } from "@/lib/orders";
 
@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
         "*, customer:customers(id, email, first_name, last_name), event:events(id, name, slug, date_start)",
         { count: "exact" }
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
       const { data: tickets } = await supabase
         .from(TABLES.TICKETS)
         .select("order_id")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .in("order_id", orderIds);
 
       if (tickets) {
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const { event_id, items, customer } = body;
@@ -133,7 +135,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.EVENTS)
       .select("id, name, slug, payment_method, currency, venue_name, date_start, doors_time")
       .eq("id", event_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (eventErr || !event) {
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest) {
     const { data: ticketTypes, error: ttErr } = await supabase
       .from(TABLES.TICKET_TYPES)
       .select("id, name, capacity, sold")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .in("id", ticketTypeIds);
 
     if (ttErr || !ticketTypes) {
@@ -186,7 +188,7 @@ export async function POST(request: NextRequest) {
     // Create order via shared function (test mode — no Stripe, no fees)
     const result = await createOrder({
       supabase,
-      orgId: ORG_ID,
+      orgId,
       event: {
         id: event.id,
         name: event.name,

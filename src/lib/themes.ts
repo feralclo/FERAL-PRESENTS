@@ -13,12 +13,12 @@ import type { ThemeStore } from "@/types/settings";
  * - src/app/event/[slug]/page.tsx — to route to theme-specific components
  * - src/app/event/[slug]/checkout/page.tsx — to route to theme-specific checkout
  */
-export async function getActiveTemplate(): Promise<string> {
+export async function getActiveTemplate(orgId: string = ORG_ID): Promise<string> {
   try {
     const supabase = await getSupabaseAdmin();
     if (!supabase) return "midnight";
 
-    const key = themesKey(ORG_ID);
+    const key = themesKey(orgId);
     const { data: row } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")

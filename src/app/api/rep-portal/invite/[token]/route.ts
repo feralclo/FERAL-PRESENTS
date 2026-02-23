@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { TABLES, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { sendRepEmail } from "@/lib/rep-emails";
 
 /**
@@ -28,10 +29,11 @@ function getInviteClient() {
  * Returns invite validity and basic rep info for the signup form.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const { token } = await params;
 
     if (!token) {
@@ -50,7 +52,7 @@ export async function GET(
       .from(TABLES.REPS)
       .select("id, first_name, email, org_id, status, auth_user_id")
       .eq("invite_token", token)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !rep) {
@@ -97,6 +99,7 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const { token } = await params;
     const body = await request.json();
     const {
@@ -173,7 +176,7 @@ export async function POST(
       .from(TABLES.REPS)
       .select("id, email, first_name, last_name, org_id, status, auth_user_id")
       .eq("invite_token", token)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (repError || !rep) {
@@ -337,7 +340,7 @@ export async function POST(
       .from(TABLES.REPS)
       .update(updatePayload)
       .eq("id", rep.id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (updateError) {
       console.error("[rep-portal/invite] Failed to update rep:", updateError);
@@ -367,7 +370,7 @@ export async function POST(
     sendRepEmail({
       type: "welcome",
       repId: rep.id,
-      orgId: ORG_ID,
+      orgId,
     }).catch(() => {});
 
     return NextResponse.json({

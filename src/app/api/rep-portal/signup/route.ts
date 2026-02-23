@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { TABLES, ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { TABLES, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { getRepSettings } from "@/lib/rep-points";
 import { sendRepEmail } from "@/lib/rep-emails";
 
@@ -31,6 +32,7 @@ function getPublicRepClient() {
  */
 export async function POST(request: NextRequest) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const {
       email,
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
     const { data: existingRep } = await supabase
       .from(TABLES.REPS)
       .select("id, status")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("email", email.toLowerCase().trim())
       .single();
 
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get program settings to check auto_approve
-    const settings = await getRepSettings(ORG_ID);
+    const settings = await getRepSettings(orgId);
 
     // Create Supabase auth user — use admin API if service role key available
     const finalEmail = email.toLowerCase().trim();
@@ -195,7 +197,7 @@ export async function POST(request: NextRequest) {
     const { data: rep, error: repError } = await supabase
       .from(TABLES.REPS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         auth_user_id: authUserId,
         status,
         email: email.toLowerCase().trim(),
@@ -232,7 +234,7 @@ export async function POST(request: NextRequest) {
     sendRepEmail({
       type: "email_verification",
       repId: rep.id,
-      orgId: ORG_ID,
+      orgId,
       data: { verification_token: verificationToken },
     }).catch(() => {});
 

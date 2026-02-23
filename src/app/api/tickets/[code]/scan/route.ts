@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -14,6 +14,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { code } = await params;
     const body = await request.json().catch(() => ({}));
@@ -37,7 +38,7 @@ export async function POST(
         "*, ticket_type:ticket_types(name), event:events(name, slug, venue_name, date_start)"
       )
       .eq("ticket_code", code)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !ticket) {
@@ -95,7 +96,7 @@ export async function POST(
         scan_location: scan_location || null,
       })
       .eq("id", ticket.id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (updateErr) {
       return NextResponse.json(

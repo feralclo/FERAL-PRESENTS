@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -13,6 +13,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
 
@@ -28,7 +29,7 @@ export async function GET(
       .from(TABLES.EVENT_ARTISTS)
       .select("*, artist:artists(*)")
       .eq("event_id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("sort_order", { ascending: true });
 
     if (error) {
@@ -54,6 +55,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -73,7 +75,7 @@ export async function PUT(
       .from(TABLES.EVENT_ARTISTS)
       .delete()
       .eq("event_id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     // Insert new ones
     if (artists.length > 0) {
@@ -81,7 +83,7 @@ export async function PUT(
         event_id: id,
         artist_id: a.artist_id,
         sort_order: a.sort_order,
-        org_id: ORG_ID,
+        org_id: orgId,
       }));
 
       const { error: insertError } = await supabase
@@ -118,7 +120,7 @@ export async function PUT(
           .from(TABLES.EVENTS)
           .update({ lineup, updated_at: new Date().toISOString() })
           .eq("id", id)
-          .eq("org_id", ORG_ID);
+          .eq("org_id", orgId);
       }
     } else {
       // Clear lineup if no artists
@@ -126,7 +128,7 @@ export async function PUT(
         .from(TABLES.EVENTS)
         .update({ lineup: null, updated_at: new Date().toISOString() })
         .eq("id", id)
-        .eq("org_id", ORG_ID);
+        .eq("org_id", orgId);
     }
 
     // Return the updated list
@@ -134,7 +136,7 @@ export async function PUT(
       .from(TABLES.EVENT_ARTISTS)
       .select("*, artist:artists(*)")
       .eq("event_id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("sort_order", { ascending: true });
 
     return NextResponse.json({ data: data || [] });

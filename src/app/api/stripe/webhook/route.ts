@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import type { MetaEventPayload } from "@/types/marketing";
@@ -62,7 +63,8 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        await handlePaymentSuccess(paymentIntent);
+        const fallbackOrgId = getOrgIdFromRequest(request);
+        await handlePaymentSuccess(paymentIntent, fallbackOrgId);
         break;
       }
 
@@ -94,10 +96,10 @@ export async function POST(request: NextRequest) {
  * Handle a successful payment: create order, tickets, update stats.
  * Delegates to the shared createOrder() function.
  */
-async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbackOrgId: string) {
   const metadata = paymentIntent.metadata;
   const eventId = metadata.event_id;
-  const orgId = metadata.org_id || ORG_ID;
+  const orgId = metadata.org_id || fallbackOrgId;
   const customerEmail = metadata.customer_email;
   const customerFirstName = metadata.customer_first_name;
   const customerLastName = metadata.customer_last_name;

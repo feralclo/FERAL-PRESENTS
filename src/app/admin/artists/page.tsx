@@ -28,7 +28,8 @@ import * as tus from "tus-js-client";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { isMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/mux";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, ORG_ID } from "@/lib/constants";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { Artist } from "@/types/artists";
 
 // Mux Player — dynamic import to avoid SSR issues (Web Component)
@@ -37,6 +38,7 @@ const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
 });
 
 export default function ArtistsPage() {
+  const orgId = useOrgId();
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,7 +169,7 @@ export default function ArtistsPage() {
 
       // Generate a unique storage path scoped by org_id for multi-tenant isolation
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
-      const storagePath = `${ORG_ID}/artists/${Date.now()}_${safeName}`;
+      const storagePath = `${orgId}/artists/${Date.now()}_${safeName}`;
 
       // Step 2: Upload via TUS resumable protocol (6MB chunks, auto-retry)
       const tusEndpoint = `${SUPABASE_URL}/storage/v1/upload/resumable`;
@@ -249,7 +251,7 @@ export default function ArtistsPage() {
 
     setVideoUploading(false);
     setVideoProgress(0);
-  }, []);
+  }, [orgId]);
 
   /** Poll Mux status every 3s until asset is ready */
   const pollMuxStatus = useCallback(async (assetId: string): Promise<string> => {

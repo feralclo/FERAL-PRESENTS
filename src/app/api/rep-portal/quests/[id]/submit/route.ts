@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -19,6 +19,7 @@ export async function POST(
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
     const { id: questId } = await params;
 
     const body = await request.json();
@@ -118,7 +119,7 @@ export async function POST(
       .from(TABLES.REP_QUESTS)
       .select("*")
       .eq("id", questId)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (questError || !quest) {
@@ -167,7 +168,7 @@ export async function POST(
         .select("id", { count: "exact", head: true })
         .eq("quest_id", questId)
         .eq("rep_id", repId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .in("status", ["pending", "approved"]);
 
       if ((count || 0) >= quest.max_completions) {
@@ -185,7 +186,7 @@ export async function POST(
         .select("id")
         .eq("rep_id", repId)
         .eq("event_id", quest.event_id)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       if (!repEvent) {
@@ -200,7 +201,7 @@ export async function POST(
     const { data: submission, error: submitError } = await supabase
       .from(TABLES.REP_QUEST_SUBMISSIONS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         quest_id: questId,
         rep_id: repId,
         proof_type,

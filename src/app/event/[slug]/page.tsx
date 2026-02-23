@@ -4,7 +4,8 @@ import { MidnightExternalPage } from "@/components/midnight/MidnightExternalPage
 import { AuraEventPage } from "@/components/aura/AuraEventPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 
 /** Force dynamic rendering — every request fetches fresh data from Supabase.
  *  This ensures admin changes (lineup, images, theme, etc.) appear immediately
@@ -12,7 +13,7 @@ import { TABLES, ORG_ID } from "@/lib/constants";
 export const dynamic = "force-dynamic";
 
 /** Fetch event from DB (for admin-editable content). */
-async function getEventFromDB(slug: string) {
+async function getEventFromDB(slug: string, orgId: string) {
   try {
     const supabase = await getSupabaseAdmin();
     if (!supabase) return null;
@@ -21,7 +22,7 @@ async function getEventFromDB(slug: string) {
       .from(TABLES.EVENTS)
       .select("*, ticket_types(*, product:products(*)), event_artists(*, artist:artists(*))")
       .eq("slug", slug)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     return data || null;
@@ -36,8 +37,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const orgId = await getOrgId();
 
-  const event = await getEventFromDB(slug);
+  const event = await getEventFromDB(slug, orgId);
   if (event) {
     const title = `FERAL — ${event.name}`;
     const description =
@@ -77,6 +79,7 @@ export default async function EventPage({
 }) {
   const { slug } = await params;
   const sp = await searchParams;
+  const orgId = await getOrgId();
 
   // In editor preview mode, the ?template= param tells us which theme to render.
   // This lets the admin preview non-active themes (e.g. editing Aura while Midnight is live).
@@ -86,7 +89,7 @@ export default async function EventPage({
 
   // Fetch event + active template in parallel
   const [event, activeTemplate] = await Promise.all([
-    getEventFromDB(slug),
+    getEventFromDB(slug, orgId),
     getActiveTemplate(),
   ]);
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const { event_id, name, email, phone, qty = 1, added_by, notes } = body;
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.GUEST_LIST)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         event_id,
         name,
         email: email || null,

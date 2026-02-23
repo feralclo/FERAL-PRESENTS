@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { createRepDiscountCode } from "@/lib/discount-codes";
 import { sendRepInviteEmail } from "@/lib/rep-emails";
@@ -15,6 +15,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
@@ -37,7 +38,7 @@ export async function POST(
       .from(TABLES.REPS)
       .select("id, first_name, email, invite_token")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (repErr || !rep) {
@@ -55,7 +56,7 @@ export async function POST(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (updateError) {
       console.error("[POST /api/reps/[id]/invite] Update error:", updateError);
@@ -95,7 +96,7 @@ export async function POST(
     sendRepInviteEmail({
       email: rep.email,
       firstName: rep.first_name,
-      orgId: ORG_ID,
+      orgId,
       inviteToken: invite_token,
       discountCode: discount.code,
     }).catch(() => {});

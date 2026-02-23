@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { reverseRepAttribution } from "@/lib/rep-attribution";
 
@@ -25,6 +25,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -43,7 +44,7 @@ export async function POST(
       .from(TABLES.ORDERS)
       .select("*, order_items:order_items(ticket_type_id, qty)")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (orderErr || !order) {
@@ -73,7 +74,7 @@ export async function POST(
           .from(TABLES.EVENTS)
           .select("stripe_account_id")
           .eq("id", order.event_id)
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .single();
 
         if (eventRow?.stripe_account_id) {
@@ -140,7 +141,7 @@ export async function POST(
       .from(TABLES.TICKETS)
       .update({ status: "cancelled" })
       .eq("order_id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     // Decrement sold counts on ticket types
     for (const item of order.order_items as {
@@ -169,7 +170,7 @@ export async function POST(
       .from(TABLES.ORDERS)
       .select("total")
       .eq("customer_id", order.customer_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "completed");
 
     if (custOrders) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
         "id, order_number, total, subtotal, fees, status, created_at, event:events(id, name, slug)",
         { count: "exact" }
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("metadata->>rep_id", repId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);

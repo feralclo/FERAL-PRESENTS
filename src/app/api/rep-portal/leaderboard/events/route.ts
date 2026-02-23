@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 
 /**
@@ -14,6 +14,7 @@ export async function GET() {
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -26,7 +27,7 @@ export async function GET() {
       .select(
         "event_id, sales_count, revenue, event:events(id, name, slug, date_start, status, cover_image)"
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("rep_id", repId)
       .order("assigned_at", { ascending: false });
 
@@ -50,7 +51,7 @@ export async function GET() {
     const { data: allPositionRewards } = await supabase
       .from(TABLES.REP_EVENT_POSITION_REWARDS)
       .select("event_id, position, reward_name, reward_id, awarded_rep_id, xp_reward, currency_reward")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .in("event_id", eventIds)
       .order("position", { ascending: true });
 
@@ -65,14 +66,14 @@ export async function GET() {
         const { count: repsCount } = await supabase
           .from(TABLES.REP_EVENTS)
           .select("id", { count: "exact", head: true })
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("event_id", eventId);
 
         // Get rep's position (how many reps have higher revenue)
         const { count: ahead } = await supabase
           .from(TABLES.REP_EVENTS)
           .select("id", { count: "exact", head: true })
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("event_id", eventId)
           .gt("revenue", Number(re.revenue));
 

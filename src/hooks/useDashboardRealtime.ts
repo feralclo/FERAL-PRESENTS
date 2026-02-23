@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { ActivityItem } from "@/components/admin/dashboard/ActivityFeed";
 import type { TopEventRow } from "@/components/admin/dashboard/TopEventsTable";
 
@@ -63,6 +64,7 @@ function minutesAgo(n: number): string {
 /* ── Main Hook ── */
 
 export function useDashboardRealtime(): DashboardState {
+  const orgId = useOrgId();
   const [isLoading, setIsLoading] = useState(true);
   const [activeVisitors, setActiveVisitors] = useState(0);
   const [activeCarts, setActiveCarts] = useState(0);
@@ -276,10 +278,10 @@ export function useDashboardRealtime(): DashboardState {
       recentSessionsRes, recentCartsRes, recentPurchasesRes, recentCheckoutsRes,
       recentActivityRes,
     ] = await Promise.all([
-      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", ORG_ID).eq("status", "completed").gte("created_at", todayStr),
-      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", ORG_ID).gte("created_at", todayStr),
-      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", ORG_ID).eq("status", "completed").gte("created_at", yRange.start).lt("created_at", yRange.end),
-      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", ORG_ID).gte("created_at", yRange.start).lt("created_at", yRange.end),
+      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", orgId).eq("status", "completed").gte("created_at", todayStr),
+      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("created_at", todayStr),
+      supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", orgId).eq("status", "completed").gte("created_at", yRange.start).lt("created_at", yRange.end),
+      supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("created_at", yRange.start).lt("created_at", yRange.end),
       supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "landing").gte("timestamp", todayStr),
       supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "tickets").gte("timestamp", todayStr),
       supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "add_to_cart").gte("timestamp", todayStr),
@@ -311,7 +313,7 @@ export function useDashboardRealtime(): DashboardState {
       recentCheckouts: (recentCheckoutsRes.data || []) as { session_id: string; timestamp: string }[],
       recentActivity: (recentActivityRes.data || []) as { event_type: string; event_name?: string; product_name?: string; product_price?: number; timestamp: string }[],
     });
-  }, [processQueryResults]);
+  }, [processQueryResults, orgId]);
 
   /* ── Initial data load: API first, direct queries as fallback ── */
   const loadInitialData = useCallback(async () => {
@@ -461,7 +463,7 @@ export function useDashboardRealtime(): DashboardState {
         { event: "INSERT", schema: "public", table: TABLES.ORDERS },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
-          if (row.org_id !== ORG_ID) return;
+          if (row.org_id !== orgId) return;
           if (row.status !== "completed") return;
 
           const total = Number(row.total) || 0;
@@ -502,7 +504,7 @@ export function useDashboardRealtime(): DashboardState {
         { event: "INSERT", schema: "public", table: TABLES.TICKETS },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
-          if (row.org_id !== ORG_ID) return;
+          if (row.org_id !== orgId) return;
 
           setToday((prev) => ({
             ...prev,
@@ -526,7 +528,7 @@ export function useDashboardRealtime(): DashboardState {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(ticketsChannel);
     };
-  }, [loadInitialData, loadTopEvents, recalcPresence, addActivity]);
+  }, [loadInitialData, loadTopEvents, recalcPresence, addActivity, orgId]);
 
   // Derive conversion rate from funnel for today's KPIs
   const todayWithConversion = useMemo<TodayKPIs>(() => ({

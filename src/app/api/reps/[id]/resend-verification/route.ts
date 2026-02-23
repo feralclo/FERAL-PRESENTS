@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendRepEmail } from "@/lib/rep-emails";
 
@@ -16,6 +16,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
 
@@ -31,7 +32,7 @@ export async function POST(
       .from(TABLES.REPS)
       .select("id, email, email_verified, org_id")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (repError || !rep) {
@@ -57,13 +58,13 @@ export async function POST(
         updated_at: new Date().toISOString(),
       })
       .eq("id", rep.id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     // Send verification email
     await sendRepEmail({
       type: "email_verification",
       repId: rep.id,
-      orgId: ORG_ID,
+      orgId,
       data: { verification_token: newToken },
     });
 

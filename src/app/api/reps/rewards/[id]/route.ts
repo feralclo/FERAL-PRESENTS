@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -13,6 +13,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -29,7 +30,7 @@ export async function GET(
         "*, milestones:rep_milestones(*, event:events(name))"
       )
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !data) {
@@ -55,6 +56,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -113,7 +115,7 @@ export async function PUT(
       .from(TABLES.REP_REWARDS)
       .update(updates)
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -144,6 +146,7 @@ export async function DELETE(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -161,7 +164,7 @@ export async function DELETE(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 

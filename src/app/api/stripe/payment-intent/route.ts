@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import {
   calculateApplicationFee,
   toSmallestUnit,
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
     const blocked = paymentLimiter(request);
     if (blocked) return blocked;
 
+    const orgId = getOrgIdFromRequest(request);
     const stripe = getStripe();
     const body = await request.json();
     const { event_id, items, customer, discount_code } = body;
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.EVENTS)
       .select("id, name, slug, payment_method, currency, stripe_account_id, platform_fee_percent, vat_registered, vat_rate, vat_prices_include, vat_number")
       .eq("id", event_id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (eventErr || !event) {
@@ -126,7 +128,7 @@ export async function POST(request: NextRequest) {
     const { data: ticketTypes, error: ttErr } = await supabase
       .from(TABLES.TICKET_TYPES)
       .select("*")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .in("id", ticketTypeIds);
 
     if (ttErr || !ticketTypes) {
@@ -167,7 +169,7 @@ export async function POST(request: NextRequest) {
       const { data: discount } = await supabase
         .from(TABLES.DISCOUNTS)
         .select("*")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .ilike("code", discount_code.trim())
         .eq("status", "active")
         .single();
@@ -301,7 +303,7 @@ export async function POST(request: NextRequest) {
     const metadata: Record<string, string> = {
       event_id,
       event_slug: event.slug,
-      org_id: ORG_ID,
+      org_id: orgId,
       customer_email: customer.email.toLowerCase(),
       customer_first_name: customer.first_name,
       customer_last_name: customer.last_name,
@@ -342,7 +344,7 @@ export async function POST(request: NextRequest) {
 
       // Increment discount used_count (fire-and-forget — never blocks the payment)
       if (discountMeta) {
-        incrementDiscountUsed(supabase, discountMeta.code);
+        incrementDiscountUsed(supabase, discountMeta.code, orgId);
       }
 
       return NextResponse.json({
@@ -370,7 +372,7 @@ export async function POST(request: NextRequest) {
 
     // Increment discount used_count (fire-and-forget)
     if (discountMeta) {
-      incrementDiscountUsed(supabase, discountMeta.code);
+      incrementDiscountUsed(supabase, discountMeta.code, orgId);
     }
 
     return NextResponse.json({
@@ -396,11 +398,11 @@ export async function POST(request: NextRequest) {
  * (the hard enforcement happens at validation time).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function incrementDiscountUsed(supabase: any, code: string) {
+function incrementDiscountUsed(supabase: any, code: string, orgId: string) {
   supabase
     .from(TABLES.DISCOUNTS)
     .select("id, used_count")
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .ilike("code", code)
     .single()
     .then(({ data }: { data: { id: string; used_count: number } | null }) => {

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { Scanlines } from "@/components/layout/Scanlines";
-import { GTM_ID, TABLES, ORG_ID, marketingKey } from "@/lib/constants";
+import { GTM_ID, TABLES, marketingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getOrgId } from "@/lib/org";
+import { OrgProvider } from "@/components/OrgProvider";
 import type { MarketingSettings } from "@/types/marketing";
 import "@/styles/base.css";
 import "@/styles/effects.css";
@@ -23,6 +25,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const orgId = await getOrgId();
+
   // Fetch Meta Pixel ID — must be in <head> for Pixel Helper detection.
   // This is a single lightweight query, cached for the request lifecycle.
   let pixelId: string | null = null;
@@ -32,7 +36,7 @@ export default async function RootLayout({
       const { data } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", marketingKey(ORG_ID))
+        .eq("key", marketingKey(orgId))
         .single();
       const marketing = data?.data as MarketingSettings | null;
       if (marketing?.meta_tracking_enabled && marketing.meta_pixel_id) {
@@ -120,7 +124,9 @@ export default async function RootLayout({
         </noscript>
 
         <Scanlines />
-        {children}
+        <OrgProvider orgId={orgId}>
+          {children}
+        </OrgProvider>
         <CookieConsent />
       </body>
     </html>

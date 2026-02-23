@@ -1,5 +1,6 @@
 import { fetchSettings } from "@/lib/settings";
-import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
 import { SettingsProvider } from "@/hooks/useSettings";
@@ -24,6 +25,7 @@ export default async function EventLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const orgId = await getOrgId();
 
   // Determine initial values
   let settingsKey = `feral_event_${slug}`;
@@ -42,7 +44,7 @@ export default async function EventLayout({
         .from(TABLES.EVENTS)
         .select("id, settings_key, theme, cover_image, hero_image")
         .eq("slug", slug)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       if (event?.settings_key) settingsKey = event.settings_key;
@@ -83,7 +85,7 @@ export default async function EventLayout({
         supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
-          .eq("key", brandingKey(ORG_ID))
+          .eq("key", brandingKey(orgId))
           .single()
       )
         .then(({ data }) => (data?.data as BrandingSettings) || null)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
 import { getRepSettings } from "@/lib/rep-points";
@@ -21,6 +21,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { eventId } = await params;
 
@@ -33,7 +34,7 @@ export async function POST(
     const { data: positionRewards, error: prError } = await supabase
       .from(TABLES.REP_EVENT_POSITION_REWARDS)
       .select("*")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_id", eventId)
       .order("position", { ascending: true });
 
@@ -62,7 +63,7 @@ export async function POST(
     const { data: standings, error: standingsError } = await supabase
       .from(TABLES.REP_EVENTS)
       .select("rep_id, sales_count, revenue, rep:reps(id, display_name, first_name)")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_id", eventId)
       .order("revenue", { ascending: false })
       .limit(maxPosition);
@@ -79,7 +80,7 @@ export async function POST(
     }
 
     // Get currency name for descriptions
-    const settings = await getRepSettings(ORG_ID);
+    const settings = await getRepSettings(orgId);
 
     const now = new Date().toISOString();
     const results: { position: number; rep_id: string; reward_name: string; xp_awarded: number; currency_awarded: number }[] = [];
@@ -101,14 +102,14 @@ export async function POST(
         .from(TABLES.REP_EVENT_POSITION_REWARDS)
         .update({ awarded_rep_id: repId, awarded_at: now })
         .eq("id", pr.id)
-        .eq("org_id", ORG_ID);
+        .eq("org_id", orgId);
 
       // Create reward claim if there's a linked reward
       if (pr.reward_id) {
         await supabase
           .from(TABLES.REP_REWARD_CLAIMS)
           .insert({
-            org_id: ORG_ID,
+            org_id: orgId,
             rep_id: repId,
             reward_id: pr.reward_id,
             claim_type: "manual",
@@ -125,7 +126,7 @@ export async function POST(
       if (xpAmount > 0 || currencyAmount > 0) {
         await awardPoints({
           repId,
-          orgId: ORG_ID,
+          orgId,
           points: xpAmount,
           currency: currencyAmount,
           sourceType: "manual",

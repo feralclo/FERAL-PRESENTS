@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { ORG_ID, TABLES } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
  * Returns a simple HTML page confirming the unsubscribe.
  */
 export async function GET(request: NextRequest) {
+  const orgId = getOrgIdFromRequest(request);
   const { searchParams } = request.nextUrl;
   const token = searchParams.get("token");
   const type = searchParams.get("type");
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
     .from(TABLES.ABANDONED_CARTS)
     .select("id, email, org_id")
     .eq("cart_token", token)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .single();
 
   if (error || !cart) {
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest) {
         unsubscribed_at: now,
         updated_at: now,
       })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("email", cart.email)
       .eq("status", "abandoned");
   } catch {
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
         status: "expired",
         updated_at: now,
       })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("email", cart.email)
       .eq("status", "abandoned");
   }

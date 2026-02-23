@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID, brandingKey } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings } from "@/types/settings";
 
@@ -26,12 +27,13 @@ const DEFAULT_BRANDING: BrandingSettings = {
  */
 export async function GET() {
   try {
+    const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ data: DEFAULT_BRANDING });
     }
 
-    const key = brandingKey(ORG_ID);
+    const key = brandingKey(orgId);
     const { data: row } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
@@ -62,6 +64,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const supabase = await getSupabaseAdmin();
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const key = brandingKey(ORG_ID);
+    const key = brandingKey(orgId);
 
     const { error } = await supabase
       .from(TABLES.SITE_SETTINGS)

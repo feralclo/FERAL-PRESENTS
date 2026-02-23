@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID, themesKey, brandingKey } from "@/lib/constants";
+import { TABLES, themesKey, brandingKey } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 import type { BrandingSettings, StoreTheme, ThemeStore } from "@/types/settings";
 
@@ -42,12 +43,13 @@ function generateId(): string {
  */
 export async function GET() {
   try {
+    const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ data: getDefaultThemeStore() });
     }
 
-    const key = themesKey(ORG_ID);
+    const key = themesKey(orgId);
     const { data: row } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
@@ -67,7 +69,7 @@ export async function GET() {
     const brandingRow = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
-      .eq("key", brandingKey(ORG_ID))
+      .eq("key", brandingKey(orgId))
       .single();
 
     const existingBranding = brandingRow.data?.data as BrandingSettings | null;
@@ -93,6 +95,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const { action } = body;
@@ -106,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Load current theme store
-    const key = themesKey(ORG_ID);
+    const key = themesKey(orgId);
     const { data: row } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
@@ -159,7 +162,7 @@ export async function POST(request: NextRequest) {
 
         // If this is the active theme, sync branding to the live key
         if (store.active_theme_id === body.id) {
-          await syncBrandingToLive(supabase, store.themes[idx].branding);
+          await syncBrandingToLive(supabase, store.themes[idx].branding, orgId);
         }
 
         return NextResponse.json({ data: store.themes[idx], store });
@@ -189,7 +192,7 @@ export async function POST(request: NextRequest) {
         await saveThemeStore(supabase, key, store);
 
         // Sync the activated theme's branding to the live branding key
-        await syncBrandingToLive(supabase, theme.branding);
+        await syncBrandingToLive(supabase, theme.branding, orgId);
 
         return NextResponse.json({ success: true, store });
       }
@@ -246,10 +249,11 @@ async function saveThemeStore(
 /** Sync a theme's branding to the live branding key so all event pages use it */
 async function syncBrandingToLive(
   supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
-  branding: BrandingSettings
+  branding: BrandingSettings,
+  orgId: string
 ) {
   if (!supabase) return;
-  const key = brandingKey(ORG_ID);
+  const key = brandingKey(orgId);
   await supabase.from(TABLES.SITE_SETTINGS).upsert(
     {
       key,

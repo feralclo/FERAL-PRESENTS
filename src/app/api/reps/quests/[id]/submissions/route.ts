@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -14,6 +14,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -31,7 +32,7 @@ export async function GET(
       .select(
         "*, rep:reps(id, first_name, last_name, display_name, email, photo_url)"
       )
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("quest_id", id)
       .order("created_at", { ascending: false })
       .limit(200);

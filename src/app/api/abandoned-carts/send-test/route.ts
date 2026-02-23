@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendAbandonedCartRecoveryEmail } from "@/lib/email";
 import { requireAuth } from "@/lib/auth";
-import { ORG_ID, TABLES } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 
 /**
  * POST /api/abandoned-carts/send-test
@@ -15,6 +15,7 @@ import { ORG_ID, TABLES } from "@/lib/constants";
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
+  const orgId = auth.orgId;
 
   try {
     const body = await request.json();
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
         id, email, first_name, items, subtotal, currency, cart_token,
         events:event_id ( id, name, slug, venue_name, date_start, doors_time, currency )
       `)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "abandoned")
       .order("created_at", { ascending: false })
       .limit(1)
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // Send the email to the TEST address, not the customer
     const sent = await sendAbandonedCartRecoveryEmail({
-      orgId: ORG_ID,
+      orgId,
       cartId: cart.id,
       email: test_email.toLowerCase().trim(),
       firstName: cart.first_name || undefined,

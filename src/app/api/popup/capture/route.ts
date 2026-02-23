@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { generateNickname } from "@/lib/nicknames";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 
@@ -13,6 +14,7 @@ import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
  */
 export async function POST(request: NextRequest) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const { email } = body;
 
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from(TABLES.CUSTOMERS)
       .select("id, city")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("email", normalizedEmail)
       .single();
 
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
     const { data: newCustomer, error: custErr } = await supabase
       .from(TABLES.CUSTOMERS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         email: normalizedEmail,
         nickname,
         source: "popup",

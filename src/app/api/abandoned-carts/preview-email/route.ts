@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, SETTINGS_KEYS, ORG_ID } from "@/lib/constants";
+import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import {
   buildAbandonedCartRecoveryEmail,
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { searchParams } = request.nextUrl;
     const subject = searchParams.get("subject") || "You left something behind...";
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
         const { data: ev } = await supabase
           .from(TABLES.EVENTS)
           .select("name, venue_name, venue_city, date_start, doors_time, currency, slug")
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .in("status", ["published", "active"])
           .order("date_start", { ascending: false })
           .limit(1)

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRepAuth } from "@/lib/auth";
 import { getPointsHistory } from "@/lib/rep-points";
-import { ORG_ID } from "@/lib/constants";
 
 /**
  * GET /api/rep-portal/points — Points history for current rep (protected)
@@ -12,12 +11,13 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.rep.org_id;
 
     const { searchParams } = request.nextUrl;
     const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "50", 10)), 200);
     const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
 
-    const history = await getPointsHistory(auth.rep.id, ORG_ID, limit, offset);
+    const history = await getPointsHistory(auth.rep.id, orgId, limit, offset);
 
     return NextResponse.json({ data: history });
   } catch (err) {

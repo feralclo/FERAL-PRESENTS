@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.ARTISTS)
       .select("*")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("name", { ascending: true });
 
     if (q) {
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const { name, description, instagram_handle, image, video_url } = body;
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from(TABLES.ARTISTS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         name,
         description: description || null,
         instagram_handle: instagram_handle || null,

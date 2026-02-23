@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -8,6 +9,7 @@ import { requireAuth } from "@/lib/auth";
  */
 export async function GET(request: NextRequest) {
   try {
+    const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.EVENTS)
       .select("*, ticket_types(*, product:products(*))")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("date_start", { ascending: false });
 
     if (status) {
@@ -47,6 +49,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const {
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
     const { data: event, error: eventError } = await supabase
       .from(TABLES.EVENTS)
       .insert({
-        org_id: ORG_ID,
+        org_id: orgId,
         name,
         slug,
         description,
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
           },
           i: number
         ) => ({
-          org_id: ORG_ID,
+          org_id: orgId,
           event_id: event.id,
           name: tt.name,
           description: tt.description,

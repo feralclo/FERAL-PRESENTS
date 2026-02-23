@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { awardPoints } from "@/lib/rep-points";
 import { createNotification } from "@/lib/rep-notifications";
@@ -16,6 +16,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -41,7 +42,7 @@ export async function PUT(
       .from(TABLES.REP_REWARD_CLAIMS)
       .select("id, status, reward_id, rep_id, points_spent, notes")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (fetchErr || !claim) {
@@ -72,7 +73,7 @@ export async function PUT(
       .from(TABLES.REP_REWARD_CLAIMS)
       .update(updates)
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -87,7 +88,7 @@ export async function PUT(
         .from(TABLES.REP_REWARDS)
         .select("name, custom_value, product:products(name)")
         .eq("id", claim.reward_id)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       const rewardName = rewardInfo?.name || "Your reward";
@@ -95,7 +96,7 @@ export async function PUT(
 
       createNotification({
         repId: claim.rep_id,
-        orgId: ORG_ID,
+        orgId,
         type: "reward_fulfilled",
         title: "Reward Fulfilled!",
         body: `${rewardName} is ready for you`,
@@ -106,7 +107,7 @@ export async function PUT(
       sendRepEmail({
         type: "reward_fulfilled",
         repId: claim.rep_id,
-        orgId: ORG_ID,
+        orgId,
         data: {
           reward_name: rewardName,
           product_name: product?.name,
@@ -121,7 +122,7 @@ export async function PUT(
       if (claim.points_spent && claim.points_spent > 0) {
         const refundResult = await awardPoints({
           repId: claim.rep_id,
-          orgId: ORG_ID,
+          orgId,
           points: claim.points_spent,
           sourceType: "refund",
           sourceId: claim.id,
@@ -137,7 +138,7 @@ export async function PUT(
         .from(TABLES.REP_REWARDS)
         .select("total_claimed")
         .eq("id", claim.reward_id)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       if (reward && reward.total_claimed > 0) {
@@ -148,7 +149,7 @@ export async function PUT(
             updated_at: new Date().toISOString(),
           })
           .eq("id", claim.reward_id)
-          .eq("org_id", ORG_ID);
+          .eq("org_id", orgId);
       }
     }
 

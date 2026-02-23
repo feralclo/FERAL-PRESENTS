@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     const { data: conversions, error: convErr, count } = await supabase
       .from(TABLES.POPUP_EVENTS)
       .select("id, email, city, country, page, timestamp", { count: "exact" })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_type", "conversions")
       .not("email", "is", null)
       .order("timestamp", { ascending: false })
@@ -45,11 +46,11 @@ export async function GET(request: NextRequest) {
       const { count: totalCaptures } = await supabase
         .from(TABLES.POPUP_EVENTS)
         .select("*", { count: "exact", head: true })
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("event_type", "conversions")
         .not("email", "is", null);
 
-      const streak = await calculateStreak(supabase);
+      const streak = await calculateStreak(supabase, orgId);
 
       return NextResponse.json({
         leads: [],
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
       const { data: events } = await supabase
         .from(TABLES.EVENTS)
         .select("slug, name")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .in("slug", [...slugs]);
       if (events) {
         slugNameMap = Object.fromEntries(events.map((e) => [e.slug, e.name]));
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
       const { data: customers } = await supabase
         .from(TABLES.CUSTOMERS)
         .select("id, email, first_name, last_name, nickname, city, country, total_orders, total_spent")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .in("email", emails);
       if (customers) {
         emailCustomerMap = Object.fromEntries(
@@ -106,13 +107,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate streak
-    const streak = await calculateStreak(supabase);
+    const streak = await calculateStreak(supabase, orgId);
 
     // Get total captures count (may differ from paginated count)
     const { count: totalCaptures } = await supabase
       .from(TABLES.POPUP_EVENTS)
       .select("*", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("event_type", "conversions")
       .not("email", "is", null);
 
@@ -150,13 +151,13 @@ export async function GET(request: NextRequest) {
 /**
  * Calculate streak: consecutive days (backward from today) with at least one conversion.
  */
-async function calculateStreak(supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>) {
+async function calculateStreak(supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>, orgId: string) {
   if (!supabase) return 0;
 
   const { data: recent } = await supabase
     .from(TABLES.POPUP_EVENTS)
     .select("timestamp")
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .eq("event_type", "conversions")
     .not("email", "is", null)
     .order("timestamp", { ascending: false })

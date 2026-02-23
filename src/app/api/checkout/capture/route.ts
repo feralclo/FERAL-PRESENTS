@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 import { generateNickname } from "@/lib/nicknames";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 
@@ -17,6 +18,7 @@ import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
  */
 export async function POST(request: NextRequest) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const {
       email,
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from(TABLES.CUSTOMERS)
       .select("id, first_name, last_name, total_orders")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("email", normalizedEmail)
       .single();
 
@@ -96,7 +98,7 @@ export async function POST(request: NextRequest) {
       const { data: newCustomer, error: custErr } = await supabase
         .from(TABLES.CUSTOMERS)
         .insert({
-          org_id: ORG_ID,
+          org_id: orgId,
           email: normalizedEmail,
           first_name: first_name || null,
           last_name: last_name || null,
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
       const { data: existingCart, error: findErr } = await supabase
         .from(TABLES.ABANDONED_CARTS)
         .select("id")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("customer_id", customerId)
         .eq("event_id", event_id)
         .in("status", ["pending", "abandoned"])
@@ -185,7 +187,7 @@ export async function POST(request: NextRequest) {
         const { error: insertErr } = await supabase
           .from(TABLES.ABANDONED_CARTS)
           .insert({
-            org_id: ORG_ID,
+            org_id: orgId,
             customer_id: customerId,
             event_id,
             email: normalizedEmail,

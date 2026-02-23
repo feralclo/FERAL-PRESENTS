@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 import { getRepSettings } from "@/lib/rep-points";
 
@@ -19,6 +19,7 @@ export async function GET(
     const auth = await requireRepAuth();
     if (auth.error) return auth.error;
 
+    const orgId = auth.rep.org_id;
     const { id } = await params;
 
     if (!id) {
@@ -40,10 +41,10 @@ export async function GET(
           "id, display_name, first_name, photo_url, instagram, tiktok, bio, level, points_balance, total_sales, total_revenue, created_at"
         )
         .eq("id", id)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("status", "active")
         .single(),
-      getRepSettings(ORG_ID),
+      getRepSettings(orgId),
     ]);
 
     if (repResult.error || !repResult.data) {
@@ -63,7 +64,7 @@ export async function GET(
     const { data: allReps } = await supabase
       .from(TABLES.REPS)
       .select("id, total_revenue")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "active")
       .order("total_revenue", { ascending: false });
 

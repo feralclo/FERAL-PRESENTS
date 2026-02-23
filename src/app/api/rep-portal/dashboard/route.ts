@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireRepAuth } from "@/lib/auth";
 import { getRepSettings, getPlatformXPConfig } from "@/lib/rep-points";
 
@@ -16,6 +16,7 @@ export async function GET() {
     if (auth.error) return auth.error;
 
     const repId = auth.rep.id;
+    const orgId = auth.rep.org_id;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -40,28 +41,28 @@ export async function GET() {
         .from(TABLES.REPS)
         .select("first_name, display_name, photo_url, points_balance, currency_balance, total_sales, total_revenue, level")
         .eq("id", repId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single(),
 
       // Program settings (tenant)
-      getRepSettings(ORG_ID),
+      getRepSettings(orgId),
 
       // Active quests count (global or assigned to rep's events)
-      getActiveQuestsCount(supabase, repId),
+      getActiveQuestsCount(supabase, repId, orgId),
 
       // Pending reward claims count
       supabase
         .from(TABLES.REP_REWARD_CLAIMS)
         .select("id", { count: "exact", head: true })
         .eq("rep_id", repId)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("status", "claimed"),
 
       // Leaderboard: all active reps ordered by total_revenue
       supabase
         .from(TABLES.REPS)
         .select("id, total_revenue")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("status", "active")
         .order("total_revenue", { ascending: false }),
 
@@ -69,7 +70,7 @@ export async function GET() {
       supabase
         .from(TABLES.ORDERS)
         .select("id, order_number, total, status, created_at, event:events(id, name, slug)")
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .eq("metadata->>rep_id", repId)
         .order("created_at", { ascending: false })
         .limit(5),
@@ -79,7 +80,7 @@ export async function GET() {
         .from(TABLES.REP_EVENTS)
         .select("id, event_id, sales_count, revenue, assigned_at, event:events(id, name, slug, date_start, status, cover_image)")
         .eq("rep_id", repId)
-        .eq("org_id", ORG_ID),
+        .eq("org_id", orgId),
     ]);
 
     const rep = repResult.data;
@@ -165,7 +166,8 @@ export async function GET() {
  */
 async function getActiveQuestsCount(
   supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
-  repId: string
+  repId: string,
+  orgId: string
 ): Promise<number> {
   try {
     if (!supabase) return 0;
@@ -175,7 +177,7 @@ async function getActiveQuestsCount(
       .from(TABLES.REP_EVENTS)
       .select("event_id")
       .eq("rep_id", repId)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const eventIds = (repEvents || [])
@@ -186,7 +188,7 @@ async function getActiveQuestsCount(
     let query = supabase
       .from(TABLES.REP_QUESTS)
       .select("id", { count: "exact", head: true })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .eq("status", "active");
 
     if (eventIds.length > 0) {

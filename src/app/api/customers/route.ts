@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 type SortOption = "newest" | "most_spent" | "most_orders" | "oldest";
@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from(TABLES.CUSTOMERS)
       .select("*", { count: "exact" })
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order(sortConfig.column, { ascending: sortConfig.ascending, nullsFirst: false })
       .range(offset, offset + limit - 1);
 

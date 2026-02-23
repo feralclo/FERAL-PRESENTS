@@ -4,7 +4,8 @@ import { NativeCheckout } from "@/components/checkout/NativeCheckout";
 import { AuraCheckout } from "@/components/aura/AuraCheckout";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 
 /** Always fetch fresh data — admin changes must appear immediately */
@@ -24,6 +25,7 @@ export default async function CheckoutRoute({
 }) {
   const { slug } = await params;
   const sp = await searchParams;
+  const orgId = await getOrgId();
 
   // Editor preview: ?template= overrides which checkout component renders
   const editorTemplate = sp.editor === "1" && typeof sp.template === "string"
@@ -52,7 +54,7 @@ export default async function CheckoutRoute({
         .from(TABLES.EVENTS)
         .select("*, ticket_types(*, product:products(*))")
         .eq("slug", slug)
-        .eq("org_id", ORG_ID)
+        .eq("org_id", orgId)
         .single();
 
       if (data) {
@@ -66,7 +68,7 @@ export default async function CheckoutRoute({
           .select("email, first_name, last_name, items")
           .eq("cart_token", restoreToken)
           .eq("event_id", event.id)
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .eq("status", "abandoned")
           .single();
 

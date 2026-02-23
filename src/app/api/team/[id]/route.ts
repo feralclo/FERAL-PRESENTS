@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 
 /**
  * Verify the requesting user is an org owner.
  */
-async function requireOwner(userId: string) {
+async function requireOwner(userId: string, orgId: string) {
   const supabase = await getSupabaseAdmin();
   if (!supabase) {
     return { owner: null, error: NextResponse.json({ error: "Service unavailable" }, { status: 503 }) };
@@ -16,7 +16,7 @@ async function requireOwner(userId: string) {
     .from(TABLES.ORG_USERS)
     .select("id, role")
     .eq("auth_user_id", userId)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .eq("role", "owner")
     .single();
 
@@ -36,8 +36,9 @@ export async function PUT(
 ) {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
+  const orgId = auth.orgId;
 
-  const ownerCheck = await requireOwner(auth.user.id);
+  const ownerCheck = await requireOwner(auth.user.id, orgId);
   if (ownerCheck.error) return ownerCheck.error;
 
   const { id } = await params;
@@ -53,7 +54,7 @@ export async function PUT(
     .from(TABLES.ORG_USERS)
     .select("id, role, org_id")
     .eq("id", id)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .single();
 
   if (!member) {
@@ -82,7 +83,7 @@ export async function PUT(
     .from(TABLES.ORG_USERS)
     .update(update)
     .eq("id", id)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .select("id, org_id, email, first_name, last_name, role, perm_events, perm_orders, perm_marketing, perm_finance, status, created_at, updated_at")
     .single();
 
@@ -103,8 +104,9 @@ export async function DELETE(
 ) {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
+  const orgId = auth.orgId;
 
-  const ownerCheck = await requireOwner(auth.user.id);
+  const ownerCheck = await requireOwner(auth.user.id, orgId);
   if (ownerCheck.error) return ownerCheck.error;
 
   const { id } = await params;
@@ -119,7 +121,7 @@ export async function DELETE(
     .from(TABLES.ORG_USERS)
     .select("id, role, auth_user_id, org_id")
     .eq("id", id)
-    .eq("org_id", ORG_ID)
+    .eq("org_id", orgId)
     .single();
 
   if (!member) {
@@ -140,7 +142,7 @@ export async function DELETE(
     .from(TABLES.ORG_USERS)
     .delete()
     .eq("id", id)
-    .eq("org_id", ORG_ID);
+    .eq("org_id", orgId);
 
   if (error) {
     console.error("[team] Failed to remove member:", error);

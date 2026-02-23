@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgIdFromRequest } from "@/lib/org";
 
 /**
  * POST /api/rep-portal/login — Rep login (public)
@@ -10,6 +11,7 @@ import { TABLES, ORG_ID } from "@/lib/constants";
  */
 export async function POST(request: NextRequest) {
   try {
+    const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
     const { email, password } = body;
 
@@ -63,7 +65,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.REPS)
       .select("id, auth_user_id, email, org_id, status, first_name, last_name, display_name, photo_url, level, points_balance, onboarding_completed")
       .eq("auth_user_id", authData.user.id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (repError || !rep) {
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
           .from(TABLES.REPS)
           .select("id, auth_user_id, email, org_id, status, first_name, last_name, display_name, photo_url, level, points_balance, onboarding_completed")
           .eq("email", userEmail)
-          .eq("org_id", ORG_ID)
+          .eq("org_id", orgId)
           .is("auth_user_id", null)
           .single();
 
@@ -89,7 +91,7 @@ export async function POST(request: NextRequest) {
             .from(TABLES.REPS)
             .update({ auth_user_id: authData.user.id, updated_at: new Date().toISOString() })
             .eq("id", repByEmail.id)
-            .eq("org_id", ORG_ID);
+            .eq("org_id", orgId);
 
           repByEmail.auth_user_id = authData.user.id;
 

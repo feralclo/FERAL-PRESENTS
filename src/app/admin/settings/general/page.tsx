@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { ORG_ID } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ const TIMEZONES = [
 ];
 
 export default function GeneralSettings() {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<OrgSettings>(DEFAULT_SETTINGS);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
@@ -46,7 +47,7 @@ export default function GeneralSettings() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/settings?key=${ORG_ID}_general`);
+        const res = await fetch(`/api/settings?key=${orgId}_general`);
         if (res.ok) {
           const { data } = await res.json();
           if (data) {
@@ -57,7 +58,7 @@ export default function GeneralSettings() {
         // Settings may not exist yet — use defaults
       }
     })();
-  }, []);
+  }, [orgId]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -67,7 +68,7 @@ export default function GeneralSettings() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          key: `${ORG_ID}_general`,
+          key: `${orgId}_general`,
           data: settings,
         }),
       });
@@ -79,7 +80,7 @@ export default function GeneralSettings() {
     } finally {
       setSaving(false);
     }
-  }, [settings]);
+  }, [settings, orgId]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 p-6">
@@ -167,7 +168,7 @@ export default function GeneralSettings() {
           </div>
           <div className="flex justify-between py-1.5">
             <span className="text-muted-foreground">Org ID</span>
-            <span className="font-mono text-foreground">{ORG_ID}</span>
+            <span className="font-mono text-foreground">{orgId}</span>
           </div>
           <div className="flex justify-between py-1.5">
             <span className="text-muted-foreground">Framework</span>

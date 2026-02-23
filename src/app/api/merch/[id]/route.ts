@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -11,6 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -24,7 +26,7 @@ export async function GET(
       .from(TABLES.PRODUCTS)
       .select("*")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !data) {
@@ -50,6 +52,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -91,7 +94,7 @@ export async function PUT(
       .from(TABLES.PRODUCTS)
       .update(updateData)
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -123,6 +126,7 @@ export async function DELETE(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -153,7 +157,7 @@ export async function DELETE(
       .from(TABLES.PRODUCTS)
       .delete()
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

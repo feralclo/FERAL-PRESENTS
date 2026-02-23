@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -12,6 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -25,7 +27,7 @@ export async function GET(
       .from(TABLES.EVENTS)
       .select("*, ticket_types(*, product:products(*))")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (error || !data) {
@@ -48,6 +50,7 @@ export async function PUT(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const body = await request.json();
@@ -73,7 +76,7 @@ export async function PUT(
       .from(TABLES.EVENTS)
       .update({ ...eventFields, updated_at: new Date().toISOString() })
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (eventError) {
       console.error(`[events/${id}] Update error:`, eventError.message);
@@ -91,7 +94,7 @@ export async function PUT(
             .from(TABLES.TICKET_TYPES)
             .delete()
             .eq("id", ttId)
-            .eq("org_id", ORG_ID)
+            .eq("org_id", orgId)
         )
       );
     }
@@ -106,10 +109,10 @@ export async function PUT(
               .from(TABLES.TICKET_TYPES)
               .update({ ...ttFields, updated_at: new Date().toISOString() })
               .eq("id", ttId as string)
-              .eq("org_id", ORG_ID);
+              .eq("org_id", orgId);
           } else {
             return supabase.from(TABLES.TICKET_TYPES).insert({
-              org_id: ORG_ID,
+              org_id: orgId,
               event_id: id,
               ...tt,
             });
@@ -157,6 +160,7 @@ export async function DELETE(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -172,7 +176,7 @@ export async function DELETE(
       .from(TABLES.EVENTS)
       .select("slug")
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (!event) {
@@ -184,14 +188,14 @@ export async function DELETE(
       .from(TABLES.TICKET_TYPES)
       .delete()
       .eq("event_id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     // Delete event
     const { error } = await supabase
       .from(TABLES.EVENTS)
       .delete()
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

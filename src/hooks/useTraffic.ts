@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { ORG_ID, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { TrafficEventType } from "@/types/analytics";
 
 function getSessionId(): string {
@@ -42,7 +43,7 @@ function isDevMode(): boolean {
   return localStorage.getItem("feral_devmode") === "1";
 }
 
-async function sendTrafficEvent(data: Record<string, unknown>) {
+async function sendTrafficEvent(data: Record<string, unknown>, orgId: string) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return; // Env vars not configured
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/traffic_events`, {
@@ -53,7 +54,7 @@ async function sendTrafficEvent(data: Record<string, unknown>) {
         "Content-Type": "application/json",
         Prefer: "return=minimal",
       },
-      body: JSON.stringify({ ...data, org_id: ORG_ID }),
+      body: JSON.stringify({ ...data, org_id: orgId }),
       cache: "no-store",
     });
   } catch {
@@ -82,6 +83,8 @@ function extractEventName(path: string): string | undefined {
  * Matches the behavior of feral-traffic.js exactly.
  */
 export function useTraffic(pagePath?: string) {
+  const orgId = useOrgId();
+
   // Track page view on mount
   useEffect(() => {
     if (isDevMode()) return;
@@ -99,8 +102,8 @@ export function useTraffic(pagePath?: string) {
       referrer: document.referrer || undefined,
       user_agent: navigator.userAgent,
       ...utm,
-    });
-  }, [pagePath]);
+    }, orgId);
+  }, [pagePath, orgId]);
 
   const trackEngagement = useCallback((type: TrafficEventType) => {
     if (isDevMode()) return;
@@ -110,8 +113,8 @@ export function useTraffic(pagePath?: string) {
       event_name: extractEventName(window.location.pathname),
       session_id: getSessionId(),
       user_agent: navigator.userAgent,
-    });
-  }, []);
+    }, orgId);
+  }, [orgId]);
 
   const trackAddToCart = useCallback(
     (productName: string, price: number, qty: number) => {
@@ -125,9 +128,9 @@ export function useTraffic(pagePath?: string) {
         product_name: productName,
         product_price: price,
         product_qty: qty,
-      });
+      }, orgId);
     },
-    []
+    [orgId]
   );
 
   return { trackEngagement, trackAddToCart };

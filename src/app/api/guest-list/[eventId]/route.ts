@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -13,6 +13,7 @@ export async function GET(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { eventId } = await params;
     const supabase = await getSupabaseAdmin();
@@ -27,7 +28,7 @@ export async function GET(
       .from(TABLES.GUEST_LIST)
       .select("*")
       .eq("event_id", eventId)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -64,6 +65,7 @@ export async function PUT(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const body = await request.json();
     const { id, ...updates } = body;
@@ -93,7 +95,7 @@ export async function PUT(request: NextRequest) {
       .from(TABLES.GUEST_LIST)
       .update(updates)
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .select()
       .single();
 
@@ -114,6 +116,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await request.json();
 
@@ -136,7 +139,7 @@ export async function DELETE(request: NextRequest) {
       .from(TABLES.GUEST_LIST)
       .delete()
       .eq("id", id)
-      .eq("org_id", ORG_ID);
+      .eq("org_id", orgId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

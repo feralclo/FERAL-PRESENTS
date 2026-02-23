@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -11,6 +11,7 @@ export async function POST() {
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
@@ -30,7 +31,7 @@ export async function POST() {
     const { data: existing } = await supabase
       .from(TABLES.DISCOUNTS)
       .select("code")
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .in("code", CODES);
 
     const existingCodes = new Set((existing || []).map((d) => d.code));
@@ -45,7 +46,7 @@ export async function POST() {
     }
 
     const rows = newCodes.map((code) => ({
-      org_id: ORG_ID,
+      org_id: orgId,
       code,
       description: `Ambassador code – ${code.replace("15", "")}`,
       type: "percentage",

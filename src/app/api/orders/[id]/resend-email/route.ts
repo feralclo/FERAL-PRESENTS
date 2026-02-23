@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, ORG_ID } from "@/lib/constants";
+import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 
@@ -17,6 +17,7 @@ export async function POST(
   try {
     const auth = await requireAuth();
     if (auth.error) return auth.error;
+    const orgId = auth.orgId;
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();
@@ -34,7 +35,7 @@ export async function POST(
         "id, order_number, total, currency, status, customer:customers(id, email, first_name, last_name), event:events(id, name, slug, currency, venue_name, date_start, doors_time), tickets:tickets(id, ticket_code, ticket_type_id, merch_size, ticket_type:ticket_types(name, merch_name, product:products(name)))"
       )
       .eq("id", id)
-      .eq("org_id", ORG_ID)
+      .eq("org_id", orgId)
       .single();
 
     if (orderErr || !order) {
@@ -61,7 +62,7 @@ export async function POST(
 
     // Send the email (awaited, not fire-and-forget — we want to report the result)
     await sendOrderConfirmationEmail({
-      orgId: ORG_ID,
+      orgId,
       order: {
         id: order.id,
         order_number: order.order_number,

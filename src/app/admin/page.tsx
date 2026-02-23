@@ -8,6 +8,8 @@ import { LiveIndicator } from "@/components/ui/live-indicator";
 import { ActivityFeed } from "@/components/admin/dashboard/ActivityFeed";
 import { FunnelChart } from "@/components/admin/dashboard/FunnelChart";
 import { TopEventsTable } from "@/components/admin/dashboard/TopEventsTable";
+import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConnectionBanner";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 import {
   Ticket,
@@ -70,7 +72,15 @@ function QuickLink({
 /* ════════════════════════════════════════════════════════
    LIVE DASHBOARD
    ════════════════════════════════════════════════════════ */
-function WelcomeBanner({ onDismiss }: { onDismiss: () => void }) {
+function WelcomeBanner({
+  onDismiss,
+  stripeConnected,
+}: {
+  onDismiss: () => void;
+  stripeConnected?: boolean;
+}) {
+  const needsStripe = stripeConnected === false;
+
   return (
     <div className="mb-6 flex items-center gap-4 rounded-xl border border-primary/20 bg-card p-4 shadow-sm">
       <div className="h-full w-1 self-stretch rounded-full bg-gradient-to-b from-primary to-primary/50" />
@@ -80,14 +90,16 @@ function WelcomeBanner({ onDismiss }: { onDismiss: () => void }) {
           Welcome to Entry!
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Create your first event to start selling tickets.
+          {needsStripe
+            ? "Set up payments to start selling tickets."
+            : "Create your first event to start selling tickets."}
         </p>
       </div>
       <Link
-        href="/admin/events/"
+        href={needsStripe ? "/admin/payments/" : "/admin/events/"}
         className="shrink-0 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary/85"
       >
-        Create Event
+        {needsStripe ? "Set Up Payments" : "Create Event"}
       </Link>
       <button
         onClick={onDismiss}
@@ -101,6 +113,11 @@ function WelcomeBanner({ onDismiss }: { onDismiss: () => void }) {
 
 export default function AdminDashboard() {
   const [showWelcome, setShowWelcome] = useState(false);
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<{
+    connected: boolean;
+    chargesEnabled: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -111,6 +128,39 @@ export default function AdminDashboard() {
       url.searchParams.delete("welcome");
       window.history.replaceState({}, "", url.toString());
     }
+  }, []);
+
+  // Fetch platform owner flag + Stripe connection status
+  useEffect(() => {
+    (async () => {
+      try {
+        const [, stripeRes] = await Promise.all([
+          // Platform owner detection
+          (async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            const { data } = await supabase.auth.getUser();
+            if (data.user?.app_metadata?.is_platform_owner === true) {
+              setIsPlatformOwner(true);
+            }
+          })(),
+          // Stripe connection status
+          fetch("/api/stripe/connect/my-account").catch(() => null),
+        ]);
+
+        if (stripeRes?.ok) {
+          const json = await stripeRes.json();
+          setStripeStatus({
+            connected: !!json.connected,
+            chargesEnabled: !!json.charges_enabled,
+          });
+        } else {
+          setStripeStatus({ connected: false, chargesEnabled: false });
+        }
+      } catch {
+        // Fail silently — banners just won't show
+      }
+    })();
   }, []);
 
   const {
@@ -127,8 +177,23 @@ export default function AdminDashboard() {
 
   return (
     <div>
+      {/* Stripe connection banner — non-dismissible, hidden for platform owner */}
+      {!isPlatformOwner &&
+        stripeStatus &&
+        (!stripeStatus.connected || !stripeStatus.chargesEnabled) && (
+          <StripeConnectionBanner
+            connected={stripeStatus.connected}
+            chargesEnabled={stripeStatus.chargesEnabled}
+          />
+        )}
+
       {/* Welcome banner */}
-      {showWelcome && <WelcomeBanner onDismiss={() => setShowWelcome(false)} />}
+      {showWelcome && (
+        <WelcomeBanner
+          onDismiss={() => setShowWelcome(false)}
+          stripeConnected={stripeStatus?.connected && stripeStatus?.chargesEnabled}
+        />
+      )}
 
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

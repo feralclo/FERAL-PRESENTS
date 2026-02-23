@@ -49,7 +49,7 @@ src/
 ├── components/
 │   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
-│   │   └── dashboard/         # ActivityFeed, FunnelChart, TopEventsTable
+│   │   └── dashboard/         # ActivityFeed, FunnelChart, TopEventsTable, StripeConnectionBanner
 │   ├── aura/                  # Aura theme components (full event page + checkout variant)
 │   ├── midnight/              # Midnight theme (default): MidnightEventPage, MidnightHero,
 │   │                          # MidnightTicketWidget, MidnightTicketCard, MidnightMerchModal,

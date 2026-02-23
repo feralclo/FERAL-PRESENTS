@@ -8,6 +8,13 @@ import {
 } from "@stripe/react-connect-js";
 import { loadConnectAndInitialize } from "@stripe/connect-js/pure";
 import type { StripeConnectInstance } from "@stripe/connect-js";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectTrigger,
@@ -15,6 +22,14 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  AlertCircle,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  AlertTriangle,
+} from "lucide-react";
 
 // ─── Types ───
 
@@ -39,10 +54,10 @@ interface AccountStatus {
 
 type PageView =
   | "loading"
-  | "setup"          // No account — show the creation form
-  | "onboarding"     // Account created, embedded onboarding in progress
-  | "hosted-link"    // Fallback: hosted onboarding link
-  | "connected";     // Account fully set up
+  | "setup" // No account — show the creation form
+  | "onboarding" // Account created, embedded onboarding in progress
+  | "hosted-link" // Fallback: hosted onboarding link
+  | "connected"; // Account fully set up
 
 // ─── Page ───
 
@@ -272,84 +287,71 @@ export default function PaymentSettingsPage() {
 
   if (view === "loading") {
     return (
-      <div style={{ maxWidth: 700 }}>
-        <h1 className="admin-page-title">Payment Settings</h1>
-        <div
-          style={{
-            color: "#55557a",
-            padding: "48px 0",
-            textAlign: "center",
-          }}
-        >
+      <div className="mx-auto max-w-2xl">
+        <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
+          Payment Settings
+        </h1>
+        <p className="mt-12 text-center text-sm text-muted-foreground">
           Loading...
-        </div>
+        </p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 700 }}>
-      <h1 className="admin-page-title">Payment Settings</h1>
-      <p className="admin-page-subtitle">
-        Set up your business details to start accepting payments and
-        receiving payouts.
-      </p>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div>
+        <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
+          Payment Settings
+        </h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Set up your business details to start accepting payments and
+          receiving payouts.
+        </p>
+      </div>
 
       {error && (
-        <div className="admin-alert admin-alert--error">{error}</div>
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       {success && (
-        <div className="admin-alert admin-alert--success">{success}</div>
+        <Alert variant="success">
+          <CheckCircle2 className="size-4" />
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
       )}
 
       {/* ─── Setup Form (no account yet) ─── */}
-      {view === "setup" && <SetupForm
-        email={email}
-        setEmail={setEmail}
-        businessName={businessName}
-        setBusinessName={setBusinessName}
-        country={country}
-        setCountry={setCountry}
-        settingUp={settingUp}
-        onSubmit={handleSetup}
-      />}
+      {view === "setup" && (
+        <SetupForm
+          email={email}
+          setEmail={setEmail}
+          businessName={businessName}
+          setBusinessName={setBusinessName}
+          country={country}
+          setCountry={setCountry}
+          settingUp={settingUp}
+          onSubmit={handleSetup}
+        />
+      )}
 
       {/* ─── Embedded Onboarding ─── */}
       {view === "onboarding" && (
-        <div className="admin-card" style={{ overflow: "hidden" }}>
-          <div style={{ padding: "8px 0 20px" }}>
-            <h2
-              style={{
-                fontFamily: "'Space Mono', monospace",
-                fontSize: 14,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                color: "#fff",
-                marginBottom: 8,
-              }}
-            >
+        <Card className="gap-0 py-0 overflow-hidden">
+          <div className="px-6 py-5">
+            <h2 className="font-mono text-sm font-bold uppercase tracking-[2px]">
               Complete Your Setup
             </h2>
-            <p
-              style={{
-                color: "#8888a0",
-                fontSize: 13,
-                lineHeight: 1.6,
-              }}
-            >
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Verify your identity and add your bank account details below.
               Your information is encrypted and protected.
             </p>
           </div>
 
           {connectInstance ? (
-            <div
-              style={{
-                borderTop: "1px solid rgba(255,255,255,0.06)",
-                paddingTop: 20,
-                minHeight: 400,
-              }}
-            >
+            <div className="min-h-[400px] border-t border-border/40 px-6 pt-5 pb-6">
               <ConnectComponentsProvider
                 connectInstance={connectInstance}
               >
@@ -364,189 +366,117 @@ export default function PaymentSettingsPage() {
               </ConnectComponentsProvider>
             </div>
           ) : (
-            <div
-              style={{
-                borderTop: "1px solid rgba(255,255,255,0.06)",
-                paddingTop: 20,
-                textAlign: "center",
-              }}
-            >
-              <p
-                style={{
-                  color: "#8888a0",
-                  fontSize: 13,
-                  marginBottom: 16,
-                }}
-              >
+            <div className="border-t border-border/40 px-6 py-6 text-center">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Loading the verification form...
               </p>
-              <button
-                className="admin-btn admin-btn--secondary"
-                onClick={handleHostedFallback}
-                style={{ fontSize: 12 }}
-              >
+              <Button variant="secondary" size="sm" onClick={handleHostedFallback}>
                 Open verification in a new tab instead
-              </button>
+              </Button>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       {/* ─── Hosted Onboarding Link (fallback) ─── */}
       {view === "hosted-link" && hostedUrl && (
-        <div
-          className="admin-card"
-          style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}
-        >
-          <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
-            <h2
-              style={{
-                fontFamily: "'Space Mono', monospace",
-                fontSize: 14,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                color: "#fff",
-                marginBottom: 8,
-              }}
-            >
+        <Card className="gap-0 border-primary/30 py-0">
+          <div className="px-6 py-6 text-center">
+            <h2 className="font-mono text-sm font-bold uppercase tracking-[2px]">
               Complete Your Setup
             </h2>
-            <p
-              style={{
-                color: "#8888a0",
-                fontSize: 13,
-                lineHeight: 1.6,
-                maxWidth: 400,
-                margin: "0 auto 20px",
-              }}
-            >
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
               Click below to verify your identity and add your bank account
               details. You&apos;ll be redirected back here when finished.
             </p>
-            <a
-              href={hostedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="admin-btn admin-btn--primary"
-              style={{
-                display: "inline-block",
-                padding: "16px 40px",
-                fontSize: 12,
-              }}
-            >
-              Complete Verification
-            </a>
+            <Button className="mt-5" size="lg" asChild>
+              <a
+                href={hostedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Complete Verification
+                <ExternalLink className="size-4" />
+              </a>
+            </Button>
           </div>
-          <div
-            style={{
-              borderTop: "1px solid rgba(255,255,255,0.06)",
-              paddingTop: 16,
-              marginTop: 16,
-              textAlign: "center",
-            }}
-          >
-            <button
-              className="admin-btn admin-btn--secondary"
-              style={{ fontSize: 10 }}
+          <Separator />
+          <div className="px-6 py-4 text-center">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setHostedUrl(null);
                 checkStatus();
               }}
             >
               I&apos;ve Completed Verification
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* ─── Account Connected ─── */}
       {view === "connected" && status && (
         <>
           {/* Status Banner */}
-          <div
-            className="admin-card"
-            style={{
-              borderColor: status.charges_enabled
-                ? "rgba(52, 211, 153, 0.2)"
-                : "rgba(255, 193, 7, 0.2)",
-            }}
+          <Card
+            className={cn(
+              "gap-0 py-0",
+              status.charges_enabled
+                ? "border-success/20"
+                : "border-warning/20"
+            )}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-              }}
-            >
+            <CardContent className="flex items-center gap-4 px-6 py-5">
               <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: "50%",
-                  background: status.charges_enabled
-                    ? "rgba(52, 211, 153, 0.1)"
-                    : "rgba(255, 193, 7, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 24,
-                  flexShrink: 0,
-                }}
+                className={cn(
+                  "flex size-12 shrink-0 items-center justify-center rounded-full",
+                  status.charges_enabled
+                    ? "bg-success/10"
+                    : "bg-warning/10"
+                )}
               >
                 {status.charges_enabled ? (
-                  <span style={{ color: "#34D399" }}>&#10003;</span>
+                  <CheckCircle2 className="size-6 text-success" />
                 ) : (
-                  <span style={{ color: "#FBBF24" }}>!</span>
+                  <AlertTriangle className="size-6 text-warning" />
                 )}
               </div>
-              <div>
-                <h2
-                  style={{
-                    fontFamily: "'Space Mono', monospace",
-                    fontSize: 13,
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                    color: "#fff",
-                    marginBottom: 4,
-                  }}
-                >
+              <div className="flex-1">
+                <h2 className="font-mono text-xs font-bold uppercase tracking-[2px]">
                   {status.charges_enabled
                     ? "Payments Active"
                     : "Setup Incomplete"}
                 </h2>
-                <p style={{ color: "#8888a0", fontSize: 13 }}>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {status.charges_enabled
                     ? "You can accept payments. Funds will be deposited to your bank account."
                     : "Complete the verification to start accepting payments."}
                 </p>
               </div>
-            </div>
+            </CardContent>
 
-            {/* Show "Continue Setup" if details submitted but charges not yet enabled
-                (Stripe is still reviewing) — or if details not submitted */}
             {(!status.charges_enabled || status.requirements_currently_due.length > 0) && (
-              <button
-                className="admin-btn admin-btn--primary"
-                style={{ width: "100%", marginTop: 16 }}
-                onClick={() => setView("onboarding")}
-              >
-                {status.details_submitted
-                  ? "Update Verification"
-                  : "Continue Setup"}
-              </button>
+              <div className="border-t border-border/40 px-6 py-4">
+                <Button className="w-full" onClick={() => setView("onboarding")}>
+                  {status.details_submitted
+                    ? "Update Verification"
+                    : "Continue Setup"}
+                </Button>
+              </div>
             )}
-          </div>
+          </Card>
 
           {/* Business Details */}
-          <div className="admin-card" style={{ marginTop: 24 }}>
-            <h2 className="admin-card__title">Business Details</h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px 24px",
-              }}
-            >
+          <Card className="gap-0 py-0">
+            <CardHeader className="px-6 py-4">
+              <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+                Business Details
+              </CardTitle>
+            </CardHeader>
+            <Separator />
+            <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-5">
               <DetailField label="Business Name" value={status.business_name} />
               <DetailField label="Email" value={status.email} />
               <DetailField label="Country" value={status.country} />
@@ -556,19 +486,18 @@ export default function PaymentSettingsPage() {
                 mono
                 accent
               />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Capabilities */}
-          <div className="admin-card" style={{ marginTop: 24 }}>
-            <h2 className="admin-card__title">Capabilities</h2>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-              }}
-            >
+          <Card className="gap-0 py-0">
+            <CardHeader className="px-6 py-4">
+              <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+                Capabilities
+              </CardTitle>
+            </CardHeader>
+            <Separator />
+            <CardContent className="space-y-0 px-6 py-2">
               <CapabilityRow
                 label="Card Payments"
                 enabled={status.charges_enabled}
@@ -580,215 +509,127 @@ export default function PaymentSettingsPage() {
               <CapabilityRow
                 label="Identity Verified"
                 enabled={status.details_submitted}
+                last
               />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Pending Requirements */}
           {status.requirements_currently_due.length > 0 && (
-            <div className="admin-card" style={{ marginTop: 24 }}>
-              <h2 className="admin-card__title">Action Required</h2>
-              <p
-                style={{
-                  color: "#8888a0",
-                  fontSize: 13,
-                  marginBottom: 12,
-                }}
-              >
-                Complete these items to fully activate your account:
-              </p>
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                {status.requirements_currently_due.map((req) => (
-                  <li
-                    key={req}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "8px 12px",
-                      background: "rgba(255, 193, 7, 0.04)",
-                      border: "1px solid rgba(255, 193, 7, 0.1)",
-                    }}
-                  >
-                    <span style={{ color: "#FBBF24", fontSize: 14 }}>
-                      &#9679;
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: "'Space Mono', monospace",
-                        fontSize: 11,
-                        color: "#aaa",
-                      }}
+            <Card className="gap-0 py-0">
+              <CardHeader className="px-6 py-4">
+                <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+                  Action Required
+                </CardTitle>
+              </CardHeader>
+              <Separator />
+              <CardContent className="space-y-2 px-6 py-5">
+                <p className="text-sm text-muted-foreground">
+                  Complete these items to fully activate your account:
+                </p>
+                <ul className="space-y-1.5">
+                  {status.requirements_currently_due.map((req) => (
+                    <li
+                      key={req}
+                      className="flex items-center gap-2 rounded-md bg-warning/[0.04] px-3 py-2 ring-1 ring-warning/10"
                     >
-                      {formatRequirement(req)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <button
-                className="admin-btn admin-btn--primary"
-                style={{ width: "100%", marginTop: 16 }}
-                onClick={() => setView("onboarding")}
-              >
-                Complete Verification
-              </button>
-            </div>
+                      <span className="text-sm text-warning">&#9679;</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {formatRequirement(req)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <Button className="mt-3 w-full" onClick={() => setView("onboarding")}>
+                  Complete Verification
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
           {/* Past-due requirements (urgent) */}
           {status.requirements_past_due.length > 0 && (
-            <div
-              className="admin-card"
-              style={{
-                marginTop: 24,
-                borderColor: "rgba(244, 63, 94, 0.3)",
-              }}
-            >
-              <h2
-                className="admin-card__title"
-                style={{ color: "#F43F5E" }}
-              >
-                Overdue Requirements
-              </h2>
-              <p
-                style={{
-                  color: "#8888a0",
-                  fontSize: 13,
-                  marginBottom: 12,
-                }}
-              >
-                These items are overdue. Your account may be restricted
-                until they are resolved:
-              </p>
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                {status.requirements_past_due.map((req) => (
-                  <li
-                    key={req}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "8px 12px",
-                      background: "rgba(244, 63, 94, 0.04)",
-                      border: "1px solid rgba(244, 63, 94, 0.15)",
-                    }}
-                  >
-                    <span style={{ color: "#F43F5E", fontSize: 14 }}>
-                      &#9679;
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: "'Space Mono', monospace",
-                        fontSize: 11,
-                        color: "#aaa",
-                      }}
+            <Card className="gap-0 border-destructive/30 py-0">
+              <CardHeader className="px-6 py-4">
+                <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
+                  Overdue Requirements
+                </CardTitle>
+              </CardHeader>
+              <Separator />
+              <CardContent className="space-y-2 px-6 py-5">
+                <p className="text-sm text-muted-foreground">
+                  These items are overdue. Your account may be restricted
+                  until they are resolved:
+                </p>
+                <ul className="space-y-1.5">
+                  {status.requirements_past_due.map((req) => (
+                    <li
+                      key={req}
+                      className="flex items-center gap-2 rounded-md bg-destructive/[0.04] px-3 py-2 ring-1 ring-destructive/15"
                     >
-                      {formatRequirement(req)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <button
-                className="admin-btn admin-btn--primary"
-                style={{ width: "100%", marginTop: 16 }}
-                onClick={() => setView("onboarding")}
-              >
-                Resolve Now
-              </button>
-            </div>
+                      <span className="text-sm text-destructive">&#9679;</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {formatRequirement(req)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <Button className="mt-3 w-full" onClick={() => setView("onboarding")}>
+                  Resolve Now
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
           {/* Disabled reason */}
           {status.disabled_reason && (
-            <div
-              className="admin-card"
-              style={{
-                marginTop: 24,
-                borderColor: "rgba(244, 63, 94, 0.3)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <span style={{ color: "#F43F5E", fontSize: 20 }}>
-                  &#9888;
-                </span>
+            <Card className="gap-0 border-destructive/30 py-0">
+              <CardContent className="flex items-center gap-3 px-6 py-5">
+                <AlertTriangle className="size-5 shrink-0 text-destructive" />
                 <div>
-                  <h2
-                    className="admin-card__title"
-                    style={{ color: "#F43F5E", marginBottom: 4 }}
-                  >
+                  <h2 className="font-mono text-xs font-bold uppercase tracking-[2px] text-destructive">
                     Account Restricted
                   </h2>
-                  <p style={{ color: "#8888a0", fontSize: 13 }}>
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {formatDisabledReason(status.disabled_reason)}
                   </p>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Next Steps */}
           {status.charges_enabled && (
-            <div className="admin-card" style={{ marginTop: 24 }}>
-              <h2 className="admin-card__title">Next Steps</h2>
-              <p
-                style={{
-                  color: "#8888a0",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                }}
-              >
-                Your payment account is linked automatically. To start
-                accepting payments for an event:
-              </p>
-              <ol
-                style={{
-                  color: "#8888a0",
-                  fontSize: 13,
-                  lineHeight: 2,
-                  paddingLeft: 20,
-                  marginTop: 8,
-                }}
-              >
-                <li>
-                  Go to{" "}
-                  <Link
-                    href="/admin/events/"
-                    style={{ color: "#8B5CF6" }}
-                  >
-                    Events
-                  </Link>
-                </li>
-                <li>
-                  Edit your event and set Payment Method to
-                  &quot;Stripe&quot;
-                </li>
-                <li>Save — that&apos;s it, you&apos;re live</li>
-              </ol>
-            </div>
+            <Card className="gap-0 py-0">
+              <CardHeader className="px-6 py-4">
+                <CardTitle className="font-mono text-xs font-bold uppercase tracking-[2px]">
+                  Next Steps
+                </CardTitle>
+              </CardHeader>
+              <Separator />
+              <CardContent className="px-6 py-5">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Your payment account is linked automatically. To start
+                  accepting payments for an event:
+                </p>
+                <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
+                  <li>
+                    Go to{" "}
+                    <Link
+                      href="/admin/events/"
+                      className="text-primary hover:underline"
+                    >
+                      Events
+                    </Link>
+                  </li>
+                  <li>
+                    Edit your event and set Payment Method to
+                    &quot;Stripe&quot;
+                  </li>
+                  <li>Save — that&apos;s it, you&apos;re live</li>
+                </ol>
+              </CardContent>
+            </Card>
           )}
         </>
       )}
@@ -818,125 +659,71 @@ function SetupForm({
   onSubmit: (e: React.FormEvent) => void;
 }) {
   return (
-    <div className="admin-card">
-      <div style={{ textAlign: "center", padding: "16px 0 24px" }}>
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: "50%",
-            background: "rgba(139, 92, 246, 0.08)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 20px",
-          }}
-        >
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#8B5CF6"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 10h20" />
-            <path d="M2 14h20" />
-            <rect x="2" y="5" width="20" height="14" rx="2" />
-          </svg>
+    <Card className="gap-0 py-0">
+      <div className="px-6 py-6 text-center">
+        <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-primary/8">
+          <CreditCard className="size-7 text-primary" />
         </div>
-        <h2
-          style={{
-            fontFamily: "'Space Mono', monospace",
-            fontSize: 16,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            color: "#fff",
-            marginBottom: 8,
-          }}
-        >
+        <h2 className="font-mono text-base font-bold uppercase tracking-[2px]">
           Set Up Payments
         </h2>
-        <p
-          style={{
-            color: "#8888a0",
-            fontSize: 13,
-            lineHeight: 1.6,
-            maxWidth: 400,
-            margin: "0 auto",
-          }}
-        >
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
           Add your business details to start accepting card payments, Apple
           Pay, Google Pay, and more. You&apos;ll need your business info and
           bank account details.
         </p>
       </div>
 
-      <form
-        onSubmit={onSubmit}
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          paddingTop: 24,
-        }}
-      >
-        <div className="admin-form">
-          <div className="admin-form__field" style={{ marginBottom: 16 }}>
-            <label className="admin-form__label">Business Email *</label>
-            <input
-              type="email"
-              className="admin-form__input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@yourbusiness.com"
-              required
-            />
-          </div>
+      <Separator />
 
-          <div className="admin-form__field" style={{ marginBottom: 16 }}>
-            <label className="admin-form__label">
-              Business / Organisation Name
-            </label>
-            <input
-              type="text"
-              className="admin-form__input"
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="e.g. Acme Events Ltd"
-            />
-          </div>
-
-          <div className="admin-form__field" style={{ marginBottom: 24 }}>
-            <label className="admin-form__label">Country</label>
-            <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="GB">United Kingdom</SelectItem>
-                <SelectItem value="IE">Ireland</SelectItem>
-                <SelectItem value="NL">Netherlands</SelectItem>
-                <SelectItem value="BE">Belgium</SelectItem>
-                <SelectItem value="DE">Germany</SelectItem>
-                <SelectItem value="FR">France</SelectItem>
-                <SelectItem value="ES">Spain</SelectItem>
-                <SelectItem value="US">United States</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <button
-            type="submit"
-            className="admin-btn admin-btn--primary"
-            disabled={settingUp}
-            style={{ width: "100%" }}
-          >
-            {settingUp ? "Setting up..." : "Continue Setup"}
-          </button>
+      <form onSubmit={onSubmit} className="space-y-4 px-6 py-6">
+        <div className="space-y-2">
+          <Label htmlFor="setup-email">Business Email *</Label>
+          <Input
+            id="setup-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@yourbusiness.com"
+            required
+          />
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="setup-name">Business / Organisation Name</Label>
+          <Input
+            id="setup-name"
+            type="text"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            placeholder="e.g. Acme Events Ltd"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Country</Label>
+          <Select value={country} onValueChange={setCountry}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="GB">United Kingdom</SelectItem>
+              <SelectItem value="IE">Ireland</SelectItem>
+              <SelectItem value="NL">Netherlands</SelectItem>
+              <SelectItem value="BE">Belgium</SelectItem>
+              <SelectItem value="DE">Germany</SelectItem>
+              <SelectItem value="FR">France</SelectItem>
+              <SelectItem value="ES">Spain</SelectItem>
+              <SelectItem value="US">United States</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button type="submit" className="w-full" disabled={settingUp}>
+          {settingUp ? "Setting up..." : "Continue Setup"}
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 }
 
@@ -953,26 +740,15 @@ function DetailField({
 }) {
   return (
     <div>
-      <div
-        style={{
-          fontFamily: "'Space Mono', monospace",
-          fontSize: 9,
-          letterSpacing: 2,
-          textTransform: "uppercase",
-          color: "#55557a",
-          marginBottom: 4,
-        }}
-      >
+      <div className="font-mono text-[9px] uppercase tracking-[2px] text-muted-foreground">
         {label}
       </div>
       <div
-        style={{
-          color: accent ? "#8B5CF6" : "#ccc",
-          fontSize: mono ? 11 : 14,
-          fontFamily: mono
-            ? "'Space Mono', monospace"
-            : undefined,
-        }}
+        className={cn(
+          "mt-1",
+          accent ? "text-primary" : "text-foreground/80",
+          mono ? "font-mono text-[11px]" : "text-sm"
+        )}
       >
         {value || "\u2014"}
       </div>
@@ -983,41 +759,23 @@ function DetailField({
 function CapabilityRow({
   label,
   enabled,
+  last,
 }: {
   label: string;
   enabled: boolean;
+  last?: boolean;
 }) {
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "10px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-      }}
+      className={cn(
+        "flex items-center justify-between py-3",
+        !last && "border-b border-border/40"
+      )}
     >
-      <span style={{ color: "#ccc", fontSize: 13 }}>{label}</span>
-      <span
-        style={{
-          fontFamily: "'Space Mono', monospace",
-          fontSize: 9,
-          letterSpacing: 1,
-          textTransform: "uppercase",
-          padding: "3px 10px",
-          background: enabled
-            ? "rgba(52, 211, 153, 0.1)"
-            : "rgba(139, 92, 246, 0.08)",
-          color: enabled ? "#34D399" : "#8B5CF6",
-          border: `1px solid ${
-            enabled
-              ? "rgba(52, 211, 153, 0.2)"
-              : "rgba(139, 92, 246, 0.15)"
-          }`,
-        }}
-      >
+      <span className="text-sm text-foreground/80">{label}</span>
+      <Badge variant={enabled ? "success" : "default"}>
         {enabled ? "Active" : "Inactive"}
-      </span>
+      </Badge>
     </div>
   );
 }

@@ -29,6 +29,10 @@ import {
   CreditCard,
   ExternalLink,
   AlertTriangle,
+  Smartphone,
+  Banknote,
+  Shield,
+  Zap,
 } from "lucide-react";
 
 // ─── Types ───
@@ -291,7 +295,7 @@ export default function PaymentSettingsPage() {
     return (
       <div className="mx-auto max-w-2xl">
         <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
-          Payment Settings
+          Payments
         </h1>
         <p className="mt-12 text-center text-sm text-muted-foreground">
           Loading...
@@ -304,11 +308,14 @@ export default function PaymentSettingsPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="font-mono text-sm font-bold uppercase tracking-[2px]">
-          Payment Settings
+          Payments
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Set up your business details to start accepting payments and
-          receiving payouts.
+          {view === "setup"
+            ? "Connect your account to start getting paid."
+            : view === "connected" && status?.charges_enabled
+              ? "Your payments are live. You\u2019re ready to sell."
+              : "Finish setting up to start accepting payments."}
         </p>
       </div>
 
@@ -666,84 +673,112 @@ function SetupForm({
   settingUp: boolean;
   onSubmit: (e: React.FormEvent) => void;
 }) {
+  const isIndividual = businessType === "individual";
+
   return (
     <Card className="gap-0 py-0">
-      <div className="px-6 py-6 text-center">
-        <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-primary/8">
-          <CreditCard className="size-7 text-primary" />
+      {/* Hero section */}
+      <div className="px-6 py-8 text-center">
+        <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
+          <Zap className="size-7 text-primary" />
         </div>
-        <h2 className="font-mono text-base font-bold uppercase tracking-[2px]">
-          Set Up Payments
+        <h2 className="text-lg font-bold text-foreground">
+          Start Getting Paid
         </h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Add your business details to start accepting card payments, Apple
-          Pay, Google Pay, and more. You&apos;ll need your business info and
-          bank account details.
+          Connect your account and you&apos;re ready to sell tickets.
+          Takes about 2 minutes.
         </p>
+
+        {/* Feature pills */}
+        <div className="mx-auto mt-5 flex flex-wrap items-center justify-center gap-2">
+          {[
+            { icon: CreditCard, label: "Cards" },
+            { icon: Smartphone, label: "Apple Pay & Google Pay" },
+            { icon: Banknote, label: "Direct Payouts" },
+            { icon: Shield, label: "Secure & Encrypted" },
+          ].map(({ icon: Icon, label }) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.06] px-3 py-1 text-xs text-primary ring-1 ring-primary/10"
+            >
+              <Icon className="size-3" />
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
 
       <Separator />
 
       <form onSubmit={onSubmit} className="space-y-4 px-6 py-6">
         <div className="space-y-2">
-          <Label htmlFor="setup-email">Business Email *</Label>
+          <Label htmlFor="setup-email">Email *</Label>
           <Input
             id="setup-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@yourbusiness.com"
+            placeholder="you@example.com"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="setup-name">Business / Organisation Name</Label>
+          <Label htmlFor="setup-name">
+            {isIndividual ? "Your Name or Brand" : "Organisation Name"}
+          </Label>
           <Input
             id="setup-name"
             type="text"
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
-            placeholder="e.g. Acme Events Ltd"
+            placeholder={isIndividual ? "e.g. DJ Flash" : "e.g. Acme Events Ltd"}
           />
         </div>
 
-        <div className="space-y-2">
-          <Label>Account Type</Label>
-          <Select value={businessType} onValueChange={setBusinessType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="individual">Individual / Sole Trader</SelectItem>
-              <SelectItem value="company">Company</SelectItem>
-              <SelectItem value="non_profit">Non-Profit</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>I am a...</Label>
+            <Select value={businessType} onValueChange={setBusinessType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="individual">Individual</SelectItem>
+                <SelectItem value="company">Company</SelectItem>
+                <SelectItem value="non_profit">Non-Profit</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Country</Label>
+            <Select value={country} onValueChange={setCountry}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="GB">United Kingdom</SelectItem>
+                <SelectItem value="IE">Ireland</SelectItem>
+                <SelectItem value="NL">Netherlands</SelectItem>
+                <SelectItem value="BE">Belgium</SelectItem>
+                <SelectItem value="DE">Germany</SelectItem>
+                <SelectItem value="FR">France</SelectItem>
+                <SelectItem value="ES">Spain</SelectItem>
+                <SelectItem value="US">United States</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Country</Label>
-          <Select value={country} onValueChange={setCountry}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="GB">United Kingdom</SelectItem>
-              <SelectItem value="IE">Ireland</SelectItem>
-              <SelectItem value="NL">Netherlands</SelectItem>
-              <SelectItem value="BE">Belgium</SelectItem>
-              <SelectItem value="DE">Germany</SelectItem>
-              <SelectItem value="FR">France</SelectItem>
-              <SelectItem value="ES">Spain</SelectItem>
-              <SelectItem value="US">United States</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Button type="submit" className="w-full" disabled={settingUp}>
-          {settingUp ? "Setting up..." : "Continue Setup"}
+        <Button type="submit" className="w-full" size="lg" disabled={settingUp}>
+          {settingUp ? "Connecting..." : "Start Getting Paid"}
         </Button>
+
+        <p className="text-center text-[11px] text-muted-foreground/60">
+          Payments are processed securely. You can update your details anytime.
+        </p>
       </form>
     </Card>
   );

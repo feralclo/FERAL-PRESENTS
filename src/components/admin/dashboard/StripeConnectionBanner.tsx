@@ -28,13 +28,13 @@ export function StripeConnectionBanner({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">
             {isPartial
-              ? "Complete your Stripe verification"
-              : "Connect Stripe to accept payments"}
+              ? "Finish setting up payments"
+              : "Set up payments to get paid"}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {isPartial
-              ? "Your account is connected but needs verification before you can accept payments."
-              : "Set up your payment account to start selling tickets and receiving payouts."}
+              ? "Your account needs verification before you can accept payments."
+              : "Connect your payment account to start selling tickets and receiving payouts."}
           </p>
         </div>
         <Button size="sm" asChild>

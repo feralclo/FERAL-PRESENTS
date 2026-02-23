@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch email + PDF ticket settings in parallel
-    let emailSettings: EmailSettings = DEFAULT_EMAIL_SETTINGS;
+    const orgDefaults: EmailSettings = { ...DEFAULT_EMAIL_SETTINGS, from_email: `${auth.orgId}@mail.entry.events` };
+    let emailSettings: EmailSettings = orgDefaults;
     let pdfSettings: PdfTicketSettings = DEFAULT_PDF_TICKET_SETTINGS;
     let emailLogoBase64: string | null = null;
     let pdfLogoBase64: string | null = null;
@@ -46,12 +47,12 @@ export async function POST(request: NextRequest) {
       const supabase = await getSupabaseAdmin();
       if (supabase) {
         const [emailResult, pdfResult] = await Promise.all([
-          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_email").single(),
-          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_pdf_ticket").single(),
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${auth.orgId}_email`).single(),
+          supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${auth.orgId}_pdf_ticket`).single(),
         ]);
 
         if (emailResult.data?.data && typeof emailResult.data.data === "object") {
-          emailSettings = { ...DEFAULT_EMAIL_SETTINGS, ...(emailResult.data.data as Partial<EmailSettings>) };
+          emailSettings = { ...orgDefaults, ...(emailResult.data.data as Partial<EmailSettings>) };
         }
         if (pdfResult.data?.data && typeof pdfResult.data.data === "object") {
           pdfSettings = { ...DEFAULT_PDF_TICKET_SETTINGS, ...(pdfResult.data.data as Partial<PdfTicketSettings>) };

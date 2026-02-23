@@ -14,8 +14,8 @@ import {
   Crown,
   Zap,
   CreditCard,
-  Users,
   ArrowRight,
+  TrendingDown,
 } from "lucide-react";
 import type { PlanId, PlatformPlan, OrgPlanSettings } from "@/types/plans";
 
@@ -23,6 +23,14 @@ interface BillingStatus {
   current_plan: PlatformPlan;
   plan_settings: OrgPlanSettings;
   plans: Record<PlanId, PlatformPlan>;
+}
+
+/** Calculate total fee and "you keep" for a given ticket price (in £) */
+function calcFee(plan: PlatformPlan, ticketPrice: number) {
+  const fee =
+    (ticketPrice * plan.card_rate_percent) / 100 + plan.card_rate_fixed / 100;
+  const kept = ticketPrice - fee;
+  return { fee: fee.toFixed(2), kept: kept.toFixed(2) };
 }
 
 export default function PlanPage() {
@@ -108,6 +116,13 @@ export default function PlanPage() {
     plan_settings.subscription_status === "active";
   const isPastDue = plan_settings.subscription_status === "past_due";
   const proTrialDays = plans.pro?.trial_days || 0;
+
+  // Savings calculation for upgrade pitch
+  const starterFee20 = calcFee(plans.starter, 20);
+  const proFee20 = calcFee(plans.pro, 20);
+  const savingPer20 = (
+    parseFloat(starterFee20.fee) - parseFloat(proFee20.fee)
+  ).toFixed(2);
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-6">
@@ -230,6 +245,29 @@ export default function PlanPage() {
         />
       </div>
 
+      {/* Savings pitch (only show on Starter) */}
+      {isStarter && !billingWaived && (
+        <Card className="border-primary/20 bg-primary/[0.03] p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <TrendingDown size={16} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Save {"\u00A3"}{savingPer20} on every {"\u00A3"}20 ticket with
+                Pro
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                On Starter, a {"\u00A3"}20 ticket costs {"\u00A3"}
+                {starterFee20.fee} in fees. On Pro, it{"'"}s just {"\u00A3"}
+                {proFee20.fee}. Sell around 850 tickets a month at that price
+                and Pro pays for itself.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Active subscription management */}
       {isPro && hasActiveSubscription && !billingWaived && (
         <Card className="border-border bg-card p-5">
@@ -280,33 +318,40 @@ export default function PlanPage() {
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>
             Card rates are charged per transaction when a customer buys a
-            ticket. This covers payment processing and the platform.
+            ticket. The fee is deducted automatically — you receive the rest.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg bg-foreground/[0.03] p-3">
               <div className="mb-1 text-xs font-medium text-foreground">
-                Example on Starter
+                {"\u00A3"}20 ticket on Starter
               </div>
-              <div className="text-muted-foreground">
-                {"\u00A3"}20 ticket{" "}
-                <ArrowRight size={12} className="inline text-muted-foreground/50" />{" "}
-                {"\u00A3"}1.50 fee ({plans.starter.card_rate_label})
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                {"\u00A3"}{starterFee20.fee} fee
+                <ArrowRight
+                  size={12}
+                  className="text-muted-foreground/50"
+                />
+                <span className="font-medium text-foreground">
+                  you keep {"\u00A3"}{starterFee20.kept}
+                </span>
               </div>
             </div>
             <div className="rounded-lg bg-primary/5 p-3">
               <div className="mb-1 text-xs font-medium text-primary">
-                Example on Pro
+                {"\u00A3"}20 ticket on Pro
               </div>
-              <div className="text-muted-foreground">
-                {"\u00A3"}20 ticket{" "}
-                <ArrowRight size={12} className="inline text-muted-foreground/50" />{" "}
-                {"\u00A3"}0.80 fee ({plans.pro.card_rate_label})
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                {"\u00A3"}{proFee20.fee} fee
+                <ArrowRight
+                  size={12}
+                  className="text-muted-foreground/50"
+                />
+                <span className="font-medium text-foreground">
+                  you keep {"\u00A3"}{proFee20.kept}
+                </span>
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground/70">
-            Stripe processing fees are separate and charged directly by Stripe.
-          </p>
         </div>
       </Card>
 
@@ -335,6 +380,8 @@ function PlanCard({
   highlighted?: boolean;
   actionArea?: React.ReactNode;
 }) {
+  const example = calcFee(plan, 20);
+
   return (
     <Card
       className={`relative flex flex-col border-border bg-card p-5 transition-all ${
@@ -365,7 +412,10 @@ function PlanCard({
           </Badge>
         )}
         {plan.trial_days > 0 && !isActive && (
-          <Badge variant="outline" className="border-primary/30 text-[10px] text-primary">
+          <Badge
+            variant="outline"
+            className="border-primary/30 text-[10px] text-primary"
+          >
             {plan.trial_days}-day free trial
           </Badge>
         )}
@@ -393,7 +443,11 @@ function PlanCard({
         <p className="mt-1 font-mono text-lg font-semibold text-foreground">
           {plan.card_rate_label}
         </p>
-        <p className="text-xs text-muted-foreground/60">per transaction</p>
+        <p className="mt-0.5 text-xs text-muted-foreground/60">
+          {"\u00A3"}20 ticket{" "}
+          <ArrowRight size={10} className="inline" /> you keep{" "}
+          {"\u00A3"}{example.kept}
+        </p>
       </div>
 
       <Separator className="mb-4" />
@@ -401,7 +455,9 @@ function PlanCard({
       {/* Features */}
       <ul className="mb-6 flex-1 space-y-2.5">
         {plan.features.map((feature) => {
-          const isHighlight = feature === "Rep ambassador platform" || feature === "Lower card rates";
+          const isHighlight =
+            feature === "Rep ambassador platform" ||
+            feature === "Lower card rates";
           return (
             <li key={feature} className="flex items-start gap-2.5 text-sm">
               {isHighlight ? (
@@ -409,7 +465,13 @@ function PlanCard({
               ) : (
                 <Check size={15} className="mt-0.5 shrink-0 text-success" />
               )}
-              <span className={isHighlight ? "font-medium text-foreground" : "text-muted-foreground"}>
+              <span
+                className={
+                  isHighlight
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground"
+                }
+              >
                 {feature}
               </span>
             </li>

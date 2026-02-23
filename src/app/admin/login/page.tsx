@@ -196,36 +196,6 @@ function LoginForm() {
             </div>
           )}
 
-          {/* Google Sign-In */}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
-            className="mb-5 flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-background/50 py-2.5 text-[13px] font-medium text-foreground transition-all duration-200 hover:bg-background hover:border-border/80 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {googleLoading ? (
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <GoogleIcon />
-            )}
-            Sign in with Google
-          </button>
-
-          {/* Divider */}
-          <div className="relative mb-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border/60" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-card px-3 font-mono text-[10px] uppercase tracking-[2px] text-muted-foreground/50">
-                or
-              </span>
-            </div>
-          </div>
-
           <form onSubmit={handleLogin} action="/admin/login/" method="POST">
             <div className="mb-4">
               <label className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
@@ -267,6 +237,36 @@ function LoginForm() {
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border/60" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-card px-3 font-mono text-[10px] uppercase tracking-[2px] text-muted-foreground/50">
+                or
+              </span>
+            </div>
+          </div>
+
+          {/* Google Sign-In */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading || loading}
+            className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-background/50 py-2.5 text-[13px] font-medium text-foreground transition-all duration-200 hover:bg-background hover:border-border/80 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {googleLoading ? (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <GoogleIcon />
+            )}
+            Sign in with Google
+          </button>
         </div>
 
         {/* Footer */}

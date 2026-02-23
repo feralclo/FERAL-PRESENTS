@@ -119,6 +119,7 @@ function matchRoute(pathname: string, href: string): boolean {
 }
 
 function getPageTitle(pathname: string): string {
+  if (pathname.startsWith("/admin/account")) return "Account";
   // Check child items first (more specific routes)
   for (const item of ALL_ITEMS) {
     if (item.children) {
@@ -450,17 +451,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="absolute inset-x-3 bottom-full mb-2 rounded-xl border border-sidebar-border bg-sidebar p-1.5 shadow-xl shadow-black/40">
               <button
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground"
-                onClick={() => setUserMenuOpen(false)}
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  router.push("/admin/account/");
+                }}
               >
                 <UserIcon size={14} className="text-sidebar-foreground/60" />
                 Account
               </button>
               <button
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground"
-                onClick={() => setUserMenuOpen(false)}
+                className="group/bill relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-sidebar-foreground/40 cursor-not-allowed"
+                disabled
               >
-                <Receipt size={14} className="text-sidebar-foreground/60" />
+                <Receipt size={14} className="text-sidebar-foreground/30" />
                 Billing
+                <span className="ml-auto rounded bg-sidebar-accent/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-sidebar-foreground/30">
+                  Soon
+                </span>
               </button>
               <div className="my-1.5 h-px bg-sidebar-border" />
               <button

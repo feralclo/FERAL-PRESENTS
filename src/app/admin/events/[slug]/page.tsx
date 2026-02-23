@@ -173,7 +173,6 @@ export default function EventEditorPage() {
           details_text: event.details_text || null,
           tag_line: event.tag_line || null,
           doors_time: event.doors_time || null,
-          platform_fee_percent: event.platform_fee_percent ?? null,
           lineup_sort_alphabetical: !!event.lineup_sort_alphabetical,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),

@@ -42,9 +42,9 @@ src/
 │   ├── admin/                 # Admin dashboard (25+ pages). Sidebar groups: Dashboard, Events,
 │   │                          # Commerce, Storefront, Analytics, Marketing, Settings (incl. Users, Domains).
 │   │                          # Platform-owner-only "Entry Backend" section (health, connect,
-│   │                          # platform-settings) gated by is_platform_owner flag.
+│   │                          # platform-settings, plans) gated by is_platform_owner flag.
 │   │                          # /admin/invite/[token] — standalone invite acceptance page (no auth).
-│   └── api/                   # 92 endpoints — see API Routes section for full list
+│   └── api/                   # 94 endpoints — see API Routes section for full list
 ├── components/
 │   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
@@ -88,6 +88,7 @@ src/
 │   ├── orders.ts, email.ts, email-templates.ts  # Order creation + email (Resend)
 │   ├── pdf.ts, qr.ts, ticket-utils.ts, wallet-passes.ts  # Ticket delivery (PDF, QR, Apple/Google Wallet)
 │   ├── discount-codes.ts, vat.ts, rate-limit.ts  # Pricing + security
+│   ├── plans.ts               # Platform plans: PLANS constant, getOrgPlan(), getOrgPlanSettings()
 │   ├── themes.ts              # Theme system helpers (getActiveTemplate, etc.)
 │   ├── vercel-domains.ts      # Vercel Domain API wrapper (add/remove/verify domains)
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications
@@ -157,6 +158,15 @@ event/[slug]/page.tsx
 - Admin pages: `/admin/payments/` (promoter-facing setup), `/admin/connect/` (platform owner only — Entry Backend), `/admin/finance/` (finance overview)
 - **Connect API routes** (`/api/stripe/connect/*`): gated by `requirePlatformOwner()` — only accessible to users with `is_platform_owner: true`
 
+### Platform Plans (Fee Tiers)
+Two plans control platform fee rates per org: **Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min).
+- Plan definitions hardcoded in `lib/plans.ts` (`PLANS` constant)
+- Plan assignment stored in `site_settings` under key `{org_id}_plan` (`OrgPlanSettings` type)
+- `getOrgPlan(orgId)` resolves the full plan with fee rates — falls back to Starter if unassigned
+- Payment-intent route uses `plan.fee_percent` and `plan.min_fee` instead of per-event `platform_fee_percent`
+- Platform owner manages assignments via `/admin/backend/plans/` (calls `/api/plans`)
+- Monthly billing (£29 collection) is not yet implemented — just plan assignment and fee rates
+
 ### Multi-Tenancy: Dynamic org_id Resolution
 Every database table has an `org_id` column. Every query must filter by it. org_id is resolved dynamically per request — **never hardcode `"feral"`**.
 
@@ -223,6 +233,7 @@ Each tenant can fully customize their visual identity:
 | `{org_id}_wallet_passes` | `walletPassesKey()` | Wallet pass configuration |
 | `{org_id}_events_list` | `eventsListKey()` | Events list configuration |
 | `{org_id}_stripe_account` | `stripeAccountKey()` | Stripe Connect account (fallback) |
+| `{org_id}_plan` | `planKey()` | Platform plan assignment (Starter/Pro) |
 
 ### Request Flow (Event Pages)
 `/event/[slug]/` → Middleware (resolves org_id, sets `x-org-id` header) → RootLayout (reads org_id via `getOrgId()`, wraps in `<OrgProvider>`) → EventLayout (Server Component, force-dynamic: fetches event + settings + branding + template in parallel, injects CSS vars + `data-theme`, wraps in SettingsProvider) → EventPage routes to `AuraEventPage` or `MidnightEventPage` based on active template.
@@ -352,6 +363,7 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel
 ### Other Route Groups
 - **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
+- **Plans** (platform owner only — `requirePlatformOwner()`): `/api/plans` (GET list orgs + plans, POST assign plan to org)
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
 - **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
 - **Domain Management** (5 routes): `/api/domains` (GET list, POST add custom domain), `/api/domains/[id]` (PUT set primary, DELETE remove), `/api/domains/[id]/verify` (POST recheck DNS verification). All require `requireAuth()`, filter by `auth.orgId`. POST add calls Vercel Domain API to register domain and get DNS verification challenges.

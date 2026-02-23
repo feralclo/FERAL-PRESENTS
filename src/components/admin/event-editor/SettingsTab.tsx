@@ -232,24 +232,9 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Platform Fee (%)</Label>
-                <Input
-                  type="number"
-                  value={event.platform_fee_percent ?? 5}
-                  onChange={(e) =>
-                    updateEvent(
-                      "platform_fee_percent",
-                      e.target.value ? Number(e.target.value) : null
-                    )
-                  }
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  className="max-w-[120px]"
-                />
-                <p className="text-[10px] text-muted-foreground/60">
-                  Platform fee applied on each transaction. Default: 5%
+              <div className="rounded-md border border-border/50 bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Platform fees are determined by your plan. Contact the platform owner to change your plan tier.
                 </p>
               </div>
             </div>

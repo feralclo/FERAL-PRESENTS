@@ -6,8 +6,8 @@ import { getOrgIdFromRequest } from "@/lib/org";
 import {
   calculateApplicationFee,
   toSmallestUnit,
-  DEFAULT_PLATFORM_FEE_PERCENT,
 } from "@/lib/stripe/config";
+import { getOrgPlan } from "@/lib/plans";
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
 import { createRateLimiter } from "@/lib/rate-limit";
@@ -74,10 +74,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch event (include stripe_account_id and platform_fee_percent for per-event Connect)
+    // Fetch event (include stripe_account_id for per-event Connect)
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, payment_method, currency, stripe_account_id, platform_fee_percent, vat_registered, vat_rate, vat_prices_include, vat_number")
+      .select("id, name, slug, payment_method, currency, stripe_account_id, vat_registered, vat_rate, vat_prices_include, vat_number")
       .eq("id", event_id)
       .eq("org_id", orgId)
       .single();
@@ -287,9 +287,9 @@ export async function POST(request: NextRequest) {
     const amountInSmallestUnit = toSmallestUnit(chargeAmount);
     const currency = (event.currency || "GBP").toLowerCase();
 
-    // Build PaymentIntent parameters — use event-level fee override if set, else global default
-    const feePercent = event.platform_fee_percent ?? DEFAULT_PLATFORM_FEE_PERCENT;
-    const applicationFee = calculateApplicationFee(amountInSmallestUnit, feePercent);
+    // Build PaymentIntent parameters — fee rates determined by org's plan
+    const plan = await getOrgPlan(orgId);
+    const applicationFee = calculateApplicationFee(amountInSmallestUnit, plan.fee_percent, plan.min_fee);
 
     // Build line items description
     const description = items

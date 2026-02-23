@@ -101,6 +101,11 @@ export function stripeAccountKey(orgId: string): string {
   return `${orgId}_stripe_account`;
 }
 
+/** Generate the platform plan settings key for a given org */
+export function planKey(orgId: string): string {
+  return `${orgId}_plan`;
+}
+
 // Klaviyo — env-var only, no hardcoded fallbacks.
 // Per-tenant Klaviyo is planned via {org_id}_marketing settings.
 export const KLAVIYO_LIST_ID = process.env.NEXT_PUBLIC_KLAVIYO_LIST_ID || "";

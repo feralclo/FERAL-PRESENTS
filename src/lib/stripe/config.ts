@@ -36,10 +36,11 @@ export const DEFAULT_ACCOUNT_TYPE = "custom" as const;
  */
 export function calculateApplicationFee(
   amountInSmallestUnit: number,
-  feePercent: number = DEFAULT_PLATFORM_FEE_PERCENT
+  feePercent: number = DEFAULT_PLATFORM_FEE_PERCENT,
+  minFee: number = MIN_PLATFORM_FEE
 ): number {
   const fee = Math.round(amountInSmallestUnit * (feePercent / 100));
-  return Math.max(fee, MIN_PLATFORM_FEE);
+  return Math.max(fee, minFee);
 }
 
 /**

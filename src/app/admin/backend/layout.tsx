@@ -12,6 +12,7 @@ import {
   HeartPulse,
   Zap,
   Shield,
+  CreditCard,
   ArrowLeft,
   PanelLeft,
   X,
@@ -26,6 +27,7 @@ interface BackendNavItem {
 const BACKEND_NAV: BackendNavItem[] = [
   { href: "/admin/backend/health/", label: "Health", icon: HeartPulse },
   { href: "/admin/backend/connect/", label: "Connect", icon: Zap },
+  { href: "/admin/backend/plans/", label: "Plans", icon: CreditCard },
   { href: "/admin/backend/platform-settings/", label: "Platform Settings", icon: Shield },
 ];
 

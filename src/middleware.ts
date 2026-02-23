@@ -73,6 +73,14 @@ async function resolveOrgByDomain(hostname: string): Promise<string> {
     // Fall through to fallback
   }
 
+  // Wildcard subdomain fallback: {slug}.entry.events → use slug as org_id
+  const subdomainMatch = hostname.match(/^([a-z0-9-]+)\.entry\.events$/);
+  if (subdomainMatch && subdomainMatch[1] !== "admin") {
+    const slug = subdomainMatch[1];
+    setCache(domainCache, hostname, slug);
+    return slug;
+  }
+
   return FALLBACK_ORG;
 }
 

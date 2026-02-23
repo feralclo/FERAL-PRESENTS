@@ -87,7 +87,7 @@ export interface PdfTicketSettings {
 
 /** Default PDF ticket settings */
 export const DEFAULT_PDF_TICKET_SETTINGS: PdfTicketSettings = {
-  brand_name: "FERAL PRESENTS",
+  brand_name: "Entry",
   logo_height: 20,
   accent_color: "#ff0033",
   bg_color: "#0e0e0e",
@@ -146,7 +146,7 @@ export const DEFAULT_WALLET_PASS_SETTINGS: WalletPassSettings = {
   bg_color: "#0e0e0e",
   text_color: "#ffffff",
   label_color: "#ff0033",
-  organization_name: "FERAL PRESENTS",
+  organization_name: "Entry",
   description: "Event Ticket",
   show_holder: true,
   show_order_number: true,
@@ -157,13 +157,13 @@ export const DEFAULT_WALLET_PASS_SETTINGS: WalletPassSettings = {
 /** Default email settings for new orgs */
 export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   order_confirmation_enabled: true,
-  from_name: "FERAL PRESENTS",
-  from_email: "tickets@feralpresents.com",
+  from_name: "Entry",
+  from_email: "noreply@mail.entry.events",
   logo_height: 48,
   accent_color: "#ff0033",
   order_confirmation_subject: "Your tickets for {{event_name}}",
   order_confirmation_heading: "You're in.",
   order_confirmation_message:
     "Your order is confirmed and your tickets are attached to this email. Present your QR code at the door for entry.",
-  footer_text: "FERAL PRESENTS",
+  footer_text: "Powered by Entry",
 };

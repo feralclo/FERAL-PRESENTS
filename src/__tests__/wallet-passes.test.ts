@@ -28,7 +28,7 @@ describe("WalletPassSettings types", () => {
     expect(DEFAULT_WALLET_PASS_SETTINGS.bg_color).toBe("#0e0e0e");
     expect(DEFAULT_WALLET_PASS_SETTINGS.text_color).toBe("#ffffff");
     expect(DEFAULT_WALLET_PASS_SETTINGS.label_color).toBe("#ff0033");
-    expect(DEFAULT_WALLET_PASS_SETTINGS.organization_name).toBe("FERAL PRESENTS");
+    expect(DEFAULT_WALLET_PASS_SETTINGS.organization_name).toBe("Entry");
     expect(DEFAULT_WALLET_PASS_SETTINGS.description).toBe("Event Ticket");
     expect(DEFAULT_WALLET_PASS_SETTINGS.show_holder).toBe(true);
     expect(DEFAULT_WALLET_PASS_SETTINGS.show_order_number).toBe(true);

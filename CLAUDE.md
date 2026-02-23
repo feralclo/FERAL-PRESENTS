@@ -40,7 +40,7 @@ src/
 │   │   ├── error.tsx          # Error boundary
 │   │   └── loading.tsx        # Loading skeleton
 │   ├── admin/                 # Admin dashboard (25+ pages). Sidebar groups: Dashboard, Events,
-│   │                          # Commerce, Storefront, Analytics, Marketing, Settings (incl. Users).
+│   │                          # Commerce, Storefront, Analytics, Marketing, Settings (incl. Users, Domains).
 │   │                          # Platform-owner-only "Entry Backend" section (health, connect,
 │   │                          # platform-settings) gated by is_platform_owner flag.
 │   │                          # /admin/invite/[token] — standalone invite acceptance page (no auth).
@@ -89,11 +89,12 @@ src/
 │   ├── pdf.ts, qr.ts, ticket-utils.ts, wallet-passes.ts  # Ticket delivery (PDF, QR, Apple/Google Wallet)
 │   ├── discount-codes.ts, vat.ts, rate-limit.ts  # Pricing + security
 │   ├── themes.ts              # Theme system helpers (getActiveTemplate, etc.)
+│   ├── vercel-domains.ts      # Vercel Domain API wrapper (add/remove/verify domains)
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications
 │   ├── team-emails.ts         # Team invite emails via Resend (branded, fire-and-forget)
 │   ├── klaviyo.ts, meta.ts    # Marketing integrations
 │   └── utils.ts               # cn() helper (clsx + tailwind-merge)
-├── types/                     # TypeScript types per domain (settings, events, orders, tickets,
+├── types/                     # TypeScript types per domain (settings, events, orders, tickets, domains,
 │                              # products, discounts, reps, email, analytics, marketing, team)
 └── styles/
     ├── base.css               # Reset, CSS variables, typography, reveal animations
@@ -170,8 +171,10 @@ Request → Middleware resolves org_id → sets x-org-id header → downstream r
 **Domain routing:**
 - `admin.entry.events` — admin host (resolves org from user's `org_users` record)
 - `localhost`, `*.vercel.app` — dev/preview (treated as admin host)
-- `feralpresents.com`, `agencyferal.com` — tenant hosts (resolved from `domains` table)
+- `{slug}.entry.events` — default tenant subdomain (each org gets one automatically, wildcard catch-all on Vercel)
+- `feralpresents.com`, custom domains — tenant hosts (resolved from `domains` table)
 - Admin pages on tenant hosts redirect to `admin.entry.events`
+- **Domain management**: Tenants add custom domains via `/admin/settings/domains/` → Vercel Domain API registers the domain + returns DNS challenge → tenant configures DNS → recheck verifies
 
 **Three access patterns:**
 | Context | Helper | Import |
@@ -289,7 +292,7 @@ Each tenant can fully customize their visual identity:
 | `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
 | `org_users` | Team members + invites | auth_user_id, email, first_name, last_name, role (owner/member), perm_events, perm_orders, perm_marketing, perm_finance, status (invited/active/suspended), invite_token, invite_expires_at |
-| `domains` | Hostname → org_id mapping | hostname (unique), org_id, is_primary |
+| `domains` | Hostname → org_id mapping + verification | hostname (unique), org_id, is_primary, type (subdomain/custom), status (pending/active/failed/removing), verification_type, verification_domain, verification_value, verification_reason |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 
 **Reps Program tables** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. See `src/types/reps.ts` for full column types.
@@ -351,6 +354,7 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
 - **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
+- **Domain Management** (5 routes): `/api/domains` (GET list, POST add custom domain), `/api/domains/[id]` (PUT set primary, DELETE remove), `/api/domains/[id]/verify` (POST recheck DNS verification). All require `requireAuth()`, filter by `auth.orgId`. POST add calls Vercel Domain API to register domain and get DNS verification challenges.
 - **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
 
 ---
@@ -386,6 +390,7 @@ Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pix
 **Cron**: `CRON_SECRET` (Vercel cron auth, set automatically)
 **Optional**: `NEXT_PUBLIC_GTM_ID`, `NEXT_PUBLIC_KLAVIYO_LIST_ID`, `NEXT_PUBLIC_KLAVIYO_COMPANY_ID` (all have fallbacks)
 **Wallet passes**: `APPLE_PASS_CERTIFICATE`, `APPLE_PASS_CERTIFICATE_PASSWORD`, `APPLE_WWDR_CERTIFICATE`, `APPLE_PASS_TYPE_IDENTIFIER`, `APPLE_PASS_TEAM_IDENTIFIER`, `GOOGLE_WALLET_SERVICE_ACCOUNT_KEY`, `GOOGLE_WALLET_ISSUER_ID`
+**Domain management**: `VERCEL_API_TOKEN` (Vercel API token for domain CRUD), `VERCEL_PROJECT_ID` (feral-presents project ID), `VERCEL_TEAM_ID` (Vercel team ID)
 
 ---
 

@@ -12,6 +12,7 @@ import {
   Users,
   CreditCard,
   Plug,
+  Globe,
   ArrowLeft,
   PanelLeft,
   X,
@@ -27,6 +28,7 @@ const SETTINGS_NAV: SettingsNavItem[] = [
   { href: "/admin/settings/general/", label: "General", icon: Settings },
   { href: "/admin/settings/users/", label: "Users", icon: Users },
   { href: "/admin/settings/finance/", label: "Finance", icon: CreditCard },
+  { href: "/admin/settings/domains/", label: "Domains", icon: Globe },
   { href: "/admin/settings/integrations/", label: "Integrations", icon: Plug },
 ];
 

@@ -174,6 +174,11 @@ export async function middleware(request: NextRequest) {
     hostname.startsWith("localhost") ||
     hostname.includes(".vercel.app");
 
+  // admin.entry.events root → redirect to /admin/
+  if (hostname.startsWith("admin.entry.events") && pathname === "/") {
+    return applySecurityHeaders(NextResponse.redirect(new URL("https://admin.entry.events/admin/")));
+  }
+
   if (!isAdminHost && (isProtectedAdminPage(pathname) || pathname.startsWith("/admin/login"))) {
     const adminUrl = new URL(`https://admin.entry.events${pathname}`);
     adminUrl.search = request.nextUrl.search;
@@ -258,6 +263,7 @@ export async function middleware(request: NextRequest) {
  */
 export const config = {
   matcher: [
+    "/",
     "/admin/:path*",
     "/api/:path*",
     "/rep/:path*",

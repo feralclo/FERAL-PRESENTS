@@ -49,7 +49,7 @@ interface AppleWalletConfig {
   passCertPem: string;       // PEM-encoded pass certificate (including private key)
   passCertPassword: string;  // Certificate password
   wwdrCertPem: string;       // Apple WWDR intermediate certificate PEM
-  passTypeId: string;        // e.g. "pass.com.feralpresents.ticket"
+  passTypeId: string;        // e.g. "pass.com.example.ticket"
   teamId: string;            // Apple Developer Team ID
 }
 
@@ -775,7 +775,7 @@ function createGoogleWalletJwt(
     aud: "google",
     typ: "savetowallet",
     iat: now,
-    origins: [process.env.NEXT_PUBLIC_SITE_URL || "https://feralpresents.com"],
+    origins: [process.env.NEXT_PUBLIC_SITE_URL || "https://entry.events"],
     payload: {
       eventTicketObjects: passObjects,
     },

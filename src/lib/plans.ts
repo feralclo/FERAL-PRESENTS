@@ -42,11 +42,11 @@ export const PLANS: Record<PlanId, PlatformPlan> = {
     name: "Pro",
     description: "Lower rates & rep platform for growing promoters",
     monthly_price: 2900, // £29.00 in pence
-    fee_percent: 1,          // Entry's cut (application_fee)
+    fee_percent: 2,          // Entry's cut (application_fee)
     min_fee: 10,             // 10p minimum application_fee
-    card_rate_percent: 2.5,  // Total advertised: 2.5% (Entry 1% + Stripe ~1.5%)
+    card_rate_percent: 3.5,  // Total advertised: 3.5% (Entry 2% + Stripe ~1.5%)
     card_rate_fixed: 30,     // Total advertised: 30p (Entry 10p + Stripe ~20p)
-    card_rate_label: "2.5% + 30p",
+    card_rate_label: "3.5% + 30p",
     trial_days: 14,
     features: [
       "Everything in Starter",

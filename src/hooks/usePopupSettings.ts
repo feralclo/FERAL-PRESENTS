@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import type { PopupSettings } from "@/types/settings";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { popupKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 
 /** Default popup config — matches the hardcoded values from the original DiscountPopup */
 export const DEFAULT_POPUP_SETTINGS: PopupSettings = {
@@ -27,10 +28,10 @@ export const DEFAULT_POPUP_SETTINGS: PopupSettings = {
 let _cachedSettings: PopupSettings | null = null;
 let _fetchPromise: Promise<PopupSettings> | null = null;
 
-function fetchPopupSettings(): Promise<PopupSettings> {
+function fetchPopupSettings(orgId: string): Promise<PopupSettings> {
   if (_fetchPromise) return _fetchPromise;
 
-  _fetchPromise = fetch(`/api/settings?key=${SETTINGS_KEYS.POPUP}`)
+  _fetchPromise = fetch(`/api/settings?key=${popupKey(orgId)}`)
     .then((res) => res.json())
     .then((json) => {
       const settings = json?.data
@@ -53,6 +54,7 @@ function fetchPopupSettings(): Promise<PopupSettings> {
  * Falls back to hardcoded defaults if no admin config exists.
  */
 export function usePopupSettings(): PopupSettings {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<PopupSettings>(
     _cachedSettings || DEFAULT_POPUP_SETTINGS
   );
@@ -62,8 +64,8 @@ export function usePopupSettings(): PopupSettings {
       setSettings(_cachedSettings);
       return;
     }
-    fetchPopupSettings().then(setSettings);
-  }, []);
+    fetchPopupSettings(orgId).then(setSettings);
+  }, [orgId]);
 
   return useMemo(() => settings, [settings]);
 }

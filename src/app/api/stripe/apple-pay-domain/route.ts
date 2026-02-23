@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
 /**
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         const { data } = await supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
-          .eq("key", "feral_stripe_account")
+          .eq("key", stripeAccountKey(auth.orgId))
           .single();
         stripeAccountId =
           (data?.data as { account_id?: string })?.account_id || null;
@@ -92,7 +92,7 @@ export async function GET() {
         const { data } = await supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
-          .eq("key", "feral_stripe_account")
+          .eq("key", stripeAccountKey(auth.orgId))
           .single();
         stripeAccountId =
           (data?.data as { account_id?: string })?.account_id || null;

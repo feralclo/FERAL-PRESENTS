@@ -342,7 +342,7 @@ export async function createOrder(
         event_id: event.id,
         ticket_type_id: item.ticket_type_id,
         customer_id: customerId,
-        ticket_code: generateTicketCode(),
+        ticket_code: generateTicketCode(orgId),
         holder_first_name: customer.first_name,
         holder_last_name: customer.last_name,
         holder_email: email,

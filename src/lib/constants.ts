@@ -40,21 +40,6 @@ export const TABLES = {
   DOMAINS: "domains",
 } as const;
 
-/**
- * Hardcoded settings keys for the "feral" org.
- * @deprecated Use the dynamic key functions (brandingKey, themesKey, etc.) with an orgId parameter instead.
- */
-export const SETTINGS_KEYS = {
-  EVENTS_LIST: "feral_events_list",
-  MARKETING: "feral_marketing",
-  EMAIL: "feral_email",
-  WALLET_PASSES: "feral_wallet_passes",
-  BRANDING: "feral_branding",
-  VAT: "feral_vat",
-  REPS: "feral_reps",
-  POPUP: "feral_popup",
-  HOMEPAGE: "feral_homepage",
-} as const;
 
 /** Generate the branding settings key for a given org */
 export function brandingKey(orgId: string): string {

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
+import { useOrgId } from "@/components/OrgProvider";
+import { abandonedCartAutomationKey, emailKey } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -154,7 +156,7 @@ const DEFAULT_SETTINGS: AutomationSettings = {
   steps: DEFAULT_STEPS,
 };
 
-const SETTINGS_KEY = "feral_abandoned_cart_automation";
+/* Settings key is now dynamic — see abandonedCartAutomationKey(orgId) */
 
 /* ── Save Toast — floating notification ── */
 function SaveToast({ saving, status }: { saving: boolean; status: "idle" | "saved" | "error" }) {
@@ -1615,6 +1617,7 @@ function HowItWorks() {
    ABANDONED CART EMAIL AUTOMATION PAGE
    ════════════════════════════════════════════════════════════ */
 export default function AbandonedCartPage() {
+  const orgId = useOrgId();
   const [stats, setStats] = useState<AbandonedCartStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<AutomationSettings>(DEFAULT_SETTINGS);
@@ -1648,8 +1651,8 @@ export default function AbandonedCartPage() {
   const loadSettings = useCallback(async () => {
     try {
       const [automationRes, emailRes] = await Promise.all([
-        fetch(`/api/settings?key=${SETTINGS_KEY}`),
-        fetch(`/api/settings?key=feral_email`),
+        fetch(`/api/settings?key=${abandonedCartAutomationKey(orgId)}`),
+        fetch(`/api/settings?key=${emailKey(orgId)}`),
       ]);
       const automationJson = await automationRes.json();
       const emailJson = await emailRes.json();
@@ -1679,7 +1682,7 @@ export default function AbandonedCartPage() {
       // Use defaults
     }
     setLoading(false);
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     loadStats();
@@ -1698,7 +1701,7 @@ export default function AbandonedCartPage() {
         ...newSettings,
         steps: newSettings.steps.map(({ icon, ...rest }) => rest),
       };
-      const { error } = await saveSettings(SETTINGS_KEY, toSave as unknown as Record<string, unknown>);
+      const { error } = await saveSettings(abandonedCartAutomationKey(orgId), toSave as unknown as Record<string, unknown>);
       setSaving(false);
       if (error) {
         setSaveStatus("error");
@@ -1706,23 +1709,23 @@ export default function AbandonedCartPage() {
         setSaveStatus("saved");
       }
     }, 600);
-  }, []);
+  }, [orgId]);
 
   // Save email branding settings (separate settings key)
   const persistBranding = useCallback(async (updated: EmailBrandingState) => {
     // Load existing email settings, merge, and save
     try {
-      const res = await fetch("/api/settings?key=feral_email");
+      const res = await fetch(`/api/settings?key=${emailKey(orgId)}`);
       const json = await res.json();
       const existing = json?.data || {};
       const merged = { ...existing, ...updated };
-      await saveSettings("feral_email", merged as unknown as Record<string, unknown>);
+      await saveSettings(emailKey(orgId), merged as unknown as Record<string, unknown>);
       // Bump preview version to force iframe reload
       setPreviewVersion((v) => v + 1);
     } catch {
       // Silent fail
     }
-  }, []);
+  }, [orgId]);
 
   // Handle branding changes
   const handleBrandingChange = useCallback((updates: Partial<EmailBrandingState>) => {

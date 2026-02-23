@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { saveSettings } from "@/lib/settings";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { popupKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { DEFAULT_POPUP_SETTINGS } from "@/hooks/usePopupSettings";
 import type { PopupSettings } from "@/types/settings";
 import { ColorPicker } from "@/components/ui/color-picker";
@@ -426,6 +427,7 @@ function PresetSelector({
    POPUP CONFIG PAGE
    ═══════════════════════════════════════════════════════════ */
 export default function PopupConfigPage() {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<PopupSettings>(DEFAULT_POPUP_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -434,7 +436,7 @@ export default function PopupConfigPage() {
 
   // Load settings
   useEffect(() => {
-    fetch(`/api/settings?key=${SETTINGS_KEYS.POPUP}`)
+    fetch(`/api/settings?key=${popupKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data) {
@@ -452,7 +454,7 @@ export default function PopupConfigPage() {
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
       const { error } = await saveSettings(
-        SETTINGS_KEYS.POPUP,
+        popupKey(orgId),
         newSettings as unknown as Record<string, unknown>
       );
       setSaving(false);

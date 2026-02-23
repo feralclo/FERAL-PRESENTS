@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { marketingKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { MarketingSettings, MetaCAPIRequest } from "@/types/marketing";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -31,11 +32,11 @@ const META_MATCH_KEY = "feral_meta_match";
 
 /** Fetch marketing settings from our API (cached for the page lifecycle).
  *  Failed fetches are NOT cached — the next call will retry. */
-function getSettings(): Promise<MarketingSettings | null> {
+function getSettings(orgId: string): Promise<MarketingSettings | null> {
   if (_settings) return Promise.resolve(_settings);
   if (_fetchPromise) return _fetchPromise;
 
-  _fetchPromise = fetch(`/api/settings?key=${SETTINGS_KEYS.MARKETING}`)
+  _fetchPromise = fetch(`/api/settings?key=${marketingKey(orgId)}`)
     .then((res) => {
       if (!res.ok) {
         console.warn(`[Meta] Settings API returned ${res.status}`);
@@ -378,6 +379,7 @@ function sendCAPI(
  * causing re-fires on every render.
  */
 export function useMetaTracking() {
+  const orgId = useOrgId();
   const initialised = useRef(false);
 
   // Fetch settings and load pixel immediately (track by default)
@@ -389,7 +391,7 @@ export function useMetaTracking() {
     // This ensures we never lose the click ID even if the pixel loads late.
     captureFbclid();
 
-    getSettings().then(() => {
+    getSettings(orgId).then(() => {
       // Load pixel immediately — hasMarketingConsent() defaults to true
       tryLoadPixel();
     });
@@ -413,7 +415,7 @@ export function useMetaTracking() {
   }, []);
 
   const trackPageView = useCallback(() => {
-    getSettings().then((s) => {
+    getSettings(orgId).then((s) => {
       if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
 
       // Check if the server-rendered HTML already fired a PageView (from layout.tsx).
@@ -445,7 +447,7 @@ export function useMetaTracking() {
       value?: number;
       currency?: string;
     }) => {
-      getSettings().then((s) => {
+      getSettings(orgId).then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         const eventId = crypto.randomUUID();
         const enriched = { content_category: "Events", ...params };
@@ -467,7 +469,7 @@ export function useMetaTracking() {
       currency?: string;
       num_items?: number;
     }) => {
-      getSettings().then((s) => {
+      getSettings(orgId).then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         const eventId = crypto.randomUUID();
         const enriched = { content_category: "Events", ...params };
@@ -488,7 +490,7 @@ export function useMetaTracking() {
       currency?: string;
       num_items?: number;
     }) => {
-      getSettings().then((s) => {
+      getSettings(orgId).then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         const eventId = crypto.randomUUID();
         const enriched = { content_category: "Events", ...params };
@@ -509,7 +511,7 @@ export function useMetaTracking() {
       currency?: string;
       num_items?: number;
     }, userData?: { em?: string; fn?: string; ln?: string }) => {
-      getSettings().then((s) => {
+      getSettings(orgId).then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         const eventId = crypto.randomUUID();
         const enriched = { content_category: "Events", ...params };
@@ -531,7 +533,7 @@ export function useMetaTracking() {
       num_items?: number;
       order_id?: string;
     }, userData?: { em?: string; fn?: string; ln?: string; ph?: string; external_id?: string }) => {
-      getSettings().then((s) => {
+      getSettings(orgId).then((s) => {
         if (!s?.meta_tracking_enabled || !s.meta_pixel_id) return;
         // Use deterministic event_id based on order_id so server-side CAPI
         // and client-side pixel fire the same ID for deduplication.

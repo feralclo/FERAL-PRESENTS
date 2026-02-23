@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import { reverseRepAttribution } from "@/lib/rep-attribution";
 
@@ -86,7 +86,7 @@ export async function POST(
         const { data: settingsRow } = await supabase
           .from(TABLES.SITE_SETTINGS)
           .select("data")
-          .eq("key", "feral_stripe_account")
+          .eq("key", stripeAccountKey(orgId))
           .single();
 
         if (settingsRow?.data && typeof settingsRow.data === "object") {
@@ -134,7 +134,8 @@ export async function POST(
         refunded_at: now,
         updated_at: now,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("org_id", orgId);
 
     // Cancel all tickets for this order
     await supabase

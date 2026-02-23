@@ -5,12 +5,15 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, FileText, Send, Receipt } from "lucide-react";
+import { useOrgId } from "@/components/OrgProvider";
+import { emailKey } from "@/lib/constants";
 
 export default function TransactionalPage() {
+  const orgId = useOrgId();
   const [emailEnabled, setEmailEnabled] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings?key=feral_email")
+    fetch(`/api/settings?key=${emailKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.order_confirmation_enabled) setEmailEnabled(true);

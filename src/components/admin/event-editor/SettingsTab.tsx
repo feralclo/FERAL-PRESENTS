@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { validateVatNumber } from "@/lib/vat";
+import { vatKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { VatSettings } from "@/types/settings";
 import type { TabProps } from "./types";
 
@@ -26,6 +28,7 @@ interface StripeAccount {
 }
 
 export function SettingsTab({ event, updateEvent }: TabProps) {
+  const orgId = useOrgId();
   const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [orgVat, setOrgVat] = useState<VatSettings | null>(null);
@@ -46,7 +49,7 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
 
   // Fetch org-level VAT settings for hint display
   useEffect(() => {
-    fetch("/api/settings?key=feral_vat")
+    fetch(`/api/settings?key=${vatKey(orgId)}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.data) setOrgVat(json.data as VatSettings);

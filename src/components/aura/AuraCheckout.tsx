@@ -37,6 +37,7 @@ import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { CheckoutServiceUnavailable } from "@/components/checkout/CheckoutServiceUnavailable";
+import { useOrgId } from "@/components/OrgProvider";
 
 /** Pre-filled cart data from abandoned cart recovery email click */
 interface RestoreData {
@@ -113,6 +114,7 @@ export function AuraCheckout({ slug, event, restoreData }: AuraCheckoutProps) {
   const cartParam = restoreData?.cartParam || searchParams.get("cart");
   const piParam = searchParams.get("pi");
   const { trackPageView } = useMetaTracking();
+  const orgId = useOrgId();
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
@@ -123,7 +125,7 @@ export function AuraCheckout({ slug, event, restoreData }: AuraCheckoutProps) {
   }, [trackPageView]);
 
   useEffect(() => {
-    fetch("/api/settings?key=feral_wallet_passes")
+    fetch(`/api/settings?key=${orgId}_wallet_passes`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data) {
@@ -421,6 +423,7 @@ function AuraCheckoutForm({
   const elements = useElements();
   const { trackAddPaymentInfo } = useMetaTracking();
   const { trackEngagement } = useTraffic();
+  const orgId = useOrgId();
 
   const [email, setEmail] = useState(
     restoreData?.email && !isRestrictedCheckoutEmail(restoreData.email) ? restoreData.email : ""
@@ -507,7 +510,7 @@ function AuraCheckoutForm({
         } else {
           trackEngagement("purchase");
           onComplete({
-            id: "", org_id: "feral", order_number: "Processing...", event_id: event.id,
+            id: "", org_id: orgId, order_number: "Processing...", event_id: event.id,
             customer_id: "", status: "completed", subtotal, fees: 0, total: subtotal,
             currency: event.currency, payment_method: "stripe", payment_ref: data.payment_intent_id,
             created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -518,7 +521,7 @@ function AuraCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete, trackEngagement]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, trackEngagement, orgId]
   );
 
   const handleSubmit = useCallback(
@@ -586,7 +589,7 @@ function AuraCheckoutForm({
         } else {
           trackEngagement("purchase");
           onComplete({
-            id: "", org_id: "feral", order_number: "Processing...", event_id: event.id,
+            id: "", org_id: orgId, order_number: "Processing...", event_id: event.id,
             customer_id: "", status: "completed", subtotal, fees: 0, total: subtotal,
             currency: event.currency, payment_method: "stripe", payment_ref: data.payment_intent_id,
             created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -597,7 +600,7 @@ function AuraCheckoutForm({
         setProcessing(false);
       }
     },
-    [email, firstName, lastName, nameOnCard, country, cartLines, event, subtotal, onComplete, trackEngagement]
+    [email, firstName, lastName, nameOnCard, country, cartLines, event, subtotal, onComplete, trackEngagement, orgId]
   );
 
   if (serviceUnavailable) {

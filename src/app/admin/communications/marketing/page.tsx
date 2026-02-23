@@ -12,26 +12,29 @@ import {
   Power,
   Tag,
 } from "lucide-react";
+import { useOrgId } from "@/components/OrgProvider";
+import { abandonedCartAutomationKey, popupKey } from "@/lib/constants";
 
 export default function MarketingPage() {
+  const orgId = useOrgId();
   const [automationActive, setAutomationActive] = useState(false);
   const [popupActive, setPopupActive] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings?key=feral_abandoned_cart_automation")
+    fetch(`/api/settings?key=${abandonedCartAutomationKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.enabled) setAutomationActive(true);
       })
       .catch(() => {});
 
-    fetch("/api/settings?key=feral_popup")
+    fetch(`/api/settings?key=${popupKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.enabled) setPopupActive(true);
       })
       .catch(() => {});
-  }, []);
+  }, [orgId]);
 
   const automations = [
     {

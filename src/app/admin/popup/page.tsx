@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, popupKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -260,6 +261,7 @@ function PerformanceBar({
    POPUP ANALYTICS PAGE
    ═══════════════════════════════════════════════════════════ */
 export default function PopupAnalytics() {
+  const orgId = useOrgId();
   const [stats, setStats] = useState<PopupStats>({
     impressions: 0,
     engaged: 0,
@@ -284,7 +286,7 @@ export default function PopupAnalytics() {
 
   // Load popup active status
   useEffect(() => {
-    fetch(`/api/settings?key=${SETTINGS_KEYS.POPUP}`)
+    fetch(`/api/settings?key=${popupKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => setPopupActive(json?.data?.enabled ?? false))
       .catch(() => setPopupActive(false));

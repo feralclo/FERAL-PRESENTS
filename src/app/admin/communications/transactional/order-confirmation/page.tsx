@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES } from "@/lib/constants";
+import { TABLES, emailKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { EmailSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -222,6 +223,7 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
    ════════════════════════════════════════════════════════ */
 
 export default function OrderConfirmationPage() {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<EmailSettings>(DEFAULT_EMAIL_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -242,7 +244,7 @@ export default function OrderConfirmationPage() {
       try {
         const supabase = getSupabaseClient();
         if (!supabase) { setLoading(false); return; }
-        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_email").single();
+        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", emailKey(orgId)).single();
         if (data?.data && typeof data.data === "object") setSettings((prev) => ({ ...prev, ...(data.data as Partial<EmailSettings>) }));
       } catch { /* defaults are fine */ }
       setLoading(false);
@@ -324,7 +326,7 @@ export default function OrderConfirmationPage() {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) { setStatus("Error: Database not configured"); setSaving(false); return; }
-      const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert({ key: "feral_email", data: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert({ key: emailKey(orgId), data: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
       setStatus(error ? `Error: ${error.message}` : "Settings saved");
     } catch { setStatus("Error: Failed to save"); }
     setSaving(false);

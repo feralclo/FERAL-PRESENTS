@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { marketingKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { MarketingSettings } from "@/types/marketing";
 
 type TestStatus = "idle" | "testing" | "success" | "error";
 
 export default function IntegrationsPage() {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<MarketingSettings>({
     meta_tracking_enabled: false,
     meta_pixel_id: "",
@@ -23,7 +25,7 @@ export default function IntegrationsPage() {
 
   // Load existing settings
   useEffect(() => {
-    fetch(`/api/settings?key=${SETTINGS_KEYS.MARKETING}`)
+    fetch(`/api/settings?key=${marketingKey(orgId)}`)
       .then((res) => res.json())
       .then((json) => {
         if (json?.data) {
@@ -44,7 +46,7 @@ export default function IntegrationsPage() {
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: SETTINGS_KEYS.MARKETING, data: settings }),
+        body: JSON.stringify({ key: marketingKey(orgId), data: settings }),
       });
 
       if (!res.ok) {
@@ -76,7 +78,7 @@ export default function IntegrationsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          key: SETTINGS_KEYS.MARKETING,
+          key: marketingKey(orgId),
           data: { ...settings, meta_tracking_enabled: true },
         }),
       });

@@ -58,18 +58,18 @@ export async function GET() {
       supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("created_at", todayStr),
       supabase.from(TABLES.ORDERS).select("id, total, status").eq("org_id", orgId).eq("status", "completed").gte("created_at", yStart).lt("created_at", yEnd),
       supabase.from(TABLES.TICKETS).select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("created_at", yStart).lt("created_at", yEnd),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "landing").gte("timestamp", todayStr),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "tickets").gte("timestamp", todayStr),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "add_to_cart").gte("timestamp", todayStr),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "checkout").gte("timestamp", todayStr),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "purchase").gte("timestamp", todayStr),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "landing").gte("timestamp", yStart).lt("timestamp", yEnd),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("event_type", "purchase").gte("timestamp", yStart).lt("timestamp", yEnd),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id").gte("timestamp", fiveMinAgo),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id, timestamp").eq("event_type", "add_to_cart").gte("timestamp", fifteenMinAgo),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id").eq("event_type", "purchase").gte("timestamp", fifteenMinAgo),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id, timestamp").in("event_type", ["checkout", "checkout_start"]).gte("timestamp", tenMinAgo),
-      supabase.from(TABLES.TRAFFIC_EVENTS).select("event_type, event_name, product_name, product_price, product_qty, timestamp").gte("timestamp", thirtyMinAgo).order("timestamp", { ascending: false }).limit(20),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("event_type", "landing").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("event_type", "tickets").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("event_type", "add_to_cart").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("event_type", "checkout").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("event_type", "purchase").gte("timestamp", todayStr),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("event_type", "landing").gte("timestamp", yStart).lt("timestamp", yEnd),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("event_type", "purchase").gte("timestamp", yStart).lt("timestamp", yEnd),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id").eq("org_id", orgId).gte("timestamp", fiveMinAgo),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id, timestamp").eq("org_id", orgId).eq("event_type", "add_to_cart").gte("timestamp", fifteenMinAgo),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id").eq("org_id", orgId).eq("event_type", "purchase").gte("timestamp", fifteenMinAgo),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("session_id, timestamp").eq("org_id", orgId).in("event_type", ["checkout", "checkout_start"]).gte("timestamp", tenMinAgo),
+      supabase.from(TABLES.TRAFFIC_EVENTS).select("event_type, event_name, product_name, product_price, product_qty, timestamp").eq("org_id", orgId).gte("timestamp", thirtyMinAgo).order("timestamp", { ascending: false }).limit(20),
     ]);
 
     // Today's KPIs
@@ -119,6 +119,7 @@ export async function GET() {
     const { data: viewRows } = await supabase
       .from(TABLES.TRAFFIC_EVENTS)
       .select("event_name")
+      .eq("org_id", orgId)
       .eq("event_type", "landing")
       .gte("timestamp", todayStr);
 

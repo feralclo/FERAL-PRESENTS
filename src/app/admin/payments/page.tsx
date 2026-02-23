@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import {
   Select,
   SelectTrigger,
@@ -33,6 +34,7 @@ interface PaymentStatus {
  * Behind the scenes, it creates and manages a Stripe Custom connected account.
  */
 export default function PaymentSettingsPage() {
+  const orgId = useOrgId();
   const [status, setStatus] = useState<PaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [setting_up, setSettingUp] = useState(false);
@@ -77,7 +79,7 @@ export default function PaymentSettingsPage() {
         if (supabase && acc.account_id) {
           await supabase.from(TABLES.SITE_SETTINGS).upsert(
             {
-              key: "feral_stripe_account",
+              key: stripeAccountKey(orgId),
               data: { account_id: acc.account_id },
               updated_at: new Date().toISOString(),
             },

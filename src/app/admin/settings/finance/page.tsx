@@ -10,7 +10,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { saveSettings } from "@/lib/settings";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { vatKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { DEFAULT_VAT_SETTINGS, validateVatNumber } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
 import {
@@ -192,6 +193,7 @@ function PaymentsTab() {
    ================================================================ */
 
 function TaxTab() {
+  const orgId = useOrgId();
   const [vat, setVat] = useState<VatSettings>(DEFAULT_VAT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -203,7 +205,7 @@ function TaxTab() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/settings?key=${SETTINGS_KEYS.VAT}`
+          `/api/settings?key=${vatKey(orgId)}`
         );
         const json = await res.json();
         if (json?.data) {
@@ -236,7 +238,7 @@ function TaxTab() {
       setVatNumberError("");
 
       const { error } = await saveSettings(
-        SETTINGS_KEYS.VAT,
+        vatKey(orgId),
         updated as unknown as Record<string, unknown>
       );
       setSaving(false);

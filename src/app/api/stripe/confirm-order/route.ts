@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       const { data: settingsRow } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", "feral_stripe_account")
+        .eq("key", stripeAccountKey(orgId))
         .single();
 
       if (settingsRow?.data && typeof settingsRow.data === "object") {
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     // Fire in the background — don't block the response.
     // Uses deterministic event_id (`purchase-{order_number}`) so Meta
     // deduplicates with the client-side pixel Purchase event.
-    fireServerPurchaseEvent(request, {
+    fireServerPurchaseEvent(request, metaOrgId, {
       orderNumber: result.order.order_number,
       total: paymentIntent.amount / 100,
       currency: event.currency || "GBP",
@@ -249,6 +249,7 @@ export async function POST(request: NextRequest) {
  */
 async function fireServerPurchaseEvent(
   request: NextRequest,
+  orgId: string,
   data: {
     orderNumber: string;
     total: number;
@@ -263,7 +264,7 @@ async function fireServerPurchaseEvent(
     eventSourceUrl: string;
   }
 ) {
-  const settings = await fetchMarketingSettings();
+  const settings = await fetchMarketingSettings(orgId);
   if (!settings?.meta_tracking_enabled || !settings.meta_pixel_id || !settings.meta_capi_token) {
     return;
   }

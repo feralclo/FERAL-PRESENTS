@@ -17,6 +17,8 @@ import {
   Smartphone,
   Tag,
 } from "lucide-react";
+import { useOrgId } from "@/components/OrgProvider";
+import { emailKey, walletPassesKey, abandonedCartAutomationKey, popupKey } from "@/lib/constants";
 
 /* ── Stat card ── */
 function StatCard({
@@ -135,6 +137,7 @@ function ChannelCard({
    COMMUNICATIONS PAGE
    ════════════════════════════════════════════════════════ */
 export default function CommunicationsPage() {
+  const orgId = useOrgId();
   const [resendStatus, setResendStatus] = useState<{
     configured: boolean;
     verified: boolean;
@@ -152,34 +155,34 @@ export default function CommunicationsPage() {
       .then((json) => setResendStatus({ ...json, loading: false }))
       .catch(() => setResendStatus({ configured: false, verified: false, loading: false }));
 
-    fetch("/api/settings?key=feral_email")
+    fetch(`/api/settings?key=${emailKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.order_confirmation_enabled) setEmailEnabled(true);
       })
       .catch(() => {});
 
-    fetch("/api/settings?key=feral_wallet_passes")
+    fetch(`/api/settings?key=${walletPassesKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.apple_wallet_enabled || json?.data?.google_wallet_enabled) setWalletEnabled(true);
       })
       .catch(() => {});
 
-    fetch("/api/settings?key=feral_abandoned_cart_automation")
+    fetch(`/api/settings?key=${abandonedCartAutomationKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.enabled) setAbandonedCartEnabled(true);
       })
       .catch(() => {});
 
-    fetch("/api/settings?key=feral_popup")
+    fetch(`/api/settings?key=${popupKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.enabled) setPopupEnabled(true);
       })
       .catch(() => {});
-  }, []);
+  }, [orgId]);
 
   return (
     <div>

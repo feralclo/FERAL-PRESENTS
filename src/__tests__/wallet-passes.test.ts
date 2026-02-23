@@ -10,7 +10,7 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/constants", () => ({
   TABLES: { SITE_SETTINGS: "site_settings" },
   ORG_ID: "feral",
-  SETTINGS_KEYS: { WALLET_PASSES: "feral_wallet_passes" },
+  walletPassesKey: (orgId: string) => `${orgId}_wallet_passes`,
 }));
 
 vi.mock("qrcode", () => ({
@@ -345,9 +345,10 @@ describe("Email template wallet links", () => {
   });
 });
 
-describe("SETTINGS_KEYS constant", () => {
-  it("includes WALLET_PASSES key", async () => {
-    const { SETTINGS_KEYS } = await import("@/lib/constants");
-    expect(SETTINGS_KEYS.WALLET_PASSES).toBe("feral_wallet_passes");
+describe("walletPassesKey helper", () => {
+  it("generates correct key for org", async () => {
+    const { walletPassesKey } = await import("@/lib/constants");
+    expect(walletPassesKey("feral")).toBe("feral_wallet_passes");
+    expect(walletPassesKey("acme")).toBe("acme_wallet_passes");
   });
 });

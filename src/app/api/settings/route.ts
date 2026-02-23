@@ -86,6 +86,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate the key belongs to this org — prevent cross-tenant writes.
+    // Keys must start with the org's ID prefix (e.g., "feral_branding", "acme_email").
+    // Only exception: platform-wide keys like "entry_platform_*" for platform owners.
+    const orgId = auth.orgId;
+    if (!key.startsWith(`${orgId}_`) && !key.startsWith("media_") && !key.startsWith("entry_platform_")) {
+      return NextResponse.json(
+        { error: "Unauthorized: cannot write settings for another org" },
+        { status: 403 }
+      );
+    }
+
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
@@ -104,18 +115,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Bust Next.js page cache — settings changes should reflect immediately
-    // The key format is like "feral_event_liverpool" or "feral_event_<slug>"
-    const slugMatch = key.match(/^feral_event_(.+)$/);
+    // The key format is like "{orgId}_event_{slug}"
+    const slugMatch = key.match(/^[a-z0-9_]+_event_(.+)$/);
     if (slugMatch) {
       revalidatePath(`/event/${slugMatch[1]}`);
       revalidatePath(`/event/${slugMatch[1]}/checkout`);
-    }
-    // Also revalidate well-known event slugs mapped to this key
-    if (key === "feral_event_liverpool") {
-      revalidatePath("/event/liverpool-27-march");
-    }
-    if (key === "feral_event_kompass") {
-      revalidatePath("/event/kompass-klub-7-march");
     }
 
     // Revalidate homepage when homepage settings change

@@ -28,8 +28,9 @@ import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { vatKey } from "@/lib/constants";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import { useOrgId } from "@/components/OrgProvider";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { CheckoutServiceUnavailable } from "./CheckoutServiceUnavailable";
 
@@ -171,6 +172,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   const cartParam = restoreData?.cartParam || searchParams.get("cart");
   const piParam = searchParams.get("pi");
   const { trackPageView } = useMetaTracking();
+  const orgId = useOrgId();
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
@@ -231,7 +233,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
 
   // Fetch wallet pass + VAT settings in parallel
   useEffect(() => {
-    fetch("/api/settings?key=feral_wallet_passes")
+    fetch(`/api/settings?key=${orgId}_wallet_passes`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data) {
@@ -243,7 +245,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       })
       .catch(() => {});
 
-    fetch(`/api/settings?key=${SETTINGS_KEYS.VAT}`)
+    fetch(`/api/settings?key=${vatKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data) {
@@ -807,6 +809,7 @@ function SinglePageCheckoutForm({
   const elements = useElements();
   const { trackAddPaymentInfo } = useMetaTracking();
   const { trackEngagement } = useTraffic();
+  const orgId = useOrgId();
 
   const [email, setEmail] = useState(capturedEmail);
   const [firstName, setFirstName] = useState(restoreData?.firstName || "");
@@ -963,7 +966,7 @@ function SinglePageCheckoutForm({
         } else {
           onComplete({
             id: "",
-            org_id: "feral",
+            org_id: orgId,
             order_number: "Processing...",
             event_id: event.id,
             customer_id: "",
@@ -983,7 +986,7 @@ function SinglePageCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty, orgId]
   );
 
   const handleSubmit = useCallback(
@@ -1137,7 +1140,7 @@ function SinglePageCheckoutForm({
           trackEngagement("purchase");
           onComplete({
             id: "",
-            org_id: "feral",
+            org_id: orgId,
             order_number: "Processing...",
             event_id: event.id,
             customer_id: "",
@@ -1173,6 +1176,7 @@ function SinglePageCheckoutForm({
       onComplete,
       discountCode,
       trackEngagement,
+      orgId,
     ]
   );
 

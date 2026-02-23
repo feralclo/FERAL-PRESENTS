@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, verifyConnectedAccount } from "@/lib/stripe/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, stripeAccountKey, vatKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import {
   calculateApplicationFee,
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       const { data: settingsRow } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", "feral_stripe_account")
+        .eq("key", stripeAccountKey(orgId))
         .single();
 
       if (settingsRow?.data && typeof settingsRow.data === "object") {
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
       const { data: vatRow } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", SETTINGS_KEYS.VAT)
+        .eq("key", vatKey(orgId))
         .single();
 
       if (vatRow?.data) {

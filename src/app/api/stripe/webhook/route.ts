@@ -203,7 +203,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
 
     // Fire server-side CAPI Purchase event as backup
     // Uses deterministic event_id for dedup with client pixel + confirm-order CAPI
-    fireWebhookPurchaseEvent({
+    fireWebhookPurchaseEvent(orgId, {
       orderNumber: result.order.order_number,
       total: paymentIntent.amount / 100,
       currency: event.currency || "GBP",
@@ -225,7 +225,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
  * Fire server-side CAPI Purchase from webhook (backup path).
  * Uses same deterministic event_id as confirm-order and client pixel.
  */
-async function fireWebhookPurchaseEvent(data: {
+async function fireWebhookPurchaseEvent(orgId: string, data: {
   orderNumber: string;
   total: number;
   currency: string;
@@ -238,7 +238,7 @@ async function fireWebhookPurchaseEvent(data: {
   customerId?: string;
   eventSlug: string;
 }) {
-  const settings = await fetchMarketingSettings();
+  const settings = await fetchMarketingSettings(orgId);
   if (!settings?.meta_tracking_enabled || !settings.meta_pixel_id || !settings.meta_capi_token) {
     return;
   }

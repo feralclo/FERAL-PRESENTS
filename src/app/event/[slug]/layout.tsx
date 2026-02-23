@@ -28,7 +28,7 @@ export default async function EventLayout({
   const orgId = await getOrgId();
 
   // Determine initial values
-  let settingsKey = `feral_event_${slug}`;
+  let settingsKey = `${orgId}_event_${slug}`;
   let eventTheme: string | null = null;
   let eventHasImage = false;
   let eventId: string | null = null;
@@ -93,7 +93,7 @@ export default async function EventLayout({
     : Promise.resolve(null);
 
   // Fetch active template in parallel (for Aurora detection)
-  const templatePromise = getActiveTemplate();
+  const templatePromise = getActiveTemplate(orgId);
 
   // Wait for all in parallel
   const [settings, , branding, activeTemplate] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise]);

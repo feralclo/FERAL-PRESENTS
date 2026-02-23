@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { PdfTicketSettings } from "@/types/email";
 import { DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -266,6 +267,7 @@ function TicketPreview({ settings: s, large, showMerch }: { settings: PdfTicketS
    ════════════════════════════════════════════════════════ */
 
 export default function PdfTicketPage() {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<PdfTicketSettings>(DEFAULT_PDF_TICKET_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -280,7 +282,7 @@ export default function PdfTicketPage() {
       try {
         const supabase = getSupabaseClient();
         if (!supabase) { setLoading(false); return; }
-        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_pdf_ticket").single();
+        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", `${orgId}_pdf_ticket`).single();
         if (data?.data && typeof data.data === "object") {
           setSettings((prev) => ({ ...prev, ...(data.data as Partial<PdfTicketSettings>) }));
         }
@@ -301,7 +303,7 @@ export default function PdfTicketPage() {
       if (!supabase) { setStatus("Error: Database not configured"); setSaving(false); return; }
       const { error } = await supabase
         .from(TABLES.SITE_SETTINGS)
-        .upsert({ key: "feral_pdf_ticket", data: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
+        .upsert({ key: `${orgId}_pdf_ticket`, data: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
       setStatus(error ? `Error: ${error.message}` : "Settings saved");
     } catch { setStatus("Error: Failed to save"); }
     setSaving(false);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, SETTINGS_KEYS, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID } from "@/lib/constants";
+import { TABLES, marketingKey, SUPABASE_URL, SUPABASE_ANON_KEY, GTM_ID } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { stripe } from "@/lib/stripe/server";
 
@@ -206,11 +206,12 @@ async function checkMetaPixel(): Promise<HealthCheck> {
       return { name: "Meta Pixel", status: "degraded", detail: "Cannot check — DB down" };
     }
 
-    // Marketing settings are stored under the feral_marketing key
+    // Marketing settings — use dynamic org key
+    const orgId = await getOrgId();
     const { data } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
-      .eq("key", SETTINGS_KEYS.MARKETING)
+      .eq("key", marketingKey(orgId))
       .single();
 
     if (!data?.data) {

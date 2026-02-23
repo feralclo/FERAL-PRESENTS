@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { TABLES } from "@/lib/constants";
+import { TABLES, walletPassesKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { WalletPassSettings } from "@/types/email";
 import { DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -234,6 +235,7 @@ function WalletPassPreview({ settings: s, large }: { settings: WalletPassSetting
    ═══════════════════════════════════════════════════════════ */
 
 export default function WalletPassesPage() {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<WalletPassSettings>(DEFAULT_WALLET_PASS_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -256,7 +258,7 @@ export default function WalletPassesPage() {
       try {
         const supabase = getSupabaseClient();
         if (!supabase) { setLoading(false); return; }
-        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", "feral_wallet_passes").single();
+        const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", walletPassesKey(orgId)).single();
         if (data?.data && typeof data.data === "object") {
           setSettings((prev) => ({ ...prev, ...(data.data as Partial<WalletPassSettings>) }));
         }
@@ -285,7 +287,7 @@ export default function WalletPassesPage() {
       if (!supabase) { setStatus("Error: Database not configured"); setSaving(false); return; }
       const { error } = await supabase
         .from(TABLES.SITE_SETTINGS)
-        .upsert({ key: "feral_wallet_passes", data: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
+        .upsert({ key: walletPassesKey(orgId), data: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
       setStatus(error ? `Error: ${error.message}` : "Settings saved");
     } catch { setStatus("Error: Failed to save"); }
     setSaving(false);

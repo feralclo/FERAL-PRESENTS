@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { saveSettings } from "@/lib/settings";
-import { SETTINGS_KEYS } from "@/lib/constants";
+import { homepageKey } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import type { EventSettings } from "@/types/settings";
 import { cn } from "@/lib/utils";
 import type { HomepageSettings } from "@/types/settings";
@@ -25,6 +26,7 @@ const DEFAULTS: HomepageSettings = {
 type DeviceMode = "desktop" | "mobile";
 
 export default function HomepageAdmin() {
+  const orgId = useOrgId();
   const [settings, setSettings] = useState<HomepageSettings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,7 +36,7 @@ export default function HomepageAdmin() {
 
   // Fetch on mount
   useEffect(() => {
-    fetch(`/api/settings?key=${SETTINGS_KEYS.HOMEPAGE}`)
+    fetch(`/api/settings?key=${homepageKey(orgId)}`)
       .then((r) => r.json())
       .then((json) => {
         if (json?.data) {
@@ -51,7 +53,7 @@ export default function HomepageAdmin() {
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
       const { error } = await saveSettings(
-        SETTINGS_KEYS.HOMEPAGE,
+        homepageKey(orgId),
         newSettings as unknown as EventSettings
       );
       setSaving(false);

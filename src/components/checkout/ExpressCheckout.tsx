@@ -15,6 +15,7 @@ import type {
 import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import { toSmallestUnit } from "@/lib/stripe/config";
 import type { Order } from "@/types/orders";
+import { useOrgId } from "@/components/OrgProvider";
 
 interface ExpressCheckoutProps {
   eventId: string;
@@ -45,6 +46,7 @@ function ExpressCheckoutInner({
 }: ExpressCheckoutProps) {
   const stripe = useStripe();
   const elements = useElements();
+  const orgId = useOrgId();
   const [available, setAvailable] = useState(true);
 
   // Sync Elements amount when cart total changes (e.g. ticket added/removed).
@@ -138,7 +140,7 @@ function ExpressCheckoutInner({
           // Payment succeeded — order will be reconciled via webhook
           onSuccess({
             id: "",
-            org_id: "feral",
+            org_id: orgId,
             order_number: "Processing...",
             event_id: eventId,
             customer_id: "",

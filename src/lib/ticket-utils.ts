@@ -6,20 +6,23 @@ const CODE_LENGTH = 8;
 
 /**
  * Generate a cryptographically random ticket code.
- * Format: FERAL-XXXXXXXX (8 chars from 30-char alphabet, ~40 bits entropy)
+ * Format: {PREFIX}-XXXXXXXX (8 chars from 30-char alphabet, ~40 bits entropy)
+ * The prefix defaults to the org_id uppercased (e.g., "FERAL", "ACME").
  */
-export function generateTicketCode(): string {
+export function generateTicketCode(orgId: string = "ENTRY"): string {
   const bytes = crypto.randomBytes(CODE_LENGTH);
   let code = "";
   for (let i = 0; i < CODE_LENGTH; i++) {
     code += CODE_CHARS[bytes[i] % CODE_CHARS.length];
   }
-  return `FERAL-${code}`;
+  const prefix = orgId.toUpperCase();
+  return `${prefix}-${code}`;
 }
 
 /**
  * Generate a sequential, human-readable order number.
- * Format: FERAL-00001, FERAL-00002, etc.
+ * Format: {PREFIX}-00001, {PREFIX}-00002, etc.
+ * The prefix defaults to the org_id uppercased (e.g., "FERAL", "ACME").
  *
  * Uses a count-based approach instead of parsing the last order number,
  * which avoids race conditions when concurrent orders are created.
@@ -59,5 +62,6 @@ export async function generateOrderNumber(
     }
   }
 
-  return `FERAL-${String(nextNum).padStart(5, "0")}`;
+  const prefix = orgId.toUpperCase();
+  return `${prefix}-${String(nextNum).padStart(5, "0")}`;
 }

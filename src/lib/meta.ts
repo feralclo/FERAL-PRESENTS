@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import type { MetaEventPayload } from "@/types/marketing";
 import type { MarketingSettings } from "@/types/marketing";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, SETTINGS_KEYS } from "@/lib/constants";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, marketingKey } from "@/lib/constants";
 
 const META_API_VERSION = "v22.0";
 
@@ -12,13 +12,18 @@ export function hashSHA256(value: string): string {
     .digest("hex");
 }
 
-/** Fetch marketing settings from Supabase (server-side) */
-export async function fetchMarketingSettings(): Promise<MarketingSettings | null> {
+/** Fetch marketing settings from Supabase (server-side).
+ *  @param orgId — the org to fetch settings for. Required for multi-tenant correctness.
+ */
+export async function fetchMarketingSettings(orgId?: string): Promise<MarketingSettings | null> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+
+  // Use the provided orgId, or fall back to "feral" for backwards compat in non-request contexts
+  const settingsKey = marketingKey(orgId || "feral");
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/site_settings?key=eq.${encodeURIComponent(SETTINGS_KEYS.MARKETING)}&select=data`,
+      `${SUPABASE_URL}/rest/v1/site_settings?key=eq.${encodeURIComponent(settingsKey)}&select=data`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,

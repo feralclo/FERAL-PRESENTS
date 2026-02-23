@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, emailKey } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 import {
   buildAbandonedCartRecoveryEmail,
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       const { data: settingsData } = await supabase
         .from(TABLES.SITE_SETTINGS)
         .select("data")
-        .eq("key", SETTINGS_KEYS.EMAIL)
+        .eq("key", emailKey(orgId))
         .single();
 
       if (settingsData?.data) {

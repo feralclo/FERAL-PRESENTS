@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
+import { getOrgIdFromRequest } from "@/lib/org";
 import type { MetaCAPIRequest, MetaEventPayload } from "@/types/marketing";
 
 /**
@@ -20,7 +21,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch marketing settings (pixel ID + CAPI token)
-    const settings = await fetchMarketingSettings();
+    const orgId = getOrgIdFromRequest(request);
+    const settings = await fetchMarketingSettings(orgId);
     if (!settings?.meta_tracking_enabled || !settings.meta_pixel_id || !settings.meta_capi_token) {
       return NextResponse.json({ skipped: true, reason: "Meta tracking not configured" });
     }

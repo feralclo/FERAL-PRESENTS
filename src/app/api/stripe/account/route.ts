@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
+import { getOrgId } from "@/lib/org";
 import { verifyConnectedAccount } from "@/lib/stripe/server";
 
 /**
@@ -17,6 +18,7 @@ import { verifyConnectedAccount } from "@/lib/stripe/server";
  */
 export async function GET() {
   try {
+    const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ stripe_account_id: null });
@@ -25,7 +27,7 @@ export async function GET() {
     const { data } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("data")
-      .eq("key", "feral_stripe_account")
+      .eq("key", stripeAccountKey(orgId))
       .single();
 
     const rawAccountId =

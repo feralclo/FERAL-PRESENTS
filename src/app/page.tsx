@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, homepageKey, SETTINGS_KEYS } from "@/lib/constants";
+import { TABLES, homepageKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import type { LandingEvent } from "@/types/events";
 import type { HomepageSettings } from "@/types/settings";

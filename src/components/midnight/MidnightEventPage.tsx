@@ -227,6 +227,16 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       const detail = (e as unknown as CustomEvent<{ email: string }>).detail;
       if (!detail?.email) return;
 
+      // Don't create abandoned cart if cart is empty — just capture the customer
+      if (cart.totalQty === 0) {
+        fetch("/api/checkout/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: detail.email }),
+        }).catch(() => {});
+        return;
+      }
+
       const ttMap = new Map(
         (event.ticket_types || []).map((tt) => [tt.id, tt])
       );

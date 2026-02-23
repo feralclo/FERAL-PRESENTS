@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe/server";
 import {
+  PLANS,
   getOrgPlanSettings,
   ensureStripePriceExists,
   updateOrgPlanSettings,
@@ -66,8 +67,9 @@ export async function POST() {
     });
   }
 
-  // Create Checkout Session
+  // Create Checkout Session with optional free trial
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const trialDays = PLANS.pro.trial_days;
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
@@ -77,6 +79,7 @@ export async function POST() {
     metadata: { org_id: orgId },
     subscription_data: {
       metadata: { org_id: orgId },
+      ...(trialDays > 0 && { trial_period_days: trialDays }),
     },
   });
 

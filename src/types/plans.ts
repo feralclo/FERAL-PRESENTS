@@ -7,7 +7,9 @@ export interface PlatformPlan {
   monthly_price: number;
   fee_percent: number;
   min_fee: number;
+  card_rate_label: string;
   features: string[];
+  trial_days: number;
 }
 
 export interface OrgPlanSettings {

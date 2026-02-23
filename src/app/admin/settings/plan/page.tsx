@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   Crown,
   Zap,
+  CreditCard,
+  Users,
+  ArrowRight,
 } from "lucide-react";
 import type { PlanId, PlatformPlan, OrgPlanSettings } from "@/types/plans";
 
@@ -64,19 +67,22 @@ export default function PlanPage() {
     try {
       const res = await fetch("/api/billing/portal", { method: "POST" });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to open billing portal");
+      if (!res.ok)
+        throw new Error(json.error || "Failed to open billing portal");
       if (json.url) {
         window.location.href = json.url;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to open billing portal");
+      setError(
+        err instanceof Error ? err.message : "Failed to open billing portal"
+      );
       setActionLoading(null);
     }
   }
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl p-6">
+      <div className="mx-auto max-w-4xl p-6">
         <div className="flex items-center justify-center py-20">
           <Loader2 size={24} className="animate-spin text-muted-foreground" />
         </div>
@@ -86,7 +92,7 @@ export default function PlanPage() {
 
   if (!data) {
     return (
-      <div className="mx-auto max-w-3xl p-6">
+      <div className="mx-auto max-w-4xl p-6">
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
           {error || "Failed to load plan information"}
         </div>
@@ -98,21 +104,27 @@ export default function PlanPage() {
   const isStarter = current_plan.id === "starter";
   const isPro = current_plan.id === "pro";
   const billingWaived = plan_settings.billing_waived;
-  const hasActiveSubscription = plan_settings.subscription_status === "active";
+  const hasActiveSubscription =
+    plan_settings.subscription_status === "active";
   const isPastDue = plan_settings.subscription_status === "past_due";
+  const proTrialDays = plans.pro?.trial_days || 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 p-6">
+    <div className="mx-auto max-w-4xl space-y-8 p-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Sparkles size={20} className="text-primary" />
-        <div>
-          <h1 className="font-mono text-sm font-bold uppercase tracking-[2px] text-foreground">
-            Plan &amp; Billing
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your subscription and platform fees
-          </p>
+      <div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <Sparkles size={18} className="text-primary" />
+          </div>
+          <div>
+            <h1 className="font-mono text-sm font-bold uppercase tracking-[2px] text-foreground">
+              Plan &amp; Billing
+            </h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Manage your subscription and card rates
+            </p>
+          </div>
         </div>
       </div>
 
@@ -125,8 +137,8 @@ export default function PlanPage() {
               Payment failed
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your last payment was unsuccessful. Please update your payment
-              method to keep your Pro plan active.
+              Your last payment was unsuccessful. Update your payment method to
+              keep your Pro rates.
             </p>
             <Button
               variant="outline"
@@ -138,7 +150,7 @@ export default function PlanPage() {
               {actionLoading === "portal" ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
-                <ExternalLink size={14} />
+                <CreditCard size={14} />
               )}
               Update payment method
             </Button>
@@ -146,190 +158,157 @@ export default function PlanPage() {
         </div>
       )}
 
-      {/* Current plan banner */}
-      <Card className="border-border bg-card p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
-                Current Plan
-              </h2>
-              <Badge
-                variant={isPro ? "default" : "secondary"}
-                className="text-[10px] uppercase"
-              >
-                {current_plan.name}
-              </Badge>
-              {billingWaived && (
-                <Badge variant="outline" className="text-[10px] uppercase">
-                  Billing Waived
-                </Badge>
-              )}
+      {/* Billing waived banner */}
+      {billingWaived && (
+        <Card className="border-primary/20 bg-primary/5 p-5">
+          <div className="flex items-center gap-3">
+            <Crown size={20} className="text-primary" />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Billing managed by platform
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Your billing has been waived. You have full access to all
+                features at your current rate.
+              </p>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {current_plan.description}
-            </p>
           </div>
-          {isPro && (
-            <Crown size={24} className="shrink-0 text-primary" />
-          )}
-        </div>
+        </Card>
+      )}
 
-        <Separator className="my-4" />
+      {/* Plan cards — side by side */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        {/* Starter */}
+        <PlanCard
+          plan={plans.starter}
+          isActive={isStarter}
+          billingWaived={billingWaived}
+          actionArea={
+            isStarter && !billingWaived ? (
+              <div className="rounded-lg bg-foreground/5 px-4 py-3 text-center text-sm text-muted-foreground">
+                This is your current plan
+              </div>
+            ) : isPro && !billingWaived ? (
+              <div className="text-center text-xs text-muted-foreground">
+                Downgrade via Manage Billing below
+              </div>
+            ) : null
+          }
+        />
 
-        <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-          <div>
-            <span className="text-muted-foreground">Platform fee</span>
-            <p className="font-mono font-semibold text-foreground">
-              {current_plan.fee_percent}%
-            </p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Minimum fee</span>
-            <p className="font-mono font-semibold text-foreground">
-              {"\u00A3"}{(current_plan.min_fee / 100).toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Monthly price</span>
-            <p className="font-mono font-semibold text-foreground">
-              {current_plan.monthly_price === 0
-                ? "Free"
-                : `\u00A3${(current_plan.monthly_price / 100).toFixed(2)}/mo`}
-            </p>
-          </div>
-        </div>
-
-        {/* Subscription info */}
-        {isPro && hasActiveSubscription && plan_settings.current_period_end && (
-          <>
-            <Separator className="my-4" />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Next billing date</span>
-              <span className="text-foreground">
-                {new Date(plan_settings.current_period_end).toLocaleDateString(
-                  "en-GB",
-                  { day: "numeric", month: "long", year: "numeric" }
-                )}
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* Billing actions */}
-        {!billingWaived && (
-          <>
-            <Separator className="my-4" />
-            <div className="flex gap-3">
-              {isStarter && (
+        {/* Pro */}
+        <PlanCard
+          plan={plans.pro}
+          isActive={isPro}
+          billingWaived={billingWaived}
+          highlighted
+          actionArea={
+            !billingWaived ? (
+              isPro && hasActiveSubscription ? (
+                <div className="rounded-lg bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
+                  Your current plan
+                </div>
+              ) : (
                 <Button
                   onClick={handleUpgrade}
                   disabled={!!actionLoading}
-                  className="gap-2"
+                  className="w-full gap-2"
+                  size="lg"
                 >
                   {actionLoading === "upgrade" ? (
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2 size={16} className="animate-spin" />
                   ) : (
-                    <Zap size={14} />
+                    <Zap size={16} />
                   )}
-                  Upgrade to Pro — {"\u00A3"}29/mo
+                  {proTrialDays > 0
+                    ? `Start ${proTrialDays}-day free trial`
+                    : "Upgrade to Pro"}
                 </Button>
-              )}
-              {isPro && hasActiveSubscription && (
-                <Button
-                  variant="outline"
-                  onClick={handleManageBilling}
-                  disabled={!!actionLoading}
-                  className="gap-2"
-                >
-                  {actionLoading === "portal" ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <ExternalLink size={14} />
-                  )}
-                  Manage Billing
-                </Button>
-              )}
-            </div>
-          </>
-        )}
-      </Card>
-
-      {/* Plan comparison */}
-      <div>
-        <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
-          Compare Plans
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(Object.values(plans) as PlatformPlan[]).map((plan) => {
-            const isActive = current_plan.id === plan.id;
-            return (
-              <Card
-                key={plan.id}
-                className={`border-border bg-card p-5 transition-colors ${
-                  isActive ? "ring-1 ring-primary/50" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-foreground">
-                    {plan.name}
-                  </h3>
-                  {isActive && (
-                    <Badge variant="default" className="text-[10px]">
-                      Current
-                    </Badge>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {plan.description}
-                </p>
-
-                <div className="mt-4">
-                  <span className="text-2xl font-bold text-foreground">
-                    {plan.monthly_price === 0
-                      ? "Free"
-                      : `\u00A3${(plan.monthly_price / 100).toFixed(0)}`}
-                  </span>
-                  {plan.monthly_price > 0 && (
-                    <span className="text-sm text-muted-foreground">/month</span>
-                  )}
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="mb-3 space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Platform fee</span>
-                    <span className="font-mono font-medium text-foreground">
-                      {plan.fee_percent}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Min fee</span>
-                    <span className="font-mono font-medium text-foreground">
-                      {"\u00A3"}{(plan.min_fee / 100).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                <Separator className="my-4" />
-
-                <ul className="space-y-2">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm">
-                      <Check
-                        size={14}
-                        className="mt-0.5 shrink-0 text-success"
-                      />
-                      <span className="text-muted-foreground">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            );
-          })}
-        </div>
+              )
+            ) : null
+          }
+        />
       </div>
+
+      {/* Active subscription management */}
+      {isPro && hasActiveSubscription && !billingWaived && (
+        <Card className="border-border bg-card p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <CreditCard size={18} className="text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Subscription active
+                </p>
+                {plan_settings.current_period_end && (
+                  <p className="text-xs text-muted-foreground">
+                    Next billing:{" "}
+                    {new Date(
+                      plan_settings.current_period_end
+                    ).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManageBilling}
+              disabled={!!actionLoading}
+              className="gap-2"
+            >
+              {actionLoading === "portal" ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <ExternalLink size={14} />
+              )}
+              Manage Billing
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* How card rates work */}
+      <Card className="border-border bg-card p-5">
+        <h3 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
+          How card rates work
+        </h3>
+        <div className="space-y-3 text-sm text-muted-foreground">
+          <p>
+            Card rates are charged per transaction when a customer buys a
+            ticket. This covers payment processing and the platform.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg bg-foreground/[0.03] p-3">
+              <div className="mb-1 text-xs font-medium text-foreground">
+                Example on Starter
+              </div>
+              <div className="text-muted-foreground">
+                {"\u00A3"}20 ticket{" "}
+                <ArrowRight size={12} className="inline text-muted-foreground/50" />{" "}
+                {"\u00A3"}1.50 fee ({plans.starter.card_rate_label})
+              </div>
+            </div>
+            <div className="rounded-lg bg-primary/5 p-3">
+              <div className="mb-1 text-xs font-medium text-primary">
+                Example on Pro
+              </div>
+              <div className="text-muted-foreground">
+                {"\u00A3"}20 ticket{" "}
+                <ArrowRight size={12} className="inline text-muted-foreground/50" />{" "}
+                {"\u00A3"}0.80 fee ({plans.pro.card_rate_label})
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground/70">
+            Stripe processing fees are separate and charged directly by Stripe.
+          </p>
+        </div>
+      </Card>
 
       {/* Error display */}
       {error && (
@@ -338,5 +317,108 @@ export default function PlanPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/* ── Plan card component ── */
+
+function PlanCard({
+  plan,
+  isActive,
+  billingWaived,
+  highlighted,
+  actionArea,
+}: {
+  plan: PlatformPlan;
+  isActive: boolean;
+  billingWaived: boolean;
+  highlighted?: boolean;
+  actionArea?: React.ReactNode;
+}) {
+  return (
+    <Card
+      className={`relative flex flex-col border-border bg-card p-5 transition-all ${
+        highlighted && !isActive
+          ? "ring-1 ring-primary/30 hover:ring-primary/50"
+          : ""
+      } ${isActive && !billingWaived ? "ring-1 ring-primary/50" : ""}`}
+    >
+      {/* Top badges */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {plan.id === "pro" ? (
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+              <Crown size={14} className="text-primary" />
+            </div>
+          ) : (
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground/5">
+              <Zap size={14} className="text-muted-foreground" />
+            </div>
+          )}
+          <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-foreground">
+            {plan.name}
+          </h3>
+        </div>
+        {isActive && !billingWaived && (
+          <Badge variant="default" className="text-[10px]">
+            Current
+          </Badge>
+        )}
+        {plan.trial_days > 0 && !isActive && (
+          <Badge variant="outline" className="border-primary/30 text-[10px] text-primary">
+            {plan.trial_days}-day free trial
+          </Badge>
+        )}
+      </div>
+
+      {/* Price */}
+      <div className="mb-1">
+        <span className="text-3xl font-bold tracking-tight text-foreground">
+          {plan.monthly_price === 0
+            ? "Free"
+            : `\u00A3${(plan.monthly_price / 100).toFixed(0)}`}
+        </span>
+        {plan.monthly_price > 0 && (
+          <span className="text-sm text-muted-foreground">/month</span>
+        )}
+      </div>
+      <p className="mb-4 text-sm text-muted-foreground">{plan.description}</p>
+
+      {/* Card rate highlight */}
+      <div className="mb-4 rounded-lg bg-foreground/[0.03] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <CreditCard size={14} className="text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Card rates</span>
+        </div>
+        <p className="mt-1 font-mono text-lg font-semibold text-foreground">
+          {plan.card_rate_label}
+        </p>
+        <p className="text-xs text-muted-foreground/60">per transaction</p>
+      </div>
+
+      <Separator className="mb-4" />
+
+      {/* Features */}
+      <ul className="mb-6 flex-1 space-y-2.5">
+        {plan.features.map((feature) => {
+          const isHighlight = feature === "Rep ambassador platform" || feature === "Lower card rates";
+          return (
+            <li key={feature} className="flex items-start gap-2.5 text-sm">
+              {isHighlight ? (
+                <Zap size={15} className="mt-0.5 shrink-0 text-primary" />
+              ) : (
+                <Check size={15} className="mt-0.5 shrink-0 text-success" />
+              )}
+              <span className={isHighlight ? "font-medium text-foreground" : "text-muted-foreground"}>
+                {feature}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Action area */}
+      {actionArea && <div className="mt-auto">{actionArea}</div>}
+    </Card>
   );
 }

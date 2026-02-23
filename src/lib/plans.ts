@@ -7,30 +7,38 @@ export const PLANS: Record<PlanId, PlatformPlan> = {
   starter: {
     id: "starter",
     name: "Starter",
-    description: "Free plan for new promoters",
+    description: "Everything you need to sell tickets",
     monthly_price: 0,
     fee_percent: 5,
     min_fee: 50, // £0.50
+    card_rate_label: "5% + 50p",
+    trial_days: 0,
     features: [
       "Unlimited events",
       "Ticket sales & checkout",
       "QR code tickets",
-      "Basic analytics",
+      "Custom branding",
+      "Analytics dashboard",
+      "Discount codes",
+      "Guest list management",
+      "Email confirmations",
+      "Apple & Google Wallet",
     ],
   },
   pro: {
     id: "pro",
     name: "Pro",
-    description: "Lower fees for established promoters",
+    description: "Lower rates & rep platform for growing promoters",
     monthly_price: 2900, // £29.00 in pence
     fee_percent: 2.5,
     min_fee: 30, // £0.30
+    card_rate_label: "2.5% + 30p",
+    trial_days: 14,
     features: [
       "Everything in Starter",
-      "Reduced platform fees",
+      "Lower card rates",
+      "Rep ambassador platform",
       "Priority support",
-      "Custom branding",
-      "Advanced analytics",
     ],
   },
 };

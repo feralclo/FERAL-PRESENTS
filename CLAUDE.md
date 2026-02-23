@@ -88,7 +88,7 @@ src/
 │   ├── orders.ts, email.ts, email-templates.ts  # Order creation + email (Resend)
 │   ├── pdf.ts, qr.ts, ticket-utils.ts, wallet-passes.ts  # Ticket delivery (PDF, QR, Apple/Google Wallet)
 │   ├── discount-codes.ts, vat.ts, rate-limit.ts  # Pricing + security
-│   ├── plans.ts               # Platform plans: PLANS constant, getOrgPlan(), getOrgPlanSettings()
+│   ├── plans.ts               # Platform plans: PLANS constant, getOrgPlan(), getOrgPlanSettings(), ensureStripePriceExists(), updateOrgPlanSettings()
 │   ├── themes.ts              # Theme system helpers (getActiveTemplate, etc.)
 │   ├── vercel-domains.ts      # Vercel Domain API wrapper (add/remove/verify domains)
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications
@@ -161,11 +161,13 @@ event/[slug]/page.tsx
 ### Platform Plans (Fee Tiers)
 Two plans control platform fee rates per org: **Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min).
 - Plan definitions hardcoded in `lib/plans.ts` (`PLANS` constant)
-- Plan assignment stored in `site_settings` under key `{org_id}_plan` (`OrgPlanSettings` type)
+- Plan assignment stored in `site_settings` under key `{org_id}_plan` (`OrgPlanSettings` type with subscription fields: `stripe_customer_id`, `stripe_subscription_id`, `subscription_status`, `current_period_end`)
 - `getOrgPlan(orgId)` resolves the full plan with fee rates — falls back to Starter if unassigned
 - Payment-intent route uses `plan.fee_percent` and `plan.min_fee` instead of per-event `platform_fee_percent`
 - Platform owner manages assignments via `/admin/backend/plans/` (calls `/api/plans`)
-- Monthly billing (£29 collection) is not yet implemented — just plan assignment and fee rates
+- **Stripe Subscription billing**: Tenants self-serve upgrade via `/admin/settings/plan/` → `POST /api/billing/checkout` creates Stripe Checkout Session → webhook updates plan. `POST /api/billing/portal` opens Stripe Customer Portal for card updates/cancellation
+- **Auto-provisioning**: `ensureStripePriceExists()` creates Stripe Product + Price on first checkout, caches IDs in `platform_stripe_billing` site_settings key
+- **Webhook events**: `checkout.session.completed` (upgrade), `customer.subscription.updated/deleted` (status sync), `invoice.payment_failed` (past_due)
 
 ### Multi-Tenancy: Dynamic org_id Resolution
 Every database table has an `org_id` column. Every query must filter by it. org_id is resolved dynamically per request — **never hardcode `"feral"`**.
@@ -233,7 +235,8 @@ Each tenant can fully customize their visual identity:
 | `{org_id}_wallet_passes` | `walletPassesKey()` | Wallet pass configuration |
 | `{org_id}_events_list` | `eventsListKey()` | Events list configuration |
 | `{org_id}_stripe_account` | `stripeAccountKey()` | Stripe Connect account (fallback) |
-| `{org_id}_plan` | `planKey()` | Platform plan assignment (Starter/Pro) |
+| `{org_id}_plan` | `planKey()` | Platform plan assignment + subscription status (Starter/Pro) |
+| `platform_stripe_billing` | `platformBillingKey()` | Stripe Product + Price IDs for Pro plan billing |
 
 ### Request Flow (Event Pages)
 `/event/[slug]/` → Middleware (resolves org_id, sets `x-org-id` header) → RootLayout (reads org_id via `getOrgId()`, wraps in `<OrgProvider>`) → EventLayout (Server Component, force-dynamic: fetches event + settings + branding + template in parallel, injects CSS vars + `data-theme`, wraps in SettingsProvider) → EventPage routes to `AuraEventPage` or `MidnightEventPage` based on active template.
@@ -335,7 +338,7 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel
 
 ---
 
-## API Routes (92 endpoints)
+## API Routes (95 endpoints)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -362,6 +365,7 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel
 
 ### Other Route Groups
 - **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
+- **Billing** (tenant self-serve — `requireAuth()`): `/api/billing/checkout` (POST — Stripe Checkout Session for Pro upgrade), `/api/billing/portal` (POST — Stripe Customer Portal), `/api/billing/status` (GET — plan + subscription status). Webhook handlers in `/api/stripe/webhook` for subscription lifecycle events.
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Plans** (platform owner only — `requirePlatformOwner()`): `/api/plans` (GET list orgs + plans, POST assign plan to org)
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)

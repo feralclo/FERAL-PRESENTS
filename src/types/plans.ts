@@ -15,4 +15,8 @@ export interface OrgPlanSettings {
   billing_waived: boolean;
   assigned_at: string;
   assigned_by: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  subscription_status?: "active" | "past_due" | "canceled" | "incomplete";
+  current_period_end?: string;
 }

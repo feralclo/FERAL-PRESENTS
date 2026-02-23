@@ -6,6 +6,7 @@ import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
+import { updateOrgPlanSettings } from "@/lib/plans";
 import type { MetaEventPayload } from "@/types/marketing";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -74,6 +75,71 @@ export async function POST(request: NextRequest) {
           `Payment failed for PI ${paymentIntent.id}:`,
           paymentIntent.last_payment_error?.message
         );
+        break;
+      }
+
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.mode === "subscription" && session.metadata?.org_id) {
+          const orgId = session.metadata.org_id;
+          const subscriptionId =
+            typeof session.subscription === "string"
+              ? session.subscription
+              : session.subscription?.id;
+          console.log(`[webhook] Subscription checkout completed for org ${orgId}, sub ${subscriptionId}`);
+          await updateOrgPlanSettings(orgId, {
+            plan_id: "pro",
+            subscription_status: "active",
+            stripe_subscription_id: subscriptionId || undefined,
+            assigned_at: new Date().toISOString(),
+            assigned_by: "stripe_checkout",
+          });
+        }
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const orgId = subscription.metadata?.org_id;
+        if (orgId) {
+          const status = subscription.status as "active" | "past_due" | "canceled" | "incomplete";
+          console.log(`[webhook] Subscription updated for org ${orgId}: ${status}`);
+          await updateOrgPlanSettings(orgId, {
+            subscription_status: status,
+          });
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const orgId = subscription.metadata?.org_id;
+        if (orgId) {
+          console.log(`[webhook] Subscription deleted for org ${orgId} — downgrading to Starter`);
+          await updateOrgPlanSettings(orgId, {
+            plan_id: "starter",
+            subscription_status: "canceled",
+            stripe_subscription_id: undefined,
+            current_period_end: undefined,
+          });
+        }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subDetails = invoice.parent?.subscription_details;
+        const subscriptionId =
+          typeof subDetails?.subscription === "string"
+            ? subDetails.subscription
+            : subDetails?.subscription?.id;
+        const orgId = subDetails?.metadata?.org_id;
+        if (orgId) {
+          console.error(`[webhook] Invoice payment failed for org ${orgId}, sub ${subscriptionId}`);
+          await updateOrgPlanSettings(orgId, {
+            subscription_status: "past_due",
+          });
+        }
         break;
       }
 

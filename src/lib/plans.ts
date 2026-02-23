@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES, planKey } from "@/lib/constants";
+import { TABLES, planKey, platformBillingKey } from "@/lib/constants";
+import { getStripe } from "@/lib/stripe/server";
 import type { PlanId, PlatformPlan, OrgPlanSettings } from "@/types/plans";
 
 export const PLANS: Record<PlanId, PlatformPlan> = {
@@ -66,4 +67,85 @@ export async function getOrgPlanSettings(
     return data.data as OrgPlanSettings;
   }
   return null;
+}
+
+/**
+ * Partial-update helper for org plan settings.
+ * Merges provided fields into the existing settings (or creates new).
+ */
+export async function updateOrgPlanSettings(
+  orgId: string,
+  updates: Partial<OrgPlanSettings>
+): Promise<void> {
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) throw new Error("Supabase not configured");
+
+  const existing = await getOrgPlanSettings(orgId);
+  const merged = { ...existing, ...updates };
+
+  await supabase
+    .from(TABLES.SITE_SETTINGS)
+    .upsert(
+      {
+        key: planKey(orgId),
+        data: merged,
+        org_id: orgId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+}
+
+/**
+ * Ensure the platform Stripe Product + Price exist for Pro plan billing.
+ * Auto-creates on first use and caches IDs in site_settings.
+ * Returns the Stripe Price ID for use in Checkout Sessions.
+ */
+export async function ensureStripePriceExists(): Promise<string> {
+  const stripe = getStripe();
+  const supabase = await getSupabaseAdmin();
+  if (!supabase) throw new Error("Supabase not configured");
+
+  // Check for cached IDs
+  const { data: cached } = await supabase
+    .from(TABLES.SITE_SETTINGS)
+    .select("data")
+    .eq("key", platformBillingKey())
+    .single();
+
+  if (cached?.data && typeof cached.data === "object") {
+    const billing = cached.data as { product_id: string; price_id: string };
+    if (billing.product_id && billing.price_id) {
+      return billing.price_id;
+    }
+  }
+
+  // Create Stripe Product
+  const product = await stripe.products.create({
+    name: "Entry Pro Plan",
+    description: "Pro plan subscription — reduced platform fees",
+    metadata: { platform: "entry" },
+  });
+
+  // Create Stripe Price (£29/month recurring)
+  const price = await stripe.prices.create({
+    product: product.id,
+    unit_amount: PLANS.pro.monthly_price,
+    currency: "gbp",
+    recurring: { interval: "month" },
+    metadata: { platform: "entry", plan_id: "pro" },
+  });
+
+  // Cache in site_settings
+  await supabase.from(TABLES.SITE_SETTINGS).upsert(
+    {
+      key: platformBillingKey(),
+      data: { product_id: product.id, price_id: price.id },
+      org_id: "platform",
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" }
+  );
+
+  return price.id;
 }

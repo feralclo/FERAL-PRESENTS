@@ -106,6 +106,11 @@ export function planKey(orgId: string): string {
   return `${orgId}_plan`;
 }
 
+/** Platform-level Stripe billing config key (stores product_id + price_id) */
+export function platformBillingKey(): string {
+  return "platform_stripe_billing";
+}
+
 // Klaviyo — env-var only, no hardcoded fallbacks.
 // Per-tenant Klaviyo is planned via {org_id}_marketing settings.
 export const KLAVIYO_LIST_ID = process.env.NEXT_PUBLIC_KLAVIYO_LIST_ID || "";

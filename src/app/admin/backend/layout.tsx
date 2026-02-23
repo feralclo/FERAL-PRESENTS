@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   PanelLeft,
   X,
+  Users,
 } from "lucide-react";
 
 interface BackendNavItem {
@@ -25,6 +26,7 @@ interface BackendNavItem {
 }
 
 const BACKEND_NAV: BackendNavItem[] = [
+  { href: "/admin/backend/tenants/", label: "Tenants", icon: Users },
   { href: "/admin/backend/health/", label: "Health", icon: HeartPulse },
   { href: "/admin/backend/connect/", label: "Connect", icon: Zap },
   { href: "/admin/backend/plans/", label: "Plans", icon: CreditCard },

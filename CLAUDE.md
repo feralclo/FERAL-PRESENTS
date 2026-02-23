@@ -41,7 +41,7 @@ src/
 │   │   └── loading.tsx        # Loading skeleton
 │   ├── admin/                 # Admin dashboard (25+ pages). Sidebar groups: Dashboard, Events,
 │   │                          # Commerce, Storefront, Analytics, Marketing, Settings (incl. Users, Domains).
-│   │                          # Platform-owner-only "Entry Backend" section (health, connect,
+│   │                          # Platform-owner-only "Entry Backend" section (tenants, health, connect,
 │   │                          # platform-settings, plans) gated by is_platform_owner flag.
 │   │                          # /admin/invite/[token] — standalone invite acceptance page (no auth).
 │   │                          # /admin/signup/ — self-service promoter registration (no auth).
@@ -334,6 +334,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
 - **Billing** (tenant self-serve — `requireAuth()`): `/api/billing/checkout` (POST — Stripe Checkout Session for Pro upgrade), `/api/billing/portal` (POST — Stripe Customer Portal), `/api/billing/status` (GET — plan + subscription status). Webhook handlers in `/api/stripe/webhook` for subscription lifecycle events.
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
+- **Tenants** (platform owner only — `requirePlatformOwner()`): `/api/platform/tenants` (GET enriched tenant list — owner, plan, domain, Stripe status, events/orders stats, derived status)
 - **Plans** (platform owner only — `requirePlatformOwner()`): `/api/plans` (GET list orgs + plans, POST assign plan to org)
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
 - **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)

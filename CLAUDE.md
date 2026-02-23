@@ -44,7 +44,8 @@ src/
 │   │                          # Platform-owner-only "Entry Backend" section (health, connect,
 │   │                          # platform-settings, plans) gated by is_platform_owner flag.
 │   │                          # /admin/invite/[token] — standalone invite acceptance page (no auth).
-│   └── api/                   # 94 endpoints — see API Routes section for full list
+│   │                          # /admin/signup/ — self-service promoter registration (no auth).
+│   └── api/                   # 97 endpoints — see API Routes section for full list
 ├── components/
 │   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
@@ -88,6 +89,7 @@ src/
 │   ├── orders.ts, email.ts, email-templates.ts  # Order creation + email (Resend)
 │   ├── pdf.ts, qr.ts, ticket-utils.ts, wallet-passes.ts  # Ticket delivery (PDF, QR, Apple/Google Wallet)
 │   ├── discount-codes.ts, vat.ts, rate-limit.ts  # Pricing + security
+│   ├── signup.ts              # Self-service signup: slugify(), validateSlug(), RESERVED_SLUGS, provisionOrg()
 │   ├── plans.ts               # Platform plans: PLANS constant, getOrgPlan(), getOrgPlanSettings(), ensureStripePriceExists(), updateOrgPlanSettings()
 │   ├── themes.ts              # Theme system helpers (getActiveTemplate, etc.)
 │   ├── vercel-domains.ts      # Vercel Domain API wrapper (add/remove/verify domains)
@@ -120,54 +122,46 @@ src/
 ## Architecture
 
 ### Payment System (Stripe)
-All events use Stripe for payment processing:
-- Dynamic event pages (`MidnightEventPage` / `AuraEventPage`) rendered from `events` table
-- Ticket types stored in `ticket_types` table with pricing, capacity, tiers, merch links
-- Checkout via `NativeCheckout` or `AuraCheckout` → `StripePaymentForm` + `ExpressCheckout`
-- PaymentIntent flow: create → confirm → webhook creates order + tickets + email
-- Apple Pay / Google Pay via Stripe ExpressCheckoutElement
-- Discount codes applied at checkout (validated server-side via `/api/discounts/validate`)
+Dynamic event pages → `NativeCheckout`/`AuraCheckout` → `StripePaymentForm` + `ExpressCheckout` (Apple/Google Pay). PaymentIntent flow: create → confirm → webhook → order + tickets + email. Discounts validated server-side via `/api/discounts/validate`.
 
-**External ticketing**: Events with `payment_method: "external"` route to `MidnightExternalPage` — a simplified Midnight page that shows the hero, about, lineup, and details but replaces the ticket widget with a single CTA linking to `event.external_link`. No cart, checkout, or payment processing.
+**External ticketing**: `payment_method: "external"` → `MidnightExternalPage` (hero + about + lineup + CTA to `external_link`, no checkout).
 
 ### Theme-Based Routing
-Event pages route to different component trees based on the **active template**:
-
-```
-event/[slug]/page.tsx
-  → payment_method === "external" → MidnightExternalPage (no checkout)
-  → getActiveTemplate() reads from site_settings ({org_id}_themes)
-  → template === "aura"    → AuraEventPage / AuraCheckout
-  → template === "midnight" → MidnightEventPage / NativeCheckout (default)
-```
-
-- Default template: `midnight` (falls back if no theme configured)
-- Admin can preview non-active themes via `?editor=1&template=aura`
-- Theme store managed in `/admin/ticketstore/` with Shopify-style editor
+`event/[slug]/page.tsx` → `payment_method === "external"` → `MidnightExternalPage` | `getActiveTemplate()` from `{org_id}_themes` → `"aura"` → `AuraEventPage` | default `"midnight"` → `MidnightEventPage`. Preview via `?editor=1&template=aura`. Theme store: `/admin/ticketstore/`.
 
 ### Stripe Connect (Multi-Tenant Payments)
-- **Model**: Direct charges on connected accounts with application fee
-- **Account type**: Custom (white-labeled — promoter never sees Stripe dashboard)
-- **Platform fee**: 5% default, £0.50 minimum (configurable per event via `platform_fee_percent`)
-- **Per-event routing**: `event.stripe_account_id` → fallback to `{org_id}_stripe_account` in site_settings → fallback to platform-only charge
-- **Account verification**: `verifyConnectedAccount()` validates account is accessible; falls back to platform if revoked
-- **Currency**: GBP, EUR, USD. Amounts always in smallest unit (pence/cents) — use `toSmallestUnit()` / `fromSmallestUnit()` from `lib/stripe/config.ts`
-- **VAT**: `lib/vat.ts` calculates VAT (inclusive or exclusive), configured via `{org_id}_vat` settings key
-- **Discounts**: Validated server-side during PaymentIntent creation. Supports percentage and fixed-amount codes with expiry, usage limits, and per-event restrictions
-- **Rate limiting**: Payment endpoint: 10 requests/minute/IP via `createRateLimiter()`
-- Admin pages: `/admin/payments/` (promoter-facing setup), `/admin/connect/` (platform owner only — Entry Backend), `/admin/finance/` (finance overview)
-- **Connect API routes** (`/api/stripe/connect/*`): gated by `requirePlatformOwner()` — only accessible to users with `is_platform_owner: true`
+- **Model**: Direct charges on connected accounts with application fee. Custom accounts (white-labeled)
+- **Platform fee**: 5% default, £0.50 min. Per-event routing: `event.stripe_account_id` → `{org_id}_stripe_account` → platform-only
+- **Currency**: GBP, EUR, USD. Always smallest unit (pence/cents) — `toSmallestUnit()` / `fromSmallestUnit()` from `lib/stripe/config.ts`
+- **VAT**: `lib/vat.ts` (inclusive/exclusive), **Discounts**: server-side validation (percentage/fixed, expiry, usage limits, per-event)
+- **Rate limiting**: Payment: 10/min/IP. Admin pages: `/admin/payments/`, `/admin/connect/` (platform owner), `/admin/finance/`
+- **Connect API routes** (`/api/stripe/connect/*`): gated by `requirePlatformOwner()`
 
 ### Platform Plans (Fee Tiers)
-Two plans control platform fee rates per org: **Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min).
-- Plan definitions hardcoded in `lib/plans.ts` (`PLANS` constant)
-- Plan assignment stored in `site_settings` under key `{org_id}_plan` (`OrgPlanSettings` type with subscription fields: `stripe_customer_id`, `stripe_subscription_id`, `subscription_status`, `current_period_end`)
-- `getOrgPlan(orgId)` resolves the full plan with fee rates — falls back to Starter if unassigned
-- Payment-intent route uses `plan.fee_percent` and `plan.min_fee` instead of per-event `platform_fee_percent`
-- Platform owner manages assignments via `/admin/backend/plans/` (calls `/api/plans`)
-- **Stripe Subscription billing**: Tenants self-serve upgrade via `/admin/settings/plan/` → `POST /api/billing/checkout` creates Stripe Checkout Session → webhook updates plan. `POST /api/billing/portal` opens Stripe Customer Portal for card updates/cancellation
-- **Auto-provisioning**: `ensureStripePriceExists()` creates Stripe Product + Price on first checkout, caches IDs in `platform_stripe_billing` site_settings key
-- **Webhook events**: `checkout.session.completed` (upgrade), `customer.subscription.updated/deleted` (status sync), `invoice.payment_failed` (past_due)
+Two plans: **Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min). Defined in `lib/plans.ts` (`PLANS`).
+- Plan stored in `site_settings` under `{org_id}_plan`. `getOrgPlan(orgId)` falls back to Starter if unassigned
+- Payment-intent uses `plan.fee_percent` / `plan.min_fee`. Platform owner assigns via `/admin/backend/plans/`
+- **Tenant billing**: `/admin/settings/plan/` → `POST /api/billing/checkout` (Stripe Checkout) → webhook updates plan. Portal via `/api/billing/portal`
+- **Auto-provisioning**: `ensureStripePriceExists()` creates Stripe Product+Price on first checkout, caches in `platform_stripe_billing`
+- **Webhooks**: `checkout.session.completed`, `customer.subscription.updated/deleted`, `invoice.payment_failed`
+
+### Self-Service Signup (Promoter Registration)
+New promoters can self-register at `/admin/signup/` — no invite needed.
+
+**Two auth paths:**
+- **Email/password**: `POST /api/auth/signup` → creates auth user (auto-confirmed, `is_admin: true`) → `provisionOrg()` → returns session tokens
+- **Google OAuth**: Signup page sets `entry_signup_org` cookie → `signInWithOAuth({ redirectTo: "...&signup=1" })` → `/auth/callback/` reads cookie → `provisionOrg()` → redirect to `/admin/?welcome=1`
+
+**Org provisioning** (`provisionOrg()` in `lib/signup.ts`):
+1. Insert `org_users` row: `role: "owner"`, `status: "active"`, all perms `true`
+2. Insert `domains` row: `{slug}.entry.events`, `type: "subdomain"`, `status: "active"`, `is_primary: true`
+3. Upsert `site_settings` row: `{slug}_plan` → Starter plan (`plan_id: "starter"`, `assigned_by: "self-signup"`)
+
+**Slug system:** `slugify()` converts org name to `[a-z0-9-]` (3-40 chars). `validateSlug()` checks ~50 `RESERVED_SLUGS` + queries `org_users` for collisions. Auto-suffixes `-2` through `-99` on collision. Live availability via `GET /api/auth/check-slug?slug=x` (debounced 300ms in UI).
+
+**Safety:** Rate limited 5 signups/hr/IP. Orphan cleanup if provisioning fails after auth user creation. No database migrations needed — uses existing `org_users`, `domains`, `site_settings` tables.
+
+**Dashboard welcome:** `?welcome=1` query param shows a dismissible banner on `/admin/` with "Create your first event" CTA.
 
 ### Multi-Tenancy: Dynamic org_id Resolution
 Every database table has an `org_id` column. Every query must filter by it. org_id is resolved dynamically per request — **never hardcode `"feral"`**.
@@ -180,13 +174,7 @@ Request → Middleware resolves org_id → sets x-org-id header → downstream r
          └─ Fallback → "feral"
 ```
 
-**Domain routing:**
-- `admin.entry.events` — admin host (resolves org from user's `org_users` record)
-- `localhost`, `*.vercel.app` — dev/preview (treated as admin host)
-- `{slug}.entry.events` — default tenant subdomain (each org gets one automatically, wildcard catch-all on Vercel)
-- `feralpresents.com`, custom domains — tenant hosts (resolved from `domains` table)
-- Admin pages on tenant hosts redirect to `admin.entry.events`
-- **Domain management**: Tenants add custom domains via `/admin/settings/domains/` → Vercel Domain API registers the domain + returns DNS challenge → tenant configures DNS → recheck verifies
+**Domain routing:** `admin.entry.events` = admin host (org from `org_users`). `localhost`/`*.vercel.app` = dev (admin host). `{slug}.entry.events` = tenant subdomain (wildcard). Custom domains resolved from `domains` table. Admin pages on tenant hosts redirect to `admin.entry.events`. Domain management via `/admin/settings/domains/` → Vercel API.
 
 **Three access patterns:**
 | Context | Helper | Import |
@@ -204,13 +192,7 @@ Request → Middleware resolves org_id → sets x-org-id header → downstream r
 - This is non-negotiable — it's the foundation for the multi-promoter platform
 
 ### White-Label Branding System
-Each tenant can fully customize their visual identity:
-
-**Org-level branding** (`BrandingSettings` in `site_settings` under key `{org_id}_branding`):
-- Logo, org name, accent color, background color, card color, text color
-- Heading font, body font, copyright text
-
-**How it flows — no FOUC:** Event layout (Server Component) fetches branding → injects CSS vars (`--accent`, `--bg-dark`, `--card-bg`, `--text-primary`, `--font-mono`, `--font-sans`) server-side. Client components use `useBranding()` hook (module-level cache). `GET /api/branding` (public), `POST /api/branding` (admin auth).
+Org-level branding in `site_settings` under `{org_id}_branding`: logo, org name, accent/background/card/text colors, heading/body fonts, copyright. Event layout (Server Component) injects CSS vars server-side (no FOUC). Client uses `useBranding()` hook. `GET /api/branding` (public), `POST /api/branding` (admin).
 
 ### Settings System
 **Event data**: `events` + `ticket_types` tables
@@ -239,13 +221,10 @@ Each tenant can fully customize their visual identity:
 | `platform_stripe_billing` | `platformBillingKey()` | Stripe Product + Price IDs for Pro plan billing |
 
 ### Request Flow (Event Pages)
-`/event/[slug]/` → Middleware (resolves org_id, sets `x-org-id` header) → RootLayout (reads org_id via `getOrgId()`, wraps in `<OrgProvider>`) → EventLayout (Server Component, force-dynamic: fetches event + settings + branding + template in parallel, injects CSS vars + `data-theme`, wraps in SettingsProvider) → EventPage routes to `AuraEventPage` or `MidnightEventPage` based on active template.
+`/event/[slug]/` → Middleware (org_id) → RootLayout (`<OrgProvider>`) → EventLayout (Server Component: event + settings + branding + template in parallel, CSS vars + `data-theme`) → `AuraEventPage` or `MidnightEventPage`.
 
 ### Caching Strategy
-- Event + admin pages: `export const dynamic = "force-dynamic"` — every request fetches fresh data
-- All Supabase fetches: `cache: "no-store"` — admin changes appear immediately
-- Uploaded media (`/api/media/[key]`): `max-age=31536000, immutable`
-- Apple Pay verification file: `max-age=86400`
+Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, immutable`. Apple Pay: `max-age=86400`.
 
 ### Authentication & Security
 
@@ -253,7 +232,7 @@ Each tenant can fully customize their visual identity:
 
 | System | Middleware protection | Route handler | Users |
 |--------|---------------------|---------------|-------|
-| Admin | `/admin/*` pages (except `/admin/invite`), all non-public `/api/*` | `requireAuth()` | Created via team invite flow (`/admin/settings/users/`) or Supabase Auth dashboard |
+| Admin | `/admin/*` pages (except `/admin/login`, `/admin/invite`, `/admin/signup`), all non-public `/api/*` | `requireAuth()` | Self-service signup (`/admin/signup/`), team invite flow (`/admin/settings/users/`), or Supabase Auth dashboard |
 | Rep portal | `/rep/*` pages, `/api/rep-portal/*` | `requireRepAuth()` | Self-signup or admin invite via `/api/reps/[id]/invite` |
 
 **Role flags** (in Supabase `app_metadata`, additive):
@@ -319,26 +298,14 @@ Each tenant can fully customize their visual identity:
 - All tables have `org_id` column
 
 ### Supabase Client Rules (CRITICAL — Data Access)
-Using the wrong client causes silent data loss (empty arrays instead of errors when RLS blocks).
-
-| Client | File | When to Use |
-|--------|------|-------------|
-| `getSupabaseAdmin()` | `lib/supabase/admin.ts` | **ALL data queries** — API routes, server components, lib. Service role key (bypasses RLS). |
-| `getSupabaseServer()` | `lib/supabase/server.ts` | **Auth ONLY** — `requireAuth()`, `requireRepAuth()`, `getSession()`, login/logout. |
-| `getSupabaseClient()` | `lib/supabase/client.ts` | **Browser-side only** — realtime subscriptions, client reads. Subject to RLS. |
-
-**Rules:** Use `getSupabaseAdmin()` for all data queries. Use `getSupabaseServer()` only for auth. Never create raw `createClient()` with anon key server-side. Add new tables to health check. Show API errors in admin pages.
+Wrong client → silent data loss (empty arrays when RLS blocks). **`getSupabaseAdmin()`** = ALL data queries (service role, bypasses RLS). **`getSupabaseServer()`** = auth ONLY (`requireAuth`, `getSession`). **`getSupabaseClient()`** = browser-side only (realtime, client reads, subject to RLS). Never create raw `createClient()` with anon key server-side.
 
 ### External Service Changes Rule (CRITICAL)
-Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel** (deployments, logs, projects). Use MCP tools directly — **NEVER** give the user SQL to run manually or tell them to go to dashboards. Always execute migrations and queries via MCP yourself. **Stripe** has no MCP — tell user to use dashboard or provide copy-paste instructions.
-
-**If Supabase or Vercel MCP token has expired**, stop and tell the user to run `/mcp` to re-authorize. Do NOT fall back to giving raw SQL or manual instructions. **Stripe** has no MCP — tell user to use dashboard or provide copy-paste instructions.
-
-**Rules:** Never hardcode secrets. Document changes in this file. Never assume a table/column exists unless documented here. Never give the user SQL to run — that's Claude's job via MCP.
+MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments, logs). Use MCP directly — NEVER give user SQL to run. **Stripe** has no MCP — tell user to use dashboard. If MCP token expired, tell user to run `/mcp`. Never hardcode secrets. Document changes in this file. Never assume table/column exists unless documented here.
 
 ---
 
-## API Routes (95 endpoints)
+## API Routes (97 endpoints)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -371,6 +338,7 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
 - **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
 - **Domain Management** (5 routes): `/api/domains` (GET list, POST add custom domain), `/api/domains/[id]` (PUT set primary, DELETE remove), `/api/domains/[id]/verify` (POST recheck DNS verification). All require `requireAuth()`, filter by `auth.orgId`. POST add calls Vercel Domain API to register domain and get DNS verification challenges.
+- **Self-Service Signup** (2 public routes): `/api/auth/signup` (POST — create auth user + provision org, rate limited 5/hr), `/api/auth/check-slug` (GET — real-time slug availability, rate limited 20/min). Both covered by `/api/auth/` public prefix. Uses `lib/signup.ts` for shared logic (`slugify`, `validateSlug`, `provisionOrg`)
 - **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
 
 ---
@@ -378,23 +346,17 @@ Claude has MCP access to **Supabase** (schema, queries, migrations) and **Vercel
 ## Hooks (Patterns & Rules)
 
 ### Referential Stability (CRITICAL)
-Hooks that return objects/functions consumed as `useEffect`/`useCallback` dependencies MUST use `useMemo` to return a stable reference. Without this, every re-render creates a new object, causing all dependent effects to re-fire.
+Hooks returning objects/functions used as effect deps MUST use `useMemo` for stable refs. Without this, every re-render creates a new object → infinite re-renders.
 
-**Hooks with stable refs (do NOT break this):**
-- `useMetaTracking()` — returns `useMemo({ trackPageView, trackViewContent, ... })`
-- `useDataLayer()` — returns `useMemo({ push, trackViewContent, trackAddToCart, ... })`
-- `useEventTracking()` — returns `useMemo({ trackPageView, trackViewContent, trackAddToCart, ... })` (unified facade over Meta + GTM + CAPI + traffic)
-- `useSettings()` — context value wrapped in `useMemo`
-- `useBranding()` — returns `useMemo(branding)` with module-level cache
-- `useDashboardRealtime()` — returns `useMemo(dashboardState)`
+**Stable ref hooks (do NOT break):** `useMetaTracking()`, `useDataLayer()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useDashboardRealtime()` — all return `useMemo(...)`.
 
-**Consumer pattern:** Destructure stable callbacks (`const { trackViewContent } = useMetaTracking()`) and use them as deps. Never use the whole object as a dependency — causes infinite re-renders.
+**Consumer pattern:** Destructure callbacks (`const { trackViewContent } = useMetaTracking()`) as deps. Never use the whole object as a dependency.
 
 ### Consent Gating (`useMetaTracking`)
-Checks `feral_cookie_consent` in localStorage for `marketing: true`. Listens for consent changes via `storage` event (cross-tab) and `feral_consent_update` custom event (same-tab, dispatched by `CookieConsent.tsx`). Pixel only loads after consent.
+Checks `feral_cookie_consent` localStorage for `marketing: true`. Listens via `storage` + `feral_consent_update` events. Pixel only loads after consent.
 
 ### Module-Level State (`useMetaTracking`, `useBranding`)
-Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pixelLoaded`, `_cachedBranding`. Single fetch shared across all instances. Tests must account for this — module state doesn't reset between test cases.
+Both persist state at module scope. Single fetch shared across instances. Tests must account for this — module state doesn't reset between test cases.
 
 ---
 
@@ -418,8 +380,8 @@ Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pix
 - **Setup**: `src/__tests__/setup.ts` — localStorage mock, crypto.randomUUID mock, jest-dom
 - **Run**: `npm test` (single run) or `npm run test:watch` (watch mode)
 
-### Test Suites (11 suites)
-`auth`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`
+### Test Suites (12 suites)
+`auth`, `signup`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`
 
 ### Rules for Writing Tests
 1. Every new hook must have a test file — `src/__tests__/useHookName.test.ts`
@@ -433,10 +395,9 @@ Both hooks persist state at module scope — `_settings`, `_fetchPromise`, `_pix
 
 ## Known Gaps
 1. **Scanner PWA** — API endpoints exist (`/api/tickets/[code]` + `/api/tickets/[code]/scan`) but no frontend
-2. **Multi-tenant promoter dashboard** — Stripe Connect is built, but no separate promoter-facing dashboard yet
-3. **Google Ads + TikTok tracking** — placeholders exist in marketing admin but no implementation
-4. **Supabase RLS policies** — should be configured to enforce org_id isolation at database level
-5. **Cron multi-org** — `/api/cron/*` routes still use `ORG_ID` fallback (no request context). Should iterate over all orgs
+2. **Google Ads + TikTok tracking** — placeholders exist in marketing admin but no implementation
+3. **Supabase RLS policies** — should be configured to enforce org_id isolation at database level
+4. **Cron multi-org** — `/api/cron/*` routes still use `ORG_ID` fallback (no request context). Should iterate over all orgs
 
 ---
 
@@ -485,11 +446,9 @@ Each theme's `{theme}.css` maps these to Tailwind semantic tokens (`--color-prim
 **Why utilities are unlayered**: `base.css` has an unlayered `* { margin: 0; padding: 0; }`. Unlayered styles always beat layered styles. Utilities must stay unlayered so class selectors win over the universal `*` reset. **NEVER** add `layer(utilities)`, move utilities into `@layer`, or add global `*` resets that override Tailwind.
 
 ### Rules for New CSS
-1. **Component-level imports** — new components import their own CSS file
-2. **Use CSS custom properties** from `base.css :root` for all colors, fonts, spacing
-3. **Event themes use Tailwind + Radix** — All event page themes (Midnight, Aura, future themes) use Tailwind for layout/spacing/responsive, Radix UI primitives (via shadcn/ui) for interactive elements (Dialog, Tabs, etc.), and optional theme-specific CSS for visual effects. Each theme is scoped via `[data-theme="themename"]`.
-4. **Landing/legacy pages** — Hand-written BEM CSS only (`base.css`, `header.css`, `landing.css`)
-5. **Breakpoints**: `1024px` (tablet), `768px` (portrait), `480px` (phone)
+1. **Component-level imports** — new components import their own CSS file. Use CSS custom properties from `base.css :root`
+2. **Event themes**: Tailwind + Radix + optional effects CSS, scoped via `[data-theme="themename"]`
+3. **Landing/legacy**: Hand-written BEM CSS only. **Breakpoints**: `1024px` / `768px` / `480px`
 
 ---
 
@@ -503,22 +462,18 @@ Each theme lives in `src/components/{themename}/` with a consistent structure:
 Each theme has: `{Theme}EventPage` (orchestrator), `{Theme}Hero` (banner + CTA), `{Theme}TicketWidget` (ticket selection + cart), `{Theme}TicketCard` (tier with qty controls), `{Theme}MerchModal` (image gallery + size selector), `{Theme}EventInfo` (about/details/venue), `{Theme}Lineup`, `{Theme}CartSummary`, `{Theme}TierProgression`, `{Theme}BottomBar` (mobile CTA), `{Theme}SocialProof`, `{Theme}Footer`. All use shadcn/ui (Button, Card, Dialog, Badge, Separator).
 
 ### Rules for New Event Theme Components
-1. **Tailwind for layout** — all spacing, responsive, grid, flex via utility classes
-2. **shadcn/ui for interactive elements** — Dialog (modals), Button, Card, Badge, Separator. Never build custom overlays, buttons, or cards from scratch
-3. **Effects CSS for visual identity** — glassmorphism, metallic gradients, animations go in `{theme}-effects.css`, applied via `cn()` class composition. Keep layout and visual identity separate
-4. **Theme CSS for tokens** — each theme has a `{theme}.css` with `@theme inline {}` mapping `base.css` CSS vars to Tailwind semantic tokens (`--color-primary`, `--color-background`, etc.) and a scoped reset in `@layer {theme}-reset`
-5. **Scope everything** — all theme CSS scoped to `[data-theme="{themename}"]`. Never leak styles between themes
-6. **Mobile-first** — most ticket buyers are on phones. Design for 375px first, enhance up. Bottom bar for mobile CTA, responsive grid reordering
-7. **Accessibility** — Radix Dialog provides focus trap + `aria-modal` + Escape close. Use `role="article"` + `aria-label` on ticket cards. Support `prefers-reduced-motion: reduce`
-8. **Shared hooks** — use `useCart()` for cart state, `useEventTracking()` for analytics, `useSettings()` for config, `useBranding()` for tenant identity, `useHeaderScroll()` for nav behavior
-9. **Shared components** — `DiscountPopup`, `EngagementTracker`, `ExpressCheckout`, `Header` are theme-agnostic. Import from `components/event/`, `components/checkout/`, or `components/layout/`
-10. **CSS imports at orchestrator level** — the `{Theme}EventPage` orchestrator imports both `{theme}.css` and `{theme}-effects.css`. Child components don't import CSS
+1. **Tailwind for layout**, shadcn/ui for interactive elements (Dialog, Button, Card, Badge). Never build custom overlays from scratch
+2. **Effects CSS** for visual identity (glassmorphism, gradients, animations) in `{theme}-effects.css`. Theme tokens in `{theme}.css` with `@theme inline {}`
+3. **Scope everything** to `[data-theme="{themename}"]`. Mobile-first (375px). Support `prefers-reduced-motion`
+4. **Shared hooks**: `useCart()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useHeaderScroll()`
+5. **Shared components**: `DiscountPopup`, `EngagementTracker`, `ExpressCheckout`, `Header` — theme-agnostic
+6. **CSS imports at orchestrator level** — `{Theme}EventPage` imports both CSS files. Child components don't import CSS
 
 ### Theme Design Tokens Flow
-`base.css :root` → server-injected branding CSS vars → `{theme}.css @theme inline {}` → Tailwind classes (`bg-background`, `text-primary`, etc.) → effects CSS uses `var()` for animations. Change accent color in admin → every theme updates automatically via pure CSS cascade.
+`base.css :root` → server-injected branding vars → `{theme}.css @theme inline {}` → Tailwind classes → effects CSS uses `var()`. Change accent in admin → all themes update via CSS cascade.
 
 ### Adding a New Theme
-To add a new template (e.g. "nova"): (1) Create `src/components/nova/` with orchestrator + child components, (2) Create `nova.css` + `nova-effects.css`, (3) Add routing in `page.tsx` + `checkout/page.tsx`, (4) Add to `StoreTheme.template` union in `src/types/settings.ts`, (5) Add to `TEMPLATES` in `src/app/admin/ticketstore/page.tsx`. The `data-theme` attribute is dynamic — new themes get CSS scoping automatically.
+(1) Create `src/components/{name}/` with orchestrator + children, (2) `{name}.css` + `{name}-effects.css`, (3) Route in `page.tsx` + `checkout/page.tsx`, (4) Add to `StoreTheme.template` union in `types/settings.ts`, (5) Add to `TEMPLATES` in `admin/ticketstore/page.tsx`.
 
 ---
 
@@ -527,13 +482,7 @@ To add a new template (e.g. "nova"): (1) Create `src/components/nova/` with orch
 The rep portal (`/rep/*`) is the brand ambassador / street team app. It will evolve into a full social platform. Currently at 13 pages with its own layout, auth system (`requireRepAuth()`), and API routes (`/api/rep-portal/*`).
 
 ### CSS Architecture
-The rep portal uses the **admin dashboard pattern** — Tailwind + shadcn/ui — with a dedicated effects file for gaming-specific visuals:
-- **Layout/spacing**: Tailwind utilities only
-- **Interactive elements**: 100% shadcn/ui (Card, Button, Badge, Input, Progress, Skeleton, Dialog, Tabs)
-- **Colors/tokens**: Admin Tailwind tokens (`bg-background`, `text-foreground`, `text-primary`, etc.) — no `--rep-*` CSS variables
-- **Gaming effects**: `rep-effects.css` (~1,950 lines) — animations, tier glows, avatar rings, weapon card borders, quest ambient layers, podium layout, confetti/particles. Scoped to `[data-rep]`
-- **Shared components**: `src/components/rep/` — RadialGauge, EmptyState, HudSectionHeader, ConfettiOverlay, LevelUpOverlay, TikTokIcon
-- **Shared utilities**: `src/lib/rep-tiers.ts` (tier config), `src/lib/rep-social.ts` (social links), `src/hooks/useCountUp.ts` (animated counter)
+Admin pattern: Tailwind + shadcn/ui + admin tokens. Gaming effects in `rep-effects.css` (~1,950 lines, scoped to `[data-rep]`). Shared components in `src/components/rep/` (RadialGauge, EmptyState, HudSectionHeader, ConfettiOverlay, LevelUpOverlay). Utilities: `lib/rep-tiers.ts`, `lib/rep-social.ts`, `hooks/useCountUp.ts`.
 
 ### Rep Portal Pages
 | Page | Route | Purpose |
@@ -548,13 +497,9 @@ The rep portal uses the **admin dashboard pattern** — Tailwind + shadcn/ui —
 | Login/Join | `/rep/login`, `/rep/join` | Auth (separate from admin) |
 
 ### Rules for New Rep Portal Pages
-1. **Use shadcn/ui components** — Card, Button, Badge, Input, Progress, Skeleton, Dialog, Tabs. No custom overlays or form elements
-2. **Use Tailwind classes** — all layout via utilities. No new `.rep-*` CSS classes
-3. **Use admin design tokens** — `bg-background`, `text-foreground`, `border-border`, `text-primary`. Do NOT create new `--rep-*` CSS variables
-4. **Gaming effects only in `rep-effects.css`** — gauges, level-up animations, confetti, glow pulses. Applied via class names, not inline styles
-5. **No inline `style={{}}`** — use Tailwind arbitrary values (`bg-[#hex]`, `w-[120px]`) or CSS variables via effects classes
-6. **Mobile-first** — reps use their phones. Design for 375px, enhance up
-7. **Auth**: All pages use `requireRepAuth()`. Layout handles unverified email and pending review gates
+1. **shadcn/ui + Tailwind** — Card, Button, Badge, etc. Admin design tokens (`bg-background`, `text-foreground`). No new `--rep-*` CSS vars
+2. **Gaming effects only in `rep-effects.css`** — applied via class names, not inline styles. No `style={{}}`
+3. **Mobile-first** (375px). Auth: `requireRepAuth()`. Layout handles email verification + pending review gates
 
 ---
 
@@ -573,12 +518,9 @@ Defined in `tailwind.css` via `@theme inline {}`. Key tokens: `background` (#080
 Use via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values. Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-destructive`, `.text-gradient`, `.surface-noise`
 
 ### Rules for New Admin Pages
-1. **Always `"use client"`** — admin pages use React state, effects, and browser APIs
-2. **Use shadcn components** — never recreate Button, Input, Card, Tabs, etc.
-3. **Use Tailwind classes** — all styling via utility classes, no hand-written CSS
-4. **Use design tokens** — `bg-background`, `text-foreground`, `border-border`, etc.
-5. **Settings pattern** — fetch from `site_settings` table, save back via `/api/settings`
-6. **File uploads** — POST base64 to `/api/upload`, get back a media key
+1. **Always `"use client"`** — shadcn/ui + Tailwind + design tokens (`bg-background`, `text-foreground`, `border-border`)
+2. **Settings pattern** — fetch from `site_settings` table, save back via `/api/settings`
+3. **File uploads** — POST base64 to `/api/upload`, get back a media key
 
 ---
 

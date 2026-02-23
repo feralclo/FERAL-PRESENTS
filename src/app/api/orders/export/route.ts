@@ -3,8 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { requireAuth } from "@/lib/auth";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://feralpresents.com";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "";
 
 /**
  * GET /api/orders/export?event_id=xxx&status=completed

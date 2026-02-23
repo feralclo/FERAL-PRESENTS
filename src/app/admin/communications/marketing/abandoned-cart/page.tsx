@@ -1631,7 +1631,7 @@ export default function AbandonedCartPage() {
     logo_url: "",
     logo_height: 48,
     accent_color: "#ff0033",
-    from_name: "FERAL PRESENTS",
+    from_name: "",
   });
   // Preview version counter — increment to force iframe reload when branding changes
   const [previewVersion, setPreviewVersion] = useState(0);
@@ -1675,7 +1675,7 @@ export default function AbandonedCartPage() {
           logo_height: (e.logo_height as number) || 48,
           logo_aspect_ratio: e.logo_aspect_ratio as number | undefined,
           accent_color: (e.accent_color as string) || "#ff0033",
-          from_name: (e.from_name as string) || "FERAL PRESENTS",
+          from_name: (e.from_name as string) || "",
         });
       }
     } catch {

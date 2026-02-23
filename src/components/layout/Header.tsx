@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useBranding } from "@/hooks/useBranding";
 import "@/styles/header.css";
 
 type MenuPhase = "closed" | "opening" | "open" | "closing";
@@ -14,6 +15,7 @@ const NAV_LINKS = [
 ];
 
 export function Header() {
+  const branding = useBranding();
   const [phase, setPhase] = useState<MenuPhase>("closed");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -75,8 +77,8 @@ export function Header() {
       <Link href="/" className="nav__logo" onClick={closeMenu}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/FERAL LOGO.svg"
-          alt="FERAL PRESENTS"
+          src={branding.logo_url || "/images/FERAL LOGO.svg"}
+          alt={branding.org_name || "Entry"}
           className="nav__logo-img"
           data-branding="logo"
         />

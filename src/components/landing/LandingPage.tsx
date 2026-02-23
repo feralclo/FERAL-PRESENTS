@@ -39,7 +39,7 @@ export function LandingPage({ events, heroSettings }: LandingPageProps) {
   useEffect(() => {
     push({
       event: "view_content",
-      content_name: "FERAL PRESENTS — Home",
+      content_name: "Home",
       content_type: "website",
       currency: "GBP",
     });

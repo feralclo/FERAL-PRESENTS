@@ -775,7 +775,7 @@ function createGoogleWalletJwt(
     aud: "google",
     typ: "savetowallet",
     iat: now,
-    origins: ["https://feralpresents.com"],
+    origins: [process.env.NEXT_PUBLIC_SITE_URL || "https://feralpresents.com"],
     payload: {
       eventTicketObjects: passObjects,
     },

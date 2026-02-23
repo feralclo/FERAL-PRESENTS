@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { subscribeToKlaviyo, identifyInKlaviyo } from "@/lib/klaviyo";
 import { storeMetaMatchData } from "@/hooks/useMetaTracking";
-import { DISCOUNT_CODE, POPUP_DISMISS_DAYS } from "@/lib/constants";
+import { POPUP_DISMISS_DAYS } from "@/lib/constants";
 import "@/styles/popup.css";
 
 type Screen = "commitment" | "email" | "code";
@@ -257,7 +257,7 @@ export function DiscountPopup({
               Here&apos;s your exclusive discount code. Use it at checkout.
             </p>
             <div className="dp-code">
-              <span className="dp-code__value">{DISCOUNT_CODE}</span>
+              <span className="dp-code__value">DISCOUNT</span>
             </div>
             <div className="dp-urgency">
               <div className="dp-urgency__label">Code expires in</div>

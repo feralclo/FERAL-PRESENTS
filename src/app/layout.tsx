@@ -12,11 +12,11 @@ import "@/styles/effects.css";
 import "@/styles/cookie.css";
 
 export const metadata: Metadata = {
-  title: "FERAL PRESENTS",
+  title: "Entry — Events & Tickets",
   description:
-    "Underground events, curated experiences. Tickets, merch, and more.",
+    "Events, tickets, and experiences. Powered by Entry.",
   icons: {
-    icon: "/images/FERAL LOGO.svg",
+    icon: "/favicon.ico",
   },
 };
 
@@ -27,9 +27,10 @@ export default async function RootLayout({
 }) {
   const orgId = await getOrgId();
 
-  // Fetch Meta Pixel ID — must be in <head> for Pixel Helper detection.
-  // This is a single lightweight query, cached for the request lifecycle.
+  // Fetch marketing settings — Meta Pixel + GTM ID per tenant.
+  // Single lightweight query, cached for the request lifecycle.
   let pixelId: string | null = null;
+  let gtmId: string | null = GTM_ID || null;
   try {
     const supabase = await getSupabaseAdmin();
     if (supabase) {
@@ -42,9 +43,12 @@ export default async function RootLayout({
       if (marketing?.meta_tracking_enabled && marketing.meta_pixel_id) {
         pixelId = marketing.meta_pixel_id;
       }
+      if (marketing?.gtm_id) {
+        gtmId = marketing.gtm_id;
+      }
     }
   } catch {
-    // Silent — pixel is non-critical, page must still render
+    // Silent — pixel/GTM are non-critical, page must still render
   }
 
   return (
@@ -86,42 +90,48 @@ export default async function RootLayout({
         />
 
         {/* GTM Consent Mode defaults — track by default, revoke on explicit opt-out */}
-        <Script id="gtm-consent-defaults" strategy="beforeInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('consent', 'default', {
-              'ad_storage': 'granted',
-              'ad_user_data': 'granted',
-              'ad_personalization': 'granted',
-              'analytics_storage': 'granted',
-              'functionality_storage': 'granted',
-              'security_storage': 'granted'
-            });
-          `}
-        </Script>
+        {gtmId && (
+          <Script id="gtm-consent-defaults" strategy="beforeInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('consent', 'default', {
+                'ad_storage': 'granted',
+                'ad_user_data': 'granted',
+                'ad_personalization': 'granted',
+                'analytics_storage': 'granted',
+                'functionality_storage': 'granted',
+                'security_storage': 'granted'
+              });
+            `}
+          </Script>
+        )}
 
-        {/* Google Tag Manager */}
-        <Script id="gtm-script" strategy="afterInteractive">
-          {`
-            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer','${GTM_ID}');
-          `}
-        </Script>
+        {/* Google Tag Manager — per-tenant ID from marketing settings */}
+        {gtmId && (
+          <Script id="gtm-script" strategy="afterInteractive">
+            {`
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','${gtmId}');
+            `}
+          </Script>
+        )}
       </head>
       <body>
         {/* GTM noscript fallback */}
-        <noscript>
-          <iframe
-            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          />
-        </noscript>
+        {gtmId && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
 
         <Scanlines />
         <OrgProvider orgId={orgId}>

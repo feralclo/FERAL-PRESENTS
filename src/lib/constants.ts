@@ -101,17 +101,15 @@ export function stripeAccountKey(orgId: string): string {
   return `${orgId}_stripe_account`;
 }
 
-// Klaviyo
-export const KLAVIYO_LIST_ID =
-  process.env.NEXT_PUBLIC_KLAVIYO_LIST_ID || "SnE86f";
-export const KLAVIYO_COMPANY_ID =
-  process.env.NEXT_PUBLIC_KLAVIYO_COMPANY_ID || "Y8FS6L";
+// Klaviyo — env-var only, no hardcoded fallbacks.
+// Per-tenant Klaviyo is planned via {org_id}_marketing settings.
+export const KLAVIYO_LIST_ID = process.env.NEXT_PUBLIC_KLAVIYO_LIST_ID || "";
+export const KLAVIYO_COMPANY_ID = process.env.NEXT_PUBLIC_KLAVIYO_COMPANY_ID || "";
 
-// GTM
-export const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || "GTM-MPZMXXBD";
+// GTM — env-var fallback; per-tenant GTM ID read from {org_id}_marketing in layout.tsx
+export const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || "";
 
-// Discount
-export const DISCOUNT_CODE = "FERALRAVER10";
+// Popup
 export const POPUP_DISMISS_DAYS = 30;
 
 // Fonts

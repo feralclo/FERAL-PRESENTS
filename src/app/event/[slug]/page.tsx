@@ -63,11 +63,11 @@ export async function generateMetadata({
           ? { images: [event.cover_image] }
           : {}),
       },
-      keywords: ["techno events", "rave", "FERAL", "tickets"],
+      keywords: ["events", "tickets", "live music"],
     };
   }
 
-  return { title: "FERAL PRESENTS — Event" };
+  return { title: "Event" };
 }
 
 export default async function EventPage({

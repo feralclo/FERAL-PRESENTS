@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         business_profile: {
           name: business_name || undefined,
           mcc: "7922", // Theatrical Producers and Ticket Agencies
-          url: "https://feralpresents.com",
+          url: process.env.NEXT_PUBLIC_SITE_URL || "https://feralpresents.com",
         },
         settings: {
           payouts: {

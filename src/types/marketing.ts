@@ -4,6 +4,9 @@ export interface MarketingSettings {
   meta_capi_token?: string;
   meta_tracking_enabled?: boolean;
   meta_test_event_code?: string;
+  gtm_id?: string;
+  klaviyo_list_id?: string;
+  klaviyo_company_id?: string;
 }
 
 /** Shape of a single Meta Conversions API event */

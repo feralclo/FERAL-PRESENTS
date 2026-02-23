@@ -45,15 +45,15 @@ import "@/styles/admin.css";
 /* ─── Constants ─── */
 
 const DEFAULT_BRANDING: BrandingSettings = {
-  org_name: "FERAL PRESENTS",
-  logo_url: "/images/FERAL%20LOGO.svg",
-  accent_color: "#ff0033",
+  org_name: "Entry",
+  logo_url: "",
+  accent_color: "#8B5CF6",
   background_color: "#0e0e0e",
   card_color: "#1a1a1a",
   text_color: "#ffffff",
   heading_font: "Space Mono",
   body_font: "Inter",
-  copyright_text: "FERAL PRESENTS. ALL RIGHTS RESERVED.",
+  copyright_text: "",
   support_email: "",
   social_links: { instagram: "", twitter: "", tiktok: "", website: "" },
 };

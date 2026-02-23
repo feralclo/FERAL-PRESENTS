@@ -211,7 +211,7 @@ export function AboutSection() {
               ENERGY OF THE
             </span>
             <span className="about-title-line block text-primary">
-              FERAL FAMILY
+              OUR FAMILY
             </span>
           </h2>
         </div>

@@ -19,12 +19,15 @@ export default function EventLoading() {
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/images/FERAL%20LOGO.svg"
-        alt="FERAL PRESENTS"
-        width={140}
-        height={40}
-        style={{ opacity: 0.9, marginBottom: 48 }}
+      <div
+        style={{
+          width: 140,
+          height: 40,
+          marginBottom: 48,
+          opacity: 0.15,
+          background: "rgba(255, 255, 255, 0.1)",
+          borderRadius: 4,
+        }}
       />
       <div
         style={{

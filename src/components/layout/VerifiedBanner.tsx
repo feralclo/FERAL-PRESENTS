@@ -1,9 +1,15 @@
+"use client";
+
+import { useBranding } from "@/hooks/useBranding";
+
 /**
  * Platform-level trust banner — brand-agnostic frosted glass.
  * Shows "VERIFIED · Official [Org] Ticket Store" across all public pages.
  * Styled via header.css (.announcement-banner*).
  */
 export function VerifiedBanner() {
+  const branding = useBranding();
+
   return (
     <div className="announcement-banner">
       <span className="announcement-banner__badge">
@@ -26,7 +32,7 @@ export function VerifiedBanner() {
       </span>
       <span className="announcement-banner__divider" />
       <span className="announcement-banner__text">
-        Official FERAL Ticket Store
+        Official {branding.org_name || "Entry"} Ticket Store
       </span>
       <span className="announcement-banner__pulse" />
     </div>

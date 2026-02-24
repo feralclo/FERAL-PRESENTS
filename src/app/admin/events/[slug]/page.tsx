@@ -180,6 +180,8 @@ export default function EventEditorPage() {
           queue_enabled: !!event.queue_enabled,
           queue_duration_seconds: event.queue_duration_seconds ?? 45,
           queue_window_minutes: event.queue_window_minutes ?? 60,
+          queue_title: event.queue_title || null,
+          queue_subtitle: event.queue_subtitle || null,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),
             name: tt.name,

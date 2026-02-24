@@ -312,6 +312,26 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
                     </p>
                   </div>
                   <div className="space-y-2">
+                    <Label>Queue title</Label>
+                    <Input
+                      value={event.queue_title || ""}
+                      onChange={(e) =>
+                        updateEvent("queue_title", e.target.value || null)
+                      }
+                      placeholder="You're in the queue"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Queue subtitle</Label>
+                    <Input
+                      value={event.queue_subtitle || ""}
+                      onChange={(e) =>
+                        updateEvent("queue_subtitle", e.target.value || null)
+                      }
+                      placeholder="Securing your spot — don't close this tab"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Queue active window (minutes)</Label>
                     <Input
                       type="number"

@@ -11,9 +11,11 @@ interface AuraQueuePageProps {
   eventId: string;
   durationSeconds: number;
   onReleased: () => void;
+  title?: string | null;
+  subtitle?: string | null;
 }
 
-export function AuraQueuePage({ eventId, durationSeconds, onReleased }: AuraQueuePageProps) {
+export function AuraQueuePage({ eventId, durationSeconds, onReleased, title, subtitle }: AuraQueuePageProps) {
   const queue = useHypeQueue({
     eventId,
     durationSeconds,
@@ -45,7 +47,7 @@ export function AuraQueuePage({ eventId, durationSeconds, onReleased }: AuraQueu
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold tracking-tight">
-            {celebrating ? "You're in!" : "You're in the queue"}
+            {celebrating ? "You're in!" : (title || "You're in the queue")}
           </h2>
           <Badge
             variant={celebrating ? "default" : "secondary"}
@@ -117,7 +119,7 @@ export function AuraQueuePage({ eventId, durationSeconds, onReleased }: AuraQueu
         {/* Footer note */}
         {!celebrating && (
           <p className="text-[11px] text-center text-muted-foreground/60">
-            Don&apos;t close this tab
+            {subtitle || "Don\u0027t close this tab"}
           </p>
         )}
       </CardContent>

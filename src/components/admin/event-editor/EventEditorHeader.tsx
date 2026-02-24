@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ExternalLink, Eye, Ticket, Save, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ExternalLink, Eye, Ticket, Users, Save, Trash2, Loader2 } from "lucide-react";
 import type { Event } from "@/types/events";
 
 const STATUS_VARIANT = {
@@ -30,6 +30,8 @@ export function EventEditorHeader({
 }: EventEditorHeaderProps) {
   const isAnnouncement =
     event.tickets_live_at && new Date(event.tickets_live_at) > new Date();
+  const hasQueueEnabled = !!event.queue_enabled;
+  const hasSplitPreview = isAnnouncement || hasQueueEnabled;
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,7 @@ export function EventEditorHeader({
 
   const previewUrl = `/event/${event.slug}/?t=${Date.now()}`;
   const ticketPreviewUrl = `/event/${event.slug}/?t=${Date.now()}&preview=tickets`;
+  const queuePreviewUrl = `/event/${event.slug}/?t=${Date.now()}&preview=queue`;
 
   return (
     <div className="space-y-3">
@@ -83,8 +86,8 @@ export function EventEditorHeader({
             Delete
           </Button>
 
-          {/* Preview button — split when in announcement mode */}
-          {isAnnouncement ? (
+          {/* Preview button — split when announcement or queue is enabled */}
+          {hasSplitPreview ? (
             <div className="relative" ref={popoverRef}>
               <div className="flex items-stretch">
                 <Button
@@ -113,19 +116,36 @@ export function EventEditorHeader({
               </div>
               {previewOpen && (
                 <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-md border border-border bg-card shadow-lg py-1">
-                  <a
-                    href={previewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
-                    onClick={() => setPreviewOpen(false)}
-                  >
-                    <Eye size={13} className="text-muted-foreground shrink-0" />
-                    <div>
-                      <div className="font-medium">Announcement Page</div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">What visitors see now</div>
-                    </div>
-                  </a>
+                  {isAnnouncement && (
+                    <a
+                      href={previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
+                      onClick={() => setPreviewOpen(false)}
+                    >
+                      <Eye size={13} className="text-muted-foreground shrink-0" />
+                      <div>
+                        <div className="font-medium">Announcement Page</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">What visitors see now</div>
+                      </div>
+                    </a>
+                  )}
+                  {hasQueueEnabled && (
+                    <a
+                      href={queuePreviewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
+                      onClick={() => setPreviewOpen(false)}
+                    >
+                      <Users size={13} className="text-muted-foreground shrink-0" />
+                      <div>
+                        <div className="font-medium">Queue Page</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Preview the hype queue</div>
+                      </div>
+                    </a>
+                  )}
                   <a
                     href={ticketPreviewUrl}
                     target="_blank"

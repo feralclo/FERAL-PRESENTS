@@ -148,7 +148,7 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
                     You&apos;re in!
                   </>
                 ) : (
-                  "You're in the queue"
+                  event.queue_title || "You're in the queue"
                 )}
               </span>
             </div>
@@ -257,7 +257,7 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
 
           {/* Privacy note */}
           <p className="mt-5 font-[family-name:var(--font-sans)] text-[11px] text-foreground/20 tracking-wide">
-            {celebrating ? "" : "Securing your spot — don't close this tab"}
+            {celebrating ? "" : (event.queue_subtitle || "Securing your spot — don't close this tab")}
           </p>
         </div>
       </main>

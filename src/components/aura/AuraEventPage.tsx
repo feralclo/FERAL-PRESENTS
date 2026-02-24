@@ -45,11 +45,13 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   const { settings } = useSettings();
   const branding = useBranding();
 
-  // Preview mode: ?preview=tickets bypasses announcement mode
-  const [isTicketPreview] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("preview") === "tickets";
+  // Preview mode: ?preview=tickets bypasses announcement+queue, ?preview=queue forces queue
+  const [previewMode] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("preview") as string | null;
   });
+  const isTicketPreview = previewMode === "tickets";
+  const isQueuePreview = previewMode === "queue";
 
   // Cart state
   const [cartTotal, setCartTotal] = useState(0);
@@ -88,12 +90,20 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   const queueState = getQueueState(event);
   const [queueReleased, setQueueReleased] = useState(() => {
     if (typeof window === "undefined") return false;
+    // In queue preview, clear localStorage so queue always shows fresh
+    if (isQueuePreview) {
+      try {
+        localStorage.removeItem(`feral_queue_passed_${event.id}`);
+        localStorage.removeItem(`feral_queue_entered_${event.id}`);
+      } catch { /* ignore */ }
+      return false;
+    }
     try {
       return !!localStorage.getItem(`feral_queue_passed_${event.id}`);
     } catch { return false; }
   });
 
-  const showQueue = queueState.isInQueueWindow && !queueReleased && !isTicketPreview;
+  const showQueue = isQueuePreview || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
 
   const ticketGroups = (settings?.ticket_groups as string[]) || undefined;
   const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null>) || undefined;
@@ -160,9 +170,11 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Preview mode banner — sticky above header */}
-      {isTicketPreview && isAnnouncement && (
+      {(isTicketPreview || isQueuePreview) && (
         <div className="sticky top-0 z-[51] bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-center py-2.5 px-4 text-[11px] tracking-[0.08em] font-medium shadow-lg">
-          PREVIEW MODE — This is what buyers will see when tickets go live
+          {isQueuePreview
+            ? "PREVIEW MODE — This is what buyers see in the queue"
+            : "PREVIEW MODE — This is what buyers will see when tickets go live"}
         </div>
       )}
       <VerifiedBanner />
@@ -186,7 +198,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
         {/* Tickets — widget provides its own heading, Announcement widget, or Queue */}
         <section id="tickets" className="scroll-mt-20">
-          {isAnnouncement && ticketsLiveAt && !isTicketPreview ? (
+          {isAnnouncement && ticketsLiveAt && !isTicketPreview && !isQueuePreview ? (
             <AuraAnnouncementWidget
               eventId={event.id}
               ticketsLiveAt={ticketsLiveAt}
@@ -196,8 +208,10 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
           ) : showQueue ? (
             <AuraQueuePage
               eventId={event.id}
-              durationSeconds={queueState.queueDurationSeconds}
+              durationSeconds={isQueuePreview ? (event.queue_duration_seconds ?? 45) : queueState.queueDurationSeconds}
               onReleased={() => setQueueReleased(true)}
+              title={event.queue_title}
+              subtitle={event.queue_subtitle}
             />
           ) : (
             <AuraTicketWidget

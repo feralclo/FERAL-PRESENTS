@@ -56,6 +56,10 @@ export interface Event {
   queue_duration_seconds?: number | null;
   /** How many minutes after tickets_live_at the queue remains active (default 60) */
   queue_window_minutes?: number | null;
+  /** Custom title for the queue page. NULL = "You're in the queue" */
+  queue_title?: string | null;
+  /** Custom subtitle for the queue page. NULL = "Securing your spot — don't close this tab" */
+  queue_subtitle?: string | null;
   created_at: string;
   updated_at: string;
   /** When true, lineup is displayed alphabetically (A-Z) and manual reordering is locked */

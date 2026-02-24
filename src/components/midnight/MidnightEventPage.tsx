@@ -43,11 +43,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const headerHidden = useHeaderScroll();
   const revealRef = useScrollReveal();
 
-  // Preview mode: ?preview=tickets bypasses announcement early-return
-  const [isTicketPreview] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("preview") === "tickets";
+  // Preview mode: ?preview=tickets bypasses announcement+queue, ?preview=queue forces queue
+  const [previewMode] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("preview") as string | null;
   });
+  const isTicketPreview = previewMode === "tickets";
+  const isQueuePreview = previewMode === "queue";
 
   // Extract release config from settings (needs to be before useCart)
   const ticketGroupMap =
@@ -429,27 +431,42 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const queueState = getQueueState(event);
   const [queueReleased, setQueueReleased] = useState(() => {
     if (typeof window === "undefined") return false;
+    // In queue preview, clear localStorage so queue always shows fresh
+    if (isQueuePreview) {
+      try {
+        localStorage.removeItem(`feral_queue_passed_${event.id}`);
+        localStorage.removeItem(`feral_queue_entered_${event.id}`);
+      } catch { /* ignore */ }
+      return false;
+    }
     try {
       return !!localStorage.getItem(`feral_queue_passed_${event.id}`);
     } catch { return false; }
   });
 
-  const showQueue = queueState.isInQueueWindow && !queueReleased && !isTicketPreview;
+  const showQueue = isQueuePreview || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
 
   // Full-screen announcement page — early return before normal layout
-  // Skip if admin is previewing tickets via ?preview=tickets
-  if (isAnnouncement && ticketsLiveAt && !isTicketPreview) {
+  // Skip if admin is previewing tickets or queue via ?preview=tickets|queue
+  if (isAnnouncement && ticketsLiveAt && !isTicketPreview && !isQueuePreview) {
     return <MidnightAnnouncementPage event={event} ticketsLiveAt={ticketsLiveAt} settings={settings} />;
   }
 
   // Hype queue page — early return between announcement and tickets
   if (showQueue) {
     return (
-      <MidnightQueuePage
-        event={event}
-        durationSeconds={queueState.queueDurationSeconds}
-        onReleased={() => setQueueReleased(true)}
-      />
+      <>
+        {isQueuePreview && (
+          <div className="fixed top-0 left-0 right-0 z-[1001] bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-center py-2.5 px-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] font-medium shadow-lg">
+            PREVIEW MODE — This is what buyers see in the queue
+          </div>
+        )}
+        <MidnightQueuePage
+          event={event}
+          durationSeconds={isQueuePreview ? (event.queue_duration_seconds ?? 45) : queueState.queueDurationSeconds}
+          onReleased={() => setQueueReleased(true)}
+        />
+      </>
     );
   }
 

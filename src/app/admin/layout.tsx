@@ -187,10 +187,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isLoginPage = pathname.startsWith("/admin/login");
   const isInvitePage = pathname.startsWith("/admin/invite");
   const isSignupPage = pathname.startsWith("/admin/signup");
+  const isOnboardingPage = pathname.startsWith("/admin/onboarding");
   const isEditorPage = pathname.startsWith("/admin/ticketstore/editor");
   const isBackendRoute = pathname.startsWith("/admin/backend");
   const isSettingsRoute = pathname.startsWith("/admin/settings");
-  const isBypassRoute = isLoginPage || isInvitePage || isSignupPage || isEditorPage || isBackendRoute || isSettingsRoute;
+  const isBypassRoute = isLoginPage || isInvitePage || isSignupPage || isOnboardingPage || isEditorPage || isBackendRoute || isSettingsRoute;
 
   // Fetch user email + platform owner flag on mount
   useEffect(() => {
@@ -229,6 +230,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   // Signup is a standalone page (unauthenticated)
   if (isSignupPage) return <>{children}</>;
+
+  // Onboarding wizard is full-screen (authenticated but no org yet)
+  if (isOnboardingPage) return <>{children}</>;
 
   // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
   if (isEditorPage) return <>{children}</>;

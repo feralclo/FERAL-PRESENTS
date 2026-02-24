@@ -18,10 +18,10 @@ function getSignupClient() {
 }
 
 /**
- * POST /api/auth/signup — Self-service org signup (email + password).
+ * POST /api/auth/signup — Self-service signup (email + password).
  *
- * Creates an auth user, provisions a new org (org_users + subdomain + Starter plan),
- * and returns session tokens for auto-login.
+ * When org_name is provided: creates auth user + provisions org (backward compat).
+ * When org_name is omitted: creates auth user only, returns session for onboarding flow.
  */
 export async function POST(request: NextRequest) {
   const blocked = limiter(request);
@@ -36,12 +36,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
     }
 
-    if (!password || typeof password !== "string" || password.length < 6 || password.length > 72) {
-      return NextResponse.json({ error: "Password must be 6-72 characters" }, { status: 400 });
-    }
-
-    if (!org_name || typeof org_name !== "string" || org_name.trim().length < 2 || org_name.trim().length > 50) {
-      return NextResponse.json({ error: "Organization name must be 2-50 characters" }, { status: 400 });
+    if (!password || typeof password !== "string" || password.length < 8 || password.length > 72) {
+      return NextResponse.json({ error: "Password must be 8-72 characters" }, { status: 400 });
     }
 
     const supabase = getSignupClient();
@@ -49,28 +45,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 
-    // Slugify and validate
-    let slug = slugify(org_name.trim());
-    if (slug.length < 3) {
-      return NextResponse.json({ error: "Organization name must produce a valid URL slug (at least 3 characters)" }, { status: 400 });
-    }
+    // If org_name is provided, validate and provision (backward compat)
+    const hasOrgName = org_name && typeof org_name === "string" && org_name.trim().length >= 2;
 
-    // Check availability, auto-suffix on collision
-    const validation = await validateSlug(slug);
-    if (!validation.available) {
-      // Try appending suffixes -2 through -99
-      let found = false;
-      for (let i = 2; i <= 99; i++) {
-        const candidate = `${slug}-${i}`;
-        const check = await validateSlug(candidate);
-        if (check.available) {
-          slug = candidate;
-          found = true;
-          break;
-        }
+    let slug: string | null = null;
+
+    if (hasOrgName) {
+      if (org_name.trim().length > 50) {
+        return NextResponse.json({ error: "Organization name must be 2-50 characters" }, { status: 400 });
       }
-      if (!found) {
-        return NextResponse.json({ error: "Could not find an available slug for this organization name. Please try a different name." }, { status: 409 });
+
+      slug = slugify(org_name.trim());
+      if (slug.length < 3) {
+        return NextResponse.json({ error: "Organization name must produce a valid URL slug (at least 3 characters)" }, { status: 400 });
+      }
+
+      // Check availability, auto-suffix on collision
+      const validation = await validateSlug(slug);
+      if (!validation.available) {
+        let found = false;
+        for (let i = 2; i <= 99; i++) {
+          const candidate = `${slug}-${i}`;
+          const check = await validateSlug(candidate);
+          if (check.available) {
+            slug = candidate;
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          return NextResponse.json({ error: "Could not find an available slug for this organization name. Please try a different name." }, { status: 409 });
+        }
       }
     }
 
@@ -105,24 +110,25 @@ export async function POST(request: NextRequest) {
 
     const authUserId = authData.user.id;
 
-    // Provision org
-    try {
-      await provisionOrg({
-        authUserId,
-        email: finalEmail,
-        orgSlug: slug,
-        orgName: org_name.trim(),
-        firstName: first_name?.trim() || undefined,
-        lastName: last_name?.trim() || undefined,
-      });
-    } catch (provisionError) {
-      console.error("[signup] Provisioning failed, cleaning up auth user:", provisionError);
-      // Cleanup: delete the auth user to prevent orphans
-      await supabase.auth.admin.deleteUser(authUserId);
-      return NextResponse.json(
-        { error: "Failed to create organization. Please try again." },
-        { status: 500 }
-      );
+    // Provision org only if org_name was provided
+    if (hasOrgName && slug) {
+      try {
+        await provisionOrg({
+          authUserId,
+          email: finalEmail,
+          orgSlug: slug,
+          orgName: org_name.trim(),
+          firstName: first_name?.trim() || undefined,
+          lastName: last_name?.trim() || undefined,
+        });
+      } catch (provisionError) {
+        console.error("[signup] Provisioning failed, cleaning up auth user:", provisionError);
+        await supabase.auth.admin.deleteUser(authUserId);
+        return NextResponse.json(
+          { error: "Failed to create organization. Please try again." },
+          { status: 500 }
+        );
+      }
     }
 
     // Sign in to get session tokens
@@ -143,9 +149,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       data: {
-        org_id: slug,
-        org_name: org_name.trim(),
-        subdomain: `${slug}.entry.events`,
+        org_id: slug || null,
+        org_name: hasOrgName ? org_name.trim() : null,
+        subdomain: slug ? `${slug}.entry.events` : null,
         session,
       },
     });

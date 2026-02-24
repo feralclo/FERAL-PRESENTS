@@ -106,6 +106,11 @@ export function planKey(orgId: string): string {
   return `${orgId}_plan`;
 }
 
+/** Generate the onboarding data key for a given org */
+export function onboardingKey(orgId: string): string {
+  return `${orgId}_onboarding`;
+}
+
 /** Platform-level Stripe billing config key (stores product_id + price_id) */
 export function platformBillingKey(): string {
   return "platform_stripe_billing";

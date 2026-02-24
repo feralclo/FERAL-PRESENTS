@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES } from "@/lib/constants";
-import { slugify, validateSlug, provisionOrg } from "@/lib/signup";
 
 /**
  * GET /auth/callback
@@ -13,6 +12,8 @@ import { slugify, validateSlug, provisionOrg } from "@/lib/signup";
  * 3. Auto-activates invited users (links auth_user_id, clears invite token)
  * 4. Tags is_admin in app_metadata
  * 5. Redirects to admin dashboard (or login with error)
+ *
+ * For signup flow: tags is_admin and redirects to /admin/onboarding/ (org provisioned later).
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -106,75 +107,31 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (orgError || !orgUser) {
-    // ── Signup flow: provision a new org for this Google user ──
+    // ── Signup flow: tag is_admin and redirect to onboarding ──
     if (isSignupFlow) {
-      const orgNameCookie = request.cookies.get("entry_signup_org")?.value;
-      const orgName = orgNameCookie ? decodeURIComponent(orgNameCookie) : null;
-
-      if (!orgName || orgName.trim().length < 2) {
-        // No org name cookie — redirect back to signup with error
-        await supabase.auth.signOut();
-        const errorResponse = NextResponse.redirect(
-          `${origin}/admin/signup/?error=${encodeURIComponent("Organization name was lost during sign-in. Please try again.")}`
-        );
-        request.cookies.getAll().forEach((cookie) => {
-          if (cookie.name.startsWith("sb-")) {
-            errorResponse.cookies.delete(cookie.name);
-          }
-        });
-        return errorResponse;
-      }
-
       try {
-        // Slugify and find available slug
-        let slug = slugify(orgName.trim());
-        if (slug.length < 3) slug = "my-org";
-
-        const validation = await validateSlug(slug);
-        if (!validation.available) {
-          for (let i = 2; i <= 99; i++) {
-            const candidate = `${slug}-${i}`;
-            const check = await validateSlug(candidate);
-            if (check.available) {
-              slug = candidate;
-              break;
-            }
-          }
-        }
-
-        // Provision the org
-        await provisionOrg({
-          authUserId: user.id,
-          email: user.email,
-          orgSlug: slug,
-          orgName: orgName.trim(),
-          firstName: user.user_metadata?.full_name?.split(" ")[0] || undefined,
-          lastName: user.user_metadata?.full_name?.split(" ").slice(1).join(" ") || undefined,
-        });
-
         // Tag is_admin in app_metadata
         await adminClient.auth.admin.updateUserById(user.id, {
           app_metadata: { is_admin: true },
         });
 
-        // Clear the signup cookie and redirect to dashboard with welcome
-        const signupResponse = NextResponse.redirect(`${origin}/admin/?welcome=1`);
+        // Redirect to onboarding wizard (org will be provisioned there)
+        const onboardingResponse = NextResponse.redirect(`${origin}/admin/onboarding/`);
         // Copy session cookies
         response.cookies.getAll().forEach((cookie) => {
-          signupResponse.cookies.set(cookie.name, cookie.value, {
+          onboardingResponse.cookies.set(cookie.name, cookie.value, {
             path: "/",
             sameSite: "lax" as const,
             secure: process.env.NODE_ENV === "production",
             maxAge: 60 * 60 * 24 * 30,
           });
         });
-        signupResponse.cookies.delete("entry_signup_org");
-        return signupResponse;
+        return onboardingResponse;
       } catch (err) {
-        console.error("[auth/callback] Signup provisioning failed:", err);
+        console.error("[auth/callback] Signup flow failed:", err);
         await supabase.auth.signOut();
         const errorResponse = NextResponse.redirect(
-          `${origin}/admin/signup/?error=${encodeURIComponent("Failed to create your organization. Please try again.")}`
+          `${origin}/admin/signup/?error=${encodeURIComponent("Failed to set up your account. Please try again.")}`
         );
         request.cookies.getAll().forEach((cookie) => {
           if (cookie.name.startsWith("sb-")) {

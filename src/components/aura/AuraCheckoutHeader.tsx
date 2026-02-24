@@ -28,9 +28,8 @@ export function AuraCheckoutHeader({ slug }: AuraCheckoutHeaderProps) {
             <img
               src={branding.logo_url}
               alt={branding.org_name || "Entry"}
-              className="h-6"
               data-branding="logo"
-              style={branding.logo_width ? { width: branding.logo_width, height: "auto" } : undefined}
+              style={{ height: Math.min(branding.logo_height || 24, 32), width: "auto", maxWidth: 160, objectFit: "contain" }}
             />
           ) : (
             <span className="text-sm font-semibold tracking-wide text-foreground">

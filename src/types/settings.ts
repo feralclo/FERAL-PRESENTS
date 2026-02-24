@@ -42,7 +42,9 @@ export interface BrandingSettings {
   org_name?: string;
   /** Logo URL or base64 (used in checkout header, emails, PDF tickets) */
   logo_url?: string;
-  /** Logo width in pixels for checkout header (default: auto) */
+  /** Logo display height in pixels (default: 48). Each context caps to its own max. */
+  logo_height?: number;
+  /** @deprecated Use logo_height instead. Kept for backwards compat in existing data. */
   logo_width?: number;
   /** Primary accent color (hex) — used for buttons, links, highlights */
   accent_color?: string;

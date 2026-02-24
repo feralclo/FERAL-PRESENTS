@@ -29,9 +29,8 @@ export function AuraHeader({ eventName }: AuraHeaderProps) {
             <img
               src={branding?.logo_url || ""}
               alt={branding?.org_name || "Entry"}
-              className="h-5"
               data-branding="logo"
-              style={branding?.logo_width ? { width: branding.logo_width, height: "auto" } : undefined}
+              style={{ height: Math.min(branding?.logo_height || 20, 28), width: "auto", maxWidth: 140, objectFit: "contain" }}
             />
           </a>
 

@@ -193,8 +193,8 @@ export function OrderConfirmation({
             <img
               src={branding.logo_url}
               alt={branding.org_name || "Entry"}
-              className="h-[52px] max-sm:h-10 w-auto block"
-              style={branding.logo_width ? { width: branding.logo_width } : undefined}
+              className="w-auto block"
+              style={{ height: Math.min(branding.logo_height || 40, 48), maxWidth: 200, objectFit: "contain" }}
             />
           ) : (
             <span className="font-[family-name:var(--font-mono)] text-lg tracking-wide text-white uppercase">

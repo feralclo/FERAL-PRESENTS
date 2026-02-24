@@ -197,9 +197,10 @@ async function analyzeWithClaude(data: {
 }): Promise<Omit<PaymentDigest, "generated_at" | "period_hours" | "raw_stats"> | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.warn("[payment-digest] ANTHROPIC_API_KEY not configured");
+    console.warn("[payment-digest] No ANTHROPIC_API_KEY env var");
     return null;
   }
+  console.log(`[payment-digest] Key found (${apiKey.length} chars, prefix: ${apiKey.slice(0, 10)}...)`);
 
   const prompt = `You are an expert payment operations analyst for a live event ticketing platform called Entry. Analyse the following payment health data from the last ${data.periodHours} hours and produce a concise diagnostic report.
 
@@ -290,7 +291,8 @@ Guidelines:
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("[payment-digest] Claude API error:", response.status, errText);
+      // Log status and first 200 chars to avoid Vercel truncation
+      console.error(`[payment-digest] API ${response.status}: ${errText.slice(0, 200)}`);
       return null;
     }
 

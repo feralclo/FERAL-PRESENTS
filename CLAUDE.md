@@ -76,7 +76,7 @@ src/
 │   ├── useMetaTracking.ts     # Meta Pixel + CAPI (consent-aware, stable refs)
 │   ├── useDataLayer.ts        # GTM dataLayer push (stable refs)
 │   ├── useTraffic.ts          # Supabase funnel tracking
-│   ├── useCart.ts              # Cart state: quantities, merch sizes, totals, checkout redirect
+│   ├── useCart.ts              # Cart state: quantities, merch sizes, totals, checkout redirect, sequential visibility
 │   ├── useEventTracking.ts    # Unified event tracking: Meta + GTM + CAPI + traffic (stable refs)
 │   ├── useHeaderScroll.ts     # Header hide/show on scroll
 │   ├── useScrollReveal.ts     # IntersectionObserver scroll animations
@@ -91,6 +91,7 @@ src/
 │   ├── settings.ts            # fetchSettings (server), saveSettings (client)
 │   ├── orders.ts, email.ts, email-templates.ts  # Order creation + email (Resend)
 │   ├── pdf.ts, qr.ts, ticket-utils.ts, wallet-passes.ts  # Ticket delivery (PDF, QR, Apple/Google Wallet)
+│   ├── ticket-visibility.ts    # Sequential release: getVisibleTickets(), getSequentialGroupTickets(), validateSequentialPurchase()
 │   ├── discount-codes.ts, vat.ts, rate-limit.ts  # Pricing + security
 │   ├── signup.ts              # Self-service signup: slugify(), validateSlug(), RESERVED_SLUGS, provisionOrg()
 │   ├── plans.ts               # Platform plans: PLANS constant, getOrgPlan(), getOrgPlanSettings(), ensureStripePriceExists(), updateOrgPlanSettings()
@@ -135,42 +136,42 @@ Dynamic event pages → `NativeCheckout`/`AuraCheckout` → `StripePaymentForm` 
 
 **Announcement mode**: When `isAnnouncement` is true (event has `tickets_live_at` in the future), `MidnightEventPage` does an early return rendering `MidnightAnnouncementPage` — a full-screen immersive coming-soon page with hero background, glassmorphic card, live countdown, and email signup. The old sidebar `MidnightAnnouncementWidget` is retained as fallback but no longer routed in the default flow.
 
+**Preview mode**: Admin can preview ticket pages for announcement events via `?preview=tickets` query param. Both `MidnightEventPage` and `AuraEventPage` read this param on mount and skip the announcement early-return, showing an amber "Preview Mode" banner instead. The `EventEditorHeader` renders a split preview button when the event is in announcement mode — left side opens the announcement page, chevron dropdown offers "Announcement Page" and "Ticket Page" options.
+
+### Sequential Ticket Release
+Per-group setting controlling whether all tickets show simultaneously or reveal one-at-a-time as each sells out. Pure computed state from existing `sold`/`capacity` columns — no cron or background workers.
+
+**Config**: `ticket_group_release_mode` in `EventSettings` (`site_settings` JSONB). Key = group name or `"__ungrouped__"` for ungrouped tickets. Values: `"all"` (default, show all active) or `"sequential"` (reveal one at a time). A ticket is "sold out" when `capacity != null && sold >= capacity`.
+
+**Visibility logic** (`lib/ticket-visibility.ts`):
+- `getVisibleTickets(ticketTypes, groupMap, releaseMode)` — returns only visible tickets. Sequential groups: all sold-out tickets + first non-sold-out ticket per group. "All" groups: all active tickets
+- `getSequentialGroupTickets(ticketTypes, groupName, groupMap)` — returns ALL tickets in a group (for progression bar roadmap)
+- `validateSequentialPurchase(ticketType, allTypes, groupMap, releaseMode)` — server-side: returns error string if preceding tickets aren't sold out
+
+**Integration points**:
+- `useCart()` accepts optional `releaseConfig: { groupMap, releaseMode }` → filters `activeTypes` through `getVisibleTickets()`
+- `AuraTicketWidget` filters its own `activeTypes` via `getVisibleTickets()` when `ticketGroupReleaseMode` prop is set
+- `MidnightTicketWidget` renders `MidnightTierProgression` per sequential named group (shows full roadmap including hidden tickets)
+- `payment-intent` route loads event settings, calls `validateSequentialPurchase()` per cart item → 400 if ticket not yet revealed
+
+**Admin UI** (event editor Tickets tab):
+- `GroupHeader` — release mode dropdown ("All at once" / "Sequential release") per named group, with info line
+- `TicketsTab` — release mode selector for ungrouped tickets (shown when 2+), computes `waitingForMap` for sequential tickets
+- `TicketCard` — Lock icon + "Queued" badge when waiting on a preceding ticket; capacity warning when sequential group has unlimited capacity
+
 ### Timezone System
 Admin date pickers (`DateTimePicker`) accept optional `timezone` and `showTimezone` props. When set, the picker displays and edits dates in the target timezone while storing UTC. `useOrgTimezone()` hook fetches the org's timezone from `{org_id}_general` settings. Conversion via `utcToTzLocal()` / `tzLocalToUtc()` in `lib/timezone.ts`. `TIMEZONES` list (~45 IANA zones) used by General Settings and the hook. Event editor (DetailsTab, SettingsTab) wires timezone to all date pickers automatically.
 
 ### Stripe Connect (Multi-Tenant Payments)
-- **Model**: Direct charges on connected accounts with application fee. Custom accounts (white-labeled)
-- **Platform fee**: 5% default, £0.50 min. Per-event routing: `event.stripe_account_id` → `{org_id}_stripe_account` → platform-only
-- **Currency**: GBP, EUR, USD. Always smallest unit (pence/cents) — `toSmallestUnit()` / `fromSmallestUnit()` from `lib/stripe/config.ts`
-- **VAT**: `lib/vat.ts` (inclusive/exclusive), **Discounts**: server-side validation (percentage/fixed, expiry, usage limits, per-event)
-- **Rate limiting**: Payment: 10/min/IP. Admin pages: `/admin/payments/`, `/admin/connect/` (platform owner), `/admin/finance/`
-- **Connect API routes** (`/api/stripe/connect/*`): gated by `requirePlatformOwner()`
+Direct charges on connected accounts with application fee. Per-event routing: `event.stripe_account_id` → `{org_id}_stripe_account` → platform-only. Currency: GBP/EUR/USD, always smallest unit (`toSmallestUnit()`/`fromSmallestUnit()`). VAT: `lib/vat.ts`. Discounts: server-side validation. Rate limited: 10/min/IP. Connect routes gated by `requirePlatformOwner()`.
 
 ### Platform Plans (Fee Tiers)
-Two plans: **Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min). Defined in `lib/plans.ts` (`PLANS`).
-- Plan stored in `site_settings` under `{org_id}_plan`. `getOrgPlan(orgId)` falls back to Starter if unassigned
-- Payment-intent uses `plan.fee_percent` / `plan.min_fee`. Platform owner assigns via `/admin/backend/plans/`
-- **Tenant billing**: `/admin/settings/plan/` → `POST /api/billing/checkout` (Stripe Checkout) → webhook updates plan. Portal via `/api/billing/portal`
-- **Auto-provisioning**: `ensureStripePriceExists()` creates Stripe Product+Price on first checkout, caches in `platform_stripe_billing`
-- **Webhooks**: `checkout.session.completed`, `customer.subscription.updated/deleted`, `invoice.payment_failed`
+**Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min) in `lib/plans.ts`. Stored in `{org_id}_plan`. Tenant billing: `/api/billing/checkout` → Stripe Checkout → webhook. `ensureStripePriceExists()` auto-provisions Stripe Product+Price.
 
 ### Self-Service Signup (Promoter Registration)
-New promoters can self-register at `/admin/signup/` — no invite needed.
+New promoters self-register at `/admin/signup/`. Two auth paths: email/password (`POST /api/auth/signup` → `provisionOrg()`) or Google OAuth (cookie-based → `/auth/callback/` → `provisionOrg()`).
 
-**Two auth paths:**
-- **Email/password**: `POST /api/auth/signup` → creates auth user (auto-confirmed, `is_admin: true`) → `provisionOrg()` → returns session tokens
-- **Google OAuth**: Signup page sets `entry_signup_org` cookie → `signInWithOAuth({ redirectTo: "...&signup=1" })` → `/auth/callback/` reads cookie → `provisionOrg()` → redirect to `/admin/?welcome=1`
-
-**Org provisioning** (`provisionOrg()` in `lib/signup.ts`):
-1. Insert `org_users` row: `role: "owner"`, `status: "active"`, all perms `true`
-2. Insert `domains` row: `{slug}.entry.events`, `type: "subdomain"`, `status: "active"`, `is_primary: true`
-3. Upsert `site_settings` row: `{slug}_plan` → Starter plan (`plan_id: "starter"`, `assigned_by: "self-signup"`)
-
-**Slug system:** `slugify()` converts org name to `[a-z0-9-]` (3-40 chars). `validateSlug()` checks ~50 `RESERVED_SLUGS` + queries `org_users` for collisions. Auto-suffixes `-2` through `-99` on collision. Live availability via `GET /api/auth/check-slug?slug=x` (debounced 300ms in UI).
-
-**Safety:** Rate limited 5 signups/hr/IP. Orphan cleanup if provisioning fails after auth user creation. No database migrations needed — uses existing `org_users`, `domains`, `site_settings` tables.
-
-**Dashboard welcome:** `?welcome=1` query param shows a dismissible banner on `/admin/` with "Create your first event" CTA.
+**`provisionOrg()`** (`lib/signup.ts`): creates `org_users` (owner), `domains` (`{slug}.entry.events`), `site_settings` (Starter plan). **Slug system:** `slugify()` → `[a-z0-9-]` (3-40 chars), `validateSlug()` checks ~50 reserved + collisions, auto-suffix `-2`..`-99`. Live check via `GET /api/auth/check-slug`. Rate limited 5/hr/IP. `?welcome=1` shows first-event CTA on `/admin/`.
 
 ### Multi-Tenancy: Dynamic org_id Resolution
 Every database table has an `org_id` column. Every query must filter by it. org_id is resolved dynamically per request — **never hardcode `"feral"`**.
@@ -183,32 +184,19 @@ Request → Middleware resolves org_id → sets x-org-id header → downstream r
          └─ Fallback → "feral"
 ```
 
-**Domain routing:** `admin.entry.events` = admin host (org from `org_users`). `localhost`/`*.vercel.app` = dev (admin host). `{slug}.entry.events` = tenant subdomain (wildcard). Custom domains resolved from `domains` table. Admin pages on tenant hosts redirect to `admin.entry.events`. Domain management via `/admin/settings/domains/` → Vercel API.
+**Domain routing:** `admin.entry.events` = admin host. `{slug}.entry.events` = tenant subdomain. Custom domains from `domains` table. `localhost`/`*.vercel.app` = dev. Domain management via `/admin/settings/domains/`.
 
-**Three access patterns:**
-| Context | Helper | Import |
-|---------|--------|--------|
-| Server components | `await getOrgId()` | `@/lib/org` |
-| API routes (authenticated) | `auth.orgId` from `requireAuth()` | `@/lib/auth` |
-| API routes (public) | `getOrgIdFromRequest(request)` | `@/lib/org` |
-| Client components | `useOrgId()` | `@/components/OrgProvider` |
-
-**Caching:** Middleware caches domain→org and user→org lookups in a module-level Map with 60s TTL.
-
-**Cron routes** (`/api/cron/*`) have no request context — they use `ORG_ID` constant as fallback. Future: iterate over all orgs.
-
-- Supabase RLS policies should enforce org_id isolation
-- This is non-negotiable — it's the foundation for the multi-promoter platform
+**Access patterns:** Server: `getOrgId()` (`@/lib/org`). Auth API: `auth.orgId` from `requireAuth()`. Public API: `getOrgIdFromRequest(request)`. Client: `useOrgId()`. Middleware caches lookups (60s TTL). Cron uses `ORG_ID` fallback (future: iterate all orgs). RLS should enforce org_id isolation.
 
 ### White-Label Branding System
-Org-level branding in `site_settings` under `{org_id}_branding`: logo, org name, accent/background/card/text colors, heading/body fonts, copyright. Event layout (Server Component) injects CSS vars server-side (no FOUC). Client uses `useBranding()` hook. `GET /api/branding` (public), `POST /api/branding` (admin).
+Org-level branding in `site_settings` under `{org_id}_branding`: logo, org name, colors, fonts, copyright. Event layout injects CSS vars server-side (no FOUC). Client: `useBranding()`. API: `GET/POST /api/branding`.
 
-**Centralized branding page**: `/admin/settings/branding/` — single place to upload the global logo, set accent color, org name, copyright, and support email. Auto-migrates existing email logo on first visit. On save, syncs logo to `{org_id}_email` (unless `logo_override: true`). `getEmailSettings()` falls back to `{org_id}_branding` logo if email settings has no `logo_url` and no `logo_override`. Order confirmation page shows global logo by default with "Use custom logo for this email" override toggle (`logo_override` flag in `{org_id}_email`).
+**Centralized branding page**: `/admin/settings/branding/`. On save syncs logo to `{org_id}_email` (unless `logo_override: true`). `getEmailSettings()` falls back to branding logo if no email logo and no `logo_override`.
 
 ### Settings System
 **Event data**: `events` + `ticket_types` tables
 - Event content (name, venue, dates, theme, about, lineup, images) in `events` table
-- Ticket configuration (price, capacity, sold, tier, merch) in `ticket_types` table
+- Ticket configuration (price, capacity, sold, tier, merch) in `ticket_types` table. Sequential release via `ticket_group_release_mode` in event settings
 - Marketing settings stored under key `{org_id}_marketing`
 - Branding settings stored under key `{org_id}_branding`
 
@@ -240,33 +228,13 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 
 ### Authentication & Security
 
-**Two auth systems:**
+**Two auth systems:** Admin (`/admin/*` + `/api/*`, `requireAuth()`) and Rep portal (`/rep/*` + `/api/rep-portal/*`, `requireRepAuth()`).
 
-| System | Middleware protection | Route handler | Users |
-|--------|---------------------|---------------|-------|
-| Admin | `/admin/*` pages (except `/admin/login`, `/admin/invite`, `/admin/signup`), all non-public `/api/*` | `requireAuth()` | Self-service signup (`/admin/signup/`), team invite flow (`/admin/settings/users/`), or Supabase Auth dashboard |
-| Rep portal | `/rep/*` pages, `/api/rep-portal/*` | `requireRepAuth()` | Self-signup or admin invite via `/api/reps/[id]/invite` |
+**Role flags** (Supabase `app_metadata`, additive): `is_admin` (admin access), `is_rep` (rep portal), `is_platform_owner` (Entry Backend — manual SQL). Dual-role supported.
 
-**Role flags** (in Supabase `app_metadata`, additive):
-- `is_admin: true` — set on admin login. Grants admin access. Always wins over `is_rep`.
-- `is_rep: true` — set on rep signup/invite. Grants rep portal access.
-- `is_platform_owner: true` — set manually via SQL. Grants Entry Backend access (health, Connect, platform settings). Only for the platform operator.
-- Dual-role users supported (same email can be admin + rep)
+**Auth helpers** (`lib/auth.ts`): `requireAuth()` → `{ user, orgId }` (admin). `requireRepAuth()` → `{ rep }` (rep portal). `requirePlatformOwner()` → `{ user, orgId }` (platform owner). Two layers: middleware blocks at edge, then handler verifies role.
 
-**Three auth helpers:**
-| Helper | File | Returns | Purpose |
-|--------|------|---------|---------|
-| `requireAuth()` | `lib/auth.ts` | `{ user, orgId, error }` | Admin API routes — verifies session + blocks rep-only users |
-| `requireRepAuth()` | `lib/auth.ts` | `{ rep, error }` | Rep portal API routes — verifies session + active rep row (rep.org_id available) |
-| `requirePlatformOwner()` | `lib/auth.ts` | `{ user, orgId, error }` | Platform-owner-only routes — calls `requireAuth()` then checks `is_platform_owner` flag |
-
-**Two layers of API protection:**
-1. **Middleware** (first layer) — blocks unauthenticated requests to protected routes at the edge
-2. **`requireAuth()` / `requireRepAuth()` / `requirePlatformOwner()`** (second layer) — each handler verifies auth + role independently
-
-**Public API routes (no auth):** Stripe (`payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`), `checkout/capture`, `GET events|settings|merch|branding|themes|media/[key]|health`, `POST track|meta/capi|discounts/validate`, `/api/cron/*` (CRON_SECRET), `/api/unsubscribe` (token), `orders/[id]/wallet/*` (UUID), rep public auth routes, `auth/*`, `/api/team/accept-invite` (rate limited, 5/15min).
-
-**Security headers**: `nosniff`, `SAMEORIGIN`, `XSS-Protection`, HSTS (production), strict-origin referrer, restrictive permissions policy.
+**Public API routes (no auth):** Stripe (`payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`), `checkout/capture`, `GET events|settings|merch|branding|themes|media/[key]|health`, `POST track|meta/capi|discounts/validate`, `/api/cron/*` (CRON_SECRET), `/api/unsubscribe`, `orders/[id]/wallet/*`, rep auth routes, `auth/*`, `/api/team/accept-invite`.
 
 **Rules for new routes:**
 1. Admin API routes: call `requireAuth()`, use `auth.orgId` for all queries
@@ -285,24 +253,24 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `site_settings` | Key-value config store (JSONB) | key, data, updated_at |
-| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method (test/stripe/external), currency, stripe_account_id, platform_fee_percent, external_link, about_text, lineup, details_text, tag_line, doors_time, cover_image, hero_image, tickets_live_at (TIMESTAMPTZ, NULL=immediate), announcement_title, announcement_subtitle |
-| `ticket_types` | Ticket pricing/inventory | event_id, name, price, capacity, sold, tier, includes_merch, merch_sizes[], merch_name, merch_description, merch_images, product_id, status |
+| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method, currency, stripe_account_id, tickets_live_at (announcement mode), announcement_title/subtitle |
+| `ticket_types` | Ticket pricing/inventory | event_id, name, price, capacity, sold, tier, includes_merch, merch_*, product_id, status |
 | `products` | Standalone merch catalog | name, type, sizes[], price, images, status, sku |
-| `orders` | Purchase records | order_number (FERAL-00001), event_id, customer_id, status, subtotal, fees, total, payment_ref |
+| `orders` | Purchase records | order_number (FERAL-XXXXX), event_id, customer_id, status, subtotal, fees, total, payment_ref |
 | `order_items` | Line items per order | order_id, ticket_type_id, qty, unit_price, merch_size |
-| `tickets` | Individual tickets with QR | ticket_code (FERAL-XXXXXXXX), order_id, status, holder_*, scanned_at, scanned_by |
-| `customers` | Customer profiles | email, first_name, last_name, nickname, total_orders, total_spent, marketing_consent (bool/null), marketing_consent_at, marketing_consent_source (popup/announcement/checkout) |
-| `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in, checked_in_at |
-| `discounts` | Discount codes | code, type (percentage/fixed), value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at, min_order_amount |
-| `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |
+| `tickets` | Individual tickets with QR | ticket_code (FERAL-XXXXXXXX), order_id, status, holder_*, scanned_at/by |
+| `customers` | Customer profiles | email, first/last_name, total_orders/spent, marketing_consent (bool/null), marketing_consent_at/source |
+| `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in/at |
+| `discounts` | Discount codes | code, type, value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at |
+| `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, items (jsonb), status, cart_token (UUID) |
 | `traffic_events` | Funnel tracking | event_type, page_path, session_id, referrer, utm_* |
-| `org_users` | Team members + invites | auth_user_id, email, first_name, last_name, role (owner/member), perm_events, perm_orders, perm_marketing, perm_finance, status (invited/active/suspended), invite_token, invite_expires_at |
-| `domains` | Hostname → org_id mapping + verification | hostname (unique), org_id, is_primary, type (subdomain/custom), status (pending/active/failed/removing), verification_type, verification_domain, verification_value, verification_reason |
-| `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
-| `payment_events` | Payment health monitoring log (append-only) | type (payment_failed/succeeded, checkout_error, webhook_error, connect_account_unhealthy/healthy, connect_fallback, rate_limit_hit, subscription_failed), severity (info/warning/critical), event_id, stripe_payment_intent_id, stripe_account_id, error_code, error_message, customer_email, ip_address, metadata (jsonb), resolved, resolved_at |
-| `event_interest_signups` | Coming-soon interest signups + email automation | org_id, event_id (FK events), customer_id (FK customers), email, first_name, signed_up_at, notified_at, notification_count (0-4 tracks email step), unsubscribe_token (UUID), unsubscribed_at, UNIQUE(org_id, event_id, customer_id) |
+| `org_users` | Team members + invites | auth_user_id, email, role (owner/member), perm_*, status, invite_token |
+| `domains` | Hostname → org_id mapping | hostname (unique), org_id, is_primary, type, status, verification_* |
+| `popup_events` | Popup interaction tracking | event_type (impressions/engaged/conversions/dismissed) |
+| `payment_events` | Payment health log (append-only) | type, severity, event_id, stripe_*, error_*, metadata (jsonb), resolved |
+| `event_interest_signups` | Coming-soon signups + email automation | event_id, customer_id, email, notification_count (0-4), unsubscribe_token |
 
-**Reps Program tables** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. See `src/types/reps.ts` for full column types.
+**Reps Program** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. Types in `src/types/reps.ts`.
 
 ### Key Constraints
 - `orders.order_number` — unique, format `FERAL-XXXXX` (sequential, padded)
@@ -324,7 +292,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
 |--------|-------|---------|
-| POST | `/api/stripe/payment-intent` | Create PaymentIntent (validates tickets, applies discounts + VAT, rate limited) |
+| POST | `/api/stripe/payment-intent` | Create PaymentIntent (validates tickets + sequential release, applies discounts + VAT, rate limited) |
 | POST | `/api/stripe/confirm-order` | Verify payment → create order + tickets + email confirmation |
 | POST | `/api/checkout/capture` | Upsert customer + abandoned cart on checkout email capture |
 | POST | `/api/stripe/webhook` | Handle payment_intent.succeeded / failed |
@@ -350,13 +318,13 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Platform Dashboard** (platform owner only — `requirePlatformOwner()`): `/api/platform/dashboard` (GET aggregated cross-tenant metrics — tenant counts, GMV, platform fees, onboarding funnel, recent signups/orders, top tenants). Dashboard page at `/admin/backend/`
 - **Tenants** (platform owner only — `requirePlatformOwner()`): `/api/platform/tenants` (GET enriched tenant list + platform summary — GMV, estimated fees, counts), `/api/platform/tenants/[orgId]` (GET single tenant detail — team, domains, events, orders, Stripe account, onboarding checklist, estimated fees). Detail page at `/admin/backend/tenants/[orgId]/`
-- **Payment Health** (platform owner only — `requirePlatformOwner()`): `/api/platform/payment-health` (GET dashboard data — summary, failure rates, Connect health, hourly trends, decline codes, per-org breakdown; query params: `period=1h|6h|24h|7d|30d`, `org_id`), `/api/platform/payment-health/[id]/resolve` (POST mark event resolved). Dashboard page at `/admin/backend/payment-health/`. Monitoring: `lib/payment-monitor.ts` (fire-and-forget `logPaymentEvent()` → `payment_events` table), `lib/payment-alerts.ts` (email alerts via Resend with 30min cooldown). Cron: `/api/cron/stripe-health` (every 30min — Connect health checks, anomaly detection, data retention purge)
+- **Payment Health** (platform owner — `requirePlatformOwner()`): `/api/platform/payment-health` (GET — summary, failure rates, trends; params: `period`, `org_id`), `/api/platform/payment-health/[id]/resolve` (POST). Page: `/admin/backend/payment-health/`. `lib/payment-monitor.ts` (fire-and-forget `logPaymentEvent()`), `lib/payment-alerts.ts` (Resend alerts, 30min cooldown). Cron: `/api/cron/stripe-health` (30min — Connect health, anomaly detection, retention purge)
 - **Plans** (platform owner only — `requirePlatformOwner()`): `/api/plans` (GET list orgs + plans, POST assign plan to org)
-- **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
-- **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
-- **Domain Management** (5 routes): `/api/domains` (GET list, POST add custom domain), `/api/domains/[id]` (PUT set primary, DELETE remove), `/api/domains/[id]/verify` (POST recheck DNS verification). All require `requireAuth()`, filter by `auth.orgId`. POST add calls Vercel Domain API to register domain and get DNS verification challenges.
-- **Self-Service Signup** (2 public routes): `/api/auth/signup` (POST — create auth user + provision org, rate limited 5/hr), `/api/auth/check-slug` (GET — real-time slug availability, rate limited 20/min). Both covered by `/api/auth/` public prefix. Uses `lib/signup.ts` for shared logic (`slugify`, `validateSlug`, `provisionOrg`)
-- **Announcement / Coming Soon** (4 routes): `/api/announcement/signup` (POST — public, rate limited, upserts customer + interest signup + sends step 1 confirmation email), `/api/announcement/signups` (GET — admin, paginated list + count_only + `?stats=true` aggregate email metrics), `/api/announcement/preview-email` (GET — admin, renders email HTML for iframe preview, `?step=1|2|3|4`), `/api/cron/announcement-emails` (GET — Vercel cron every 5min, processes steps 2-4 with suppression logic). Event `tickets_live_at` column controls announcement mode; payment-intent route rejects early purchases.
+- **Reps Program** (39 routes): `/api/reps/*` (22 admin CRUD), `/api/rep-portal/*` (20 rep-facing — auth, dashboard, sales, quests, rewards, notifications)
+- **Team Management** (7 routes): `/api/team` (GET/POST — owner only), `/api/team/[id]` (PUT/DELETE), `/api/team/[id]/resend-invite`, `/api/team/accept-invite` (public, rate limited)
+- **Domain Management** (5 routes): `/api/domains` (GET/POST), `/api/domains/[id]` (PUT primary/DELETE), `/api/domains/[id]/verify`. All `requireAuth()`. POST calls Vercel Domain API
+- **Self-Service Signup** (2 public): `/api/auth/signup` (POST, 5/hr), `/api/auth/check-slug` (GET, 20/min). Uses `lib/signup.ts`
+- **Announcement / Coming Soon** (4 routes): `/api/announcement/signup` (POST public — upsert customer + interest + step 1 email), `/api/announcement/signups` (GET admin — list + `?stats=true`), `/api/announcement/preview-email` (GET admin — `?step=1|2|3|4`), `/api/cron/announcement-emails` (cron 5min — steps 2-4). `tickets_live_at` controls announcement mode; payment-intent rejects early purchases.
 - **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
 
 ---
@@ -364,17 +332,10 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 ## Hooks (Patterns & Rules)
 
 ### Referential Stability (CRITICAL)
-Hooks returning objects/functions used as effect deps MUST use `useMemo` for stable refs. Without this, every re-render creates a new object → infinite re-renders.
+Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable ref hooks (do NOT break):** `useMetaTracking()`, `useDataLayer()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useDashboardRealtime()`. Destructure callbacks as deps — never use the whole object.
 
-**Stable ref hooks (do NOT break):** `useMetaTracking()`, `useDataLayer()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useDashboardRealtime()` — all return `useMemo(...)`.
-
-**Consumer pattern:** Destructure callbacks (`const { trackViewContent } = useMetaTracking()`) as deps. Never use the whole object as a dependency.
-
-### Consent Gating (`useMetaTracking`)
-Checks `feral_cookie_consent` localStorage for `marketing: true`. Listens via `storage` + `feral_consent_update` events. Pixel only loads after consent.
-
-### Module-Level State (`useMetaTracking`, `useBranding`)
-Both persist state at module scope. Single fetch shared across instances. Tests must account for this — module state doesn't reset between test cases.
+### Consent + Module State
+`useMetaTracking` checks `feral_cookie_consent` localStorage for `marketing: true`. Both `useMetaTracking` and `useBranding` persist state at module scope — tests must account for this.
 
 ---
 
@@ -455,19 +416,12 @@ Each theme's `{theme}.css` maps these to Tailwind semantic tokens (`--color-prim
 
 **Isolation mechanism**: Admin layout renders `<div data-admin>`. All Tailwind preflight resets are scoped to `[data-admin]` via `@layer admin-reset` so they never affect public pages. Event themes are scoped via `[data-theme="themename"]` on the layout wrapper div. Rep portal is scoped via `[data-rep]` on the layout wrapper div.
 
-### CSS Cascade Layer Rules (DO NOT BREAK)
-```css
-@layer theme, admin-reset;
-@import "tailwindcss/theme" layer(theme);
-@import "tailwindcss/utilities";               /* UNLAYERED — intentional! */
-```
-
-**Why utilities are unlayered**: `base.css` has an unlayered `* { margin: 0; padding: 0; }`. Unlayered styles always beat layered styles. Utilities must stay unlayered so class selectors win over the universal `*` reset. **NEVER** add `layer(utilities)`, move utilities into `@layer`, or add global `*` resets that override Tailwind.
+### CSS Layer Rules (DO NOT BREAK)
+Layers: `@layer theme, admin-reset;` then `@import "tailwindcss/utilities"` **UNLAYERED** (intentional — wins over `base.css` global `*` reset). **NEVER** add `layer(utilities)` or global `*` resets that override Tailwind.
 
 ### Rules for New CSS
-1. **Component-level imports** — new components import their own CSS file. Use CSS custom properties from `base.css :root`
-2. **Event themes**: Tailwind + Radix + optional effects CSS, scoped via `[data-theme="themename"]`
-3. **Landing/legacy**: Hand-written BEM CSS only. **Breakpoints**: `1024px` / `768px` / `480px`
+1. Component-level imports. Event themes scoped via `[data-theme="themename"]`
+2. Landing/legacy: hand-written BEM. Breakpoints: `1024px` / `768px` / `480px`
 
 ---
 
@@ -481,18 +435,13 @@ Each theme lives in `src/components/{themename}/` with a consistent structure:
 Each theme has: `{Theme}EventPage` (orchestrator), `{Theme}Hero` (banner + CTA), `{Theme}TicketWidget` (ticket selection + cart), `{Theme}TicketCard` (tier with qty controls), `{Theme}MerchModal` (image gallery + size selector), `{Theme}EventInfo` (about/details/venue), `{Theme}Lineup`, `{Theme}CartSummary`, `{Theme}TierProgression`, `{Theme}BottomBar` (mobile CTA), `{Theme}SocialProof`, `{Theme}Footer`. All use shadcn/ui (Button, Card, Dialog, Badge, Separator).
 
 ### Rules for New Event Theme Components
-1. **Tailwind for layout**, shadcn/ui for interactive elements (Dialog, Button, Card, Badge). Never build custom overlays from scratch
-2. **Effects CSS** for visual identity (glassmorphism, gradients, animations) in `{theme}-effects.css`. Theme tokens in `{theme}.css` with `@theme inline {}`
-3. **Scope everything** to `[data-theme="{themename}"]`. Mobile-first (375px). Support `prefers-reduced-motion`
-4. **Shared hooks**: `useCart()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useHeaderScroll()`
-5. **Shared components**: `DiscountPopup`, `EngagementTracker`, `ExpressCheckout`, `Header` — theme-agnostic
-6. **CSS imports at orchestrator level** — `{Theme}EventPage` imports both CSS files. Child components don't import CSS
-
-### Theme Design Tokens Flow
-`base.css :root` → server-injected branding vars → `{theme}.css @theme inline {}` → Tailwind classes → effects CSS uses `var()`. Change accent in admin → all themes update via CSS cascade.
+1. **Tailwind + shadcn/ui** for layout/interactive elements. Effects CSS in `{theme}-effects.css`, tokens in `{theme}.css`
+2. **Scope** to `[data-theme="{themename}"]`. Mobile-first (375px). Support `prefers-reduced-motion`
+3. **Shared hooks**: `useCart()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useHeaderScroll()`
+4. **CSS imports at orchestrator level** — `{Theme}EventPage` imports CSS. Children don't
 
 ### Adding a New Theme
-(1) Create `src/components/{name}/` with orchestrator + children, (2) `{name}.css` + `{name}-effects.css`, (3) Route in `page.tsx` + `checkout/page.tsx`, (4) Add to `StoreTheme.template` union in `types/settings.ts`, (5) Add to `TEMPLATES` in `admin/ticketstore/page.tsx`.
+(1) `src/components/{name}/` with orchestrator + children, (2) `{name}.css` + `{name}-effects.css`, (3) Route in `page.tsx` + `checkout/page.tsx`, (4) Add to `StoreTheme.template` in `types/settings.ts`, (5) `TEMPLATES` in `admin/ticketstore/page.tsx`. Token flow: `base.css :root` → branding vars → `{theme}.css @theme inline {}` → Tailwind classes.
 
 ---
 
@@ -503,17 +452,8 @@ The rep portal (`/rep/*`) is the brand ambassador / street team app. It will evo
 ### CSS Architecture
 Admin pattern: Tailwind + shadcn/ui + admin tokens. Gaming effects in `rep-effects.css` (~1,950 lines, scoped to `[data-rep]`). Shared components in `src/components/rep/` (RadialGauge, EmptyState, HudSectionHeader, ConfettiOverlay, LevelUpOverlay). Utilities: `lib/rep-tiers.ts`, `lib/rep-social.ts`, `hooks/useCountUp.ts`.
 
-### Rep Portal Pages
-| Page | Route | Purpose |
-|------|-------|---------|
-| Dashboard | `/rep` | Hero card, stats gauges, XP bar, discount weapon, quick actions |
-| Sales | `/rep/sales` | Sales history, revenue gauges, event breakdown |
-| Quests | `/rep/quests` | Task cards (social_post, story_share, content_creation), proof submission |
-| Rewards | `/rep/rewards` | Milestones, points shop, reward claims |
-| Points | `/rep/points` | Points ledger, balance history |
-| Leaderboard | `/rep/leaderboard` | Per-event and global rankings |
-| Profile | `/rep/profile` | Avatar, bio, level badge, settings |
-| Login/Join | `/rep/login`, `/rep/join` | Auth (separate from admin) |
+### Rep Portal Pages (8)
+Dashboard (`/rep`), Sales, Quests, Rewards, Points, Leaderboard, Profile, Login/Join. Each has its own route under `/rep/*`. Auth separate from admin.
 
 ### Rules for New Rep Portal Pages
 1. **shadcn/ui + Tailwind** — Card, Button, Badge, etc. Admin design tokens (`bg-background`, `text-foreground`). No new `--rep-*` CSS vars
@@ -537,9 +477,8 @@ Defined in `tailwind.css` via `@theme inline {}`. Key tokens: `background` (#080
 Use via Tailwind classes (`bg-background`, `text-foreground`, `border-border`, etc.) — never hardcode hex values. Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-destructive`, `.text-gradient`, `.surface-noise`
 
 ### Rules for New Admin Pages
-1. **Always `"use client"`** — shadcn/ui + Tailwind + design tokens (`bg-background`, `text-foreground`, `border-border`)
-2. **Settings pattern** — fetch from `site_settings` table, save back via `/api/settings`
-3. **File uploads** — POST base64 to `/api/upload`, get back a media key
+1. `"use client"` — shadcn/ui + Tailwind + design tokens (`bg-background`, `text-foreground`, `border-border`)
+2. Settings: fetch from `site_settings`, save via `/api/settings`. Uploads: POST base64 to `/api/upload`
 
 ---
 

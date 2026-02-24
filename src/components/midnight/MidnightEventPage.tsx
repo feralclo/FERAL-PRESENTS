@@ -11,7 +11,8 @@ import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { getAnnouncementState } from "@/lib/announcement";
+import { getAnnouncementState, getQueueState } from "@/lib/announcement";
+import { MidnightQueuePage } from "./MidnightQueuePage";
 import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
@@ -424,10 +425,32 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   // Announcement / coming soon state
   const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
 
+  // Hype queue state — active between tickets_live_at and tickets_live_at + window
+  const queueState = getQueueState(event);
+  const [queueReleased, setQueueReleased] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return !!localStorage.getItem(`feral_queue_passed_${event.id}`);
+    } catch { return false; }
+  });
+
+  const showQueue = queueState.isInQueueWindow && !queueReleased && !isTicketPreview;
+
   // Full-screen announcement page — early return before normal layout
   // Skip if admin is previewing tickets via ?preview=tickets
   if (isAnnouncement && ticketsLiveAt && !isTicketPreview) {
     return <MidnightAnnouncementPage event={event} ticketsLiveAt={ticketsLiveAt} settings={settings} />;
+  }
+
+  // Hype queue page — early return between announcement and tickets
+  if (showQueue) {
+    return (
+      <MidnightQueuePage
+        event={event}
+        durationSeconds={queueState.queueDurationSeconds}
+        onReleased={() => setQueueReleased(true)}
+      />
+    );
   }
 
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];

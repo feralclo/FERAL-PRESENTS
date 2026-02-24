@@ -9,7 +9,8 @@ import { normalizeMerchImages } from "@/lib/merch-images";
 import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { Separator } from "@/components/ui/separator";
-import { getAnnouncementState } from "@/lib/announcement";
+import { getAnnouncementState, getQueueState } from "@/lib/announcement";
+import { AuraQueuePage } from "./AuraQueuePage";
 import { AuraHeader } from "./AuraHeader";
 import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { AuraHero } from "./AuraHero";
@@ -82,6 +83,17 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   const location = [event.venue_name, event.city].filter(Boolean).join(", ");
   // Announcement / coming soon state
   const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
+
+  // Hype queue state
+  const queueState = getQueueState(event);
+  const [queueReleased, setQueueReleased] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return !!localStorage.getItem(`feral_queue_passed_${event.id}`);
+    } catch { return false; }
+  });
+
+  const showQueue = queueState.isInQueueWindow && !queueReleased && !isTicketPreview;
 
   const ticketGroups = (settings?.ticket_groups as string[]) || undefined;
   const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null>) || undefined;
@@ -172,7 +184,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
         <Separator className="my-10" />
 
-        {/* Tickets — widget provides its own heading, or Announcement widget */}
+        {/* Tickets — widget provides its own heading, Announcement widget, or Queue */}
         <section id="tickets" className="scroll-mt-20">
           {isAnnouncement && ticketsLiveAt && !isTicketPreview ? (
             <AuraAnnouncementWidget
@@ -180,6 +192,12 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
               ticketsLiveAt={ticketsLiveAt}
               title={event.announcement_title}
               subtitle={event.announcement_subtitle}
+            />
+          ) : showQueue ? (
+            <AuraQueuePage
+              eventId={event.id}
+              durationSeconds={queueState.queueDurationSeconds}
+              onReleased={() => setQueueReleased(true)}
             />
           ) : (
             <AuraTicketWidget

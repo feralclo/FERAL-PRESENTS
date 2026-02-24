@@ -177,6 +177,9 @@ export default function EventEditorPage() {
           tickets_live_at: event.tickets_live_at || null,
           announcement_title: event.announcement_title || null,
           announcement_subtitle: event.announcement_subtitle || null,
+          queue_enabled: !!event.queue_enabled,
+          queue_duration_seconds: event.queue_duration_seconds ?? 45,
+          queue_window_minutes: event.queue_window_minutes ?? 60,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),
             name: tt.name,

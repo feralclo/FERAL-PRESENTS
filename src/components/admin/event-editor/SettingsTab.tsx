@@ -20,6 +20,7 @@ import { useOrgId } from "@/components/OrgProvider";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-picker";
+import { Slider } from "@/components/ui/slider";
 import { AlertCircle, Users } from "lucide-react";
 import { useOrgTimezone } from "@/hooks/useOrgTimezone";
 import type { VatSettings } from "@/types/settings";
@@ -264,6 +265,71 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
                   <span className="text-xs text-foreground">
                     {signupCount} {signupCount === 1 ? "person" : "people"} signed up
                   </span>
+                </div>
+              )}
+
+              {/* Hype Queue */}
+              <div className="h-px bg-border/50 mt-2" />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Enable hype queue</Label>
+                  <p className="text-[10px] text-muted-foreground/60 max-w-sm">
+                    Show a fake queue experience when tickets go live. Builds excitement and urgency before revealing the ticket page.
+                  </p>
+                </div>
+                <Switch
+                  checked={!!event.queue_enabled}
+                  onCheckedChange={(checked) => {
+                    updateEvent("queue_enabled", checked);
+                    if (checked && !event.queue_duration_seconds) {
+                      updateEvent("queue_duration_seconds", 45);
+                    }
+                    if (checked && !event.queue_window_minutes) {
+                      updateEvent("queue_window_minutes", 60);
+                    }
+                  }}
+                />
+              </div>
+
+              {event.queue_enabled && (
+                <div className="space-y-4 pl-0">
+                  <div className="space-y-2">
+                    <Label>
+                      Queue duration:{" "}
+                      <span className="font-normal text-muted-foreground">
+                        {event.queue_duration_seconds ?? 45}s
+                      </span>
+                    </Label>
+                    <Slider
+                      value={[event.queue_duration_seconds ?? 45]}
+                      onValueChange={([v]) => updateEvent("queue_duration_seconds", v)}
+                      min={15}
+                      max={120}
+                      step={5}
+                    />
+                    <p className="text-[10px] text-muted-foreground/60">
+                      How long visitors wait in the queue (15–120 seconds)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Queue active window (minutes)</Label>
+                    <Input
+                      type="number"
+                      value={event.queue_window_minutes ?? 60}
+                      onChange={(e) =>
+                        updateEvent(
+                          "queue_window_minutes",
+                          Math.max(15, Math.min(120, Number(e.target.value) || 60))
+                        )
+                      }
+                      min={15}
+                      max={120}
+                      className="max-w-[120px]"
+                    />
+                    <p className="text-[10px] text-muted-foreground/60">
+                      Queue stays active for this many minutes after ticket release (15–120 min). After this window, visitors skip straight to tickets.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

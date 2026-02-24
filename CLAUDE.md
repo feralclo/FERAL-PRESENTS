@@ -57,7 +57,8 @@ src/
 │   │                          # MidnightCartSummary, MidnightTierProgression, MidnightFooter,
 │   │                          # MidnightSocialProof, MidnightFloatingHearts,
 │   │                          # MidnightAnnouncementPage (full-screen coming-soon),
-│   │                          # MidnightAnnouncementWidget (sidebar fallback)
+│   │                          # MidnightAnnouncementWidget (sidebar fallback),
+│   │                          # MidnightQueuePage (full-screen hype queue)
 │   ├── event/                 # Shared: DiscountPopup, EngagementTracker, ThemeEditorBridge.
 │   │                          # Old BEM components (DynamicEventPage, EventHero, TeeModal,
 │   │                          # KompassEventPage) retained but no longer routed
@@ -78,6 +79,7 @@ src/
 │   ├── useTraffic.ts          # Supabase funnel tracking
 │   ├── useCart.ts              # Cart state: quantities, merch sizes, totals, checkout redirect, sequential visibility
 │   ├── useEventTracking.ts    # Unified event tracking: Meta + GTM + CAPI + traffic (stable refs)
+│   ├── useHypeQueue.ts         # Hype queue: fake position/progress animation, localStorage gate, social proof
 │   ├── useHeaderScroll.ts     # Header hide/show on scroll
 │   ├── useScrollReveal.ts     # IntersectionObserver scroll animations
 │   ├── useCountUp.ts          # Animated number counter (rep portal gauges)
@@ -136,7 +138,9 @@ Dynamic event pages → `NativeCheckout`/`AuraCheckout` → `StripePaymentForm` 
 
 **Announcement mode**: When `isAnnouncement` is true (event has `tickets_live_at` in the future), `MidnightEventPage` does an early return rendering `MidnightAnnouncementPage` — a full-screen immersive coming-soon page with hero background, glassmorphic card, live countdown, and email signup. The old sidebar `MidnightAnnouncementWidget` is retained as fallback but no longer routed in the default flow.
 
-**Preview mode**: Admin can preview ticket pages for announcement events via `?preview=tickets` query param. Both `MidnightEventPage` and `AuraEventPage` read this param on mount and skip the announcement early-return, showing an amber "Preview Mode" banner instead. The `EventEditorHeader` renders a split preview button when the event is in announcement mode — left side opens the announcement page, chevron dropdown offers "Announcement Page" and "Ticket Page" options.
+**Hype queue**: Optional fake queue experience between announcement and tickets. When `queue_enabled` is true on the event, and the current time is within `queue_window_minutes` of `tickets_live_at`, visitors see a full-screen queue page (Midnight: `MidnightQueuePage`, Aura: inline `AuraQueuePage` widget). 100% client-side — no backend queue. `useHypeQueue` hook manages progress (non-linear easing), animated position counter, social proof messages, anxiety flashes, and localStorage for refresh safety + skip-on-return. Queue duration configurable (15–120s, default 45s), active window configurable (15–120min, default 60min). State logic in `getQueueState()` (`lib/announcement.ts`). Admin config in event editor Settings tab under "Ticket Sales Timing". `?preview=tickets` bypasses both announcement and queue.
+
+**Preview mode**: Admin can preview ticket pages for announcement events via `?preview=tickets` query param. Both `MidnightEventPage` and `AuraEventPage` read this param on mount and skip the announcement and queue early-returns, showing an amber "Preview Mode" banner instead. The `EventEditorHeader` renders a split preview button when the event is in announcement mode — left side opens the announcement page, chevron dropdown offers "Announcement Page" and "Ticket Page" options.
 
 ### Sequential Ticket Release
 Per-group setting controlling whether all tickets show simultaneously or reveal one-at-a-time as each sells out. Pure computed state from existing `sold`/`capacity` columns — no cron or background workers.
@@ -253,7 +257,7 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `site_settings` | Key-value config store (JSONB) | key, data, updated_at |
-| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method, currency, stripe_account_id, tickets_live_at (announcement mode), announcement_title/subtitle |
+| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method, currency, stripe_account_id, tickets_live_at (announcement mode), announcement_title/subtitle, queue_enabled/queue_duration_seconds/queue_window_minutes (hype queue) |
 | `ticket_types` | Ticket pricing/inventory | event_id, name, price, capacity, sold, tier, includes_merch, merch_*, product_id, status |
 | `products` | Standalone merch catalog | name, type, sizes[], price, images, status, sku |
 | `orders` | Purchase records | order_number (FERAL-XXXXX), event_id, customer_id, status, subtotal, fees, total, payment_ref |

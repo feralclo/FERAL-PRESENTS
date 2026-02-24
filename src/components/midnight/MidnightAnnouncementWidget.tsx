@@ -9,6 +9,8 @@ interface MidnightAnnouncementWidgetProps {
   ticketsLiveAt: Date;
   title?: string | null;
   subtitle?: string | null;
+  /** Called when countdown reaches zero — parent handles transition */
+  onCountdownComplete?: () => void;
 }
 
 export function MidnightAnnouncementWidget({
@@ -16,6 +18,7 @@ export function MidnightAnnouncementWidget({
   ticketsLiveAt,
   title,
   subtitle,
+  onCountdownComplete,
 }: MidnightAnnouncementWidgetProps) {
   const countdown = useCountdown(ticketsLiveAt);
 
@@ -37,12 +40,15 @@ export function MidnightAnnouncementWidget({
     }
   }, [storageKey]);
 
-  // Reload page when countdown reaches zero
+  // When countdown reaches zero — smooth transition or fallback reload
   useEffect(() => {
-    if (countdown.passed) {
-      window.location.reload();
+    if (!countdown.passed) return;
+    if (onCountdownComplete) {
+      onCountdownComplete();
+      return;
     }
-  }, [countdown.passed]);
+    window.location.reload();
+  }, [countdown.passed, onCountdownComplete]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {

@@ -86,6 +86,10 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   // Announcement / coming soon state
   const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
 
+  // Client-side override: countdown passed, transition away from announcement
+  const [announcementComplete, setAnnouncementComplete] = useState(false);
+  const effectiveIsAnnouncement = isAnnouncement && !announcementComplete;
+
   // Hype queue state
   const queueState = getQueueState(event);
   const [queueReleased, setQueueReleased] = useState(() => {
@@ -103,8 +107,13 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
     } catch { return false; }
   });
 
-  // Show queue if: (a) preview=queue and not yet released, or (b) in real queue window and not released
-  const showQueue = (isQueuePreview && !queueReleased) || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
+  // When announcement completes, check if queue should show
+  const showQueueAfterAnnouncement = announcementComplete && event.queue_enabled && !queueReleased;
+
+  // Show queue if: (a) preview=queue and not yet released, (b) in real queue window, or (c) announcement just completed with queue enabled
+  const showQueue = (isQueuePreview && !queueReleased)
+    || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview)
+    || showQueueAfterAnnouncement;
   // After queue preview completes, user lands on ticket page — show preview banner
   const showQueueCompleteBanner = isQueuePreview && queueReleased;
 
@@ -203,12 +212,13 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
         {/* Tickets — widget provides its own heading, Announcement widget, or Queue */}
         <section id="tickets" className="scroll-mt-20">
-          {isAnnouncement && ticketsLiveAt && !isTicketPreview && !isQueuePreview ? (
+          {effectiveIsAnnouncement && ticketsLiveAt && !isTicketPreview && !isQueuePreview ? (
             <AuraAnnouncementWidget
               eventId={event.id}
               ticketsLiveAt={ticketsLiveAt}
               title={event.announcement_title}
               subtitle={event.announcement_subtitle}
+              onCountdownComplete={() => setAnnouncementComplete(true)}
             />
           ) : showQueue ? (
             <AuraQueuePage
@@ -276,7 +286,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
       <AuraFooter />
 
       {/* Mobile bottom bar — hidden in announcement mode */}
-      {!isAnnouncement && (
+      {!effectiveIsAnnouncement && (
         <AuraBottomBar
           fromPrice={`${currSymbol}${minPrice.toFixed(2)}`}
           cartTotal={cartQty > 0 ? `${currSymbol}${cartTotal.toFixed(2)}` : undefined}

@@ -18,12 +18,15 @@ interface MidnightAnnouncementPageProps {
   event: Event & { ticket_types: TicketTypeRow[] };
   ticketsLiveAt: Date;
   settings: Record<string, unknown> | null;
+  /** Called when countdown reaches zero — parent handles transition to queue/tickets */
+  onCountdownComplete?: () => void;
 }
 
 export function MidnightAnnouncementPage({
   event,
   ticketsLiveAt,
   settings: _settings,
+  onCountdownComplete,
 }: MidnightAnnouncementPageProps) {
   const headerHidden = useHeaderScroll();
   const countdown = useCountdown(ticketsLiveAt);
@@ -34,6 +37,7 @@ export function MidnightAnnouncementPage({
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [exitFade, setExitFade] = useState(false);
 
   // Track page view
   useEffect(() => {
@@ -52,12 +56,18 @@ export function MidnightAnnouncementPage({
     }
   }, [storageKey]);
 
-  // Reload page when countdown reaches zero
+  // When countdown reaches zero — smooth fade then transition
   useEffect(() => {
-    if (countdown.passed) {
-      window.location.reload();
+    if (!countdown.passed) return;
+    if (onCountdownComplete) {
+      // Smooth client-side transition: fade out → callback
+      setExitFade(true);
+      const t = setTimeout(() => onCountdownComplete(), 800);
+      return () => clearTimeout(t);
     }
-  }, [countdown.passed]);
+    // Fallback: hard reload if no callback provided
+    window.location.reload();
+  }, [countdown.passed, onCountdownComplete]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -130,7 +140,14 @@ export function MidnightAnnouncementPage({
         <Header />
       </header>
 
-      <main className="relative min-h-screen bg-background overflow-hidden">
+      <main
+        className="relative min-h-screen bg-background overflow-hidden"
+        style={{
+          opacity: exitFade ? 0 : 1,
+          transform: exitFade ? "scale(0.98)" : "scale(1)",
+          transition: "opacity 700ms ease, transform 700ms ease",
+        }}
+      >
         {/* Full-viewport hero background */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"

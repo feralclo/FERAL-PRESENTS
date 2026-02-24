@@ -427,6 +427,11 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   // Announcement / coming soon state
   const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
 
+  // Client-side override: countdown passed, transition away from announcement
+  const [announcementComplete, setAnnouncementComplete] = useState(false);
+  // Effective announcement state: server says announcement + client hasn't completed it
+  const effectiveIsAnnouncement = isAnnouncement && !announcementComplete;
+
   // Hype queue state — active between tickets_live_at and tickets_live_at + window
   const queueState = getQueueState(event);
   const [queueReleased, setQueueReleased] = useState(() => {
@@ -444,15 +449,28 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     } catch { return false; }
   });
 
-  // Show queue if: (a) preview=queue and not yet released, or (b) in real queue window and not released
-  const showQueue = (isQueuePreview && !queueReleased) || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
+  // When announcement completes, check if queue should show
+  // Queue is enabled and window just opened (countdown hit zero = tickets_live_at is now)
+  const showQueueAfterAnnouncement = announcementComplete && event.queue_enabled && !queueReleased;
+
+  // Show queue if: (a) preview=queue and not yet released, (b) in real queue window, or (c) announcement just completed with queue enabled
+  const showQueue = (isQueuePreview && !queueReleased)
+    || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview)
+    || showQueueAfterAnnouncement;
   // After queue preview completes, user lands on ticket page — show preview banner
   const showQueueCompleteBanner = isQueuePreview && queueReleased;
 
   // Full-screen announcement page — early return before normal layout
   // Skip if admin is previewing tickets or queue via ?preview=tickets|queue
-  if (isAnnouncement && ticketsLiveAt && !isTicketPreview && !isQueuePreview) {
-    return <MidnightAnnouncementPage event={event} ticketsLiveAt={ticketsLiveAt} settings={settings} />;
+  if (effectiveIsAnnouncement && ticketsLiveAt && !isTicketPreview && !isQueuePreview) {
+    return (
+      <MidnightAnnouncementPage
+        event={event}
+        ticketsLiveAt={ticketsLiveAt}
+        settings={settings}
+        onCountdownComplete={() => setAnnouncementComplete(true)}
+      />
+    );
   }
 
   // Hype queue page — early return between announcement and tickets
@@ -544,12 +562,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
               {/* Right: Ticket Widget (or Announcement Widget) — on mobile, show first */}
               <div className="max-lg:order-1">
-                {isAnnouncement && ticketsLiveAt && !isTicketPreview ? (
+                {effectiveIsAnnouncement && ticketsLiveAt && !isTicketPreview && !showQueueCompleteBanner ? (
                   <MidnightAnnouncementWidget
                     eventId={event.id}
                     ticketsLiveAt={ticketsLiveAt}
                     title={event.announcement_title}
                     subtitle={event.announcement_subtitle}
+                    onCountdownComplete={() => setAnnouncementComplete(true)}
                   />
                 ) : (
                   <MidnightTicketWidget
@@ -580,7 +599,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
            will-change + no backdrop-filter prevents Instagram in-app browser jank.
            Controlled via admin Event Page settings (sticky_checkout_bar).
            Hidden in announcement mode — no cart to checkout. */}
-      {settings?.sticky_checkout_bar !== false && !isAnnouncement && (
+      {settings?.sticky_checkout_bar !== false && !effectiveIsAnnouncement && (
         <div
           className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar will-change-transform ${
             cart.totalQty > 0 && !headerHidden ? "translate-y-0" : "translate-y-full"

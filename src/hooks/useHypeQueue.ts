@@ -70,6 +70,13 @@ function generateBatchSchedule(
   // Generate batches that cover ~92% of duration, leaving 8% for final sprint to 0
   const targetDuration = durationMs * 0.92;
 
+  // First batch happens quickly — no awkward frozen start
+  const firstPause = 400 + rand() * 400; // 400-800ms
+  t += firstPause;
+  const firstBatchSize = Math.max(1, Math.floor(pos * 0.02 + rand() * pos * 0.04));
+  pos = Math.max(1, pos - firstBatchSize);
+  schedule.push({ time: t, position: pos, batchSize: firstBatchSize });
+
   while (pos > 1 && t < targetDuration) {
     const progressRatio = t / targetDuration;
     let pauseMin: number, pauseMax: number;

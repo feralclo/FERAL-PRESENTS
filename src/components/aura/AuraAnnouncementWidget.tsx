@@ -12,6 +12,8 @@ interface AuraAnnouncementWidgetProps {
   ticketsLiveAt: Date;
   title?: string | null;
   subtitle?: string | null;
+  /** Called when countdown reaches zero — parent handles transition */
+  onCountdownComplete?: () => void;
 }
 
 export function AuraAnnouncementWidget({
@@ -19,6 +21,7 @@ export function AuraAnnouncementWidget({
   ticketsLiveAt,
   title,
   subtitle,
+  onCountdownComplete,
 }: AuraAnnouncementWidgetProps) {
   const countdown = useCountdown(ticketsLiveAt);
 
@@ -40,10 +43,13 @@ export function AuraAnnouncementWidget({
   }, [storageKey]);
 
   useEffect(() => {
-    if (countdown.passed) {
-      window.location.reload();
+    if (!countdown.passed) return;
+    if (onCountdownComplete) {
+      onCountdownComplete();
+      return;
     }
-  }, [countdown.passed]);
+    window.location.reload();
+  }, [countdown.passed, onCountdownComplete]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {

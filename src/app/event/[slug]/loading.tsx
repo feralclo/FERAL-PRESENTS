@@ -3,6 +3,9 @@
  * Shows immediately when navigating from the homepage (or anywhere),
  * while the Server Component in layout.tsx fetches settings from Supabase.
  * This eliminates the perceived "lag" / "nothing happening" on click.
+ *
+ * Uses CSS variable --accent (injected by event layout from tenant branding)
+ * so the loading bar matches the tenant's brand color, not platform purple.
  */
 export default function EventLoading() {
   return (
@@ -11,31 +14,20 @@ export default function EventLoading() {
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "#0e0e0e",
+        background: "var(--bg-dark, #0e0e0e)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <div
         style={{
-          width: 140,
-          height: 40,
-          marginBottom: 48,
-          opacity: 0.15,
-          background: "rgba(255, 255, 255, 0.1)",
-          borderRadius: 4,
-        }}
-      />
-      <div
-        style={{
-          fontFamily: "'Space Mono', monospace",
+          fontFamily: "var(--font-mono, 'Space Mono', monospace)",
           fontSize: 11,
           letterSpacing: 3,
           textTransform: "uppercase" as const,
-          color: "#555",
+          color: "var(--text-muted, #555)",
           marginBottom: 24,
         }}
       >
@@ -57,7 +49,7 @@ export default function EventLoading() {
             left: 0,
             height: "100%",
             width: "30%",
-            background: "#8B5CF6",
+            background: "var(--accent, #ff0033)",
             animation: "loadSlide 1.2s ease-in-out infinite",
           }}
         />

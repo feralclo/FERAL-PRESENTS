@@ -2,42 +2,23 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { Scanlines } from "@/components/layout/Scanlines";
-import { GTM_ID, TABLES, marketingKey, brandingKey } from "@/lib/constants";
+import { GTM_ID, TABLES, marketingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getOrgId } from "@/lib/org";
 import { OrgProvider } from "@/components/OrgProvider";
 import type { MarketingSettings } from "@/types/marketing";
-import type { BrandingSettings } from "@/types/settings";
 import "@/styles/base.css";
 import "@/styles/effects.css";
 import "@/styles/cookie.css";
 
-export async function generateMetadata(): Promise<Metadata> {
-  let faviconUrl: string | undefined;
-  try {
-    const orgId = await getOrgId();
-    const supabase = await getSupabaseAdmin();
-    if (supabase) {
-      const { data } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", brandingKey(orgId))
-        .single();
-      if (data?.data) {
-        const branding = data.data as BrandingSettings;
-        if (branding.favicon_url) faviconUrl = branding.favicon_url;
-      }
-    }
-  } catch { /* use defaults */ }
-
-  return {
-    title: "Entry — Events & Tickets",
-    description: "Events, tickets, and experiences. Powered by Entry.",
-    icons: faviconUrl
-      ? { icon: faviconUrl, apple: faviconUrl }
-      : { icon: "/favicon.ico" },
-  };
-}
+export const metadata: Metadata = {
+  title: "Entry — Events & Tickets",
+  description:
+    "Events, tickets, and experiences. Powered by Entry.",
+  icons: {
+    icon: "/favicon.ico",
+  },
+};
 
 export default async function RootLayout({
   children,

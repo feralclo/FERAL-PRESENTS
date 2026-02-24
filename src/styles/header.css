@@ -218,6 +218,27 @@
   width: 100%;
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .announcement-banner {
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  .announcement-banner__badge {
+    font-size: 7px;
+    letter-spacing: 1.5px;
+    padding: 2px 5px 2px 3px;
+  }
+  .announcement-banner__icon {
+    width: 10px;
+    height: 10px;
+  }
+  .announcement-banner__text {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
 }
 
 .announcement-banner__badge {

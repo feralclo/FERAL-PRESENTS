@@ -48,6 +48,7 @@ export function MidnightTicketCard({
 }: MidnightTicketCardProps) {
   const tier = tt.tier || "standard";
   const tierEffect = TIER_EFFECT[tier] || "";
+  const isSoldOut = tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity;
   const isActive = qty > 0;
   const priceDisplay = `${currSymbol}${formatPrice(Number(tt.price))}`;
 
@@ -74,13 +75,15 @@ export function MidnightTicketCard({
       aria-label={`${tt.name} — ${priceDisplay}`}
       className={cn(
         "relative p-5 mb-2.5 rounded-xl transition-all duration-200",
+        // Sold out
+        isSoldOut && "opacity-40 pointer-events-none",
         // Standard tier styling
         !tierEffect && "bg-foreground/[0.025] border border-foreground/[0.06]",
-        !tierEffect && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
-        !tierEffect && isActive && "border-foreground/[0.15] bg-foreground/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_16px_rgba(255,255,255,0.02)]",
+        !tierEffect && !isSoldOut && "hover:border-foreground/[0.12] hover:bg-foreground/[0.04]",
+        !tierEffect && isActive && !isSoldOut && "border-foreground/[0.15] bg-foreground/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_16px_rgba(255,255,255,0.02)]",
         // Metallic tier styling
         tierEffect,
-        tierEffect && isActive && "midnight-active",
+        tierEffect && isActive && !isSoldOut && "midnight-active",
         // Mobile
         "max-[480px]:p-4",
       )}
@@ -159,43 +162,49 @@ export function MidnightTicketCard({
         )}
 
         {/* Quantity stepper — 44px min touch target (Apple HIG) */}
-        <div className="relative z-[2] flex items-center gap-1 bg-foreground/[0.03] rounded-xl border border-foreground/[0.06] p-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg max-[480px]:text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
-              TIER_BUTTON_CLASSES[tier],
-            )}
-            onClick={() => onRemove(tt)}
-            aria-label={`Remove ${tt.name}`}
-          >
-            &minus;
-          </Button>
-          <span
-            ref={qtyRef}
-            className={cn(
-              "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[15px] font-bold min-w-8 max-[480px]:min-w-7 text-center tabular-nums",
-              isActive
-                ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
-                : "text-foreground/60",
-            )}
-          >
-            {qty}
+        {isSoldOut ? (
+          <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold tracking-[0.15em] uppercase text-foreground/30">
+            Sold out
           </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg max-[480px]:text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
-              TIER_BUTTON_CLASSES[tier],
-            )}
-            onClick={() => tt.includes_merch && onViewMerch ? onViewMerch(tt) : onAdd(tt)}
-            aria-label={`Add ${tt.name}`}
-          >
-            +
-          </Button>
-        </div>
+        ) : (
+          <div className="relative z-[2] flex items-center gap-1 bg-foreground/[0.03] rounded-xl border border-foreground/[0.06] p-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg max-[480px]:text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
+                TIER_BUTTON_CLASSES[tier],
+              )}
+              onClick={() => onRemove(tt)}
+              aria-label={`Remove ${tt.name}`}
+            >
+              &minus;
+            </Button>
+            <span
+              ref={qtyRef}
+              className={cn(
+                "font-[family-name:var(--font-mono)] text-base max-[480px]:text-[15px] font-bold min-w-8 max-[480px]:min-w-7 text-center tabular-nums",
+                isActive
+                  ? TIER_QTY_ACTIVE_CLASSES[tier] || "text-foreground"
+                  : "text-foreground/60",
+              )}
+            >
+              {qty}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "w-11 h-11 max-[480px]:w-10 max-[480px]:h-10 text-lg max-[480px]:text-base rounded-lg touch-manipulation hover:bg-foreground/[0.06] active:scale-[0.92] transition-transform duration-100",
+                TIER_BUTTON_CLASSES[tier],
+              )}
+              onClick={() => tt.includes_merch && onViewMerch ? onViewMerch(tt) : onAdd(tt)}
+              aria-label={`Add ${tt.name}`}
+            >
+              +
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

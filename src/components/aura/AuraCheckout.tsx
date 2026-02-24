@@ -38,6 +38,7 @@ import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { CheckoutServiceUnavailable } from "@/components/checkout/CheckoutServiceUnavailable";
 import { useOrgId } from "@/components/OrgProvider";
+import { MarketingConsentCheckbox } from "@/components/checkout/MarketingConsentCheckbox";
 
 /** Pre-filled cart data from abandoned cart recovery email click */
 interface RestoreData {
@@ -437,6 +438,7 @@ function AuraCheckoutForm({
   const [cardReady, setCardReady] = useState(false);
   const [expressAvailable, setExpressAvailable] = useState(true);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(true);
   const cardRef = useRef<CardFieldsHandle>(null);
 
   const handleExpressClick = useCallback(
@@ -481,7 +483,7 @@ function AuraCheckoutForm({
           body: JSON.stringify({
             event_id: event.id,
             items: cartLines.map((l) => ({ ticket_type_id: l.ticket_type_id, qty: l.qty, merch_size: l.merch_size })),
-            customer: { first_name: walletFirstName, last_name: walletLastName, email: walletEmail.toLowerCase() },
+            customer: { first_name: walletFirstName, last_name: walletLastName, email: walletEmail.toLowerCase(), marketing_consent: marketingConsent },
           }),
         });
 
@@ -521,7 +523,7 @@ function AuraCheckoutForm({
         setProcessing(false);
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete, trackEngagement, orgId]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, trackEngagement, orgId, marketingConsent]
   );
 
   const handleSubmit = useCallback(
@@ -559,7 +561,7 @@ function AuraCheckoutForm({
           body: JSON.stringify({
             event_id: event.id,
             items: cartLines.map((l) => ({ ticket_type_id: l.ticket_type_id, qty: l.qty, merch_size: l.merch_size })),
-            customer: { first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim().toLowerCase() },
+            customer: { first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim().toLowerCase(), marketing_consent: marketingConsent },
           }),
         });
 
@@ -600,7 +602,7 @@ function AuraCheckoutForm({
         setProcessing(false);
       }
     },
-    [email, firstName, lastName, nameOnCard, country, cartLines, event, subtotal, onComplete, trackEngagement, orgId]
+    [email, firstName, lastName, nameOnCard, country, cartLines, event, subtotal, onComplete, trackEngagement, orgId, marketingConsent]
   );
 
   if (serviceUnavailable) {
@@ -718,6 +720,13 @@ function AuraCheckoutForm({
             </NativeSelect>
           </CardContent>
         </Card>
+
+        {/* Marketing consent */}
+        <MarketingConsentCheckbox
+          checked={marketingConsent}
+          onChange={setMarketingConsent}
+          variant="aura"
+        />
 
         {/* Error */}
         {error && (
@@ -844,6 +853,7 @@ function AuraTestCheckout({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(true);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -862,7 +872,7 @@ function AuraTestCheckout({
           body: JSON.stringify({
             event_id: event.id,
             items: cartLines.map((l) => ({ ticket_type_id: l.ticket_type_id, qty: l.qty, merch_size: l.merch_size })),
-            customer: { first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim().toLowerCase() },
+            customer: { first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim().toLowerCase(), marketing_consent: marketingConsent },
           }),
         });
         const json = await res.json();
@@ -873,7 +883,7 @@ function AuraTestCheckout({
         setSubmitting(false);
       }
     },
-    [firstName, lastName, email, cartLines, event.id, onComplete]
+    [firstName, lastName, email, cartLines, event.id, onComplete, marketingConsent]
   );
 
   if (serviceUnavailable) {
@@ -899,6 +909,13 @@ function AuraTestCheckout({
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Marketing consent */}
+              <MarketingConsentCheckbox
+                checked={marketingConsent}
+                onChange={setMarketingConsent}
+                variant="aura"
+              />
 
               {error && (
                 <Alert variant="destructive">{error}</Alert>

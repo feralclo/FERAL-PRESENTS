@@ -33,6 +33,7 @@ import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { useOrgId } from "@/components/OrgProvider";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { CheckoutServiceUnavailable } from "./CheckoutServiceUnavailable";
+import { MarketingConsentCheckbox } from "./MarketingConsentCheckbox";
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -1376,17 +1377,11 @@ function SinglePageCheckoutForm({
           </div>
 
           {/* Marketing consent */}
-          <label className="flex items-start gap-3 cursor-pointer select-none -mt-1">
-            <input
-              type="checkbox"
-              checked={marketingConsent}
-              onChange={(e) => setMarketingConsent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/20 bg-white/[0.04] accent-[var(--accent,#ff0033)] cursor-pointer"
-            />
-            <span className="font-[family-name:var(--font-sans)] text-xs text-foreground/50 leading-relaxed">
-              Keep me updated about future events and offers
-            </span>
-          </label>
+          <MarketingConsentCheckbox
+            checked={marketingConsent}
+            onChange={setMarketingConsent}
+            variant="midnight"
+          />
 
           {/* Payment */}
           <div className="flex flex-col gap-4">
@@ -1878,17 +1873,11 @@ function TestModeCheckout({
                 </div>
 
                 {/* Marketing consent */}
-                <label className="flex items-start gap-3 cursor-pointer select-none -mt-1">
-                  <input
-                    type="checkbox"
-                    checked={marketingConsent}
-                    onChange={(e) => setMarketingConsent(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/20 bg-white/[0.04] accent-[var(--accent,#ff0033)] cursor-pointer"
-                  />
-                  <span className="font-[family-name:var(--font-sans)] text-xs text-foreground/50 leading-relaxed">
-                    Keep me updated about future events and offers
-                  </span>
-                </label>
+                <MarketingConsentCheckbox
+                  checked={marketingConsent}
+                  onChange={setMarketingConsent}
+                  variant="midnight"
+                />
 
                 {error && (
                   <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">

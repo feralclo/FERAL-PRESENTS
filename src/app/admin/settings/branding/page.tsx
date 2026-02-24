@@ -103,6 +103,40 @@ async function processLogoFile(file: File): Promise<string | null> {
   return result;
 }
 
+/* ── Favicon processing: center-crop to 180×180 square PNG ── */
+
+function cropToSquare(file: File, size: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width - side) / 2;
+          const sy = (img.height - side) / 2;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          canvas.getContext("2d")!.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          resolve(canvas.toDataURL("image/png"));
+        } catch { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function processFaviconFile(file: File): Promise<string | null> {
+  if (file.size > 5 * 1024 * 1024) { alert("Image too large. Maximum is 5MB."); return null; }
+  const result = await cropToSquare(file, 180);
+  if (!result) alert("Failed to process image. Try a smaller file.");
+  return result;
+}
+
 /* ════════════════════════════════════════════════════════
    BRANDING SETTINGS PAGE
    ════════════════════════════════════════════════════════ */
@@ -117,6 +151,9 @@ export default function BrandingSettingsPage() {
   const logoFileRef = useRef<HTMLInputElement>(null);
   const [logoDragging, setLogoDragging] = useState(false);
   const [logoProcessing, setLogoProcessing] = useState(false);
+  const faviconFileRef = useRef<HTMLInputElement>(null);
+  const [faviconDragging, setFaviconDragging] = useState(false);
+  const [faviconProcessing, setFaviconProcessing] = useState(false);
 
   // Load branding settings, with auto-migration from email settings
   useEffect(() => {
@@ -218,6 +255,25 @@ export default function BrandingSettingsPage() {
       }
     } catch { /* upload failed */ }
     setLogoProcessing(false);
+  }, []);
+
+  const handleFaviconFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setFaviconProcessing(true);
+    const compressed = await processFaviconFile(file);
+    if (!compressed) { setFaviconProcessing(false); return; }
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: compressed, key: "branding-favicon" }),
+      });
+      const json = await res.json();
+      if (res.ok && json.url) {
+        update("favicon_url", json.url);
+      }
+    } catch { /* upload failed */ }
+    setFaviconProcessing(false);
   }, []);
 
   if (loading) {
@@ -344,6 +400,91 @@ export default function BrandingSettingsPage() {
                   </div>
                 </div>
               </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Favicon Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Browser Tab Icon</CardTitle>
+            <CardDescription>
+              The small icon shown in browser tabs, bookmarks, and when saved to a phone&apos;s home screen. Works best as a simple, square image.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {settings.favicon_url ? (
+              <div className="flex items-center gap-4">
+                <div
+                  className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-3"
+                  onClick={() => faviconFileRef.current?.click()}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={settings.favicon_url}
+                    alt="Favicon"
+                    style={{ width: 32, height: 32, objectFit: "contain" }}
+                  />
+                  <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); faviconFileRef.current?.click(); }}
+                      className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
+                    >
+                      <Pencil size={9} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); update("favicon_url", ""); setStatus(""); }}
+                      className="flex h-5 w-5 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-red-500/30 hover:text-red-400"
+                    >
+                      <Trash2 size={9} />
+                    </button>
+                  </div>
+                  <input
+                    ref={faviconFileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFaviconFile(file); e.target.value = ""; }}
+                  />
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
+                  <span className="flex items-center gap-1.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={settings.favicon_url} alt="" style={{ width: 16, height: 16 }} />
+                    16px
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={settings.favicon_url} alt="" style={{ width: 32, height: 32 }} />
+                    32px
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div
+                className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all max-w-xs ${
+                  faviconDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                }`}
+                onClick={() => faviconFileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setFaviconDragging(true); }}
+                onDragLeave={() => setFaviconDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setFaviconDragging(false); const file = e.dataTransfer.files[0]; if (file) handleFaviconFile(file); }}
+              >
+                <ImageIcon size={18} className="mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-xs text-muted-foreground">
+                  {faviconProcessing ? "Processing..." : "Drop image or click to upload"}
+                </p>
+                <p className="text-[10px] text-muted-foreground/40 mt-1">Square PNG, JPG or SVG · Max 5MB</p>
+                <input
+                  ref={faviconFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFaviconFile(file); e.target.value = ""; }}
+                />
+              </div>
             )}
           </CardContent>
         </Card>

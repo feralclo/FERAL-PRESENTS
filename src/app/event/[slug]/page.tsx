@@ -43,6 +43,7 @@ export async function generateMetadata({
   const event = await getEventFromDB(slug, orgId);
   if (event) {
     let orgName = "Entry";
+    let faviconUrl: string | undefined;
     try {
       const supabase = await getSupabaseAdmin();
       if (supabase) {
@@ -54,6 +55,7 @@ export async function generateMetadata({
         if (data?.data) {
           const branding = data.data as BrandingSettings;
           if (branding.org_name) orgName = branding.org_name;
+          if (branding.favicon_url) faviconUrl = branding.favicon_url;
         }
       }
     } catch { /* Fall through with default */ }
@@ -63,6 +65,9 @@ export async function generateMetadata({
     return {
       title,
       description,
+      ...(faviconUrl
+        ? { icons: { icon: faviconUrl, apple: faviconUrl } }
+        : {}),
       openGraph: {
         type: "website",
         title,

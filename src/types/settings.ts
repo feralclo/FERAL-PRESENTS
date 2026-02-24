@@ -58,6 +58,8 @@ export interface BrandingSettings {
   body_font?: string;
   /** Copyright text — e.g. "© 2026 ACME EVENTS" */
   copyright_text?: string;
+  /** Favicon URL — small icon shown in browser tabs, bookmarks, home screen */
+  favicon_url?: string;
   /** Support email for the org */
   support_email?: string;
   /** Social links */

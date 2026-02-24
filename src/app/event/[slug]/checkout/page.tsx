@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   let orgName = "Entry";
+  let faviconUrl: string | undefined;
   try {
     const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
@@ -26,12 +27,16 @@ export async function generateMetadata(): Promise<Metadata> {
       if (data?.data) {
         const branding = data.data as BrandingSettings;
         if (branding.org_name) orgName = branding.org_name;
+        if (branding.favicon_url) faviconUrl = branding.favicon_url;
       }
     }
   } catch { /* Fall through with default */ }
   return {
     title: `Checkout — ${orgName}`,
     description: "Complete your ticket purchase.",
+    ...(faviconUrl
+      ? { icons: { icon: faviconUrl, apple: faviconUrl } }
+      : {}),
   };
 }
 

@@ -56,7 +56,7 @@ function DigitRoller({ value, isNearFront }: { value: number; isNearFront: boole
           return (
             <span
               key={`d-${i}`}
-              className="inline-block overflow-hidden"
+              className="inline-block overflow-hidden text-[clamp(2.2rem,8vw,3.5rem)]"
               style={{ height: "1.15em", lineHeight: 1.15 }}
             >
               <span

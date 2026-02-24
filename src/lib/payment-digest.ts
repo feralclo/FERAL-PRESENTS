@@ -311,8 +311,9 @@ Guidelines:
       return { ok: false, error: "Claude returned an empty response" };
     }
 
-    // Parse the JSON response
-    const parsed = JSON.parse(text);
+    // Parse the JSON response — strip markdown code fences if the model wraps its output
+    const cleaned = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
     return {
       ok: true,
       data: {

@@ -155,6 +155,7 @@ export async function POST(request: NextRequest) {
 
       if (existingCart) {
         // Update existing abandoned cart
+        // Clear unsubscribed_at — active re-engagement overrides a previous unsubscribe
         const updatePayload: Record<string, unknown> = {
             email: normalizedEmail,
             first_name: first_name || null,
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
             items,
             subtotal: subtotal || 0,
             currency: currency || "GBP",
+            unsubscribed_at: null,
             updated_at: new Date().toISOString(),
         };
         // Only overwrite discount fields when caller explicitly includes them

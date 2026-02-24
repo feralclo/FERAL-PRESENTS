@@ -138,31 +138,61 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Insert into event_interest_signups (ON CONFLICT DO NOTHING)
-    const { data: signupRow, error: signupErr } = await supabase
+    // Check for existing signup (may be unsubscribed — re-engagement should resubscribe)
+    const { data: existingSignup } = await supabase
       .from(TABLES.EVENT_INTEREST_SIGNUPS)
-      .upsert(
-        {
+      .select("id, notification_count, unsubscribe_token, unsubscribed_at, first_name")
+      .eq("org_id", orgId)
+      .eq("event_id", event_id)
+      .eq("customer_id", customerId)
+      .single();
+
+    let signupRow: { id: string; notification_count: number; unsubscribe_token: string } | null = null;
+    let alreadySignedUp = false;
+
+    if (existingSignup) {
+      if (existingSignup.unsubscribed_at) {
+        // Re-engagement after unsubscribe — clear flag, reset to step 0 so they
+        // re-enter the email sequence from the beginning
+        const { data: updated, error: updateErr } = await supabase
+          .from(TABLES.EVENT_INTEREST_SIGNUPS)
+          .update({
+            unsubscribed_at: null,
+            notification_count: 0,
+            first_name: first_name || existingSignup.first_name || null,
+            signed_up_at: new Date().toISOString(),
+          })
+          .eq("id", existingSignup.id)
+          .select("id, notification_count, unsubscribe_token")
+          .single();
+
+        if (updateErr) {
+          console.error("Interest signup resubscribe failed:", updateErr);
+        }
+        signupRow = updated;
+      } else {
+        // Already signed up and not unsubscribed — no-op
+        alreadySignedUp = true;
+      }
+    } else {
+      // New signup
+      const { data: newSignup, error: signupErr } = await supabase
+        .from(TABLES.EVENT_INTEREST_SIGNUPS)
+        .insert({
           org_id: orgId,
           event_id,
           customer_id: customerId,
           email: normalizedEmail,
           first_name: first_name || null,
           signed_up_at: new Date().toISOString(),
-        },
-        { onConflict: "org_id,event_id,customer_id", ignoreDuplicates: true }
-      )
-      .select("id, notification_count, unsubscribe_token")
-      .single();
+        })
+        .select("id, notification_count, unsubscribe_token")
+        .single();
 
-    const alreadySignedUp = !signupRow;
-
-    if (signupErr && !signupRow) {
-      // Only log non-duplicate errors
-      const errCode = (signupErr as { code?: string })?.code;
-      if (errCode !== "23505") {
+      if (signupErr) {
         console.error("Interest signup insert failed:", signupErr);
       }
+      signupRow = newSignup;
     }
 
     // Send step 1 confirmation email (fire-and-forget, non-blocking)

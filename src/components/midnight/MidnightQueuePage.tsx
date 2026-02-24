@@ -43,8 +43,8 @@ function DigitRoller({ value, isNearFront }: { value: number; isNearFront: boole
             return (
               <span
                 key={`sep-${i}`}
-                className={`font-[family-name:var(--font-mono)] text-[clamp(2.2rem,8vw,3.5rem)] font-bold leading-none ${isNearFront ? "text-[#FBBF24]" : "text-foreground"}`}
-                style={{ transition: "color 500ms ease" }}
+                className={`font-[family-name:var(--font-mono)] text-[clamp(2.2rem,8vw,3.5rem)] font-bold ${isNearFront ? "text-[#FBBF24]" : "text-foreground"}`}
+                style={{ lineHeight: 1.15, transition: "color 500ms ease" }}
               >
                 {ch}
               </span>
@@ -57,17 +57,18 @@ function DigitRoller({ value, isNearFront }: { value: number; isNearFront: boole
             <span
               key={`d-${i}`}
               className="inline-block overflow-hidden"
-              style={{ height: "1em", lineHeight: 1 }}
+              style={{ height: "1.15em", lineHeight: 1.15 }}
             >
               <span
-                className={`inline-flex flex-col font-[family-name:var(--font-mono)] text-[clamp(2.2rem,8vw,3.5rem)] font-bold tabular-nums leading-none ${isNearFront ? "text-[#FBBF24]" : "text-foreground"}`}
+                className={`inline-flex flex-col font-[family-name:var(--font-mono)] text-[clamp(2.2rem,8vw,3.5rem)] font-bold tabular-nums ${isNearFront ? "text-[#FBBF24]" : "text-foreground"}`}
                 style={{
+                  lineHeight: 1.15,
                   transform: `translateY(${-digit * 10}%)`,
                   transition: `transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1) ${staggerDelay}ms, color 500ms ease`,
                 }}
               >
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
-                  <span key={d} style={{ height: "1em", display: "block" }}>
+                  <span key={d} style={{ height: "1.15em", display: "block" }}>
                     {d}
                   </span>
                 ))}

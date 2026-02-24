@@ -112,6 +112,8 @@ export default function EventEditorPage() {
 
     try {
       // STEP 1: Save site_settings FIRST
+      // Spread all settings so nothing is dropped (e.g. ticket_group_release_mode,
+      // sticky_checkout_bar, etc.), then layer on the fields we always want present.
       {
         const supabase = getSupabaseClient();
         if (supabase) {
@@ -119,17 +121,14 @@ export default function EventEditorPage() {
             event.settings_key ||
             `feral_event_${event.slug}`;
 
-          const groupData = {
-            ticket_groups: settings.ticket_groups || [],
-            ticket_group_map: settings.ticket_group_map || {},
-          };
-
           const dataToSave = {
+            ...settings,
             theme: event.theme || "default",
             minimalBlurStrength: settings.minimalBlurStrength ?? 4,
             minimalStaticStrength: settings.minimalStaticStrength ?? 5,
             minimalBgEnabled: !!(event.hero_image || event.cover_image),
-            ...groupData,
+            ticket_groups: settings.ticket_groups || [],
+            ticket_group_map: settings.ticket_group_map || {},
           };
 
           await supabase.from(TABLES.SITE_SETTINGS).upsert(

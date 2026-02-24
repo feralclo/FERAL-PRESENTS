@@ -147,9 +147,19 @@ export function TicketsTab({
         updateSetting("ticket_group_release_mode", rest);
       } else {
         updateSetting("ticket_group_release_mode", updated);
+        // Auto-activate hidden tickets — sequential release handles visibility,
+        // so hidden tickets would never appear. Activate them so the system works.
+        setTicketTypes((prev) =>
+          prev.map((tt) => {
+            if (!groupMap[tt.id] && tt.status === "hidden") {
+              return { ...tt, status: "active" as const };
+            }
+            return tt;
+          })
+        );
       }
     },
-    [releaseMode, updateSetting]
+    [releaseMode, updateSetting, groupMap, setTicketTypes]
   );
 
   // Compute "waitingFor" for tickets in sequential groups
@@ -349,6 +359,16 @@ export function TicketsTab({
                   updateSetting={updateSetting}
                   onMoveUp={() => moveGroup(gName, "up")}
                   onMoveDown={() => moveGroup(gName, "down")}
+                  onActivateGroupTickets={(groupName) => {
+                    setTicketTypes((prev) =>
+                      prev.map((tt) => {
+                        if (groupMap[tt.id] === groupName && tt.status === "hidden") {
+                          return { ...tt, status: "active" as const };
+                        }
+                        return tt;
+                      })
+                    );
+                  }}
                 />
                 <div className="p-3 space-y-1.5">
                   {gTickets.length > 0 ? (

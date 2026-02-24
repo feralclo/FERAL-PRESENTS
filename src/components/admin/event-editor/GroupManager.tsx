@@ -127,6 +127,7 @@ export function GroupHeader({
   updateSetting,
   onMoveUp,
   onMoveDown,
+  onActivateGroupTickets,
 }: {
   name: string;
   ticketCount: number;
@@ -136,6 +137,8 @@ export function GroupHeader({
   updateSetting: UpdateSettingFn;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  /** Called when sequential mode is enabled — activates hidden tickets in this group */
+  onActivateGroupTickets?: (groupName: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(name);
@@ -192,6 +195,9 @@ export function GroupHeader({
       updateSetting("ticket_group_release_mode", rest);
     } else {
       updateSetting("ticket_group_release_mode", { ...releaseMode, [name]: mode });
+      // Auto-activate hidden tickets — sequential release handles visibility,
+      // so hidden tickets would never appear. Activate them so the system works.
+      onActivateGroupTickets?.(name);
     }
   };
 

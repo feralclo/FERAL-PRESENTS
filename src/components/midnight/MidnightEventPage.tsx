@@ -459,6 +459,8 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     || showQueueAfterAnnouncement;
   // After queue preview completes, user lands on ticket page — show preview banner
   const showQueueCompleteBanner = isQueuePreview && queueReleased;
+  // Skip data-reveal animations when coming from queue (sections mount fresh, observer missed them)
+  const skipRevealAnimation = queueReleased || announcementComplete;
 
   // Full-screen announcement page — early return before normal layout
   // Skip if admin is previewing tickets or queue via ?preview=tickets|queue
@@ -539,12 +541,12 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
                 {/* Lineup on mobile (above about) */}
                 {lineup.length > 0 && (
-                  <div className="lg:hidden order-[-1] mb-12 max-md:mb-10" data-reveal="1">
+                  <div className={`lg:hidden order-[-1] mb-12 max-md:mb-10 ${skipRevealAnimation ? "revealed" : ""}`} data-reveal="1">
                     <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}
 
-                <div data-reveal="2">
+                <div data-reveal="2" className={skipRevealAnimation ? "revealed" : undefined}>
                   <MidnightEventInfo
                     aboutText={event.about_text}
                     detailsText={event.details_text}
@@ -554,7 +556,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
                 {/* Desktop lineup */}
                 {lineup.length > 0 && (
-                  <div className="hidden lg:block mt-16" data-reveal="3">
+                  <div className={`hidden lg:block mt-16 ${skipRevealAnimation ? "revealed" : ""}`} data-reveal="3">
                     <MidnightLineup artists={lineup} isAlphabetical={isAlphabetical} artistProfiles={artistProfiles} onArtistClick={handleArtistClick} />
                   </div>
                 )}

@@ -188,13 +188,19 @@ export function OrderConfirmation({
           <span>Event Page</span>
         </a>
         <a href={`/event/${slug}/`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={branding.logo_url || ""}
-            alt={branding.org_name || "Entry"}
-            className="h-[52px] max-sm:h-10 w-auto block"
-            style={branding.logo_width ? { width: branding.logo_width } : undefined}
-          />
+          {branding.logo_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={branding.logo_url}
+              alt={branding.org_name || "Entry"}
+              className="h-[52px] max-sm:h-10 w-auto block"
+              style={branding.logo_width ? { width: branding.logo_width } : undefined}
+            />
+          ) : (
+            <span className="font-[family-name:var(--font-mono)] text-lg tracking-wide text-white uppercase">
+              {branding.org_name || "Entry"}
+            </span>
+          )}
         </a>
         <div className="absolute right-6 max-sm:right-4 top-1/2 -translate-y-1/2 flex items-center">
           <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[1.5px] uppercase text-[#4ecb71] font-bold">

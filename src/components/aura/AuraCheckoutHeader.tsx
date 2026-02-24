@@ -23,14 +23,20 @@ export function AuraCheckoutHeader({ slug }: AuraCheckoutHeaderProps) {
         </Button>
 
         <a href={`/event/${slug}/`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={branding.logo_url || ""}
-            alt={branding.org_name || "Entry"}
-            className="h-6"
-            data-branding="logo"
-            style={branding.logo_width ? { width: branding.logo_width, height: "auto" } : undefined}
-          />
+          {branding.logo_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={branding.logo_url}
+              alt={branding.org_name || "Entry"}
+              className="h-6"
+              data-branding="logo"
+              style={branding.logo_width ? { width: branding.logo_width, height: "auto" } : undefined}
+            />
+          ) : (
+            <span className="text-sm font-semibold tracking-wide text-foreground">
+              {branding.org_name || "Entry"}
+            </span>
+          )}
         </a>
 
         <Badge variant="outline" className="gap-1 text-xs">

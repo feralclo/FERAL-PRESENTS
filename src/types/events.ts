@@ -44,6 +44,12 @@ export interface Event {
   vat_prices_include?: boolean | null;
   /** Per-event VAT number override. NULL = use org default */
   vat_number?: string | null;
+  /** When set, tickets are only purchasable after this timestamp. NULL = immediate. */
+  tickets_live_at?: string | null;
+  /** Custom heading for the coming-soon widget. NULL = "Coming Soon" */
+  announcement_title?: string | null;
+  /** Custom subtitle for the coming-soon widget. NULL = default text */
+  announcement_subtitle?: string | null;
   created_at: string;
   updated_at: string;
   /** When true, lineup is displayed alphabetically (A-Z) and manual reordering is locked */

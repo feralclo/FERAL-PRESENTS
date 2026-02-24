@@ -9,6 +9,7 @@ import { normalizeMerchImages } from "@/lib/merch-images";
 import { DiscountPopup } from "@/components/event/DiscountPopup";
 import { EngagementTracker } from "@/components/event/EngagementTracker";
 import { Separator } from "@/components/ui/separator";
+import { getAnnouncementState } from "@/lib/announcement";
 import { AuraHeader } from "./AuraHeader";
 import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { AuraHero } from "./AuraHero";
@@ -16,6 +17,7 @@ import { AuraTrustBar } from "./AuraTrustBar";
 import { AuraLineup } from "./AuraLineup";
 import { AuraEventInfo } from "./AuraEventInfo";
 import { AuraTicketWidget } from "./AuraTicketWidget";
+import { AuraAnnouncementWidget } from "./AuraAnnouncementWidget";
 import { AuraBottomBar } from "./AuraBottomBar";
 import { AuraMerchModal } from "./AuraMerchModal";
 import { AuraFooter } from "./AuraFooter";
@@ -72,6 +74,9 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
   const heroImage = event.hero_image || event.cover_image || (event.id ? `/api/media/event_${event.id}_banner` : undefined);
   const location = [event.venue_name, event.city].filter(Boolean).join(", ");
+  // Announcement / coming soon state
+  const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
+
   const ticketGroups = (settings?.ticket_groups as string[]) || undefined;
   const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null>) || undefined;
 
@@ -154,21 +159,30 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
         <Separator className="my-10" />
 
-        {/* Tickets — widget provides its own heading */}
+        {/* Tickets — widget provides its own heading, or Announcement widget */}
         <section id="tickets" className="scroll-mt-20">
-          <AuraTicketWidget
-            eventSlug={event.slug}
-            eventId={event.id}
-            paymentMethod={event.payment_method}
-            ticketTypes={event.ticket_types || []}
-            currency={event.currency || "GBP"}
-            onCartChange={handleCartChange}
-            onCheckoutReady={handleCheckoutReady}
-            ticketGroups={ticketGroups}
-            ticketGroupMap={ticketGroupMap}
-            onViewMerch={handleViewMerch}
-            addMerchRef={addMerchRef}
-          />
+          {isAnnouncement && ticketsLiveAt ? (
+            <AuraAnnouncementWidget
+              eventId={event.id}
+              ticketsLiveAt={ticketsLiveAt}
+              title={event.announcement_title}
+              subtitle={event.announcement_subtitle}
+            />
+          ) : (
+            <AuraTicketWidget
+              eventSlug={event.slug}
+              eventId={event.id}
+              paymentMethod={event.payment_method}
+              ticketTypes={event.ticket_types || []}
+              currency={event.currency || "GBP"}
+              onCartChange={handleCartChange}
+              onCheckoutReady={handleCheckoutReady}
+              ticketGroups={ticketGroups}
+              ticketGroupMap={ticketGroupMap}
+              onViewMerch={handleViewMerch}
+              addMerchRef={addMerchRef}
+            />
+          )}
         </section>
 
         <Separator className="my-10" />
@@ -209,14 +223,16 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
       <AuraFooter />
 
-      {/* Mobile bottom bar */}
-      <AuraBottomBar
-        fromPrice={`${currSymbol}${minPrice.toFixed(2)}`}
-        cartTotal={cartQty > 0 ? `${currSymbol}${cartTotal.toFixed(2)}` : undefined}
-        cartQty={cartQty}
-        onBuyNow={() => document.getElementById("tickets")?.scrollIntoView({ behavior: "smooth" })}
-        onCheckout={checkoutFn || undefined}
-      />
+      {/* Mobile bottom bar — hidden in announcement mode */}
+      {!isAnnouncement && (
+        <AuraBottomBar
+          fromPrice={`${currSymbol}${minPrice.toFixed(2)}`}
+          cartTotal={cartQty > 0 ? `${currSymbol}${cartTotal.toFixed(2)}` : undefined}
+          cartQty={cartQty}
+          onBuyNow={() => document.getElementById("tickets")?.scrollIntoView({ behavior: "smooth" })}
+          onCheckout={checkoutFn || undefined}
+        />
+      )}
 
       {/* Merch modal */}
       {merchData && (

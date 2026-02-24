@@ -18,7 +18,9 @@ import { validateVatNumber } from "@/lib/vat";
 import { vatKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/ui/date-picker";
+import { AlertCircle, Users } from "lucide-react";
 import type { VatSettings } from "@/types/settings";
 import type { TabProps } from "./types";
 
@@ -38,6 +40,7 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
   const [liveBlockedMsg, setLiveBlockedMsg] = useState("");
+  const [signupCount, setSignupCount] = useState<number | null>(null);
 
   // Detect platform owner + Stripe connection status
   useEffect(() => {
@@ -89,6 +92,20 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
       })
       .catch(() => {});
   }, []);
+
+  // Fetch interest signup count when announcement mode is on
+  useEffect(() => {
+    if (!event.tickets_live_at || !event.id) {
+      setSignupCount(null);
+      return;
+    }
+    fetch(`/api/announcement/signups?event_id=${event.id}&count_only=true`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (typeof json.count === "number") setSignupCount(json.count);
+      })
+      .catch(() => {});
+  }, [event.tickets_live_at, event.id]);
 
   // Derive VAT override mode: "default" | "enabled" | "disabled"
   const vatMode =
@@ -170,6 +187,83 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
               </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0">
+        <CardHeader className="px-6 pt-5 pb-4">
+          <CardTitle className="text-sm">Ticket Sales Timing</CardTitle>
+        </CardHeader>
+        <CardContent className="px-6 pb-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Schedule ticket release</Label>
+              <p className="text-[10px] text-muted-foreground/60 max-w-sm">
+                Set a future date when tickets become available for purchase. Until then, visitors see a sign-up page instead.
+              </p>
+            </div>
+            <Switch
+              checked={!!event.tickets_live_at}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  // Default to tomorrow at noon
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  tomorrow.setHours(12, 0, 0, 0);
+                  const y = tomorrow.getFullYear();
+                  const m = String(tomorrow.getMonth() + 1).padStart(2, "0");
+                  const d = String(tomorrow.getDate()).padStart(2, "0");
+                  updateEvent("tickets_live_at", `${y}-${m}-${d}T12:00`);
+                } else {
+                  updateEvent("tickets_live_at", null);
+                  updateEvent("announcement_title", null);
+                  updateEvent("announcement_subtitle", null);
+                }
+              }}
+            />
+          </div>
+
+          {event.tickets_live_at && (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Tickets on sale</Label>
+                <DateTimePicker
+                  value={event.tickets_live_at}
+                  onChange={(v) => updateEvent("tickets_live_at", v)}
+                  placeholder="Select date and time"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Announcement title</Label>
+                <Input
+                  value={event.announcement_title || ""}
+                  onChange={(e) =>
+                    updateEvent("announcement_title", e.target.value || null)
+                  }
+                  placeholder="Coming Soon"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Announcement subtitle</Label>
+                <Textarea
+                  value={event.announcement_subtitle || ""}
+                  onChange={(e) =>
+                    updateEvent("announcement_subtitle", e.target.value || null)
+                  }
+                  placeholder="Sign up to be the first to know when tickets drop."
+                  rows={2}
+                />
+              </div>
+              {signupCount !== null && signupCount > 0 && (
+                <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/[0.04] px-3 py-2">
+                  <Users className="size-3.5 text-primary" />
+                  <span className="text-xs text-foreground">
+                    {signupCount} {signupCount === 1 ? "person" : "people"} signed up
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

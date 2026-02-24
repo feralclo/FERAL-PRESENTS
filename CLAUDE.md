@@ -273,7 +273,7 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `site_settings` | Key-value config store (JSONB) | key, data, updated_at |
-| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method (test/stripe/external), currency, stripe_account_id, platform_fee_percent, external_link, about_text, lineup, details_text, tag_line, doors_time, cover_image, hero_image |
+| `events` | Event definitions | slug, name, venue_*, date_*, status, payment_method (test/stripe/external), currency, stripe_account_id, platform_fee_percent, external_link, about_text, lineup, details_text, tag_line, doors_time, cover_image, hero_image, tickets_live_at (TIMESTAMPTZ, NULL=immediate), announcement_title, announcement_subtitle |
 | `ticket_types` | Ticket pricing/inventory | event_id, name, price, capacity, sold, tier, includes_merch, merch_sizes[], merch_name, merch_description, merch_images, product_id, status |
 | `products` | Standalone merch catalog | name, type, sizes[], price, images, status, sku |
 | `orders` | Purchase records | order_number (FERAL-00001), event_id, customer_id, status, subtotal, fees, total, payment_ref |
@@ -288,6 +288,7 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | `domains` | Hostname → org_id mapping + verification | hostname (unique), org_id, is_primary, type (subdomain/custom), status (pending/active/failed/removing), verification_type, verification_domain, verification_value, verification_reason |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 | `payment_events` | Payment health monitoring log (append-only) | type (payment_failed/succeeded, checkout_error, webhook_error, connect_account_unhealthy/healthy, connect_fallback, rate_limit_hit, subscription_failed), severity (info/warning/critical), event_id, stripe_payment_intent_id, stripe_account_id, error_code, error_message, customer_email, ip_address, metadata (jsonb), resolved, resolved_at |
+| `event_interest_signups` | Coming-soon interest signups | org_id, event_id (FK events), customer_id (FK customers), email, first_name, signed_up_at, notified_at, UNIQUE(org_id, event_id, customer_id) |
 
 **Reps Program tables** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. See `src/types/reps.ts` for full column types.
 
@@ -306,7 +307,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 
 ---
 
-## API Routes (97 endpoints)
+## API Routes (99 endpoints)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -343,6 +344,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
 - **Domain Management** (5 routes): `/api/domains` (GET list, POST add custom domain), `/api/domains/[id]` (PUT set primary, DELETE remove), `/api/domains/[id]/verify` (POST recheck DNS verification). All require `requireAuth()`, filter by `auth.orgId`. POST add calls Vercel Domain API to register domain and get DNS verification challenges.
 - **Self-Service Signup** (2 public routes): `/api/auth/signup` (POST — create auth user + provision org, rate limited 5/hr), `/api/auth/check-slug` (GET — real-time slug availability, rate limited 20/min). Both covered by `/api/auth/` public prefix. Uses `lib/signup.ts` for shared logic (`slugify`, `validateSlug`, `provisionOrg`)
+- **Announcement / Coming Soon** (2 routes): `/api/announcement/signup` (POST — public, rate limited, upserts customer + interest signup), `/api/announcement/signups` (GET — admin, paginated list + count_only mode). Event `tickets_live_at` column controls announcement mode; payment-intent route rejects early purchases.
 - **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
 
 ---

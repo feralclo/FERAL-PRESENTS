@@ -39,6 +39,7 @@ export const TABLES = {
   ORG_USERS: "org_users",
   DOMAINS: "domains",
   PAYMENT_EVENTS: "payment_events",
+  EVENT_INTEREST_SIGNUPS: "event_interest_signups",
 } as const;
 
 

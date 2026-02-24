@@ -174,6 +174,9 @@ export default function EventEditorPage() {
           tag_line: event.tag_line || null,
           doors_time: event.doors_time || null,
           lineup_sort_alphabetical: !!event.lineup_sort_alphabetical,
+          tickets_live_at: event.tickets_live_at || null,
+          announcement_title: event.announcement_title || null,
+          announcement_subtitle: event.announcement_subtitle || null,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),
             name: tt.name,

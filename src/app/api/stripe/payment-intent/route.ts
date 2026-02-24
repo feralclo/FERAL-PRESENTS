@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     // Fetch event (include stripe_account_id for per-event Connect)
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, payment_method, currency, stripe_account_id, vat_registered, vat_rate, vat_prices_include, vat_number")
+      .select("id, name, slug, payment_method, currency, stripe_account_id, vat_registered, vat_rate, vat_prices_include, vat_number, tickets_live_at")
       .eq("id", event_id)
       .eq("org_id", orgId)
       .single();
@@ -96,6 +96,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Event not found" },
         { status: 404 }
+      );
+    }
+
+    if (event.tickets_live_at && new Date(event.tickets_live_at) > new Date()) {
+      return NextResponse.json(
+        { error: "Tickets are not yet on sale" },
+        { status: 400 }
       );
     }
 

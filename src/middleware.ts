@@ -180,6 +180,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/invite/",
   "/api/rep-portal/push-vapid-key",
   "/api/team/accept-invite",
+  "/api/announcement/signup",
 ];
 
 const PUBLIC_API_EXACT_GETS = [

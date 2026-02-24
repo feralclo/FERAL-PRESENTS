@@ -11,10 +11,12 @@ import { useCart } from "@/hooks/useCart";
 import { useSettings } from "@/hooks/useSettings";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { getAnnouncementState } from "@/lib/announcement";
 import { MidnightHero } from "./MidnightHero";
 import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
 import { MidnightTicketWidget } from "./MidnightTicketWidget";
+import { MidnightAnnouncementWidget } from "./MidnightAnnouncementWidget";
 import { MidnightMerchModal } from "./MidnightMerchModal";
 import { normalizeMerchImages } from "@/lib/merch-images";
 
@@ -399,6 +401,9 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     setArtistModalOpen(true);
   }, [artistsWithProfiles]);
 
+  // Announcement / coming soon state
+  const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
+
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
   const ticketGroupMap =
     (settings?.ticket_group_map as Record<string, string | null> | undefined) || {};
@@ -458,21 +463,30 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                 )}
               </div>
 
-              {/* Right: Ticket Widget — on mobile, show first */}
+              {/* Right: Ticket Widget (or Announcement Widget) — on mobile, show first */}
               <div className="max-lg:order-1">
-                <MidnightTicketWidget
-                  eventSlug={event.slug}
-                  eventId={event.id}
-                  paymentMethod={event.payment_method}
-                  currency={event.currency}
-                  ticketTypes={event.ticket_types || []}
-                  cart={cart}
-                  ticketGroups={ticketGroups}
-                  ticketGroupMap={ticketGroupMap}
-                  onViewMerch={handleViewMerch}
-                  discount={activeDiscount}
-                  onApplyDiscount={setActiveDiscount}
-                />
+                {isAnnouncement && ticketsLiveAt ? (
+                  <MidnightAnnouncementWidget
+                    eventId={event.id}
+                    ticketsLiveAt={ticketsLiveAt}
+                    title={event.announcement_title}
+                    subtitle={event.announcement_subtitle}
+                  />
+                ) : (
+                  <MidnightTicketWidget
+                    eventSlug={event.slug}
+                    eventId={event.id}
+                    paymentMethod={event.payment_method}
+                    currency={event.currency}
+                    ticketTypes={event.ticket_types || []}
+                    cart={cart}
+                    ticketGroups={ticketGroups}
+                    ticketGroupMap={ticketGroupMap}
+                    onViewMerch={handleViewMerch}
+                    discount={activeDiscount}
+                    onApplyDiscount={setActiveDiscount}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -484,8 +498,9 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       {/* Fixed bottom bar — mobile checkout CTA
            Synced with header scroll: hides on scroll down, shows on scroll up.
            will-change + no backdrop-filter prevents Instagram in-app browser jank.
-           Controlled via admin Event Page settings (sticky_checkout_bar). */}
-      {settings?.sticky_checkout_bar !== false && (
+           Controlled via admin Event Page settings (sticky_checkout_bar).
+           Hidden in announcement mode — no cart to checkout. */}
+      {settings?.sticky_checkout_bar !== false && !isAnnouncement && (
         <div
           className={`fixed bottom-0 left-0 right-0 z-[997] lg:hidden midnight-bottom-bar will-change-transform ${
             cart.totalQty > 0 && !headerHidden ? "translate-y-0" : "translate-y-full"

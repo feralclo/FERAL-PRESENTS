@@ -857,6 +857,276 @@ You're receiving this because you ${hasItems ? "started a checkout" : "showed in
   return { subject, html, text };
 }
 
+/* ================================================================
+   ANNOUNCEMENT / COMING-SOON EMAIL SEQUENCE
+   ================================================================ */
+
+export interface AnnouncementEmailOpts {
+  step: 1 | 2 | 3 | 4;
+  eventName: string;
+  eventDate: string;
+  venue: string;
+  ticketsLiveAt: string;
+  eventUrl: string;
+  firstName?: string;
+  orgName: string;
+  accentColor: string;
+  logoUrl?: string;
+  unsubscribeUrl: string;
+  customSubject?: string;
+  customHeading?: string;
+  customBody?: string;
+}
+
+const ANNOUNCEMENT_DEFAULTS: Record<1 | 2 | 3 | 4, { subject: string; heading: string; body: string; cta: string }> = {
+  1: {
+    subject: "You're signed up for {event_name}!",
+    heading: "You're In!",
+    body: "We'll let you know the moment tickets go on sale. Mark your calendar — tickets go live on {tickets_live_date} at {tickets_live_time}.",
+    cta: "View Event",
+  },
+  2: {
+    subject: "Tickets in 1 hour — {event_name}",
+    heading: "Almost Time!",
+    body: "Tickets for {event_name} go on sale in less than 1 hour. Be ready — the best tickets go fast.",
+    cta: "View Event",
+  },
+  3: {
+    subject: "Tickets are ON SALE — {event_name}",
+    heading: "Tickets Are Live!",
+    body: "Tickets for {event_name} are on sale now. Don't wait — secure your spot before they sell out.",
+    cta: "Buy Tickets",
+  },
+  4: {
+    subject: "Last chance — {event_name}",
+    heading: "Don't Miss Out",
+    body: "Tickets for {event_name} are still available — but not for long. Grab yours before it's too late.",
+    cta: "Buy Tickets",
+  },
+};
+
+function replaceAnnouncementVars(text: string, opts: AnnouncementEmailOpts): string {
+  return text
+    .replace(/\{event_name\}/g, opts.eventName)
+    .replace(/\{event_date\}/g, opts.eventDate)
+    .replace(/\{venue\}/g, opts.venue)
+    .replace(/\{tickets_live_date\}/g, opts.ticketsLiveAt.split(" at ")[0] || opts.ticketsLiveAt)
+    .replace(/\{tickets_live_time\}/g, opts.ticketsLiveAt.split(" at ")[1] || "")
+    .replace(/\{first_name\}/g, opts.firstName || "there")
+    .replace(/\{org_name\}/g, opts.orgName);
+}
+
+/**
+ * Build the HTML for an announcement / coming-soon email.
+ *
+ * Design matches the abandoned cart recovery email: dark hero header with logo +
+ * heading + message, white content area with event details + CTA button, branded
+ * footer with unsubscribe link.
+ */
+export function buildAnnouncementEmail(
+  settings: EmailSettings,
+  opts: AnnouncementEmailOpts,
+): { subject: string; html: string } {
+  const s = { ...DEFAULT_EMAIL_SETTINGS, ...settings };
+  const accent = opts.accentColor || s.accent_color || "#8B5CF6";
+  const logoUrl = resolveUrl(opts.logoUrl || s.logo_url);
+  const defaults = ANNOUNCEMENT_DEFAULTS[opts.step];
+
+  // Logo dimensions
+  const configuredH = Math.min(s.logo_height || 48, 100);
+  let logoH = configuredH;
+  let logoW: number | undefined;
+  if (s.logo_aspect_ratio && logoUrl) {
+    logoW = Math.round(configuredH * s.logo_aspect_ratio);
+    if (logoW > 280) {
+      logoW = 280;
+      logoH = Math.round(280 / s.logo_aspect_ratio);
+    }
+  }
+
+  const subject = replaceAnnouncementVars(opts.customSubject || defaults.subject, opts);
+  const heading = replaceAnnouncementVars(opts.customHeading || defaults.heading, opts);
+  const body = replaceAnnouncementVars(opts.customBody || defaults.body, opts);
+  const ctaText = defaults.cta;
+
+  // Event details line
+  const eventDetails = [opts.eventDate, opts.venue].filter(Boolean).join(" \u00B7 ");
+
+  // Step-specific accent badge
+  const stepBadge = opts.step === 1
+    ? "CONFIRMED"
+    : opts.step === 2
+    ? "COMING SOON"
+    : opts.step === 3
+    ? "ON SALE NOW"
+    : "LAST CHANCE";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>${escapeHtml(subject)}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; -webkit-font-smoothing: antialiased; color-scheme: light only;">
+  <!-- Wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+
+        <!-- Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12);">
+
+          <!-- DARK HERO BLOCK -->
+          <tr>
+            <td style="background-color: #0e0e0e; background-image: linear-gradient(#0e0e0e, #111111); padding: 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+
+                <!-- Accent bar -->
+                <tr>
+                  <td style="height: 4px; background-color: ${accent};"></td>
+                </tr>
+
+                <!-- Logo -->
+                <tr>
+                  <td style="padding: 40px 40px 0; text-align: center;">
+                    ${
+                      logoUrl
+                        ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(opts.orgName)}"${logoW ? ` width="${logoW}"` : ""} height="${logoH}" style="${logoW ? `width: ${logoW}px` : "width: auto"}; height: ${logoH}px; display: inline-block;">`
+                        : `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #ffffff;">${escapeHtml(opts.orgName)}</div>`
+                    }
+                  </td>
+                </tr>
+
+                <!-- Badge -->
+                <tr>
+                  <td style="padding: 24px 40px 0; text-align: center;">
+                    <div style="display: inline-block; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 6px 16px;">
+                      ${stepBadge}
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Heading -->
+                <tr>
+                  <td style="padding: 20px 40px 12px; text-align: center;">
+                    <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 26px; font-weight: 700; color: #ffffff; line-height: 1.25;">
+                      ${escapeHtml(heading)}
+                    </h1>
+                  </td>
+                </tr>
+
+                <!-- Message -->
+                <tr>
+                  <td style="padding: 0 40px 36px; text-align: center;">
+                    <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #999999;">
+                      ${escapeHtml(body)}
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- WHITE CONTENT AREA -->
+          <tr>
+            <td style="background-color: #ffffff; padding: 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+
+                <!-- Event Details — dark mini-card -->
+                <tr>
+                  <td style="padding: 32px 40px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius: 10px; overflow: hidden;">
+                      <tr>
+                        <td style="background-color: #111111; background-image: linear-gradient(135deg, #111111, #1a1a1a); border-radius: 10px; padding: 20px 24px;">
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; margin-bottom: 10px;">
+                            EVENT
+                          </div>
+                          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 6px; line-height: 1.3;">
+                            ${escapeHtml(opts.eventName)}
+                          </div>
+                          ${
+                            eventDetails
+                              ? `<div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888888; margin-bottom: 2px;">${escapeHtml(eventDetails)}</div>`
+                              : ""
+                          }${opts.step <= 2 ? `
+                          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+                            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #666; margin-bottom: 4px;">
+                              TICKETS GO LIVE
+                            </div>
+                            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 600; color: ${accent};">
+                              ${escapeHtml(opts.ticketsLiveAt)}
+                            </div>
+                          </div>` : ""}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- CTA Button -->
+                <tr>
+                  <td style="padding: 32px 40px 36px; text-align: center;">
+                    <!--[if mso]>
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(opts.eventUrl)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="14%" fill="t">
+                      <v:fill type="tile" color="${accent}" />
+                      <w:anchorlock/>
+                      <center style="color:#ffffff;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:0.5px;">${escapeHtml(ctaText)}</center>
+                    </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-->
+                    <a href="${escapeHtml(opts.eventUrl)}" style="display: block; background-color: ${accent}; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; padding: 16px 24px; border-radius: 10px; text-align: center; mso-padding-alt: 0;">
+                      ${escapeHtml(ctaText)}
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 40px; text-align: center;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #bbbbbb; margin-bottom: 8px;">
+                ${escapeHtml(s.footer_text || opts.orgName)}
+              </div>
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #bbbbbb;">
+                You\u2019re receiving this because you signed up for event announcements.
+              </div>
+              <div style="margin-top: 10px;">
+                <a href="${escapeHtml(opts.unsubscribeUrl)}" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #999999; text-decoration: underline;">Unsubscribe</a>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Container -->
+
+      </td>
+    </tr>
+  </table>
+  <!-- /Wrapper -->
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
 /** Escape HTML special characters to prevent XSS in email templates */
 function escapeHtml(str: string): string {
   return str

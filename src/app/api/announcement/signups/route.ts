@@ -18,18 +18,46 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const eventId = searchParams.get("event_id");
 
-  if (!eventId) {
-    return NextResponse.json(
-      { error: "event_id is required" },
-      { status: 400 }
-    );
-  }
-
   const supabase = await getSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json(
       { error: "Database not configured" },
       { status: 503 }
+    );
+  }
+
+  // Stats mode: aggregate email metrics across all events for the org
+  const statsMode = searchParams.get("stats") === "true";
+
+  if (statsMode) {
+    const { data: allSignups, error: statsErr } = await supabase
+      .from(TABLES.EVENT_INTEREST_SIGNUPS)
+      .select("notification_count, unsubscribed_at")
+      .eq("org_id", auth.orgId);
+
+    if (statsErr) {
+      return NextResponse.json({ error: statsErr.message }, { status: 500 });
+    }
+
+    const signups = allSignups || [];
+    const stats = {
+      total_signups: signups.length,
+      emails_sent: {
+        step_1: signups.filter((s) => s.notification_count >= 1).length,
+        step_2: signups.filter((s) => s.notification_count >= 2).length,
+        step_3: signups.filter((s) => s.notification_count >= 3).length,
+        step_4: signups.filter((s) => s.notification_count >= 4).length,
+      },
+      unsubscribed: signups.filter((s) => s.unsubscribed_at).length,
+    };
+
+    return NextResponse.json(stats);
+  }
+
+  if (!eventId) {
+    return NextResponse.json(
+      { error: "event_id is required" },
+      { status: 400 }
     );
   }
 

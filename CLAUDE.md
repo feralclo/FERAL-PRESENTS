@@ -45,7 +45,7 @@ src/
 │   │                          # health, connect, platform-settings, plans) gated by is_platform_owner flag.
 │   │                          # /admin/invite/[token] — standalone invite acceptance page (no auth).
 │   │                          # /admin/signup/ — self-service promoter registration (no auth).
-│   └── api/                   # 97 endpoints — see API Routes section for full list
+│   └── api/                   # 99 endpoints — see API Routes section for full list
 ├── components/
 │   ├── admin/                 # Admin reusable: ImageUpload, LineupTagInput, TierSelector
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
@@ -211,6 +211,7 @@ Org-level branding in `site_settings` under `{org_id}_branding`: logo, org name,
 | `{org_id}_homepage` | `homepageKey()` | Homepage settings |
 | `{org_id}_reps` | `repsKey()` | Reps program settings |
 | `{org_id}_abandoned_cart_automation` | `abandonedCartAutomationKey()` | Abandoned cart email automation config |
+| `{org_id}_announcement_automation` | `announcementAutomationKey()` | Announcement email sequence config (4-step: confirmation, hype, live, reminder) |
 | `{org_id}_popup` | `popupKey()` | Popup settings |
 | `{org_id}_marketing` | `marketingKey()` | Meta Pixel + CAPI settings |
 | `{org_id}_email` | `emailKey()` | Email template settings |
@@ -288,7 +289,7 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | `domains` | Hostname → org_id mapping + verification | hostname (unique), org_id, is_primary, type (subdomain/custom), status (pending/active/failed/removing), verification_type, verification_domain, verification_value, verification_reason |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
 | `payment_events` | Payment health monitoring log (append-only) | type (payment_failed/succeeded, checkout_error, webhook_error, connect_account_unhealthy/healthy, connect_fallback, rate_limit_hit, subscription_failed), severity (info/warning/critical), event_id, stripe_payment_intent_id, stripe_account_id, error_code, error_message, customer_email, ip_address, metadata (jsonb), resolved, resolved_at |
-| `event_interest_signups` | Coming-soon interest signups | org_id, event_id (FK events), customer_id (FK customers), email, first_name, signed_up_at, notified_at, UNIQUE(org_id, event_id, customer_id) |
+| `event_interest_signups` | Coming-soon interest signups + email automation | org_id, event_id (FK events), customer_id (FK customers), email, first_name, signed_up_at, notified_at, notification_count (0-4 tracks email step), unsubscribe_token (UUID), unsubscribed_at, UNIQUE(org_id, event_id, customer_id) |
 
 **Reps Program tables** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. See `src/types/reps.ts` for full column types.
 
@@ -307,7 +308,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 
 ---
 
-## API Routes (99 endpoints)
+## API Routes (101 endpoints)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -333,7 +334,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 | Settings | `/api/settings`, `/api/branding`, `/api/themes` | GET/POST |
 
 ### Other Route Groups
-- **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe`
+- **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe` (supports `type=cart_recovery` and `type=announcement`)
 - **Billing** (tenant self-serve — `requireAuth()`): `/api/billing/checkout` (POST — Stripe Checkout Session for Pro upgrade), `/api/billing/portal` (POST — Stripe Customer Portal), `/api/billing/status` (GET — plan + subscription status). Webhook handlers in `/api/stripe/webhook` for subscription lifecycle events.
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Platform Dashboard** (platform owner only — `requirePlatformOwner()`): `/api/platform/dashboard` (GET aggregated cross-tenant metrics — tenant counts, GMV, platform fees, onboarding funnel, recent signups/orders, top tenants). Dashboard page at `/admin/backend/`
@@ -344,7 +345,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
 - **Domain Management** (5 routes): `/api/domains` (GET list, POST add custom domain), `/api/domains/[id]` (PUT set primary, DELETE remove), `/api/domains/[id]/verify` (POST recheck DNS verification). All require `requireAuth()`, filter by `auth.orgId`. POST add calls Vercel Domain API to register domain and get DNS verification challenges.
 - **Self-Service Signup** (2 public routes): `/api/auth/signup` (POST — create auth user + provision org, rate limited 5/hr), `/api/auth/check-slug` (GET — real-time slug availability, rate limited 20/min). Both covered by `/api/auth/` public prefix. Uses `lib/signup.ts` for shared logic (`slugify`, `validateSlug`, `provisionOrg`)
-- **Announcement / Coming Soon** (2 routes): `/api/announcement/signup` (POST — public, rate limited, upserts customer + interest signup), `/api/announcement/signups` (GET — admin, paginated list + count_only mode). Event `tickets_live_at` column controls announcement mode; payment-intent route rejects early purchases.
+- **Announcement / Coming Soon** (4 routes): `/api/announcement/signup` (POST — public, rate limited, upserts customer + interest signup + sends step 1 confirmation email), `/api/announcement/signups` (GET — admin, paginated list + count_only + `?stats=true` aggregate email metrics), `/api/announcement/preview-email` (GET — admin, renders email HTML for iframe preview, `?step=1|2|3|4`), `/api/cron/announcement-emails` (GET — Vercel cron every 5min, processes steps 2-4 with suppression logic). Event `tickets_live_at` column controls announcement mode; payment-intent route rejects early purchases.
 - **Admin & Utilities**: `/api/admin/dashboard`, `/api/admin/orders-stats`, `/api/auth/*`, `/api/track`, `/api/meta/capi`, `/api/upload`, `/api/media/[key]`, `/api/email/*`, `/api/wallet/status`, `/api/health`
 
 ---

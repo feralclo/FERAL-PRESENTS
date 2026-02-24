@@ -11,14 +11,16 @@ import {
   Sparkles,
   Power,
   Tag,
+  Megaphone,
 } from "lucide-react";
 import { useOrgId } from "@/components/OrgProvider";
-import { abandonedCartAutomationKey, popupKey } from "@/lib/constants";
+import { abandonedCartAutomationKey, popupKey, announcementAutomationKey } from "@/lib/constants";
 
 export default function MarketingPage() {
   const orgId = useOrgId();
   const [automationActive, setAutomationActive] = useState(false);
   const [popupActive, setPopupActive] = useState(false);
+  const [announcementActive, setAnnouncementActive] = useState(false);
 
   useEffect(() => {
     fetch(`/api/settings?key=${abandonedCartAutomationKey(orgId)}`)
@@ -32,6 +34,14 @@ export default function MarketingPage() {
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.enabled) setPopupActive(true);
+      })
+      .catch(() => {});
+
+    fetch(`/api/settings?key=${announcementAutomationKey(orgId)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        // Default is enabled (true), so only set false if explicitly disabled
+        if (json?.data?.enabled !== false) setAnnouncementActive(true);
       })
       .catch(() => {});
   }, [orgId]);
@@ -50,6 +60,13 @@ export default function MarketingPage() {
       href: "/admin/communications/marketing/popup/",
       active: popupActive,
       icon: Tag,
+    },
+    {
+      name: "Announcements",
+      description: "Automated email sequence for event announcement signups \u2014 confirmation, hype, tickets live, and final reminder",
+      href: "/admin/communications/marketing/announcements/",
+      active: announcementActive,
+      icon: Megaphone,
     },
   ];
 

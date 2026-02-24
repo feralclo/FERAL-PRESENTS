@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/stripe-health/",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/announcement-emails/",
+      "schedule": "*/5 * * * *"
     }
   ],
   "headers": [

@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
-import { buildOrderConfirmationEmail, buildAbandonedCartRecoveryEmail, type EmailWalletLinks, type AbandonedCartEmailData } from "@/lib/email-templates";
+import { buildOrderConfirmationEmail, buildAbandonedCartRecoveryEmail, buildAnnouncementEmail, type EmailWalletLinks, type AbandonedCartEmailData, type AnnouncementEmailOpts } from "@/lib/email-templates";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings, WalletPassSettings } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS, DEFAULT_PDF_TICKET_SETTINGS, DEFAULT_WALLET_PASS_SETTINGS } from "@/types/email";
 
@@ -643,6 +643,185 @@ export async function sendAbandonedCartRecoveryEmail(params: {
   } catch (err) {
     // Never throw — email failure must not block the cron
     console.error(`[email] Failed to send abandoned cart recovery for cart ${params.cartId}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Send announcement email (coming-soon sequence).
+ *
+ * Called by the signup route (step 1) and cron job (steps 2-4).
+ * Fetches email settings + branding, builds HTML, sends via Resend with retry.
+ * CID logo embedding (same pattern as abandoned cart).
+ *
+ * Never throws — failures are logged but don't block the caller.
+ */
+export async function sendAnnouncementEmail(params: {
+  orgId: string;
+  email: string;
+  step: 1 | 2 | 3 | 4;
+  firstName?: string;
+  event: {
+    name: string;
+    slug: string;
+    venue_name?: string;
+    date_start?: string;
+    tickets_live_at?: string;
+  };
+  unsubscribeToken: string;
+  customSubject?: string;
+  customHeading?: string;
+  customBody?: string;
+}): Promise<boolean> {
+  try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.log("[email] RESEND_API_KEY not configured — skipping announcement email");
+      return false;
+    }
+
+    let settings = await getEmailSettings(params.orgId);
+
+    // Build URLs
+    const siteUrl = (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+    ).replace(/\/$/, "");
+    const eventUrl = `${siteUrl}/event/${params.event.slug}`;
+    const unsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${encodeURIComponent(params.unsubscribeToken)}&type=announcement`;
+
+    // Load branding for accent color + org name
+    let accentColor = settings.accent_color || "#8B5CF6";
+    let orgName = settings.from_name || params.orgId;
+    try {
+      const sb = await getSupabaseAdmin();
+      if (sb) {
+        const { data: brandingData } = await sb
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", `${params.orgId}_branding`)
+          .single();
+        if (brandingData?.data) {
+          const branding = brandingData.data as { accent_color?: string; org_name?: string };
+          if (branding.accent_color) accentColor = branding.accent_color;
+          if (branding.org_name) orgName = branding.org_name;
+        }
+      }
+    } catch { /* branding not found — use defaults */ }
+
+    // Format tickets_live_at for display
+    let ticketsLiveAt = "TBC";
+    if (params.event.tickets_live_at) {
+      try {
+        const d = new Date(params.event.tickets_live_at);
+        const datePart = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const timePart = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        ticketsLiveAt = `${datePart} at ${timePart}`;
+      } catch {
+        ticketsLiveAt = params.event.tickets_live_at;
+      }
+    }
+
+    let emailLogoBase64: string | null = null;
+
+    // Fetch email logo for CID inline embedding
+    try {
+      const sb = await getSupabaseAdmin();
+      if (sb && settings.logo_url) {
+        const m = settings.logo_url.match(/\/api\/media\/(.+)$/);
+        if (m) {
+          const { data: row } = await sb
+            .from(TABLES.SITE_SETTINGS).select("data")
+            .eq("key", `media_${m[1]}`).single();
+          const d = row?.data as { image?: string } | null;
+          if (d?.image) emailLogoBase64 = d.image;
+        }
+      }
+    } catch { /* logo fetch failed */ }
+
+    if (emailLogoBase64) {
+      settings = { ...settings, logo_url: "cid:brand-logo" };
+    }
+
+    const announcementOpts: AnnouncementEmailOpts = {
+      step: params.step,
+      eventName: params.event.name,
+      eventDate: formatEventDate(params.event.date_start),
+      venue: params.event.venue_name || "",
+      ticketsLiveAt,
+      eventUrl,
+      firstName: params.firstName,
+      orgName,
+      accentColor,
+      logoUrl: settings.logo_url || undefined,
+      unsubscribeUrl,
+      customSubject: params.customSubject,
+      customHeading: params.customHeading,
+      customBody: params.customBody,
+    };
+
+    const { subject, html } = buildAnnouncementEmail(settings, announcementOpts);
+
+    // Build attachments — logo only
+    const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [];
+    if (emailLogoBase64) {
+      const base64Match = emailLogoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (base64Match) {
+        attachments.push({
+          filename: "logo.png",
+          content: Buffer.from(base64Match[2], "base64"),
+          contentType: base64Match[1],
+          contentId: "brand-logo",
+        });
+      }
+    }
+
+    // Send via Resend — retry up to 2 times on transient failures
+    let lastError: unknown = null;
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const { error } = await resend.emails.send({
+        from: `${settings.from_name} <${settings.from_email}>`,
+        replyTo: settings.reply_to || undefined,
+        to: [params.email],
+        subject,
+        html,
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+        ...(attachments.length > 0 ? { attachments } : {}),
+      });
+
+      if (!error) {
+        console.log(
+          `[email] Announcement step ${params.step} sent to ${params.email} for ${params.event.name}${attempt > 1 ? ` (attempt ${attempt})` : ""}`
+        );
+        return true;
+      }
+
+      lastError = error;
+      const errMsg = typeof error === "object" && "message" in error ? error.message : String(error);
+      console.warn(`[email] Announcement email attempt ${attempt}/${maxAttempts} failed:`, errMsg);
+
+      if (typeof error === "object" && "name" in error && (error as { name: string }).name === "validation_error") {
+        break;
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      }
+    }
+
+    const errMsg = lastError && typeof lastError === "object" && "message" in lastError
+      ? (lastError as { message: string }).message
+      : String(lastError);
+    console.error(`[email] Announcement email failed for ${params.email}:`, errMsg);
+    return false;
+  } catch (err) {
+    console.error(`[email] Failed to send announcement email for ${params.email}:`, err);
     return false;
   }
 }

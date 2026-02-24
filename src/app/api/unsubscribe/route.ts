@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("token");
   const type = searchParams.get("type");
 
-  if (!token || type !== "cart_recovery") {
+  if (!token || !type || !["cart_recovery", "announcement"].includes(type)) {
     return new NextResponse(buildPage("Invalid Link", "This unsubscribe link is invalid or has expired."), {
       status: 400,
       headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -35,6 +35,45 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // ── Announcement unsubscribe ──
+  if (type === "announcement") {
+    const { data: signup, error: signupErr } = await supabase
+      .from(TABLES.EVENT_INTEREST_SIGNUPS)
+      .select("id, email, org_id")
+      .eq("unsubscribe_token", token)
+      .single();
+
+    if (signupErr || !signup) {
+      return new NextResponse(buildPage("Invalid Link", "This unsubscribe link is invalid or has expired."), {
+        status: 404,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
+    // Mark ALL announcement signups for this email + org as unsubscribed
+    const now = new Date().toISOString();
+    await supabase
+      .from(TABLES.EVENT_INTEREST_SIGNUPS)
+      .update({ unsubscribed_at: now })
+      .eq("org_id", signup.org_id)
+      .eq("email", signup.email)
+      .is("unsubscribed_at", null);
+
+    console.log(`[unsubscribe] ${signup.email} unsubscribed from announcement emails`);
+
+    return new NextResponse(
+      buildPage(
+        "Unsubscribed",
+        "You\u2019ve been unsubscribed from event announcement emails. You won\u2019t receive any more updates about upcoming ticket releases.",
+      ),
+      {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      },
+    );
+  }
+
+  // ── Cart recovery unsubscribe ──
   // Look up the cart by token to get the email
   const { data: cart, error } = await supabase
     .from(TABLES.ABANDONED_CARTS)

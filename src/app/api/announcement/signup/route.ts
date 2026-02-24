@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, announcementAutomationKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { generateNickname } from "@/lib/nicknames";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { sendAnnouncementEmail } from "@/lib/email";
+import type { AnnouncementAutomationSettings } from "@/types/announcements";
 
 const signupLimiter = createRateLimiter("announcement-signup", {
   limit: 10,
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
     // Verify event exists, belongs to org, and has tickets_live_at in the future
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, tickets_live_at")
+      .select("id, name, slug, venue_name, date_start, tickets_live_at")
       .eq("id", event_id)
       .eq("org_id", orgId)
       .single();
@@ -137,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert into event_interest_signups (ON CONFLICT DO NOTHING)
-    const { error: signupErr } = await supabase
+    const { data: signupRow, error: signupErr } = await supabase
       .from(TABLES.EVENT_INTEREST_SIGNUPS)
       .upsert(
         {
@@ -149,14 +151,71 @@ export async function POST(request: NextRequest) {
           signed_up_at: new Date().toISOString(),
         },
         { onConflict: "org_id,event_id,customer_id", ignoreDuplicates: true }
-      );
+      )
+      .select("id, notification_count, unsubscribe_token")
+      .single();
 
-    const alreadySignedUp = !signupErr
-      ? false
-      : signupErr.code === "23505"; // unique violation = already signed up
+    const alreadySignedUp = !signupRow;
 
-    if (signupErr && signupErr.code !== "23505") {
-      console.error("Interest signup insert failed:", signupErr);
+    if (signupErr && !signupRow) {
+      // Only log non-duplicate errors
+      const errCode = (signupErr as { code?: string })?.code;
+      if (errCode !== "23505") {
+        console.error("Interest signup insert failed:", signupErr);
+      }
+    }
+
+    // Send step 1 confirmation email (fire-and-forget, non-blocking)
+    if (signupRow && signupRow.notification_count === 0) {
+      // Load automation settings
+      let automationEnabled = true;
+      let step1Enabled = true;
+      let step1Subject: string | undefined;
+      let step1Heading: string | undefined;
+      let step1Body: string | undefined;
+      try {
+        const { data: settingsRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", announcementAutomationKey(orgId))
+          .single();
+        if (settingsRow?.data) {
+          const s = settingsRow.data as Partial<AnnouncementAutomationSettings>;
+          if (s.enabled === false) automationEnabled = false;
+          if (s.step_1_enabled === false) step1Enabled = false;
+          step1Subject = s.step_1_subject;
+          step1Heading = s.step_1_heading;
+          step1Body = s.step_1_body;
+        }
+      } catch { /* settings not found — use defaults */ }
+
+      // Bump notification_count from 0 to 1 atomically
+      await supabase
+        .from(TABLES.EVENT_INTEREST_SIGNUPS)
+        .update({ notification_count: 1 })
+        .eq("id", signupRow.id)
+        .eq("notification_count", 0);
+
+      // Send email if enabled (fire-and-forget)
+      if (automationEnabled && step1Enabled) {
+        sendAnnouncementEmail({
+          orgId,
+          email: normalizedEmail,
+          step: 1,
+          firstName: first_name || undefined,
+          event: {
+            name: event.name,
+            slug: event.slug,
+            venue_name: event.venue_name,
+            date_start: event.date_start,
+            tickets_live_at: event.tickets_live_at,
+          },
+          unsubscribeToken: signupRow.unsubscribe_token,
+          customSubject: step1Subject,
+          customHeading: step1Heading,
+          customBody: step1Body,
+        }).catch((err) => console.error("[announcement] Step 1 email failed:", err));
+      }
     }
 
     return NextResponse.json({ success: true, already_signed_up: alreadySignedUp });

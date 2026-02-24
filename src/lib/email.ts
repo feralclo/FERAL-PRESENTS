@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, brandingKey } from "@/lib/constants";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { buildOrderConfirmationEmail, buildAbandonedCartRecoveryEmail, buildAnnouncementEmail, type EmailWalletLinks, type AbandonedCartEmailData, type AnnouncementEmailOpts } from "@/lib/email-templates";
@@ -38,9 +38,29 @@ async function getEmailSettings(orgId: string): Promise<EmailSettings> {
       .eq("key", `${orgId}_email`)
       .single();
 
-    if (data?.data && typeof data.data === "object") {
-      return { ...orgDefaults, ...(data.data as Partial<EmailSettings>) };
+    const emailSettings = data?.data && typeof data.data === "object"
+      ? { ...orgDefaults, ...(data.data as Partial<EmailSettings>) }
+      : orgDefaults;
+
+    // Branding fallback: if email settings has no logo (and no override flag),
+    // pull logo + accent color from the global branding settings
+    if (!emailSettings.logo_url && !(data?.data as Record<string, unknown>)?.logo_override) {
+      try {
+        const { data: brandingRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single();
+        if (brandingRow?.data) {
+          const branding = brandingRow.data as { logo_url?: string; accent_color?: string; logo_height?: number };
+          if (branding.logo_url) emailSettings.logo_url = branding.logo_url;
+          if (branding.accent_color) emailSettings.accent_color = branding.accent_color;
+          if (branding.logo_height) emailSettings.logo_height = branding.logo_height;
+        }
+      } catch { /* branding not found */ }
     }
+
+    return emailSettings;
   } catch {
     // Settings not found — use defaults
   }

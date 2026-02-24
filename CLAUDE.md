@@ -194,6 +194,8 @@ Request → Middleware resolves org_id → sets x-org-id header → downstream r
 ### White-Label Branding System
 Org-level branding in `site_settings` under `{org_id}_branding`: logo, org name, accent/background/card/text colors, heading/body fonts, copyright. Event layout (Server Component) injects CSS vars server-side (no FOUC). Client uses `useBranding()` hook. `GET /api/branding` (public), `POST /api/branding` (admin).
 
+**Centralized branding page**: `/admin/settings/branding/` — single place to upload the global logo, set accent color, org name, copyright, and support email. Auto-migrates existing email logo on first visit. On save, syncs logo to `{org_id}_email` (unless `logo_override: true`). `getEmailSettings()` falls back to `{org_id}_branding` logo if email settings has no `logo_url` and no `logo_override`. Order confirmation page shows global logo by default with "Use custom logo for this email" override toggle (`logo_override` flag in `{org_id}_email`).
+
 ### Settings System
 **Event data**: `events` + `ticket_types` tables
 - Event content (name, venue, dates, theme, about, lineup, images) in `events` table

@@ -18,7 +18,7 @@ import {
   Tag,
 } from "lucide-react";
 import { useOrgId } from "@/components/OrgProvider";
-import { emailKey, walletPassesKey, abandonedCartAutomationKey, popupKey } from "@/lib/constants";
+import { emailKey, walletPassesKey, abandonedCartAutomationKey, announcementAutomationKey, popupKey } from "@/lib/constants";
 
 /* ── Stat card ── */
 function StatCard({
@@ -148,6 +148,7 @@ export default function CommunicationsPage() {
   const [walletEnabled, setWalletEnabled] = useState(false);
   const [abandonedCartEnabled, setAbandonedCartEnabled] = useState(false);
   const [popupEnabled, setPopupEnabled] = useState(false);
+  const [announcementEnabled, setAnnouncementEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/email/status")
@@ -180,6 +181,13 @@ export default function CommunicationsPage() {
       .then((r) => r.json())
       .then((json) => {
         if (json?.data?.enabled) setPopupEnabled(true);
+      })
+      .catch(() => {});
+
+    fetch(`/api/settings?key=${announcementAutomationKey(orgId)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data?.enabled !== false) setAnnouncementEnabled(true);
       })
       .catch(() => {});
   }, [orgId]);
@@ -257,9 +265,10 @@ export default function CommunicationsPage() {
           title="Marketing"
           description="Campaigns and automated sequences"
           icon={Megaphone}
-          status={abandonedCartEnabled || popupEnabled ? "live" : "coming-soon"}
+          status={abandonedCartEnabled || popupEnabled || announcementEnabled ? "live" : "coming-soon"}
           templates={[
             { name: "Abandoned Cart", href: "/admin/communications/marketing/abandoned-cart/", active: abandonedCartEnabled, icon: ShoppingCart },
+            { name: "Announcements", href: "/admin/communications/marketing/announcements/", active: announcementEnabled, icon: Megaphone },
             { name: "Popup", href: "/admin/communications/marketing/popup/", active: popupEnabled, icon: Tag },
           ]}
         />

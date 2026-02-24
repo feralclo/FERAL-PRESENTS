@@ -26,6 +26,7 @@ import {
   ImageIcon,
   Pencil,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 
 /* ── Logo processing: auto-trim transparent pixels + resize ── */
@@ -238,6 +239,8 @@ export default function OrderConfirmationPage() {
   const [testStatus, setTestStatus] = useState("");
   const [previewMerch, setPreviewMerch] = useState(false);
   const [resendStatus, setResendStatus] = useState<{ configured: boolean; verified: boolean; loading: boolean }>({ configured: false, verified: false, loading: true });
+  const [globalLogoUrl, setGlobalLogoUrl] = useState<string | null>(null);
+  const [logoOverride, setLogoOverride] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -245,8 +248,20 @@ export default function OrderConfirmationPage() {
         const supabase = getSupabaseClient();
         if (!supabase) { setLoading(false); return; }
         const { data } = await supabase.from(TABLES.SITE_SETTINGS).select("data").eq("key", emailKey(orgId)).single();
-        if (data?.data && typeof data.data === "object") setSettings((prev) => ({ ...prev, ...(data.data as Partial<EmailSettings>) }));
+        if (data?.data && typeof data.data === "object") {
+          const emailData = data.data as Partial<EmailSettings> & { logo_override?: boolean };
+          setSettings((prev) => ({ ...prev, ...emailData }));
+          if (emailData.logo_override) setLogoOverride(true);
+        }
       } catch { /* defaults are fine */ }
+      // Fetch global branding logo
+      try {
+        const brandingRes = await fetch("/api/branding");
+        if (brandingRes.ok) {
+          const { data: branding } = await brandingRes.json();
+          if (branding?.logo_url) setGlobalLogoUrl(branding.logo_url);
+        }
+      } catch { /* branding not available */ }
       setLoading(false);
     })();
     fetch("/api/email/status").then((r) => r.json()).then((json) => setResendStatus({ ...json, loading: false })).catch(() => setResendStatus({ configured: false, verified: false, loading: false }));
@@ -326,11 +341,17 @@ export default function OrderConfirmationPage() {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) { setStatus("Error: Database not configured"); setSaving(false); return; }
-      const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert({ key: emailKey(orgId), data: settings, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      const dataToSave = {
+        ...settings,
+        logo_override: logoOverride,
+        // When override is OFF, clear the email-specific logo so it falls back to branding
+        ...(!logoOverride ? { logo_url: undefined } : {}),
+      };
+      const { error } = await supabase.from(TABLES.SITE_SETTINGS).upsert({ key: emailKey(orgId), data: dataToSave, updated_at: new Date().toISOString() }, { onConflict: "key" });
       setStatus(error ? `Error: ${error.message}` : "Settings saved");
     } catch { setStatus("Error: Failed to save"); }
     setSaving(false);
-  }, [settings]);
+  }, [settings, logoOverride]);
 
   const handleLogoFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -477,61 +498,103 @@ export default function OrderConfirmationPage() {
 
                   <Separator />
 
-                  {/* Email Logo */}
+                  {/* Email Logo — global branding default + override */}
                   <div className="space-y-3">
                     <Label>Email Logo</Label>
-                    <p className="text-[11px] text-muted-foreground">Transparent PNGs are auto-cropped. Shown in the email header.</p>
 
-                    {settings.logo_url ? (
-                      <div
-                        className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
-                        onClick={() => logoFileRef.current?.click()}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={displayLogoUrl || settings.logo_url}
-                          alt="Logo"
-                          style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
-                        />
-                        {/* Hover: tiny icon buttons top-right */}
-                        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
-                          >
-                            <Pencil size={11} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); update("logo_url", undefined); }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-red-500/30 hover:text-red-400"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
+                    {/* Global branding logo (default) */}
+                    {!logoOverride && (
+                      <div className="space-y-3">
+                        {globalLogoUrl ? (
+                          <div className="inline-block rounded-lg border border-border bg-[#08080c] p-4">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={globalLogoUrl}
+                              alt="Global logo"
+                              style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-border p-4 max-w-xs">
+                            <p className="text-xs text-muted-foreground">No global logo configured</p>
+                          </div>
+                        )}
+                        <p className="text-[11px] text-muted-foreground">
+                          Using global logo from{" "}
+                          <Link href="/admin/settings/branding/" className="text-primary hover:underline inline-flex items-center gap-1">
+                            Brand Settings <ExternalLink size={10} />
+                          </Link>
+                        </p>
                       </div>
-                    ) : (
-                      <div
-                        className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all max-w-xs ${
-                          logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                        }`}
-                        onClick={() => logoFileRef.current?.click()}
-                        onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
-                        onDragLeave={() => setLogoDragging(false)}
-                        onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
-                      >
-                        <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
-                        <p className="text-xs text-muted-foreground">{logoProcessing ? "Processing..." : "Drop image or click to upload"}</p>
-                        <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP</p>
-                        <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
+                    )}
+
+                    {/* Override toggle */}
+                    <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+                      <Switch checked={logoOverride} onCheckedChange={(v) => { setLogoOverride(v); setStatus(""); }} />
+                      <div>
+                        <Label className="text-xs cursor-pointer" onClick={() => { setLogoOverride(v => !v); setStatus(""); }}>
+                          Use custom logo for this email
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Override the global branding logo for order confirmations only
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Custom logo upload — only shown when override is ON */}
+                    {logoOverride && (
+                      <div className="space-y-3 pl-1">
+                        {settings.logo_url ? (
+                          <div
+                            className="group relative inline-block cursor-pointer rounded-lg border border-border bg-[#08080c] p-4"
+                            onClick={() => logoFileRef.current?.click()}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={displayLogoUrl || settings.logo_url}
+                              alt="Logo"
+                              style={{ height: 40, width: "auto", maxWidth: 200, objectFit: "contain" }}
+                            />
+                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); logoFileRef.current?.click(); }}
+                                className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
+                              >
+                                <Pencil size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); update("logo_url", undefined); }}
+                                className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 text-white/70 backdrop-blur-sm transition-colors hover:bg-red-500/30 hover:text-red-400"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                            <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
+                          </div>
+                        ) : (
+                          <div
+                            className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all max-w-xs ${
+                              logoDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                            }`}
+                            onClick={() => logoFileRef.current?.click()}
+                            onDragOver={(e) => { e.preventDefault(); setLogoDragging(true); }}
+                            onDragLeave={() => setLogoDragging(false)}
+                            onDrop={(e) => { e.preventDefault(); setLogoDragging(false); const file = e.dataTransfer.files[0]; if (file) handleLogoFile(file); }}
+                          >
+                            <ImageIcon size={16} className="mx-auto mb-1.5 text-muted-foreground/50" />
+                            <p className="text-xs text-muted-foreground">{logoProcessing ? "Processing..." : "Drop image or click to upload"}</p>
+                            <p className="text-[10px] text-muted-foreground/40 mt-0.5">PNG, JPG or WebP</p>
+                            <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleLogoFile(file); e.target.value = ""; }} />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* Logo Size slider — only show when a logo is set */}
-                  {settings.logo_url && (
+                  {/* Logo Size slider — only show when override is on and a logo is set */}
+                  {logoOverride && settings.logo_url && (
                     <>
                       <Separator />
                       <div className="space-y-3">
@@ -636,7 +699,7 @@ export default function OrderConfirmationPage() {
 
         <TabsContent value="preview">
           <div className="flex flex-col items-center gap-4">
-            <EmailPreview settings={settings} showMerch={previewMerch} />
+            <EmailPreview settings={logoOverride ? settings : { ...settings, logo_url: globalLogoUrl || settings.logo_url }} showMerch={previewMerch} />
             <div className="flex items-center gap-2">
               <Switch checked={previewMerch} onCheckedChange={setPreviewMerch} />
               <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setPreviewMerch(v => !v)}>Preview with merch</Label>

@@ -14,6 +14,7 @@ import {
   Plug,
   Globe,
   Sparkles,
+  Palette,
   ArrowLeft,
   PanelLeft,
   X,
@@ -27,6 +28,7 @@ interface SettingsNavItem {
 
 const SETTINGS_NAV: SettingsNavItem[] = [
   { href: "/admin/settings/plan/", label: "Plan", icon: Sparkles },
+  { href: "/admin/settings/branding/", label: "Branding", icon: Palette },
   { href: "/admin/settings/general/", label: "General", icon: Settings },
   { href: "/admin/settings/users/", label: "Users", icon: Users },
   { href: "/admin/settings/finance/", label: "Finance", icon: CreditCard },

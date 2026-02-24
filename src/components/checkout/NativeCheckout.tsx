@@ -164,6 +164,36 @@ function ChevronIcon({ className }: { className?: string }) {
 }
 
 /* ================================================================
+   CLIENT ERROR REPORTING — sends to /api/checkout/error
+   ================================================================ */
+
+function reportCheckoutError(params: {
+  errorCode: string;
+  errorMessage: string;
+  eventId?: string;
+  eventSlug?: string;
+  customerEmail?: string;
+  context?: string;
+}) {
+  try {
+    fetch("/api/checkout/error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        error_code: params.errorCode,
+        error_message: params.errorMessage,
+        event_id: params.eventId,
+        event_slug: params.eventSlug,
+        customer_email: params.customerEmail,
+        context: params.context,
+      }),
+    }).catch(() => {}); // Fire-and-forget
+  } catch {
+    // Never throw — best effort
+  }
+}
+
+/* ================================================================
    MAIN CHECKOUT COMPONENT
    ================================================================ */
 
@@ -981,9 +1011,11 @@ function SinglePageCheckoutForm({
             updated_at: new Date().toISOString(),
           } as Order);
         }
-      } catch {
-        setError("An error occurred. Please try again.");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "An error occurred. Please try again.";
+        setError(msg);
         setProcessing(false);
+        reportCheckoutError({ errorCode: "express_checkout_error", errorMessage: msg, eventId: event.id, eventSlug: slug, customerEmail: email });
       }
     },
     [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty, orgId]
@@ -1049,8 +1081,10 @@ function SinglePageCheckoutForm({
         const data = await res.json();
         if (!res.ok) {
           trackEngagement("payment_failed");
-          setError(data.error || "Failed to create payment.");
+          const errMsg = data.error || "Failed to create payment.";
+          setError(errMsg);
           setProcessing(false);
+          reportCheckoutError({ errorCode: "payment_intent_failed", errorMessage: errMsg, eventId: event.id, eventSlug: slug, customerEmail: email });
           return;
         }
 
@@ -1072,8 +1106,10 @@ function SinglePageCheckoutForm({
 
           if (result.error) {
             trackEngagement("payment_failed");
-            setError(result.error.message || "Payment failed. Please try again.");
+            const errMsg = result.error.message || "Payment failed. Please try again.";
+            setError(errMsg);
             setProcessing(false);
+            reportCheckoutError({ errorCode: "card_confirmation_failed", errorMessage: errMsg, eventId: event.id, eventSlug: slug, customerEmail: email });
             return;
           }
 
@@ -1155,10 +1191,12 @@ function SinglePageCheckoutForm({
             updated_at: new Date().toISOString(),
           } as Order);
         }
-      } catch {
+      } catch (err) {
         trackEngagement("payment_failed");
-        setError("An error occurred. Please try again.");
+        const msg = err instanceof Error ? err.message : "An error occurred. Please try again.";
+        setError(msg);
         setProcessing(false);
+        reportCheckoutError({ errorCode: "checkout_crash", errorMessage: msg, eventId: event.id, eventSlug: slug, customerEmail: email });
       }
     },
     [

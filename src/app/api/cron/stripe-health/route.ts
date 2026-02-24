@@ -191,7 +191,59 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ── 3. Data retention — purge old events ──
+    // ── 3. Webhook reconciliation — find orphaned payments ──
+    // Check for payment_succeeded events in the last 2 hours that have no matching order.
+    // This catches the scenario where Stripe took the money but the webhook/confirm-order
+    // failed to create an order — the most dangerous failure mode.
+
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
+    const { data: recentSuccesses } = await supabase
+      .from(TABLES.PAYMENT_EVENTS)
+      .select("org_id, stripe_payment_intent_id, customer_email, metadata, created_at")
+      .eq("type", "payment_succeeded")
+      .gte("created_at", twoHoursAgo)
+      .not("stripe_payment_intent_id", "is", null);
+
+    if (recentSuccesses && recentSuccesses.length > 0) {
+      // Get all payment_refs from orders in last 2 hours
+      const { data: recentOrders } = await supabase
+        .from(TABLES.ORDERS)
+        .select("payment_ref")
+        .gte("created_at", twoHoursAgo);
+
+      const orderRefs = new Set((recentOrders || []).map((o) => o.payment_ref));
+
+      for (const pe of recentSuccesses) {
+        if (pe.stripe_payment_intent_id && !orderRefs.has(pe.stripe_payment_intent_id)) {
+          // This payment succeeded but no order exists — orphaned payment!
+          results.anomalies.push(`Orphaned payment: PI ${pe.stripe_payment_intent_id} for org ${pe.org_id}`);
+          await logPaymentEvent({
+            orgId: pe.org_id,
+            type: "orphaned_payment",
+            severity: "critical",
+            stripePaymentIntentId: pe.stripe_payment_intent_id,
+            customerEmail: pe.customer_email || undefined,
+            errorMessage: "Payment succeeded but no matching order found — possible webhook failure",
+          });
+          await sendPlatformAlert({
+            subject: `Orphaned payment detected for org ${pe.org_id}`,
+            body: [
+              `PaymentIntent: ${pe.stripe_payment_intent_id}`,
+              `Org: ${pe.org_id}`,
+              `Customer: ${pe.customer_email || "unknown"}`,
+              `Payment time: ${pe.created_at}`,
+              "",
+              "This payment was charged but no order was created.",
+              "Check the Stripe dashboard and manually create the order if needed.",
+            ].join("\n"),
+            severity: "critical",
+          });
+        }
+      }
+    }
+
+    // ── 4. Data retention — purge old events ──
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();

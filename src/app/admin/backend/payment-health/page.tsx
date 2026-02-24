@@ -16,26 +16,84 @@ import {
   Zap,
   CreditCard,
   Activity,
+  Eye,
+  Webhook,
+  MonitorSmartphone,
+  Clock,
+  ArrowRight,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 
+// ─── Types ───────────────────────────────────────────────────────────
+
 interface PaymentHealthData {
-  summary: { total_events: number; critical_count: number; warning_count: number; unresolved_count: number };
-  payments: { succeeded: number; failed: number; failure_rate: number; total_amount_failed_pence: number };
-  checkout: { errors: number; validations: number; rate_limit_blocks: number };
-  connect: {
-    total_accounts: number; healthy: number; unhealthy: number; fallbacks: number;
-    unhealthy_list: { org_id: string; stripe_account_id: string; error_message: string; created_at: string }[];
+  summary: {
+    total_events: number;
+    critical_count: number;
+    warning_count: number;
+    unresolved_count: number;
   };
-  webhooks: { received: number; errors: number; error_rate: number };
+  payments: {
+    succeeded: number;
+    failed: number;
+    failure_rate: number;
+    total_amount_failed_pence: number;
+  };
+  checkout: {
+    errors: number;
+    client_errors: number;
+    validations: number;
+    rate_limit_blocks: number;
+  };
+  connect: {
+    total_accounts: number;
+    healthy: number;
+    unhealthy: number;
+    fallbacks: number;
+    unhealthy_list: {
+      org_id: string;
+      stripe_account_id: string;
+      error_message: string;
+      created_at: string;
+    }[];
+  };
+  webhooks: {
+    received: number;
+    errors: number;
+    error_rate: number;
+  };
+  reconciliation: {
+    orphaned_payments: number;
+  };
   recent_critical: {
-    id: string; org_id: string; type: string; severity: string; error_code: string | null;
-    error_message: string | null; stripe_account_id: string | null; customer_email: string | null;
-    resolved: boolean; created_at: string;
+    id: string;
+    org_id: string;
+    type: string;
+    severity: string;
+    error_code: string | null;
+    error_message: string | null;
+    stripe_account_id: string | null;
+    customer_email: string | null;
+    resolved: boolean;
+    created_at: string;
   }[];
-  failure_by_org: { org_id: string; succeeded: number; failed: number; failure_rate: number }[];
+  failure_by_org: {
+    org_id: string;
+    succeeded: number;
+    failed: number;
+    failure_rate: number;
+  }[];
   failure_by_code: { code: string; count: number }[];
-  hourly_trend: { hour: string; succeeded: number; failed: number; errors: number }[];
+  hourly_trend: {
+    hour: string;
+    succeeded: number;
+    failed: number;
+    errors: number;
+  }[];
 }
+
+// ─── Constants ───────────────────────────────────────────────────────
 
 const PERIODS = [
   { value: "1h", label: "Last hour" },
@@ -44,6 +102,25 @@ const PERIODS = [
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
 ];
+
+/** Friendly names for raw event types */
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  payment_failed: "Payment failed",
+  payment_succeeded: "Payment succeeded",
+  checkout_error: "Checkout error (server)",
+  checkout_validation: "Checkout validation",
+  webhook_error: "Webhook error",
+  webhook_received: "Webhook received",
+  connect_account_unhealthy: "Stripe account unhealthy",
+  connect_account_healthy: "Stripe account recovered",
+  connect_fallback: "Connect fallback used",
+  rate_limit_hit: "Rate limit triggered",
+  subscription_failed: "Subscription payment failed",
+  orphaned_payment: "Orphaned payment",
+  client_checkout_error: "Checkout error (customer's browser)",
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -62,58 +139,175 @@ function formatPence(pence: number): string {
   return pounds % 1 === 0 ? `£${pounds}` : `£${pounds.toFixed(2)}`;
 }
 
+function friendlyEventType(type: string): string {
+  return EVENT_TYPE_LABELS[type] || type.replace(/_/g, " ");
+}
+
+// ─── Status Banner ───────────────────────────────────────────────────
+
 function StatusBanner({ data }: { data: PaymentHealthData }) {
   const { critical_count, unresolved_count } = data.summary;
   const failureRate = data.payments.failure_rate;
+  const orphaned = data.reconciliation.orphaned_payments;
+  const totalPayments = data.payments.succeeded + data.payments.failed;
 
-  if (critical_count > 0 || unresolved_count > 5 || failureRate > 0.1) {
+  // Critical: active issues that need attention
+  if (critical_count > 0 || unresolved_count > 5 || failureRate > 0.1 || orphaned > 0) {
+    const issues: string[] = [];
+    if (critical_count > 0) issues.push(`${critical_count} critical issue${critical_count !== 1 ? "s" : ""}`);
+    if (orphaned > 0) issues.push(`${orphaned} orphaned payment${orphaned !== 1 ? "s" : ""} (money taken, no order created)`);
+    if (failureRate > 0.1) issues.push(`${(failureRate * 100).toFixed(1)}% payment failure rate`);
+    if (unresolved_count > 5) issues.push(`${unresolved_count} unresolved events`);
+
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-5 py-4">
-        <XCircle size={20} className="text-destructive shrink-0" />
+      <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-5 py-4">
+        <XCircle size={20} className="text-destructive shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-destructive">Issues Detected</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {critical_count} critical issue{critical_count !== 1 ? "s" : ""}, {unresolved_count} unresolved,{" "}
-            {(failureRate * 100).toFixed(1)}% failure rate
-          </p>
+          <p className="text-sm font-semibold text-destructive">Action Required</p>
+          <ul className="mt-1 space-y-0.5">
+            {issues.map((issue, i) => (
+              <li key={i} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <ArrowRight size={10} className="text-destructive shrink-0" />
+                {issue}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     );
   }
 
+  // Warning: minor issues worth noting
   if (data.summary.warning_count > 0 || failureRate > 0.05) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/10 px-5 py-4">
-        <AlertTriangle size={20} className="text-warning shrink-0" />
+      <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 px-5 py-4">
+        <AlertTriangle size={20} className="text-warning shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-warning">Warnings Present</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {data.summary.warning_count} warning{data.summary.warning_count !== 1 ? "s" : ""},{" "}
-            {(failureRate * 100).toFixed(1)}% failure rate
+          <p className="text-sm font-semibold text-warning">Minor Warnings</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {data.summary.warning_count} warning{data.summary.warning_count !== 1 ? "s" : ""} detected.
+            {failureRate > 0.05 && ` Payment failure rate is ${(failureRate * 100).toFixed(1)}%.`}
+            {" "}These are usually card declines or temporary issues — not blocking anyone from buying.
           </p>
         </div>
       </div>
     );
   }
 
+  // All good
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success/10 px-5 py-4">
-      <CheckCircle2 size={20} className="text-success shrink-0" />
+    <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 px-5 py-4">
+      <CheckCircle2 size={20} className="text-success shrink-0 mt-0.5" />
       <div>
         <p className="text-sm font-semibold text-success">All Systems Healthy</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          No critical issues. {data.payments.succeeded} successful payment{data.payments.succeeded !== 1 ? "s" : ""} in period.
+        <p className="text-xs text-muted-foreground mt-1">
+          {totalPayments > 0
+            ? `${data.payments.succeeded} successful payment${data.payments.succeeded !== 1 ? "s" : ""} processed with no issues.`
+            : "No payment activity in this period — monitoring is active and will flag any problems."}
+          {data.connect.total_accounts > 0 && ` All ${data.connect.total_accounts} Stripe account${data.connect.total_accounts !== 1 ? "s" : ""} healthy.`}
         </p>
       </div>
     </div>
   );
 }
 
+// ─── Monitoring Coverage Card ────────────────────────────────────────
+
+function MonitoringCoverage({ data }: { data: PaymentHealthData }) {
+  const checks = [
+    {
+      label: "Payment processing",
+      description: "Every payment attempt is logged — successes, failures, and the reason for each decline",
+      icon: CreditCard,
+      active: true,
+    },
+    {
+      label: "Checkout errors (server)",
+      description: "Server-side checkout crashes — if the API breaks, you'll know immediately",
+      icon: Shield,
+      active: true,
+    },
+    {
+      label: "Checkout errors (browser)",
+      description: "Client-side failures — if Stripe Elements won't load or a customer's browser crashes during checkout",
+      icon: MonitorSmartphone,
+      active: true,
+    },
+    {
+      label: "Stripe Connect accounts",
+      description: `Checked every 30 minutes — charges enabled, no past-due requirements${data.connect.total_accounts > 0 ? ` (${data.connect.total_accounts} account${data.connect.total_accounts !== 1 ? "s" : ""})` : ""}`,
+      icon: Zap,
+      active: true,
+    },
+    {
+      label: "Webhook delivery",
+      description: "Stripe webhook errors are tracked — if webhooks fail, order creation could be affected",
+      icon: Webhook,
+      active: true,
+    },
+    {
+      label: "Orphaned payment detection",
+      description: "Cross-checks payments against orders every 30 minutes — catches money taken with no order created",
+      icon: Eye,
+      active: true,
+    },
+    {
+      label: "Anomaly detection",
+      description: "Alerts if any tenant's failure rate exceeds 20%, or if platform-wide failures spike",
+      icon: Activity,
+      active: true,
+    },
+    {
+      label: "Rate limit monitoring",
+      description: "Tracks when checkout rate limits block suspicious IPs — potential bot attacks or abuse",
+      icon: ShieldCheck,
+      active: true,
+    },
+  ];
+
+  return (
+    <Card className="py-0 gap-0">
+      <CardHeader className="px-5 pt-5 pb-3">
+        <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+          What&apos;s Being Monitored
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          These checks run automatically. Critical issues trigger email alerts to the platform owner.
+        </p>
+      </CardHeader>
+      <CardContent className="px-5 pb-5">
+        <div className="grid sm:grid-cols-2 gap-3">
+          {checks.map((check) => (
+            <div
+              key={check.label}
+              className="flex items-start gap-3 rounded-lg border border-border/50 px-3.5 py-3"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-success/10 shrink-0 mt-0.5">
+                <check.icon size={13} className="text-success" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-foreground">{check.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                  {check.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Hourly Chart ────────────────────────────────────────────────────
+
 function HourlyChart({ trend }: { trend: PaymentHealthData["hourly_trend"] }) {
   if (trend.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-muted-foreground text-xs">
-        No data in this period
+      <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+        <Clock size={20} className="mb-2 opacity-40" />
+        <p className="text-xs">No payment activity in this period</p>
+        <p className="text-[10px] mt-0.5 opacity-60">The chart will populate as payments are processed</p>
       </div>
     );
   }
@@ -121,33 +315,55 @@ function HourlyChart({ trend }: { trend: PaymentHealthData["hourly_trend"] }) {
   const maxVal = Math.max(...trend.map((b) => b.succeeded + b.failed + b.errors), 1);
 
   return (
-    <div className="flex items-end gap-[2px] h-40 px-1">
-      {trend.map((bucket) => {
-        const total = bucket.succeeded + bucket.failed + bucket.errors;
-        const height = (total / maxVal) * 100;
-        const successPct = total > 0 ? (bucket.succeeded / total) * 100 : 100;
-        const failPct = total > 0 ? (bucket.failed / total) * 100 : 0;
-        const label = bucket.hour.slice(11, 16);
+    <div>
+      <div className="flex items-end gap-[2px] h-40 px-1">
+        {trend.map((bucket) => {
+          const total = bucket.succeeded + bucket.failed + bucket.errors;
+          const height = (total / maxVal) * 100;
+          const successPct = total > 0 ? (bucket.succeeded / total) * 100 : 100;
+          const failPct = total > 0 ? (bucket.failed / total) * 100 : 0;
+          const label = bucket.hour.slice(11, 16);
 
-        return (
-          <div key={bucket.hour} className="flex flex-col items-center flex-1 min-w-0" title={`${label}: ${bucket.succeeded}ok / ${bucket.failed}fail / ${bucket.errors}err`}>
+          return (
             <div
-              className="w-full rounded-t-sm overflow-hidden"
-              style={{ height: `${Math.max(height, 2)}%` }}
+              key={bucket.hour}
+              className="flex flex-col items-center flex-1 min-w-0"
+              title={`${label} — ${bucket.succeeded} succeeded, ${bucket.failed} failed, ${bucket.errors} errors`}
             >
-              <div className="flex flex-col h-full w-full">
-                {failPct > 0 && (
-                  <div className="bg-destructive/80 w-full" style={{ height: `${failPct}%` }} />
-                )}
-                <div className="bg-success/60 w-full flex-1" style={{ height: `${successPct}%` }} />
+              <div
+                className="w-full rounded-t-sm overflow-hidden"
+                style={{ height: `${Math.max(height, 2)}%` }}
+              >
+                <div className="flex flex-col h-full w-full">
+                  {failPct > 0 && (
+                    <div
+                      className="bg-destructive/80 w-full"
+                      style={{ height: `${failPct}%` }}
+                    />
+                  )}
+                  <div
+                    className="bg-success/60 w-full flex-1"
+                    style={{ height: `${successPct}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-success/60" /> Succeeded
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-destructive/80" /> Failed
+        </span>
+      </div>
     </div>
   );
 }
+
+// ─── Main Page ───────────────────────────────────────────────────────
 
 export default function PaymentHealthPage() {
   const [data, setData] = useState<PaymentHealthData | null>(null);
@@ -189,7 +405,9 @@ export default function PaymentHealthPage() {
   async function resolveEvent(id: string) {
     setResolving((prev) => new Set(prev).add(id));
     try {
-      const res = await fetch(`/api/platform/payment-health/${id}/resolve`, { method: "POST" });
+      const res = await fetch(`/api/platform/payment-health/${id}/resolve`, {
+        method: "POST",
+      });
       if (res.ok) {
         setData((prev) => {
           if (!prev) return prev;
@@ -198,7 +416,10 @@ export default function PaymentHealthPage() {
             recent_critical: prev.recent_critical.map((e) =>
               e.id === id ? { ...e, resolved: true } : e
             ),
-            summary: { ...prev.summary, unresolved_count: Math.max(0, prev.summary.unresolved_count - 1) },
+            summary: {
+              ...prev.summary,
+              unresolved_count: Math.max(0, prev.summary.unresolved_count - 1),
+            },
           };
         });
       }
@@ -213,6 +434,8 @@ export default function PaymentHealthPage() {
     }
   }
 
+  // ─── Loading state ─────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -221,13 +444,18 @@ export default function PaymentHealthPage() {
     );
   }
 
+  // ─── Error state ───────────────────────────────────────────────────
+
   if (error) {
     return (
       <div className="p-6">
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center">
           <XCircle size={24} className="text-destructive mx-auto mb-2" />
-          <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={fetchData}>
+          <p className="text-sm font-medium text-destructive mb-1">
+            Could not load payment health data
+          </p>
+          <p className="text-xs text-muted-foreground mb-3">{error}</p>
+          <Button variant="outline" size="sm" onClick={fetchData}>
             Retry
           </Button>
         </div>
@@ -237,14 +465,18 @@ export default function PaymentHealthPage() {
 
   if (!data) return null;
 
+  const totalPayments = data.payments.succeeded + data.payments.failed;
+
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Payment Health</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            Payment Health
+          </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time payment monitoring and alerting
+            Live monitoring across every payment path — server errors, client-side failures, Stripe accounts, and webhook delivery.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -254,7 +486,9 @@ export default function PaymentHealthPage() {
             className="w-40"
           >
             {PERIODS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
             ))}
           </NativeSelect>
           <Button
@@ -272,130 +506,245 @@ export default function PaymentHealthPage() {
         </div>
       </div>
 
-      {/* Status banner */}
+      {/* ── Status Banner ── */}
       <StatusBanner data={data} />
 
-      {/* Stat cards */}
+      {/* ── Key Metrics ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Failure Rate"
-          value={`${(data.payments.failure_rate * 100).toFixed(1)}%`}
+          label="Payment Success Rate"
+          value={
+            totalPayments > 0
+              ? `${((1 - data.payments.failure_rate) * 100).toFixed(1)}%`
+              : "—"
+          }
           icon={CreditCard}
-          detail={`${data.payments.failed} of ${data.payments.succeeded + data.payments.failed} payments`}
+          detail={
+            totalPayments > 0
+              ? `${data.payments.succeeded} succeeded, ${data.payments.failed} failed`
+              : "No payments in this period"
+          }
         />
         <StatCard
-          label="Critical Issues"
-          value={String(data.summary.critical_count)}
-          icon={AlertTriangle}
-          detail={`${data.summary.unresolved_count} unresolved`}
+          label="Unresolved Issues"
+          value={String(data.summary.unresolved_count)}
+          icon={
+            data.summary.unresolved_count > 0 ? ShieldAlert : ShieldCheck
+          }
+          detail={
+            data.summary.unresolved_count > 0
+              ? `${data.summary.critical_count} critical, ${data.summary.warning_count} warnings`
+              : "No open issues"
+          }
         />
         <StatCard
-          label="Connect Health"
-          value={`${data.connect.healthy}/${data.connect.total_accounts}`}
+          label="Stripe Accounts"
+          value={
+            data.connect.total_accounts > 0
+              ? `${data.connect.healthy}/${data.connect.total_accounts}`
+              : "—"
+          }
           icon={Zap}
-          detail={data.connect.unhealthy > 0 ? `${data.connect.unhealthy} unhealthy` : "All healthy"}
+          detail={
+            data.connect.total_accounts === 0
+              ? "No connected accounts"
+              : data.connect.unhealthy > 0
+                ? `${data.connect.unhealthy} need${data.connect.unhealthy === 1 ? "s" : ""} attention`
+                : "All accounts healthy"
+          }
         />
         <StatCard
           label="Checkout Errors"
-          value={String(data.checkout.errors)}
-          icon={Shield}
-          detail={`${data.checkout.rate_limit_blocks} rate limited`}
+          value={String(
+            data.checkout.errors + data.checkout.client_errors
+          )}
+          icon={MonitorSmartphone}
+          detail={
+            data.checkout.errors + data.checkout.client_errors === 0
+              ? "Clean checkout experience"
+              : `${data.checkout.errors} server, ${data.checkout.client_errors} browser`
+          }
         />
       </div>
 
-      {/* Hourly trend */}
+      {/* ── Orphaned Payments Alert ── */}
+      {data.reconciliation.orphaned_payments > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-5 py-4">
+          <Eye size={18} className="text-destructive shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-destructive">
+              {data.reconciliation.orphaned_payments} Orphaned Payment
+              {data.reconciliation.orphaned_payments !== 1 ? "s" : ""} Detected
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              These are payments where Stripe successfully charged the
+              customer but no order was created on the platform. This
+              usually means the webhook or order confirmation failed.
+              Check the events below for details and resolve manually in
+              the Stripe dashboard.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Volume Chart ── */}
       <Card className="py-0 gap-0">
         <CardHeader className="px-5 pt-5 pb-3">
           <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-            Payment Volume
+            Payment Volume Over Time
           </CardTitle>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Hover over bars to see exact counts per hour
+          </p>
         </CardHeader>
         <CardContent className="px-5 pb-5">
           <HourlyChart trend={data.hourly_trend} />
-          <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-success/60" /> Succeeded</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive/80" /> Failed</span>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Two-column: Failure by code / Failure by org */}
+      {/* ── Two-column: Decline codes / Failures by tenant ── */}
       <div className="grid lg:grid-cols-2 gap-4">
-        {/* Failure by decline code */}
+        {/* Decline codes */}
         <Card className="py-0 gap-0">
           <CardHeader className="px-5 pt-5 pb-3">
             <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-              Decline Codes
+              Why Payments Failed
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Decline reasons from Stripe — card_declined and
+              insufficient_funds are normal customer issues
+            </p>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             {data.failure_by_code.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No failures in period</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <CheckCircle2 size={14} className="text-success" />
+                No payment failures in this period
+              </div>
             ) : (
               <div className="space-y-2">
-                {data.failure_by_code.slice(0, 8).map((item) => (
-                  <div key={item.code} className="flex items-center justify-between text-sm">
-                    <code className="text-xs font-mono text-muted-foreground">{item.code}</code>
-                    <Badge variant="outline" className="text-xs">{item.count}</Badge>
-                  </div>
-                ))}
+                {data.failure_by_code.slice(0, 8).map((item) => {
+                  const isNormal =
+                    item.code === "card_declined" ||
+                    item.code === "insufficient_funds" ||
+                    item.code === "expired_card";
+                  return (
+                    <div
+                      key={item.code}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <code className="text-xs font-mono text-muted-foreground">
+                          {item.code}
+                        </code>
+                        {isNormal && (
+                          <span className="text-[9px] text-muted-foreground/60 uppercase">
+                            normal
+                          </span>
+                        )}
+                      </div>
+                      <Badge
+                        variant={!isNormal && item.count > 2 ? "destructive" : "outline"}
+                        className="text-xs"
+                      >
+                        {item.count}
+                      </Badge>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Failure by tenant */}
+        {/* Failures by tenant */}
         <Card className="py-0 gap-0">
           <CardHeader className="px-5 pt-5 pb-3">
             <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-              Failures by Tenant
+              Payment Health by Tenant
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Per-tenant failure rates — above 20% triggers an automatic
+              alert
+            </p>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             {data.failure_by_org.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No payment data in period</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <CheckCircle2 size={14} className="text-success" />
+                No payment data in this period
+              </div>
             ) : (
               <div className="space-y-2">
-                {data.failure_by_org.slice(0, 8).map((item) => (
-                  <div key={item.org_id} className="flex items-center justify-between text-sm">
-                    <span className="text-xs font-mono text-muted-foreground truncate mr-3">{item.org_id}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground">
-                        {item.failed}/{item.succeeded + item.failed}
+                {data.failure_by_org.slice(0, 8).map((item) => {
+                  const total = item.succeeded + item.failed;
+                  const pct = (item.failure_rate * 100).toFixed(0);
+                  return (
+                    <div
+                      key={item.org_id}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span className="text-xs font-mono text-muted-foreground truncate mr-3">
+                        {item.org_id}
                       </span>
-                      <Badge
-                        variant={item.failure_rate > 0.2 ? "destructive" : "outline"}
-                        className="text-xs"
-                      >
-                        {(item.failure_rate * 100).toFixed(0)}%
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">
+                          {item.succeeded}/{total} ok
+                        </span>
+                        <Badge
+                          variant={
+                            item.failure_rate > 0.2
+                              ? "destructive"
+                              : "outline"
+                          }
+                          className="text-xs"
+                        >
+                          {pct}% fail
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Unhealthy Connect accounts */}
+      {/* ── Unhealthy Connect Accounts ── */}
       {data.connect.unhealthy_list.length > 0 && (
         <Card className="py-0 gap-0 border-destructive/30">
           <CardHeader className="px-5 pt-5 pb-3">
             <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-destructive">
-              Unhealthy Connect Accounts
+              Stripe Accounts Needing Attention
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              These accounts cannot process payments — the tenant&apos;s
+              customers will not be able to buy tickets until this is
+              resolved
+            </p>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="space-y-3">
               {data.connect.unhealthy_list.map((account, i) => (
-                <div key={i} className="flex items-start justify-between gap-3 text-sm border-b border-border/30 pb-3 last:border-0 last:pb-0">
+                <div
+                  key={i}
+                  className="flex items-start justify-between gap-3 text-sm border-b border-border/30 pb-3 last:border-0 last:pb-0"
+                >
                   <div className="min-w-0">
-                    <code className="text-xs font-mono text-foreground">{account.stripe_account_id}</code>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Org: {account.org_id}</p>
-                    <p className="text-[11px] text-destructive/80 mt-0.5">{account.error_message}</p>
+                    <code className="text-xs font-mono text-foreground">
+                      {account.stripe_account_id}
+                    </code>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Tenant: {account.org_id}
+                    </p>
+                    <p className="text-[11px] text-destructive/80 mt-0.5">
+                      {account.error_message}
+                    </p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">{timeAgo(account.created_at)}</span>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    {timeAgo(account.created_at)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -403,47 +752,82 @@ export default function PaymentHealthPage() {
         </Card>
       )}
 
-      {/* Recent critical events */}
+      {/* ── Recent Events (Critical + Warning) ── */}
       <Card className="py-0 gap-0">
         <CardHeader className="px-5 pt-5 pb-3">
           <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-            Recent Critical Events
+            Recent Events
           </CardTitle>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Critical and warning events from the selected period. Mark
+            events as &quot;Resolved&quot; once you&apos;ve investigated.
+          </p>
         </CardHeader>
         <CardContent className="px-5 pb-5">
           {data.recent_critical.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No critical events in period</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+              <CheckCircle2 size={14} className="text-success" />
+              No critical or warning events — everything is running
+              smoothly
+            </div>
           ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
               {data.recent_critical.map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-start justify-between gap-3 rounded-lg border border-border/50 px-4 py-3"
+                  className={`flex items-start justify-between gap-3 rounded-lg border px-4 py-3 ${
+                    event.resolved
+                      ? "border-border/30 opacity-60"
+                      : event.severity === "critical"
+                        ? "border-destructive/20 bg-destructive/5"
+                        : "border-border/50"
+                  }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge
-                        variant={event.severity === "critical" ? "destructive" : "outline"}
+                        variant={
+                          event.severity === "critical"
+                            ? "destructive"
+                            : "outline"
+                        }
                         className="text-[10px]"
                       >
                         {event.severity}
                       </Badge>
-                      <code className="text-xs font-mono text-foreground">{event.type}</code>
+                      <span className="text-xs font-medium text-foreground">
+                        {friendlyEventType(event.type)}
+                      </span>
                       {event.resolved && (
-                        <Badge variant="outline" className="text-[10px] text-success border-success/30">resolved</Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] text-success border-success/30"
+                        >
+                          resolved
+                        </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
-                      <span>Org: {event.org_id}</span>
-                      {event.error_code && <span>Code: {event.error_code}</span>}
-                      {event.customer_email && <span>{event.customer_email}</span>}
+                      <span>Tenant: {event.org_id}</span>
+                      {event.error_code && (
+                        <span>
+                          Code: <code className="font-mono">{event.error_code}</code>
+                        </span>
+                      )}
+                      {event.customer_email && (
+                        <span>{event.customer_email}</span>
+                      )}
                     </div>
                     {event.error_message && (
-                      <p className="text-[11px] text-muted-foreground/70 mt-1 truncate">{event.error_message}</p>
+                      <p className="text-[11px] text-muted-foreground/70 mt-1 line-clamp-2">
+                        {event.error_message}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">{timeAgo(event.created_at)}</span>
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      {timeAgo(event.created_at)}
+                    </span>
                     {!event.resolved && (
                       <Button
                         variant="outline"
@@ -452,7 +836,11 @@ export default function PaymentHealthPage() {
                         disabled={resolving.has(event.id)}
                         onClick={() => resolveEvent(event.id)}
                       >
-                        {resolving.has(event.id) ? <Loader2 size={10} className="animate-spin" /> : "Resolve"}
+                        {resolving.has(event.id) ? (
+                          <Loader2 size={10} className="animate-spin" />
+                        ) : (
+                          "Resolve"
+                        )}
                       </Button>
                     )}
                   </div>
@@ -462,6 +850,122 @@ export default function PaymentHealthPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Monitoring Coverage ── */}
+      <MonitoringCoverage data={data} />
+
+      {/* ── Webhook & Rate Limit Stats ── */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="py-0 gap-0">
+          <CardHeader className="px-5 pt-5 pb-3">
+            <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+              Webhooks
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Received</span>
+                <span className="font-mono text-foreground">
+                  {data.webhooks.received}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Errors</span>
+                <span
+                  className={`font-mono ${data.webhooks.errors > 0 ? "text-destructive" : "text-foreground"}`}
+                >
+                  {data.webhooks.errors}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Error rate</span>
+                <span
+                  className={`font-mono ${data.webhooks.error_rate > 0.05 ? "text-destructive" : "text-foreground"}`}
+                >
+                  {(data.webhooks.error_rate * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="py-0 gap-0">
+          <CardHeader className="px-5 pt-5 pb-3">
+            <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+              Checkout Protection
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Rate limit blocks
+                </span>
+                <span className="font-mono text-foreground">
+                  {data.checkout.rate_limit_blocks}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Validation catches
+                </span>
+                <span className="font-mono text-foreground">
+                  {data.checkout.validations}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Connect fallbacks
+                </span>
+                <span
+                  className={`font-mono ${data.connect.fallbacks > 0 ? "text-warning" : "text-foreground"}`}
+                >
+                  {data.connect.fallbacks}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="py-0 gap-0">
+          <CardHeader className="px-5 pt-5 pb-3">
+            <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+              Revenue Impact
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Failed payment value
+                </span>
+                <span
+                  className={`font-mono ${data.payments.total_amount_failed_pence > 0 ? "text-destructive" : "text-foreground"}`}
+                >
+                  {formatPence(data.payments.total_amount_failed_pence)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Orphaned payments
+                </span>
+                <span
+                  className={`font-mono ${data.reconciliation.orphaned_payments > 0 ? "text-destructive" : "text-foreground"}`}
+                >
+                  {data.reconciliation.orphaned_payments}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Total events</span>
+                <span className="font-mono text-foreground">
+                  {data.summary.total_events}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

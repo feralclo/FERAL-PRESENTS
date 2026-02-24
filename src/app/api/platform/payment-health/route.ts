@@ -3,6 +3,8 @@ import { requirePlatformOwner } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/platform/payment-health
  *
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const url = new URL(request.url);
   const period = url.searchParams.get("period") || "24h";
-  const orgFilter = url.searchParams.get("org_id");
+  const orgFilter = url.searchParams.get("org_id") || null;
 
   // Calculate time range
   const periodMs: Record<string, number> = {
@@ -33,18 +35,21 @@ export async function GET(request: NextRequest) {
   const since = new Date(Date.now() - (periodMs[period] || periodMs["24h"])).toISOString();
 
   try {
-    // Fetch all events in period
-    let query = supabase
-      .from(TABLES.PAYMENT_EVENTS)
-      .select("*")
-      .gte("created_at", since)
-      .order("created_at", { ascending: false });
+    // Fetch all events in period — build query without reassignment
+    const eventsQuery = orgFilter
+      ? supabase
+          .from(TABLES.PAYMENT_EVENTS)
+          .select("*")
+          .eq("org_id", orgFilter)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+      : supabase
+          .from(TABLES.PAYMENT_EVENTS)
+          .select("*")
+          .gte("created_at", since)
+          .order("created_at", { ascending: false });
 
-    if (orgFilter) {
-      query = query.eq("org_id", orgFilter);
-    }
-
-    const { data: events, error } = await query;
+    const { data: events, error } = await eventsQuery;
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -56,12 +61,18 @@ export async function GET(request: NextRequest) {
     const warningCount = allEvents.filter((e) => e.severity === "warning").length;
 
     // Unresolved count (all time, not limited by period)
-    let unresolvedQuery = supabase
-      .from(TABLES.PAYMENT_EVENTS)
-      .select("id", { count: "exact", head: true })
-      .eq("resolved", false)
-      .in("severity", ["warning", "critical"]);
-    if (orgFilter) unresolvedQuery = unresolvedQuery.eq("org_id", orgFilter);
+    const unresolvedQuery = orgFilter
+      ? supabase
+          .from(TABLES.PAYMENT_EVENTS)
+          .select("id", { count: "exact", head: true })
+          .eq("resolved", false)
+          .in("severity", ["warning", "critical"])
+          .eq("org_id", orgFilter)
+      : supabase
+          .from(TABLES.PAYMENT_EVENTS)
+          .select("id", { count: "exact", head: true })
+          .eq("resolved", false)
+          .in("severity", ["warning", "critical"]);
     const { count: unresolvedCount } = await unresolvedQuery;
 
     // ── Payments ──
@@ -78,41 +89,46 @@ export async function GET(request: NextRequest) {
     const checkoutErrors = allEvents.filter((e) => e.type === "checkout_error").length;
     const validations = allEvents.filter((e) => e.type === "checkout_validation").length;
     const rateLimitBlocks = allEvents.filter((e) => e.type === "rate_limit_hit").length;
+    const clientErrors = allEvents.filter((e) => e.type === "client_checkout_error").length;
 
     // ── Connect ──
-    const connectUnhealthy = allEvents.filter((e) => e.type === "connect_account_unhealthy");
-    const connectHealthy = allEvents.filter((e) => e.type === "connect_account_healthy");
     const connectFallbacks = allEvents.filter((e) => e.type === "connect_fallback").length;
 
     // Get unique unhealthy accounts (current — unresolved)
-    let unhealthyQuery = supabase
-      .from(TABLES.PAYMENT_EVENTS)
-      .select("org_id, stripe_account_id, error_message, created_at")
-      .eq("type", "connect_account_unhealthy")
-      .eq("resolved", false)
-      .order("created_at", { ascending: false });
-    if (orgFilter) unhealthyQuery = unhealthyQuery.eq("org_id", orgFilter);
+    const unhealthyQuery = orgFilter
+      ? supabase
+          .from(TABLES.PAYMENT_EVENTS)
+          .select("org_id, stripe_account_id, error_message, created_at")
+          .eq("type", "connect_account_unhealthy")
+          .eq("resolved", false)
+          .eq("org_id", orgFilter)
+          .order("created_at", { ascending: false })
+      : supabase
+          .from(TABLES.PAYMENT_EVENTS)
+          .select("org_id, stripe_account_id, error_message, created_at")
+          .eq("type", "connect_account_unhealthy")
+          .eq("resolved", false)
+          .order("created_at", { ascending: false });
     const { data: unhealthyList } = await unhealthyQuery;
 
     // Count total connected accounts from settings
-    let totalAccountsQuery = supabase
+    const { data: accountRows } = await supabase
       .from(TABLES.SITE_SETTINGS)
       .select("key")
       .like("key", "%_stripe_account");
-    const { data: accountRows } = await totalAccountsQuery;
     const totalAccounts = (accountRows || []).filter((r) => {
-      if (orgFilter) {
-        return r.key === `${orgFilter}_stripe_account`;
-      }
+      if (orgFilter) return r.key === `${orgFilter}_stripe_account`;
       return true;
     }).length;
 
     const uniqueUnhealthy = new Set((unhealthyList || []).map((e) => e.stripe_account_id)).size;
 
     // ── Webhooks ──
-    const webhookReceived = allEvents.filter((e) => e.type === "webhook_received").length;
     const webhookErrors = allEvents.filter((e) => e.type === "webhook_error").length;
-    const webhookTotal = webhookReceived + webhookErrors + succeeded.length + failed.length;
+    const webhookTotal = succeeded.length + failed.length + webhookErrors;
+
+    // ── Reconciliation (orphaned payments) ──
+    const orphanedPayments = allEvents.filter((e) => e.type === "orphaned_payment").length;
 
     // ── Recent critical events ──
     const recentCritical = allEvents
@@ -153,7 +169,7 @@ export async function GET(request: NextRequest) {
     // ── Hourly trend ──
     const hourlyBuckets = new Map<string, { succeeded: number; failed: number; errors: number }>();
     for (const e of allEvents) {
-      const hour = e.created_at.slice(0, 13) + ":00:00"; // YYYY-MM-DDTHH:00:00
+      const hour = e.created_at.slice(0, 13) + ":00:00";
       const bucket = hourlyBuckets.get(hour) || { succeeded: 0, failed: 0, errors: 0 };
       if (e.type === "payment_succeeded") bucket.succeeded++;
       else if (e.type === "payment_failed") bucket.failed++;
@@ -179,6 +195,7 @@ export async function GET(request: NextRequest) {
       },
       checkout: {
         errors: checkoutErrors,
+        client_errors: clientErrors,
         validations,
         rate_limit_blocks: rateLimitBlocks,
       },
@@ -193,6 +210,9 @@ export async function GET(request: NextRequest) {
         received: webhookTotal,
         errors: webhookErrors,
         error_rate: webhookTotal > 0 ? webhookErrors / webhookTotal : 0,
+      },
+      reconciliation: {
+        orphaned_payments: orphanedPayments,
       },
       recent_critical: recentCritical,
       failure_by_org: failureByOrg,

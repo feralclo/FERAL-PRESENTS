@@ -42,11 +42,30 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const headerHidden = useHeaderScroll();
   const revealRef = useScrollReveal();
 
+  // Preview mode: ?preview=tickets bypasses announcement early-return
+  const [isTicketPreview] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("preview") === "tickets";
+  });
+
+  // Extract release config from settings (needs to be before useCart)
+  const ticketGroupMap =
+    (settings?.ticket_group_map as Record<string, string | null> | undefined) || {};
+  const ticketGroupReleaseMode =
+    (settings?.ticket_group_release_mode as Record<string, "all" | "sequential"> | undefined);
+
+  // Build stable release config for useCart
+  const releaseConfig = useMemo(() => {
+    if (!ticketGroupReleaseMode) return undefined;
+    return { groupMap: ticketGroupMap, releaseMode: ticketGroupReleaseMode };
+  }, [ticketGroupMap, ticketGroupReleaseMode]);
+
   const cart = useCart({
     eventSlug: event.slug,
     ticketTypes: event.ticket_types || [],
     currency: event.currency,
     tracking,
+    releaseConfig,
   });
 
   // Track PageView + ViewContent on mount (skip in editor preview)
@@ -406,13 +425,12 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
 
   // Full-screen announcement page — early return before normal layout
-  if (isAnnouncement && ticketsLiveAt) {
+  // Skip if admin is previewing tickets via ?preview=tickets
+  if (isAnnouncement && ticketsLiveAt && !isTicketPreview) {
     return <MidnightAnnouncementPage event={event} ticketsLiveAt={ticketsLiveAt} settings={settings} />;
   }
 
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
-  const ticketGroupMap =
-    (settings?.ticket_group_map as Record<string, string | null> | undefined) || {};
 
   return (
     <>
@@ -426,6 +444,12 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       </header>
 
       <main ref={revealRef as React.RefObject<HTMLElement>} className="pt-[var(--header-height)] bg-background min-h-screen">
+        {/* Preview mode banner */}
+        {isTicketPreview && isAnnouncement && (
+          <div className="sticky top-0 z-[998] bg-gradient-to-r from-amber-600/90 via-amber-500/90 to-amber-600/90 backdrop-blur-sm text-white text-center py-2 px-4 font-[family-name:var(--font-mono)] text-xs tracking-[0.06em]">
+            Preview Mode — Ticket page preview (not live yet)
+          </div>
+        )}
         <MidnightHero
           title={event.name.toUpperCase()}
           date={dateDisplay}
@@ -488,6 +512,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
                     cart={cart}
                     ticketGroups={ticketGroups}
                     ticketGroupMap={ticketGroupMap}
+                    ticketGroupReleaseMode={ticketGroupReleaseMode}
                     onViewMerch={handleViewMerch}
                     discount={activeDiscount}
                     onApplyDiscount={setActiveDiscount}

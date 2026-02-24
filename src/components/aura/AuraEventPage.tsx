@@ -44,6 +44,12 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   const { settings } = useSettings();
   const branding = useBranding();
 
+  // Preview mode: ?preview=tickets bypasses announcement mode
+  const [isTicketPreview] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("preview") === "tickets";
+  });
+
   // Cart state
   const [cartTotal, setCartTotal] = useState(0);
   const [cartQty, setCartQty] = useState(0);
@@ -79,6 +85,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
   const ticketGroups = (settings?.ticket_groups as string[]) || undefined;
   const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null>) || undefined;
+  const ticketGroupReleaseMode = (settings?.ticket_group_release_mode as Record<string, "all" | "sequential">) || undefined;
 
   // Meta tracking on mount — PageView + ViewContent
   useEffect(() => {
@@ -159,9 +166,16 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
         <Separator className="my-10" />
 
+        {/* Preview mode banner */}
+        {isTicketPreview && isAnnouncement && (
+          <div className="rounded-lg bg-gradient-to-r from-amber-600/90 via-amber-500/90 to-amber-600/90 text-white text-center py-2 px-4 text-xs tracking-wide mb-6">
+            Preview Mode — Ticket page preview (not live yet)
+          </div>
+        )}
+
         {/* Tickets — widget provides its own heading, or Announcement widget */}
         <section id="tickets" className="scroll-mt-20">
-          {isAnnouncement && ticketsLiveAt ? (
+          {isAnnouncement && ticketsLiveAt && !isTicketPreview ? (
             <AuraAnnouncementWidget
               eventId={event.id}
               ticketsLiveAt={ticketsLiveAt}
@@ -179,6 +193,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
               onCheckoutReady={handleCheckoutReady}
               ticketGroups={ticketGroups}
               ticketGroupMap={ticketGroupMap}
+              ticketGroupReleaseMode={ticketGroupReleaseMode}
               onViewMerch={handleViewMerch}
               addMerchRef={addMerchRef}
             />

@@ -13,6 +13,7 @@ import type { VatSettings } from "@/types/settings";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
+import { validateSequentialPurchase } from "@/lib/ticket-visibility";
 
 // 10 payment intents per minute per IP — prevents abuse / cost attacks
 const paymentLimiter = createRateLimiter("payment-intent", {
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
     // Fetch event (include stripe_account_id for per-event Connect)
     const { data: event, error: eventErr } = await supabase
       .from(TABLES.EVENTS)
-      .select("id, name, slug, payment_method, currency, stripe_account_id, vat_registered, vat_rate, vat_prices_include, vat_number, tickets_live_at")
+      .select("id, name, slug, payment_method, currency, stripe_account_id, vat_registered, vat_rate, vat_prices_include, vat_number, tickets_live_at, settings_key")
       .eq("id", event_id)
       .eq("org_id", orgId)
       .single();
@@ -186,6 +187,36 @@ export async function POST(request: NextRequest) {
         );
       }
       subtotal += Number(tt.price) * item.qty;
+    }
+
+    // Validate sequential release rules — prevent purchasing hidden tickets
+    // Settings key: event.settings_key (custom) or {orgId}_event_{slug}
+    const eventSettingsKey = (event as { settings_key?: string }).settings_key || `${orgId}_event_${event.slug}`;
+    const { data: eventSettingsRow } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", eventSettingsKey)
+      .single();
+
+    const eventSettings = eventSettingsRow?.data as {
+      ticket_group_map?: Record<string, string | null>;
+      ticket_group_release_mode?: Record<string, "all" | "sequential">;
+    } | null;
+
+    if (eventSettings?.ticket_group_release_mode) {
+      for (const item of items as { ticket_type_id: string; qty: number }[]) {
+        const tt = ttMap.get(item.ticket_type_id);
+        if (!tt) continue;
+        const error = validateSequentialPurchase(
+          tt,
+          ticketTypes,
+          eventSettings.ticket_group_map,
+          eventSettings.ticket_group_release_mode,
+        );
+        if (error) {
+          return NextResponse.json({ error }, { status: 400 });
+        }
+      }
     }
 
     // Validate and apply discount code if provided

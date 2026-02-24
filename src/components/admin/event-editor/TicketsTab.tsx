@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Ticket } from "lucide-react";
+import { Info, Plus, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
 import { GroupManager, GroupHeader } from "./GroupManager";
 import { useOrgId } from "@/components/OrgProvider";
@@ -133,6 +133,69 @@ export function TicketsTab({
     [groups, updateSetting]
   );
 
+  // Release mode settings
+  const releaseMode =
+    (settings.ticket_group_release_mode as Record<string, "all" | "sequential">) || {};
+  const ungroupedMode = releaseMode["__ungrouped__"] || "all";
+
+  const handleUngroupedModeChange = useCallback(
+    (mode: "all" | "sequential") => {
+      const updated: Record<string, "all" | "sequential"> = { ...releaseMode, ["__ungrouped__"]: mode };
+      if (mode === "all") {
+        const { __ungrouped__: _, ...rest } = updated;
+        updateSetting("ticket_group_release_mode", rest);
+      } else {
+        updateSetting("ticket_group_release_mode", updated);
+      }
+    },
+    [releaseMode, updateSetting]
+  );
+
+  // Compute "waitingFor" for tickets in sequential groups
+  // Maps ticket ID → name of the preceding ticket it's waiting on
+  const waitingForMap = useMemo(() => {
+    const result: Record<string, string> = {};
+    const sequentialGroupNames = new Set<string>();
+
+    // Collect all sequential group names (including ungrouped)
+    for (const [key, mode] of Object.entries(releaseMode)) {
+      if (mode === "sequential") sequentialGroupNames.add(key);
+    }
+
+    if (sequentialGroupNames.size === 0) return result;
+
+    // Build per-group sorted ticket lists
+    for (const groupName of sequentialGroupNames) {
+      const gTickets = ticketTypes
+        .filter((tt) => {
+          const ttGroup = groupMap[tt.id] || "__ungrouped__";
+          return ttGroup === groupName;
+        })
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      // For each ticket after the first, it's "waiting for" the preceding ticket
+      // (only if the preceding ticket isn't already sold out)
+      for (let i = 1; i < gTickets.length; i++) {
+        const prev = gTickets[i - 1];
+        const isSoldOut = prev.capacity != null && prev.capacity > 0 && prev.sold >= prev.capacity;
+        if (!isSoldOut) {
+          result[gTickets[i].id] = prev.name || "previous ticket";
+        }
+      }
+    }
+
+    return result;
+  }, [ticketTypes, groupMap, releaseMode]);
+
+  // Set of sequential group names (for passing isSequentialGroup to TicketCard)
+  const sequentialGroups = useMemo(() => {
+    const set = new Set<string>();
+    for (const [key, mode] of Object.entries(releaseMode)) {
+      if (mode === "sequential") set.add(key);
+    }
+    return set;
+  }, [releaseMode]);
+
   // Group tickets
   const ungrouped = ticketTypes.filter((tt) => !groupMap[tt.id]);
 
@@ -170,9 +233,29 @@ export function TicketsTab({
           {/* Ungrouped tickets */}
           {ungrouped.length > 0 && (
             <div className="space-y-1.5">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground/50 px-1">
-                Ungrouped
-              </span>
+              <div className="flex items-center gap-2 px-1">
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground/50">
+                  Ungrouped
+                </span>
+                {ungrouped.length >= 2 && (
+                  <select
+                    value={ungroupedMode}
+                    onChange={(e) => handleUngroupedModeChange(e.target.value as "all" | "sequential")}
+                    className="h-5 text-[10px] font-mono bg-transparent border border-border rounded px-1 text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  >
+                    <option value="all">All at once</option>
+                    <option value="sequential">Sequential release</option>
+                  </select>
+                )}
+              </div>
+              {ungroupedMode === "sequential" && ungrouped.length >= 2 && (
+                <div className="flex items-center gap-1.5 px-1">
+                  <Info size={11} className="text-primary/60 shrink-0" />
+                  <span className="text-[10px] text-muted-foreground/70">
+                    Tickets reveal one at a time as each sells out. Drag to set the release order.
+                  </span>
+                </div>
+              )}
               <div className="space-y-1.5">
                 {ungrouped.map((tt) => {
                   const i = ticketTypes.indexOf(tt);
@@ -191,6 +274,8 @@ export function TicketsTab({
                       onDragStart={handleDragStart}
                       onDragOver={handleDragOver}
                       onDragEnd={handleDragEnd}
+                      waitingFor={waitingForMap[tt.id]}
+                      isSequentialGroup={sequentialGroups.has("__ungrouped__")}
                     />
                   );
                 })}
@@ -234,6 +319,8 @@ export function TicketsTab({
                           onDragStart={handleDragStart}
                           onDragOver={handleDragOver}
                           onDragEnd={handleDragEnd}
+                          waitingFor={waitingForMap[tt.id]}
+                          isSequentialGroup={sequentialGroups.has(gName)}
                         />
                       );
                     })

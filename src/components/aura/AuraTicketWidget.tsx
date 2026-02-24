@@ -30,6 +30,7 @@ import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
 import { preloadStripe } from "@/lib/stripe/client";
 import { AuraTicketCard } from "./AuraTicketCard";
+import { getVisibleTickets } from "@/lib/ticket-visibility";
 import type { TicketTypeRow } from "@/types/events";
 
 interface AuraTicketWidgetProps {
@@ -46,6 +47,7 @@ interface AuraTicketWidgetProps {
   onCheckoutReady?: (fn: () => void) => void;
   ticketGroups?: string[];
   ticketGroupMap?: Record<string, string | null>;
+  ticketGroupReleaseMode?: Record<string, "all" | "sequential">;
   onViewMerch?: (ticketType: TicketTypeRow) => void;
   addMerchRef?: React.MutableRefObject<
     ((ticketTypeId: string, size: string, qty: number) => void) | null
@@ -64,6 +66,7 @@ export function AuraTicketWidget({
   onCheckoutReady,
   ticketGroups,
   ticketGroupMap,
+  ticketGroupReleaseMode,
   onViewMerch,
   addMerchRef,
 }: AuraTicketWidgetProps) {
@@ -90,11 +93,15 @@ export function AuraTicketWidget({
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const activeTypes = useMemo(
-    () =>
-      ticketTypes
+    () => {
+      if (ticketGroupReleaseMode) {
+        return getVisibleTickets(ticketTypes, ticketGroupMap, ticketGroupReleaseMode);
+      }
+      return ticketTypes
         .filter((tt) => tt.status === "active")
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-    [ticketTypes]
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    },
+    [ticketTypes, ticketGroupMap, ticketGroupReleaseMode]
   );
 
   const totalQty = useMemo(

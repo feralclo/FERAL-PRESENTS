@@ -23,7 +23,7 @@ import { TierSelector, type TierValue } from "@/components/admin/TierSelector";
 import { MerchImageGallery } from "@/components/admin/MerchImageGallery";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { toDatetimeLocal, fromDatetimeLocal } from "@/lib/date-utils";
-import { ChevronDown, GripVertical, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, GripVertical, Lock, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
@@ -43,6 +43,10 @@ interface TicketCardProps {
   onDragStart?: (index: number) => void;
   onDragOver?: (e: React.DragEvent, index: number) => void;
   onDragEnd?: () => void;
+  /** Name of the preceding ticket this one is waiting on (sequential release) */
+  waitingFor?: string;
+  /** Whether this ticket is in a sequential release group */
+  isSequentialGroup?: boolean;
 }
 
 export function TicketCard({
@@ -58,6 +62,8 @@ export function TicketCard({
   onDragStart,
   onDragOver,
   onDragEnd,
+  waitingFor,
+  isSequentialGroup,
 }: TicketCardProps) {
   const [open, setOpen] = useState(false);
   const currSym = CURRENCY_SYMBOLS[currency] || currency;
@@ -96,6 +102,16 @@ export function TicketCard({
             <Badge variant="outline" className="text-[10px] font-mono uppercase">
               {tierLabel}
             </Badge>
+            {waitingFor && (
+              <Badge
+                variant="outline"
+                className="text-[9px] font-mono gap-1 text-muted-foreground/60 border-muted-foreground/20"
+                title={`Reveals when "${waitingFor}" sells out`}
+              >
+                <Lock size={9} />
+                Queued
+              </Badge>
+            )}
             {ticket.sold > 0 && (
               <span className="text-[10px] font-mono text-success tabular-nums">
                 {ticket.sold} sold
@@ -205,6 +221,14 @@ export function TicketCard({
                   placeholder="Unlimited"
                   min="0"
                 />
+                {isSequentialGroup && !ticket.capacity && (
+                  <div className="flex items-center gap-1.5 text-warning">
+                    <AlertTriangle size={11} className="shrink-0" />
+                    <span className="text-[10px]">
+                      Set a capacity — unlimited tickets never sell out so later tickets won&apos;t reveal
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

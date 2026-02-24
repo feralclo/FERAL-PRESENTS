@@ -12,9 +12,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Info, Plus } from "lucide-react";
 import type { UpdateSettingFn } from "./types";
 import type { EventSettings } from "@/types/settings";
+
+const RELEASE_MODES = [
+  { value: "all", label: "All at once" },
+  { value: "sequential", label: "Sequential release" },
+] as const;
 
 interface GroupManagerProps {
   settings: EventSettings;
@@ -138,6 +143,9 @@ export function GroupHeader({
   const groups = (settings.ticket_groups as string[]) || [];
   const groupMap =
     (settings.ticket_group_map as Record<string, string | null>) || {};
+  const releaseMode =
+    (settings.ticket_group_release_mode as Record<string, "all" | "sequential">) || {};
+  const currentMode = releaseMode[name] || "all";
 
   const handleRename = () => {
     const trimmed = editName.trim();
@@ -152,6 +160,11 @@ export function GroupHeader({
         if (updatedMap[k] === name) updatedMap[k] = trimmed;
       }
       updateSetting("ticket_group_map", updatedMap);
+      // Migrate release mode key
+      if (releaseMode[name]) {
+        const { [name]: oldMode, ...rest } = releaseMode;
+        updateSetting("ticket_group_release_mode", { ...rest, [trimmed]: oldMode });
+      }
     }
     setEditing(false);
   };
@@ -166,11 +179,24 @@ export function GroupHeader({
       if (updatedMap[k] === name) updatedMap[k] = null;
     }
     updateSetting("ticket_group_map", updatedMap);
+    // Clean up release mode
+    const { [name]: _, ...restRelease } = releaseMode;
+    updateSetting("ticket_group_release_mode", restRelease);
     setShowDeleteConfirm(false);
   };
 
+  const handleReleaseModeChange = (mode: "all" | "sequential") => {
+    if (mode === "all") {
+      const { [name]: _, ...rest } = releaseMode;
+      updateSetting("ticket_group_release_mode", rest);
+    } else {
+      updateSetting("ticket_group_release_mode", { ...releaseMode, [name]: mode });
+    }
+  };
+
   return (
-    <div className="flex items-center gap-3 rounded-t-md bg-muted/40 border-b border-border px-4 py-2.5">
+    <div className="rounded-t-md bg-muted/40 border-b border-border px-4 py-2.5">
+    <div className="flex items-center gap-3">
       <div className="flex flex-col gap-0.5">
         <button
           type="button"
@@ -221,6 +247,15 @@ export function GroupHeader({
           <span className="text-[10px] text-muted-foreground/60 font-mono">
             {ticketCount} ticket{ticketCount !== 1 ? "s" : ""}
           </span>
+          <select
+            value={currentMode}
+            onChange={(e) => handleReleaseModeChange(e.target.value as "all" | "sequential")}
+            className="h-6 text-[10px] font-mono bg-transparent border border-border rounded px-1.5 text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+          >
+            {RELEASE_MODES.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
           <Button
             variant="ghost"
             size="xs"
@@ -261,6 +296,15 @@ export function GroupHeader({
           )}
         </>
       )}
+    </div>
+    {currentMode === "sequential" && (
+      <div className="flex items-center gap-1.5 mt-1.5 ml-7">
+        <Info size={11} className="text-primary/60 shrink-0" />
+        <span className="text-[10px] text-muted-foreground/70">
+          Tickets reveal one at a time as each sells out. Drag to set the release order.
+        </span>
+      </div>
+    )}
     </div>
   );
 }

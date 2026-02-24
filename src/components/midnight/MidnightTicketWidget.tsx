@@ -20,6 +20,7 @@ import { MidnightTicketCard } from "./MidnightTicketCard";
 import { MidnightCartSummary } from "./MidnightCartSummary";
 import { MidnightTierProgression } from "./MidnightTierProgression";
 import { MidnightSizeSelector } from "./MidnightSizeSelector";
+import { getSequentialGroupTickets } from "@/lib/ticket-visibility";
 import type { UseCartResult } from "@/hooks/useCart";
 import type { TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
@@ -35,6 +36,7 @@ interface MidnightTicketWidgetProps {
   cart: UseCartResult;
   ticketGroups?: string[];
   ticketGroupMap?: Record<string, string | null>;
+  ticketGroupReleaseMode?: Record<string, "all" | "sequential">;
   onViewMerch?: (ticketType: TicketTypeRow) => void;
   discount?: DiscountDisplay | null;
   onApplyDiscount?: (d: DiscountDisplay) => void;
@@ -49,6 +51,7 @@ export function MidnightTicketWidget({
   cart,
   ticketGroups,
   ticketGroupMap,
+  ticketGroupReleaseMode,
   onViewMerch,
   discount,
   onApplyDiscount,
@@ -179,6 +182,7 @@ export function MidnightTicketWidget({
 
   // Progression tickets: standard-tier ungrouped, not archived
   const groupMap = ticketGroupMap || {};
+  const releaseMode = ticketGroupReleaseMode || {};
   const progressionTickets = useMemo(
     () =>
       ticketTypes
@@ -191,6 +195,21 @@ export function MidnightTicketWidget({
         .sort((a, b) => a.sort_order - b.sort_order),
     [ticketTypes, groupMap]
   );
+
+  // For each named sequential group, get ALL tickets (including hidden) for progression bar
+  const sequentialGroupProgressions = useMemo(() => {
+    const result: { name: string; tickets: TicketTypeRow[] }[] = [];
+    const groups = ticketGroups || [];
+    for (const name of groups) {
+      if (releaseMode[name] === "sequential") {
+        const allGroupTickets = getSequentialGroupTickets(ticketTypes, name, ticketGroupMap);
+        if (allGroupTickets.length > 1) {
+          result.push({ name, tickets: allGroupTickets });
+        }
+      }
+    }
+    return result;
+  }, [ticketGroups, ticketTypes, ticketGroupMap, releaseMode]);
 
   // Size popup helpers
   const sizePopupTicket = sizePopup
@@ -264,28 +283,34 @@ export function MidnightTicketWidget({
             ))}
 
             {/* Named groups with headers */}
-            {namedGroups.map((group) => (
-              <div key={group.name} className="mt-6 max-[480px]:mt-5 pt-5 max-[480px]:pt-4 border-t border-foreground/[0.05]">
-                <div className="flex items-center gap-2.5 max-[480px]:gap-2 mb-3 max-[480px]:mb-2.5">
-                  <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[0.6rem] max-[480px]:text-[0.55rem] font-bold tracking-[0.2em] uppercase text-muted-foreground/60 shrink-0 rounded-md">
-                    {group.name}
-                  </Badge>
-                  <Separator className="flex-1 opacity-20" />
+            {namedGroups.map((group) => {
+              const seqProg = sequentialGroupProgressions.find((s) => s.name === group.name);
+              return (
+                <div key={group.name} className="mt-6 max-[480px]:mt-5 pt-5 max-[480px]:pt-4 border-t border-foreground/[0.05]">
+                  <div className="flex items-center gap-2.5 max-[480px]:gap-2 mb-3 max-[480px]:mb-2.5">
+                    <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-[0.6rem] max-[480px]:text-[0.55rem] font-bold tracking-[0.2em] uppercase text-muted-foreground/60 shrink-0 rounded-md">
+                      {group.name}
+                    </Badge>
+                    <Separator className="flex-1 opacity-20" />
+                  </div>
+                  {seqProg && (
+                    <MidnightTierProgression tickets={seqProg.tickets} currSymbol={currSymbol} />
+                  )}
+                  {group.tickets.map((tt) => (
+                    <MidnightTicketCard
+                      key={tt.id}
+                      ticket={tt}
+                      qty={quantities[tt.id] || 0}
+                      currSymbol={currSymbol}
+                      onAdd={addTicket}
+                      onRemove={removeTicket}
+                      onViewMerch={onViewMerch}
+                      discount={discount}
+                    />
+                  ))}
                 </div>
-                {group.tickets.map((tt) => (
-                  <MidnightTicketCard
-                    key={tt.id}
-                    ticket={tt}
-                    qty={quantities[tt.id] || 0}
-                    currSymbol={currSymbol}
-                    onAdd={addTicket}
-                    onRemove={removeTicket}
-                    onViewMerch={onViewMerch}
-                    discount={discount}
-                  />
-                ))}
-              </div>
-            ))}
+              );
+            })}
 
             {/* Checkout CTA — ghost when empty, frosted glass when active */}
             <button

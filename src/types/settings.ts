@@ -21,6 +21,9 @@ export interface EventSettings {
   ticket_groups?: string[];
   // Map ticket_type ID → group name (null = default ungrouped section)
   ticket_group_map?: Record<string, string | null>;
+  // Per-group release mode: "all" (default, show all active) or "sequential" (reveal one at a time)
+  // Key = group name, or "__ungrouped__" for ungrouped tickets
+  ticket_group_release_mode?: Record<string, "all" | "sequential">;
 
   /** Show sticky checkout bar on mobile (default: true) */
   sticky_checkout_bar?: boolean;

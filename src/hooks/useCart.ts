@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef } from "react";
 import { getCurrencySymbol } from "@/lib/stripe/config";
+import { getVisibleTickets } from "@/lib/ticket-visibility";
 import type { TicketTypeRow } from "@/types/events";
 import type { TrafficEventType } from "@/types/analytics";
 
@@ -17,6 +18,11 @@ interface UseCartParams {
     trackRemoveFromCart: (name: string, ids: string[]) => void;
     trackInitiateCheckout: (ids: string[], totalPrice: number, totalQty: number, currency: string) => void;
     trackEngagement: (type: TrafficEventType) => void;
+  };
+  /** Optional release config for sequential ticket visibility */
+  releaseConfig?: {
+    groupMap?: Record<string, string | null>;
+    releaseMode?: Record<string, "all" | "sequential">;
   };
 }
 
@@ -62,16 +68,21 @@ export function useCart({
   ticketTypes,
   currency,
   tracking,
+  releaseConfig,
 }: UseCartParams): UseCartResult {
   const currSymbol = getCurrencySymbol(currency);
   const interactFired = useRef(false);
 
   const activeTypes = useMemo(
-    () =>
-      ticketTypes
+    () => {
+      if (releaseConfig?.releaseMode) {
+        return getVisibleTickets(ticketTypes, releaseConfig.groupMap, releaseConfig.releaseMode);
+      }
+      return ticketTypes
         .filter((tt) => tt.status === "active")
-        .sort((a, b) => a.sort_order - b.sort_order),
-    [ticketTypes]
+        .sort((a, b) => a.sort_order - b.sort_order);
+    },
+    [ticketTypes, releaseConfig?.groupMap, releaseConfig?.releaseMode]
   );
 
   const [quantities, setQuantities] = useState<Record<string, number>>({});

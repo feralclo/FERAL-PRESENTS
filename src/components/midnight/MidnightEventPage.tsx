@@ -444,7 +444,10 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     } catch { return false; }
   });
 
-  const showQueue = isQueuePreview || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
+  // Show queue if: (a) preview=queue and not yet released, or (b) in real queue window and not released
+  const showQueue = (isQueuePreview && !queueReleased) || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
+  // After queue preview completes, user lands on ticket page — show preview banner
+  const showQueueCompleteBanner = isQueuePreview && queueReleased;
 
   // Full-screen announcement page — early return before normal layout
   // Skip if admin is previewing tickets or queue via ?preview=tickets|queue
@@ -475,11 +478,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
   return (
     <>
       {/* Preview mode banner — fixed above header, pushes everything down */}
-      {isTicketPreview && isAnnouncement && (
+      {((isTicketPreview && isAnnouncement) || showQueueCompleteBanner) && (
         <div className="fixed top-0 left-0 right-0 z-[1001] bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-center py-2.5 px-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] font-medium shadow-lg"
           style={{ height: "var(--preview-banner-h, 36px)" }}
         >
-          PREVIEW MODE — This is what buyers will see when tickets go live
+          {showQueueCompleteBanner
+            ? "PREVIEW MODE — Queue complete! This is the ticket page buyers see next"
+            : "PREVIEW MODE — This is what buyers will see when tickets go live"}
         </div>
       )}
 
@@ -487,13 +492,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
       <header
         className={`header${headerHidden ? " header--hidden" : ""}`}
         id="header"
-        style={isTicketPreview && isAnnouncement ? { top: "var(--preview-banner-h, 36px)" } : undefined}
+        style={(isTicketPreview && isAnnouncement) || showQueueCompleteBanner ? { top: "var(--preview-banner-h, 36px)" } : undefined}
       >
         <VerifiedBanner />
         <Header />
       </header>
 
-      <main ref={revealRef as React.RefObject<HTMLElement>} className={`bg-background min-h-screen ${isTicketPreview && isAnnouncement ? "pt-[calc(var(--header-height)+var(--preview-banner-h,36px))]" : "pt-[var(--header-height)]"}`}>
+      <main ref={revealRef as React.RefObject<HTMLElement>} className={`bg-background min-h-screen ${(isTicketPreview && isAnnouncement) || showQueueCompleteBanner ? "pt-[calc(var(--header-height)+var(--preview-banner-h,36px))]" : "pt-[var(--header-height)]"}`}>
         <MidnightHero
           title={event.name.toUpperCase()}
           date={dateDisplay}

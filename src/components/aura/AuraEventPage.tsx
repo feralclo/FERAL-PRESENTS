@@ -103,7 +103,10 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
     } catch { return false; }
   });
 
-  const showQueue = isQueuePreview || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
+  // Show queue if: (a) preview=queue and not yet released, or (b) in real queue window and not released
+  const showQueue = (isQueuePreview && !queueReleased) || (queueState.isInQueueWindow && !queueReleased && !isTicketPreview);
+  // After queue preview completes, user lands on ticket page — show preview banner
+  const showQueueCompleteBanner = isQueuePreview && queueReleased;
 
   const ticketGroups = (settings?.ticket_groups as string[]) || undefined;
   const ticketGroupMap = (settings?.ticket_group_map as Record<string, string | null>) || undefined;
@@ -170,11 +173,13 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Preview mode banner — sticky above header */}
-      {(isTicketPreview || isQueuePreview) && (
+      {(isTicketPreview || (isQueuePreview && !queueReleased) || showQueueCompleteBanner) && (
         <div className="sticky top-0 z-[51] bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-center py-2.5 px-4 text-[11px] tracking-[0.08em] font-medium shadow-lg">
-          {isQueuePreview
-            ? "PREVIEW MODE — This is what buyers see in the queue"
-            : "PREVIEW MODE — This is what buyers will see when tickets go live"}
+          {showQueueCompleteBanner
+            ? "PREVIEW MODE — Queue complete! This is the ticket page buyers see next"
+            : isQueuePreview
+              ? "PREVIEW MODE — This is what buyers see in the queue"
+              : "PREVIEW MODE — This is what buyers will see when tickets go live"}
         </div>
       )}
       <VerifiedBanner />

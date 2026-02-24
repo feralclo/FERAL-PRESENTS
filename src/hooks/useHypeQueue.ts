@@ -20,6 +20,10 @@ export interface HypeQueueState {
   released: boolean;
   /** Marks queue as complete in localStorage */
   onReleased: () => void;
+  /** How many people moved in the last batch (for "X got through" feedback) */
+  lastBatchSize: number;
+  /** Whether we're in the "nearly there" zone (position ≤ 5) */
+  nearFront: boolean;
 }
 
 interface UseHypeQueueOptions {
@@ -46,56 +50,103 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+interface BatchEntry {
+  time: number;
+  position: number;
+  batchSize: number;
+}
+
 /** Pre-generate the batch schedule so it's deterministic and refresh-safe */
 function generateBatchSchedule(
   startingPosition: number,
   durationMs: number,
   seed: number,
-): { time: number; position: number }[] {
+): BatchEntry[] {
   const rand = seededRandom(seed);
-  const schedule: { time: number; position: number }[] = [];
+  const schedule: BatchEntry[] = [];
   let pos = startingPosition;
   let t = 0;
 
-  // Generate batches that cover ~95% of duration, leaving last 5% for the final sprint
+  // Generate batches that cover ~92% of duration, leaving 8% for final sprint to 0
   const targetDuration = durationMs * 0.92;
 
   while (pos > 1 && t < targetDuration) {
-    // Batch pause: 1.5-4s early on, 2-6s in the middle, 1-2s near the end
     const progressRatio = t / targetDuration;
     let pauseMin: number, pauseMax: number;
-    if (progressRatio < 0.3) {
-      pauseMin = 1500; pauseMax = 3500;
-    } else if (progressRatio < 0.7) {
-      pauseMin = 2500; pauseMax = 5500; // Tension — slow middle
+
+    if (progressRatio < 0.25) {
+      // Fast start — things are moving, excitement builds
+      pauseMin = 1200; pauseMax = 2800;
+    } else if (progressRatio < 0.5) {
+      // Slow tension — the middle drags, doubt creeps in
+      pauseMin = 2800; pauseMax = 5500;
+    } else if (progressRatio < 0.75) {
+      // Building again — hope returns
+      pauseMin = 1800; pauseMax = 4000;
     } else {
-      pauseMin = 800; pauseMax = 2000; // Sprint at the end
+      // Sprint to the end — rapid drops, adrenaline
+      pauseMin = 600; pauseMax = 1800;
     }
+
     const pause = pauseMin + rand() * (pauseMax - pauseMin);
     t += pause;
 
-    // Batch size: relative to remaining position
+    // Batch size: relative to remaining position, with more variation
     const remaining = pos;
-    const batchMin = Math.max(1, Math.floor(remaining * 0.03));
-    const batchMax = Math.max(2, Math.floor(remaining * 0.12));
-    const batchSize = Math.floor(batchMin + rand() * (batchMax - batchMin));
+    let batchMin: number, batchMax: number;
 
-    pos = Math.max(1, pos - batchSize);
-    schedule.push({ time: t, position: pos });
+    if (progressRatio < 0.25) {
+      // Bigger early batches — queue is moving fast
+      batchMin = Math.max(1, Math.floor(remaining * 0.05));
+      batchMax = Math.max(3, Math.floor(remaining * 0.15));
+    } else if (progressRatio < 0.5) {
+      // Smaller batches — slower, more tension
+      batchMin = Math.max(1, Math.floor(remaining * 0.02));
+      batchMax = Math.max(2, Math.floor(remaining * 0.08));
+    } else if (progressRatio < 0.75) {
+      // Medium batches — picking up
+      batchMin = Math.max(1, Math.floor(remaining * 0.04));
+      batchMax = Math.max(2, Math.floor(remaining * 0.12));
+    } else {
+      // Final sprint — fast drops
+      batchMin = Math.max(1, Math.floor(remaining * 0.08));
+      batchMax = Math.max(2, Math.floor(remaining * 0.25));
+    }
+
+    const batchSize = Math.floor(batchMin + rand() * (batchMax - batchMin));
+    const newPos = Math.max(1, pos - batchSize);
+    const actualBatch = pos - newPos;
+    pos = newPos;
+    schedule.push({ time: t, position: pos, batchSize: actualBatch });
   }
 
   // Final entry: position 0 at the end
-  schedule.push({ time: durationMs, position: 0 });
+  schedule.push({ time: durationMs, position: 0, batchSize: pos });
 
   return schedule;
 }
 
-const STATUS_MESSAGES = [
+// Context-aware status messages — rotate through these, they feel like real system messages
+const STATUS_MESSAGES_EARLY = [
+  "Connecting to ticket server",
+  "Verifying session",
+  "Processing requests ahead of you",
+  "Allocating your session",
+];
+
+const STATUS_MESSAGES_MID = [
   "Processing requests ahead of you",
   "Verifying ticket availability",
-  "Allocating your session",
-  "Almost through the queue",
+  "Your position is being held",
+  "Server load is high — hang tight",
+  "Validating access",
+];
+
+const STATUS_MESSAGES_LATE = [
+  "Almost through",
+  "Preparing your access",
   "Securing your spot",
+  "Nearly there — stay on this page",
 ];
 
 export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: UseHypeQueueOptions): HypeQueueState {
@@ -144,24 +195,29 @@ export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: Us
   );
 
   const [position, setPosition] = useState(startingPosition);
+  const [lastBatchSize, setLastBatchSize] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusKey, setStatusKey] = useState(0);
   const statusIndexRef = useRef(0);
+  const prevScheduleIndexRef = useRef(-1);
 
   // Derive progress from position
   const progress = startingPosition > 0
     ? Math.min(100, ((startingPosition - position) / startingPosition) * 100)
     : 100;
 
-  // Fuzzy estimated wait
+  const nearFront = position > 0 && position <= 5;
+
+  // Fuzzy estimated wait — intentionally vague like real queues
   const estimatedWait = useMemo(() => {
     if (phase === "releasing" || phase === "released") return "";
     const elapsed = Date.now() - entryTime;
     const remaining = Math.max(0, durationMs - elapsed);
     const secs = Math.round(remaining / 1000);
     if (secs <= 5) return "a few seconds";
-    if (secs < 30) return "less than 30 seconds";
-    if (secs < 60) return "less than a minute";
+    if (secs < 20) return "less than 30 seconds";
+    if (secs < 45) return "less than a minute";
+    if (secs < 90) return "about a minute";
     return `~${Math.ceil(secs / 60)} min`;
   }, [phase, durationMs, entryTime, position]); // position dep forces re-eval on batch ticks
 
@@ -169,73 +225,90 @@ export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: Us
   useEffect(() => {
     if (phase !== "active" || !enabled) return;
 
-    // On mount, catch up to current position (for refresh mid-queue)
-    const catchUp = () => {
-      const elapsed = Date.now() - entryTime;
-      let currentPos = startingPosition;
-      for (const batch of schedule) {
-        if (elapsed >= batch.time) {
-          currentPos = batch.position;
+    // Find current schedule index based on elapsed time
+    const findCurrentIndex = (elapsed: number) => {
+      let idx = -1;
+      for (let i = 0; i < schedule.length; i++) {
+        if (elapsed >= schedule[i].time) {
+          idx = i;
         } else {
           break;
         }
       }
-      return currentPos;
+      return idx;
     };
 
     // Set initial caught-up position
-    const initialPos = catchUp();
-    if (initialPos <= 0) {
-      setPosition(0);
-      setPhase("releasing");
-      return;
+    const initialElapsed = Date.now() - entryTime;
+    const initialIdx = findCurrentIndex(initialElapsed);
+    if (initialIdx >= 0) {
+      const entry = schedule[initialIdx];
+      if (entry.position <= 0) {
+        setPosition(0);
+        setPhase("releasing");
+        return;
+      }
+      setPosition(entry.position);
+      prevScheduleIndexRef.current = initialIdx;
     }
-    setPosition(initialPos);
 
     const interval = setInterval(() => {
       const elapsed = Date.now() - entryTime;
-      let currentPos = startingPosition;
-      for (const batch of schedule) {
-        if (elapsed >= batch.time) {
-          currentPos = batch.position;
-        } else {
-          break;
-        }
-      }
-      setPosition(currentPos);
+      const currentIdx = findCurrentIndex(elapsed);
 
-      if (currentPos <= 0 || elapsed >= durationMs) {
-        setPosition(0);
-        setPhase("releasing");
-        clearInterval(interval);
+      if (currentIdx > prevScheduleIndexRef.current && currentIdx >= 0) {
+        const entry = schedule[currentIdx];
+        setPosition(entry.position);
+        setLastBatchSize(entry.batchSize);
+        prevScheduleIndexRef.current = currentIdx;
+
+        if (entry.position <= 0 || elapsed >= durationMs) {
+          setPosition(0);
+          setPhase("releasing");
+          clearInterval(interval);
+        }
       }
     }, 500);
 
     return () => clearInterval(interval);
   }, [phase, enabled, entryTime, durationMs, startingPosition, schedule]);
 
-  // Status message rotation — every ~6s, subtle operational messages
+  // Status message rotation — context-aware based on progress
   useEffect(() => {
     if (phase !== "active" || !enabled) return;
 
     function showNext() {
-      const idx = statusIndexRef.current % STATUS_MESSAGES.length;
+      const elapsed = Date.now() - entryTime;
+      const progressRatio = elapsed / durationMs;
+
+      // Pick from the right pool based on where we are
+      let pool: string[];
+      if (progressRatio < 0.25) {
+        pool = STATUS_MESSAGES_EARLY;
+      } else if (progressRatio < 0.7) {
+        pool = STATUS_MESSAGES_MID;
+      } else {
+        pool = STATUS_MESSAGES_LATE;
+      }
+
+      const idx = statusIndexRef.current % pool.length;
       statusIndexRef.current += 1;
       setStatusKey((k) => k + 1);
-      setStatusMessage(STATUS_MESSAGES[idx]);
+      setStatusMessage(pool[idx]);
     }
 
-    // First message after 2s (don't overwhelm on load)
-    const firstTimeout = setTimeout(showNext, 2000);
-    const interval = setInterval(showNext, 6000);
+    // First message after 2.5s
+    const firstTimeout = setTimeout(showNext, 2500);
+    // Subsequent messages every 5-7s (varies to feel less robotic)
+    const interval = setInterval(showNext, 5500);
     return () => { clearTimeout(firstTimeout); clearInterval(interval); };
-  }, [phase, enabled]);
+  }, [phase, enabled, durationMs, entryTime]);
 
-  // "Releasing" phase — marks localStorage, pauses 2.5s for celebration, then released
+  // "Releasing" phase — marks localStorage, pauses for celebration, then released
   useEffect(() => {
     if (phase !== "releasing") return;
     try { localStorage.setItem(passedKey, "1"); } catch { /* ignore */ }
-    const t = setTimeout(() => setPhase("released"), 2500);
+    const t = setTimeout(() => setPhase("released"), 3200);
     return () => clearTimeout(t);
   }, [phase, passedKey]);
 
@@ -254,7 +327,9 @@ export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: Us
       statusKey,
       released: phase === "released",
       onReleased,
+      lastBatchSize,
+      nearFront,
     }),
-    [phase, progress, position, estimatedWait, statusMessage, statusKey, onReleased],
+    [phase, progress, position, estimatedWait, statusMessage, statusKey, onReleased, lastBatchSize, nearFront],
   );
 }

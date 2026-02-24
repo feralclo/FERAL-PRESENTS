@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 export type QueuePhase = "active" | "releasing" | "released";
+export type QueuePhaseLabel = "fast" | "tense" | "building" | "sprint";
 
 export interface HypeQueueState {
   phase: QueuePhase;
+  /** Derived phase label from progress thresholds */
+  phaseLabel: QueuePhaseLabel;
   /** 0-100 progress through the queue */
   progress: number;
   /** Current position in queue (counts down in batches) */
@@ -24,10 +27,15 @@ export interface HypeQueueState {
   lastBatchSize: number;
   /** Whether we're in the "nearly there" zone (position ≤ 5) */
   nearFront: boolean;
+  /** Deterministic hex session ID (e.g. "7a3fe2b1") */
+  sessionId: string;
+  /** Timestamp when user entered the queue */
+  entryTime: number;
 }
 
 interface UseHypeQueueOptions {
   eventId: string;
+  eventName?: string;
   durationSeconds: number;
   enabled: boolean;
   /** Event capacity — used to derive realistic starting position */
@@ -156,7 +164,7 @@ const STATUS_MESSAGES_LATE = [
   "Nearly there — stay on this page",
 ];
 
-export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: UseHypeQueueOptions): HypeQueueState {
+export function useHypeQueue({ eventId, eventName, durationSeconds, enabled, capacity }: UseHypeQueueOptions): HypeQueueState {
   const passedKey = `feral_queue_passed_${eventId}`;
   const enteredKey = `feral_queue_entered_${eventId}`;
   const durationMs = durationSeconds * 1000;
@@ -214,6 +222,12 @@ export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: Us
     : 100;
 
   const nearFront = position > 0 && position <= 5;
+
+  // Deterministic hex session ID from seed
+  const sessionId = useMemo(() => (seed >>> 0).toString(16).padStart(8, "0"), [seed]);
+
+  // Derived phase label from progress thresholds
+  const phaseLabel: QueuePhaseLabel = progress < 25 ? "fast" : progress < 50 ? "tense" : progress < 75 ? "building" : "sprint";
 
   // Fuzzy estimated wait — intentionally vague like real queues
   const estimatedWait = useMemo(() => {
@@ -311,6 +325,26 @@ export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: Us
     return () => { clearTimeout(firstTimeout); clearInterval(interval); };
   }, [phase, enabled, durationMs, entryTime]);
 
+  // Browser tab title cycling — shows position in tab
+  useEffect(() => {
+    if (!enabled || typeof document === "undefined") return;
+    const originalTitle = document.title;
+    if (phase === "releasing" || phase === "released") {
+      document.title = eventName ? `You're in! · ${eventName}` : "You're in!";
+      return () => { document.title = originalTitle; };
+    }
+    if (phase !== "active") return;
+    let tick = 0;
+    const name = eventName || originalTitle;
+    const interval = setInterval(() => {
+      tick++;
+      document.title = tick % 2 === 0
+        ? name
+        : `Position ${position.toLocaleString("en-GB")} · Queue`;
+    }, 3000);
+    return () => { clearInterval(interval); document.title = originalTitle; };
+  }, [phase, enabled, position, eventName]);
+
   // "Releasing" phase — marks localStorage, pauses for celebration, then released
   useEffect(() => {
     if (phase !== "releasing") return;
@@ -327,6 +361,7 @@ export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: Us
   return useMemo(
     () => ({
       phase,
+      phaseLabel,
       progress,
       position,
       estimatedWait,
@@ -336,7 +371,9 @@ export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: Us
       onReleased,
       lastBatchSize,
       nearFront,
+      sessionId,
+      entryTime,
     }),
-    [phase, progress, position, estimatedWait, statusMessage, statusKey, onReleased, lastBatchSize, nearFront],
+    [phase, phaseLabel, progress, position, estimatedWait, statusMessage, statusKey, onReleased, lastBatchSize, nearFront, sessionId, entryTime],
   );
 }

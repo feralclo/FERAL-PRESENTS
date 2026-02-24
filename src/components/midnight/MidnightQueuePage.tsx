@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { MidnightFooter } from "./MidnightFooter";
@@ -18,25 +18,85 @@ interface MidnightQueuePageProps {
   onReleased: () => void;
 }
 
-/** Format position with comma separators for realism */
-function formatPosition(n: number): string {
-  return n.toLocaleString("en-GB");
+/* ── Digit Roller ──
+   Mechanical odometer effect. Each digit is a column of 0-9,
+   translated vertically. Staggered right-to-left delays.
+   Falls back to instant swap on prefers-reduced-motion. */
+function DigitRoller({ value, isNearFront }: { value: number; isNearFront: boolean }) {
+  const formatted = value.toLocaleString("en-GB");
+  const digits = formatted.split("");
+
+  // Stagger: rightmost digit transitions first (40ms per position from right)
+  const digitIndices = digits.reduce<number[]>((acc, ch) => {
+    acc.push(ch >= "0" && ch <= "9" ? acc.filter((x) => x >= 0).length : -1);
+    return acc;
+  }, []);
+  const totalDigits = digitIndices.filter((x) => x >= 0).length;
+
+  return (
+    <span className="inline-flex items-baseline" aria-live="polite" aria-atomic="true" role="text">
+      <span className="sr-only">{value.toLocaleString("en-GB")} people ahead</span>
+      <span aria-hidden="true" className="inline-flex items-baseline">
+        {digits.map((ch, i) => {
+          if (ch < "0" || ch > "9") {
+            // Static separator (comma)
+            return (
+              <span
+                key={`sep-${i}`}
+                className={`font-[family-name:var(--font-mono)] text-[clamp(2.2rem,8vw,3.5rem)] font-bold leading-none ${isNearFront ? "text-[#FBBF24]" : "text-foreground"}`}
+                style={{ transition: "color 500ms ease" }}
+              >
+                {ch}
+              </span>
+            );
+          }
+          const digit = parseInt(ch, 10);
+          const digitIdx = digitIndices[i];
+          const staggerDelay = (totalDigits - 1 - digitIdx) * 40;
+          return (
+            <span
+              key={`d-${i}`}
+              className="inline-block overflow-hidden"
+              style={{ height: "1em", lineHeight: 1 }}
+            >
+              <span
+                className={`inline-flex flex-col font-[family-name:var(--font-mono)] text-[clamp(2.2rem,8vw,3.5rem)] font-bold tabular-nums leading-none ${isNearFront ? "text-[#FBBF24]" : "text-foreground"}`}
+                style={{
+                  transform: `translateY(${-digit * 10}%)`,
+                  transition: `transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1) ${staggerDelay}ms, color 500ms ease`,
+                }}
+              >
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                  <span key={d} style={{ height: "1em", display: "block" }}>
+                    {d}
+                  </span>
+                ))}
+              </span>
+            </span>
+          );
+        })}
+      </span>
+    </span>
+  );
 }
 
-/** Spawn a staggered burst of particles from the card center */
+/** Spawn a staggered burst of particles from the card center — varied shapes */
 function spawnParticles(container: HTMLElement, wave: number) {
-  const counts = [28, 16, 10]; // 3 waves: big burst, medium, small
+  const counts = [28, 16, 10];
   const count = counts[Math.min(wave, counts.length - 1)];
   const delays = [0, 200, 500];
   const delay = delays[Math.min(wave, delays.length - 1)];
 
   const colors = [
-    "rgba(52, 211, 153, 0.9)",   // emerald
-    "rgba(110, 231, 183, 0.8)",  // light emerald
-    "rgba(255, 255, 255, 0.8)",  // white
-    "rgba(167, 139, 250, 0.7)",  // violet
-    "rgba(52, 211, 153, 0.6)",   // faded emerald
+    "rgba(52, 211, 153, 0.9)",
+    "rgba(110, 231, 183, 0.8)",
+    "rgba(255, 255, 255, 0.8)",
+    "rgba(167, 139, 250, 0.7)",
+    "rgba(52, 211, 153, 0.6)",
   ];
+
+  // Respect reduced motion
+  if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
   setTimeout(() => {
     for (let i = 0; i < count; i++) {
@@ -45,16 +105,40 @@ function spawnParticles(container: HTMLElement, wave: number) {
       const distance = (wave === 0 ? 100 : 60) + Math.random() * (wave === 0 ? 140 : 80);
       const size = (wave === 0 ? 3 : 2) + Math.random() * (wave === 0 ? 5 : 3);
       const duration = 500 + Math.random() * 500;
+      const color = colors[i % colors.length];
+
+      // Shape variety: 30% circles, 40% rectangles, 30% squares
+      const shapeRoll = (i * 7 + wave * 3) % 10;
+      let width: string, height: string, radius: string, rotation: string;
+      if (shapeRoll < 3) {
+        // Circle
+        width = `${size}px`;
+        height = `${size}px`;
+        radius = "50%";
+        rotation = "";
+      } else if (shapeRoll < 7) {
+        // Rectangle (2:5 ratio)
+        width = `${size * 0.5}px`;
+        height = `${size * 1.2}px`;
+        radius = "1px";
+        rotation = `rotate(${Math.random() * 360}deg)`;
+      } else {
+        // Square
+        width = `${size * 0.7}px`;
+        height = `${size * 0.7}px`;
+        radius = "1px";
+        rotation = `rotate(${Math.random() * 45}deg)`;
+      }
 
       el.style.cssText = `
         position: absolute;
         top: 50%; left: 50%;
-        width: ${size}px; height: ${size}px;
-        border-radius: 50%;
-        background: ${colors[i % colors.length]};
+        width: ${width}; height: ${height};
+        border-radius: ${radius};
+        background: ${color};
         pointer-events: none;
         z-index: 50;
-        transform: translate(-50%, -50%) scale(1);
+        transform: translate(-50%, -50%) ${rotation} scale(1);
         animation: midnight-particle ${duration}ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
         --px: ${Math.cos(angle) * distance}px;
         --py: ${Math.sin(angle) * distance}px;
@@ -69,6 +153,7 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
   const headerHidden = useHeaderScroll();
   const queue = useHypeQueue({
     eventId: event.id,
+    eventName: event.name,
     durationSeconds,
     enabled: true,
     capacity: event.capacity,
@@ -76,9 +161,11 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Track position changes for pop animation
+  // Track position changes for pop animation + batch pulse
   const prevPositionRef = useRef(queue.position);
   const [positionPop, setPositionPop] = useState(false);
+  const [batchPulse, setBatchPulse] = useState(false);
+  const [batchPulseKey, setBatchPulseKey] = useState(0);
 
   // Batch drop feedback — show "X got through" briefly
   const [batchFeedback, setBatchFeedback] = useState<string | null>(null);
@@ -93,49 +180,43 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
       setPositionPop(true);
       const t = setTimeout(() => setPositionPop(false), 300);
 
+      // Batch pulse on card border
+      setBatchPulse(true);
+      setBatchPulseKey((k) => k + 1);
+      const t3 = setTimeout(() => setBatchPulse(false), 400);
+
       // Batch feedback — only show when meaningful batches drop
       if (dropped >= 2) {
         setBatchFeedbackKey((k) => k + 1);
         setBatchFeedback(`${dropped} people just got through`);
         const t2 = setTimeout(() => setBatchFeedback(null), 2500);
-        return () => { clearTimeout(t); clearTimeout(t2); };
+        return () => { clearTimeout(t); clearTimeout(t2); clearTimeout(t3); };
       }
 
-      return () => clearTimeout(t);
+      return () => { clearTimeout(t); clearTimeout(t3); };
     }
     prevPositionRef.current = queue.position;
   }, [queue.position]);
 
   // Release celebration — multi-stage
   const isReleasing = queue.phase === "releasing";
-  const [releaseStage, setReleaseStage] = useState(0); // 0=none, 1=flash, 2=celebration, 3=exit
+  const [releaseStage, setReleaseStage] = useState(0);
   const hasSpawnedParticles = useRef(false);
 
-  // Multi-stage release animation
   useEffect(() => {
     if (!isReleasing) return;
-
-    // Stage 1: Brief white flash (0ms)
     setReleaseStage(1);
-
-    // Spawn 3 waves of particles
     if (cardRef.current && !hasSpawnedParticles.current) {
       hasSpawnedParticles.current = true;
-      spawnParticles(cardRef.current, 0); // big burst
-      spawnParticles(cardRef.current, 1); // medium follow-up
-      spawnParticles(cardRef.current, 2); // sparkle tail
+      spawnParticles(cardRef.current, 0);
+      spawnParticles(cardRef.current, 1);
+      spawnParticles(cardRef.current, 2);
     }
-
-    // Stage 2: Celebration content (300ms)
     const t1 = setTimeout(() => setReleaseStage(2), 300);
-
-    // Stage 3: Exit fade (2500ms)
     const t2 = setTimeout(() => setReleaseStage(3), 2500);
-
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [isReleasing]);
 
-  // Final callback after exit fade
   const handleTransitionEnd = useCallback(() => {
     if (releaseStage === 3) {
       queue.onReleased();
@@ -143,7 +224,6 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
     }
   }, [releaseStage, queue.onReleased, onReleased]);
 
-  // Fallback: if released fires (e.g. from localStorage on refresh), call onReleased
   useEffect(() => {
     if (queue.released) {
       queue.onReleased();
@@ -164,9 +244,55 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
   })();
 
   const locationDisplay = [event.venue_name, event.city].filter(Boolean).join(", ");
-
-  // Near-front state: position ≤ 5, things get intense
   const isNearFront = queue.nearFront;
+
+  // Card border color evolution — subtle emotional ramp based on progress
+  const cardBorderStyle = useMemo(() => {
+    if (isReleasing) return undefined; // release animation takes over
+    const p = queue.progress;
+    if (p < 25) return { borderColor: "rgba(255, 255, 255, 0.08)" };
+    if (p < 75) {
+      // Faint primary tint
+      const t = (p - 25) / 50; // 0-1 over this range
+      return { borderColor: `color-mix(in srgb, var(--color-primary) ${Math.round(4 + t * 6)}%, rgba(255, 255, 255, 0.08))` };
+    }
+    if (p < 95) {
+      return { borderColor: `rgba(251, 191, 36, 0.12)` };
+    }
+    // 95-100%: pulsing amber (handled by animation)
+    return { borderColor: "rgba(251, 191, 36, 0.18)" };
+  }, [queue.progress, isReleasing]);
+
+  // Background blur/brightness evolution (75-100% → coming into focus)
+  const bgFilterStyle = useMemo(() => {
+    if (isReleasing) return { filter: "brightness(0.55) blur(0px)", transform: "scale(1.03)" };
+    const p = queue.progress;
+    if (p <= 75) return { filter: "brightness(0.35) blur(4px)", transform: "scale(1)" };
+    // Interpolate 75-100%: blur 4→1, brightness 0.35→0.45
+    const t = (p - 75) / 25;
+    const blur = 4 - t * 3;
+    const brightness = 0.35 + t * 0.1;
+    return { filter: `brightness(${brightness.toFixed(2)}) blur(${blur.toFixed(1)}px)`, transform: "scale(1)" };
+  }, [queue.progress, isReleasing]);
+
+  // Session ID display — truncated middle
+  const sessionDisplay = useMemo(() => {
+    const s = queue.sessionId;
+    return `${s.slice(0, 4)}…${s.slice(-4)}`;
+  }, [queue.sessionId]);
+
+  // Joined timestamp
+  const joinedDisplay = useMemo(() => {
+    const d = new Date(queue.entryTime);
+    return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  }, [queue.entryTime]);
+
+  // Status message phase-based opacity
+  const statusOpacity = queue.phaseLabel === "fast"
+    ? "text-foreground/20"
+    : queue.phaseLabel === "sprint"
+      ? "text-foreground/45"
+      : "text-foreground/30";
 
   return (
     <>
@@ -179,15 +305,12 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
       </header>
 
       <main className="relative min-h-screen bg-background overflow-hidden">
-        {/* Full-viewport hero background — transitions on release */}
+        {/* Full-viewport hero background — evolves with progress */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: `url(${heroImage})`,
-            filter: isReleasing
-              ? "brightness(0.55) blur(0px)"
-              : "brightness(0.35) blur(4px)",
-            transform: isReleasing ? "scale(1.03)" : "scale(1)",
+            ...bgFilterStyle,
             transition: "filter 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.5s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         />
@@ -210,7 +333,7 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
 
         {/* Content — centered card */}
         <div
-          className={`relative z-10 flex flex-col items-center justify-center min-h-screen px-5 py-24 max-md:py-20 max-md:pt-[calc(var(--header-height)+32px)]`}
+          className="relative z-10 flex flex-col items-center justify-center min-h-screen px-5 py-24 max-md:py-20 max-md:pt-[calc(var(--header-height)+32px)]"
           style={{
             opacity: releaseStage === 3 ? 0 : 1,
             transform: releaseStage === 3 ? "scale(0.97)" : "scale(1)",
@@ -220,7 +343,9 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
         >
           <div
             ref={cardRef}
-            className={`midnight-announcement-card relative w-full max-w-[460px] rounded-2xl overflow-hidden transition-all duration-700 ${isReleasing ? "midnight-queue-release" : ""}`}
+            key={batchPulseKey}
+            className={`midnight-announcement-card relative w-full max-w-[460px] rounded-2xl overflow-hidden transition-all duration-700 ${isReleasing ? "midnight-queue-release" : ""} ${batchPulse ? "midnight-queue-batch-pulse" : ""}`}
+            style={cardBorderStyle}
           >
             {/* Inner content with padding */}
             <div className="relative z-10 p-8 max-md:p-6">
@@ -293,13 +418,10 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
               ) : (
                 /* Active queue state */
                 <>
-                  {/* Position counter — large, prominent */}
+                  {/* Position counter — animated digit roller */}
                   <div className="flex items-baseline gap-3 mb-2">
-                    <span
-                      className={`font-[family-name:var(--font-mono)] text-[clamp(2.2rem,8vw,3.5rem)] font-bold tabular-nums leading-none ${positionPop ? "midnight-queue-position-pop" : ""} ${isNearFront ? "text-[#FBBF24]" : "text-foreground"}`}
-                      style={{ transition: "color 500ms ease" }}
-                    >
-                      {formatPosition(queue.position)}
+                    <span className={positionPop ? "midnight-queue-position-pop" : ""}>
+                      <DigitRoller value={queue.position} isNearFront={isNearFront} />
                     </span>
                     <span className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/35">
                       {queue.position === 1 ? "person ahead" : "people ahead"}
@@ -346,15 +468,22 @@ export function MidnightQueuePage({ event, durationSeconds, onReleased }: Midnig
                   <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-5" />
 
                   {/* Status message — system-style operational text */}
-                  <div className="h-5 flex items-center justify-center">
+                  <div className="h-5 flex items-center justify-center" role="status">
                     {queue.statusMessage && (
                       <p
                         key={queue.statusKey}
-                        className="font-[family-name:var(--font-sans)] text-[12px] text-foreground/30 text-center animate-in fade-in duration-500"
+                        className={`font-[family-name:var(--font-sans)] text-[12px] ${statusOpacity} text-center animate-in fade-in duration-500`}
                       >
                         {queue.statusMessage}
                       </p>
                     )}
+                  </div>
+
+                  {/* Session ID + joined time — authenticity signal */}
+                  <div className="mt-4 text-center">
+                    <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/15 tracking-[0.1em]">
+                      Session {sessionDisplay} &middot; Joined {joinedDisplay}
+                    </span>
                   </div>
                 </>
               )}

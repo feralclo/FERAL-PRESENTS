@@ -977,6 +977,24 @@ html.checkout-active .noise {
     0 0 0 1px rgba(255, 255, 255, 0.02) inset;
 }
 
+/* Glass reflection — diagonal highlight band (shared with hero) */
+[data-theme="midnight"] .midnight-announcement-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.04) 47%,
+    rgba(255, 255, 255, 0.06) 49%,
+    rgba(255, 255, 255, 0.04) 51%,
+    transparent 58%
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
 @supports not (backdrop-filter: blur(1px)) {
   [data-theme="midnight"] .midnight-announcement-card {
     background: rgba(14, 14, 18, 0.92);
@@ -1098,6 +1116,17 @@ html.checkout-active .noise {
 
 [data-theme="midnight"] .midnight-queue-icon-glow {
   animation: midnight-queue-icon-glow 2s ease-in-out infinite;
+}
+
+/* Batch pulse — one-shot border flash when a batch drops */
+@keyframes midnight-queue-batch-pulse {
+  0% { border-color: var(--queue-border, rgba(255, 255, 255, 0.08)); }
+  40% { border-color: rgba(255, 255, 255, 0.18); }
+  100% { border-color: var(--queue-border, rgba(255, 255, 255, 0.08)); }
+}
+
+[data-theme="midnight"] .midnight-queue-batch-pulse {
+  animation: midnight-queue-batch-pulse 400ms ease-out;
 }
 
 /* Particle burst — individual dots that fly outward from center */
@@ -1242,7 +1271,8 @@ html.checkout-active .noise {
   [data-theme="midnight"] .midnight-queue-glow-near,
   [data-theme="midnight"] .midnight-queue-position-pop,
   [data-theme="midnight"] .midnight-queue-release,
-  [data-theme="midnight"] .midnight-queue-icon-glow {
+  [data-theme="midnight"] .midnight-queue-icon-glow,
+  [data-theme="midnight"] .midnight-queue-batch-pulse {
     animation: none;
   }
   [data-theme="midnight"] .midnight-countdown-unit {

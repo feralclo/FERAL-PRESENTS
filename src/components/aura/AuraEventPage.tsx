@@ -223,6 +223,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
           ) : showQueue ? (
             <AuraQueuePage
               eventId={event.id}
+              eventName={event.name}
               durationSeconds={isQueuePreview ? (event.queue_duration_seconds ?? 45) : queueState.queueDurationSeconds}
               onReleased={() => setQueueReleased(true)}
               title={event.queue_title}

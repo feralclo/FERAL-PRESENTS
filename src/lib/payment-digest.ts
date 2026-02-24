@@ -5,13 +5,21 @@ import { stripe } from "@/lib/stripe/server";
 /**
  * Payment Digest — AI-powered payment health analysis.
  *
- * Gathers comprehensive data from payment_events + Stripe,
+ * Gathers comprehensive data from payment_events + traffic_events + Stripe,
  * sends it to Claude for analysis, and returns a structured health report.
  *
+ * Data sources:
+ * 1. payment_events — platform-side payment lifecycle (13 event types)
+ * 2. traffic_events — checkout funnel (landing → checkout → purchase)
+ * 3. Stripe PaymentIntents — abandoned/stuck payments, 3DS analysis
+ * 4. Stripe Connect accounts — per-tenant account health
+ * 5. Stripe webhook endpoints — delivery success rates
+ * 6. Previous digest — historical comparison baselines
+ *
  * Uses Claude Haiku via the Anthropic API for cost efficiency:
- * ~2000-4000 input tokens, ~500-1000 output tokens per run.
- * At $0.80/$4.00 per MTok, each digest costs roughly $0.002-0.006.
- * Running every 6 hours = ~$0.01-0.03/day.
+ * ~3000-6000 input tokens, ~500-1500 output tokens per run.
+ * At $0.80/$4.00 per MTok, each digest costs roughly $0.003-0.01.
+ * Running every 6 hours = ~$0.01-0.04/day.
  */
 
 export interface PaymentDigest {
@@ -45,6 +53,43 @@ export interface DigestStats {
   top_decline_codes: { code: string; count: number }[];
   affected_events: { slug: string; failures: number }[];
   amount_failed_gbp: number;
+  // Funnel stats
+  funnel_page_views: number;
+  funnel_checkout_starts: number;
+  funnel_payment_attempts: number;
+  funnel_purchases: number;
+  checkout_conversion_rate: number;
+  // 3DS stats
+  three_ds_challenges: number;
+  three_ds_completed: number;
+  three_ds_abandoned: number;
+  three_ds_abandonment_rate: number;
+}
+
+interface ConnectAccountHealth {
+  account_id: string;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  requirements_due: string[];
+  disabled_reason: string | null;
+}
+
+interface WebhookEndpointHealth {
+  url: string;
+  status: string;
+  enabled_events: number;
+}
+
+interface PreviousDigestComparison {
+  prev_generated_at: string;
+  prev_period_hours: number;
+  prev_payments_succeeded: number;
+  prev_payments_failed: number;
+  prev_failure_rate: number;
+  prev_checkout_errors: number;
+  prev_client_errors: number;
+  prev_funnel_purchases: number;
+  prev_checkout_conversion_rate: number;
 }
 
 const DIGEST_SETTINGS_KEY = "platform_payment_digest";
@@ -56,22 +101,38 @@ async function gatherDigestData(periodHours: number): Promise<{
   stats: DigestStats;
   recentEvents: Array<Record<string, unknown>>;
   incompletePIs: Array<{ id: string; amount: number; currency: string; status: string; description: string | null; created: number }>;
+  connectAccounts: ConnectAccountHealth[];
+  webhookEndpoints: WebhookEndpointHealth[];
+  previousDigest: PreviousDigestComparison | null;
 } | null> {
   const supabase = await getSupabaseAdmin();
   if (!supabase) return null;
 
   const since = new Date(Date.now() - periodHours * 60 * 60 * 1000).toISOString();
 
-  // Fetch all events in period
-  const { data: events } = await supabase
-    .from(TABLES.PAYMENT_EVENTS)
-    .select("*")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false });
+  // Fetch payment events + traffic events + previous digest in parallel
+  const [paymentResult, trafficResult, prevDigestResult] = await Promise.all([
+    supabase
+      .from(TABLES.PAYMENT_EVENTS)
+      .select("*")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("traffic_events")
+      .select("event_type, page_path, event_name")
+      .gte("timestamp", since)
+      .in("event_type", ["landing", "page_view", "checkout_start", "checkout", "payment_processing", "payment_success", "payment_failed", "purchase"]),
+    supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", DIGEST_SETTINGS_KEY)
+      .single(),
+  ]);
 
-  const allEvents = events || [];
+  const allEvents = paymentResult.data || [];
+  const trafficEvents = trafficResult.data || [];
 
-  // Payment stats
+  // ── Payment stats ──
   const succeeded = allEvents.filter((e) => e.type === "payment_succeeded");
   const failed = allEvents.filter((e) => e.type === "payment_failed");
   const totalPayments = succeeded.length + failed.length;
@@ -117,6 +178,23 @@ async function gatherDigestData(periodHours: number): Promise<{
   const connectUnhealthy = allEvents.filter((e) => e.type === "connect_account_unhealthy" && !e.resolved).length;
   const webhookErrors = allEvents.filter((e) => e.type === "webhook_error").length;
 
+  // ── Funnel stats from traffic_events ──
+  const funnelPageViews = trafficEvents.filter(
+    (e) => e.event_type === "landing" || (e.event_type === "page_view" && e.page_path?.startsWith("/event/"))
+  ).length;
+  const funnelCheckoutStarts = trafficEvents.filter(
+    (e) => e.event_type === "checkout_start" || e.event_type === "checkout"
+  ).length;
+  const funnelPaymentAttempts = trafficEvents.filter(
+    (e) => e.event_type === "payment_processing"
+  ).length;
+  const funnelPurchases = trafficEvents.filter(
+    (e) => e.event_type === "purchase" || e.event_type === "payment_success"
+  ).length;
+  const checkoutConversionRate = funnelCheckoutStarts > 0
+    ? funnelPurchases / funnelCheckoutStarts
+    : 0;
+
   // Get recent critical/warning events for context (last 20)
   const recentEvents = allEvents
     .filter((e) => e.severity === "critical" || e.severity === "warning")
@@ -133,34 +211,121 @@ async function gatherDigestData(periodHours: number): Promise<{
       metadata: e.metadata,
     }));
 
-  // Check Stripe for incomplete PIs (if available)
+  // ── Stripe data (parallel) ──
   let incompletePIs: Array<{ id: string; amount: number; currency: string; status: string; description: string | null; created: number }> = [];
+  let threeDsChallenges = 0;
+  let threeDsCompleted = 0;
+  let threeDsAbandoned = 0;
+  let connectAccounts: ConnectAccountHealth[] = [];
+  let webhookEndpoints: WebhookEndpointHealth[] = [];
+
   if (stripe) {
-    try {
-      const fourHoursAgoUnix = Math.floor((Date.now() - 4 * 60 * 60 * 1000) / 1000);
-      const thirtyMinAgoUnix = Math.floor((Date.now() - 30 * 60 * 1000) / 1000);
+    const fourHoursAgoUnix = Math.floor((Date.now() - 4 * 60 * 60 * 1000) / 1000);
+    const thirtyMinAgoUnix = Math.floor((Date.now() - 30 * 60 * 1000) / 1000);
+    const periodStartUnix = Math.floor((Date.now() - periodHours * 60 * 60 * 1000) / 1000);
 
-      const [abandoned, stuck] = await Promise.all([
-        stripe.paymentIntents.search({
-          query: `status:"requires_payment_method" AND created>${fourHoursAgoUnix} AND created<${thirtyMinAgoUnix}`,
-          limit: 20,
-        }),
-        stripe.paymentIntents.search({
-          query: `status:"requires_action" AND created>${fourHoursAgoUnix} AND created<${thirtyMinAgoUnix}`,
-          limit: 20,
-        }),
-      ]);
+    // Run all Stripe queries in parallel
+    const [abandonedResult, stuckResult, succeededResult, accountsResult, webhooksResult] = await Promise.allSettled([
+      // Abandoned PIs (requires_payment_method, 30min-4hr old)
+      stripe.paymentIntents.search({
+        query: `status:"requires_payment_method" AND created>${fourHoursAgoUnix} AND created<${thirtyMinAgoUnix}`,
+        limit: 20,
+      }),
+      // Stuck 3DS PIs (requires_action, 30min-4hr old)
+      stripe.paymentIntents.search({
+        query: `status:"requires_action" AND created>${fourHoursAgoUnix} AND created<${thirtyMinAgoUnix}`,
+        limit: 20,
+      }),
+      // Recent succeeded PIs (for 3DS analysis — check if they went through 3DS)
+      stripe.paymentIntents.search({
+        query: `status:"succeeded" AND created>${periodStartUnix}`,
+        limit: 50,
+      }),
+      // Connect accounts health
+      stripe.accounts.list({ limit: 20 }),
+      // Webhook endpoints
+      stripe.webhookEndpoints.list({ limit: 10 }),
+    ]);
 
-      incompletePIs = [...(abandoned.data || []), ...(stuck.data || [])].map((pi) => ({
-        id: pi.id,
-        amount: pi.amount,
-        currency: pi.currency,
-        status: pi.status,
-        description: pi.description,
-        created: pi.created,
+    // Process abandoned + stuck PIs
+    const abandoned = abandonedResult.status === "fulfilled" ? abandonedResult.value.data : [];
+    const stuck = stuckResult.status === "fulfilled" ? stuckResult.value.data : [];
+    incompletePIs = [...abandoned, ...stuck].map((pi) => ({
+      id: pi.id,
+      amount: pi.amount,
+      currency: pi.currency,
+      status: pi.status,
+      description: pi.description,
+      created: pi.created,
+    }));
+
+    // 3DS analysis from succeeded + stuck PIs
+    if (succeededResult.status === "fulfilled") {
+      const succeededPIs = succeededResult.value.data;
+      // PIs that went through 3DS have a latest_charge with payment_method_details showing 3DS
+      for (const pi of succeededPIs) {
+        // If the PI has had an authentication step, it had 3DS
+        if (pi.latest_charge && typeof pi.latest_charge === "object") {
+          const charge = pi.latest_charge;
+          const threeDsOutcome = (charge as { payment_method_details?: { card?: { three_d_secure?: { result?: string } } } })
+            ?.payment_method_details?.card?.three_d_secure;
+          if (threeDsOutcome) {
+            threeDsChallenges++;
+            threeDsCompleted++;
+          }
+        }
+      }
+    }
+    // Stuck requires_action = 3DS challenged but abandoned
+    threeDsAbandoned = stuck.length;
+    threeDsChallenges += stuck.length;
+
+    // Connect accounts health
+    if (accountsResult.status === "fulfilled") {
+      connectAccounts = accountsResult.value.data
+        .filter((acc) => acc.type === "standard" || acc.type === "express")
+        .map((acc) => ({
+          account_id: acc.id,
+          charges_enabled: acc.charges_enabled ?? false,
+          payouts_enabled: acc.payouts_enabled ?? false,
+          requirements_due: [
+            ...(acc.requirements?.currently_due || []),
+            ...(acc.requirements?.past_due || []),
+          ],
+          disabled_reason: acc.requirements?.disabled_reason || null,
+        }));
+    }
+
+    // Webhook endpoints health
+    if (webhooksResult.status === "fulfilled") {
+      webhookEndpoints = webhooksResult.value.data.map((ep) => ({
+        url: ep.url,
+        status: ep.status,
+        enabled_events: ep.enabled_events?.length || 0,
       }));
-    } catch {
-      // Non-fatal
+    }
+  }
+
+  const threeDsAbandonmentRate = threeDsChallenges > 0
+    ? threeDsAbandoned / threeDsChallenges
+    : 0;
+
+  // ── Previous digest for historical comparison ──
+  let previousDigest: PreviousDigestComparison | null = null;
+  if (prevDigestResult.data?.data) {
+    const prev = prevDigestResult.data.data as PaymentDigest;
+    if (prev.raw_stats) {
+      previousDigest = {
+        prev_generated_at: prev.generated_at,
+        prev_period_hours: prev.period_hours,
+        prev_payments_succeeded: prev.raw_stats.payments_succeeded,
+        prev_payments_failed: prev.raw_stats.payments_failed,
+        prev_failure_rate: prev.raw_stats.failure_rate,
+        prev_checkout_errors: prev.raw_stats.checkout_errors,
+        prev_client_errors: prev.raw_stats.client_errors,
+        prev_funnel_purchases: prev.raw_stats.funnel_purchases ?? 0,
+        prev_checkout_conversion_rate: prev.raw_stats.checkout_conversion_rate ?? 0,
+      };
     }
   }
 
@@ -180,9 +345,21 @@ async function gatherDigestData(periodHours: number): Promise<{
       top_decline_codes: topDeclineCodes,
       affected_events: affectedEvents,
       amount_failed_gbp: Math.round(amountFailedPence) / 100,
+      funnel_page_views: funnelPageViews,
+      funnel_checkout_starts: funnelCheckoutStarts,
+      funnel_payment_attempts: funnelPaymentAttempts,
+      funnel_purchases: funnelPurchases,
+      checkout_conversion_rate: checkoutConversionRate,
+      three_ds_challenges: threeDsChallenges,
+      three_ds_completed: threeDsCompleted,
+      three_ds_abandoned: threeDsAbandoned,
+      three_ds_abandonment_rate: threeDsAbandonmentRate,
     },
     recentEvents,
     incompletePIs,
+    connectAccounts,
+    webhookEndpoints,
+    previousDigest,
   };
 }
 
@@ -197,11 +374,61 @@ async function analyzeWithClaude(data: {
   stats: DigestStats;
   recentEvents: Array<Record<string, unknown>>;
   incompletePIs: Array<{ id: string; amount: number; currency: string; status: string; description: string | null; created: number }>;
+  connectAccounts: ConnectAccountHealth[];
+  webhookEndpoints: WebhookEndpointHealth[];
+  previousDigest: PreviousDigestComparison | null;
   periodHours: number;
 }): Promise<AnalysisResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return { ok: false, error: "ANTHROPIC_API_KEY environment variable is not set in Vercel" };
+  }
+
+  // Build historical comparison section
+  let historicalSection = "No previous digest available — this is the first run or baseline.";
+  if (data.previousDigest) {
+    const p = data.previousDigest;
+    const failRateChange = data.stats.failure_rate - p.prev_failure_rate;
+    const convChange = data.stats.checkout_conversion_rate - p.prev_checkout_conversion_rate;
+    historicalSection = `Previous digest: ${p.prev_generated_at} (${p.prev_period_hours}h window)
+- Payments succeeded: ${p.prev_payments_succeeded} → ${data.stats.payments_succeeded} (${data.stats.payments_succeeded - p.prev_payments_succeeded >= 0 ? "+" : ""}${data.stats.payments_succeeded - p.prev_payments_succeeded})
+- Payments failed: ${p.prev_payments_failed} → ${data.stats.payments_failed} (${data.stats.payments_failed - p.prev_payments_failed >= 0 ? "+" : ""}${data.stats.payments_failed - p.prev_payments_failed})
+- Failure rate: ${(p.prev_failure_rate * 100).toFixed(1)}% → ${(data.stats.failure_rate * 100).toFixed(1)}% (${failRateChange >= 0 ? "+" : ""}${(failRateChange * 100).toFixed(1)}pp)
+- Checkout conversion: ${(p.prev_checkout_conversion_rate * 100).toFixed(1)}% → ${(data.stats.checkout_conversion_rate * 100).toFixed(1)}% (${convChange >= 0 ? "+" : ""}${(convChange * 100).toFixed(1)}pp)
+- Checkout errors: ${p.prev_checkout_errors} → ${data.stats.checkout_errors}
+- Client errors: ${p.prev_client_errors} → ${data.stats.client_errors}
+- Purchases: ${p.prev_funnel_purchases} → ${data.stats.funnel_purchases}`;
+  }
+
+  // Build Connect accounts section
+  let connectSection = "No connected accounts found.";
+  if (data.connectAccounts.length > 0) {
+    const unhealthy = data.connectAccounts.filter((a) => !a.charges_enabled || !a.payouts_enabled || a.requirements_due.length > 0);
+    if (unhealthy.length === 0) {
+      connectSection = `${data.connectAccounts.length} connected account(s) — all healthy (charges + payouts enabled, no pending requirements).`;
+    } else {
+      connectSection = `${data.connectAccounts.length} connected account(s), ${unhealthy.length} with issues:\n` +
+        unhealthy.map((a) => {
+          const issues: string[] = [];
+          if (!a.charges_enabled) issues.push("charges DISABLED");
+          if (!a.payouts_enabled) issues.push("payouts DISABLED");
+          if (a.disabled_reason) issues.push(`disabled: ${a.disabled_reason}`);
+          if (a.requirements_due.length > 0) issues.push(`pending: ${a.requirements_due.join(", ")}`);
+          return `- ${a.account_id}: ${issues.join("; ")}`;
+        }).join("\n");
+    }
+  }
+
+  // Build webhook section
+  let webhookSection = "No webhook endpoints found — webhooks may not be configured.";
+  if (data.webhookEndpoints.length > 0) {
+    const disabled = data.webhookEndpoints.filter((e) => e.status === "disabled");
+    if (disabled.length === 0) {
+      webhookSection = `${data.webhookEndpoints.length} webhook endpoint(s) — all enabled and active.`;
+    } else {
+      webhookSection = `${data.webhookEndpoints.length} webhook endpoint(s), ${disabled.length} DISABLED:\n` +
+        data.webhookEndpoints.map((e) => `- ${e.url}: ${e.status} (${e.enabled_events} event types)`).join("\n");
+    }
   }
 
   const prompt = `You are an expert payment operations analyst for a live event ticketing platform called Entry. Analyse the following payment health data from the last ${data.periodHours} hours and produce a concise diagnostic report.
@@ -216,8 +443,26 @@ async function analyzeWithClaude(data: {
 - Client-side (browser) checkout errors: ${data.stats.client_errors}
 - Incomplete checkouts (abandoned in Stripe): ${data.stats.incomplete_checkouts}
 - Orphaned payments (charged but no order): ${data.stats.orphaned_payments}
-- Unhealthy Stripe Connect accounts: ${data.stats.connect_unhealthy}
 - Webhook errors: ${data.stats.webhook_errors}
+
+## Checkout Funnel (${data.periodHours}h)
+- Event page views: ${data.stats.funnel_page_views}
+- Checkout starts: ${data.stats.funnel_checkout_starts}
+- Payment attempts: ${data.stats.funnel_payment_attempts}
+- Purchases completed: ${data.stats.funnel_purchases}
+- Checkout → Purchase conversion rate: ${(data.stats.checkout_conversion_rate * 100).toFixed(1)}%
+${data.stats.funnel_page_views > 0
+    ? `- Page view → Purchase rate: ${(data.stats.funnel_purchases / data.stats.funnel_page_views * 100).toFixed(1)}%`
+    : ""}
+
+## 3D Secure Analysis
+- Total 3DS challenges: ${data.stats.three_ds_challenges}
+- 3DS completed (authenticated): ${data.stats.three_ds_completed}
+- 3DS abandoned (customer dropped off): ${data.stats.three_ds_abandoned}
+- 3DS abandonment rate: ${(data.stats.three_ds_abandonment_rate * 100).toFixed(1)}%
+
+## Historical Comparison
+${historicalSection}
 
 ## Top Decline Codes
 ${data.stats.top_decline_codes.length > 0
@@ -228,6 +473,12 @@ ${data.stats.top_decline_codes.length > 0
 ${data.stats.affected_events.length > 0
     ? data.stats.affected_events.map((e) => `- ${e.slug}: ${e.failures} failures`).join("\n")
     : "None"}
+
+## Stripe Connect Account Health
+${connectSection}
+
+## Webhook Infrastructure
+${webhookSection}
 
 ## Recent Critical/Warning Events (last 20)
 ${data.recentEvents.length > 0
@@ -246,6 +497,10 @@ ${data.incompletePIs.length > 0
 - "orphaned_payment" is the most dangerous — money was taken but no ticket was issued.
 - "incomplete_payment" with status "requires_action" usually means a customer abandoned 3D Secure verification.
 - "client_checkout_error" means something broke in the customer's browser during checkout.
+- A checkout conversion rate below 50% for event ticketing is concerning — typical is 55-75%.
+- 3DS abandonment above 20% is high and may indicate checkout UX friction or unnecessary 3DS challenges.
+- Compare current stats against historical baselines when available — flag significant deviations (>50% change).
+- Disabled webhook endpoints or Connect accounts with disabled charges are critical infrastructure failures.
 
 Respond with valid JSON only (no markdown, no code fences), in this exact structure:
 {
@@ -265,10 +520,12 @@ Respond with valid JSON only (no markdown, no code fences), in this exact struct
 
 Guidelines:
 - risk_level: "healthy" = no issues, "watch" = minor things to keep an eye on, "concern" = issues that could affect sales, "critical" = urgent problems affecting revenue
-- Include 2-6 findings, ordered by severity (most severe first)
-- Include 1-4 recommendations, only actionable ones
+- Include 2-8 findings, ordered by severity (most severe first)
+- Include 1-5 recommendations, only actionable ones
 - If everything looks good, say so clearly — don't invent problems
 - Be specific: "3 customers on FERAL Liverpool had cards declined" not "some payments failed"
+- When historical data is available, highlight meaningful changes ("failure rate increased 3x from 2% to 6%")
+- Flag checkout funnel drop-offs ("85 page views but only 3 purchases = 3.5% conversion")
 - If no payment activity, note that monitoring is active and ready`;
 
   try {
@@ -281,7 +538,7 @@ Guidelines:
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
+        max_tokens: 1500,
         messages: [
           {
             role: "user",
@@ -294,7 +551,6 @@ Guidelines:
     if (!response.ok) {
       const errText = await response.text();
       console.error(`[payment-digest] API ${response.status}: ${errText.slice(0, 200)}`);
-      // Parse error for a human-readable message
       let errorMsg = `Anthropic API returned ${response.status}`;
       try {
         const errJson = JSON.parse(errText);

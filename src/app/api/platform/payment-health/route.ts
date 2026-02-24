@@ -57,8 +57,9 @@ export async function GET(request: NextRequest) {
     const allEvents = events || [];
 
     // ── Summary ──
-    const criticalCount = allEvents.filter((e) => e.severity === "critical").length;
-    const warningCount = allEvents.filter((e) => e.severity === "warning").length;
+    // Only count UNRESOLVED critical/warning events for the status banner
+    const criticalCount = allEvents.filter((e) => e.severity === "critical" && !e.resolved).length;
+    const warningCount = allEvents.filter((e) => e.severity === "warning" && !e.resolved).length;
 
     // Unresolved count (all time, not limited by period)
     const unresolvedQuery = orgFilter
@@ -130,10 +131,13 @@ export async function GET(request: NextRequest) {
     // ── Reconciliation (orphaned payments) ──
     const orphanedPayments = allEvents.filter((e) => e.type === "orphaned_payment").length;
 
-    // ── Recent critical events ──
+    // ── Incomplete payments ──
+    const incompletePayments = allEvents.filter((e) => e.type === "incomplete_payment").length;
+
+    // ── Recent critical events (up to 50, include full metadata for detail view) ──
     const recentCritical = allEvents
       .filter((e) => e.severity === "critical" || e.severity === "warning")
-      .slice(0, 20);
+      .slice(0, 50);
 
     // ── Failure by org ──
     const orgFailures = new Map<string, { succeeded: number; failed: number }>();
@@ -213,6 +217,7 @@ export async function GET(request: NextRequest) {
       },
       reconciliation: {
         orphaned_payments: orphanedPayments,
+        incomplete_payments: incompletePayments,
       },
       recent_critical: recentCritical,
       failure_by_org: failureByOrg,

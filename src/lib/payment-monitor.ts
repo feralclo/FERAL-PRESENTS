@@ -19,7 +19,8 @@ export type PaymentEventType =
   | "rate_limit_hit"
   | "subscription_failed"
   | "orphaned_payment"
-  | "client_checkout_error";
+  | "client_checkout_error"
+  | "incomplete_payment";
 
 export type PaymentEventSeverity = "info" | "warning" | "critical";
 
@@ -63,6 +64,7 @@ function deriveSeverity(type: PaymentEventType, errorCode?: string): PaymentEven
       return "critical";
 
     case "client_checkout_error":
+    case "incomplete_payment":
       return "warning";
 
     case "connect_fallback":

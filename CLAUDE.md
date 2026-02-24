@@ -223,6 +223,7 @@ Org-level branding in `site_settings` under `{org_id}_branding`: logo, org name,
 | `{org_id}_stripe_account` | `stripeAccountKey()` | Stripe Connect account (fallback) |
 | `{org_id}_plan` | `planKey()` | Platform plan assignment + subscription status (Starter/Pro) |
 | `platform_stripe_billing` | `platformBillingKey()` | Stripe Product + Price IDs for Pro plan billing |
+| `platform_payment_digest` | — | Latest AI payment health digest (generated every 6h) |
 
 ### Request Flow (Event Pages)
 `/event/[slug]/` → Middleware (org_id) → RootLayout (`<OrgProvider>`) → EventLayout (Server Component: event + settings + branding + template in parallel, CSS vars + `data-theme`) → `AuraEventPage` or `MidnightEventPage`.
@@ -271,7 +272,7 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | `org_users` | Team members + invites | auth_user_id, email, role (owner/member), perm_*, status, invite_token |
 | `domains` | Hostname → org_id mapping | hostname (unique), org_id, is_primary, type, status, verification_* |
 | `popup_events` | Popup interaction tracking | event_type (impressions/engaged/conversions/dismissed) |
-| `payment_events` | Payment health log (append-only) | type, severity, event_id, stripe_*, error_*, metadata (jsonb), resolved |
+| `payment_events` | Payment health log (append-only) | type, severity, event_id, stripe_*, error_*, metadata (jsonb), resolved, resolution_notes |
 | `event_interest_signups` | Coming-soon signups + email automation | event_id, customer_id, email, notification_count (0-4), unsubscribe_token |
 
 **Reps Program** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. Types in `src/types/reps.ts`.
@@ -322,7 +323,8 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Platform Dashboard** (platform owner only — `requirePlatformOwner()`): `/api/platform/dashboard` (GET aggregated cross-tenant metrics — tenant counts, GMV, platform fees, onboarding funnel, recent signups/orders, top tenants). Dashboard page at `/admin/backend/`
 - **Tenants** (platform owner only — `requirePlatformOwner()`): `/api/platform/tenants` (GET enriched tenant list + platform summary — GMV, estimated fees, counts), `/api/platform/tenants/[orgId]` (GET single tenant detail — team, domains, events, orders, Stripe account, onboarding checklist, estimated fees). Detail page at `/admin/backend/tenants/[orgId]/`
-- **Payment Health** (platform owner — `requirePlatformOwner()`): `/api/platform/payment-health` (GET — summary, failure rates, trends; params: `period`, `org_id`), `/api/platform/payment-health/[id]/resolve` (POST). Page: `/admin/backend/payment-health/`. `lib/payment-monitor.ts` (fire-and-forget `logPaymentEvent()`), `lib/payment-alerts.ts` (Resend alerts, 30min cooldown). Cron: `/api/cron/stripe-health` (30min — Connect health, anomaly detection, retention purge)
+- **Payment Health** (platform owner — `requirePlatformOwner()`): `/api/platform/payment-health` (GET — summary, failure rates, trends; params: `period`, `org_id`), `/api/platform/payment-health/[id]/resolve` (POST, accepts `notes`), `/api/platform/payment-health/resolve-all` (POST bulk resolve by `severity`/`type`). Page: `/admin/backend/payment-health/`. `lib/payment-monitor.ts` (fire-and-forget `logPaymentEvent()`, 14 event types including `incomplete_payment`), `lib/payment-alerts.ts` (Resend alerts, 30min cooldown). Cron: `/api/cron/stripe-health` (30min — Connect health, anomaly detection, incomplete PI detection, retention purge)
+- **AI Payment Digest** (platform owner — `requirePlatformOwner()`): `/api/platform/payment-digest` (GET latest / POST generate on-demand, `period_hours` param). `lib/payment-digest.ts` — gathers payment_events + Stripe data, calls Claude Haiku API for analysis, stores in `platform_payment_digest` settings key. Cron: `/api/cron/payment-digest` (every 6h). Emails HTML digest to `PLATFORM_ALERT_EMAIL` when risk is concern/critical. Requires `ANTHROPIC_API_KEY` env var. Cost: ~£0.01-0.03/day
 - **Plans** (platform owner only — `requirePlatformOwner()`): `/api/plans` (GET list orgs + plans, POST assign plan to org)
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin CRUD), `/api/rep-portal/*` (20 rep-facing — auth, dashboard, sales, quests, rewards, notifications)
 - **Team Management** (7 routes): `/api/team` (GET/POST — owner only), `/api/team/[id]` (PUT/DELETE), `/api/team/[id]/resend-invite`, `/api/team/accept-invite` (public, rate limited)
@@ -352,7 +354,7 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 **Optional**: `NEXT_PUBLIC_GTM_ID`, `NEXT_PUBLIC_KLAVIYO_LIST_ID`, `NEXT_PUBLIC_KLAVIYO_COMPANY_ID` (all have fallbacks)
 **Wallet passes**: `APPLE_PASS_CERTIFICATE`, `APPLE_PASS_CERTIFICATE_PASSWORD`, `APPLE_WWDR_CERTIFICATE`, `APPLE_PASS_TYPE_IDENTIFIER`, `APPLE_PASS_TEAM_IDENTIFIER`, `GOOGLE_WALLET_SERVICE_ACCOUNT_KEY`, `GOOGLE_WALLET_ISSUER_ID`
 **Domain management**: `VERCEL_API_TOKEN` (Vercel API token for domain CRUD), `VERCEL_PROJECT_ID` (feral-presents project ID), `VERCEL_TEAM_ID` (Vercel team ID)
-**Monitoring**: `PLATFORM_ALERT_EMAIL` (platform owner email for critical payment/health alerts via Resend)
+**Monitoring**: `PLATFORM_ALERT_EMAIL` (platform owner email for critical payment/health alerts via Resend), `ANTHROPIC_API_KEY` (Claude API for AI payment digest — optional, digest gracefully degrades without it)
 
 ---
 

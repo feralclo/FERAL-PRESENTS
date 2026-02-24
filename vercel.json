@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/announcement-emails/",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/payment-digest/",
+      "schedule": "0 */6 * * *"
     }
   ],
   "headers": [

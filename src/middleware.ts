@@ -165,6 +165,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/stripe/account",
   "/api/discounts/validate",
   "/api/checkout/capture",
+  "/api/checkout/error",
   "/api/popup/capture",
   "/api/track",
   "/api/meta/capi",

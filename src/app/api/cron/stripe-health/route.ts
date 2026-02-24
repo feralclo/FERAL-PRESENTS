@@ -14,8 +14,9 @@ export const maxDuration = 120; // 2 minutes
  * Runs every 30 minutes via Vercel cron. Checks:
  * 1. Stripe Connect account health (charges_enabled, requirements)
  * 2. Payment failure anomaly detection
- *
- * Also purges old info/warning events for data retention.
+ * 3. Webhook reconciliation — orphaned payments
+ * 4. Incomplete PaymentIntents — abandoned checkouts in Stripe
+ * 5. Data retention purge
  */
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
     unhealthy_accounts: [] as string[],
     healthy_recoveries: 0,
     anomalies: [] as string[],
+    incomplete_payments: 0,
     purged: { info: 0, warning: 0 },
   };
 
@@ -193,8 +195,6 @@ export async function GET(request: NextRequest) {
 
     // ── 3. Webhook reconciliation — find orphaned payments ──
     // Check for payment_succeeded events in the last 2 hours that have no matching order.
-    // This catches the scenario where Stripe took the money but the webhook/confirm-order
-    // failed to create an order — the most dangerous failure mode.
 
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
@@ -216,7 +216,6 @@ export async function GET(request: NextRequest) {
 
       for (const pe of recentSuccesses) {
         if (pe.stripe_payment_intent_id && !orderRefs.has(pe.stripe_payment_intent_id)) {
-          // This payment succeeded but no order exists — orphaned payment!
           results.anomalies.push(`Orphaned payment: PI ${pe.stripe_payment_intent_id} for org ${pe.org_id}`);
           await logPaymentEvent({
             orgId: pe.org_id,
@@ -243,7 +242,75 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ── 4. Data retention — purge old events ──
+    // ── 4. Incomplete PaymentIntents — abandoned checkouts ──
+    // Check Stripe for recent PIs stuck in requires_payment_method / requires_action.
+    // These represent customers who started checkout but never completed.
+    // Only flag PIs older than 30 minutes (give people time to complete) and
+    // younger than 4 hours (don't flag ancient ones every run).
+
+    try {
+      const fourHoursAgoUnix = Math.floor((Date.now() - 4 * 60 * 60 * 1000) / 1000);
+      const thirtyMinAgoUnix = Math.floor((Date.now() - 30 * 60 * 1000) / 1000);
+
+      // Check PIs stuck at requires_payment_method (customer abandoned before entering card)
+      const abandonedPIs = await stripe!.paymentIntents.search({
+        query: `status:"requires_payment_method" AND created>${fourHoursAgoUnix} AND created<${thirtyMinAgoUnix}`,
+        limit: 50,
+      });
+
+      // Check PIs stuck at requires_action (3DS challenge abandoned)
+      const stuckPIs = await stripe!.paymentIntents.search({
+        query: `status:"requires_action" AND created>${fourHoursAgoUnix} AND created<${thirtyMinAgoUnix}`,
+        limit: 50,
+      });
+
+      const allIncomplete = [...(abandonedPIs.data || []), ...(stuckPIs.data || [])];
+
+      // Check which ones we've already logged (avoid duplicates)
+      if (allIncomplete.length > 0) {
+        const piIds = allIncomplete.map((pi) => pi.id);
+        const { data: existing } = await supabase
+          .from(TABLES.PAYMENT_EVENTS)
+          .select("stripe_payment_intent_id")
+          .eq("type", "incomplete_payment")
+          .in("stripe_payment_intent_id", piIds);
+
+        const alreadyLogged = new Set((existing || []).map((e) => e.stripe_payment_intent_id));
+
+        for (const pi of allIncomplete) {
+          if (alreadyLogged.has(pi.id)) continue;
+
+          results.incomplete_payments++;
+          const meta = pi.metadata || {};
+          const ageMinutes = Math.round((Date.now() / 1000 - pi.created) / 60);
+
+          await logPaymentEvent({
+            orgId: (meta.org_id as string) || "feral",
+            type: "incomplete_payment",
+            severity: "warning",
+            stripePaymentIntentId: pi.id,
+            customerEmail: (meta.customer_email as string) || undefined,
+            errorCode: pi.status,
+            errorMessage: pi.status === "requires_action"
+              ? `3DS challenge abandoned after ${ageMinutes}min — ${pi.description || "unknown item"} (${(pi.amount / 100).toFixed(2)} ${pi.currency.toUpperCase()})`
+              : `Checkout abandoned after ${ageMinutes}min — ${pi.description || "unknown item"} (${(pi.amount / 100).toFixed(2)} ${pi.currency.toUpperCase()})`,
+            metadata: {
+              amount: pi.amount,
+              currency: pi.currency,
+              description: pi.description,
+              status: pi.status,
+              age_minutes: ageMinutes,
+              event_slug: meta.event_slug || null,
+            },
+          });
+        }
+      }
+    } catch (err) {
+      // Non-fatal — log but don't fail the whole cron
+      console.error("[stripe-health] Incomplete PI check failed:", err);
+    }
+
+    // ── 5. Data retention — purge old events ──
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();

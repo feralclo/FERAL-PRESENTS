@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -23,9 +24,35 @@ import {
   ArrowRight,
   ShieldCheck,
   ShieldAlert,
+  X,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  CheckCheck,
+  Sparkles,
+  Brain,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────
+
+interface PaymentEvent {
+  id: string;
+  org_id: string;
+  type: string;
+  severity: string;
+  event_id: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_account_id: string | null;
+  customer_email: string | null;
+  ip_address: string | null;
+  metadata: Record<string, unknown> | null;
+  resolved: boolean;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+}
 
 interface PaymentHealthData {
   summary: {
@@ -65,19 +92,9 @@ interface PaymentHealthData {
   };
   reconciliation: {
     orphaned_payments: number;
+    incomplete_payments: number;
   };
-  recent_critical: {
-    id: string;
-    org_id: string;
-    type: string;
-    severity: string;
-    error_code: string | null;
-    error_message: string | null;
-    stripe_account_id: string | null;
-    customer_email: string | null;
-    resolved: boolean;
-    created_at: string;
-  }[];
+  recent_critical: PaymentEvent[];
   failure_by_org: {
     org_id: string;
     succeeded: number;
@@ -91,6 +108,37 @@ interface PaymentHealthData {
     failed: number;
     errors: number;
   }[];
+}
+
+interface DigestFinding {
+  title: string;
+  detail: string;
+  severity: "info" | "watch" | "concern" | "critical";
+}
+
+interface PaymentDigestData {
+  generated_at: string;
+  period_hours: number;
+  summary: string;
+  risk_level: "healthy" | "watch" | "concern" | "critical";
+  findings: DigestFinding[];
+  recommendations: string[];
+  raw_stats: {
+    payments_succeeded: number;
+    payments_failed: number;
+    failure_rate: number;
+    checkout_errors: number;
+    client_errors: number;
+    incomplete_checkouts: number;
+    orphaned_payments: number;
+    connect_unhealthy: number;
+    webhook_errors: number;
+    total_events: number;
+    unique_customers_failed: number;
+    top_decline_codes: { code: string; count: number }[];
+    affected_events: { slug: string; failures: number }[];
+    amount_failed_gbp: number;
+  };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -118,6 +166,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   subscription_failed: "Subscription payment failed",
   orphaned_payment: "Orphaned payment",
   client_checkout_error: "Checkout error (customer's browser)",
+  incomplete_payment: "Incomplete checkout",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -133,6 +182,19 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+function formatTimestamp(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 function formatPence(pence: number): string {
   const pounds = pence / 100;
   if (pounds >= 1000) return `£${(pounds / 1000).toFixed(1)}k`;
@@ -143,21 +205,24 @@ function friendlyEventType(type: string): string {
   return EVENT_TYPE_LABELS[type] || type.replace(/_/g, " ");
 }
 
+function stripePaymentUrl(piId: string): string {
+  return `https://dashboard.stripe.com/payments/${piId}`;
+}
+
 // ─── Status Banner ───────────────────────────────────────────────────
 
 function StatusBanner({ data }: { data: PaymentHealthData }) {
-  const { critical_count, unresolved_count } = data.summary;
+  const { unresolved_count } = data.summary;
   const failureRate = data.payments.failure_rate;
   const orphaned = data.reconciliation.orphaned_payments;
   const totalPayments = data.payments.succeeded + data.payments.failed;
 
-  // Critical: active issues that need attention
-  if (critical_count > 0 || unresolved_count > 5 || failureRate > 0.1 || orphaned > 0) {
+  // Use unresolved_count (not critical_count) so resolved events don't keep triggering
+  if (unresolved_count > 0 || failureRate > 0.1 || orphaned > 0) {
     const issues: string[] = [];
-    if (critical_count > 0) issues.push(`${critical_count} critical issue${critical_count !== 1 ? "s" : ""}`);
+    if (unresolved_count > 0) issues.push(`${unresolved_count} unresolved issue${unresolved_count !== 1 ? "s" : ""} need attention`);
     if (orphaned > 0) issues.push(`${orphaned} orphaned payment${orphaned !== 1 ? "s" : ""} (money taken, no order created)`);
     if (failureRate > 0.1) issues.push(`${(failureRate * 100).toFixed(1)}% payment failure rate`);
-    if (unresolved_count > 5) issues.push(`${unresolved_count} unresolved events`);
 
     return (
       <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-5 py-4">
@@ -211,6 +276,424 @@ function StatusBanner({ data }: { data: PaymentHealthData }) {
   );
 }
 
+// ─── AI Health Digest ────────────────────────────────────────────────
+
+const RISK_COLORS: Record<string, { border: string; bg: string; text: string; dot: string }> = {
+  healthy: { border: "border-success/30", bg: "bg-success/5", text: "text-success", dot: "bg-success" },
+  watch: { border: "border-info/30", bg: "bg-info/5", text: "text-info", dot: "bg-info" },
+  concern: { border: "border-warning/30", bg: "bg-warning/5", text: "text-warning", dot: "bg-warning" },
+  critical: { border: "border-destructive/30", bg: "bg-destructive/5", text: "text-destructive", dot: "bg-destructive" },
+};
+
+const FINDING_COLORS: Record<string, string> = {
+  info: "border-l-info/60",
+  watch: "border-l-info/60",
+  concern: "border-l-warning/60",
+  critical: "border-l-destructive/60",
+};
+
+function AIDigestCard() {
+  const [digest, setDigest] = useState<PaymentDigestData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState(6);
+
+  useEffect(() => {
+    fetch("/api/platform/payment-digest")
+      .then((r) => r.json())
+      .then((data) => setDigest(data.digest || null))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function generateNow() {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/platform/payment-digest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period_hours: selectedPeriod }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDigest(data.digest);
+        setExpanded(true);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  const risk = digest ? RISK_COLORS[digest.risk_level] || RISK_COLORS.watch : RISK_COLORS.watch;
+
+  return (
+    <Card className={`py-0 gap-0 ${digest ? risk.border : "border-border"}`}>
+      <CardHeader className="px-5 pt-5 pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`flex h-7 w-7 items-center justify-center rounded-md ${digest ? risk.bg : "bg-primary/10"}`}>
+              <Brain size={14} className={digest ? risk.text : "text-primary"} />
+            </div>
+            <div>
+              <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                AI Health Digest
+              </CardTitle>
+              {digest && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Generated {timeAgo(digest.generated_at)} · {digest.period_hours}h analysis
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {digest && (
+              <Badge
+                variant="outline"
+                className={`text-[10px] ${risk.text} ${risk.border}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${risk.dot} mr-1.5`} />
+                {digest.risk_level}
+              </Badge>
+            )}
+            <NativeSelect
+              value={String(selectedPeriod)}
+              onChange={(e) => setSelectedPeriod(Number(e.target.value))}
+              className="w-20 text-xs"
+            >
+              <option value="1">1h</option>
+              <option value="6">6h</option>
+              <option value="12">12h</option>
+              <option value="24">24h</option>
+              <option value="48">48h</option>
+              <option value="72">72h</option>
+            </NativeSelect>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5"
+              disabled={generating}
+              onClick={generateNow}
+            >
+              {generating ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Sparkles size={12} />
+              )}
+              {generating ? "Analysing..." : "Analyse Now"}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5 pb-5">
+        {loading ? (
+          <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+            <Loader2 size={14} className="animate-spin" />
+            Loading latest digest...
+          </div>
+        ) : !digest ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <Brain size={24} className="text-muted-foreground/30" />
+            <p className="text-xs text-muted-foreground">
+              No digest yet. Click &quot;Analyse Now&quot; to generate your first AI-powered health report.
+            </p>
+            <p className="text-[10px] text-muted-foreground/60">
+              Once generated, digests run automatically every 6 hours.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Summary */}
+            <p className="text-sm text-foreground leading-relaxed">
+              {digest.summary}
+            </p>
+
+            {/* Expandable findings + recommendations */}
+            {(digest.findings.length > 0 || digest.recommendations.length > 0) && (
+              <>
+                <button
+                  onClick={() => setExpanded(!expanded)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  {digest.findings.length} finding{digest.findings.length !== 1 ? "s" : ""}, {digest.recommendations.length} recommendation{digest.recommendations.length !== 1 ? "s" : ""}
+                </button>
+
+                {expanded && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {/* Findings */}
+                    {digest.findings.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                          Findings
+                        </h4>
+                        <div className="space-y-2">
+                          {digest.findings.map((finding, i) => (
+                            <div
+                              key={i}
+                              className={`border-l-2 ${FINDING_COLORS[finding.severity] || "border-l-border"} bg-card rounded-r-lg px-4 py-3`}
+                            >
+                              <p className="text-xs font-medium text-foreground">
+                                {finding.title}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                                {finding.detail}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {digest.recommendations.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                          Recommendations
+                        </h4>
+                        <div className="space-y-1.5">
+                          {digest.recommendations.map((rec, i) => (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 text-xs text-foreground"
+                            >
+                              <ArrowRight size={10} className="text-primary shrink-0 mt-0.5" />
+                              <span className="leading-relaxed">{rec}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Stats footer */}
+                    <div className="flex items-center gap-4 pt-2 border-t border-border/30 text-[10px] text-muted-foreground flex-wrap">
+                      <span>{digest.raw_stats.payments_succeeded} succeeded</span>
+                      <span>{digest.raw_stats.payments_failed} failed</span>
+                      <span>{(digest.raw_stats.failure_rate * 100).toFixed(1)}% rate</span>
+                      <span>£{digest.raw_stats.amount_failed_gbp.toFixed(2)} lost</span>
+                      <span>{digest.raw_stats.incomplete_checkouts} incomplete</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Event Detail Drawer ─────────────────────────────────────────────
+
+function EventDetailDrawer({
+  event,
+  onClose,
+  onResolve,
+  resolving,
+}: {
+  event: PaymentEvent;
+  onClose: () => void;
+  onResolve: (id: string, notes: string) => void;
+  resolving: boolean;
+}) {
+  const [notes, setNotes] = useState(event.resolution_notes || "");
+  const meta = event.metadata || {};
+  const metaEntries = Object.entries(meta).filter(
+    ([, v]) => v !== null && v !== undefined && v !== ""
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+
+      {/* Drawer */}
+      <div className="relative w-full max-w-lg bg-background border-l border-border overflow-y-auto">
+        <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-between z-10">
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={event.severity === "critical" ? "destructive" : "outline"}
+              className="text-[10px]"
+            >
+              {event.severity}
+            </Badge>
+            <span className="text-sm font-medium">{friendlyEventType(event.type)}</span>
+          </div>
+          <Button variant="ghost" size="icon-sm" onClick={onClose}>
+            <X size={16} />
+          </Button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Status */}
+          {event.resolved && (
+            <div className="flex items-center gap-2 text-xs text-success bg-success/10 border border-success/20 rounded-lg px-3 py-2">
+              <CheckCircle2 size={14} />
+              <span>
+                Resolved {event.resolved_at ? formatTimestamp(event.resolved_at) : ""}
+              </span>
+            </div>
+          )}
+
+          {/* Core Details */}
+          <div className="space-y-3">
+            <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+              Event Details
+            </h3>
+            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
+              <span className="text-muted-foreground">Time</span>
+              <span className="font-mono">{formatTimestamp(event.created_at)}</span>
+
+              <span className="text-muted-foreground">Time ago</span>
+              <span>{timeAgo(event.created_at)}</span>
+
+              <span className="text-muted-foreground">Tenant</span>
+              <span className="font-mono">{event.org_id}</span>
+
+              <span className="text-muted-foreground">Event type</span>
+              <code className="font-mono text-muted-foreground">{event.type}</code>
+
+              {event.error_code && (
+                <>
+                  <span className="text-muted-foreground">Error code</span>
+                  <code className="font-mono text-destructive">{event.error_code}</code>
+                </>
+              )}
+
+              {event.customer_email && (
+                <>
+                  <span className="text-muted-foreground">Customer</span>
+                  <span>{event.customer_email}</span>
+                </>
+              )}
+
+              {event.stripe_payment_intent_id && (
+                <>
+                  <span className="text-muted-foreground">PaymentIntent</span>
+                  <a
+                    href={stripePaymentUrl(event.stripe_payment_intent_id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-primary hover:underline font-mono"
+                  >
+                    {event.stripe_payment_intent_id.slice(0, 20)}...
+                    <ExternalLink size={10} />
+                  </a>
+                </>
+              )}
+
+              {event.stripe_account_id && (
+                <>
+                  <span className="text-muted-foreground">Stripe account</span>
+                  <span className="font-mono">{event.stripe_account_id}</span>
+                </>
+              )}
+
+              {event.ip_address && (
+                <>
+                  <span className="text-muted-foreground">IP address</span>
+                  <span className="font-mono">{event.ip_address}</span>
+                </>
+              )}
+
+              {event.event_id && (
+                <>
+                  <span className="text-muted-foreground">Event ID</span>
+                  <span className="font-mono">{event.event_id}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {event.error_message && (
+            <div className="space-y-2">
+              <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                Error Message
+              </h3>
+              <div className="rounded-lg border border-border bg-card px-4 py-3">
+                <p className="text-xs text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                  {event.error_message}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Metadata */}
+          {metaEntries.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                Metadata
+              </h3>
+              <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <div className="divide-y divide-border">
+                  {metaEntries.map(([key, value]) => (
+                    <div key={key} className="flex items-start gap-3 px-4 py-2.5 text-xs">
+                      <span className="text-muted-foreground font-mono shrink-0 min-w-[100px]">
+                        {key}
+                      </span>
+                      <span className="text-foreground font-mono break-all">
+                        {typeof value === "object"
+                          ? JSON.stringify(value, null, 2)
+                          : String(value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Resolution Notes */}
+          {event.resolved && event.resolution_notes && (
+            <div className="space-y-2">
+              <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                Resolution Notes
+              </h3>
+              <div className="rounded-lg border border-success/20 bg-success/5 px-4 py-3">
+                <p className="text-xs text-foreground whitespace-pre-wrap">
+                  {event.resolution_notes}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Resolve Action */}
+          {!event.resolved && (
+            <div className="space-y-3 pt-2 border-t border-border">
+              <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                Resolve This Event
+              </h3>
+              <Textarea
+                placeholder="What happened? What did you do to fix it? (optional)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="text-xs min-h-[80px] resize-none"
+              />
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={resolving}
+                onClick={() => onResolve(event.id, notes)}
+              >
+                {resolving ? (
+                  <Loader2 size={14} className="animate-spin mr-2" />
+                ) : (
+                  <CheckCircle2 size={14} className="mr-2" />
+                )}
+                Mark as Resolved
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Monitoring Coverage Card ────────────────────────────────────────
 
 function MonitoringCoverage({ data }: { data: PaymentHealthData }) {
@@ -252,6 +735,12 @@ function MonitoringCoverage({ data }: { data: PaymentHealthData }) {
       active: true,
     },
     {
+      label: "Incomplete checkout detection",
+      description: "Finds PaymentIntents stuck in Stripe (abandoned cards, 3DS timeouts) every 30 minutes",
+      icon: Clock,
+      active: true,
+    },
+    {
       label: "Anomaly detection",
       description: "Alerts if any tenant's failure rate exceeds 20%, or if platform-wide failures spike",
       icon: Activity,
@@ -276,7 +765,7 @@ function MonitoringCoverage({ data }: { data: PaymentHealthData }) {
         </p>
       </CardHeader>
       <CardContent className="px-5 pb-5">
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {checks.map((check) => (
             <div
               key={check.label}
@@ -372,6 +861,10 @@ export default function PaymentHealthPage() {
   const [period, setPeriod] = useState("24h");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [resolving, setResolving] = useState<Set<string>>(new Set());
+  const [selectedEvent, setSelectedEvent] = useState<PaymentEvent | null>(null);
+  const [showAllEvents, setShowAllEvents] = useState(false);
+  const [bulkResolving, setBulkResolving] = useState(false);
+  const [eventFilter, setEventFilter] = useState<string>("all");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -402,11 +895,13 @@ export default function PaymentHealthPage() {
     };
   }, [autoRefresh, fetchData]);
 
-  async function resolveEvent(id: string) {
+  async function resolveEvent(id: string, notes?: string) {
     setResolving((prev) => new Set(prev).add(id));
     try {
       const res = await fetch(`/api/platform/payment-health/${id}/resolve`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: notes || null }),
       });
       if (res.ok) {
         setData((prev) => {
@@ -414,7 +909,7 @@ export default function PaymentHealthPage() {
           return {
             ...prev,
             recent_critical: prev.recent_critical.map((e) =>
-              e.id === id ? { ...e, resolved: true } : e
+              e.id === id ? { ...e, resolved: true, resolution_notes: notes || null } : e
             ),
             summary: {
               ...prev.summary,
@@ -422,6 +917,10 @@ export default function PaymentHealthPage() {
             },
           };
         });
+        // Update drawer if open
+        setSelectedEvent((prev) =>
+          prev?.id === id ? { ...prev, resolved: true, resolution_notes: notes || null } : prev
+        );
       }
     } catch {
       // silently fail
@@ -431,6 +930,27 @@ export default function PaymentHealthPage() {
         next.delete(id);
         return next;
       });
+    }
+  }
+
+  async function bulkResolve(severity: string) {
+    setBulkResolving(true);
+    try {
+      const res = await fetch("/api/platform/payment-health/resolve-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          severity,
+          notes: `Bulk resolved all ${severity} events`,
+        }),
+      });
+      if (res.ok) {
+        await fetchData();
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setBulkResolving(false);
     }
   }
 
@@ -466,6 +986,22 @@ export default function PaymentHealthPage() {
   if (!data) return null;
 
   const totalPayments = data.payments.succeeded + data.payments.failed;
+
+  // Filter events for the list
+  const filteredEvents = data.recent_critical.filter((e) => {
+    if (eventFilter === "all") return true;
+    if (eventFilter === "unresolved") return !e.resolved;
+    if (eventFilter === "critical") return e.severity === "critical";
+    if (eventFilter === "warning") return e.severity === "warning";
+    return e.type === eventFilter;
+  });
+
+  const visibleEvents = showAllEvents ? filteredEvents : filteredEvents.slice(0, 15);
+  const hasMoreEvents = filteredEvents.length > 15;
+  const unresolvedInView = data.recent_critical.filter((e) => !e.resolved);
+
+  // Get unique event types for filter dropdown
+  const uniqueTypes = [...new Set(data.recent_critical.map((e) => e.type))];
 
   return (
     <div className="space-y-6 p-6">
@@ -509,8 +1045,11 @@ export default function PaymentHealthPage() {
       {/* ── Status Banner ── */}
       <StatusBanner data={data} />
 
+      {/* ── AI Health Digest ── */}
+      <AIDigestCard />
+
       {/* ── Key Metrics ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           label="Payment Success Rate"
           value={
@@ -563,6 +1102,16 @@ export default function PaymentHealthPage() {
             data.checkout.errors + data.checkout.client_errors === 0
               ? "Clean checkout experience"
               : `${data.checkout.errors} server, ${data.checkout.client_errors} browser`
+          }
+        />
+        <StatCard
+          label="Incomplete Checkouts"
+          value={String(data.reconciliation.incomplete_payments || 0)}
+          icon={Clock}
+          detail={
+            (data.reconciliation.incomplete_payments || 0) === 0
+              ? "No abandoned checkouts detected"
+              : "Customers who started but didn't finish"
           }
         />
       </div>
@@ -755,98 +1304,160 @@ export default function PaymentHealthPage() {
       {/* ── Recent Events (Critical + Warning) ── */}
       <Card className="py-0 gap-0">
         <CardHeader className="px-5 pt-5 pb-3">
-          <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
-            Recent Events
-          </CardTitle>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Critical and warning events from the selected period. Mark
-            events as &quot;Resolved&quot; once you&apos;ve investigated.
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <CardTitle className="font-mono text-[11px] font-semibold uppercase tracking-[2px] text-muted-foreground">
+                Recent Events
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Click any event to view full details. Mark events as resolved once investigated.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <NativeSelect
+                value={eventFilter}
+                onChange={(e) => setEventFilter(e.target.value)}
+                className="w-44 text-xs"
+              >
+                <option value="all">All events ({data.recent_critical.length})</option>
+                <option value="unresolved">Unresolved ({unresolvedInView.length})</option>
+                <option value="critical">Critical only</option>
+                <option value="warning">Warnings only</option>
+                {uniqueTypes.map((t) => (
+                  <option key={t} value={t}>{friendlyEventType(t)}</option>
+                ))}
+              </NativeSelect>
+              {unresolvedInView.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-[10px] h-7 gap-1.5"
+                  disabled={bulkResolving}
+                  onClick={() => bulkResolve("warning")}
+                >
+                  {bulkResolving ? (
+                    <Loader2 size={10} className="animate-spin" />
+                  ) : (
+                    <CheckCheck size={12} />
+                  )}
+                  Resolve Warnings
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="px-5 pb-5">
-          {data.recent_critical.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
               <CheckCircle2 size={14} className="text-success" />
-              No critical or warning events — everything is running
-              smoothly
+              {eventFilter === "all"
+                ? "No critical or warning events — everything is running smoothly"
+                : "No events match this filter"}
             </div>
           ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {data.recent_critical.map((event) => (
-                <div
-                  key={event.id}
-                  className={`flex items-start justify-between gap-3 rounded-lg border px-4 py-3 ${
-                    event.resolved
-                      ? "border-border/30 opacity-60"
-                      : event.severity === "critical"
-                        ? "border-destructive/20 bg-destructive/5"
-                        : "border-border/50"
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge
-                        variant={
-                          event.severity === "critical"
-                            ? "destructive"
-                            : "outline"
-                        }
-                        className="text-[10px]"
-                      >
-                        {event.severity}
-                      </Badge>
-                      <span className="text-xs font-medium text-foreground">
-                        {friendlyEventType(event.type)}
-                      </span>
-                      {event.resolved && (
+            <>
+              <div className="space-y-2">
+                {visibleEvents.map((event) => (
+                  <button
+                    key={event.id}
+                    onClick={() => setSelectedEvent(event)}
+                    className={`w-full text-left flex items-start justify-between gap-3 rounded-lg border px-4 py-3 transition-colors hover:bg-card/80 ${
+                      event.resolved
+                        ? "border-border/30 opacity-50"
+                        : event.severity === "critical"
+                          ? "border-destructive/20 bg-destructive/5"
+                          : "border-border/50"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge
-                          variant="outline"
-                          className="text-[10px] text-success border-success/30"
+                          variant={
+                            event.severity === "critical"
+                              ? "destructive"
+                              : "outline"
+                          }
+                          className="text-[10px]"
                         >
-                          resolved
+                          {event.severity}
                         </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
-                      <span>Tenant: {event.org_id}</span>
-                      {event.error_code && (
-                        <span>
-                          Code: <code className="font-mono">{event.error_code}</code>
+                        <span className="text-xs font-medium text-foreground">
+                          {friendlyEventType(event.type)}
                         </span>
-                      )}
-                      {event.customer_email && (
-                        <span>{event.customer_email}</span>
+                        {event.resolved && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] text-success border-success/30"
+                          >
+                            resolved
+                          </Badge>
+                        )}
+                        {event.stripe_payment_intent_id && (
+                          <span className="text-[10px] text-primary/60 font-mono">
+                            {event.stripe_payment_intent_id.slice(0, 15)}...
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
+                        <span>Tenant: {event.org_id}</span>
+                        {event.error_code && (
+                          <span>
+                            Code: <code className="font-mono">{event.error_code}</code>
+                          </span>
+                        )}
+                        {event.customer_email && (
+                          <span>{event.customer_email}</span>
+                        )}
+                      </div>
+                      {event.error_message && (
+                        <p className="text-[11px] text-muted-foreground/70 mt-1 line-clamp-1">
+                          {event.error_message}
+                        </p>
                       )}
                     </div>
-                    {event.error_message && (
-                      <p className="text-[11px] text-muted-foreground/70 mt-1 line-clamp-2">
-                        {event.error_message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                      {timeAgo(event.created_at)}
-                    </span>
-                    {!event.resolved && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-[10px] h-6 px-2"
-                        disabled={resolving.has(event.id)}
-                        onClick={() => resolveEvent(event.id)}
-                      >
-                        {resolving.has(event.id) ? (
-                          <Loader2 size={10} className="animate-spin" />
-                        ) : (
-                          "Resolve"
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        {timeAgo(event.created_at)}
+                      </span>
+                      {!event.resolved && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[10px] h-6 px-2"
+                          disabled={resolving.has(event.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resolveEvent(event.id);
+                          }}
+                        >
+                          {resolving.has(event.id) ? (
+                            <Loader2 size={10} className="animate-spin" />
+                          ) : (
+                            "Resolve"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {hasMoreEvents && (
+                <button
+                  onClick={() => setShowAllEvents(!showAllEvents)}
+                  className="flex items-center gap-1.5 mx-auto mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showAllEvents ? (
+                    <>
+                      <ChevronUp size={14} /> Show fewer
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={14} /> Show all {filteredEvents.length} events
+                    </>
+                  )}
+                </button>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -966,6 +1577,16 @@ export default function PaymentHealthPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Event Detail Drawer ── */}
+      {selectedEvent && (
+        <EventDetailDrawer
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onResolve={resolveEvent}
+          resolving={resolving.has(selectedEvent.id)}
+        />
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { TABLES } from "@/lib/constants";
 /**
  * POST /api/platform/payment-health/[id]/resolve
  *
- * Marks a payment event as resolved.
+ * Marks a payment event as resolved, with optional notes.
  */
 export async function POST(
   request: NextRequest,
@@ -17,17 +17,30 @@ export async function POST(
 
   const { id } = await params;
 
+  let notes: string | null = null;
+  try {
+    const body = await request.json();
+    notes = body.notes || null;
+  } catch {
+    // No body or invalid JSON — notes are optional
+  }
+
   const supabase = await getSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
+  const updateData: Record<string, unknown> = {
+    resolved: true,
+    resolved_at: new Date().toISOString(),
+  };
+  if (notes) {
+    updateData.resolution_notes = notes;
+  }
+
   const { error } = await supabase
     .from(TABLES.PAYMENT_EVENTS)
-    .update({
-      resolved: true,
-      resolved_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", id);
 
   if (error) {

@@ -47,6 +47,8 @@ interface TicketCardProps {
   waitingFor?: string;
   /** Whether this ticket is in a sequential release group */
   isSequentialGroup?: boolean;
+  /** Position in the sequential release (1-based), e.g. 1 = first to release */
+  sequencePosition?: number;
 }
 
 export function TicketCard({
@@ -64,6 +66,7 @@ export function TicketCard({
   onDragEnd,
   waitingFor,
   isSequentialGroup,
+  sequencePosition,
 }: TicketCardProps) {
   const [open, setOpen] = useState(false);
   const currSym = CURRENCY_SYMBOLS[currency] || currency;
@@ -92,6 +95,11 @@ export function TicketCard({
               size={14}
               className="text-muted-foreground/40 shrink-0 cursor-grab"
             />
+            {sequencePosition != null && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary tabular-nums shrink-0">
+                {sequencePosition}
+              </span>
+            )}
             <span className="flex-1 font-mono text-sm text-foreground truncate">
               {ticket.name || "Untitled"}
             </span>
@@ -104,12 +112,12 @@ export function TicketCard({
             </Badge>
             {waitingFor && (
               <Badge
-                variant="outline"
-                className="text-[9px] font-mono gap-1 text-muted-foreground/60 border-muted-foreground/20"
+                variant="secondary"
+                className="text-[10px] font-mono gap-1.5 text-muted-foreground border-border"
                 title={`Reveals when "${waitingFor}" sells out`}
               >
-                <Lock size={9} />
-                Queued
+                <Lock size={10} className="text-muted-foreground/70" />
+                Waiting for {waitingFor}
               </Badge>
             )}
             {ticket.sold > 0 && (
@@ -222,11 +230,11 @@ export function TicketCard({
                   min="0"
                 />
                 {isSequentialGroup && !ticket.capacity && (
-                  <div className="flex items-center gap-1.5 text-warning">
-                    <AlertTriangle size={11} className="shrink-0" />
-                    <span className="text-[10px]">
-                      Set a capacity — unlimited tickets never sell out so later tickets won&apos;t reveal
-                    </span>
+                  <div className="flex items-start gap-2 rounded-md border border-warning/20 bg-warning/5 px-2.5 py-2">
+                    <AlertTriangle size={13} className="text-warning shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-warning/90 leading-relaxed">
+                      This ticket is in a sequential group. Set a capacity so it can sell out and reveal the next ticket.
+                    </p>
                   </div>
                 )}
               </div>

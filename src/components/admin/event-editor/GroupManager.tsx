@@ -12,7 +12,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Info, Plus } from "lucide-react";
+import { ArrowRight, Info, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { UpdateSettingFn } from "./types";
 import type { EventSettings } from "@/types/settings";
 
@@ -195,116 +196,147 @@ export function GroupHeader({
   };
 
   return (
-    <div className="rounded-t-md bg-muted/40 border-b border-border px-4 py-2.5">
-    <div className="flex items-center gap-3">
-      <div className="flex flex-col gap-0.5">
-        <button
-          type="button"
-          onClick={onMoveUp}
-          disabled={index === 0}
-          className="text-[10px] text-muted-foreground/60 hover:text-foreground disabled:opacity-30 transition-colors"
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={index === total - 1}
-          className="text-[10px] text-muted-foreground/60 hover:text-foreground disabled:opacity-30 transition-colors"
-        >
-          ▼
-        </button>
-      </div>
-
-      {editing ? (
-        <div className="flex items-center gap-2 flex-1">
-          <Input
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            className="h-7 text-xs max-w-[200px]"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleRename();
-              if (e.key === "Escape") setEditing(false);
-            }}
-          />
-          <Button variant="outline" size="xs" onClick={handleRename}>
-            Save
-          </Button>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => setEditing(false)}
+    <div className="rounded-t-md bg-muted/40 border-b border-border px-4 py-3 space-y-2.5">
+      {/* Top row: reorder + name + actions */}
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={index === 0}
+            className="text-[10px] text-muted-foreground/60 hover:text-foreground disabled:opacity-30 transition-colors"
           >
-            Cancel
-          </Button>
+            ▲
+          </button>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+            className="text-[10px] text-muted-foreground/60 hover:text-foreground disabled:opacity-30 transition-colors"
+          >
+            ▼
+          </button>
         </div>
-      ) : (
-        <>
-          <span className="flex-1 font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
-            {name}
-          </span>
-          <span className="text-[10px] text-muted-foreground/60 font-mono">
-            {ticketCount} ticket{ticketCount !== 1 ? "s" : ""}
-          </span>
-          <select
-            value={currentMode}
-            onChange={(e) => handleReleaseModeChange(e.target.value as "all" | "sequential")}
-            className="h-6 text-[10px] font-mono bg-transparent border border-border rounded px-1.5 text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-          >
-            {RELEASE_MODES.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => {
-              setEditName(name);
-              setEditing(true);
-            }}
-            className="text-muted-foreground"
-          >
-            Edit
-          </Button>
-          {showDeleteConfirm ? (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="destructive"
-                size="xs"
-                onClick={handleDelete}
-              >
-                Yes
-              </Button>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                No
-              </Button>
-            </div>
-          ) : (
+
+        {editing ? (
+          <div className="flex items-center gap-2 flex-1">
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="h-7 text-xs max-w-[200px]"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+                if (e.key === "Escape") setEditing(false);
+              }}
+            />
+            <Button variant="outline" size="xs" onClick={handleRename}>
+              Save
+            </Button>
             <Button
               variant="ghost"
               size="xs"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-muted-foreground hover:text-destructive"
+              onClick={() => setEditing(false)}
             >
-              Remove
+              Cancel
             </Button>
-          )}
-        </>
-      )}
-    </div>
-    {currentMode === "sequential" && (
-      <div className="flex items-center gap-1.5 mt-1.5 ml-7">
-        <Info size={11} className="text-primary/60 shrink-0" />
-        <span className="text-[10px] text-muted-foreground/70">
-          Tickets reveal one at a time as each sells out. Drag to set the release order.
-        </span>
+          </div>
+        ) : (
+          <>
+            <span className="flex-1 font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
+              {name}
+            </span>
+            <span className="text-[10px] text-muted-foreground/60 font-mono tabular-nums">
+              {ticketCount} ticket{ticketCount !== 1 ? "s" : ""}
+            </span>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                setEditName(name);
+                setEditing(true);
+              }}
+              className="text-muted-foreground"
+            >
+              Edit
+            </Button>
+            {showDeleteConfirm ? (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="destructive"
+                  size="xs"
+                  onClick={handleDelete}
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  No
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                Remove
+              </Button>
+            )}
+          </>
+        )}
       </div>
-    )}
+
+      {/* Release mode toggle — always visible */}
+      {!editing && (
+        <div className="flex items-center gap-3 ml-7">
+          <span className="text-[11px] text-muted-foreground/60 font-medium">Release:</span>
+          <div className="flex items-center rounded-md border border-border bg-secondary/50 p-0.5">
+            <button
+              type="button"
+              onClick={() => handleReleaseModeChange("all")}
+              className={cn(
+                "px-2.5 py-1 rounded text-[11px] font-medium transition-all",
+                currentMode === "all"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All at once
+            </button>
+            <button
+              type="button"
+              onClick={() => handleReleaseModeChange("sequential")}
+              className={cn(
+                "px-2.5 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1.5",
+                currentMode === "sequential"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <ArrowRight size={11} />
+              Sequential
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sequential info */}
+      {currentMode === "sequential" && !editing && (
+        <div className="flex items-start gap-2.5 rounded-md border border-primary/10 bg-primary/5 px-3 py-2 ml-7">
+          <Info size={13} className="text-primary/70 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium text-foreground/80">Sequential release active</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Tickets reveal one at a time as each sells out. Drag to reorder the release sequence.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

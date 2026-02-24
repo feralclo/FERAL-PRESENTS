@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Info, Plus, Ticket } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ArrowRight, Info, Layers, Plus, Ticket } from "lucide-react";
 import { TicketCard } from "./TicketCard";
 import { GroupManager, GroupHeader } from "./GroupManager";
 import { useOrgId } from "@/components/OrgProvider";
@@ -196,6 +197,26 @@ export function TicketsTab({
     return set;
   }, [releaseMode]);
 
+  // Compute sequence positions for tickets in sequential groups (1-based)
+  const sequencePositionMap = useMemo(() => {
+    const result: Record<string, number> = {};
+    if (sequentialGroups.size === 0) return result;
+
+    for (const groupName of sequentialGroups) {
+      const gTickets = ticketTypes
+        .filter((tt) => {
+          const ttGroup = groupMap[tt.id] || "__ungrouped__";
+          return ttGroup === groupName;
+        })
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      gTickets.forEach((tt, idx) => {
+        result[tt.id] = idx + 1;
+      });
+    }
+    return result;
+  }, [ticketTypes, groupMap, sequentialGroups]);
+
   // Group tickets
   const ungrouped = ticketTypes.filter((tt) => !groupMap[tt.id]);
 
@@ -232,28 +253,56 @@ export function TicketsTab({
         <>
           {/* Ungrouped tickets */}
           {ungrouped.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 px-1">
-                <span className="font-mono text-[10px] font-semibold uppercase tracking-[2px] text-muted-foreground/50">
-                  Ungrouped
-                </span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Layers size={13} className="text-muted-foreground/50" />
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    General Tickets
+                  </span>
+                  <Badge variant="secondary" className="text-[10px] font-mono tabular-nums">
+                    {ungrouped.length}
+                  </Badge>
+                </div>
                 {ungrouped.length >= 2 && (
-                  <select
-                    value={ungroupedMode}
-                    onChange={(e) => handleUngroupedModeChange(e.target.value as "all" | "sequential")}
-                    className="h-5 text-[10px] font-mono bg-transparent border border-border rounded px-1 text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                  >
-                    <option value="all">All at once</option>
-                    <option value="sequential">Sequential release</option>
-                  </select>
+                  <div className="flex items-center rounded-md border border-border bg-secondary/50 p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleUngroupedModeChange("all")}
+                      className={cn(
+                        "px-2.5 py-1 rounded text-[11px] font-medium transition-all",
+                        ungroupedMode === "all"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      All at once
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUngroupedModeChange("sequential")}
+                      className={cn(
+                        "px-2.5 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1.5",
+                        ungroupedMode === "sequential"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <ArrowRight size={11} />
+                      Sequential
+                    </button>
+                  </div>
                 )}
               </div>
               {ungroupedMode === "sequential" && ungrouped.length >= 2 && (
-                <div className="flex items-center gap-1.5 px-1">
-                  <Info size={11} className="text-primary/60 shrink-0" />
-                  <span className="text-[10px] text-muted-foreground/70">
-                    Tickets reveal one at a time as each sells out. Drag to set the release order.
-                  </span>
+                <div className="flex items-start gap-2.5 rounded-md border border-primary/10 bg-primary/5 px-3 py-2.5 mx-1">
+                  <Info size={13} className="text-primary/70 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground/80">Sequential release active</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Tickets reveal one at a time as each sells out. Drag to reorder the release sequence.
+                    </p>
+                  </div>
                 </div>
               )}
               <div className="space-y-1.5">
@@ -276,6 +325,7 @@ export function TicketsTab({
                       onDragEnd={handleDragEnd}
                       waitingFor={waitingForMap[tt.id]}
                       isSequentialGroup={sequentialGroups.has("__ungrouped__")}
+                      sequencePosition={sequencePositionMap[tt.id]}
                     />
                   );
                 })}
@@ -321,6 +371,7 @@ export function TicketsTab({
                           onDragEnd={handleDragEnd}
                           waitingFor={waitingForMap[tt.id]}
                           isSequentialGroup={sequentialGroups.has(gName)}
+                          sequencePosition={sequencePositionMap[tt.id]}
                         />
                       );
                     })

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Save, Loader2 } from "lucide-react";
+import { Settings, Save, Loader2, MapPin } from "lucide-react";
+import { TIMEZONES as TZ_LIST, detectBrowserTimezone, formatTimezoneLabel } from "@/lib/timezone";
 
 interface OrgSettings {
   org_name: string;
@@ -22,20 +23,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
   support_email: "",
 };
 
-const TIMEZONES = [
-  "Europe/London",
-  "Europe/Berlin",
-  "Europe/Paris",
-  "Europe/Amsterdam",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Asia/Tokyo",
-  "Asia/Singapore",
-  "Australia/Sydney",
-  "Pacific/Auckland",
-];
+const TIMEZONES = TZ_LIST;
 
 export default function GeneralSettings() {
   const orgId = useOrgId();
@@ -134,20 +122,41 @@ export default function GeneralSettings() {
 
           <div className="space-y-2">
             <Label htmlFor="timezone">Timezone</Label>
-            <select
-              id="timezone"
-              value={settings.timezone}
-              onChange={(e) =>
-                setSettings((s) => ({ ...s, timezone: e.target.value }))
-              }
-              className="flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            >
-              {TIMEZONES.map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz}
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                id="timezone"
+                value={settings.timezone}
+                onChange={(e) =>
+                  setSettings((s) => ({ ...s, timezone: e.target.value }))
+                }
+                className="flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              >
+                {/* Include current value if not in curated list */}
+                {settings.timezone && !TIMEZONES.includes(settings.timezone as typeof TIMEZONES[number]) && (
+                  <option value={settings.timezone}>
+                    {formatTimezoneLabel(settings.timezone)}
+                  </option>
+                )}
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {formatTimezoneLabel(tz)}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 h-9 gap-1.5"
+                onClick={() => {
+                  const detected = detectBrowserTimezone();
+                  setSettings((s) => ({ ...s, timezone: detected }));
+                }}
+              >
+                <MapPin size={12} />
+                Detect
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Used for event times and scheduled automations
             </p>

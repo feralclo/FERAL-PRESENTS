@@ -87,7 +87,7 @@ export function MidnightAnnouncementWidget({
 
   return (
     <div className="sticky top-[calc(var(--header-height)+24px)] max-lg:relative max-lg:top-0 max-lg:px-[var(--midnight-content-px)]">
-      <div className="midnight-glass rounded-2xl border border-foreground/[0.06] p-6 max-md:p-5">
+      <div className="glass rounded-2xl border border-foreground/[0.06] p-6 max-md:p-5">
         {/* Title */}
         <h2 className="font-[family-name:var(--font-mono)] text-sm font-bold uppercase tracking-[0.15em] text-foreground/90 mb-5">
           {title || "Coming Soon"}

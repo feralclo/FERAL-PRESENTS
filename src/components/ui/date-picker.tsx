@@ -67,6 +67,10 @@ interface DateTimePickerProps {
   onChange: (value: string) => void
   className?: string
   placeholder?: string
+  /** IANA timezone (e.g. "Europe/London"). When set, display and parsing use this timezone */
+  timezone?: string
+  /** Show timezone abbreviation in the popover */
+  showTimezone?: boolean
 }
 
 function DateTimePicker({
@@ -74,44 +78,142 @@ function DateTimePicker({
   onChange,
   className,
   placeholder = "Pick date & time",
+  timezone,
+  showTimezone = false,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  // Parse the value — handle both "YYYY-MM-DDTHH:mm" and ISO strings
-  const parsed = value ? new Date(value) : null
+  // When timezone is provided, we interpret the value as UTC and display in that timezone.
+  // The internal "local" representation (YYYY-MM-DDTHH:mm) is in the target timezone.
+  const localValue = React.useMemo(() => {
+    if (!value) return null
+    if (timezone) {
+      // Convert UTC ISO → timezone-local datetime string
+      const d = new Date(value)
+      if (isNaN(d.getTime())) return null
+      try {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: timezone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).formatToParts(d)
+        const get = (type: string) => parts.find((p) => p.type === type)?.value || "00"
+        return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`
+      } catch {
+        return null
+      }
+    }
+    // No timezone — parse as-is
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return null
+    const y = d.getFullYear()
+    const mo = String(d.getMonth() + 1).padStart(2, "0")
+    const dd = String(d.getDate()).padStart(2, "0")
+    const hh = String(d.getHours()).padStart(2, "0")
+    const mm = String(d.getMinutes()).padStart(2, "0")
+    return `${y}-${mo}-${dd}T${hh}:${mm}`
+  }, [value, timezone])
+
+  // Parse the local value for display
+  const parsed = localValue ? new Date(localValue) : null
   const isValid = parsed && !isNaN(parsed.getTime())
 
   const selectedDate = isValid ? parsed : null
   const hours = isValid ? String(parsed.getHours()).padStart(2, "0") : "12"
   const minutes = isValid ? String(parsed.getMinutes()).padStart(2, "0") : "00"
 
-  const displayText = isValid
-    ? parsed.toLocaleDateString("en-GB", {
+  // Display text — use timezone formatting when available
+  const displayText = React.useMemo(() => {
+    if (!value) return null
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return null
+    if (timezone) {
+      return d.toLocaleDateString("en-GB", {
+        timeZone: timezone,
         day: "numeric",
         month: "short",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       })
-    : null
+    }
+    return d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }, [value, timezone])
 
-  const buildValue = (date: Date, h: string, m: string) => {
+  // Get timezone abbreviation for display
+  const tzAbbr = React.useMemo(() => {
+    if (!timezone || !showTimezone) return null
+    try {
+      const f = new Intl.DateTimeFormat("en-GB", {
+        timeZone: timezone,
+        timeZoneName: "shortOffset",
+      })
+      const parts = f.formatToParts(new Date())
+      return parts.find((p) => p.type === "timeZoneName")?.value || null
+    } catch {
+      return null
+    }
+  }, [timezone, showTimezone])
+
+  const buildLocalValue = (date: Date, h: string, m: string) => {
     const y = date.getFullYear()
     const mo = String(date.getMonth() + 1).padStart(2, "0")
     const d = String(date.getDate()).padStart(2, "0")
     return `${y}-${mo}-${d}T${h.padStart(2, "0")}:${m.padStart(2, "0")}`
   }
 
+  const emitChange = (localStr: string) => {
+    if (timezone) {
+      // Convert timezone-local → UTC ISO
+      const [datePart, timePart] = localStr.split("T")
+      if (!datePart || !timePart) return
+      const [yr, mn, dy] = datePart.split("-").map(Number)
+      const [hr, mi] = timePart.split(":").map(Number)
+
+      const utcGuess = new Date(Date.UTC(yr, mn - 1, dy, hr, mi))
+      try {
+        const inTz = new Intl.DateTimeFormat("en-CA", {
+          timeZone: timezone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).formatToParts(utcGuess)
+        const get = (type: string) => Number(inTz.find((p) => p.type === type)?.value || "0")
+        const tzHour = get("hour") === 24 ? 0 : get("hour")
+        const wanted = new Date(Date.UTC(yr, mn - 1, dy, hr, mi))
+        const got = new Date(Date.UTC(get("year"), get("month") - 1, get("day"), tzHour, get("minute")))
+        const corrected = new Date(utcGuess.getTime() - (got.getTime() - wanted.getTime()))
+        onChange(corrected.toISOString())
+      } catch {
+        onChange(localStr)
+      }
+    } else {
+      onChange(localStr)
+    }
+  }
+
   const handleDateSelect = (date: Date) => {
-    onChange(buildValue(date, hours, minutes))
+    emitChange(buildLocalValue(date, hours, minutes))
   }
 
   const handleTimeChange = (h: string, m: string) => {
     if (!selectedDate) {
-      // If no date selected yet, use today
-      onChange(buildValue(new Date(), h, m))
+      emitChange(buildLocalValue(new Date(), h, m))
     } else {
-      onChange(buildValue(selectedDate, h, m))
+      emitChange(buildLocalValue(selectedDate, h, m))
     }
   }
 
@@ -130,6 +232,11 @@ function DateTimePicker({
           <span className="flex-1 text-left truncate">
             {displayText || placeholder}
           </span>
+          {tzAbbr && (
+            <span className="shrink-0 text-[10px] text-muted-foreground/60 font-mono">
+              {tzAbbr}
+            </span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-3" align="start">
@@ -161,6 +268,11 @@ function DateTimePicker({
               className="h-8 w-14 text-center font-mono text-xs tabular-nums"
             />
           </div>
+          {showTimezone && tzAbbr && (
+            <span className="text-[10px] text-muted-foreground/60 font-mono ml-auto">
+              {tzAbbr}
+            </span>
+          )}
         </div>
       </PopoverContent>
     </Popover>

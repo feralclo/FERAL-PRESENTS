@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { toDatetimeLocal, fromDatetimeLocal } from "@/lib/date-utils";
+import { useOrgTimezone } from "@/hooks/useOrgTimezone";
 import type { TabProps } from "./types";
 
 export function DetailsTab({ event, updateEvent }: TabProps) {
+  const { timezone } = useOrgTimezone();
   return (
     <div className="space-y-6">
       {/* Event Details */}
@@ -60,22 +61,21 @@ export function DetailsTab({ event, updateEvent }: TabProps) {
             <div className="space-y-2">
               <Label>Event Start *</Label>
               <DateTimePicker
-                value={toDatetimeLocal(event.date_start)}
+                value={event.date_start || ""}
                 onChange={(v) =>
-                  updateEvent(
-                    "date_start",
-                    fromDatetimeLocal(v) || event.date_start
-                  )
+                  updateEvent("date_start", v || event.date_start)
                 }
+                timezone={timezone}
+                showTimezone
               />
             </div>
             <div className="space-y-2">
               <Label>Event End</Label>
               <DateTimePicker
-                value={toDatetimeLocal(event.date_end)}
-                onChange={(v) =>
-                  updateEvent("date_end", fromDatetimeLocal(v))
-                }
+                value={event.date_end || ""}
+                onChange={(v) => updateEvent("date_end", v || null)}
+                timezone={timezone}
+                showTimezone
               />
             </div>
           </div>
@@ -83,10 +83,10 @@ export function DetailsTab({ event, updateEvent }: TabProps) {
             <div className="space-y-2">
               <Label>Doors Open</Label>
               <DateTimePicker
-                value={toDatetimeLocal(event.doors_open)}
-                onChange={(v) =>
-                  updateEvent("doors_open", fromDatetimeLocal(v))
-                }
+                value={event.doors_open || ""}
+                onChange={(v) => updateEvent("doors_open", v || null)}
+                timezone={timezone}
+                showTimezone
               />
             </div>
             <div />

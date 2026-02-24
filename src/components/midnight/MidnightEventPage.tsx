@@ -17,6 +17,7 @@ import { MidnightEventInfo } from "./MidnightEventInfo";
 import { MidnightLineup } from "./MidnightLineup";
 import { MidnightTicketWidget } from "./MidnightTicketWidget";
 import { MidnightAnnouncementWidget } from "./MidnightAnnouncementWidget";
+import { MidnightAnnouncementPage } from "./MidnightAnnouncementPage";
 import { MidnightMerchModal } from "./MidnightMerchModal";
 import { normalizeMerchImages } from "@/lib/merch-images";
 
@@ -403,6 +404,11 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
   // Announcement / coming soon state
   const { isAnnouncement, ticketsLiveAt } = getAnnouncementState(event);
+
+  // Full-screen announcement page — early return before normal layout
+  if (isAnnouncement && ticketsLiveAt) {
+    return <MidnightAnnouncementPage event={event} ticketsLiveAt={ticketsLiveAt} settings={settings} />;
+  }
 
   const ticketGroups = (settings?.ticket_groups as string[] | undefined) || [];
   const ticketGroupMap =

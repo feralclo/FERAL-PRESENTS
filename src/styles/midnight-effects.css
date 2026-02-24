@@ -958,6 +958,72 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
+   ANNOUNCEMENT PAGE — Full-screen coming-soon effects
+   ═══════════════════════════════════════════════ */
+
+/* Enhanced glass card — stronger blur for full-image background */
+[data-theme="midnight"] .midnight-announcement-card {
+  background: linear-gradient(
+    165deg,
+    rgba(24, 24, 28, 0.55) 0%,
+    rgba(16, 16, 20, 0.7) 100%
+  );
+  backdrop-filter: blur(48px) saturate(150%);
+  -webkit-backdrop-filter: blur(48px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  [data-theme="midnight"] .midnight-announcement-card {
+    background: rgba(14, 14, 18, 0.92);
+  }
+}
+
+/* Accent-tinted frosted glass CTA button */
+[data-theme="midnight"] .midnight-announcement-cta {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 20%, rgba(255, 255, 255, 0.06)) 0%,
+    color-mix(in srgb, var(--color-primary) 12%, rgba(255, 255, 255, 0.02)) 100%
+  );
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 16px color-mix(in srgb, var(--color-primary) 10%, transparent),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme="midnight"] .midnight-announcement-cta:hover {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-primary) 30%, rgba(255, 255, 255, 0.1)) 0%,
+    color-mix(in srgb, var(--color-primary) 18%, rgba(255, 255, 255, 0.04)) 100%
+  );
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 28px color-mix(in srgb, var(--color-primary) 18%, transparent),
+    0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Countdown unit boxes — subtle hover lift */
+[data-theme="midnight"] .midnight-countdown-unit {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+[data-theme="midnight"] .midnight-countdown-unit:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+
+/* ═══════════════════════════════════════════════
    SCROLL REVEAL — Subtle entrance for content sections
    Overrides base.css data-reveal (30px is too aggressive).
    Midnight uses 12px translate for a softer, premium feel.
@@ -1072,6 +1138,12 @@ html.checkout-active .noise {
   .midnight-artist-edge-hint,
   .midnight-artist-nav-hint {
     animation: none;
+  }
+  [data-theme="midnight"] .midnight-announcement-cta {
+    transition: none;
+  }
+  [data-theme="midnight"] .midnight-countdown-unit {
+    transition: none;
   }
   /* Ensure revealed content is visible without animation */
   [data-theme="midnight"] [data-reveal] {

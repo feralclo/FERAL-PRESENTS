@@ -21,6 +21,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { AlertCircle, Users } from "lucide-react";
+import { useOrgTimezone } from "@/hooks/useOrgTimezone";
 import type { VatSettings } from "@/types/settings";
 import type { TabProps } from "./types";
 
@@ -34,6 +35,7 @@ interface StripeAccount {
 
 export function SettingsTab({ event, updateEvent }: TabProps) {
   const orgId = useOrgId();
+  const { timezone } = useOrgTimezone();
   const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [orgVat, setOrgVat] = useState<VatSettings | null>(null);
@@ -228,9 +230,11 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
               <div className="space-y-2">
                 <Label>Tickets on sale</Label>
                 <DateTimePicker
-                  value={event.tickets_live_at}
+                  value={event.tickets_live_at || ""}
                   onChange={(v) => updateEvent("tickets_live_at", v)}
                   placeholder="Select date and time"
+                  timezone={timezone}
+                  showTimezone
                 />
               </div>
               <div className="space-y-2">

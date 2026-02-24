@@ -55,7 +55,9 @@ src/
 │   │                          # MidnightTicketWidget, MidnightTicketCard, MidnightMerchModal,
 │   │                          # MidnightBottomBar, MidnightEventInfo, MidnightLineup,
 │   │                          # MidnightCartSummary, MidnightTierProgression, MidnightFooter,
-│   │                          # MidnightSocialProof, MidnightFloatingHearts
+│   │                          # MidnightSocialProof, MidnightFloatingHearts,
+│   │                          # MidnightAnnouncementPage (full-screen coming-soon),
+│   │                          # MidnightAnnouncementWidget (sidebar fallback)
 │   ├── event/                 # Shared: DiscountPopup, EngagementTracker, ThemeEditorBridge.
 │   │                          # Old BEM components (DynamicEventPage, EventHero, TeeModal,
 │   │                          # KompassEventPage) retained but no longer routed
@@ -78,7 +80,8 @@ src/
 │   ├── useEventTracking.ts    # Unified event tracking: Meta + GTM + CAPI + traffic (stable refs)
 │   ├── useHeaderScroll.ts     # Header hide/show on scroll
 │   ├── useScrollReveal.ts     # IntersectionObserver scroll animations
-│   └── useCountUp.ts          # Animated number counter (rep portal gauges)
+│   ├── useCountUp.ts          # Animated number counter (rep portal gauges)
+│   └── useOrgTimezone.ts      # Org timezone from {org_id}_general settings (fallback: browser → Europe/London)
 ├── lib/
 │   ├── supabase/              # admin.ts (data), server.ts (auth only), client.ts (browser), middleware.ts
 │   ├── stripe/                # client.ts (browser), server.ts (platform), config.ts (fees/currency)
@@ -92,6 +95,7 @@ src/
 │   ├── signup.ts              # Self-service signup: slugify(), validateSlug(), RESERVED_SLUGS, provisionOrg()
 │   ├── plans.ts               # Platform plans: PLANS constant, getOrgPlan(), getOrgPlanSettings(), ensureStripePriceExists(), updateOrgPlanSettings()
 │   ├── themes.ts              # Theme system helpers (getActiveTemplate, etc.)
+│   ├── timezone.ts            # Timezone utilities (TIMEZONES list, detect, format, UTC↔TZ conversion)
 │   ├── vercel-domains.ts      # Vercel Domain API wrapper (add/remove/verify domains)
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications
 │   ├── team-emails.ts         # Team invite emails via Resend (branded, fire-and-forget)
@@ -128,6 +132,11 @@ Dynamic event pages → `NativeCheckout`/`AuraCheckout` → `StripePaymentForm` 
 
 ### Theme-Based Routing
 `event/[slug]/page.tsx` → `payment_method === "external"` → `MidnightExternalPage` | `getActiveTemplate()` from `{org_id}_themes` → `"aura"` → `AuraEventPage` | default `"midnight"` → `MidnightEventPage`. Preview via `?editor=1&template=aura`. Theme store: `/admin/ticketstore/`.
+
+**Announcement mode**: When `isAnnouncement` is true (event has `tickets_live_at` in the future), `MidnightEventPage` does an early return rendering `MidnightAnnouncementPage` — a full-screen immersive coming-soon page with hero background, glassmorphic card, live countdown, and email signup. The old sidebar `MidnightAnnouncementWidget` is retained as fallback but no longer routed in the default flow.
+
+### Timezone System
+Admin date pickers (`DateTimePicker`) accept optional `timezone` and `showTimezone` props. When set, the picker displays and edits dates in the target timezone while storing UTC. `useOrgTimezone()` hook fetches the org's timezone from `{org_id}_general` settings. Conversion via `utcToTzLocal()` / `tzLocalToUtc()` in `lib/timezone.ts`. `TIMEZONES` list (~45 IANA zones) used by General Settings and the hook. Event editor (DetailsTab, SettingsTab) wires timezone to all date pickers automatically.
 
 ### Stripe Connect (Multi-Tenant Payments)
 - **Model**: Direct charges on connected accounts with application fee. Custom accounts (white-labeled)

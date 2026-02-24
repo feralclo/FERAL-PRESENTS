@@ -22,7 +22,7 @@ import { CheckoutTimer } from "./CheckoutTimer";
 import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
-import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
+import { getCurrencySymbol, toSmallestUnit, getPaymentErrorMessage } from "@/lib/stripe/config";
 import { useBranding } from "@/hooks/useBranding";
 import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
@@ -74,7 +74,7 @@ interface CardFieldsHandle {
       address?: { country: string };
     }
   ) => Promise<{
-    error?: { message?: string };
+    error?: { message?: string; code?: string; decline_code?: string };
     paymentIntent?: { id: string; status: string };
   }>;
 }
@@ -979,7 +979,7 @@ function SinglePageCheckoutForm({
         });
 
         if (confirmError) {
-          setError(confirmError.message || "Payment failed.");
+          setError(getPaymentErrorMessage(confirmError));
           setProcessing(false);
           return;
         }
@@ -1111,10 +1111,10 @@ function SinglePageCheckoutForm({
 
           if (result.error) {
             trackEngagement("payment_failed");
-            const errMsg = result.error.message || "Payment failed. Please try again.";
+            const errMsg = getPaymentErrorMessage(result.error);
             setError(errMsg);
             setProcessing(false);
-            reportCheckoutError({ errorCode: "card_confirmation_failed", errorMessage: errMsg, eventId: event.id, eventSlug: slug, customerEmail: email });
+            reportCheckoutError({ errorCode: result.error.code || "card_confirmation_failed", errorMessage: errMsg, eventId: event.id, eventSlug: slug, customerEmail: email });
             return;
           }
 

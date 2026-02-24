@@ -34,7 +34,7 @@ import { useTraffic } from "@/hooks/useTraffic";
 import { Lock, Mail, CreditCard, Loader2 } from "lucide-react";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
-import { getCurrencySymbol, toSmallestUnit } from "@/lib/stripe/config";
+import { getCurrencySymbol, toSmallestUnit, getPaymentErrorMessage } from "@/lib/stripe/config";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
 import { CheckoutServiceUnavailable } from "@/components/checkout/CheckoutServiceUnavailable";
 import { useOrgId } from "@/components/OrgProvider";
@@ -497,7 +497,7 @@ function AuraCheckoutForm({
           redirect: "if_required",
         });
 
-        if (confirmError) { setError(confirmError.message || "Payment failed."); setProcessing(false); return; }
+        if (confirmError) { setError(getPaymentErrorMessage(confirmError)); setProcessing(false); return; }
 
         const orderRes = await fetch("/api/stripe/confirm-order", {
           method: "POST",
@@ -576,7 +576,7 @@ function AuraCheckoutForm({
           address: { country },
         });
 
-        if (result.error) { setError(result.error.message || "Payment failed."); setProcessing(false); return; }
+        if (result.error) { setError(getPaymentErrorMessage(result.error)); setProcessing(false); return; }
 
         const orderRes = await fetch("/api/stripe/confirm-order", {
           method: "POST",

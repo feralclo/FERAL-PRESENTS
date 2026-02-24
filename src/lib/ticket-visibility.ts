@@ -51,16 +51,14 @@ export function getVisibleTickets(
     if (mode === "all") {
       visible.push(...tickets);
     } else {
-      // Sequential: show all sold-out tickets + the first non-sold-out one
-      let foundCurrent = false;
+      // Sequential: show only the first non-sold-out ticket.
+      // Sold-out tickets are omitted — the progression bar (which uses
+      // getSequentialGroupTickets) already shows the full roadmap.
       for (const tt of tickets) {
-        if (isSoldOut(tt)) {
+        if (!isSoldOut(tt)) {
           visible.push(tt);
-        } else if (!foundCurrent) {
-          visible.push(tt);
-          foundCurrent = true;
+          break;
         }
-        // Skip remaining non-sold-out tickets — they're hidden
       }
     }
   }

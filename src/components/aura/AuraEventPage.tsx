@@ -147,6 +147,12 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Preview mode banner — sticky above header */}
+      {isTicketPreview && isAnnouncement && (
+        <div className="sticky top-0 z-[51] bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-center py-2.5 px-4 text-[11px] tracking-[0.08em] font-medium shadow-lg">
+          PREVIEW MODE — This is what buyers will see when tickets go live
+        </div>
+      )}
       <VerifiedBanner />
       <AuraHeader eventName={event.name} />
 
@@ -165,13 +171,6 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
         />
 
         <Separator className="my-10" />
-
-        {/* Preview mode banner */}
-        {isTicketPreview && isAnnouncement && (
-          <div className="rounded-lg bg-gradient-to-r from-amber-600/90 via-amber-500/90 to-amber-600/90 text-white text-center py-2 px-4 text-xs tracking-wide mb-6">
-            Preview Mode — Ticket page preview (not live yet)
-          </div>
-        )}
 
         {/* Tickets — widget provides its own heading, or Announcement widget */}
         <section id="tickets" className="scroll-mt-20">

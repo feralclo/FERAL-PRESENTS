@@ -434,22 +434,26 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
   return (
     <>
-      {/* Navigation */}
+      {/* Preview mode banner — fixed above header, pushes everything down */}
+      {isTicketPreview && isAnnouncement && (
+        <div className="fixed top-0 left-0 right-0 z-[1001] bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-center py-2.5 px-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] font-medium shadow-lg"
+          style={{ height: "var(--preview-banner-h, 36px)" }}
+        >
+          PREVIEW MODE — This is what buyers will see when tickets go live
+        </div>
+      )}
+
+      {/* Navigation — offset down when preview banner is present */}
       <header
         className={`header${headerHidden ? " header--hidden" : ""}`}
         id="header"
+        style={isTicketPreview && isAnnouncement ? { top: "var(--preview-banner-h, 36px)" } : undefined}
       >
         <VerifiedBanner />
         <Header />
       </header>
 
-      <main ref={revealRef as React.RefObject<HTMLElement>} className="pt-[var(--header-height)] bg-background min-h-screen">
-        {/* Preview mode banner */}
-        {isTicketPreview && isAnnouncement && (
-          <div className="sticky top-0 z-[998] bg-gradient-to-r from-amber-600/90 via-amber-500/90 to-amber-600/90 backdrop-blur-sm text-white text-center py-2 px-4 font-[family-name:var(--font-mono)] text-xs tracking-[0.06em]">
-            Preview Mode — Ticket page preview (not live yet)
-          </div>
-        )}
+      <main ref={revealRef as React.RefObject<HTMLElement>} className={`bg-background min-h-screen ${isTicketPreview && isAnnouncement ? "pt-[calc(var(--header-height)+var(--preview-banner-h,36px))]" : "pt-[var(--header-height)]"}`}>
         <MidnightHero
           title={event.name.toUpperCase()}
           date={dateDisplay}
@@ -495,7 +499,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
 
               {/* Right: Ticket Widget (or Announcement Widget) — on mobile, show first */}
               <div className="max-lg:order-1">
-                {isAnnouncement && ticketsLiveAt ? (
+                {isAnnouncement && ticketsLiveAt && !isTicketPreview ? (
                   <MidnightAnnouncementWidget
                     eventId={event.id}
                     ticketsLiveAt={ticketsLiveAt}

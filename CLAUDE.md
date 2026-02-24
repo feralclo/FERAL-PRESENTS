@@ -291,7 +291,7 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | `orders` | Purchase records | order_number (FERAL-00001), event_id, customer_id, status, subtotal, fees, total, payment_ref |
 | `order_items` | Line items per order | order_id, ticket_type_id, qty, unit_price, merch_size |
 | `tickets` | Individual tickets with QR | ticket_code (FERAL-XXXXXXXX), order_id, status, holder_*, scanned_at, scanned_by |
-| `customers` | Customer profiles | email, first_name, last_name, nickname, total_orders, total_spent |
+| `customers` | Customer profiles | email, first_name, last_name, nickname, total_orders, total_spent, marketing_consent (bool/null), marketing_consent_at, marketing_consent_source (popup/announcement/checkout) |
 | `guest_list` | Manual guest entries | event_id, name, email, qty, checked_in, checked_in_at |
 | `discounts` | Discount codes | code, type (percentage/fixed), value, max_uses, used_count, applicable_event_ids[], starts_at, expires_at, min_order_amount |
 | `abandoned_carts` | Checkout abandonment + recovery | customer_id, event_id, email, first_name, items (jsonb), subtotal, currency, status (abandoned/recovered/expired), notification_count, notified_at, cart_token (UUID), recovered_at, recovered_order_id, unsubscribed_at |

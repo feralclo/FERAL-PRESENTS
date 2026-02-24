@@ -138,13 +138,16 @@ function checkRateLimit(
  */
 export function createRateLimiter(
   name: string,
-  config: RateLimiterConfig
+  config: RateLimiterConfig & { onBlocked?: (ip: string) => void }
 ) {
   return function rateLimit(request: NextRequest): NextResponse | null {
     const ip = getClientIp(request);
     const result = checkRateLimit(name, ip, config);
 
     if (!result.allowed) {
+      if (config.onBlocked) {
+        try { config.onBlocked(ip); } catch { /* never throw */ }
+      }
       const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
       const response = NextResponse.json(
         {

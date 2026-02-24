@@ -287,6 +287,7 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 | `org_users` | Team members + invites | auth_user_id, email, first_name, last_name, role (owner/member), perm_events, perm_orders, perm_marketing, perm_finance, status (invited/active/suspended), invite_token, invite_expires_at |
 | `domains` | Hostname → org_id mapping + verification | hostname (unique), org_id, is_primary, type (subdomain/custom), status (pending/active/failed/removing), verification_type, verification_domain, verification_value, verification_reason |
 | `popup_events` | Popup interaction tracking | event_type (impressions, engaged, conversions, dismissed) |
+| `payment_events` | Payment health monitoring log (append-only) | type (payment_failed/succeeded, checkout_error, webhook_error, connect_account_unhealthy/healthy, connect_fallback, rate_limit_hit, subscription_failed), severity (info/warning/critical), event_id, stripe_payment_intent_id, stripe_account_id, error_code, error_message, customer_email, ip_address, metadata (jsonb), resolved, resolved_at |
 
 **Reps Program tables** (10 tables): `reps`, `rep_events`, `rep_rewards`, `rep_milestones`, `rep_points_log`, `rep_quests`, `rep_quest_submissions`, `rep_reward_claims`, `rep_event_position_rewards`, `rep_notifications`. All have `org_id`. See `src/types/reps.ts` for full column types.
 
@@ -336,6 +337,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Stripe Connect** (platform owner only — `requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
 - **Platform Dashboard** (platform owner only — `requirePlatformOwner()`): `/api/platform/dashboard` (GET aggregated cross-tenant metrics — tenant counts, GMV, platform fees, onboarding funnel, recent signups/orders, top tenants). Dashboard page at `/admin/backend/`
 - **Tenants** (platform owner only — `requirePlatformOwner()`): `/api/platform/tenants` (GET enriched tenant list + platform summary — GMV, estimated fees, counts), `/api/platform/tenants/[orgId]` (GET single tenant detail — team, domains, events, orders, Stripe account, onboarding checklist, estimated fees). Detail page at `/admin/backend/tenants/[orgId]/`
+- **Payment Health** (platform owner only — `requirePlatformOwner()`): `/api/platform/payment-health` (GET dashboard data — summary, failure rates, Connect health, hourly trends, decline codes, per-org breakdown; query params: `period=1h|6h|24h|7d|30d`, `org_id`), `/api/platform/payment-health/[id]/resolve` (POST mark event resolved). Dashboard page at `/admin/backend/payment-health/`. Monitoring: `lib/payment-monitor.ts` (fire-and-forget `logPaymentEvent()` → `payment_events` table), `lib/payment-alerts.ts` (email alerts via Resend with 30min cooldown). Cron: `/api/cron/stripe-health` (every 30min — Connect health checks, anomaly detection, data retention purge)
 - **Plans** (platform owner only — `requirePlatformOwner()`): `/api/plans` (GET list orgs + plans, POST assign plan to org)
 - **Reps Program** (39 routes): `/api/reps/*` (22 admin routes — CRUD for reps, events, quests, rewards, milestones, leaderboard), `/api/rep-portal/*` (20 rep-facing routes — auth, dashboard, sales, quests, rewards, notifications)
 - **Team Management** (7 routes): `/api/team` (GET list, POST invite — owner only), `/api/team/[id]` (PUT update perms, DELETE remove — owner only), `/api/team/[id]/resend-invite` (POST — owner only), `/api/team/accept-invite` (GET validate token, POST accept + create auth user — public, rate limited)
@@ -371,6 +373,7 @@ Both persist state at module scope. Single fetch shared across instances. Tests 
 **Optional**: `NEXT_PUBLIC_GTM_ID`, `NEXT_PUBLIC_KLAVIYO_LIST_ID`, `NEXT_PUBLIC_KLAVIYO_COMPANY_ID` (all have fallbacks)
 **Wallet passes**: `APPLE_PASS_CERTIFICATE`, `APPLE_PASS_CERTIFICATE_PASSWORD`, `APPLE_WWDR_CERTIFICATE`, `APPLE_PASS_TYPE_IDENTIFIER`, `APPLE_PASS_TEAM_IDENTIFIER`, `GOOGLE_WALLET_SERVICE_ACCOUNT_KEY`, `GOOGLE_WALLET_ISSUER_ID`
 **Domain management**: `VERCEL_API_TOKEN` (Vercel API token for domain CRUD), `VERCEL_PROJECT_ID` (feral-presents project ID), `VERCEL_TEAM_ID` (Vercel team ID)
+**Monitoring**: `PLATFORM_ALERT_EMAIL` (platform owner email for critical payment/health alerts via Resend)
 
 ---
 

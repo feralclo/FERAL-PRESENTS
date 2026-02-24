@@ -7,6 +7,7 @@ import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { updateOrgPlanSettings } from "@/lib/plans";
+import { logPaymentEvent } from "@/lib/payment-monitor";
 import type { MetaEventPayload } from "@/types/marketing";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -53,6 +54,13 @@ export async function POST(request: NextRequest) {
         event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
       } catch (err) {
         console.error("Webhook signature verification failed:", err);
+        logPaymentEvent({
+          orgId: getOrgIdFromRequest(request),
+          type: "webhook_error",
+          severity: "critical",
+          errorCode: "signature_verification_failed",
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
         return NextResponse.json(
           { error: "Invalid signature" },
           { status: 400 }
@@ -66,15 +74,34 @@ export async function POST(request: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const fallbackOrgId = getOrgIdFromRequest(request);
         await handlePaymentSuccess(paymentIntent, fallbackOrgId);
+        logPaymentEvent({
+          orgId: paymentIntent.metadata?.org_id || fallbackOrgId,
+          type: "payment_succeeded",
+          stripePaymentIntentId: paymentIntent.id,
+          stripeAccountId: typeof event.account === "string" ? event.account : undefined,
+          customerEmail: paymentIntent.metadata?.customer_email,
+          metadata: { amount: paymentIntent.amount, currency: paymentIntent.currency },
+        });
         break;
       }
 
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const lastError = paymentIntent.last_payment_error;
         console.error(
           `Payment failed for PI ${paymentIntent.id}:`,
-          paymentIntent.last_payment_error?.message
+          lastError?.message
         );
+        logPaymentEvent({
+          orgId: paymentIntent.metadata?.org_id || getOrgIdFromRequest(request),
+          type: "payment_failed",
+          stripePaymentIntentId: paymentIntent.id,
+          stripeAccountId: typeof event.account === "string" ? event.account : undefined,
+          errorCode: lastError?.decline_code || lastError?.code || undefined,
+          errorMessage: lastError?.message || undefined,
+          customerEmail: paymentIntent.metadata?.customer_email,
+          metadata: { amount: paymentIntent.amount, currency: paymentIntent.currency },
+        });
         break;
       }
 
@@ -139,6 +166,13 @@ export async function POST(request: NextRequest) {
           await updateOrgPlanSettings(orgId, {
             subscription_status: "past_due",
           });
+          logPaymentEvent({
+            orgId,
+            type: "subscription_failed",
+            severity: "critical",
+            errorMessage: `Invoice payment failed for subscription ${subscriptionId}`,
+            metadata: { subscription_id: subscriptionId, invoice_id: invoice.id },
+          });
         }
         break;
       }
@@ -151,6 +185,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error("Webhook handler error:", err);
+    logPaymentEvent({
+      orgId: getOrgIdFromRequest(request),
+      type: "webhook_error",
+      severity: "critical",
+      errorCode: "handler_exception",
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 }

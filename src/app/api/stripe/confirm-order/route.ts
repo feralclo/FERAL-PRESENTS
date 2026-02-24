@@ -5,6 +5,7 @@ import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
+import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 import type { MetaEventPayload } from "@/types/marketing";
 
 /**
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate the connected account is accessible before using it
-    stripeAccountId = await verifyConnectedAccount(stripeAccountId);
+    stripeAccountId = await verifyConnectedAccount(stripeAccountId, orgId);
 
     // Retrieve the PaymentIntent from Stripe to verify it actually succeeded
     const paymentIntent = await stripe.paymentIntents.retrieve(
@@ -237,6 +238,14 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error("Confirm order error:", err);
+    logPaymentEvent({
+      orgId: getOrgIdFromRequest(request),
+      type: "checkout_error",
+      severity: "critical",
+      errorCode: err instanceof Error ? err.name : "unknown",
+      errorMessage: err instanceof Error ? err.message : String(err),
+      ipAddress: getClientIp(request),
+    });
     const message =
       err instanceof Error ? err.message : "Failed to confirm order";
     return NextResponse.json({ error: message }, { status: 500 });

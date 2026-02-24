@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/abandoned-carts/",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/stripe-health/",
+      "schedule": "*/30 * * * *"
     }
   ],
   "headers": [

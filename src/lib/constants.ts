@@ -38,6 +38,7 @@ export const TABLES = {
   EVENT_ARTISTS: "event_artists",
   ORG_USERS: "org_users",
   DOMAINS: "domains",
+  PAYMENT_EVENTS: "payment_events",
 } as const;
 
 

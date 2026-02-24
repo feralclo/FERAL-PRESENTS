@@ -18,6 +18,7 @@ import {
   X,
   Users,
   LayoutDashboard,
+  Activity,
 } from "lucide-react";
 
 interface BackendNavItem {
@@ -30,6 +31,7 @@ const BACKEND_NAV: BackendNavItem[] = [
   { href: "/admin/backend/", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/backend/tenants/", label: "Tenants", icon: Users },
   { href: "/admin/backend/health/", label: "Health", icon: HeartPulse },
+  { href: "/admin/backend/payment-health/", label: "Payment Health", icon: Activity },
   { href: "/admin/backend/connect/", label: "Connect", icon: Zap },
   { href: "/admin/backend/plans/", label: "Plans", icon: CreditCard },
   { href: "/admin/backend/platform-settings/", label: "Platform Settings", icon: Shield },

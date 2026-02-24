@@ -12,11 +12,21 @@ import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { isRestrictedCheckoutEmail } from "@/lib/checkout-guards";
+import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 
 // 10 payment intents per minute per IP — prevents abuse / cost attacks
 const paymentLimiter = createRateLimiter("payment-intent", {
   limit: 10,
   windowSeconds: 60,
+  onBlocked: (ip) => {
+    logPaymentEvent({
+      orgId: "unknown",
+      type: "rate_limit_hit",
+      ipAddress: ip,
+      errorMessage: "Payment intent rate limit exceeded",
+      metadata: { limiter: "payment-intent", limit: 10, window_seconds: 60 },
+    });
+  },
 });
 
 /**
@@ -119,7 +129,7 @@ export async function POST(request: NextRequest) {
     // Validate the connected account is actually accessible from our platform key.
     // If the account was deleted or access revoked, fall back to platform account
     // so checkout still works (charges go directly to the platform).
-    stripeAccountId = await verifyConnectedAccount(stripeAccountId);
+    stripeAccountId = await verifyConnectedAccount(stripeAccountId, orgId);
 
     // Verify ticket types and calculate total
     const ticketTypeIds = items.map(
@@ -151,6 +161,16 @@ export async function POST(request: NextRequest) {
         );
       }
       if (tt.capacity !== null && tt.sold + item.qty > tt.capacity) {
+        logPaymentEvent({
+          orgId,
+          type: "checkout_validation",
+          severity: "info",
+          eventId: event_id,
+          errorCode: "sold_out",
+          errorMessage: `Not enough tickets for "${tt.name}". Available: ${tt.capacity - tt.sold}, requested: ${item.qty}`,
+          customerEmail: customer?.email,
+          ipAddress: getClientIp(request),
+        });
         return NextResponse.json(
           {
             error: `Not enough tickets available for "${tt.name}". Available: ${tt.capacity - tt.sold}`,
@@ -386,6 +406,14 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("PaymentIntent creation error:", err);
+    logPaymentEvent({
+      orgId: getOrgIdFromRequest(request),
+      type: "checkout_error",
+      severity: "critical",
+      errorCode: err instanceof Error ? err.name : "unknown",
+      errorMessage: err instanceof Error ? err.message : String(err),
+      ipAddress: getClientIp(request),
+    });
     const message =
       err instanceof Error ? err.message : "Failed to create payment";
     return NextResponse.json({ error: message }, { status: 500 });

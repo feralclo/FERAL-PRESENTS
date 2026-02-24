@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { logPaymentEvent } from "@/lib/payment-monitor";
 
 /**
  * Server-side Stripe instance (platform account).
@@ -49,7 +50,8 @@ const VERIFY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
  * skip the Stripe API call (~100-300ms) after the first verification.
  */
 export async function verifyConnectedAccount(
-  accountId: string | null
+  accountId: string | null,
+  orgId?: string
 ): Promise<string | null> {
   if (!accountId || !stripe) return null;
 
@@ -75,6 +77,14 @@ export async function verifyConnectedAccount(
       result: null,
       expiresAt: Date.now() + VERIFY_CACHE_TTL_MS,
     });
+    if (orgId) {
+      logPaymentEvent({
+        orgId,
+        type: "connect_fallback",
+        stripeAccountId: accountId,
+        errorMessage: msg,
+      });
+    }
     return null;
   }
 }

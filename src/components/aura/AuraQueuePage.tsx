@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { useHypeQueue } from "@/hooks/useHypeQueue";
-import { Check } from "lucide-react";
+import { Check, Ticket } from "lucide-react";
 
 interface AuraQueuePageProps {
   eventId: string;
@@ -13,114 +12,95 @@ interface AuraQueuePageProps {
   onReleased: () => void;
   title?: string | null;
   subtitle?: string | null;
+  capacity?: number | null;
 }
 
-export function AuraQueuePage({ eventId, durationSeconds, onReleased, title, subtitle }: AuraQueuePageProps) {
+export function AuraQueuePage({ eventId, durationSeconds, onReleased, title, subtitle, capacity }: AuraQueuePageProps) {
   const queue = useHypeQueue({
     eventId,
     durationSeconds,
     enabled: true,
+    capacity,
   });
 
-  const [celebrating, setCelebrating] = useState(false);
+  const isReleasing = queue.phase === "releasing";
+  const [exitFade, setExitFade] = useState(false);
+
+  // Exit transition after release celebration
+  useEffect(() => {
+    if (!isReleasing) return;
+    const t = setTimeout(() => setExitFade(true), 1800);
+    return () => clearTimeout(t);
+  }, [isReleasing]);
 
   useEffect(() => {
-    if (queue.phase === "released" && !celebrating) {
-      setCelebrating(true);
-      const t = setTimeout(() => {
-        queue.onReleased();
-        onReleased();
-      }, 1200);
-      return () => clearTimeout(t);
+    if (queue.released) {
+      queue.onReleased();
+      onReleased();
     }
-  }, [queue.phase, celebrating, queue.onReleased, onReleased]);
-
-  const formatWait = (secs: number) => {
-    if (secs <= 0) return "0s";
-    if (secs < 60) return `${secs}s`;
-    return `~${Math.ceil(secs / 60)}m`;
-  };
+  }, [queue.released, queue.onReleased, onReleased]);
 
   return (
-    <Card>
+    <Card className={`transition-all duration-500 ${exitFade ? "opacity-0 scale-[0.98]" : ""}`}
+      onTransitionEnd={() => { if (exitFade) { queue.onReleased(); onReleased(); } }}
+    >
       <CardContent className="p-6 space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">
-            {celebrating ? "You're in!" : (title || "You're in the queue")}
-          </h2>
-          <Badge
-            variant={celebrating ? "default" : "secondary"}
-            className={celebrating ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/20" : ""}
-          >
-            {celebrating ? (
-              <span className="flex items-center gap-1">
-                <Check className="size-3" />
-                Ready
-              </span>
-            ) : (
-              `#${queue.position.toLocaleString()}`
-            )}
-          </Badge>
-        </div>
-
-        {/* Progress bar */}
-        <Progress
-          value={queue.progress}
-          className="h-2"
-        />
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { value: `#${queue.position.toLocaleString()}`, label: "Position" },
-            { value: queue.ahead.toLocaleString(), label: "Ahead" },
-            { value: formatWait(queue.estimatedWait), label: "Est. Wait" },
-          ].map(({ value, label }) => (
-            <div
-              key={label}
-              className="rounded-lg bg-muted/50 py-3 text-center"
-            >
-              <div className="text-base font-bold tabular-nums">{value}</div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                {label}
-              </div>
+        {isReleasing ? (
+          /* Release celebration */
+          <div className="text-center py-4 animate-in fade-in zoom-in-95 duration-500">
+            <div className="inline-flex items-center justify-center size-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
+              <Ticket className="size-5 text-emerald-500" />
             </div>
-          ))}
-        </div>
+            <h2 className="text-lg font-semibold tracking-tight mb-1">
+              You&apos;re in!
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Loading tickets...
+            </p>
+          </div>
+        ) : (
+          /* Active queue */
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold tracking-tight">
+                {title || "In Queue"}
+              </h2>
+              <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                {queue.estimatedWait}
+              </span>
+            </div>
 
-        {/* Social proof */}
-        {queue.socialProof && !celebrating && (
-          <p
-            key={queue.socialProof.key}
-            className="text-sm text-muted-foreground text-center animate-in fade-in duration-500"
-          >
-            {queue.socialProof.text}
-          </p>
-        )}
+            {/* Position — large number */}
+            <div className="flex items-baseline gap-2.5">
+              <span className="text-3xl font-bold tabular-nums">
+                {queue.position}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {queue.position === 1 ? "person ahead" : "people ahead"}
+              </span>
+            </div>
 
-        {/* Anxiety flash */}
-        {queue.anxietyFlash && !celebrating && (
-          <p
-            key={queue.anxietyFlash.key}
-            className="text-xs font-medium text-center text-orange-500 animate-in fade-in duration-300"
-          >
-            {queue.anxietyFlash.text}
-          </p>
-        )}
+            {/* Progress bar */}
+            <Progress value={queue.progress} className="h-1.5" />
 
-        {/* Celebrating */}
-        {celebrating && (
-          <p className="text-sm text-center text-muted-foreground animate-in fade-in duration-300">
-            Taking you to tickets...
-          </p>
-        )}
+            {/* Status message */}
+            <div className="h-4 flex items-center">
+              {queue.statusMessage && (
+                <p
+                  key={queue.statusKey}
+                  className="text-[12px] text-muted-foreground/60 animate-in fade-in duration-500"
+                >
+                  {queue.statusMessage}
+                </p>
+              )}
+            </div>
 
-        {/* Footer note */}
-        {!celebrating && (
-          <p className="text-[11px] text-center text-muted-foreground/60">
-            {subtitle || "Don\u0027t close this tab"}
-          </p>
+            {/* Footer note */}
+            <p className="text-[11px] text-center text-muted-foreground/50">
+              {subtitle || "Don\u0027t refresh — you\u0027ll keep your place"}
+            </p>
+          </>
         )}
       </CardContent>
     </Card>

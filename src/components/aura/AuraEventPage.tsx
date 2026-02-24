@@ -212,6 +212,7 @@ export function AuraEventPage({ event }: AuraEventPageProps) {
               onReleased={() => setQueueReleased(true)}
               title={event.queue_title}
               subtitle={event.queue_subtitle}
+              capacity={event.capacity}
             />
           ) : (
             <AuraTicketWidget

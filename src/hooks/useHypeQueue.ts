@@ -2,36 +2,23 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-export type QueuePhase = "waiting" | "active" | "released";
-
-interface SocialProofMessage {
-  text: string;
-  key: number;
-}
-
-interface AnxietyFlash {
-  text: string;
-  key: number;
-}
+export type QueuePhase = "active" | "releasing" | "released";
 
 export interface HypeQueueState {
-  /** Current phase: waiting (not started), active (in queue), released (done) */
   phase: QueuePhase;
   /** 0-100 progress through the queue */
   progress: number;
-  /** Current fake position in queue (counts down) */
+  /** Current position in queue (counts down in batches) */
   position: number;
-  /** Number of people "ahead" (position - 1) */
-  ahead: number;
-  /** Estimated wait in seconds */
-  estimatedWait: number;
-  /** Current rotating social proof message */
-  socialProof: SocialProofMessage | null;
-  /** Current anxiety flash (brief urgency message) */
-  anxietyFlash: AnxietyFlash | null;
-  /** Whether the queue has been released (user can proceed) */
+  /** Fuzzy estimated wait string */
+  estimatedWait: string;
+  /** Current status line (subtle, believable) */
+  statusMessage: string | null;
+  /** Key for animating status message transitions */
+  statusKey: number;
+  /** Whether the queue is done */
   released: boolean;
-  /** Call to acknowledge release and transition to tickets */
+  /** Marks queue as complete in localStorage */
   onReleased: () => void;
 }
 
@@ -39,76 +26,93 @@ interface UseHypeQueueOptions {
   eventId: string;
   durationSeconds: number;
   enabled: boolean;
+  /** Event capacity — used to derive realistic starting position */
+  capacity?: number | null;
 }
 
-/** Deterministic seed from event ID for consistent starting position */
-function hashEventId(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+/** Deterministic seed from event ID */
+function hashId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+/** Seeded pseudo-random (deterministic per seed) */
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+/** Pre-generate the batch schedule so it's deterministic and refresh-safe */
+function generateBatchSchedule(
+  startingPosition: number,
+  durationMs: number,
+  seed: number,
+): { time: number; position: number }[] {
+  const rand = seededRandom(seed);
+  const schedule: { time: number; position: number }[] = [];
+  let pos = startingPosition;
+  let t = 0;
+
+  // Generate batches that cover ~95% of duration, leaving last 5% for the final sprint
+  const targetDuration = durationMs * 0.92;
+
+  while (pos > 1 && t < targetDuration) {
+    // Batch pause: 1.5-4s early on, 2-6s in the middle, 1-2s near the end
+    const progressRatio = t / targetDuration;
+    let pauseMin: number, pauseMax: number;
+    if (progressRatio < 0.3) {
+      pauseMin = 1500; pauseMax = 3500;
+    } else if (progressRatio < 0.7) {
+      pauseMin = 2500; pauseMax = 5500; // Tension — slow middle
+    } else {
+      pauseMin = 800; pauseMax = 2000; // Sprint at the end
+    }
+    const pause = pauseMin + rand() * (pauseMax - pauseMin);
+    t += pause;
+
+    // Batch size: relative to remaining position
+    const remaining = pos;
+    const batchMin = Math.max(1, Math.floor(remaining * 0.03));
+    const batchMax = Math.max(2, Math.floor(remaining * 0.12));
+    const batchSize = Math.floor(batchMin + rand() * (batchMax - batchMin));
+
+    pos = Math.max(1, pos - batchSize);
+    schedule.push({ time: t, position: pos });
   }
-  return Math.abs(hash);
+
+  // Final entry: position 0 at the end
+  schedule.push({ time: durationMs, position: 0 });
+
+  return schedule;
 }
 
-/** Non-linear easing: fast start, slow tension, brief pauses, fast sprint */
-function queueEasing(t: number): number {
-  // Piecewise cubic: 0-0.2 (fast), 0.2-0.5 (slow), 0.5-0.8 (medium), 0.8-1.0 (fast)
-  if (t <= 0.2) {
-    // Fast initial drop — covers 0→35% of progress
-    return (t / 0.2) * 0.35;
-  } else if (t <= 0.5) {
-    // Slow tension build — covers 35→55% (crawl)
-    const local = (t - 0.2) / 0.3;
-    return 0.35 + local * 0.2;
-  } else if (t <= 0.8) {
-    // Medium pace — covers 55→80%
-    const local = (t - 0.5) / 0.3;
-    return 0.55 + local * 0.25;
-  } else {
-    // Fast sprint to finish — covers 80→100%
-    const local = (t - 0.8) / 0.2;
-    return 0.8 + local * 0.2;
-  }
-}
-
-const SOCIAL_PROOF_TEMPLATES = [
-  (n: number) => `${n.toLocaleString()} people are waiting`,
-  (n: number) => `${Math.floor(n * 0.12).toLocaleString()} people just got through`,
-  () => "High demand right now",
-  (n: number) => `${Math.floor(n * 0.08).toLocaleString()} tickets claimed so far`,
-  () => "Tickets selling fast",
+const STATUS_MESSAGES = [
+  "Processing requests ahead of you",
+  "Verifying ticket availability",
+  "Allocating your session",
+  "Almost through the queue",
+  "Securing your spot",
 ];
 
-const ANXIETY_THRESHOLDS: { progress: number; text: string }[] = [
-  { progress: 25, text: "Limited availability" },
-  { progress: 55, text: "High demand detected" },
-  { progress: 75, text: "Almost there..." },
-];
-
-export function useHypeQueue({ eventId, durationSeconds, enabled }: UseHypeQueueOptions): HypeQueueState {
+export function useHypeQueue({ eventId, durationSeconds, enabled, capacity }: UseHypeQueueOptions): HypeQueueState {
   const passedKey = `feral_queue_passed_${eventId}`;
   const enteredKey = `feral_queue_entered_${eventId}`;
+  const durationMs = durationSeconds * 1000;
 
   // Check localStorage for already-passed state
   const [phase, setPhase] = useState<QueuePhase>(() => {
-    if (!enabled) return "waiting";
+    if (!enabled) return "released";
     try {
-      if (typeof window !== "undefined" && localStorage.getItem(passedKey)) {
-        return "released";
-      }
+      if (typeof window !== "undefined" && localStorage.getItem(passedKey)) return "released";
     } catch { /* ignore */ }
     return "active";
   });
 
-  const [progress, setProgress] = useState(0);
-  const [socialProof, setSocialProof] = useState<SocialProofMessage | null>(null);
-  const [anxietyFlash, setAnxietyFlash] = useState<AnxietyFlash | null>(null);
-  const firedAnxietyRef = useRef<Set<number>>(new Set());
-  const socialProofIndexRef = useRef(0);
-  const socialProofKeyRef = useRef(0);
-  const anxietyKeyRef = useRef(0);
-
-  // Persist entry time for refresh safety (lazy-init via useState)
+  // Persist entry time for refresh safety
   const [entryTime] = useState(() => {
     if (typeof window === "undefined") return Date.now();
     try {
@@ -123,84 +127,117 @@ export function useHypeQueue({ eventId, durationSeconds, enabled }: UseHypeQueue
     return now;
   });
 
-  // Starting position seeded from event ID
+  // Derive realistic starting position from capacity
+  const seed = useMemo(() => hashId(eventId), [eventId]);
   const startingPosition = useMemo(() => {
-    const seed = hashEventId(eventId);
-    return 1500 + (seed % 3000); // 1500-4500 range
-  }, [eventId]);
+    const rand = seededRandom(seed);
+    const cap = capacity && capacity > 0 ? capacity : 300;
+    // Start at 25-60% of capacity — feels like you joined a real queue
+    const ratio = 0.25 + rand() * 0.35;
+    return Math.max(8, Math.round(cap * ratio));
+  }, [seed, capacity]);
 
-  // Derive position from progress
-  const position = useMemo(() => {
-    if (phase === "released") return 0;
-    // Add jitter based on progress for "batch" feel
-    const basePosition = Math.max(1, Math.round(startingPosition * (1 - progress / 100)));
-    const jitter = Math.floor(Math.sin(progress * 0.7) * 15);
-    return Math.max(1, basePosition + jitter);
-  }, [progress, startingPosition, phase]);
+  // Pre-generate batch schedule (deterministic — same on refresh)
+  const schedule = useMemo(
+    () => generateBatchSchedule(startingPosition, durationMs, seed),
+    [startingPosition, durationMs, seed],
+  );
 
-  const ahead = Math.max(0, position - 1);
-  const estimatedWait = Math.max(0, Math.round(durationSeconds * (1 - progress / 100)));
+  const [position, setPosition] = useState(startingPosition);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusKey, setStatusKey] = useState(0);
+  const statusIndexRef = useRef(0);
 
-  // Main timer — runs every 200ms for smooth progress
+  // Derive progress from position
+  const progress = startingPosition > 0
+    ? Math.min(100, ((startingPosition - position) / startingPosition) * 100)
+    : 100;
+
+  // Fuzzy estimated wait
+  const estimatedWait = useMemo(() => {
+    if (phase === "releasing" || phase === "released") return "";
+    const elapsed = Date.now() - entryTime;
+    const remaining = Math.max(0, durationMs - elapsed);
+    const secs = Math.round(remaining / 1000);
+    if (secs <= 5) return "a few seconds";
+    if (secs < 30) return "less than 30 seconds";
+    if (secs < 60) return "less than a minute";
+    return `~${Math.ceil(secs / 60)} min`;
+  }, [phase, durationMs, entryTime, position]); // position dep forces re-eval on batch ticks
+
+  // Main timer — check batch schedule every 500ms
   useEffect(() => {
     if (phase !== "active" || !enabled) return;
 
+    // On mount, catch up to current position (for refresh mid-queue)
+    const catchUp = () => {
+      const elapsed = Date.now() - entryTime;
+      let currentPos = startingPosition;
+      for (const batch of schedule) {
+        if (elapsed >= batch.time) {
+          currentPos = batch.position;
+        } else {
+          break;
+        }
+      }
+      return currentPos;
+    };
+
+    // Set initial caught-up position
+    const initialPos = catchUp();
+    if (initialPos <= 0) {
+      setPosition(0);
+      setPhase("releasing");
+      return;
+    }
+    setPosition(initialPos);
+
     const interval = setInterval(() => {
-      const elapsed = (Date.now() - entryTime) / 1000;
-      const rawT = Math.min(1, elapsed / durationSeconds);
-      const easedProgress = Math.min(100, queueEasing(rawT) * 100);
+      const elapsed = Date.now() - entryTime;
+      let currentPos = startingPosition;
+      for (const batch of schedule) {
+        if (elapsed >= batch.time) {
+          currentPos = batch.position;
+        } else {
+          break;
+        }
+      }
+      setPosition(currentPos);
 
-      setProgress(easedProgress);
-
-      if (rawT >= 1) {
-        setPhase("released");
-        try { localStorage.setItem(passedKey, "1"); } catch { /* ignore */ }
+      if (currentPos <= 0 || elapsed >= durationMs) {
+        setPosition(0);
+        setPhase("releasing");
         clearInterval(interval);
       }
-    }, 200);
+    }, 500);
 
     return () => clearInterval(interval);
-  }, [phase, enabled, entryTime, durationSeconds, passedKey]);
+  }, [phase, enabled, entryTime, durationMs, startingPosition, schedule]);
 
-  // Social proof rotation — every ~8s
+  // Status message rotation — every ~6s, subtle operational messages
   useEffect(() => {
     if (phase !== "active" || !enabled) return;
 
     function showNext() {
-      const idx = socialProofIndexRef.current % SOCIAL_PROOF_TEMPLATES.length;
-      const template = SOCIAL_PROOF_TEMPLATES[idx];
-      socialProofKeyRef.current += 1;
-      setSocialProof({
-        text: template(startingPosition),
-        key: socialProofKeyRef.current,
-      });
-      socialProofIndexRef.current += 1;
+      const idx = statusIndexRef.current % STATUS_MESSAGES.length;
+      statusIndexRef.current += 1;
+      setStatusKey((k) => k + 1);
+      setStatusMessage(STATUS_MESSAGES[idx]);
     }
 
-    // Show first one immediately
-    showNext();
-    const interval = setInterval(showNext, 8000);
-    return () => clearInterval(interval);
-  }, [phase, enabled, startingPosition]);
+    // First message after 2s (don't overwhelm on load)
+    const firstTimeout = setTimeout(showNext, 2000);
+    const interval = setInterval(showNext, 6000);
+    return () => { clearTimeout(firstTimeout); clearInterval(interval); };
+  }, [phase, enabled]);
 
-  // Anxiety flashes — at specific progress thresholds
+  // "Releasing" phase — marks localStorage, pauses 2.5s for celebration, then released
   useEffect(() => {
-    if (phase !== "active" || !enabled) return;
-
-    for (const threshold of ANXIETY_THRESHOLDS) {
-      if (progress >= threshold.progress && !firedAnxietyRef.current.has(threshold.progress)) {
-        firedAnxietyRef.current.add(threshold.progress);
-        anxietyKeyRef.current += 1;
-        setAnxietyFlash({ text: threshold.text, key: anxietyKeyRef.current });
-
-        // Clear after 3s
-        const k = anxietyKeyRef.current;
-        setTimeout(() => {
-          setAnxietyFlash((prev) => (prev?.key === k ? null : prev));
-        }, 3000);
-      }
-    }
-  }, [progress, phase, enabled]);
+    if (phase !== "releasing") return;
+    try { localStorage.setItem(passedKey, "1"); } catch { /* ignore */ }
+    const t = setTimeout(() => setPhase("released"), 2500);
+    return () => clearTimeout(t);
+  }, [phase, passedKey]);
 
   const onReleased = useCallback(() => {
     setPhase("released");
@@ -212,13 +249,12 @@ export function useHypeQueue({ eventId, durationSeconds, enabled }: UseHypeQueue
       phase,
       progress,
       position,
-      ahead,
       estimatedWait,
-      socialProof,
-      anxietyFlash,
+      statusMessage,
+      statusKey,
       released: phase === "released",
       onReleased,
     }),
-    [phase, progress, position, ahead, estimatedWait, socialProof, anxietyFlash, onReleased]
+    [phase, progress, position, estimatedWait, statusMessage, statusKey, onReleased],
   );
 }

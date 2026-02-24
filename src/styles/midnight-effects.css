@@ -1024,60 +1024,68 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
-   HYPE QUEUE — Progress glow, position pop, anxiety flash, release
+   HYPE QUEUE — Batch position drops, release celebration
    ═══════════════════════════════════════════════ */
 
-/* Progress bar pulsing glow */
+/* Progress bar subtle glow */
 @keyframes midnight-queue-glow-pulse {
-  0%, 100% { box-shadow: 0 0 6px color-mix(in srgb, var(--color-primary) 30%, transparent); }
-  50% { box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 50%, transparent); }
+  0%, 100% { box-shadow: 0 0 4px color-mix(in srgb, var(--color-primary) 20%, transparent); }
+  50% { box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 35%, transparent); }
 }
 
 [data-theme="midnight"] .midnight-queue-glow {
-  animation: midnight-queue-glow-pulse 2.5s ease-in-out infinite;
+  animation: midnight-queue-glow-pulse 3s ease-in-out infinite;
 }
 
-/* Position number pop on change */
+/* Position number pop — brief scale on batch drop */
 @keyframes midnight-queue-pop {
   0% { transform: scale(1); }
-  40% { transform: scale(1.08); }
+  35% { transform: scale(1.06); }
   100% { transform: scale(1); }
 }
 
 [data-theme="midnight"] .midnight-queue-position-pop {
-  animation: midnight-queue-pop 200ms ease-out;
+  animation: midnight-queue-pop 250ms ease-out;
 }
 
-/* Anxiety flash — fade in/out with red tint */
-@keyframes midnight-queue-anxiety-anim {
-  0% { opacity: 0; transform: translateY(4px); }
-  15% { opacity: 1; transform: translateY(0); }
-  85% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-4px); }
-}
-
-[data-theme="midnight"] .midnight-queue-anxiety {
-  animation: midnight-queue-anxiety-anim 3s ease-in-out;
-}
-
-/* Release celebration — card border glow burst */
+/* Release celebration — green glow burst on card */
 @keyframes midnight-queue-release-burst {
   0% {
-    border-color: rgba(52, 211, 153, 0.1);
+    border-color: rgba(255, 255, 255, 0.08);
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 0 rgba(52, 211, 153, 0);
   }
-  40% {
+  30% {
     border-color: rgba(52, 211, 153, 0.5);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 40px 8px rgba(52, 211, 153, 0.15);
+    box-shadow:
+      0 24px 80px rgba(0, 0, 0, 0.6),
+      0 0 60px 12px rgba(52, 211, 153, 0.15),
+      inset 0 0 30px rgba(52, 211, 153, 0.04);
   }
   100% {
-    border-color: rgba(52, 211, 153, 0.25);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 20px 2px rgba(52, 211, 153, 0.08);
+    border-color: rgba(52, 211, 153, 0.2);
+    box-shadow:
+      0 24px 80px rgba(0, 0, 0, 0.6),
+      0 0 24px 4px rgba(52, 211, 153, 0.06);
   }
 }
 
 [data-theme="midnight"] .midnight-queue-release {
-  animation: midnight-queue-release-burst 1.2s ease-out forwards;
+  animation: midnight-queue-release-burst 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Particle burst — individual dots that fly outward from center */
+@keyframes midnight-particle {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+      calc(-50% + var(--px, 0px)),
+      calc(-50% + var(--py, 0px))
+    ) scale(0);
+    opacity: 0;
+  }
 }
 
 
@@ -1200,15 +1208,8 @@ html.checkout-active .noise {
   [data-theme="midnight"] .midnight-announcement-cta {
     transition: none;
   }
-  [data-theme="midnight"] .midnight-queue-glow {
-    animation: none;
-  }
-  [data-theme="midnight"] .midnight-queue-position-pop {
-    animation: none;
-  }
-  [data-theme="midnight"] .midnight-queue-anxiety {
-    animation: none;
-  }
+  [data-theme="midnight"] .midnight-queue-glow,
+  [data-theme="midnight"] .midnight-queue-position-pop,
   [data-theme="midnight"] .midnight-queue-release {
     animation: none;
   }

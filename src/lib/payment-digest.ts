@@ -189,18 +189,20 @@ async function gatherDigestData(periodHours: number): Promise<{
 /**
  * Call Claude API to generate the health analysis.
  */
+type AnalysisResult =
+  | { ok: true; data: Omit<PaymentDigest, "generated_at" | "period_hours" | "raw_stats"> }
+  | { ok: false; error: string };
+
 async function analyzeWithClaude(data: {
   stats: DigestStats;
   recentEvents: Array<Record<string, unknown>>;
   incompletePIs: Array<{ id: string; amount: number; currency: string; status: string; description: string | null; created: number }>;
   periodHours: number;
-}): Promise<Omit<PaymentDigest, "generated_at" | "period_hours" | "raw_stats"> | null> {
+}): Promise<AnalysisResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.warn("[payment-digest] No ANTHROPIC_API_KEY env var");
-    return null;
+    return { ok: false, error: "ANTHROPIC_API_KEY environment variable is not set in Vercel" };
   }
-  console.log(`[payment-digest] Key found (${apiKey.length} chars, prefix: ${apiKey.slice(0, 10)}...)`);
 
   const prompt = `You are an expert payment operations analyst for a live event ticketing platform called Entry. Analyse the following payment health data from the last ${data.periodHours} hours and produce a concise diagnostic report.
 
@@ -291,29 +293,39 @@ Guidelines:
 
     if (!response.ok) {
       const errText = await response.text();
-      // Log status and first 200 chars to avoid Vercel truncation
       console.error(`[payment-digest] API ${response.status}: ${errText.slice(0, 200)}`);
-      return null;
+      // Parse error for a human-readable message
+      let errorMsg = `Anthropic API returned ${response.status}`;
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.error?.message) errorMsg += `: ${errJson.error.message}`;
+      } catch {
+        errorMsg += `: ${errText.slice(0, 100)}`;
+      }
+      return { ok: false, error: errorMsg };
     }
 
     const result = await response.json();
     const text = result.content?.[0]?.text;
     if (!text) {
-      console.error("[payment-digest] No text in Claude response");
-      return null;
+      return { ok: false, error: "Claude returned an empty response" };
     }
 
     // Parse the JSON response
     const parsed = JSON.parse(text);
     return {
-      summary: parsed.summary || "Analysis unavailable",
-      risk_level: parsed.risk_level || "watch",
-      findings: parsed.findings || [],
-      recommendations: parsed.recommendations || [],
+      ok: true,
+      data: {
+        summary: parsed.summary || "Analysis unavailable",
+        risk_level: parsed.risk_level || "watch",
+        findings: parsed.findings || [],
+        recommendations: parsed.recommendations || [],
+      },
     };
   } catch (err) {
-    console.error("[payment-digest] Claude analysis failed:", err);
-    return null;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[payment-digest] Failed:", msg);
+    return { ok: false, error: `Analysis failed: ${msg}` };
   }
 }
 
@@ -324,15 +336,15 @@ export async function generatePaymentDigest(periodHours: number = 6): Promise<Pa
   const data = await gatherDigestData(periodHours);
   if (!data) return null;
 
-  const analysis = await analyzeWithClaude({ ...data, periodHours });
+  const result = await analyzeWithClaude({ ...data, periodHours });
 
   const digest: PaymentDigest = {
     generated_at: new Date().toISOString(),
     period_hours: periodHours,
-    summary: analysis?.summary || "AI analysis unavailable — check ANTHROPIC_API_KEY configuration.",
-    risk_level: analysis?.risk_level || "watch",
-    findings: analysis?.findings || [],
-    recommendations: analysis?.recommendations || [],
+    summary: result.ok ? result.data.summary : result.error,
+    risk_level: result.ok ? result.data.risk_level : "watch",
+    findings: result.ok ? result.data.findings : [],
+    recommendations: result.ok ? result.data.recommendations : [],
     raw_stats: data.stats,
   };
 

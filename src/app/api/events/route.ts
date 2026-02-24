@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       age_restriction,
       status = "draft",
       visibility = "public",
-      payment_method = "test",
+      payment_method = "stripe",
       capacity,
       cover_image,
       hero_image,

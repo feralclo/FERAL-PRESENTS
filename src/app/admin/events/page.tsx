@@ -90,7 +90,7 @@ export default function EventsPage() {
   const [newVenue, setNewVenue] = useState("");
   const [newCity, setNewCity] = useState("");
   const [newDate, setNewDate] = useState("");
-  const [newPayment, setNewPayment] = useState<"test" | "stripe">("test");
+  const [newPayment] = useState<"test" | "stripe">("stripe");
   const [newVisibility, setNewVisibility] = useState<"public" | "private" | "unlisted">("private");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -319,25 +319,13 @@ export default function EventsPage() {
                   />
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Date & Time *</Label>
                   <DateTimePicker
                     value={newDate}
                     onChange={setNewDate}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Method</Label>
-                  <Select value={newPayment} onValueChange={(v) => setNewPayment(v as typeof newPayment)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="test">Test (Simulated)</SelectItem>
-                      <SelectItem value="stripe">Stripe</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Visibility</Label>

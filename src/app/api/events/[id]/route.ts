@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { TABLES } from "@/lib/constants";
+import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
 
@@ -61,6 +61,26 @@ export async function PUT(
         { error: "Database not configured" },
         { status: 503 }
       );
+    }
+
+    // Gate: block going live with stripe payments if no Stripe account connected.
+    // Checks the org's own stripe_account setting — orgs with connected accounts pass.
+    if (
+      body.status === "live" &&
+      body.payment_method === "stripe"
+    ) {
+      const { data: stripeRow } = await supabase
+        .from(TABLES.SITE_SETTINGS)
+        .select("data")
+        .eq("key", stripeAccountKey(orgId))
+        .single();
+
+      if (!stripeRow?.data?.account_id) {
+        return NextResponse.json(
+          { error: "Connect your payment account before going live. Go to Settings → Payments to set up." },
+          { status: 400 }
+        );
+      }
     }
 
     // Separate ticket_types and deleted IDs from event fields

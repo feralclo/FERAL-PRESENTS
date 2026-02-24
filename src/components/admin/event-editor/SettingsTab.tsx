@@ -13,9 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { validateVatNumber } from "@/lib/vat";
 import { vatKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { AlertCircle } from "lucide-react";
 import type { VatSettings } from "@/types/settings";
 import type { TabProps } from "./types";
 
@@ -32,10 +35,40 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
   const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [orgVat, setOrgVat] = useState<VatSettings | null>(null);
+  const [isPlatformOwner, setIsPlatformOwner] = useState(false);
+  const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
+  const [liveBlockedMsg, setLiveBlockedMsg] = useState("");
 
-  // Fetch Stripe Connect accounts when payment method is stripe
+  // Detect platform owner + Stripe connection status
   useEffect(() => {
-    if (event.payment_method !== "stripe") return;
+    (async () => {
+      try {
+        const [, stripeRes] = await Promise.all([
+          (async () => {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+            const { data } = await supabase.auth.getUser();
+            if (data.user?.app_metadata?.is_platform_owner === true) {
+              setIsPlatformOwner(true);
+            }
+          })(),
+          fetch("/api/stripe/connect/my-account").catch(() => null),
+        ]);
+        if (stripeRes?.ok) {
+          const json = await stripeRes.json();
+          setStripeConnected(!!json.connected && !!json.charges_enabled);
+        } else {
+          setStripeConnected(false);
+        }
+      } catch {
+        // Fail silently
+      }
+    })();
+  }, []);
+
+  // Fetch Stripe Connect accounts when payment method is stripe (platform owner only)
+  useEffect(() => {
+    if (event.payment_method !== "stripe" || !isPlatformOwner) return;
 
     setLoadingAccounts(true);
     fetch("/api/stripe/connect")
@@ -45,7 +78,7 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
       })
       .catch(() => {})
       .finally(() => setLoadingAccounts(false));
-  }, [event.payment_method]);
+  }, [event.payment_method, isPlatformOwner]);
 
   // Fetch org-level VAT settings for hint display
   useEffect(() => {
@@ -83,10 +116,34 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
           <CardTitle className="text-sm">Status & Visibility</CardTitle>
         </CardHeader>
         <CardContent className="px-6 pb-6 space-y-4">
+          {liveBlockedMsg && (
+            <Alert variant="warning">
+              <AlertCircle className="size-4" />
+              <AlertDescription>{liveBlockedMsg}</AlertDescription>
+            </Alert>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={event.status} onValueChange={(v) => updateEvent("status", v)}>
+              <Select
+                value={event.status}
+                onValueChange={(v) => {
+                  // Gate: block going live if Stripe not connected (non-platform-owner only)
+                  if (
+                    v === "live" &&
+                    !isPlatformOwner &&
+                    event.payment_method === "stripe" &&
+                    stripeConnected === false
+                  ) {
+                    setLiveBlockedMsg(
+                      "Connect your payment account before going live. Go to Settings → Payments to set up."
+                    );
+                    return;
+                  }
+                  setLiveBlockedMsg("");
+                  updateEvent("status", v);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -118,23 +175,28 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
 
       <Card className="py-0 gap-0">
         <CardHeader className="px-6 pt-5 pb-4">
-          <CardTitle className="text-sm">Payment & Currency</CardTitle>
+          <CardTitle className="text-sm">
+            {isPlatformOwner ? "Payment & Currency" : "Currency"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="px-6 pb-6 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Payment Method</Label>
-              <Select value={event.payment_method} onValueChange={(v) => updateEvent("payment_method", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="test">Test (Simulated)</SelectItem>
-                  <SelectItem value="stripe">Stripe</SelectItem>
-                  <SelectItem value="external">External Link</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className={isPlatformOwner ? "grid gap-4 sm:grid-cols-2" : ""}>
+            {/* Payment method — platform owner only */}
+            {isPlatformOwner && (
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Select value={event.payment_method} onValueChange={(v) => updateEvent("payment_method", v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="test">Test (Simulated)</SelectItem>
+                    <SelectItem value="stripe">Stripe</SelectItem>
+                    <SelectItem value="external">External Link</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Currency</Label>
               <Select value={event.currency} onValueChange={(v) => updateEvent("currency", v)}>
@@ -150,7 +212,8 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
             </div>
           </div>
 
-          {event.payment_method === "external" && (
+          {/* External link — platform owner only (since only they can set external) */}
+          {isPlatformOwner && event.payment_method === "external" && (
             <div className="space-y-2">
               <Label>Ticket Link URL</Label>
               <Input
@@ -167,7 +230,8 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
             </div>
           )}
 
-          {event.payment_method === "stripe" && (
+          {/* Stripe account selector — platform owner only */}
+          {isPlatformOwner && event.payment_method === "stripe" && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Stripe Account</Label>
@@ -231,12 +295,22 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
                   </div>
                 )}
               </div>
+            </div>
+          )}
 
-              <div className="rounded-md border border-border/50 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Platform fees are determined by your plan. Contact the platform owner to change your plan tier.
-                </p>
-              </div>
+          {/* Payment connection hint — regular tenants only */}
+          {!isPlatformOwner && event.payment_method === "stripe" && stripeConnected === false && (
+            <div className="rounded-md border border-warning/20 bg-warning/[0.04] p-3">
+              <p className="text-xs text-muted-foreground">
+                You need to{" "}
+                <Link
+                  href="/admin/payments/"
+                  className="font-medium text-primary hover:underline"
+                >
+                  connect your payment account
+                </Link>{" "}
+                before this event can go live.
+              </p>
             </div>
           )}
         </CardContent>

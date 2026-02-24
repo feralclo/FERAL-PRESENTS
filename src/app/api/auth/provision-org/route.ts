@@ -21,9 +21,31 @@ export async function POST(request: NextRequest) {
   const blocked = limiter(request);
   if (blocked) return blocked;
 
+  // Parse body first (before any async ops that might interfere)
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const { org_name, event_types, experience_level } = body;
+
+  // Validate org_name upfront
+  if (!org_name || typeof org_name !== "string" || (org_name as string).trim().length < 2 || (org_name as string).trim().length > 50) {
+    return NextResponse.json({ error: "Brand name must be 2-50 characters" }, { status: 400 });
+  }
+
+  const trimmedName = (org_name as string).trim();
+
   try {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+      return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+    }
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) {
+      return NextResponse.json({ error: "Service role key not configured" }, { status: 503 });
     }
 
     // Read session from cookies
@@ -41,23 +63,14 @@ export async function POST(request: NextRequest) {
 
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { org_name, event_types, experience_level } = body;
-
-    // Validate org_name
-    if (!org_name || typeof org_name !== "string" || org_name.trim().length < 2 || org_name.trim().length > 50) {
-      return NextResponse.json({ error: "Brand name must be 2-50 characters" }, { status: 400 });
-    }
-
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) {
-      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Not authenticated", detail: userError?.message || "No user session" },
+        { status: 401 }
+      );
     }
 
     const adminClient = createClient(SUPABASE_URL, serviceRoleKey);
@@ -79,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Slugify and validate
-    let slug = slugify(org_name.trim());
+    let slug = slugify(trimmedName);
     if (slug.length < 3) {
       return NextResponse.json(
         { error: "Brand name must produce a valid URL slug (at least 3 characters)" },
@@ -109,44 +122,56 @@ export async function POST(request: NextRequest) {
     }
 
     // Provision org
-    await provisionOrg({
-      authUserId: user.id,
-      email: user.email!,
-      orgSlug: slug,
-      orgName: org_name.trim(),
-      firstName: user.user_metadata?.full_name?.split(" ")[0] || undefined,
-      lastName: user.user_metadata?.full_name?.split(" ").slice(1).join(" ") || undefined,
-    });
+    try {
+      await provisionOrg({
+        authUserId: user.id,
+        email: user.email || "",
+        orgSlug: slug,
+        orgName: trimmedName,
+        firstName: user.user_metadata?.full_name?.split(" ")[0] || undefined,
+        lastName: user.user_metadata?.full_name?.split(" ").slice(1).join(" ") || undefined,
+      });
+    } catch (provisionErr) {
+      console.error("[provision-org] provisionOrg() failed:", provisionErr);
+      const msg = provisionErr instanceof Error ? provisionErr.message : "Unknown provisioning error";
+      return NextResponse.json({ error: `Provisioning failed: ${msg}` }, { status: 500 });
+    }
 
     // Save onboarding data to site_settings
     if (event_types || experience_level) {
-      const supabaseAdmin = await getSupabaseAdmin();
-      if (supabaseAdmin) {
-        await supabaseAdmin.from(TABLES.SITE_SETTINGS).upsert(
-          {
-            key: onboardingKey(slug),
-            data: {
-              event_types: event_types || [],
-              experience_level: experience_level || null,
-              completed_at: new Date().toISOString(),
+      try {
+        const supabaseAdmin = await getSupabaseAdmin();
+        if (supabaseAdmin) {
+          await supabaseAdmin.from(TABLES.SITE_SETTINGS).upsert(
+            {
+              key: onboardingKey(slug),
+              data: {
+                event_types: event_types || [],
+                experience_level: experience_level || null,
+                completed_at: new Date().toISOString(),
+              },
+              org_id: slug,
+              updated_at: new Date().toISOString(),
             },
-            org_id: slug,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "key" }
-        );
+            { onConflict: "key" }
+          );
+        }
+      } catch (settingsErr) {
+        // Non-fatal — org was provisioned, just log
+        console.error("[provision-org] Failed to save onboarding data:", settingsErr);
       }
     }
 
     return NextResponse.json({
       data: {
         org_id: slug,
-        org_name: org_name.trim(),
+        org_name: trimmedName,
         subdomain: `${slug}.entry.events`,
       },
     });
   } catch (err) {
     console.error("[provision-org] POST error:", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: `Internal error: ${msg}` }, { status: 500 });
   }
 }

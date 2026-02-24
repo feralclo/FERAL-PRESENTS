@@ -84,6 +84,14 @@ interface CustomerTicket {
   event: { name: string; slug: string; venue_name?: string; date_start: string } | null;
 }
 
+interface EventInterestSignup {
+  id: string;
+  signed_up_at: string;
+  notification_count: number;
+  unsubscribed_at?: string | null;
+  event: { name: string; slug: string } | null;
+}
+
 /* ── Status styling ── */
 const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "secondary"> = {
   completed: "success",
@@ -1292,13 +1300,14 @@ export default function CustomerProfilePage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [tickets, setTickets] = useState<CustomerTicket[]>([]);
   const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCart[]>([]);
+  const [eventInterests, setEventInterests] = useState<EventInterestSignup[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadCustomer = useCallback(async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    const [customerResult, ordersResult, ticketsResult, cartsResult] = await Promise.all([
+    const [customerResult, ordersResult, ticketsResult, cartsResult, interestsResult] = await Promise.all([
       supabase
         .from(TABLES.CUSTOMERS)
         .select("*")
@@ -1323,12 +1332,19 @@ export default function CustomerProfilePage() {
         .eq("customer_id", customerId)
         .eq("org_id", orgId)
         .order("created_at", { ascending: false }),
+      supabase
+        .from(TABLES.EVENT_INTEREST_SIGNUPS)
+        .select("id, signed_up_at, notification_count, unsubscribed_at, event:events(name, slug)")
+        .eq("customer_id", customerId)
+        .eq("org_id", orgId)
+        .order("signed_up_at", { ascending: false }),
     ]);
 
     if (customerResult.data) setCustomer(customerResult.data);
     if (ordersResult.data) setOrders(ordersResult.data as unknown as CustomerOrder[]);
     if (ticketsResult.data) setTickets(ticketsResult.data as unknown as CustomerTicket[]);
     if (cartsResult.data) setAbandonedCarts(cartsResult.data as unknown as AbandonedCart[]);
+    if (interestsResult.data) setEventInterests(interestsResult.data as unknown as EventInterestSignup[]);
 
     setLoading(false);
   }, [customerId, orgId]);
@@ -1454,6 +1470,16 @@ export default function CustomerProfilePage() {
                       Via Popup
                     </Badge>
                   )}
+                  {customer.marketing_consent === true && (
+                    <Badge variant="success" className="text-[10px] font-semibold">
+                      <Mail size={10} /> Marketing
+                    </Badge>
+                  )}
+                  {customer.marketing_consent === false && (
+                    <Badge variant="secondary" className="text-[10px] font-semibold text-muted-foreground">
+                      <MailWarning size={10} /> Unsubscribed
+                    </Badge>
+                  )}
                 </div>
 
                 {/* Discoverer: show real name as subtitle if available */}
@@ -1547,6 +1573,50 @@ export default function CustomerProfilePage() {
           icon={activeAbandonedCarts.length > 0 ? ShoppingCart : Shirt}
         />
       </div>
+
+      {/* Event Interests (if any) */}
+      {eventInterests.length > 0 && (
+        <div className="mt-6">
+          <Card>
+            <CardHeader className="border-b border-border pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Star size={15} className="text-muted-foreground" />
+                Event Interests ({eventInterests.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 p-4">
+              {eventInterests.map((signup) => (
+                <div
+                  key={signup.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {signup.event?.name || "Unknown event"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Signed up {new Date(signup.signed_up_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] font-semibold tabular-nums"
+                    >
+                      Step {signup.notification_count}/4
+                    </Badge>
+                    {signup.unsubscribed_at && (
+                      <Badge variant="destructive" className="text-[9px] font-semibold">
+                        Unsub
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Abandoned Carts (if any) */}
       {abandonedCarts.length > 0 && (

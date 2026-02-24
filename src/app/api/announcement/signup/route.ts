@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existing } = await supabase
       .from(TABLES.CUSTOMERS)
-      .select("id, first_name")
+      .select("id, first_name, marketing_consent")
       .eq("org_id", orgId)
       .eq("email", normalizedEmail)
       .single();
@@ -93,11 +93,18 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       customerId = existing.id;
-      // Update first_name if customer doesn't have one yet
-      if (first_name && !existing.first_name) {
+      // Update first_name if customer doesn't have one yet + upgrade marketing consent if unknown
+      const custUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (first_name && !existing.first_name) custUpdates.first_name = first_name;
+      if (existing.marketing_consent === null || existing.marketing_consent === undefined) {
+        custUpdates.marketing_consent = true;
+        custUpdates.marketing_consent_at = new Date().toISOString();
+        custUpdates.marketing_consent_source = "announcement";
+      }
+      if (Object.keys(custUpdates).length > 1) {
         await supabase
           .from(TABLES.CUSTOMERS)
-          .update({ first_name, updated_at: new Date().toISOString() })
+          .update(custUpdates)
           .eq("id", customerId);
       }
     } else {
@@ -113,6 +120,9 @@ export async function POST(request: NextRequest) {
           total_spent: 0,
           city: geoCity ? decodeURIComponent(geoCity) : null,
           country: geoCountry || null,
+          marketing_consent: true,
+          marketing_consent_at: new Date().toISOString(),
+          marketing_consent_source: "announcement",
         })
         .select("id")
         .single();
@@ -170,6 +180,16 @@ export async function POST(request: NextRequest) {
           console.error("Interest signup resubscribe failed:", updateErr);
         }
         signupRow = updated;
+
+        // Re-consent the customer (they actively re-engaged)
+        await supabase
+          .from(TABLES.CUSTOMERS)
+          .update({
+            marketing_consent: true,
+            marketing_consent_at: new Date().toISOString(),
+            marketing_consent_source: "announcement",
+          })
+          .eq("id", customerId);
       } else {
         // Already signed up and not unsubscribed — no-op
         alreadySignedUp = true;

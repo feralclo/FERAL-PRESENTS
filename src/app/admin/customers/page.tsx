@@ -26,6 +26,8 @@ import {
   Music,
   Sparkles,
   ArrowUpDown,
+  Mail,
+  MailX,
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
 import type { Customer } from "@/types/orders";
@@ -312,6 +314,12 @@ export default function CustomersPage() {
                           >
                             {displayName}
                           </Link>
+                          {cust.marketing_consent === true && (
+                            <Mail size={11} className="text-emerald-500/60 shrink-0" />
+                          )}
+                          {cust.marketing_consent === false && (
+                            <MailX size={11} className="text-muted-foreground/40 shrink-0" />
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-foreground">

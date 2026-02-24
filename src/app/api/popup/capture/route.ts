@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Check if customer already exists
     const { data: existing } = await supabase
       .from(TABLES.CUSTOMERS)
-      .select("id, city")
+      .select("id, city, marketing_consent")
       .eq("org_id", orgId)
       .eq("email", normalizedEmail)
       .single();
@@ -58,6 +58,13 @@ export async function POST(request: NextRequest) {
       };
       if (!existing.city && geoCity) updates.city = decodeURIComponent(geoCity);
       if (!existing.city && geoCountry) updates.country = geoCountry;
+
+      // Upgrade marketing consent only if currently unknown (null) — never overwrite explicit false (unsubscribe)
+      if (existing.marketing_consent === null || existing.marketing_consent === undefined) {
+        updates.marketing_consent = true;
+        updates.marketing_consent_at = new Date().toISOString();
+        updates.marketing_consent_source = "popup";
+      }
 
       await supabase
         .from(TABLES.CUSTOMERS)
@@ -80,6 +87,9 @@ export async function POST(request: NextRequest) {
         total_spent: 0,
         city: geoCity ? decodeURIComponent(geoCity) : null,
         country: geoCountry || null,
+        marketing_consent: true,
+        marketing_consent_at: new Date().toISOString(),
+        marketing_consent_source: "popup",
       })
       .select("id")
       .single();

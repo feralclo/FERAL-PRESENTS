@@ -100,6 +100,9 @@ export interface Customer {
   notes?: string;
   city?: string;
   country?: string;
+  marketing_consent?: boolean | null;
+  marketing_consent_at?: string;
+  marketing_consent_source?: string;
   created_at: string;
   updated_at: string;
 }

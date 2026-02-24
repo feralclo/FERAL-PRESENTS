@@ -59,6 +59,16 @@ export async function GET(request: NextRequest) {
       .eq("email", signup.email)
       .is("unsubscribed_at", null);
 
+    // Clear marketing consent on customer record
+    await supabase
+      .from(TABLES.CUSTOMERS)
+      .update({
+        marketing_consent: false,
+        marketing_consent_at: now,
+      })
+      .eq("org_id", signup.org_id)
+      .eq("email", signup.email);
+
     console.log(`[unsubscribe] ${signup.email} unsubscribed from announcement emails`);
 
     return new NextResponse(
@@ -115,6 +125,16 @@ export async function GET(request: NextRequest) {
       .eq("email", cart.email)
       .eq("status", "abandoned");
   }
+
+  // Clear marketing consent on customer record
+  await supabase
+    .from(TABLES.CUSTOMERS)
+    .update({
+      marketing_consent: false,
+      marketing_consent_at: now,
+    })
+    .eq("org_id", orgId)
+    .eq("email", cart.email);
 
   console.log(`[unsubscribe] ${cart.email} unsubscribed from cart recovery emails`);
 

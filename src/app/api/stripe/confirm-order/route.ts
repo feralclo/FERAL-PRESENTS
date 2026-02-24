@@ -169,6 +169,11 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // Extract marketing consent from PI metadata
+    const customerMarketingConsent = metadata.customer_marketing_consent !== undefined
+      ? metadata.customer_marketing_consent === "true"
+      : undefined;
+
     // Create order via shared function
     const result = await createOrder({
       supabase,
@@ -188,6 +193,7 @@ export async function POST(request: NextRequest) {
         first_name: customerFirstName,
         last_name: customerLastName,
         phone: customerPhone,
+        marketing_consent: customerMarketingConsent,
       },
       payment: {
         method: "stripe",

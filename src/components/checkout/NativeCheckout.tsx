@@ -852,6 +852,7 @@ function SinglePageCheckoutForm({
   const [expressAvailable, setExpressAvailable] = useState(true);
   const [expressLoaded, setExpressLoaded] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "klarna">("card");
+  const [marketingConsent, setMarketingConsent] = useState(true);
   const cardRef = useRef<CardFieldsHandle>(null);
   const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -882,10 +883,11 @@ function SinglePageCheckoutForm({
           })),
           subtotal,
           currency: event.currency || "GBP",
+          marketing_consent: marketingConsent,
         }),
       }).catch(() => {});
     }, 500);
-  }, [firstName, lastName, capturedEmail, email, event.id, event.currency, cartLines, subtotal]);
+  }, [firstName, lastName, capturedEmail, email, event.id, event.currency, cartLines, subtotal, marketingConsent]);
 
   useEffect(() => {
     if (!elements) return;
@@ -953,6 +955,7 @@ function SinglePageCheckoutForm({
               last_name: walletLastName,
               email: walletEmail.toLowerCase(),
               phone: walletPhone || undefined,
+              marketing_consent: marketingConsent,
             },
             discount_code: discountCode || undefined,
           }),
@@ -1073,6 +1076,7 @@ function SinglePageCheckoutForm({
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               email: email.trim().toLowerCase(),
+              marketing_consent: marketingConsent,
             },
             discount_code: discountCode || undefined,
           }),
@@ -1370,6 +1374,19 @@ function SinglePageCheckoutForm({
               </div>
             </div>
           </div>
+
+          {/* Marketing consent */}
+          <label className="flex items-start gap-3 cursor-pointer select-none -mt-1">
+            <input
+              type="checkbox"
+              checked={marketingConsent}
+              onChange={(e) => setMarketingConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/20 bg-white/[0.04] accent-[var(--accent,#ff0033)] cursor-pointer"
+            />
+            <span className="font-[family-name:var(--font-sans)] text-xs text-foreground/50 leading-relaxed">
+              Keep me updated about future events and offers
+            </span>
+          </label>
 
           {/* Payment */}
           <div className="flex flex-col gap-4">
@@ -1678,6 +1695,7 @@ function TestModeCheckout({
   const [email, setEmail] = useState(capturedEmail);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [marketingConsent, setMarketingConsent] = useState(true);
   const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const captureNameOnBlur = useCallback(() => {
@@ -1707,10 +1725,11 @@ function TestModeCheckout({
           })),
           subtotal,
           currency: event.currency || "GBP",
+          marketing_consent: marketingConsent,
         }),
       }).catch(() => {});
     }, 500);
-  }, [firstName, lastName, capturedEmail, email, event.id, event.currency, cartLines, subtotal]);
+  }, [firstName, lastName, capturedEmail, email, event.id, event.currency, cartLines, subtotal, marketingConsent]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -1747,6 +1766,7 @@ function TestModeCheckout({
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               email: email.trim().toLowerCase(),
+              marketing_consent: marketingConsent,
             },
           }),
         });
@@ -1856,6 +1876,19 @@ function TestModeCheckout({
                     </div>
                   </div>
                 </div>
+
+                {/* Marketing consent */}
+                <label className="flex items-start gap-3 cursor-pointer select-none -mt-1">
+                  <input
+                    type="checkbox"
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/20 bg-white/[0.04] accent-[var(--accent,#ff0033)] cursor-pointer"
+                  />
+                  <span className="font-[family-name:var(--font-sans)] text-xs text-foreground/50 leading-relaxed">
+                    Keep me updated about future events and offers
+                  </span>
+                </label>
 
                 {error && (
                   <div className="bg-destructive/[0.08] border border-destructive/20 text-destructive font-[family-name:var(--font-mono)] text-[11px] tracking-[0.5px] py-3 px-4 text-center rounded-lg">

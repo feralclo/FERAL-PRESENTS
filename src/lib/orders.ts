@@ -23,6 +23,7 @@ export interface OrderCustomer {
   first_name: string;
   last_name: string;
   phone?: string;
+  marketing_consent?: boolean;
 }
 
 /** Payment details attached to the order. */
@@ -202,14 +203,20 @@ export async function createOrder(
 
   if (existingCustomer) {
     customerId = existingCustomer.id;
+    const custUpdate: Record<string, unknown> = {
+      first_name: customer.first_name,
+      last_name: customer.last_name,
+      phone: customer.phone || undefined,
+      updated_at: new Date().toISOString(),
+    };
+    if (typeof customer.marketing_consent === "boolean") {
+      custUpdate.marketing_consent = customer.marketing_consent;
+      custUpdate.marketing_consent_at = new Date().toISOString();
+      custUpdate.marketing_consent_source = "checkout";
+    }
     await supabase
       .from(TABLES.CUSTOMERS)
-      .update({
-        first_name: customer.first_name,
-        last_name: customer.last_name,
-        phone: customer.phone || undefined,
-        updated_at: new Date().toISOString(),
-      })
+      .update(custUpdate)
       .eq("id", customerId);
   } else {
     const { data: newCustomer, error: custErr } = await supabase
@@ -221,6 +228,11 @@ export async function createOrder(
         last_name: customer.last_name,
         phone: customer.phone || undefined,
         first_order_at: new Date().toISOString(),
+        ...(typeof customer.marketing_consent === "boolean" ? {
+          marketing_consent: customer.marketing_consent,
+          marketing_consent_at: new Date().toISOString(),
+          marketing_consent_source: "checkout",
+        } : {}),
       })
       .select("id")
       .single();

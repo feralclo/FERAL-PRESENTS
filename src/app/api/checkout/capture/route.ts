@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       items,
       subtotal,
       currency,
+      marketing_consent,
     } = body;
 
     // Optional discount fields — only included when caller has discount info
@@ -79,15 +80,23 @@ export async function POST(request: NextRequest) {
       // Only update name if provided AND customer doesn't already have a name
       // from a completed order (don't overwrite confirmed purchase data with
       // partial checkout data)
+      const updates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
       if (first_name || last_name) {
-        const updates: Record<string, unknown> = {
-          updated_at: new Date().toISOString(),
-        };
         // Update name if customer has no name yet, or if they haven't purchased
         if (!existing.first_name || existing.total_orders === 0) {
           if (first_name) updates.first_name = first_name;
           if (last_name) updates.last_name = last_name;
         }
+      }
+      // Explicit checkout consent always wins (user made an active choice)
+      if (typeof marketing_consent === "boolean") {
+        updates.marketing_consent = marketing_consent;
+        updates.marketing_consent_at = new Date().toISOString();
+        updates.marketing_consent_source = "checkout";
+      }
+      if (Object.keys(updates).length > 1) {
         await supabase
           .from(TABLES.CUSTOMERS)
           .update(updates)
@@ -107,6 +116,11 @@ export async function POST(request: NextRequest) {
           total_spent: 0,
           city: geoCity ? decodeURIComponent(geoCity) : null,
           country: geoCountry || null,
+          ...(typeof marketing_consent === "boolean" ? {
+            marketing_consent,
+            marketing_consent_at: new Date().toISOString(),
+            marketing_consent_source: "checkout",
+          } : {}),
         })
         .select("id")
         .single();

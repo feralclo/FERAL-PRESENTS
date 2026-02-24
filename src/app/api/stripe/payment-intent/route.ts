@@ -338,6 +338,10 @@ export async function POST(request: NextRequest) {
       items_json: JSON.stringify(items),
     };
 
+    if (typeof customer.marketing_consent === "boolean") {
+      metadata.customer_marketing_consent = customer.marketing_consent ? "true" : "false";
+    }
+
     if (discountMeta) {
       metadata.discount_code = discountMeta.code;
       metadata.discount_type = discountMeta.type;

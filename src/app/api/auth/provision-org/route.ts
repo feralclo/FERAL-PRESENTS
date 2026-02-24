@@ -150,7 +150,6 @@ export async function POST(request: NextRequest) {
                 experience_level: experience_level || null,
                 completed_at: new Date().toISOString(),
               },
-              org_id: slug,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "key" }

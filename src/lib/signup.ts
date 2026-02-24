@@ -188,7 +188,6 @@ export async function provisionOrg(params: ProvisionOrgParams): Promise<{
           assigned_by: "self-signup",
           assigned_at: now,
         },
-        org_id: orgSlug,
         updated_at: now,
       },
       { onConflict: "key" }

@@ -64,22 +64,33 @@ export async function PUT(
     }
 
     // Gate: block going live with stripe payments if no Stripe account connected.
-    // Checks the org's own stripe_account setting — orgs with connected accounts pass.
+    // Only applies when *transitioning* to live — editing an already-live event is fine.
     if (
       body.status === "live" &&
       body.payment_method === "stripe"
     ) {
-      const { data: stripeRow } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", stripeAccountKey(orgId))
+      const { data: existingEvent } = await supabase
+        .from(TABLES.EVENTS)
+        .select("status")
+        .eq("id", id)
+        .eq("org_id", orgId)
         .single();
 
-      if (!stripeRow?.data?.account_id) {
-        return NextResponse.json(
-          { error: "Connect your payment account before going live. Go to Settings → Payments to set up." },
-          { status: 400 }
-        );
+      const isAlreadyLive = existingEvent?.status === "live";
+
+      if (!isAlreadyLive) {
+        const { data: stripeRow } = await supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", stripeAccountKey(orgId))
+          .single();
+
+        if (!stripeRow?.data?.account_id) {
+          return NextResponse.json(
+            { error: "Connect your payment account before going live. Go to Settings → Payments to set up." },
+            { status: 400 }
+          );
+        }
       }
     }
 

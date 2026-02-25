@@ -183,7 +183,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/push-vapid-key",
   "/api/team/accept-invite",
   "/api/announcement/signup",
-  "/api/beta/apply",
+  "/api/beta/",
 ];
 
 const PUBLIC_API_EXACT_GETS = [

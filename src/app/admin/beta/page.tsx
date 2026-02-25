@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -13,9 +14,6 @@ import {
   GraduationCap,
   Sparkles,
   HelpCircle,
-  Shield,
-  Zap,
-  Users,
 } from "lucide-react";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
@@ -25,27 +23,19 @@ import "@/styles/admin.css";
    ══════════════════════════════════════════════════════════ */
 
 const EVENT_TYPES = [
-  { id: "club-nights", label: "Club nights & parties", icon: Music },
-  { id: "live-music", label: "Live music & concerts", icon: Mic2 },
-  { id: "festivals", label: "Festivals & multi-day", icon: Tent },
-  { id: "workshops", label: "Workshops & classes", icon: GraduationCap },
-  { id: "pop-ups", label: "Pop-ups & activations", icon: Sparkles },
+  { id: "club-nights", label: "Club nights", icon: Music },
+  { id: "live-music", label: "Live music", icon: Mic2 },
+  { id: "festivals", label: "Festivals", icon: Tent },
+  { id: "workshops", label: "Workshops", icon: GraduationCap },
+  { id: "pop-ups", label: "Pop-ups", icon: Sparkles },
   { id: "other", label: "Other", icon: HelpCircle },
 ];
 
-const MONTHLY_EVENTS_OPTIONS = [
-  { id: "1-2", label: "1–2 events" },
-  { id: "3-5", label: "3–5 events" },
-  { id: "6-10", label: "6–10 events" },
-  { id: "10+", label: "10+ events" },
-];
-
-const AUDIENCE_SIZE_OPTIONS = [
-  { id: "under-200", label: "Under 200" },
-  { id: "200-500", label: "200–500" },
-  { id: "500-2000", label: "500–2,000" },
-  { id: "2000-10000", label: "2,000–10,000" },
-  { id: "10000+", label: "10,000+" },
+const SCALE_OPTIONS = [
+  { id: "just-starting", label: "Just getting started", sub: "Planning first events" },
+  { id: "growing", label: "Growing fast", sub: "Running regular events, ready to scale" },
+  { id: "established", label: "Established", sub: "Consistent events, looking for better tools" },
+  { id: "switching", label: "Switching platforms", sub: "Done with Skiddle / Eventbrite / DICE" },
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -79,7 +69,9 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
         <div
           key={i}
           className={`h-1 flex-1 rounded-full transition-all duration-500 ${
-            i <= step ? "bg-primary shadow-[0_0_8px_rgba(139,92,246,0.4)]" : "bg-border"
+            i <= step
+              ? "bg-primary shadow-[0_0_8px_rgba(139,92,246,0.4)]"
+              : "bg-border"
           }`}
         />
       ))}
@@ -87,18 +79,106 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   STEP 0 — LANDING / INTRO
-   ══════════════════════════════════════════════════════════ */
+/** Dot grid + cursor-tracking glow background */
+function GridBackground() {
+  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
 
-function StepIntro({ onStart }: { onStart: () => void }) {
-  const [visible, setVisible] = useState(false);
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+  }, []);
 
   useEffect(() => {
-    // Staggered entrance
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [handleMouseMove]);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden">
+      {/* Dot grid */}
+      <div
+        className="absolute inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(139, 92, 246, 0.25) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+      {/* Cursor-following glow (desktop) */}
+      <div
+        className="absolute inset-0 hidden sm:block transition-opacity duration-300"
+        style={{
+          background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(139, 92, 246, 0.06), transparent 40%)`,
+        }}
+      />
+      {/* Ambient floating glow (always, stronger on mobile) */}
+      <div
+        className="absolute -left-[200px] -top-[200px] h-[600px] w-[600px] rounded-full bg-violet-500/[0.04] blur-[150px]"
+        style={{ animation: "betaFloat 20s ease-in-out infinite" }}
+      />
+      <div
+        className="absolute -right-[100px] bottom-[10%] h-[400px] w-[400px] rounded-full bg-violet-400/[0.03] blur-[120px]"
+        style={{ animation: "betaFloat 25s ease-in-out infinite reverse" }}
+      />
+      {/* Keyframes injected via style tag */}
+      <style>{`
+        @keyframes betaFloat {
+          0%, 100% { transform: translate(0, 0); }
+          33% { transform: translate(80px, 40px); }
+          66% { transform: translate(-40px, 80px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   STEP 0 — LANDING (INVITE CODE + REQUEST ACCESS)
+   ══════════════════════════════════════════════════════════ */
+
+function StepIntro({
+  onRequestAccess,
+  onCodeVerified,
+}: {
+  onRequestAccess: () => void;
+  onCodeVerified: () => void;
+}) {
+  const [visible, setVisible] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [codeLoading, setCodeLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
     const t = setTimeout(() => setVisible(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  const handleVerifyCode = async () => {
+    if (!code.trim()) return;
+    setCodeError("");
+    setCodeLoading(true);
+
+    try {
+      const res = await fetch("/api/beta/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json();
+
+      if (data.valid) {
+        sessionStorage.setItem("entry_beta_invite", code.trim());
+        onCodeVerified();
+        router.push("/admin/signup/");
+      } else {
+        setCodeError("Invalid code. Check your invite and try again.");
+      }
+    } catch {
+      setCodeError("Something went wrong. Try again.");
+    } finally {
+      setCodeLoading(false);
+    }
+  };
 
   return (
     <div
@@ -106,81 +186,107 @@ function StepIntro({ onStart }: { onStart: () => void }) {
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
       }`}
     >
-      {/* Animated gradient orbs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-1/4 top-1/4 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/[0.04] blur-[150px] animate-pulse" />
-        <div
-          className="absolute right-1/4 bottom-1/3 h-[400px] w-[400px] rounded-full bg-violet-400/[0.03] blur-[120px]"
-          style={{ animation: "pulse 4s ease-in-out infinite 1s" }}
-        />
-      </div>
+      <GridBackground />
 
-      <div className="relative w-full max-w-[480px] text-center">
-        {/* Beta badge */}
-        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-4 py-1.5">
-          <div className="relative flex h-2 w-2">
+      <div className="relative w-full max-w-[440px] text-center">
+        {/* Badge */}
+        <div className="mb-8 inline-flex items-center gap-2.5 rounded-full border border-primary/20 bg-primary/[0.06] px-4 py-1.5">
+          <div className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </div>
-          <span className="text-[12px] font-semibold tracking-[2px] uppercase text-primary">
-            Early Access
+          <span className="text-[11px] font-semibold tracking-[2.5px] uppercase text-primary">
+            Invite Only
           </span>
         </div>
 
         {/* Wordmark */}
-        <div className="mb-6">
+        <div className="mb-5">
           <EntryWordmark />
         </div>
 
         {/* Headline */}
-        <h1 className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
-          The event platform built for{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-violet-500 to-violet-600">
-            promoters who give a damn
-          </span>
+        <h1 className="text-[26px] sm:text-[30px] font-bold leading-[1.2] text-foreground tracking-tight">
+          Stop making other platforms famous
         </h1>
 
-        <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground max-w-[400px] mx-auto">
-          We&apos;re opening Entry to a select group of promoters. White-label
-          event pages, instant Stripe payouts, gamified rep programs — under your
-          brand.
+        <p className="mx-auto mt-4 max-w-[380px] text-[15px] leading-relaxed text-muted-foreground">
+          Your brand on every page. Your money the second it lands. Your
+          checkout in 30 seconds. We&apos;re letting in a small group of
+          promoters who are ready to own their events.
         </p>
 
-        {/* Social proof pills */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          {[
-            { icon: Shield, text: "Invite only" },
-            { icon: Zap, text: "Instant payouts" },
-            { icon: Users, text: "Limited spots" },
-          ].map((item) => (
-            <div
-              key={item.text}
-              className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-[12px] text-muted-foreground"
+        {/* ── Invite code section ── */}
+        <div className="mt-10 rounded-2xl border border-border/60 bg-card/80 p-6 text-left backdrop-blur-sm">
+          <p className="mb-3 text-[13px] font-semibold text-foreground">
+            Have an invite code?
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Enter code"
+              className="h-11 flex-1 rounded-xl border border-input bg-background/50 px-4 font-mono text-[14px] uppercase tracking-wider text-foreground outline-none transition-all duration-200 placeholder:text-muted-foreground/30 placeholder:normal-case placeholder:tracking-normal focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15"
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value);
+                setCodeError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              onClick={handleVerifyCode}
+              disabled={!code.trim() || codeLoading}
+              className="h-11 rounded-xl bg-primary px-5 text-[13px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >
-              <item.icon size={12} className="text-primary/70" />
-              {item.text}
+              {codeLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <ArrowRight size={16} />
+              )}
+            </button>
+          </div>
+          {codeError && (
+            <p className="mt-2 text-[12px] text-destructive">{codeError}</p>
+          )}
+
+          {/* Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border/60" />
             </div>
-          ))}
+            <div className="relative flex justify-center">
+              <span className="bg-card px-3 text-[11px] text-muted-foreground/40">
+                or
+              </span>
+            </div>
+          </div>
+
+          {/* Request access */}
+          <button
+            onClick={onRequestAccess}
+            className="group flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background/50 text-[13px] font-medium text-foreground transition-all duration-200 hover:border-primary/30 hover:bg-background"
+          >
+            Request access without a code
+            <ArrowRight
+              size={14}
+              className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+            />
+          </button>
         </div>
 
-        {/* CTA */}
-        <button
-          onClick={onStart}
-          className="group mt-10 inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-8 text-[14px] font-semibold text-white shadow-[0_1px_20px_rgba(139,92,246,0.3)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_30px_rgba(139,92,246,0.45)] hover:scale-[1.02] active:scale-[0.98]"
-        >
-          Request early access
-          <ArrowRight
-            size={16}
-            className="transition-transform group-hover:translate-x-0.5"
-          />
-        </button>
+        {/* Value props */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] text-muted-foreground/50">
+          <span>Instant Stripe payouts</span>
+          <span className="text-border">|</span>
+          <span>100% white-label</span>
+          <span className="text-border">|</span>
+          <span>30s checkout</span>
+        </div>
 
-        <p className="mt-4 text-[12px] text-muted-foreground/50">
-          Takes less than 60 seconds
-        </p>
-
-        {/* Existing account */}
-        <p className="mt-10 text-[13px] text-muted-foreground">
+        {/* Sign in */}
+        <p className="mt-8 text-[13px] text-muted-foreground">
           Already have access?{" "}
           <Link
             href="/admin/login/"
@@ -195,7 +301,7 @@ function StepIntro({ onStart }: { onStart: () => void }) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   STEP 1 — COMPANY NAME + EVENT TYPES
+   STEP 1 — WHO ARE YOU
    ══════════════════════════════════════════════════════════ */
 
 function StepCompany({
@@ -226,17 +332,18 @@ function StepCompany({
         Back
       </button>
 
-      <h1 className="text-2xl font-bold text-foreground">
-        Tell us about your brand
+      <h1 className="text-[22px] font-bold text-foreground leading-tight">
+        Tell us who you are
       </h1>
       <p className="mt-2 text-[14px] text-muted-foreground">
-        We want to make sure Entry is the right fit.
+        We hand-pick every promoter on the platform. This isn&apos;t a
+        free-for-all.
       </p>
 
       {/* Company name */}
-      <div className="mt-8">
+      <div className="mt-7">
         <label className="mb-2 block text-[13px] font-medium text-foreground">
-          Brand / company name
+          Brand or company name
         </label>
         <input
           type="text"
@@ -250,12 +357,14 @@ function StepCompany({
       </div>
 
       {/* Event types */}
-      <div className="mt-6">
-        <label className="mb-3 block text-[13px] font-medium text-foreground">
-          What kind of events do you run?{" "}
-          <span className="text-muted-foreground/50">(optional)</span>
+      <div className="mt-5">
+        <label className="mb-2.5 block text-[13px] font-medium text-foreground">
+          What do you run?{" "}
+          <span className="font-normal text-muted-foreground/50">
+            Select all that apply
+          </span>
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {EVENT_TYPES.map((type) => {
             const Icon = type.icon;
             const isSelected = selectedTypes.has(type.id);
@@ -264,17 +373,21 @@ function StepCompany({
                 key={type.id}
                 type="button"
                 onClick={() => onToggleType(type.id)}
-                className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all duration-200 ${
+                className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 transition-all duration-200 ${
                   isSelected
                     ? "border-primary/40 bg-primary/[0.06] text-foreground"
-                    : "border-border bg-card hover:border-border/80 text-foreground/70"
+                    : "border-border bg-card hover:border-border/80 text-foreground/60"
                 }`}
               >
                 <Icon
-                  size={15}
-                  className={isSelected ? "text-primary" : "text-muted-foreground/60"}
+                  size={16}
+                  className={
+                    isSelected ? "text-primary" : "text-muted-foreground/50"
+                  }
                 />
-                <span className="text-[13px] font-medium">{type.label}</span>
+                <span className="text-[11px] font-medium leading-tight text-center">
+                  {type.label}
+                </span>
               </button>
             );
           })}
@@ -285,7 +398,7 @@ function StepCompany({
         type="button"
         onClick={onContinue}
         disabled={!canContinue}
-        className="mt-8 h-12 w-full rounded-xl bg-primary text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        className="mt-7 h-12 w-full rounded-xl bg-primary text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
         Continue
       </button>
@@ -294,21 +407,17 @@ function StepCompany({
 }
 
 /* ══════════════════════════════════════════════════════════
-   STEP 2 — SCALE (QUALIFYING)
+   STEP 2 — YOUR SCALE
    ══════════════════════════════════════════════════════════ */
 
 function StepScale({
-  monthlyEvents,
-  onMonthlyEventsChange,
-  audienceSize,
-  onAudienceSizeChange,
+  selected,
+  onSelect,
   onContinue,
   onBack,
 }: {
-  monthlyEvents: string | null;
-  onMonthlyEventsChange: (v: string) => void;
-  audienceSize: string | null;
-  onAudienceSizeChange: (v: string) => void;
+  selected: string | null;
+  onSelect: (v: string) => void;
   onContinue: () => void;
   onBack: () => void;
 }) {
@@ -323,63 +432,47 @@ function StepScale({
         Back
       </button>
 
-      <h1 className="text-2xl font-bold text-foreground">
-        What&apos;s your scale?
+      <h1 className="text-[22px] font-bold text-foreground leading-tight">
+        Where are you at?
       </h1>
       <p className="mt-2 text-[14px] text-muted-foreground">
-        This helps us prioritise the right beta features for you.
+        No wrong answer. We&apos;re looking for promoters at every stage who
+        want better tools.
       </p>
 
-      {/* Monthly events */}
-      <div className="mt-8">
-        <label className="mb-3 block text-[13px] font-medium text-foreground">
-          How many events per month?
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {MONTHLY_EVENTS_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => onMonthlyEventsChange(opt.id)}
-              className={`rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
-                monthlyEvents === opt.id
-                  ? "border-primary/40 bg-primary/[0.06] text-foreground"
-                  : "border-border bg-card hover:border-border/80 text-foreground/70"
-              }`}
-            >
-              <span className="text-[14px] font-medium">{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Audience size */}
-      <div className="mt-6">
-        <label className="mb-3 block text-[13px] font-medium text-foreground">
-          Typical audience size per event?
-        </label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {AUDIENCE_SIZE_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => onAudienceSizeChange(opt.id)}
-              className={`rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
-                audienceSize === opt.id
-                  ? "border-primary/40 bg-primary/[0.06] text-foreground"
-                  : "border-border bg-card hover:border-border/80 text-foreground/70"
-              }`}
-            >
-              <span className="text-[14px] font-medium">{opt.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="mt-7 flex flex-col gap-2">
+        {SCALE_OPTIONS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onSelect(opt.id)}
+            className={`rounded-xl border px-5 py-4 text-left transition-all duration-200 ${
+              selected === opt.id
+                ? "border-primary/40 bg-primary/[0.06]"
+                : "border-border bg-card hover:border-border/80"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[14px] font-semibold text-foreground">
+                {opt.label}
+              </span>
+              {selected === opt.id && (
+                <Check
+                  size={16}
+                  className="shrink-0 text-primary"
+                  strokeWidth={2.5}
+                />
+              )}
+            </div>
+            <p className="mt-1 text-[13px] text-muted-foreground">{opt.sub}</p>
+          </button>
+        ))}
       </div>
 
       <button
         type="button"
         onClick={onContinue}
-        className="mt-8 h-12 w-full rounded-xl bg-primary text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)]"
+        className="mt-7 h-12 w-full rounded-xl bg-primary text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)]"
       >
         Continue
       </button>
@@ -419,11 +512,11 @@ function StepEmail({
         Back
       </button>
 
-      <h1 className="text-2xl font-bold text-foreground">
-        Where should we reach you?
+      <h1 className="text-[22px] font-bold text-foreground leading-tight">
+        Where should we send your invite?
       </h1>
       <p className="mt-2 text-[14px] text-muted-foreground">
-        We&apos;ll review your application and get back to you within 48 hours.
+        Accepted promoters hear back within 48 hours.
       </p>
 
       {error && (
@@ -432,31 +525,29 @@ function StepEmail({
         </div>
       )}
 
-      <div className="mt-8">
+      <div className="mt-7">
         <label className="mb-2 block text-[13px] font-medium text-foreground">
           Email address
         </label>
         <input
           type="email"
-          placeholder="you@example.com"
+          placeholder="you@company.com"
           className="h-12 w-full rounded-xl border border-input bg-background/50 px-4 text-[15px] text-foreground outline-none transition-all duration-200 placeholder:text-muted-foreground/40 focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15"
           value={email}
           onChange={(e) => onEmailChange(e.target.value)}
           autoFocus
           autoComplete="email"
         />
+        <p className="mt-2.5 text-[12px] text-muted-foreground/40">
+          We&apos;ll only contact you about your access. No spam.
+        </p>
       </div>
-
-      {/* Privacy note */}
-      <p className="mt-3 text-[12px] text-muted-foreground/50">
-        No spam, ever. We&apos;ll only contact you about your beta access.
-      </p>
 
       <button
         type="button"
         onClick={onSubmit}
         disabled={!isValid || loading}
-        className="group mt-8 h-12 w-full rounded-xl bg-primary text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        className="group mt-7 h-12 w-full rounded-xl bg-primary text-[14px] font-semibold text-white shadow-[0_1px_12px_rgba(139,92,246,0.25)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_1px_20px_rgba(139,92,246,0.35)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -495,52 +586,45 @@ function StepConfirmation({ position }: { position: number }) {
         visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
       }`}
     >
-      {/* Background orbs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-1/3 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/[0.06] blur-[150px]" />
-        <div className="absolute right-1/3 bottom-1/4 h-[300px] w-[300px] rounded-full bg-emerald-500/[0.04] blur-[100px]" />
-      </div>
+      <GridBackground />
 
-      <div className="relative w-full max-w-[480px] text-center">
-        {/* Success check */}
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08]">
-          <Check size={28} className="text-emerald-400" strokeWidth={2.5} />
+      <div className="relative w-full max-w-[440px] text-center">
+        {/* Success icon */}
+        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.08]">
+          <Check size={24} className="text-emerald-400" strokeWidth={2.5} />
         </div>
 
         <EntryWordmark size="sm" />
 
-        <h1 className="mt-6 text-[28px] sm:text-[32px] font-bold text-foreground">
-          You&apos;re on the list
+        <h1 className="mt-5 text-[26px] sm:text-[30px] font-bold text-foreground leading-tight">
+          Application received
         </h1>
 
-        <p className="mt-3 text-[15px] text-muted-foreground max-w-[360px] mx-auto">
-          We&apos;re reviewing applications and onboarding new promoters in
-          small batches. We&apos;ll be in touch soon.
+        <p className="mx-auto mt-3 max-w-[340px] text-[15px] text-muted-foreground leading-relaxed">
+          We review every application personally. If you&apos;re the right fit,
+          you&apos;ll hear from us within 48 hours.
         </p>
 
-        {/* Position card */}
-        <div className="mt-8 rounded-2xl border border-border/60 bg-card p-6">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[3px] text-muted-foreground/60">
-            Your position
+        {/* Position */}
+        <div className="mt-8 rounded-2xl border border-border/60 bg-card/80 p-6 backdrop-blur-sm">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[3px] text-muted-foreground/50">
+            Queue position
           </p>
-          <p className="mt-2 font-mono text-[40px] font-bold text-foreground">
+          <p className="mt-2 font-mono text-[44px] font-bold leading-none text-foreground">
             #{position}
-          </p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            in the early access queue
           </p>
         </div>
 
         {/* What happens next */}
-        <div className="mt-8 text-left rounded-2xl border border-border/60 bg-card p-6">
-          <p className="text-[13px] font-semibold text-foreground mb-4">
+        <div className="mt-6 rounded-2xl border border-border/60 bg-card/80 p-6 text-left backdrop-blur-sm">
+          <p className="mb-4 text-[13px] font-semibold text-foreground">
             What happens next
           </p>
           <div className="space-y-3">
             {[
               "We review your application (usually within 48 hours)",
-              "You'll receive an invite email with your login credentials",
-              "Set up your brand and start selling — takes 5 minutes",
+              "Accepted promoters receive a login link via email",
+              "Connect Stripe, create your first event, start selling",
             ].map((text, i) => (
               <div key={i} className="flex gap-3 items-start">
                 <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
@@ -554,7 +638,6 @@ function StepConfirmation({ position }: { position: number }) {
           </div>
         </div>
 
-        {/* Back to marketing */}
         <a
           href="https://entry.events"
           className="mt-8 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary transition-colors hover:text-primary/80"
@@ -572,7 +655,7 @@ function StepConfirmation({ position }: { position: number }) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   MAIN PAGE
+   MAIN PAGE ORCHESTRATOR
    ══════════════════════════════════════════════════════════ */
 
 export default function BetaApplicationPage() {
@@ -585,13 +668,10 @@ export default function BetaApplicationPage() {
   const [selectedEventTypes, setSelectedEventTypes] = useState<Set<string>>(
     new Set()
   );
-  const [monthlyEvents, setMonthlyEvents] = useState<string | null>(null);
-  const [audienceSize, setAudienceSize] = useState<string | null>(null);
+  const [scale, setScale] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to top on step change
   useEffect(() => {
@@ -619,8 +699,8 @@ export default function BetaApplicationPage() {
           company_name: companyName.trim(),
           email: email.trim(),
           event_types: Array.from(selectedEventTypes),
-          monthly_events: monthlyEvents,
-          audience_size: audienceSize,
+          monthly_events: scale,
+          audience_size: null,
         }),
       });
 
@@ -640,16 +720,19 @@ export default function BetaApplicationPage() {
     }
   };
 
-  // Intro screen (full screen, no card)
+  // ── Intro (full screen)
   if (step === -1) {
     return (
       <div data-admin className="min-h-[100dvh] bg-background">
-        <StepIntro onStart={() => setStep(0)} />
+        <StepIntro
+          onRequestAccess={() => setStep(0)}
+          onCodeVerified={() => {}}
+        />
       </div>
     );
   }
 
-  // Confirmation screen (full screen, no card)
+  // ── Confirmation (full screen)
   if (step === 3) {
     return (
       <div data-admin className="min-h-[100dvh] bg-background">
@@ -658,31 +741,27 @@ export default function BetaApplicationPage() {
     );
   }
 
-  // Form steps (1–3 inside card)
+  // ── Form steps (inside card)
   return (
     <div
       data-admin
       className="flex min-h-[100dvh] items-center justify-center bg-background"
-      ref={containerRef}
     >
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
-      </div>
+      <GridBackground />
 
-      <div className="relative w-full max-w-[520px] px-5 py-12">
+      <div className="relative w-full max-w-[480px] px-5 py-12">
         {/* Wordmark */}
         <div className="mb-4 text-center">
           <EntryWordmark />
         </div>
 
         {/* Progress */}
-        <div className="mb-8 max-w-[200px] mx-auto">
+        <div className="mx-auto mb-8 max-w-[180px]">
           <ProgressBar step={step} total={3} />
         </div>
 
         {/* Form card */}
-        <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-xl shadow-black/20">
+        <div className="rounded-2xl border border-border/60 bg-card/80 p-7 shadow-xl shadow-black/20 backdrop-blur-sm">
           {step === 0 && (
             <StepCompany
               companyName={companyName}
@@ -696,10 +775,8 @@ export default function BetaApplicationPage() {
 
           {step === 1 && (
             <StepScale
-              monthlyEvents={monthlyEvents}
-              onMonthlyEventsChange={setMonthlyEvents}
-              audienceSize={audienceSize}
-              onAudienceSizeChange={setAudienceSize}
+              selected={scale}
+              onSelect={setScale}
               onContinue={() => setStep(2)}
               onBack={() => setStep(0)}
             />
@@ -717,7 +794,6 @@ export default function BetaApplicationPage() {
           )}
         </div>
 
-        {/* Footer */}
         <p className="mt-10 text-center font-mono text-[10px] text-muted-foreground/40 tracking-wider">
           Powered by Entry
         </p>

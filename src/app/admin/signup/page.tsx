@@ -188,16 +188,19 @@ function SignupForm() {
     }
   }, [searchParams]);
 
-  // Beta mode: redirect to beta application page
+  // Beta mode: redirect to beta application page (unless they have an invite code)
   useEffect(() => {
     if (BETA_MODE) {
-      router.replace("/admin/beta/");
+      const hasInviteCode = sessionStorage.getItem("entry_beta_invite");
+      if (!hasInviteCode) {
+        router.replace("/admin/beta/");
+      }
     }
   }, [router]);
 
   // Session check on mount — redirect if already logged in with org
   useEffect(() => {
-    if (BETA_MODE) return; // Skip if beta mode — redirect handles it
+    if (BETA_MODE && !sessionStorage.getItem("entry_beta_invite")) return;
     (async () => {
       try {
         const supabase = getSupabaseClient();

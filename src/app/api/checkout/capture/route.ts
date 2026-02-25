@@ -125,14 +125,39 @@ export async function POST(request: NextRequest) {
         .select("id")
         .single();
 
-      if (custErr || !newCustomer) {
-        console.error("Failed to create customer:", custErr);
+      if (custErr) {
+        // Handle race condition: another request created the customer between our
+        // SELECT and INSERT (unique constraint on org_id + email)
+        if (custErr.code === "23505") {
+          const { data: raced } = await supabase
+            .from(TABLES.CUSTOMERS)
+            .select("id")
+            .eq("org_id", orgId)
+            .eq("email", normalizedEmail)
+            .single();
+          if (raced) {
+            customerId = raced.id;
+          } else {
+            return NextResponse.json(
+              { error: "Failed to resolve customer" },
+              { status: 500 }
+            );
+          }
+        } else {
+          console.error("Failed to create customer:", custErr);
+          return NextResponse.json(
+            { error: "Failed to create customer" },
+            { status: 500 }
+          );
+        }
+      } else if (!newCustomer) {
         return NextResponse.json(
           { error: "Failed to create customer" },
           { status: 500 }
         );
+      } else {
+        customerId = newCustomer.id;
       }
-      customerId = newCustomer.id;
 
       // Best-effort: set a fun rave nickname for the discoverer profile
       // (column may not exist yet in older database schemas)

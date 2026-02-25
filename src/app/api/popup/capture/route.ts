@@ -94,7 +94,18 @@ export async function POST(request: NextRequest) {
       .select("id")
       .single();
 
-    if (custErr || !newCustomer) {
+    if (custErr) {
+      // Handle race condition: another request created the customer between our
+      // SELECT and INSERT (unique constraint on org_id + email)
+      if (custErr.code === "23505") {
+        const { data: raced } = await supabase
+          .from(TABLES.CUSTOMERS)
+          .select("id")
+          .eq("org_id", orgId)
+          .eq("email", normalizedEmail)
+          .single();
+        return NextResponse.json({ customer_id: raced?.id || "ok", created: false });
+      }
       console.error("Popup capture: failed to create customer:", custErr);
       return NextResponse.json(
         { error: "Failed to create customer" },
@@ -102,7 +113,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ customer_id: newCustomer.id, created: true });
+    return NextResponse.json({ customer_id: newCustomer!.id, created: true });
   } catch (err) {
     console.error("Popup capture error:", err);
     return NextResponse.json(

@@ -33,10 +33,9 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch { /* Fall through with default */ }
   return {
     title: `Checkout — ${orgName}`,
-    description: "Complete your ticket purchase.",
-    ...(faviconUrl
-      ? { icons: { icon: faviconUrl, apple: faviconUrl } }
-      : {}),
+    description: `Complete your ticket purchase with ${orgName}. Secure checkout powered by Stripe.`,
+    ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
+    robots: { index: false, follow: false },
   };
 }
 

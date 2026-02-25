@@ -15,7 +15,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { validateVatNumber } from "@/lib/vat";
-import { vatKey } from "@/lib/constants";
+import { vatKey, brandingKey } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +23,8 @@ import { DateTimePicker } from "@/components/ui/date-picker";
 import { Slider } from "@/components/ui/slider";
 import { AlertCircle, Users } from "lucide-react";
 import { useOrgTimezone } from "@/hooks/useOrgTimezone";
+import { SeoCard } from "./SeoCard";
+import type { BrandingSettings } from "@/types/settings";
 import type { VatSettings } from "@/types/settings";
 import type { TabProps } from "./types";
 
@@ -34,7 +36,11 @@ interface StripeAccount {
   details_submitted: boolean;
 }
 
-export function SettingsTab({ event, updateEvent }: TabProps) {
+interface SettingsTabProps extends TabProps {
+  artistNames?: string[];
+}
+
+export function SettingsTab({ event, updateEvent, artistNames = [] }: SettingsTabProps) {
   const orgId = useOrgId();
   const { timezone } = useOrgTimezone();
   const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
@@ -44,6 +50,7 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
   const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
   const [liveBlockedMsg, setLiveBlockedMsg] = useState("");
   const [signupCount, setSignupCount] = useState<number | null>(null);
+  const [orgName, setOrgName] = useState("Entry");
 
   // Detect platform owner + Stripe connection status
   useEffect(() => {
@@ -86,7 +93,7 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
       .finally(() => setLoadingAccounts(false));
   }, [event.payment_method, isPlatformOwner]);
 
-  // Fetch org-level VAT settings for hint display
+  // Fetch org-level VAT settings and branding for hint display
   useEffect(() => {
     fetch(`/api/settings?key=${vatKey(orgId)}`)
       .then((res) => res.json())
@@ -94,7 +101,16 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
         if (json.data) setOrgVat(json.data as VatSettings);
       })
       .catch(() => {});
-  }, []);
+    fetch(`/api/settings?key=${brandingKey(orgId)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) {
+          const branding = json.data as BrandingSettings;
+          if (branding.org_name) setOrgName(branding.org_name);
+        }
+      })
+      .catch(() => {});
+  }, [orgId]);
 
   // Fetch interest signup count when announcement mode is on
   useEffect(() => {
@@ -593,6 +609,13 @@ export function SettingsTab({ event, updateEvent }: TabProps) {
           )}
         </CardContent>
       </Card>
+
+      <SeoCard
+        event={event}
+        updateEvent={updateEvent}
+        orgName={orgName}
+        artistNames={artistNames}
+      />
     </div>
   );
 }

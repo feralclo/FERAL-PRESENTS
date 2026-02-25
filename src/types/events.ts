@@ -64,6 +64,10 @@ export interface Event {
   updated_at: string;
   /** When true, lineup is displayed alphabetically (A-Z) and manual reordering is locked */
   lineup_sort_alphabetical?: boolean;
+  /** SEO: custom meta title override (auto-generated if null) */
+  seo_title?: string | null;
+  /** SEO: custom meta description override (auto-generated if null) */
+  seo_description?: string | null;
   /** Joined event_artists with artist profiles (populated when fetched with join) */
   event_artists?: import("./artists").EventArtist[];
 }

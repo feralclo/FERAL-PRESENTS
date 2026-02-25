@@ -181,6 +181,8 @@ export default function EventEditorPage() {
           queue_window_minutes: event.queue_window_minutes ?? 60,
           queue_title: event.queue_title || null,
           queue_subtitle: event.queue_subtitle || null,
+          seo_title: event.seo_title || null,
+          seo_description: event.seo_description || null,
           ticket_types: ticketTypes.map((tt) => ({
             ...(tt.id ? { id: tt.id } : {}),
             name: tt.name,
@@ -387,7 +389,11 @@ export default function EventEditorPage() {
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6">
-          <SettingsTab event={event} updateEvent={updateEvent} />
+          <SettingsTab
+            event={event}
+            updateEvent={updateEvent}
+            artistNames={eventArtists.map((ea) => ea.artist?.name).filter(Boolean) as string[]}
+          />
         </TabsContent>
       </Tabs>
 

@@ -23,20 +23,35 @@ const DEFAULT_HERO: HomepageSettings = {
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   let orgName = "Entry";
-  let description = "Events, tickets, and experiences.";
+  let faviconUrl: string | undefined;
+  let twitterHandle: string | undefined;
+  let heroImageUrl: string | undefined;
 
   try {
     const orgId = await getOrgId();
     const supabase = await getSupabaseAdmin();
     if (supabase) {
-      const { data } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", brandingKey(orgId))
-        .single();
-      if (data?.data) {
-        const branding = data.data as BrandingSettings;
+      const [brandingResult, homepageResult] = await Promise.all([
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single(),
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", homepageKey(orgId))
+          .single(),
+      ]);
+      if (brandingResult.data?.data) {
+        const branding = brandingResult.data.data as BrandingSettings;
         if (branding.org_name) orgName = branding.org_name;
+        if (branding.favicon_url) faviconUrl = branding.favicon_url;
+        if (branding.social_links?.twitter) twitterHandle = branding.social_links.twitter;
+      }
+      if (homepageResult.data?.data) {
+        const homepage = homepageResult.data.data as HomepageSettings;
+        if (homepage.hero_image_url) heroImageUrl = homepage.hero_image_url;
       }
     }
   } catch {
@@ -44,20 +59,26 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   const title = `${orgName} — Events & Tickets`;
+  const description = `Discover upcoming events and buy tickets from ${orgName}. Live music, experiences, and more.`;
 
   return {
     title,
     description,
+    ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
     openGraph: {
       type: "website",
       title,
       description,
       ...(siteUrl ? { url: siteUrl } : {}),
+      ...(heroImageUrl ? { images: [{ url: heroImageUrl, width: 1200, height: 630, alt: orgName }] } : {}),
+      siteName: orgName,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      ...(heroImageUrl ? { images: [{ url: heroImageUrl, alt: orgName }] } : {}),
+      ...(twitterHandle ? { creator: twitterHandle.startsWith("@") ? twitterHandle : `@${twitterHandle}` } : {}),
     },
   };
 }

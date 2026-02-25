@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Global error boundary — catches errors from the root layout.
@@ -8,6 +9,8 @@ import { useEffect } from "react";
  * Main purpose: handle ChunkLoadError during Vercel deployments.
  * When a new deployment goes live, old JS chunk URLs 404.
  * Auto-reloading picks up the new deployment's assets.
+ *
+ * Also reports errors to Sentry for monitoring.
  */
 export default function GlobalError({
   error,
@@ -16,6 +19,9 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Report to Sentry (filtered errors are handled in sentry.client.config.ts beforeSend)
+    Sentry.captureException(error);
+
     console.error("[global] Client error:", error);
 
     if (

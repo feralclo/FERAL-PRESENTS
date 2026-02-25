@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { stripe } from "@/lib/stripe/server";
+import { fetchSentryErrorSummary } from "@/lib/sentry";
 
 /**
  * Payment Digest — AI-powered payment health analysis.
@@ -104,6 +105,7 @@ async function gatherDigestData(periodHours: number): Promise<{
   connectAccounts: ConnectAccountHealth[];
   webhookEndpoints: WebhookEndpointHealth[];
   previousDigest: PreviousDigestComparison | null;
+  sentryErrors: Awaited<ReturnType<typeof fetchSentryErrorSummary>>;
 } | null> {
   const supabase = await getSupabaseAdmin();
   if (!supabase) return null;
@@ -329,7 +331,16 @@ async function gatherDigestData(periodHours: number): Promise<{
     }
   }
 
+  // ── Sentry platform errors (parallel, non-blocking) ──
+  let sentryData: Awaited<ReturnType<typeof fetchSentryErrorSummary>> = null;
+  try {
+    sentryData = await fetchSentryErrorSummary(periodHours);
+  } catch {
+    // Non-fatal — digest works without Sentry data
+  }
+
   return {
+    sentryErrors: sentryData,
     stats: {
       payments_succeeded: succeeded.length,
       payments_failed: failed.length,
@@ -377,6 +388,7 @@ async function analyzeWithClaude(data: {
   connectAccounts: ConnectAccountHealth[];
   webhookEndpoints: WebhookEndpointHealth[];
   previousDigest: PreviousDigestComparison | null;
+  sentryErrors: Awaited<ReturnType<typeof fetchSentryErrorSummary>>;
   periodHours: number;
 }): Promise<AnalysisResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -490,6 +502,16 @@ ${data.incompletePIs.length > 0
     ? data.incompletePIs.map((pi) => `- ${pi.id}: ${(pi.amount / 100).toFixed(2)} ${pi.currency.toUpperCase()} — ${pi.status} — ${pi.description || "no description"} — created ${Math.round((Date.now() / 1000 - pi.created) / 60)}min ago`).join("\n")
     : "None currently incomplete"}
 
+## Platform Error Monitoring (Sentry)
+${data.sentryErrors
+    ? `- Total errors in period: ${data.sentryErrors.total_errors}
+- Unresolved issues: ${data.sentryErrors.unresolved_issues}
+- Errors by level: ${Object.entries(data.sentryErrors.errors_by_tag).map(([k, v]) => `${k}: ${v}`).join(", ") || "none"}
+${data.sentryErrors.top_issues.length > 0
+      ? `- Top issues:\n${data.sentryErrors.top_issues.map((i) => `  - [${i.level}] ${i.title} (${i.count}x, last seen ${i.last_seen})`).join("\n")}`
+      : "- No issues in this period"}`
+    : "Sentry not configured — only payment-specific monitoring available."}
+
 ## Context
 - This is a live ticketing platform. Failed payments = lost ticket sales = lost revenue.
 - "card_declined", "insufficient_funds", and "expired_card" are normal customer-side issues (not platform problems).
@@ -501,6 +523,8 @@ ${data.incompletePIs.length > 0
 - 3DS abandonment above 20% is high and may indicate checkout UX friction or unnecessary 3DS challenges.
 - Compare current stats against historical baselines when available — flag significant deviations (>50% change).
 - Disabled webhook endpoints or Connect accounts with disabled charges are critical infrastructure failures.
+- Sentry errors show platform-wide issues (API crashes, server component failures, client errors) — not just payment-specific ones. A spike in Sentry errors alongside payment failures may indicate a systemic platform issue vs isolated payment problems.
+- If Sentry data is available, include relevant platform stability findings alongside payment findings.
 
 Respond with valid JSON only (no markdown, no code fences), in this exact structure:
 {

@@ -3,6 +3,7 @@ import { TABLES, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
+import { setSentryEventContext } from "@/lib/sentry";
 import { SettingsProvider } from "@/hooks/useSettings";
 import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
 import type { BrandingSettings } from "@/types/settings";
@@ -97,6 +98,9 @@ export default async function EventLayout({
 
   // Wait for all in parallel
   const [settings, , branding, activeTemplate] = await Promise.all([settingsPromise, mediaPromise, brandingPromise, templatePromise]);
+
+  // Tag Sentry errors with event + org context for this page
+  setSentryEventContext({ id: eventId || undefined, slug, orgId });
 
   // Theme is always from the events table
   const theme = eventTheme || "default";

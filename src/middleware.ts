@@ -184,6 +184,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/team/accept-invite",
   "/api/announcement/signup",
   "/api/beta/",
+  "/api/monitoring", // Sentry tunnel (bypasses ad blockers)
 ];
 
 const PUBLIC_API_EXACT_GETS = [

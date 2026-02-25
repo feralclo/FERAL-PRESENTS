@@ -25,12 +25,14 @@ Everything built must serve that multi-tenant future. Every database query filte
 | Email | Resend (transactional email + PDF attachments) | — |
 | Wallet Passes | Apple Wallet + Google Wallet | — |
 | Video | Mux (transcoding + streaming) | — |
+| Error Monitoring | Sentry (@sentry/nextjs) | — |
 | Fonts | Google Fonts CDN (Space Mono, Inter) | — |
 
 ## Project Structure
 
 ```
 src/
+├── instrumentation.ts         # Sentry init for Node.js + Edge runtimes, onRequestError hook
 ├── middleware.ts              # Auth, route protection, security headers, org_id resolution
 ├── app/
 │   ├── layout.tsx             # Root layout (fonts, GTM, consent, scanlines, OrgProvider)
@@ -126,6 +128,7 @@ src/
 │   ├── nicknames.ts           # generateNickname() — display names for anonymous popup leads
 │   ├── rep-*.ts               # Rep program: attribution, emails, points, notifications, tiers, social, utils, quest-styles
 │   ├── team-emails.ts         # Team invite emails via Resend (branded, fire-and-forget)
+│   ├── sentry.ts              # Sentry utilities: org/user/event/checkout context, capturePaymentError, fetchSentryErrorSummary (for AI digest)
 │   ├── payment-monitor.ts     # logPaymentEvent() — fire-and-forget append to payment_events
 │   ├── payment-alerts.ts      # Resend alerts for payment failures (30min cooldown)
 │   ├── payment-digest.ts      # AI payment digest (Claude Haiku analysis of payment health)
@@ -156,6 +159,15 @@ src/
 ---
 
 ## Architecture
+
+### Error Monitoring (Sentry)
+Three-layer monitoring: **Sentry** (platform-wide crash tracking + session replay), **Payment Monitor** (domain-specific payment health in `payment_events` table), **AI Digest** (Claude Haiku analysis combining both sources every 6h).
+
+Sentry config: `sentry.client.config.ts` (browser), `sentry.server.config.ts` (Node), `sentry.edge.config.ts` (middleware). Auto-instruments API routes, server components, middleware. Client uses session replay (100% on error). Tunnel route `/api/monitoring` bypasses ad blockers.
+
+Context enrichment: `setSentryOrgContext()` / `setSentryUserContext()` called automatically in `requireAuth()` / `requireRepAuth()`. `setSentryEventContext()` called in event layout. All errors tagged with `org_id` for multi-tenant filtering.
+
+AI digest integration: `fetchSentryErrorSummary()` in `lib/sentry.ts` pulls top Sentry issues via API and feeds them into the Claude payment digest for a complete platform health picture.
 
 ### Payment System (Stripe)
 Dynamic event pages → `NativeCheckout` → `StripePaymentForm` + `ExpressCheckout` (Apple/Google Pay). PaymentIntent flow: create → confirm → webhook → order + tickets + email. Discounts validated server-side via `/api/discounts/validate`. Payment health monitored via `logPaymentEvent()` → `payment_events` table.
@@ -391,7 +403,7 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 **Push notifications**: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (web push for rep portal)
 **Wallet passes**: `APPLE_PASS_CERTIFICATE`, `APPLE_PASS_CERTIFICATE_PASSWORD`, `APPLE_WWDR_CERTIFICATE`, `APPLE_PASS_TYPE_IDENTIFIER`, `APPLE_PASS_TEAM_IDENTIFIER`, `GOOGLE_WALLET_SERVICE_ACCOUNT_KEY`, `GOOGLE_WALLET_ISSUER_ID`
 **Domain management**: `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`
-**Monitoring**: `PLATFORM_ALERT_EMAIL` (payment/health alerts), `ANTHROPIC_API_KEY` (AI payment digest — optional)
+**Monitoring**: `PLATFORM_ALERT_EMAIL` (payment/health alerts), `ANTHROPIC_API_KEY` (AI payment digest — optional), `NEXT_PUBLIC_SENTRY_DSN` (Sentry error tracking), `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` (source map upload + API access)
 
 ---
 

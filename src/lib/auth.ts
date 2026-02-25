@@ -3,6 +3,7 @@ import { getSupabaseServer } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
+import { setSentryUserContext, setSentryOrgContext } from "@/lib/sentry";
 
 /**
  * Auth helper for admin API routes.
@@ -65,6 +66,10 @@ export async function requireAuth(): Promise<
     }
 
     const orgId = await getOrgId();
+
+    // Enrich Sentry with auth context — every error from this request
+    // will be tagged with the user and org for easy filtering
+    setSentryUserContext({ id: user.id, email: user.email, role: "admin", orgId });
 
     return {
       user: { id: user.id, email: user.email || "" },
@@ -210,6 +215,8 @@ export async function requireRepAuth(): Promise<
         ),
       };
     }
+
+    setSentryUserContext({ id: rep.auth_user_id, email: rep.email, role: "rep", orgId: rep.org_id });
 
     return { rep, error: null };
   } catch {

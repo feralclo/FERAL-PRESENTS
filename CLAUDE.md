@@ -438,17 +438,13 @@ The platform has comprehensive error monitoring. When the user asks you to "chec
 
 ### Step 1: Read the current health status
 
+```bash
+# Fetch unresolved Sentry issues directly (no auth server needed — uses .env.local)
+source .env.local && curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+  "https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/issues/?query=is:unresolved&sort=freq&limit=25"
 ```
-# Fetch platform-wide health (Sentry errors + system checks + payment summary)
-curl -s http://localhost:3000/api/platform/platform-health?period=24h
-
-# Fetch Sentry issues directly (more detail, readable format)
-curl -s http://localhost:3000/api/platform/sentry?period=24h
-
-# Fetch payment health (payment-specific deep dive)
-curl -s http://localhost:3000/api/platform/payment-health?period=24h
-```
-Use `fetch()` via Bash or WebFetch to call these API endpoints. They require platform owner auth (use the browser session cookie or service role).
+For payment health, use Supabase MCP to query `payment_events` table directly (filter by `resolved = false`).
+Alternatively, if dev server is running: `GET /api/platform/platform-health?period=24h`, `GET /api/platform/sentry?period=24h`, `GET /api/platform/payment-health?period=24h`.
 
 ### Step 2: Triage each issue
 
@@ -472,28 +468,27 @@ Use `fetch()` via Bash or WebFetch to call these API endpoints. They require pla
 
 For issues that need fixing: read the error, find the file, understand the root cause, fix it, test it. Commit with a message like `fix: [description of what was broken and why]`.
 
-### Step 4: Resolve issues via API
+### Step 4: Resolve issues after fixing or triaging
 
 ```bash
-# Resolve a Sentry issue (after fixing or determining it's not a bug)
-curl -X POST http://localhost:3000/api/platform/sentry \
+# Resolve a Sentry issue (uses .env.local — no auth server needed)
+source .env.local && curl -X PUT -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"issue_id": "SENTRY_ISSUE_ID", "action": "resolve", "comment": "Fixed in commit abc123 — was a null check missing in checkout handler"}'
+  -d '{"status":"resolved"}' \
+  "https://sentry.io/api/0/issues/ISSUE_ID/"
 
-# Resolve a payment health event
-curl -X POST http://localhost:3000/api/platform/payment-health/EVENT_UUID/resolve \
+# Optionally add a comment explaining why (audit trail for future sessions)
+source .env.local && curl -X POST -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"notes": "Normal card decline — customer bank rejection, not a platform issue"}'
-
-# Bulk-resolve payment warnings (e.g., all card declines)
-curl -X POST http://localhost:3000/api/platform/payment-health/resolve-all \
-  -H "Content-Type: application/json" \
-  -d '{"severity": "warning", "notes": "Batch-resolved card declines — normal customer-side failures"}'
+  -d '{"text":"Fixed in commit abc123 — null check missing in checkout handler"}' \
+  "https://sentry.io/api/0/issues/ISSUE_ID/comments/"
 ```
+For payment events, use Supabase MCP to update `payment_events` set `resolved=true, resolution_notes='...'` where `id='EVENT_ID'`.
+Bulk resolve: update `payment_events` set `resolved=true, resolution_notes='Batch: card declines, normal'` where `severity='warning' and resolved=false`.
 
 ### Step 5: Generate AI digest (optional)
 
-If you want a comprehensive AI-generated summary:
+If dev server is running:
 ```bash
 # Generate platform-wide health digest (covers everything)
 curl -X POST http://localhost:3000/api/platform/platform-digest \
@@ -517,6 +512,7 @@ curl -X POST http://localhost:3000/api/platform/payment-digest \
 7. **Frontend errors WITHOUT `org_id`** are platform-wide — higher priority
 8. **Never resolve Sentry issues you don't understand** — if the error is unclear, investigate the code first
 9. **Commit fixes before resolving** — fix the bug, push the fix, THEN resolve the monitoring issue
+10. **Manual actions** — if something needs the user to act (e.g., re-enable a Stripe webhook, update bank details), clearly list what they need to do and where, step by step. Stripe has no MCP — the user must use the Stripe dashboard
 
 ### API Reference (Platform Health)
 

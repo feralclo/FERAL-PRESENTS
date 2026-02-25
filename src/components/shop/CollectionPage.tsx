@@ -6,9 +6,10 @@ import { Header } from "@/components/layout/Header";
 import { MidnightFooter } from "@/components/midnight/MidnightFooter";
 import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
-import { normalizeMerchImages } from "@/lib/merch-images";
+import { useShopCart } from "@/hooks/useShopCart";
 import { ProductCard } from "./ProductCard";
 import { ProductDetailModal } from "./ProductDetailModal";
+import { MerchCheckout } from "./MerchCheckout";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Event } from "@/types/events";
 
@@ -22,12 +23,40 @@ interface CollectionPageProps {
 export function CollectionPage({ collection }: CollectionPageProps) {
   const headerHidden = useHeaderScroll();
   const [selectedItem, setSelectedItem] = useState<MerchCollectionItem | null>(null);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   const event = collection.event as Event | undefined;
   const heroImage = collection.hero_image || event?.hero_image || event?.cover_image;
   const items = (collection.items || []) as MerchCollectionItem[];
   const featuredItems = items.filter((i) => i.is_featured);
   const regularItems = items.filter((i) => !i.is_featured);
+
+  const currency = event?.currency || "GBP";
+  const cart = useShopCart(currency);
+
+  // Checkout view
+  if (showCheckout && event) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-dark,#0e0e0e)]">
+        <header
+          className={`header${headerHidden ? " header--hidden" : ""}`}
+          id="header"
+        >
+          <VerifiedBanner />
+          <Header />
+        </header>
+        <MerchCheckout
+          collection={collection}
+          event={event}
+          cartItems={cart.items}
+          totalPrice={cart.totalPrice}
+          currency={currency}
+          onBack={() => setShowCheckout(false)}
+        />
+        <MidnightFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg-dark,#0e0e0e)]">
@@ -193,7 +222,39 @@ export function CollectionPage({ collection }: CollectionPageProps) {
           collection={collection}
           event={event}
           onClose={() => setSelectedItem(null)}
+          onAddToCart={(size) => {
+            cart.addItem(selectedItem, size || undefined);
+            setSelectedItem(null);
+          }}
         />
+      )}
+
+      {/* Floating cart bar */}
+      {cart.hasItems && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]/95 backdrop-blur-lg safe-area-bottom">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent,#ff0033)] text-xs font-bold text-white">
+                {cart.totalQty}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-[var(--text-primary,#fff)]">
+                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
+                </p>
+                <p className="text-xs text-[var(--text-secondary,#888)]">
+                  {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCheckout(true)}
+              className="rounded-xl px-6 py-2.5 text-sm font-bold uppercase tracking-wider text-white transition-all"
+              style={{ backgroundColor: "var(--accent, #ff0033)" }}
+            >
+              Checkout
+            </button>
+          </div>
+        </div>
       )}
 
       <MidnightFooter />

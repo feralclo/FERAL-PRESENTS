@@ -11,6 +11,7 @@ interface ProductDetailModalProps {
   collection: MerchCollection;
   event?: Event;
   onClose: () => void;
+  onAddToCart?: (size: string | null) => void;
 }
 
 export function ProductDetailModal({
@@ -18,6 +19,7 @@ export function ProductDetailModal({
   collection,
   event,
   onClose,
+  onAddToCart,
 }: ProductDetailModalProps) {
   const product = item.product;
   const images = product ? normalizeMerchImages(product.images) : [];
@@ -261,12 +263,25 @@ export function ProductDetailModal({
             )}
           </div>
 
-          {/* Coming soon — checkout button placeholder */}
-          <div className="mt-6">
-            <p className="text-center text-[11px] text-[var(--text-secondary,#888)]/60">
-              Checkout for standalone merch pre-orders is coming soon.
-            </p>
-          </div>
+          {/* Add to cart */}
+          {onAddToCart && price > 0 && (
+            <div className="mt-6">
+              <button
+                onClick={() => {
+                  const needsSize = product.sizes && product.sizes.length > 0;
+                  if (needsSize && !selectedSize) return;
+                  onAddToCart(selectedSize);
+                }}
+                disabled={product.sizes && product.sizes.length > 0 && !selectedSize}
+                className="w-full rounded-xl py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ backgroundColor: "var(--accent, #ff0033)" }}
+              >
+                {product.sizes && product.sizes.length > 0 && !selectedSize
+                  ? "Select a size"
+                  : `Add to Cart — £${Number(price).toFixed(2)}`}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

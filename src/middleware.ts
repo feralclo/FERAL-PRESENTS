@@ -185,6 +185,8 @@ const PUBLIC_API_PREFIXES = [
   "/api/announcement/signup",
   "/api/beta/",
   "/api/monitoring", // Sentry tunnel (bypasses ad blockers)
+  "/api/merch-store/payment-intent",
+  "/api/merch-store/confirm-order",
 ];
 
 const PUBLIC_API_EXACT_GETS = [

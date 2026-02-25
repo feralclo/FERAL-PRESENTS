@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,6 @@ import {
   Package,
   Plus,
   Loader2,
-  ShoppingBag,
 } from "lucide-react";
 import type { Product, ProductStatus, ProductType } from "@/types/products";
 
@@ -140,10 +139,10 @@ export default function MerchPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
-            Merch
+            Products
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage merchandise for your events
+            Your merch catalog. Create products here, then add them to event pre-order collections or ticket bundles.
           </p>
         </div>
         <Button size="sm" onClick={() => setShowCreate(true)}>
@@ -272,32 +271,6 @@ export default function MerchPage() {
           </Table>
         </Card>
       )}
-
-      {/* Merch Store link */}
-      <Card className="py-0 gap-0 border-primary/10">
-        <CardHeader className="px-6 pt-5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/15">
-              <ShoppingBag size={16} className="text-primary" />
-            </div>
-            <div className="flex-1">
-              <CardTitle className="text-sm">
-                Merch Store
-              </CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Sell merch as pre-orders for your events. Create collections, set pricing, and let fans order ahead.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/admin/merch-store/")}
-            >
-              Manage Store
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

@@ -35,7 +35,6 @@ import {
   Mic2,
   Shield,
   TrendingUp,
-  ShoppingBag,
 } from "lucide-react";
 
 /* ── Navigation grouped into sections ── */
@@ -81,13 +80,13 @@ const NAV_SECTIONS: NavSection[] = [
       },
       { href: "/admin/customers/", label: "Customers", icon: Users },
       { href: "/admin/discounts/", label: "Discounts", icon: Tags },
-      { href: "/admin/merch/", label: "Merch", icon: Package },
       {
-        href: "/admin/merch-store/",
-        label: "Merch Store",
-        icon: ShoppingBag,
+        href: "/admin/merch/",
+        label: "Merch",
+        icon: Package,
         children: [
-          { href: "/admin/merch-store/", label: "Collections" },
+          { href: "/admin/merch/", label: "Products" },
+          { href: "/admin/merch-store/", label: "Event Pre-orders" },
           { href: "/admin/merch-store/online/", label: "Online Store" },
         ],
       },

@@ -186,7 +186,7 @@ export default function MerchStorePage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">
-              Merch Store
+              Event Pre-orders
             </h1>
             <Badge
               variant={storeSettings.enabled ? "success" : "secondary"}
@@ -196,7 +196,7 @@ export default function MerchStorePage() {
             </Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create merch collections for your events. Fans can pre-order and collect at the event.
+            Sell merch linked to your events. Fans pre-order online and collect at the event.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -227,7 +227,7 @@ export default function MerchStorePage() {
                 Your merch store is not visible to customers yet
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Enable it in Store Settings to add &quot;{storeSettings.nav_label}&quot; to your site navigation.
+                Enable it in Shop Settings to add &quot;{storeSettings.nav_label}&quot; to your site navigation.
               </p>
             </div>
             <Button
@@ -279,11 +279,11 @@ export default function MerchStorePage() {
               <ShoppingBag size={20} className="text-primary/60" />
             </div>
             <p className="mt-4 text-sm font-medium text-foreground">
-              {filter === "all" ? "No collections yet" : `No ${filter} collections`}
+              {filter === "all" ? "No event pre-order collections yet" : `No ${filter} collections`}
             </p>
             <p className="mt-1 max-w-sm text-xs text-muted-foreground">
               {filter === "all"
-                ? "Create a merch collection linked to an event. Fans can pre-order merch and collect it at the event."
+                ? "Create a collection to sell merch for a specific event. Pick an event, choose which products to include, and fans can pre-order ahead of the event."
                 : "Collections with this status will appear here."}
             </p>
             {filter === "all" && (
@@ -395,7 +395,7 @@ export default function MerchStorePage() {
           <DialogHeader>
             <DialogTitle>New Collection</DialogTitle>
             <DialogDescription>
-              Create a merch collection linked to one of your events. Fans can pre-order merch and collect it at the event.
+              Link merch from your product catalog to a specific event. Fans will be able to pre-order online and collect at the event.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">

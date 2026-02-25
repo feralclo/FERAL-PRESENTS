@@ -288,7 +288,7 @@ export default function CollectionEditorPage() {
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ArrowLeft size={14} />
-          Back to Collections
+          Back to Event Pre-orders
         </Link>
         <Card className="py-0 gap-0">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -314,7 +314,7 @@ export default function CollectionEditorPage() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
           >
             <ArrowLeft size={14} />
-            Collections
+            Event Pre-orders
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="font-mono text-lg font-bold tracking-tight text-foreground">

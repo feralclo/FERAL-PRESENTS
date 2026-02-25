@@ -55,10 +55,10 @@ src/
 │   │                          # Standalone pages (no sidebar): /admin/invite/[token],
 │   │                          # /admin/signup/, /admin/beta/, /admin/onboarding/,
 │   │                          # /admin/account/, /admin/payments/ (tenant Stripe Connect setup)
-│   └── api/                   # ~200 HTTP handlers across 143 route files — see API Routes section
+│   └── api/                   # ~250 HTTP handlers across 152 route files — see API Routes section
 ├── components/
-│   ├── admin/                 # Admin reusable: ImageUpload, ArtistLineupEditor, TierSelector,
-│   │   │                      # MerchImageGallery, SocialEmbed
+│   ├── admin/                 # Admin reusable: ImageUpload, ArtistLineupEditor, LineupTagInput,
+│   │   │                      # TierSelector, MerchImageGallery, SocialEmbed
 │   │   ├── event-editor/      # Tabbed event editor (Details, Content, Design, Tickets, Settings)
 │   │   │                      # + GroupManager (ticket group CRUD dialog)
 │   │   ├── dashboard/         # ActivityFeed, FunnelChart, TopEventsTable, StripeConnectionBanner
@@ -72,6 +72,7 @@ src/
 │   │                          # MidnightAnnouncementPage (full-screen coming-soon),
 │   │                          # MidnightAnnouncementWidget (sidebar fallback),
 │   │                          # MidnightQueuePage (full-screen hype queue),
+│   │                          # MidnightExternalPage (external ticketing CTA),
 │   │                          # discount-utils.ts, tier-styles.ts
 │   ├── aura/                  # Aura theme (DEPRECATED — being removed in favor of single
 │   │                          # customizable theme). Still routed but no new work.
@@ -83,7 +84,8 @@ src/
 │   ├── rep/                   # Rep portal shared: RadialGauge, EmptyState, SectionHeader,
 │   │                          # ConfettiOverlay, LevelUpOverlay, WelcomeOverlay, QuestCard,
 │   │                          # QuestDetailSheet, QuestSubmitSheet, InstallPrompt,
-│   │                          # MuxVideoPreview, FullscreenVideo, RepPageError, CurrencyIcon
+│   │                          # MuxVideoPreview, FullscreenVideo, RepPageError, CurrencyIcon,
+│   │                          # TikTokIcon
 │   ├── landing/               # LandingPage, HeroSection, ParticleCanvas, EventsSection, etc.
 │   ├── layout/                # Header, Footer, Scanlines, CookieConsent
 │   ├── OrgProvider.tsx        # React context: useOrgId() for client-side org_id access
@@ -133,11 +135,13 @@ src/
 │   ├── payment-alerts.ts      # Resend alerts for payment failures (30min cooldown)
 │   ├── payment-digest.ts      # AI payment digest (Claude Haiku analysis of payment health)
 │   ├── platform-digest.ts     # AI platform health digest (whole-platform: Sentry + payments + funnel + infra)
+│   ├── announcement.ts        # Coming-soon / announcement mode state helpers
 │   ├── klaviyo.ts, meta.ts    # Marketing integrations
 │   ├── date-utils.ts, image-utils.ts, merch-images.ts  # Utility helpers
 │   └── utils.ts               # cn() helper (clsx + tailwind-merge)
 ├── types/                     # TypeScript types per domain (settings, events, orders, tickets, domains,
-│                              # products, discounts, reps, email, analytics, marketing, team, artists)
+│                              # products, discounts, reps, email, analytics, marketing, team, artists,
+│                              # plans, announcements)
 └── styles/
     ├── base.css               # Reset, CSS variables, typography, reveal animations
     ├── effects.css            # CRT scanlines + noise texture overlays
@@ -149,7 +153,6 @@ src/
     ├── hero-effects.css       # Hero section visual effects
     ├── aura.css               # Aura theme styles (DEPRECATED)
     ├── aura-effects.css       # Aura theme effects (DEPRECATED)
-    ├── checkout-page.css      # Checkout + payment form
     ├── cookie.css             # Cookie consent banner
     ├── popup.css              # Discount popup
     ├── rep-effects.css        # Rep portal: gaming effects, animations, tier glows (~1,950 lines)
@@ -164,7 +167,7 @@ src/
 ### Error Monitoring (Sentry)
 Three-layer monitoring: **Sentry** (platform-wide crash tracking + session replay), **Payment Monitor** (domain-specific payment health in `payment_events` table), **AI Digest** (Claude Haiku analysis combining both sources every 6h).
 
-Sentry config: `sentry.client.config.ts` (browser), `sentry.server.config.ts` (Node), `sentry.edge.config.ts` (middleware). Auto-instruments API routes, server components, middleware. Client uses session replay (100% on error). Tunnel route `/api/monitoring` bypasses ad blockers.
+Sentry config: `sentry.client.config.ts` (browser), `sentry.server.config.ts` (Node), `sentry.edge.config.ts` (middleware). Auto-instruments API routes, server components, middleware. Client uses session replay (100% on error). `/api/monitoring` prefix reserved in middleware for future Sentry tunnel (not yet implemented).
 
 Context enrichment: `setSentryOrgContext()` / `setSentryUserContext()` called automatically in `requireAuth()` / `requireRepAuth()`. `setSentryEventContext()` called in event layout. All errors tagged with `org_id` for multi-tenant filtering.
 
@@ -198,41 +201,22 @@ Reusable artist profiles in `artists` table (name, bio, Instagram, image, Mux vi
 `DateTimePicker` displays/edits in target timezone, stores UTC. `useOrgTimezone()` fetches org timezone. Conversion via `lib/timezone.ts`. Event editor wires timezone automatically.
 
 ### Stripe Connect (Multi-Tenant Payments)
-Direct charges on connected accounts with application fee. Per-event routing: `event.stripe_account_id` → `{org_id}_stripe_account` → platform-only. Currency: GBP/EUR/USD, always smallest unit. Rate limited: 10/min/IP.
-
-**Tenant self-service**: `/admin/payments/` page + `/api/stripe/connect/my-account` routes let tenants create and manage their own Stripe Connect account without platform owner intervention. Uses `@stripe/react-connect-js` embedded UI.
-
-**Platform owner**: `/api/stripe/connect` (CRUD all accounts), gated by `requirePlatformOwner()`.
+Direct charges on connected accounts with application fee. Per-event routing: `event.stripe_account_id` → `{org_id}_stripe_account` → platform-only. Currency: GBP/EUR/USD, always smallest unit. Rate limited: 10/min/IP. Tenant self-service: `/admin/payments/` + `/api/stripe/connect/my-account` (uses `@stripe/react-connect-js`). Platform owner: `/api/stripe/connect` (CRUD), gated by `requirePlatformOwner()`.
 
 ### Platform Plans (Fee Tiers)
-**Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min) in `lib/plans.ts`. Stored in `{org_id}_plan`. Tenant billing: `/api/billing/checkout` → Stripe Checkout → webhook.
+**Starter** (free, 5% + £0.50 min) and **Pro** (£29/month, 2.5% + £0.30 min) in `lib/plans.ts`. Stored in `{org_id}_plan`. Billing: `/api/billing/checkout` → Stripe Checkout → webhook.
 
 ### Beta Access & Signup Flow
-`BETA_MODE = true` gates signup. Flow: `/admin/signup/` → checks invite code in sessionStorage → if none, redirects to `/admin/beta/` (application form) → platform owner reviews at `/admin/backend/beta/` → accept sends invite code email → promoter signs up with code → `/admin/onboarding/` wizard → admin dashboard.
-
-Routes: `/api/beta/apply` (POST public), `/api/beta/verify-code` (POST public), `/api/beta/track-usage` (POST public), `/api/platform/beta-applications` (GET/POST platform owner), `/api/platform/invite-codes` (GET/POST platform owner).
-
-To disable beta: set `BETA_MODE = false` in `lib/beta.ts`.
+`BETA_MODE = true` gates signup. Flow: `/admin/signup/` → invite code check → `/admin/beta/` (application) → platform owner reviews → invite email → signup with code → `/admin/onboarding/` → dashboard. Disable: set `BETA_MODE = false` in `lib/beta.ts`.
 
 ### Self-Service Signup (Promoter Registration)
-`provisionOrg()` (`lib/signup.ts`): creates `org_users` (owner), `domains` (`{slug}.entry.events`), `site_settings` (Starter plan). Slug: `slugify()` → `[a-z0-9-]` (3-40 chars), `validateSlug()` checks ~50 reserved + collisions. Two auth paths: email/password or Google OAuth. Separate `/api/auth/provision-org` endpoint for onboarding wizard flow.
+`provisionOrg()` (`lib/signup.ts`): creates `org_users` (owner), `domains` (`{slug}.entry.events`), `site_settings` (Starter plan). Slug: `slugify()` → `[a-z0-9-]` (3-40 chars), `validateSlug()` checks ~50 reserved + collisions. Auth: email/password or Google OAuth. Also: `/api/auth/provision-org` for onboarding wizard.
 
 ### Multi-Tenancy: Dynamic org_id Resolution
-Every table has `org_id`. Every query filters by it. **Never hardcode `"feral"`**.
-
-```
-Request → Middleware resolves org_id → sets x-org-id header → downstream reads it
-         ├─ Admin host + logged in → org_users lookup (user.id → org_id)
-         ├─ Tenant host → domains table lookup (hostname → org_id)
-         └─ Fallback → "feral"
-```
-
-**Domain routing:** `admin.entry.events` = admin host. `{slug}.entry.events` = tenant subdomain. Custom domains from `domains` table. `localhost`/`*.vercel.app` = dev.
-
-**Access patterns:** Server: `getOrgId()`. Auth API: `auth.orgId`. Public API: `getOrgIdFromRequest(request)`. Client: `useOrgId()`. Middleware caches (60s TTL).
+Every table has `org_id`. Every query filters by it. **Never hardcode `"feral"`**. Middleware resolves org_id → sets `x-org-id` header: admin host + auth → `org_users` lookup, tenant host → `domains` lookup, fallback → "feral". Domain routing: `admin.entry.events` = admin, `{slug}.entry.events` = tenant, custom domains from `domains` table. Access: Server `getOrgId()`, Auth `auth.orgId`, Public `getOrgIdFromRequest(request)`, Client `useOrgId()`. Cache: 60s TTL.
 
 ### White-Label Branding System
-Org branding in `{org_id}_branding`: logo, org name, colors, fonts, copyright. Event layout injects CSS vars server-side (no FOUC). Client: `useBranding()`. API: `GET/POST /api/branding`. Branding page syncs logo to email settings.
+`{org_id}_branding`: logo, org name, colors, fonts, copyright. Event layout injects CSS vars server-side (no FOUC). Client: `useBranding()`. API: `GET/POST /api/branding`. Branding page syncs logo to email settings.
 
 ### Settings System
 **Settings keys** (stored in `site_settings` table as key → JSONB, dynamic via helpers in `lib/constants.ts`):
@@ -268,22 +252,16 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 
 ### Authentication & Security
 
-**Two auth systems:** Admin (`/admin/*` + `/api/*`, `requireAuth()`) and Rep portal (`/rep/*` + `/api/rep-portal/*`, `requireRepAuth()`).
+**Two auth systems:** Admin (`requireAuth()` → `{ user, orgId }`) and Rep portal (`requireRepAuth()` → `{ rep }`). Platform owner: `requirePlatformOwner()` → `{ user, orgId }`. Role flags in Supabase `app_metadata`: `is_admin`, `is_rep`, `is_platform_owner`. Dual-role supported. Two layers: middleware at edge, then handler verifies.
 
-**Role flags** (Supabase `app_metadata`, additive): `is_admin`, `is_rep`, `is_platform_owner` (manual SQL). Dual-role supported.
-
-**Auth helpers** (`lib/auth.ts`): `requireAuth()` → `{ user, orgId }`. `requireRepAuth()` → `{ rep }`. `requirePlatformOwner()` → `{ user, orgId }`. Two layers: middleware blocks at edge, then handler verifies role.
-
-**Public API routes (no auth):** Stripe (`payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`), `checkout/capture`, `checkout/error`, `GET events|settings|merch|branding|themes|media/[key]|health`, `POST track|meta/capi|discounts/validate|popup/capture`, `/api/cron/*` (CRON_SECRET), `/api/unsubscribe`, `orders/[id]/wallet/*`, rep auth routes, `auth/*`, `beta/*`, `/api/team/accept-invite`.
+**Public API routes (no auth):** Stripe (`payment-intent`, `confirm-order`, `webhook`, `account`, `apple-pay-verify`), `checkout/*`, `GET events|settings|merch|branding|themes|media/[key]|health`, `POST track|meta/capi|discounts/validate|popup/capture`, `cron/*` (CRON_SECRET), `unsubscribe`, `orders/[id]/wallet/*`, `rep-portal` auth routes, `auth/*`, `beta/*`, `team/accept-invite`.
 
 **Rules for new routes:**
-1. Admin API routes: call `requireAuth()`, use `auth.orgId` for all queries
-2. Rep portal API routes: call `requireRepAuth()`, use `rep.org_id` for all queries
-3. Platform-owner API routes: call `requirePlatformOwner()`, use `auth.orgId`
-4. Public API routes: use `getOrgIdFromRequest(request)` from `@/lib/org`, add to `PUBLIC_API_PREFIXES` or `PUBLIC_API_EXACT_GETS` in `middleware.ts`
-5. **Never import `ORG_ID`** — use dynamic resolution
-6. Never hardcode secrets — use environment variables only
-7. Stripe webhook must always verify signatures in production
+1. Admin: `requireAuth()`, use `auth.orgId`
+2. Rep portal: `requireRepAuth()`, use `rep.org_id`
+3. Platform-owner: `requirePlatformOwner()`, use `auth.orgId`
+4. Public: `getOrgIdFromRequest(request)`, add to `PUBLIC_API_PREFIXES`/`PUBLIC_API_EXACT_GETS` in `middleware.ts`
+5. **Never import `ORG_ID`** — use dynamic resolution. Never hardcode secrets. Stripe webhook must verify signatures.
 
 ---
 
@@ -324,15 +302,15 @@ Event + admin: `force-dynamic`, `cache: "no-store"`. Media: `max-age=31536000, i
 - `uq_rep_quest_pending_approved` — prevents duplicate quest submissions per rep
 - All tables have `org_id` column
 
-### Supabase Client Rules (CRITICAL — Data Access)
-Wrong client → silent data loss (empty arrays when RLS blocks). **`getSupabaseAdmin()`** = ALL data queries (service role, bypasses RLS). **`getSupabaseServer()`** = auth ONLY (`requireAuth`, `getSession`). **`getSupabaseClient()`** = browser-side only (realtime, client reads, subject to RLS). Never create raw `createClient()` with anon key server-side.
+### Supabase Client Rules (CRITICAL)
+Wrong client → silent data loss. **`getSupabaseAdmin()`** = ALL data queries (service role). **`getSupabaseServer()`** = auth ONLY. **`getSupabaseClient()`** = browser-side only. Never create raw `createClient()` with anon key server-side.
 
 ### External Service Changes Rule (CRITICAL)
-MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments, logs). Use MCP directly — NEVER give user SQL to run. **Stripe** has no MCP — tell user to use dashboard. If MCP token expired, tell user to run `/mcp`. Never hardcode secrets. Document changes in this file. Never assume table/column exists unless documented here.
+MCP access: **Supabase** + **Vercel**. Use MCP directly — NEVER give user SQL to run. **Stripe** has no MCP — tell user to use dashboard. If MCP token expired, tell user to run `/mcp`. Never hardcode secrets. Document changes in this file.
 
 ---
 
-## API Routes (~200 handlers, 143 route files)
+## API Routes (~250 handlers, 152 route files)
 
 ### Critical Path (Payment → Order)
 | Method | Route | Purpose |
@@ -359,29 +337,24 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 | Settings | `/api/settings`, `/api/branding`, `/api/themes` | GET/POST |
 
 ### Other Route Groups
-- **Abandoned Cart Recovery**: `/api/abandoned-carts` (list + stats), `/api/abandoned-carts/preview-email`, `/api/abandoned-carts/send-test`, `/api/cron/abandoned-carts` (Vercel cron), `/api/unsubscribe` (supports `type=cart_recovery` and `type=announcement`)
-- **Account**: `/api/account` (GET/PUT — current user profile, password management)
-- **Announcement / Coming Soon**: `/api/announcement/signup` (POST public), `/api/announcement/signups` (GET admin), `/api/announcement/preview-email` (GET admin), `/api/cron/announcement-emails` (cron 5min — steps 2-4)
-- **Beta Access** (public): `/api/beta/apply` (POST, 5/hr), `/api/beta/verify-code` (POST, 10/5min), `/api/beta/track-usage` (POST)
-- **Billing** (tenant — `requireAuth()`): `/api/billing/checkout` (POST), `/api/billing/portal` (POST), `/api/billing/status` (GET)
-- **Email & Wallet** (admin): `/api/email/status` (GET), `/api/email/test` (POST), `/api/wallet/status` (GET)
-- **Mux Video** (admin): `/api/mux/upload` (POST — create Mux asset from URL), `/api/mux/status` (GET — poll processing status)
-- **Popup** (public + admin): `/api/popup/capture` (POST public — email capture + customer upsert), `/api/popup/leads` (GET admin)
-- **Stripe Connect — Platform Owner** (`requirePlatformOwner()`): `/api/stripe/connect` (CRUD), `/api/stripe/connect/[accountId]/onboarding`, `/api/stripe/apple-pay-domain`, `/api/stripe/apple-pay-verify`
-- **Stripe Connect — Tenant** (`requireAuth()`): `/api/stripe/connect/my-account` (GET/POST), `/api/stripe/connect/my-account/onboarding` (GET/POST)
-- **Platform Dashboard** (`requirePlatformOwner()`): `/api/platform/dashboard`, `/api/platform/tenants`, `/api/platform/tenants/[orgId]`
-- **Platform Beta** (`requirePlatformOwner()`): `/api/platform/beta-applications` (GET/POST), `/api/platform/invite-codes` (GET/POST)
-- **Platform XP Config** (`requirePlatformOwner()`): `/api/platform/xp-config` (GET/POST)
-- **Platform Health** (`requirePlatformOwner()`): `/api/platform/platform-health` (GET — aggregates Sentry + system + payments), `/api/platform/platform-digest` (GET/POST — AI whole-platform digest), `/api/platform/sentry` (GET list issues / POST resolve + comment)
-- **Payment Health** (`requirePlatformOwner()`): `/api/platform/payment-health` (GET), `/api/platform/payment-health/[id]/resolve` (POST), `/api/platform/payment-health/resolve-all` (POST). Cron: `/api/cron/stripe-health` (30min)
-- **AI Payment Digest** (`requirePlatformOwner()`): `/api/platform/payment-digest` (GET/POST). Cron: `/api/cron/payment-digest` (6h)
-- **Plans** (`requirePlatformOwner()`): `/api/plans` (GET/POST)
-- **Reps Program** (~42 routes): `/api/reps/*` (admin CRUD, settings, stats), `/api/rep-portal/*` (rep-facing — auth, dashboard, sales, quests, rewards, notifications, push, upload, verify-email)
-- **Team Management**: `/api/team` (GET/POST — owner only), `/api/team/[id]` (PUT/DELETE), `/api/team/[id]/resend-invite`, `/api/team/accept-invite` (public)
-- **Domain Management**: `/api/domains` (GET/POST), `/api/domains/[id]` (PUT/DELETE), `/api/domains/[id]/verify`
-- **Self-Service Auth** (public): `/api/auth/signup` (POST), `/api/auth/check-slug` (GET), `/api/auth/check-org` (GET), `/api/auth/provision-org` (POST), `/api/auth/login`, `/api/auth/logout`, `/api/auth/recover`
-- **Uploads**: `/api/upload` (POST base64), `/api/upload-video` (POST — signed Supabase Storage URL for large files, bucket: `artist-media`)
-- **Tracking & Analytics**: `/api/track`, `/api/meta/capi`, `/api/admin/dashboard`, `/api/admin/orders-stats`
+- **Abandoned Carts**: `/api/abandoned-carts` (list+stats), `preview-email`, `send-test`. Cron: `/api/cron/abandoned-carts`. `/api/unsubscribe` (`type=cart_recovery|announcement`)
+- **Account**: `/api/account` (GET/PUT profile + password)
+- **Announcement**: `/api/announcement/signup` (public), `/api/announcement/signups`, `preview-email` (admin). Cron: `/api/cron/announcement-emails` (5min)
+- **Beta** (public): `/api/beta/apply`, `verify-code`, `track-usage`
+- **Billing** (tenant): `/api/billing/checkout`, `portal`, `status`
+- **Email & Wallet** (admin): `/api/email/status`, `/api/email/test`, `/api/wallet/status`
+- **Mux** (admin): `/api/mux/upload`, `/api/mux/status`
+- **Popup**: `/api/popup/capture` (public), `/api/popup/leads` (admin)
+- **Stripe Connect — Platform**: `/api/stripe/connect` (CRUD), `[accountId]/onboarding`, `apple-pay-domain`, `apple-pay-verify`
+- **Stripe Connect — Tenant**: `/api/stripe/connect/my-account` (GET/POST), `my-account/onboarding`
+- **Platform** (`requirePlatformOwner()`): `dashboard`, `tenants`, `tenants/[orgId]`, `beta-applications`, `invite-codes`, `xp-config`, `plans`
+- **Platform Health**: `platform-health`, `platform-digest`, `sentry`, `payment-health`, `payment-health/[id]/resolve`, `payment-health/resolve-all`, `payment-digest`. Crons: `stripe-health` (30min), `payment-digest` (6h)
+- **Reps** (~42 routes): `/api/reps/*` (admin CRUD, settings, stats), `/api/rep-portal/*` (auth, dashboard, sales, quests, rewards, notifications, push, upload, verify-email)
+- **Team**: `/api/team` (GET/POST owner), `[id]` (PUT/DELETE), `[id]/resend-invite`, `accept-invite` (public)
+- **Domains**: `/api/domains` (GET/POST), `[id]` (PUT/DELETE), `[id]/verify`
+- **Auth** (public): `/api/auth/signup`, `check-slug`, `check-org`, `provision-org`, `login`, `logout`, `recover`
+- **Uploads**: `/api/upload` (base64), `/api/upload-video` (signed URL, bucket: `artist-media`)
+- **Tracking**: `/api/track`, `/api/meta/capi`, `/api/admin/dashboard`, `/api/admin/orders-stats`
 - **Other**: `/api/media/[key]`, `/api/health`
 
 ---
@@ -419,8 +392,8 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 - **Setup**: `src/__tests__/setup.ts` — localStorage mock, crypto.randomUUID mock, jest-dom
 - **Run**: `npm test` (single run) or `npm run test:watch` (watch mode)
 
-### Test Suites (12 suites)
-`auth`, `signup`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`
+### Test Suites (13 suites)
+`auth`, `signup`, `useMetaTracking`, `useDataLayer`, `useDashboardRealtime`, `useTraffic`, `wallet-passes`, `products`, `orders`, `rate-limit`, `rep-deletion`, `vat`, `merch-images`
 
 ### Rules for Writing Tests
 1. Every new hook must have a test file — `src/__tests__/useHookName.test.ts`
@@ -434,104 +407,35 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 
 ## Platform Health Monitoring — AI Workflow
 
-The platform has comprehensive error monitoring. When the user asks you to "check the health dashboard," "look at errors," or "fix what's broken," follow this workflow.
+When asked to "check the health dashboard," "look at errors," or "fix what's broken":
 
-### Step 1: Read the current health status
+**1. Read status** — fetch via Bash/WebFetch (require platform owner auth):
+- `GET /api/platform/platform-health?period=24h` — aggregated Sentry + system + payments
+- `GET /api/platform/sentry?period=24h` — detailed Sentry issues
+- `GET /api/platform/payment-health?period=24h` — payment-specific deep dive
 
-```
-# Fetch platform-wide health (Sentry errors + system checks + payment summary)
-curl -s http://localhost:3000/api/platform/platform-health?period=24h
+**2. Triage** each issue into one of:
+- **FIX** — real bugs: 500 errors, component crashes, checkout failures, webhook failures → find file, fix, test, commit
+- **RESOLVE** — expected behavior: `card_declined`/`insufficient_funds` (normal 2-5% rate), transient timeouts, bot 401s, browser extension errors → resolve via API with clear notes
+- **IGNORE** — single non-reproducible errors with no user impact
 
-# Fetch Sentry issues directly (more detail, readable format)
-curl -s http://localhost:3000/api/platform/sentry?period=24h
+**3. Resolve via API** after fixing or triaging:
+- `POST /api/platform/sentry` — `{"issue_id": "ID", "action": "resolve", "comment": "..."}`
+- `POST /api/platform/payment-health/[id]/resolve` — `{"notes": "..."}`
+- `POST /api/platform/payment-health/resolve-all` — `{"severity": "warning", "notes": "..."}`
 
-# Fetch payment health (payment-specific deep dive)
-curl -s http://localhost:3000/api/platform/payment-health?period=24h
-```
-Use `fetch()` via Bash or WebFetch to call these API endpoints. They require platform owner auth (use the browser session cookie or service role).
+**4. Generate AI digest** (optional):
+- `POST /api/platform/platform-digest` — `{"period_hours": 24}` (whole-platform)
+- `POST /api/platform/payment-digest` — `{"period_hours": 24}` (payment-specific)
 
-### Step 2: Triage each issue
-
-**FIX IT** — actual bugs in the codebase:
-- Server crashes (500 errors) on API routes → find the route file, read the stack trace, fix the bug
-- React component errors → find the component, fix the rendering issue
-- Checkout flow breaking → critical, fix immediately
-- Webhook processing failures → fix the handler
-
-**RESOLVE IT** (don't fix — it's normal/expected):
-- `card_declined` / `insufficient_funds` / `expired_card` → customer's bank said no. Not a platform bug
-- Single transient network timeout that never recurred → resolve with note "transient, not recurring"
-- Bot traffic hitting endpoints and getting 401s → resolve with note "bot traffic, expected"
-- Browser extension interference (errors from chrome-extension:// URLs) → resolve with note "browser extension, not our code"
-
-**IGNORE IT** — noise that doesn't warrant action:
-- Single occurrence of a non-reproducible error with no user impact
-- Errors from very old browser versions the platform doesn't support
-
-### Step 3: Fix bugs in the codebase
-
-For issues that need fixing: read the error, find the file, understand the root cause, fix it, test it. Commit with a message like `fix: [description of what was broken and why]`.
-
-### Step 4: Resolve issues via API
-
-```bash
-# Resolve a Sentry issue (after fixing or determining it's not a bug)
-curl -X POST http://localhost:3000/api/platform/sentry \
-  -H "Content-Type: application/json" \
-  -d '{"issue_id": "SENTRY_ISSUE_ID", "action": "resolve", "comment": "Fixed in commit abc123 — was a null check missing in checkout handler"}'
-
-# Resolve a payment health event
-curl -X POST http://localhost:3000/api/platform/payment-health/EVENT_UUID/resolve \
-  -H "Content-Type: application/json" \
-  -d '{"notes": "Normal card decline — customer bank rejection, not a platform issue"}'
-
-# Bulk-resolve payment warnings (e.g., all card declines)
-curl -X POST http://localhost:3000/api/platform/payment-health/resolve-all \
-  -H "Content-Type: application/json" \
-  -d '{"severity": "warning", "notes": "Batch-resolved card declines — normal customer-side failures"}'
-```
-
-### Step 5: Generate AI digest (optional)
-
-If you want a comprehensive AI-generated summary:
-```bash
-# Generate platform-wide health digest (covers everything)
-curl -X POST http://localhost:3000/api/platform/platform-digest \
-  -H "Content-Type: application/json" \
-  -d '{"period_hours": 24}'
-
-# Generate payment-specific digest (deeper payment analysis)
-curl -X POST http://localhost:3000/api/platform/payment-digest \
-  -H "Content-Type: application/json" \
-  -d '{"period_hours": 24}'
-```
-
-### Rules for AI sessions handling health issues
-
-1. **Always investigate before resolving** — don't bulk-resolve without reading what the errors are
-2. **Leave clear comments/notes** when resolving — future sessions need to understand why it was resolved
-3. **Payment orphans are CRITICAL** — money was taken but no ticket issued. Never ignore these. Fix the root cause
-4. **Card declines are NORMAL** — 2-5% failure rate from card_declined/insufficient_funds is expected. Don't treat these as bugs
-5. **Check if an error is recurring** — a single occurrence might be noise, but 50 occurrences of the same error is a real bug
-6. **Frontend errors tagged with `org_id`** mean a tenant-specific issue — investigate if it's their content/config or a platform bug
-7. **Frontend errors WITHOUT `org_id`** are platform-wide — higher priority
-8. **Never resolve Sentry issues you don't understand** — if the error is unclear, investigate the code first
-9. **Commit fixes before resolving** — fix the bug, push the fix, THEN resolve the monitoring issue
-
-### API Reference (Platform Health)
-
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET | `/api/platform/platform-health?period=24h` | Aggregated health (Sentry + system + payments) |
-| GET | `/api/platform/sentry?period=24h&limit=25` | List unresolved Sentry issues |
-| POST | `/api/platform/sentry` | Resolve/ignore a Sentry issue + leave comment |
-| GET | `/api/platform/platform-digest` | Latest AI platform health digest |
-| POST | `/api/platform/platform-digest` | Generate new AI platform digest |
-| GET | `/api/platform/payment-health?period=24h` | Payment-specific health data |
-| POST | `/api/platform/payment-health/[id]/resolve` | Resolve single payment event |
-| POST | `/api/platform/payment-health/resolve-all` | Bulk-resolve payment events |
-| GET | `/api/platform/payment-digest` | Latest AI payment digest |
-| POST | `/api/platform/payment-digest` | Generate new AI payment digest |
+**Rules:**
+1. Always investigate before resolving — don't bulk-resolve without reading errors
+2. Leave clear comments/notes — future sessions need context
+3. **Payment orphans are CRITICAL** — money taken but no ticket issued. Never ignore. Fix root cause
+4. Check if error is recurring — 1 occurrence = maybe noise, 50 = real bug
+5. Errors with `org_id` = tenant-specific. Without = platform-wide (higher priority)
+6. Never resolve issues you don't understand — investigate code first
+7. Commit fixes before resolving — fix → push → then resolve
 
 ---
 
@@ -539,29 +443,17 @@ curl -X POST http://localhost:3000/api/platform/payment-digest \
 1. **Scanner PWA** — API endpoints exist (`/api/tickets/[code]` + `/api/tickets/[code]/scan`) but no frontend
 2. **Google Ads + TikTok tracking** — placeholders exist in marketing admin but no implementation
 3. **Supabase RLS policies** — should be configured to enforce org_id isolation at database level
-4. **Cron multi-org** — `/api/cron/*` routes still use `ORG_ID` fallback. Should iterate over all orgs
-5. **Aura theme removal** — Aura components and routing still in code, pending removal. Single customizable theme is the target
+4. **Aura theme removal** — Aura components and routing still in code, pending removal. Single customizable theme is the target
+5. **Sentry tunnel** — `/api/monitoring` prefix reserved in middleware but route not implemented. Currently Sentry sends direct to ingest
+6. **Test coverage** — 13 test suites cover hooks + lib, but 0 API route tests. 13 tests failing in `orders.test.ts` (incomplete Supabase mock chain). Critical payment flow untested
 
 ---
 
 ## Design System
 
-### Platform Brand (Entry — Admin)
-- **Primary**: `#8B5CF6` (Electric Violet)
-- **Gradient**: `linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED)`
-- The Entry wordmark, login page, admin buttons, and active states all use Electric Violet
+**Platform brand**: `#8B5CF6` (Electric Violet). Gradient: `#A78BFA → #8B5CF6 → #7C3AED`. Used for Entry wordmark, admin buttons, active states.
 
-### Public Event Pages (Tenant-Configurable)
-Defaults in `base.css :root`, overridable per-tenant via branding:
-```css
---accent: #ff0033;        --bg-dark: #0e0e0e;       --card-bg: #1a1a1a;
---card-border: #2a2a2a;   --text-primary: #fff;      --text-secondary: #888;
---text-muted: #555;       --font-mono: 'Space Mono'; --font-sans: 'Inter';
-```
-`midnight.css` maps these to Tailwind semantic tokens so `bg-background`, `text-primary`, `border-border` reflect tenant branding.
-
-- **Midnight visual identity**: Cyberpunk — glassmorphism, metallic tier gradients, CRT suppression, red glow accents. **Note**: A ground-up redesign ("Modern Editorial Luxury") is planned — see `MIDNIGHT-REDESIGN-PROMPT.md`
-- **Mobile-first**: Most ticket buyers are on phones — design for 375px, enhance up
+**Event pages** (tenant-configurable): Defaults in `base.css :root` (`--accent: #ff0033`, `--bg-dark: #0e0e0e`, `--font-mono: 'Space Mono'`, `--font-sans: 'Inter'`), overridable via branding. `midnight.css` maps to Tailwind semantic tokens. Cyberpunk visual identity — glassmorphism, metallic tier gradients. Redesign planned — see `MIDNIGHT-REDESIGN-PROMPT.md`. Mobile-first (375px).
 
 ---
 
@@ -588,51 +480,34 @@ Layers: `@layer theme, admin-reset;` then `@import "tailwindcss/utilities"` **UN
 
 ## Event Theme Architecture (Public-Facing UI)
 
-Event pages are the revenue-generating surface — where ticket buyers browse, explore, and purchase. The Midnight theme is the primary (and soon only) theme.
+Event pages are the revenue-generating surface. Midnight is the primary (and soon only) theme.
 
-### Midnight Component Pattern
-Lives in `src/components/midnight/`. Orchestrator `MidnightEventPage` imports CSS. Children don't.
+**Pattern**: `src/components/midnight/`. Orchestrator `MidnightEventPage` imports all CSS. Children don't. 22 components (see Project Structure) + `discount-utils.ts`, `tier-styles.ts`.
 
-Key components: `MidnightEventPage` (orchestrator), `MidnightHero` (banner + CTA), `MidnightTicketWidget` (ticket selection + cart), `MidnightTicketCard` (tier with qty controls), `MidnightMerchModal` (image gallery + size selector), `MidnightSizeSelector`, `MidnightEventInfo` (about/details/venue), `MidnightLineup`, `MidnightArtistModal`, `MidnightCartSummary`, `MidnightCartToast`, `MidnightTierProgression`, `MidnightFooter`, `MidnightSocialProof`, `MidnightFloatingHearts`, `MidnightDiscountPopup`, `MidnightAnnouncementPage`, `MidnightQueuePage`. Helpers: `discount-utils.ts`, `tier-styles.ts`.
-
-### Rules for Event Theme Components
-1. **Tailwind + shadcn/ui** for layout/interactive elements. Effects CSS in `midnight-effects.css`, tokens in `midnight.css`
-2. **Scope** to `[data-theme="midnight"]`. Mobile-first (375px). Support `prefers-reduced-motion`
-3. **Shared hooks**: `useCart()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useHeaderScroll()`
-4. **CSS imports at orchestrator level** — `MidnightEventPage` imports CSS. Children don't
+**Rules**: Tailwind + shadcn/ui, scoped to `[data-theme="midnight"]`. Mobile-first (375px). Support `prefers-reduced-motion`. Effects in `midnight-effects.css`, tokens in `midnight.css`. Shared hooks: `useCart()`, `useEventTracking()`, `useSettings()`, `useBranding()`, `useHeaderScroll()`.
 
 ---
 
 ## Rep Portal Architecture (Social App)
 
-The rep portal (`/rep/*`) is the brand ambassador / street team app. Currently at 12 page routes with its own layout, auth system (`requireRepAuth()`), PWA support, web push notifications, and API routes (`/api/rep-portal/*`).
+Brand ambassador / street team app at `/rep/*`. 12 pages (Dashboard, Sales, Quests, Rewards, Points, Leaderboard, Profile, Login, Join, Invite/[token], Verify-email). Own auth (`requireRepAuth()`), PWA, web push, API at `/api/rep-portal/*`.
 
-### Rep Portal Pages (12)
-Dashboard (`/rep`), Sales, Quests, Rewards, Points, Leaderboard, Profile, Login, Join, Invite/[token], Verify-email. Auth separate from admin.
+**CSS**: Tailwind + shadcn/ui + admin tokens. Gaming effects in `rep-effects.css` (~1,950 lines, scoped to `[data-rep]`). Components in `src/components/rep/`. Utilities: `lib/rep-*.ts`, `hooks/useCountUp.ts`, `hooks/useRepPWA.ts`.
 
-### CSS Architecture
-Tailwind + shadcn/ui + admin tokens. Gaming effects in `rep-effects.css` (~1,950 lines, scoped to `[data-rep]`). Shared components in `src/components/rep/`. Utilities: `lib/rep-tiers.ts`, `lib/rep-social.ts`, `lib/rep-utils.ts`, `lib/rep-quest-styles.ts`, `hooks/useCountUp.ts`, `hooks/useRepPWA.ts`.
-
-### Rules for New Rep Portal Pages
-1. **shadcn/ui + Tailwind** — Card, Button, Badge, etc. Admin design tokens. No new `--rep-*` CSS vars
-2. **Gaming effects only in `rep-effects.css`** — applied via class names, not inline styles
-3. **Mobile-first** (375px). Auth: `requireRepAuth()`. Layout handles email verification + pending review gates
+**Rules**: shadcn/ui + Tailwind with admin design tokens (no new `--rep-*` vars). Gaming effects only in `rep-effects.css`. Mobile-first (375px). Layout handles email verification + pending review gates.
 
 ---
 
 ## Shared UI Primitives (shadcn/ui)
 
-### shadcn/ui Components
-**Location**: `src/components/ui/*.tsx` (28 components) — used by admin pages AND event themes
+**Location**: `src/components/ui/*.tsx` (28 components) — used by admin + event themes + rep portal.
 
 Alert, Avatar, Badge, Button, Calendar, Card, Collapsible, ColorPicker, DatePicker, Dialog, Input, Label, LiveIndicator, LiveStatCard, NativeSelect, Popover, Progress, Select, Separator, Skeleton, Slider, StatCard, Switch, Table, Tabs, Textarea, Tooltip, TrendBadge
 
-**How to add new shadcn components**: Create in `src/components/ui/`, use Radix UI primitives (`radix-ui` package), use `cn()` from `@/lib/utils` for className merging. Follow existing component patterns.
+**Adding components**: Create in `src/components/ui/`, use Radix UI (`radix-ui`), use `cn()` from `@/lib/utils`.
 
 ### Admin Design Tokens
-Defined in `tailwind.css` via `@theme inline {}`. Key tokens: `background` (#08080c), `foreground` (#f0f0f5), `primary` (#8B5CF6), `card` (#111117), `secondary` (#151520), `muted-foreground` (#8888a0), `border` (#1e1e2a), `destructive` (#F43F5E), `success` (#34D399), `warning` (#FBBF24), `info` (#38BDF8). Sidebar variants: `sidebar` (#0a0a10), `sidebar-foreground` (#8888a0), `sidebar-accent` (#141420), `sidebar-border` (#161624).
-
-Use via Tailwind classes — never hardcode hex. Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-destructive`, `.text-gradient`, `.surface-noise`
+Defined in `tailwind.css` via `@theme inline {}`. Key: `background` (#08080c), `foreground` (#f0f0f5), `primary` (#8B5CF6), `card` (#111117), `border` (#1e1e2a), `destructive` (#F43F5E), `success` (#34D399), `warning` (#FBBF24), `info` (#38BDF8). Use via Tailwind classes — never hardcode hex. Custom utilities: `.glow-primary`, `.glow-success`, `.glow-warning`, `.glow-destructive`, `.text-gradient`, `.surface-noise`.
 
 ### Rules for New Admin Pages
 1. `"use client"` — shadcn/ui + Tailwind + design tokens (`bg-background`, `text-foreground`, `border-border`)

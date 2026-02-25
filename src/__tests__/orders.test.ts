@@ -155,6 +155,18 @@ function createMockSupabase(config: {
       return updateChain;
     });
 
+    // delete — supports arbitrary .eq() chaining
+    chain.delete = vi.fn().mockImplementation(() => {
+      const deleteChain: Record<string, unknown> = {};
+      deleteChain.eq = vi.fn().mockReturnValue(deleteChain);
+      Object.defineProperty(deleteChain, "then", {
+        value: (resolve: (v: unknown) => void) => {
+          resolve({ data: null, error: null });
+        },
+      });
+      return deleteChain;
+    });
+
     return chain;
   }
 

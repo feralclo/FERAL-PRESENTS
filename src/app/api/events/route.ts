@@ -80,6 +80,8 @@ export async function POST(request: NextRequest) {
       stripe_account_id,
       platform_fee_percent,
       external_link,
+      seo_title,
+      seo_description,
       ticket_types,
     } = body;
 
@@ -130,6 +132,8 @@ export async function POST(request: NextRequest) {
         stripe_account_id,
         platform_fee_percent,
         external_link,
+        seo_title: seo_title || null,
+        seo_description: seo_description || null,
       })
       .select()
       .single();

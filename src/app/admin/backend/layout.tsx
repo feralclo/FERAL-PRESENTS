@@ -19,6 +19,7 @@ import {
   Users,
   LayoutDashboard,
   Activity,
+  UserPlus,
 } from "lucide-react";
 
 interface BackendNavItem {
@@ -35,6 +36,7 @@ const BACKEND_NAV: BackendNavItem[] = [
   { href: "/admin/backend/connect/", label: "Connect", icon: Zap },
   { href: "/admin/backend/plans/", label: "Plans", icon: CreditCard },
   { href: "/admin/backend/platform-settings/", label: "Platform Settings", icon: Shield },
+  { href: "/admin/backend/beta/", label: "Beta Applications", icon: UserPlus },
 ];
 
 function matchRoute(pathname: string, href: string): boolean {

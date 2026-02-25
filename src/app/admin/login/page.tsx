@@ -277,7 +277,7 @@ function LoginForm() {
             <>
               Don&apos;t have access yet?{" "}
               <Link href="/admin/beta/" className="font-medium text-primary hover:text-primary/80 transition-colors">
-                Request beta access
+                Request access
               </Link>
             </>
           ) : (

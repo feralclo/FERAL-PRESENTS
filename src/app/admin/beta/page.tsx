@@ -206,7 +206,7 @@ function StepIntro({
         </div>
 
         {/* Headline */}
-        <h1 className="text-[26px] sm:text-[30px] font-bold leading-[1.2] text-foreground tracking-tight">
+        <h1 className="text-[28px] sm:text-[34px] font-bold leading-[1.15] text-foreground tracking-tight [text-wrap:balance]">
           Stop making other platforms famous
         </h1>
 

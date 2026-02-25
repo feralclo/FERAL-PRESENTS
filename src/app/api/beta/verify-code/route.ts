@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
- * Valid beta invite codes.
- *
+ * Hardcoded invite codes (always valid).
  * Add or remove codes here. Share them with promoters you want
- * to let in immediately (they skip the application queue).
+ * to let in immediately.
  *
  * Codes are case-insensitive.
  */
-const VALID_CODES = new Set(
+const HARDCODED_CODES = new Set(
   [
     "ENTRY-FOUNDING",
     "ENTRY-VIP-2026",
@@ -34,12 +34,45 @@ export async function POST(request: NextRequest) {
     }
 
     const normalised = code.trim().toUpperCase();
-    const valid = VALID_CODES.has(normalised);
 
-    // Small delay to prevent timing attacks / brute force
+    // Check hardcoded codes first
+    if (HARDCODED_CODES.has(normalised)) {
+      return NextResponse.json({ valid: true });
+    }
+
+    // Check dynamically generated codes (from accepting applications)
+    const supabase = await getSupabaseAdmin();
+    if (supabase) {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("data")
+        .eq("key", "platform_beta_invite_codes")
+        .single();
+
+      const codes = (data?.data as { code: string; used: boolean }[]) || [];
+      const match = codes.find(
+        (c) => c.code.toUpperCase() === normalised && !c.used
+      );
+
+      if (match) {
+        // Mark as used
+        match.used = true;
+        await supabase.from("site_settings").upsert(
+          {
+            key: "platform_beta_invite_codes",
+            data: codes,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "key" }
+        );
+        return NextResponse.json({ valid: true });
+      }
+    }
+
+    // Small delay to prevent brute force
     await new Promise((r) => setTimeout(r, 300));
 
-    return NextResponse.json({ valid });
+    return NextResponse.json({ valid: false });
   } catch {
     return NextResponse.json({ valid: false });
   }

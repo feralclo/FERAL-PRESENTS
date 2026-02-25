@@ -132,6 +132,7 @@ src/
 │   ├── payment-monitor.ts     # logPaymentEvent() — fire-and-forget append to payment_events
 │   ├── payment-alerts.ts      # Resend alerts for payment failures (30min cooldown)
 │   ├── payment-digest.ts      # AI payment digest (Claude Haiku analysis of payment health)
+│   ├── platform-digest.ts     # AI platform health digest (whole-platform: Sentry + payments + funnel + infra)
 │   ├── klaviyo.ts, meta.ts    # Marketing integrations
 │   ├── date-utils.ts, image-utils.ts, merch-images.ts  # Utility helpers
 │   └── utils.ts               # cn() helper (clsx + tailwind-merge)
@@ -167,7 +168,9 @@ Sentry config: `sentry.client.config.ts` (browser), `sentry.server.config.ts` (N
 
 Context enrichment: `setSentryOrgContext()` / `setSentryUserContext()` called automatically in `requireAuth()` / `requireRepAuth()`. `setSentryEventContext()` called in event layout. All errors tagged with `org_id` for multi-tenant filtering.
 
-AI digest integration: `fetchSentryErrorSummary()` in `lib/sentry.ts` pulls top Sentry issues via API and feeds them into the Claude payment digest for a complete platform health picture.
+AI digest integration: `fetchSentryErrorSummary()` in `lib/sentry.ts` pulls top Sentry issues via API and feeds them into both the payment digest and the platform health digest.
+
+**Platform Health Dashboard** (`/admin/backend/health/`): Whole-platform monitoring — aggregates Sentry errors (frontend + backend + all tenants), system health checks (Database, Payments), payment summary, and AI platform digest. Traffic-light status banner. Data: `/api/platform/platform-health`. AI analysis: `lib/platform-digest.ts` → `/api/platform/platform-digest`. Separate from payment-specific health at `/admin/backend/payment-health/`.
 
 ### Payment System (Stripe)
 Dynamic event pages → `NativeCheckout` → `StripePaymentForm` + `ExpressCheckout` (Apple/Google Pay). PaymentIntent flow: create → confirm → webhook → order + tickets + email. Discounts validated server-side via `/api/discounts/validate`. Payment health monitored via `logPaymentEvent()` → `payment_events` table.
@@ -369,6 +372,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Platform Dashboard** (`requirePlatformOwner()`): `/api/platform/dashboard`, `/api/platform/tenants`, `/api/platform/tenants/[orgId]`
 - **Platform Beta** (`requirePlatformOwner()`): `/api/platform/beta-applications` (GET/POST), `/api/platform/invite-codes` (GET/POST)
 - **Platform XP Config** (`requirePlatformOwner()`): `/api/platform/xp-config` (GET/POST)
+- **Platform Health** (`requirePlatformOwner()`): `/api/platform/platform-health` (GET — aggregates Sentry errors + system checks + payment summary), `/api/platform/platform-digest` (GET/POST — AI whole-platform health digest)
 - **Payment Health** (`requirePlatformOwner()`): `/api/platform/payment-health` (GET), `/api/platform/payment-health/[id]/resolve` (POST), `/api/platform/payment-health/resolve-all` (POST). Cron: `/api/cron/stripe-health` (30min)
 - **AI Payment Digest** (`requirePlatformOwner()`): `/api/platform/payment-digest` (GET/POST). Cron: `/api/cron/payment-digest` (6h)
 - **Plans** (`requirePlatformOwner()`): `/api/plans` (GET/POST)

@@ -372,7 +372,7 @@ MCP access: **Supabase** (schema, queries, migrations) + **Vercel** (deployments
 - **Platform Dashboard** (`requirePlatformOwner()`): `/api/platform/dashboard`, `/api/platform/tenants`, `/api/platform/tenants/[orgId]`
 - **Platform Beta** (`requirePlatformOwner()`): `/api/platform/beta-applications` (GET/POST), `/api/platform/invite-codes` (GET/POST)
 - **Platform XP Config** (`requirePlatformOwner()`): `/api/platform/xp-config` (GET/POST)
-- **Platform Health** (`requirePlatformOwner()`): `/api/platform/platform-health` (GET — aggregates Sentry errors + system checks + payment summary), `/api/platform/platform-digest` (GET/POST — AI whole-platform health digest)
+- **Platform Health** (`requirePlatformOwner()`): `/api/platform/platform-health` (GET — aggregates Sentry + system + payments), `/api/platform/platform-digest` (GET/POST — AI whole-platform digest), `/api/platform/sentry` (GET list issues / POST resolve + comment)
 - **Payment Health** (`requirePlatformOwner()`): `/api/platform/payment-health` (GET), `/api/platform/payment-health/[id]/resolve` (POST), `/api/platform/payment-health/resolve-all` (POST). Cron: `/api/cron/stripe-health` (30min)
 - **AI Payment Digest** (`requirePlatformOwner()`): `/api/platform/payment-digest` (GET/POST). Cron: `/api/cron/payment-digest` (6h)
 - **Plans** (`requirePlatformOwner()`): `/api/plans` (GET/POST)
@@ -429,6 +429,109 @@ Hooks returning objects/functions as effect deps MUST use `useMemo`. **Stable re
 4. Test what matters — state logic, referential stability, API shape, edge cases, payment flows
 5. Don't test — pure UI rendering, CSS classes, static text
 6. Tests must pass before committing — run `npm test` and fix failures
+
+---
+
+## Platform Health Monitoring — AI Workflow
+
+The platform has comprehensive error monitoring. When the user asks you to "check the health dashboard," "look at errors," or "fix what's broken," follow this workflow.
+
+### Step 1: Read the current health status
+
+```
+# Fetch platform-wide health (Sentry errors + system checks + payment summary)
+curl -s http://localhost:3000/api/platform/platform-health?period=24h
+
+# Fetch Sentry issues directly (more detail, readable format)
+curl -s http://localhost:3000/api/platform/sentry?period=24h
+
+# Fetch payment health (payment-specific deep dive)
+curl -s http://localhost:3000/api/platform/payment-health?period=24h
+```
+Use `fetch()` via Bash or WebFetch to call these API endpoints. They require platform owner auth (use the browser session cookie or service role).
+
+### Step 2: Triage each issue
+
+**FIX IT** — actual bugs in the codebase:
+- Server crashes (500 errors) on API routes → find the route file, read the stack trace, fix the bug
+- React component errors → find the component, fix the rendering issue
+- Checkout flow breaking → critical, fix immediately
+- Webhook processing failures → fix the handler
+
+**RESOLVE IT** (don't fix — it's normal/expected):
+- `card_declined` / `insufficient_funds` / `expired_card` → customer's bank said no. Not a platform bug
+- Single transient network timeout that never recurred → resolve with note "transient, not recurring"
+- Bot traffic hitting endpoints and getting 401s → resolve with note "bot traffic, expected"
+- Browser extension interference (errors from chrome-extension:// URLs) → resolve with note "browser extension, not our code"
+
+**IGNORE IT** — noise that doesn't warrant action:
+- Single occurrence of a non-reproducible error with no user impact
+- Errors from very old browser versions the platform doesn't support
+
+### Step 3: Fix bugs in the codebase
+
+For issues that need fixing: read the error, find the file, understand the root cause, fix it, test it. Commit with a message like `fix: [description of what was broken and why]`.
+
+### Step 4: Resolve issues via API
+
+```bash
+# Resolve a Sentry issue (after fixing or determining it's not a bug)
+curl -X POST http://localhost:3000/api/platform/sentry \
+  -H "Content-Type: application/json" \
+  -d '{"issue_id": "SENTRY_ISSUE_ID", "action": "resolve", "comment": "Fixed in commit abc123 — was a null check missing in checkout handler"}'
+
+# Resolve a payment health event
+curl -X POST http://localhost:3000/api/platform/payment-health/EVENT_UUID/resolve \
+  -H "Content-Type: application/json" \
+  -d '{"notes": "Normal card decline — customer bank rejection, not a platform issue"}'
+
+# Bulk-resolve payment warnings (e.g., all card declines)
+curl -X POST http://localhost:3000/api/platform/payment-health/resolve-all \
+  -H "Content-Type: application/json" \
+  -d '{"severity": "warning", "notes": "Batch-resolved card declines — normal customer-side failures"}'
+```
+
+### Step 5: Generate AI digest (optional)
+
+If you want a comprehensive AI-generated summary:
+```bash
+# Generate platform-wide health digest (covers everything)
+curl -X POST http://localhost:3000/api/platform/platform-digest \
+  -H "Content-Type: application/json" \
+  -d '{"period_hours": 24}'
+
+# Generate payment-specific digest (deeper payment analysis)
+curl -X POST http://localhost:3000/api/platform/payment-digest \
+  -H "Content-Type: application/json" \
+  -d '{"period_hours": 24}'
+```
+
+### Rules for AI sessions handling health issues
+
+1. **Always investigate before resolving** — don't bulk-resolve without reading what the errors are
+2. **Leave clear comments/notes** when resolving — future sessions need to understand why it was resolved
+3. **Payment orphans are CRITICAL** — money was taken but no ticket issued. Never ignore these. Fix the root cause
+4. **Card declines are NORMAL** — 2-5% failure rate from card_declined/insufficient_funds is expected. Don't treat these as bugs
+5. **Check if an error is recurring** — a single occurrence might be noise, but 50 occurrences of the same error is a real bug
+6. **Frontend errors tagged with `org_id`** mean a tenant-specific issue — investigate if it's their content/config or a platform bug
+7. **Frontend errors WITHOUT `org_id`** are platform-wide — higher priority
+8. **Never resolve Sentry issues you don't understand** — if the error is unclear, investigate the code first
+9. **Commit fixes before resolving** — fix the bug, push the fix, THEN resolve the monitoring issue
+
+### API Reference (Platform Health)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/platform/platform-health?period=24h` | Aggregated health (Sentry + system + payments) |
+| GET | `/api/platform/sentry?period=24h&limit=25` | List unresolved Sentry issues |
+| POST | `/api/platform/sentry` | Resolve/ignore a Sentry issue + leave comment |
+| GET | `/api/platform/platform-digest` | Latest AI platform health digest |
+| POST | `/api/platform/platform-digest` | Generate new AI platform digest |
+| GET | `/api/platform/payment-health?period=24h` | Payment-specific health data |
+| POST | `/api/platform/payment-health/[id]/resolve` | Resolve single payment event |
+| POST | `/api/platform/payment-health/resolve-all` | Bulk-resolve payment events |
+| GET | `/api/platform/payment-digest` | Latest AI payment digest |
+| POST | `/api/platform/payment-digest` | Generate new AI payment digest |
 
 ---
 

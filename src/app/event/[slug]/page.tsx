@@ -111,7 +111,7 @@ export default async function EventPage({
   // Fetch event + active template in parallel
   const [event, activeTemplate] = await Promise.all([
     getEventFromDB(slug, orgId),
-    getActiveTemplate(),
+    getActiveTemplate(orgId),
   ]);
 
   if (!event) {

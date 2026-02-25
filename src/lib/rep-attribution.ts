@@ -397,7 +397,8 @@ async function recalculateMilestones(
   const { data: milestones } = await supabase
     .from(TABLES.REP_MILESTONES)
     .select("id, milestone_type, threshold_value, reward_id")
-    .in("id", milestoneIds);
+    .in("id", milestoneIds)
+    .eq("org_id", orgId);
 
   if (!milestones) return;
 

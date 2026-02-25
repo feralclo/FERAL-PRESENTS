@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a unique path: artists/{timestamp}_{filename}
+    // Generate a unique path namespaced by org: artists/{orgId}/{timestamp}_{filename}
     const safeName = filename
       .replace(/[^a-zA-Z0-9._-]/g, "_")
       .toLowerCase();
-    const path = `artists/${Date.now()}_${safeName}`;
+    const path = `artists/${auth.orgId}/${Date.now()}_${safeName}`;
 
     // Create signed upload URL (expires in 10 minutes, upsert enabled)
     const { data, error } = await supabase.storage

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
+import { useOrgId } from "@/components/OrgProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ interface FunnelStats {
 const FUNNEL_TYPES = ["landing", "tickets", "checkout", "purchase", "add_to_cart"] as const;
 
 export default function TrafficAnalytics() {
+  const orgId = useOrgId();
   const [funnel, setFunnel] = useState<FunnelStats>({
     landing: 0,
     tickets: 0,
@@ -51,6 +53,7 @@ export default function TrafficAnalytics() {
         .from(TABLES.TRAFFIC_EVENTS)
         .select("*", { count: "exact", head: true })
         .eq("event_type", type)
+        .eq("org_id", orgId)
     );
 
     const results = await Promise.all(queries);
@@ -59,7 +62,7 @@ export default function TrafficAnalytics() {
       data[type] = results[i].count || 0;
     });
     setFunnel(data);
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     loadFunnel();
@@ -75,7 +78,7 @@ export default function TrafficAnalytics() {
       .channel("traffic-realtime")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLES.TRAFFIC_EVENTS },
+        { event: "INSERT", schema: "public", table: TABLES.TRAFFIC_EVENTS, filter: `org_id=eq.${orgId}` },
         (payload) => {
           const type = payload.new.event_type as string;
           if (FUNNEL_TYPES.includes(type as typeof FUNNEL_TYPES[number])) {
@@ -95,7 +98,7 @@ export default function TrafficAnalytics() {
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [loadFunnel]);
+  }, [loadFunnel, orgId]);
 
   const dropoff = (from: number, to: number) =>
     from > 0 ? (((from - to) / from) * 100).toFixed(1) + "%" : "—";

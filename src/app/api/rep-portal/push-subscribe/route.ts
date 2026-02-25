@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     await savePushSubscription(
       auth.rep.id,
       subscription,
-      req.headers.get("user-agent") || undefined
+      req.headers.get("user-agent") || undefined,
+      auth.rep.org_id
     );
 
     return NextResponse.json({ success: true });
@@ -52,7 +53,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Missing endpoint" }, { status: 400 });
     }
 
-    await removePushSubscription(auth.rep.id, endpoint);
+    await removePushSubscription(auth.rep.id, endpoint, auth.rep.org_id);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(

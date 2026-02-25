@@ -43,7 +43,7 @@ export async function createNotification(params: {
         body: params.body,
         url: params.link,
         tag: params.type, // Collapse duplicate notification types
-      }).catch((err) => {
+      }, params.orgId).catch((err) => {
         console.warn("[rep-notifications] Push send failed:", err);
       });
     }

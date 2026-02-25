@@ -1,6 +1,5 @@
 import webPush from "web-push";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { ORG_ID } from "@/lib/constants";
 
 // ─── VAPID Configuration ─────────────────────────────────────────────────────
 
@@ -39,8 +38,12 @@ export async function savePushSubscription(
   repId: string,
   subscription: PushSubscriptionData,
   userAgent?: string,
-  orgId: string = ORG_ID
+  orgId?: string
 ): Promise<void> {
+  if (!orgId) {
+    console.error("[web-push] savePushSubscription called without orgId");
+    return;
+  }
   const supabase = await getSupabaseAdmin();
   if (!supabase) return;
 
@@ -64,15 +67,18 @@ export async function savePushSubscription(
  */
 export async function removePushSubscription(
   repId: string,
-  endpoint: string
+  endpoint: string,
+  orgId?: string
 ): Promise<void> {
   const supabase = await getSupabaseAdmin();
   if (!supabase) return;
-  await supabase
+  const query = supabase
     .from("rep_push_subscriptions")
     .delete()
     .eq("rep_id", repId)
     .eq("endpoint", endpoint);
+  if (orgId) query.eq("org_id", orgId);
+  await query;
 }
 
 // ─── Send Push Notifications ─────────────────────────────────────────────────
@@ -90,7 +96,8 @@ interface PushPayload {
  */
 export async function sendPushToRep(
   repId: string,
-  payload: PushPayload
+  payload: PushPayload,
+  orgId?: string
 ): Promise<{ sent: number; failed: number }> {
   if (!isPushConfigured()) {
     return { sent: 0, failed: 0 };
@@ -98,10 +105,12 @@ export async function sendPushToRep(
 
   const supabase = await getSupabaseAdmin();
   if (!supabase) return { sent: 0, failed: 0 };
-  const { data: subs } = await supabase
+  const query = supabase
     .from("rep_push_subscriptions")
     .select("id, endpoint, p256dh, auth")
     .eq("rep_id", repId);
+  if (orgId) query.eq("org_id", orgId);
+  const { data: subs } = await query;
 
   if (!subs || subs.length === 0) {
     return { sent: 0, failed: 0 };
@@ -159,7 +168,8 @@ export async function sendPushToRep(
  */
 export async function sendPushToReps(
   repIds: string[],
-  payload: PushPayload
+  payload: PushPayload,
+  orgId?: string
 ): Promise<{ sent: number; failed: number }> {
   let totalSent = 0;
   let totalFailed = 0;
@@ -172,7 +182,7 @@ export async function sendPushToReps(
 
   for (const batch of batches) {
     const results = await Promise.all(
-      batch.map((id) => sendPushToRep(id, payload))
+      batch.map((id) => sendPushToRep(id, payload, orgId))
     );
     for (const r of results) {
       totalSent += r.sent;

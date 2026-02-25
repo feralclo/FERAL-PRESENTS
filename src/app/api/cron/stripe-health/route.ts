@@ -285,7 +285,7 @@ export async function GET(request: NextRequest) {
           const ageMinutes = Math.round((Date.now() / 1000 - pi.created) / 60);
 
           await logPaymentEvent({
-            orgId: (meta.org_id as string) || "feral",
+            orgId: (meta.org_id as string) || "unknown",
             type: "incomplete_payment",
             severity: "warning",
             stripePaymentIntentId: pi.id,

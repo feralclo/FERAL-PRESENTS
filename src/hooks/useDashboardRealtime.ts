@@ -362,9 +362,10 @@ export function useDashboardRealtime(): DashboardState {
       .channel("dashboard-traffic")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLES.TRAFFIC_EVENTS },
+        { event: "INSERT", schema: "public", table: TABLES.TRAFFIC_EVENTS, filter: `org_id=eq.${orgId}` },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
+          if (row.org_id !== orgId) return;
           const eventType = row.event_type as string;
           const sessionId = row.session_id as string;
           const eventName = row.event_name as string | undefined;
@@ -460,7 +461,7 @@ export function useDashboardRealtime(): DashboardState {
       .channel("dashboard-orders")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLES.ORDERS },
+        { event: "INSERT", schema: "public", table: TABLES.ORDERS, filter: `org_id=eq.${orgId}` },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           if (row.org_id !== orgId) return;
@@ -501,7 +502,7 @@ export function useDashboardRealtime(): DashboardState {
       .channel("dashboard-tickets")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLES.TICKETS },
+        { event: "INSERT", schema: "public", table: TABLES.TICKETS, filter: `org_id=eq.${orgId}` },
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           if (row.org_id !== orgId) return;

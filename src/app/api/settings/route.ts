@@ -39,9 +39,14 @@ export async function GET(request: NextRequest) {
 
   // Block access to non-public settings keys for unauthenticated requests
   if (!isPublicSettingsKey(key)) {
-    // Check if user is authenticated — admin can read any key
+    // Check if user is authenticated — admin can read their own org's keys
     const auth = await requireAuth();
     if (auth.error) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    // Prevent cross-tenant reads: key must start with admin's org_id prefix
+    // (mirrors the POST validation at line 93)
+    if (!key.startsWith(`${auth.orgId}_`) && !key.startsWith("media_") && !key.startsWith("entry_platform_") && !key.startsWith("platform_")) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
   }

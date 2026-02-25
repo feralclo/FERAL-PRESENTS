@@ -396,7 +396,7 @@ export default function PopupAnalytics() {
       .channel("popup-analytics-realtime")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLES.POPUP_EVENTS },
+        { event: "INSERT", schema: "public", table: TABLES.POPUP_EVENTS, filter: `org_id=eq.${orgId}` },
         (payload) => {
           const type = payload.new.event_type as string;
           if (POPUP_TYPES.includes(type as typeof POPUP_TYPES[number])) {

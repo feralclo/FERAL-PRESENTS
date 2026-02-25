@@ -153,6 +153,7 @@ export async function POST(
         .from(TABLES.TICKET_TYPES)
         .select("sold")
         .eq("id", item.ticket_type_id)
+        .eq("org_id", orgId)
         .single();
 
       if (tt) {
@@ -162,7 +163,8 @@ export async function POST(
             sold: Math.max(0, tt.sold - item.qty),
             updated_at: now,
           })
-          .eq("id", item.ticket_type_id);
+          .eq("id", item.ticket_type_id)
+          .eq("org_id", orgId);
       }
     }
 
@@ -186,7 +188,8 @@ export async function POST(
           total_spent: totalSpent,
           updated_at: now,
         })
-        .eq("id", order.customer_id);
+        .eq("id", order.customer_id)
+        .eq("org_id", orgId);
     }
 
     // Reverse rep attribution (fire-and-forget — refund succeeds even if this fails)

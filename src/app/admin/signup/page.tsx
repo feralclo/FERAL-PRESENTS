@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { BETA_MODE } from "@/lib/beta";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
@@ -187,8 +188,16 @@ function SignupForm() {
     }
   }, [searchParams]);
 
+  // Beta mode: redirect to beta application page
+  useEffect(() => {
+    if (BETA_MODE) {
+      router.replace("/admin/beta/");
+    }
+  }, [router]);
+
   // Session check on mount — redirect if already logged in with org
   useEffect(() => {
+    if (BETA_MODE) return; // Skip if beta mode — redirect handles it
     (async () => {
       try {
         const supabase = getSupabaseClient();

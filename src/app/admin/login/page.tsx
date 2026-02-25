@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { BETA_MODE } from "@/lib/beta";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 
@@ -270,12 +271,23 @@ function LoginForm() {
           </button>
         </div>
 
-        {/* Signup link */}
+        {/* Signup / beta link */}
         <p className="mt-4 text-center text-[13px] text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/admin/signup/" className="font-medium text-primary hover:text-primary/80 transition-colors">
-            Get started for free
-          </Link>
+          {BETA_MODE ? (
+            <>
+              Don&apos;t have access yet?{" "}
+              <Link href="/admin/beta/" className="font-medium text-primary hover:text-primary/80 transition-colors">
+                Request beta access
+              </Link>
+            </>
+          ) : (
+            <>
+              Don&apos;t have an account?{" "}
+              <Link href="/admin/signup/" className="font-medium text-primary hover:text-primary/80 transition-colors">
+                Get started for free
+              </Link>
+            </>
+          )}
         </p>
 
         {/* Footer */}

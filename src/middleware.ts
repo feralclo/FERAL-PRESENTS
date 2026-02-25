@@ -135,7 +135,8 @@ function isProtectedAdminPage(pathname: string): boolean {
     pathname.startsWith("/admin") &&
     !pathname.startsWith("/admin/login") &&
     !pathname.startsWith("/admin/invite") &&
-    !pathname.startsWith("/admin/signup")
+    !pathname.startsWith("/admin/signup") &&
+    !pathname.startsWith("/admin/beta")
   );
 }
 
@@ -182,6 +183,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/rep-portal/push-vapid-key",
   "/api/team/accept-invite",
   "/api/announcement/signup",
+  "/api/beta/apply",
 ];
 
 const PUBLIC_API_EXACT_GETS = [

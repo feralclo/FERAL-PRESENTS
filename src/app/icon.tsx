@@ -17,7 +17,6 @@ export default function Icon() {
           borderRadius: 7,
         }}
       >
-        {/* Gradient background square with the E */}
         <div
           style={{
             width: 24,

@@ -15,9 +15,6 @@ export const metadata: Metadata = {
   title: "Entry — Events & Tickets",
   description:
     "Events, tickets, and experiences. Powered by Entry.",
-  icons: {
-    icon: "/favicon.ico",
-  },
 };
 
 export default async function RootLayout({

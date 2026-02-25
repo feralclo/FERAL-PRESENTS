@@ -427,45 +427,48 @@ export async function createOrder(
     .eq("status", "abandoned");
 
   // ------------------------------------------------------------------
-  // 7. Send order confirmation email (fire-and-forget)
+  // 7. Send order confirmation email (awaited — must complete before
+  //    the serverless function can be terminated by Vercel)
   // ------------------------------------------------------------------
   if (sendEmail) {
-    sendOrderConfirmationEmail({
-      orgId,
-      order: {
-        id: order.id,
-        order_number: order.order_number,
-        total,
-        currency: (event.currency || "GBP").toUpperCase(),
-      },
-      customer: {
-        first_name: customer.first_name,
-        last_name: customer.last_name,
-        email,
-      },
-      event: {
-        name: event.name,
-        slug: event.slug,
-        venue_name: event.venue_name,
-        date_start: event.date_start,
-        doors_time: event.doors_time,
-        currency: event.currency,
-      },
-      tickets: allTickets.map((t) => {
-        const tt = ttMap.get(t.ticket_type_id);
-        return {
-          ticket_code: t.ticket_code,
-          ticket_type_name: tt?.name || "Ticket",
-          merch_size: t.merch_size,
-          merch_name: t.merch_size
-            ? tt?.product?.name || tt?.merch_name || undefined
-            : undefined,
-        };
-      }),
-      vat: vat && vat.amount > 0 ? vat : undefined,
-    }).catch(() => {
-      // Silently catch — email failure must never affect the order response
-    });
+    try {
+      await sendOrderConfirmationEmail({
+        orgId,
+        order: {
+          id: order.id,
+          order_number: order.order_number,
+          total,
+          currency: (event.currency || "GBP").toUpperCase(),
+        },
+        customer: {
+          first_name: customer.first_name,
+          last_name: customer.last_name,
+          email,
+        },
+        event: {
+          name: event.name,
+          slug: event.slug,
+          venue_name: event.venue_name,
+          date_start: event.date_start,
+          doors_time: event.doors_time,
+          currency: event.currency,
+        },
+        tickets: allTickets.map((t) => {
+          const tt = ttMap.get(t.ticket_type_id);
+          return {
+            ticket_code: t.ticket_code,
+            ticket_type_name: tt?.name || "Ticket",
+            merch_size: t.merch_size,
+            merch_name: t.merch_size
+              ? tt?.product?.name || tt?.merch_name || undefined
+              : undefined,
+          };
+        }),
+        vat: vat && vat.amount > 0 ? vat : undefined,
+      });
+    } catch {
+      // Email failure must never affect the order response
+    }
   }
 
   // ------------------------------------------------------------------

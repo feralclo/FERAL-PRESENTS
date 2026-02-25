@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, type OrderVat, type OrderDiscount } from "@/lib/orders";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { updateOrgPlanSettings } from "@/lib/plans";
 import { logPaymentEvent } from "@/lib/payment-monitor";
@@ -230,13 +231,67 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
   // Check if order already exists for this payment (idempotency)
   const { data: existingOrder } = await supabase
     .from(TABLES.ORDERS)
-    .select("id")
+    .select("id, order_number, total, currency, event_id, metadata")
     .eq("payment_ref", paymentIntent.id)
     .eq("org_id", orgId)
     .single();
 
   if (existingOrder) {
-    // Order already created — idempotent, skip
+    // Order already created — but check if confirmation email was sent.
+    // If the confirm-order route created the order but its serverless
+    // function was terminated before the email completed, send it now.
+    const meta = (existingOrder.metadata || {}) as Record<string, unknown>;
+    if (meta.email_sent !== true) {
+      try {
+        const { data: ev } = await supabase
+          .from(TABLES.EVENTS)
+          .select("id, name, slug, currency, venue_name, date_start, doors_time")
+          .eq("id", existingOrder.event_id)
+          .eq("org_id", orgId)
+          .single();
+
+        const { data: orderTickets } = await supabase
+          .from(TABLES.TICKETS)
+          .select("ticket_code, merch_size, ticket_type:ticket_types(name, merch_name, product:products(name))")
+          .eq("order_id", existingOrder.id);
+
+        if (ev && customerEmail && orderTickets) {
+          await sendOrderConfirmationEmail({
+            orgId,
+            order: {
+              id: existingOrder.id,
+              order_number: existingOrder.order_number,
+              total: Number(existingOrder.total),
+              currency: (ev.currency || existingOrder.currency || "GBP").toUpperCase(),
+            },
+            customer: {
+              first_name: customerFirstName || "",
+              last_name: customerLastName || "",
+              email: customerEmail,
+            },
+            event: {
+              name: ev.name,
+              slug: ev.slug,
+              venue_name: ev.venue_name,
+              date_start: ev.date_start,
+              doors_time: ev.doors_time,
+              currency: ev.currency,
+            },
+            tickets: (orderTickets as { ticket_code: string; merch_size?: string; ticket_type?: { name?: string; merch_name?: string; product?: { name?: string } | null } | null }[]).map((t) => ({
+              ticket_code: t.ticket_code,
+              ticket_type_name: t.ticket_type?.name || "Ticket",
+              merch_size: t.merch_size,
+              merch_name: t.merch_size
+                ? t.ticket_type?.product?.name || t.ticket_type?.merch_name || undefined
+                : undefined,
+            })),
+          });
+          console.log(`[webhook] Safety net: sent missing email for existing order ${existingOrder.order_number}`);
+        }
+      } catch (emailErr) {
+        console.error(`[webhook] Safety net: failed to send email for order ${existingOrder.order_number}:`, emailErr);
+      }
+    }
     return;
   }
 

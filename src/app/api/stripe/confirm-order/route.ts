@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 import type { MetaEventPayload } from "@/types/marketing";
@@ -104,11 +105,67 @@ export async function POST(request: NextRequest) {
         .select(`
           *,
           order_items (*, ticket_type:ticket_types(*)),
-          tickets (*, ticket_type:ticket_types(name)),
+          tickets (*, ticket_type:ticket_types(name, merch_name, product:products(name))),
           customer:customers(*)
         `)
         .eq("id", existingOrder.id)
         .single();
+
+      // Safety net: if the order exists but the confirmation email was never
+      // sent (e.g. the webhook created the order but its serverless function
+      // was terminated before the email completed), send it now.
+      if (fullOrder) {
+        const meta = (fullOrder.metadata || {}) as Record<string, unknown>;
+        if (meta.email_sent !== true) {
+          const orderCustomer = fullOrder.customer as { email?: string; first_name?: string; last_name?: string } | null;
+          const orderEvent = await supabase
+            .from(TABLES.EVENTS)
+            .select("id, name, slug, currency, venue_name, date_start, doors_time")
+            .eq("id", fullOrder.event_id)
+            .eq("org_id", orgId)
+            .single();
+
+          if (orderCustomer?.email && orderEvent?.data) {
+            const ev = orderEvent.data;
+            const tickets = (fullOrder.tickets || []) as { ticket_code: string; ticket_type?: { name?: string; merch_name?: string; product?: { name?: string } | null } | null; merch_size?: string }[];
+            try {
+              await sendOrderConfirmationEmail({
+                orgId,
+                order: {
+                  id: fullOrder.id,
+                  order_number: fullOrder.order_number,
+                  total: Number(fullOrder.total),
+                  currency: (ev.currency || fullOrder.currency || "GBP").toUpperCase(),
+                },
+                customer: {
+                  first_name: orderCustomer.first_name || "",
+                  last_name: orderCustomer.last_name || "",
+                  email: orderCustomer.email,
+                },
+                event: {
+                  name: ev.name,
+                  slug: ev.slug,
+                  venue_name: ev.venue_name,
+                  date_start: ev.date_start,
+                  doors_time: ev.doors_time,
+                  currency: ev.currency,
+                },
+                tickets: tickets.map((t) => ({
+                  ticket_code: t.ticket_code,
+                  ticket_type_name: t.ticket_type?.name || "Ticket",
+                  merch_size: t.merch_size,
+                  merch_name: t.merch_size
+                    ? t.ticket_type?.product?.name || t.ticket_type?.merch_name || undefined
+                    : undefined,
+                })),
+              });
+              console.log(`[confirm-order] Safety net: sent missing email for existing order ${fullOrder.order_number}`);
+            } catch {
+              console.error(`[confirm-order] Safety net: failed to send email for order ${fullOrder.order_number}`);
+            }
+          }
+        }
+      }
 
       return NextResponse.json({ data: fullOrder });
     }

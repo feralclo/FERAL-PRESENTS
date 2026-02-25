@@ -223,9 +223,11 @@ export async function POST(request: NextRequest) {
     const codes = (codesData?.data as Record<string, unknown>[]) || [];
     codes.push({
       code,
+      label: `Accepted: ${app.company_name}`,
       created_for: app.email,
       created_at: new Date().toISOString(),
       used: false,
+      source: "application",
     });
 
     await supabase.from("site_settings").upsert(

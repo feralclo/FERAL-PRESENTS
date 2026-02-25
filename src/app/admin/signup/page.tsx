@@ -271,6 +271,17 @@ function SignupForm() {
         }
       }
 
+      // Track invite code usage (fire-and-forget)
+      const inviteCode = sessionStorage.getItem("entry_beta_invite");
+      if (inviteCode) {
+        fetch("/api/beta/track-usage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: inviteCode, email }),
+        }).catch(() => {});
+        sessionStorage.removeItem("entry_beta_invite");
+      }
+
       // Redirect to onboarding wizard
       router.replace("/admin/onboarding/");
     } catch {

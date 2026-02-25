@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   Music,
   Mic2,
@@ -424,6 +425,23 @@ export default function OnboardingPage() {
         }
 
         setLoading(false);
+
+        // Track invite code usage for Google OAuth signups.
+        // Email/password signups clear sessionStorage before reaching onboarding,
+        // so this only fires for Google OAuth (prevents double-tracking).
+        const inviteCode = sessionStorage.getItem("entry_beta_invite");
+        if (inviteCode) {
+          const supabase = getSupabaseClient();
+          const email = supabase
+            ? (await supabase.auth.getUser()).data.user?.email
+            : undefined;
+          fetch("/api/beta/track-usage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: inviteCode, email: email || "" }),
+          }).catch(() => {});
+          sessionStorage.removeItem("entry_beta_invite");
+        }
       } catch {
         router.replace("/admin/signup/");
       }

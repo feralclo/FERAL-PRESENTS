@@ -36,7 +36,7 @@ const BACKEND_NAV: BackendNavItem[] = [
   { href: "/admin/backend/connect/", label: "Connect", icon: Zap },
   { href: "/admin/backend/plans/", label: "Plans", icon: CreditCard },
   { href: "/admin/backend/platform-settings/", label: "Platform Settings", icon: Shield },
-  { href: "/admin/backend/beta/", label: "Beta Applications", icon: UserPlus },
+  { href: "/admin/backend/beta/", label: "Beta Access", icon: UserPlus },
 ];
 
 function matchRoute(pathname: string, href: string): boolean {

@@ -1,15 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import type { MerchCollectionItem } from "@/types/merch-store";
 
 interface ProductCardProps {
   item: MerchCollectionItem;
   variant: "featured" | "standard";
-  onClick: () => void;
+  collectionSlug: string;
 }
 
-export function ProductCard({ item, variant, onClick }: ProductCardProps) {
+export function ProductCard({ item, variant, collectionSlug }: ProductCardProps) {
   const product = item.product;
   if (!product) return null;
 
@@ -19,9 +20,9 @@ export function ProductCard({ item, variant, onClick }: ProductCardProps) {
   const isFeatured = variant === "featured";
 
   return (
-    <button
-      onClick={onClick}
-      className={`group relative overflow-hidden rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] text-left transition-all duration-300 hover:border-[var(--accent,#ff0033)]/30 hover:shadow-lg hover:shadow-[var(--accent,#ff0033)]/5 ${
+    <Link
+      href={`/shop/${collectionSlug}/${item.id}/`}
+      className={`group relative overflow-hidden rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] text-left transition-all duration-300 hover:border-[var(--text-primary,#fff)]/15 hover:shadow-lg hover:shadow-[var(--text-primary,#fff)]/[0.02] ${
         isFeatured ? "sm:flex" : ""
       }`}
     >
@@ -67,11 +68,11 @@ export function ProductCard({ item, variant, onClick }: ProductCardProps) {
 
       {/* Info */}
       <div className={`px-4 py-4 ${isFeatured ? "sm:flex sm:flex-1 sm:flex-col sm:justify-center sm:px-6 sm:py-6" : ""}`}>
-        <p className="text-[11px] uppercase tracking-[2px] text-[var(--text-secondary,#888)]/60">
+        <p className="text-[10px] uppercase tracking-[2px] text-[var(--text-secondary,#888)]/40">
           {product.type}
         </p>
         <h3
-          className={`mt-1 font-[var(--font-mono,'Space_Mono',monospace)] font-bold text-[var(--text-primary,#fff)] group-hover:text-[var(--accent,#ff0033)] transition-colors ${
+          className={`mt-1 font-[var(--font-mono,'Space_Mono',monospace)] font-bold text-[var(--text-primary,#fff)] transition-colors ${
             isFeatured ? "text-lg sm:text-xl" : "text-sm"
           }`}
         >
@@ -80,11 +81,11 @@ export function ProductCard({ item, variant, onClick }: ProductCardProps) {
 
         {/* Sizes */}
         {product.sizes && product.sizes.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="mt-2.5 flex flex-wrap gap-1">
             {product.sizes.map((size) => (
               <span
                 key={size}
-                className="rounded border border-[var(--card-border,#2a2a2a)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary,#888)]"
+                className="rounded-md border border-[var(--card-border,#2a2a2a)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary,#888)]/60"
               >
                 {size}
               </span>
@@ -103,11 +104,11 @@ export function ProductCard({ item, variant, onClick }: ProductCardProps) {
               Price TBC
             </span>
           )}
-          <span className="text-[11px] font-semibold text-[var(--accent,#ff0033)] opacity-0 transition-opacity group-hover:opacity-100">
-            View Details
+          <span className="text-[11px] font-medium text-[var(--text-secondary,#888)] opacity-0 transition-opacity group-hover:opacity-100">
+            View &rarr;
           </span>
         </div>
       </div>
-    </button>
+    </Link>
   );
 }

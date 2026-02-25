@@ -8,7 +8,6 @@ import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useShopCart } from "@/hooks/useShopCart";
 import { ProductCard } from "./ProductCard";
-import { ProductDetailModal } from "./ProductDetailModal";
 import { MerchCheckout } from "./MerchCheckout";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Event } from "@/types/events";
@@ -22,7 +21,6 @@ interface CollectionPageProps {
 
 export function CollectionPage({ collection }: CollectionPageProps) {
   const headerHidden = useHeaderScroll();
-  const [selectedItem, setSelectedItem] = useState<MerchCollectionItem | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
 
   const event = collection.event as Event | undefined;
@@ -177,7 +175,7 @@ export function CollectionPage({ collection }: CollectionPageProps) {
                   key={item.id}
                   item={item}
                   variant="featured"
-                  onClick={() => setSelectedItem(item)}
+                  collectionSlug={collection.slug}
                 />
               ))}
             </div>
@@ -198,7 +196,7 @@ export function CollectionPage({ collection }: CollectionPageProps) {
                   key={item.id}
                   item={item}
                   variant="standard"
-                  onClick={() => setSelectedItem(item)}
+                  collectionSlug={collection.slug}
                 />
               ))}
             </div>
@@ -214,20 +212,6 @@ export function CollectionPage({ collection }: CollectionPageProps) {
           </div>
         )}
       </section>
-
-      {/* Product detail modal */}
-      {selectedItem && (
-        <ProductDetailModal
-          item={selectedItem}
-          collection={collection}
-          event={event}
-          onClose={() => setSelectedItem(null)}
-          onAddToCart={(size) => {
-            cart.addItem(selectedItem, size || undefined);
-            setSelectedItem(null);
-          }}
-        />
-      )}
 
       {/* Floating cart bar */}
       {cart.hasItems && (

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import type { MerchCollectionItem } from "@/types/merch-store";
+
+const STORAGE_KEY = "entry_shop_cart";
 
 export interface ShopCartItem {
   collection_item_id: string;
@@ -15,34 +17,63 @@ export interface ShopCartItem {
 }
 
 export interface UseShopCartResult {
-  /** Items currently in the cart */
   items: ShopCartItem[];
-  /** Total number of items */
   totalQty: number;
-  /** Total price */
   totalPrice: number;
-  /** Currency symbol */
   currSymbol: string;
-  /** Add an item to cart */
   addItem: (collectionItem: MerchCollectionItem, size?: string) => void;
-  /** Remove an item (by collection_item_id + size) */
   removeItem: (collectionItemId: string, size?: string) => void;
-  /** Clear the cart */
   clearCart: () => void;
-  /** Whether the cart has items */
   hasItems: boolean;
+}
+
+/** Load cart from sessionStorage (returns empty array on failure). */
+function loadCart(): ShopCartItem[] {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as ShopCartItem[];
+  } catch {
+    return [];
+  }
+}
+
+/** Persist cart to sessionStorage. */
+function saveCart(items: ShopCartItem[]) {
+  try {
+    if (items.length === 0) {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } else {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+  } catch {
+    // sessionStorage not available
+  }
 }
 
 export function useShopCart(currency: string = "GBP"): UseShopCartResult {
   const [items, setItems] = useState<ShopCartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const currSymbol = getCurrencySymbol(currency);
+
+  // Hydrate from sessionStorage on mount
+  useEffect(() => {
+    setItems(loadCart());
+    setHydrated(true);
+  }, []);
+
+  // Persist to sessionStorage on change (skip initial hydration)
+  useEffect(() => {
+    if (hydrated) {
+      saveCart(items);
+    }
+  }, [items, hydrated]);
 
   const addItem = useCallback((collectionItem: MerchCollectionItem, size?: string) => {
     const product = collectionItem.product;
     if (!product) return;
 
     const price = collectionItem.custom_price ?? product.price ?? 0;
-    const key = `${collectionItem.id}-${size || ""}`;
 
     setItems((prev) => {
       const existing = prev.find(
@@ -50,7 +81,6 @@ export function useShopCart(currency: string = "GBP"): UseShopCartResult {
       );
 
       if (existing) {
-        // Check max per order
         if (collectionItem.max_per_order !== null && existing.qty >= collectionItem.max_per_order) {
           return prev;
         }

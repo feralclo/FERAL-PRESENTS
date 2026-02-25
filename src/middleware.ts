@@ -185,7 +185,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/announcement/signup",
   "/api/beta/",
   "/api/monitoring", // Sentry tunnel (bypasses ad blockers)
-  "/api/sentry-test", // TEMPORARY — remove after verifying Sentry
 ];
 
 const PUBLIC_API_EXACT_GETS = [

@@ -34,7 +34,6 @@ import {
   Package,
   Plus,
   Loader2,
-  Sparkles,
   ShoppingBag,
 } from "lucide-react";
 import type { Product, ProductStatus, ProductType } from "@/types/products";
@@ -274,7 +273,7 @@ export default function MerchPage() {
         </Card>
       )}
 
-      {/* Coming Soon — Standalone Merch Store */}
+      {/* Merch Store link */}
       <Card className="py-0 gap-0 border-primary/10">
         <CardHeader className="px-6 pt-5 pb-4">
           <div className="flex items-center gap-3">
@@ -282,21 +281,20 @@ export default function MerchPage() {
               <ShoppingBag size={16} className="text-primary" />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-sm">
-                  Standalone Merch Store
-                </CardTitle>
-                <Badge variant="default" className="gap-1 text-[10px]">
-                  <Sparkles size={9} />
-                  Coming Soon
-                </Badge>
-              </div>
+              <CardTitle className="text-sm">
+                Merch Store
+              </CardTitle>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Sell merchandise independently, not just bundled with event
-                tickets. Set up your own branded merch store with direct
-                shipping.
+                Sell merch as pre-orders for your events. Create collections, set pricing, and let fans order ahead.
               </p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/admin/merch-store/")}
+            >
+              Manage Store
+            </Button>
           </div>
         </CardHeader>
       </Card>

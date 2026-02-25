@@ -1,13 +1,22 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useBranding } from "@/hooks/useBranding";
+import { useOrgId } from "@/components/OrgProvider";
+import type { MerchStoreSettings } from "@/types/merch-store";
+import { DEFAULT_MERCH_STORE_SETTINGS } from "@/types/merch-store";
 import "@/styles/header.css";
 
 type MenuPhase = "closed" | "opening" | "open" | "closing";
 
-const NAV_LINKS = [
+interface NavLink {
+  href: string;
+  label: string;
+  index: string;
+}
+
+const BASE_NAV_LINKS: NavLink[] = [
   { href: "/#events", label: "Events", index: "01" },
   { href: "/#about", label: "About", index: "02" },
   { href: "/#contact", label: "Contact", index: "03" },
@@ -15,10 +24,44 @@ const NAV_LINKS = [
 
 export function Header() {
   const branding = useBranding();
+  const orgId = useOrgId();
   const [phase, setPhase] = useState<MenuPhase>("closed");
+  const [storeSettings, setStoreSettings] = useState<MerchStoreSettings | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isActive = phase !== "closed";
+
+  // Fetch merch store settings to determine if Shop link should appear
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/merch-store/settings");
+        if (res.ok) {
+          const json = await res.json();
+          setStoreSettings(json.data || DEFAULT_MERCH_STORE_SETTINGS);
+        }
+      } catch {
+        // Silently ignore — store link simply won't show
+      }
+    })();
+  }, [orgId]);
+
+  // Build nav links dynamically based on merch store settings
+  const navLinks = useMemo(() => {
+    if (!storeSettings?.enabled) return BASE_NAV_LINKS;
+    const shopLink: NavLink = {
+      href: "/shop/",
+      label: storeSettings.nav_label || "Shop",
+      index: "02",
+    };
+    // Insert Shop after Events, re-index
+    return [
+      { ...BASE_NAV_LINKS[0], index: "01" },
+      shopLink,
+      { ...BASE_NAV_LINKS[1], index: "03" },
+      { ...BASE_NAV_LINKS[2], index: "04" },
+    ];
+  }, [storeSettings]);
 
   useEffect(() => {
     return () => {
@@ -96,7 +139,7 @@ export function Header() {
 
       <div className={menuClassName}>
         <ul className="nav__list">
-          {NAV_LINKS.map((link, i) => (
+          {navLinks.map((link, i) => (
             <li
               key={link.href}
               className="nav__item"

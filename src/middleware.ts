@@ -191,6 +191,7 @@ const PUBLIC_API_EXACT_GETS = [
   "/api/events",
   "/api/settings",
   "/api/merch",
+  "/api/merch-store",
   "/api/branding",
   "/api/themes",
 ];
@@ -420,5 +421,6 @@ export const config = {
     "/auth/:path*",
     "/rep/:path*",
     "/event/:path*",
+    "/shop/:path*",
   ],
 };

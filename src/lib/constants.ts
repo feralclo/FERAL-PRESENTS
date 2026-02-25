@@ -40,6 +40,8 @@ export const TABLES = {
   DOMAINS: "domains",
   PAYMENT_EVENTS: "payment_events",
   EVENT_INTEREST_SIGNUPS: "event_interest_signups",
+  MERCH_COLLECTIONS: "merch_collections",
+  MERCH_COLLECTION_ITEMS: "merch_collection_items",
 } as const;
 
 
@@ -116,6 +118,11 @@ export function announcementAutomationKey(orgId: string): string {
 /** Generate the onboarding data key for a given org */
 export function onboardingKey(orgId: string): string {
   return `${orgId}_onboarding`;
+}
+
+/** Generate the merch store settings key for a given org */
+export function merchStoreKey(orgId: string): string {
+  return `${orgId}_merch_store`;
 }
 
 /** Platform-level Stripe billing config key (stores product_id + price_id) */

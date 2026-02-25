@@ -8,6 +8,7 @@ import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useShopCart } from "@/hooks/useShopCart";
 import { normalizeMerchImages } from "@/lib/merch-images";
+import { getCurrencySymbol } from "@/lib/stripe/config";
 import { MerchCheckout } from "./MerchCheckout";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Event } from "@/types/events";
@@ -25,6 +26,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
   const product = item.product;
   const event = collection.event as Event | undefined;
   const currency = event?.currency || "GBP";
+  const currSymbol = getCurrencySymbol(currency);
   const cart = useShopCart(currency);
 
   const images = product ? normalizeMerchImages(product.images) : [];
@@ -99,35 +101,26 @@ export function ProductPage({ item, collection }: ProductPageProps) {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto max-w-7xl px-4 pt-28 pb-24 sm:px-6 sm:pt-32 lg:px-8">
+      <main className="mx-auto max-w-6xl px-4 pt-24 pb-28 sm:px-6 sm:pt-28 lg:px-8">
         {/* Breadcrumb */}
-        <nav className="mb-8">
+        <nav className="mb-6">
           <div className="flex items-center gap-2 text-[12px] text-[var(--text-secondary,#888)]">
-            <Link
-              href="/shop/"
-              className="transition-colors hover:text-[var(--text-primary,#fff)]"
-            >
-              Shop
-            </Link>
-            <span className="text-[var(--text-secondary,#888)]/30">/</span>
             <Link
               href={`/shop/${collection.slug}/`}
               className="transition-colors hover:text-[var(--text-primary,#fff)]"
             >
-              {collection.title}
+              &larr; {collection.title}
             </Link>
-            <span className="text-[var(--text-secondary,#888)]/30">/</span>
-            <span className="text-[var(--text-primary,#fff)]">{product.name}</span>
           </div>
         </nav>
 
         {/* Two-column layout */}
-        <div className="lg:grid lg:grid-cols-2 lg:gap-12 xl:gap-16">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-10 xl:gap-14">
           {/* LEFT: Image gallery */}
-          <div className="lg:sticky lg:top-32 lg:self-start">
+          <div className="lg:sticky lg:top-28 lg:self-start">
             {/* Main image */}
             <div
-              className="relative aspect-square overflow-hidden rounded-2xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]"
+              className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -154,7 +147,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                 </div>
               )}
 
-              {/* Image counter (mobile) */}
+              {/* Image counter dots (mobile) */}
               {images.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 lg:hidden">
                   {images.map((_, i) => (
@@ -173,40 +166,17 @@ export function ProductPage({ item, collection }: ProductPageProps) {
               )}
             </div>
 
-            {/* Thumbnail strip (desktop) */}
+            {/* Thumbnails */}
             {images.length > 1 && (
-              <div className="mt-3 hidden gap-2 lg:flex">
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 {images.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setSelectedImage(i)}
-                    className={`relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
+                    className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all lg:h-20 lg:w-20 lg:rounded-xl ${
                       i === selectedImage
-                        ? "border-[var(--text-primary,#fff)]/60 shadow-lg"
-                        : "border-transparent opacity-50 hover:opacity-80"
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`${product.name} ${i + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Thumbnail strip (mobile — horizontal scroll) */}
-            {images.length > 1 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-                {images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedImage(i)}
-                    className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                      i === selectedImage
-                        ? "border-[var(--text-primary,#fff)]/60"
-                        : "border-transparent opacity-50"
+                        ? "border-[var(--text-primary,#fff)]/50"
+                        : "border-transparent opacity-40 hover:opacity-70"
                     }`}
                   >
                     <img
@@ -221,56 +191,56 @@ export function ProductPage({ item, collection }: ProductPageProps) {
           </div>
 
           {/* RIGHT: Product info */}
-          <div className="mt-8 lg:mt-0">
+          <div className="mt-6 lg:mt-0">
             {/* Type label */}
-            <p className="text-[11px] uppercase tracking-[3px] text-[var(--text-secondary,#888)]/50">
+            <p className="text-[10px] uppercase tracking-[3px] text-[var(--text-secondary,#888)]/40">
               {product.type}
             </p>
 
             {/* Product name */}
-            <h1 className="mt-2 font-[var(--font-mono,'Space_Mono',monospace)] text-2xl font-bold leading-tight text-[var(--text-primary,#fff)] sm:text-3xl">
+            <h1 className="mt-1.5 font-[var(--font-mono,'Space_Mono',monospace)] text-xl font-bold leading-tight text-[var(--text-primary,#fff)] sm:text-2xl">
               {product.name}
             </h1>
 
             {/* Price */}
             {price > 0 && (
-              <p className="mt-3 font-[var(--font-mono,'Space_Mono',monospace)] text-2xl font-bold text-[var(--text-primary,#fff)]">
-                £{Number(price).toFixed(2)}
+              <p className="mt-2 font-[var(--font-mono,'Space_Mono',monospace)] text-lg font-bold text-[var(--text-primary,#fff)]">
+                {currSymbol}{Number(price).toFixed(2)}
               </p>
             )}
 
-            {/* Gradient divider */}
-            <div className="my-6 h-px bg-gradient-to-r from-transparent via-[var(--text-secondary,#888)]/15 to-transparent" />
-
             {/* Description */}
             {product.description && (
-              <p className="text-[15px] leading-relaxed text-[var(--text-secondary,#888)] whitespace-pre-line">
-                {product.description}
-              </p>
+              <>
+                <div className="my-5 h-px bg-gradient-to-r from-[var(--text-secondary,#888)]/10 via-[var(--text-secondary,#888)]/10 to-transparent" />
+                <p className="text-[14px] leading-relaxed text-[var(--text-secondary,#888)]/70 whitespace-pre-line">
+                  {product.description}
+                </p>
+              </>
             )}
 
             {/* Size selector */}
             {hasSizes && (
-              <div className="mt-8">
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]">
+              <div className="mt-6">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary,#888)]/60">
                     Size
                   </p>
                   {selectedSize && (
-                    <p className="text-[12px] text-[var(--text-secondary,#888)]">
-                      Selected: <span className="font-medium text-[var(--text-primary,#fff)]">{selectedSize}</span>
+                    <p className="text-[11px] text-[var(--text-secondary,#888)]/50">
+                      {selectedSize}
                     </p>
                   )}
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-2">
                   {product.sizes.map((size) => (
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size === selectedSize ? null : size)}
-                      className={`min-w-[48px] rounded-xl border px-4 py-2.5 text-sm font-medium transition-all touch-manipulation ${
+                      className={`min-w-[44px] rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-all touch-manipulation ${
                         size === selectedSize
-                          ? "border-[var(--text-primary,#fff)]/40 bg-[var(--text-primary,#fff)]/10 text-[var(--text-primary,#fff)] shadow-[0_0_16px_rgba(255,255,255,0.04)]"
-                          : "border-[var(--card-border,#2a2a2a)] text-[var(--text-secondary,#888)] hover:border-[var(--text-secondary,#888)]/40 hover:text-[var(--text-primary,#fff)]"
+                          ? "border-[var(--text-primary,#fff)]/30 bg-[var(--text-primary,#fff)]/8 text-[var(--text-primary,#fff)]"
+                          : "border-[var(--card-border,#2a2a2a)] text-[var(--text-secondary,#888)]/60 hover:border-[var(--text-secondary,#888)]/30 hover:text-[var(--text-primary,#fff)]"
                       }`}
                     >
                       {size}
@@ -282,30 +252,23 @@ export function ProductPage({ item, collection }: ProductPageProps) {
 
             {/* Add to cart */}
             {price > 0 && (
-              <div className="mt-8">
+              <div className="mt-6">
                 <button
                   onClick={handleAddToCart}
                   disabled={!canAdd}
-                  className="w-full rounded-xl py-4 text-[13px] font-bold uppercase tracking-[2px] transition-all touch-manipulation disabled:cursor-not-allowed disabled:opacity-30"
-                  style={{
-                    backgroundColor: addedFeedback
-                      ? "rgba(52, 211, 153, 0.15)"
+                  className={`w-full rounded-xl py-3.5 text-[13px] font-bold uppercase tracking-[2px] transition-all touch-manipulation disabled:cursor-not-allowed disabled:opacity-30 ${
+                    addedFeedback
+                      ? "border border-emerald-400/25 bg-emerald-400/10 text-emerald-400"
                       : canAdd
-                        ? "rgba(255, 255, 255, 0.10)"
-                        : "rgba(255, 255, 255, 0.04)",
-                    color: addedFeedback
-                      ? "#34D399"
-                      : "var(--text-primary, #fff)",
-                    border: addedFeedback
-                      ? "1px solid rgba(52, 211, 153, 0.3)"
-                      : "1px solid rgba(255, 255, 255, 0.10)",
-                    boxShadow: canAdd && !addedFeedback
-                      ? "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 20px rgba(255,255,255,0.03)"
-                      : "none",
-                  }}
+                        ? "border border-[var(--text-primary,#fff)]/10 bg-[var(--text-primary,#fff)]/8 text-[var(--text-primary,#fff)] hover:bg-[var(--text-primary,#fff)]/12"
+                        : "border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] text-[var(--text-secondary,#888)]"
+                  }`}
+                  style={canAdd && !addedFeedback ? {
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px rgba(255,255,255,0.02)",
+                  } : undefined}
                 >
                   {addedFeedback
-                    ? "Added to cart ✓"
+                    ? "Added"
                     : !canAdd
                       ? "Select a size"
                       : "Add to Cart"}
@@ -313,99 +276,82 @@ export function ProductPage({ item, collection }: ProductPageProps) {
               </div>
             )}
 
-            {/* Gradient divider */}
-            <div className="my-8 h-px bg-gradient-to-r from-transparent via-[var(--text-secondary,#888)]/15 to-transparent" />
-
-            {/* Pre-order info */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]/60">
-                Pre-order Info
-              </p>
-
-              {/* Collect at event */}
-              <div className="rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] px-4 py-3.5">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 text-base leading-none">&#128230;</span>
-                  <div>
-                    <p className="text-[12px] font-semibold text-[var(--text-primary,#fff)]">
-                      Collect at the Event
+            {/* Compact info strip */}
+            <div className="mt-6">
+              <div className="rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]/60">
+                {/* Collection info */}
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--text-primary,#fff)]/[0.04]">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--text-secondary,#888)]/50">
+                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                      <path d="m3.3 7 8.7 5 8.7-5" />
+                      <path d="M12 22V12" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-medium text-[var(--text-primary,#fff)]/80">
+                      Pre-order &middot; Collect at event
                     </p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-secondary,#888)]">
-                      {collection.pickup_instructions ||
-                        "Present your QR code at the merch stand to collect your order."}
+                    <p className="mt-0.5 text-[11px] text-[var(--text-secondary,#888)]/50">
+                      {collection.pickup_instructions || "Present your QR code at the merch stand"}
                     </p>
                   </div>
                 </div>
-              </div>
 
-              {/* QR code */}
-              <div className="rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] px-4 py-3.5">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 text-base leading-none">&#128274;</span>
-                  <div>
-                    <p className="text-[12px] font-semibold text-[var(--text-primary,#fff)]">
-                      QR Code Confirmation
-                    </p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-secondary,#888)]">
-                      After purchase, you&apos;ll receive a QR code via email.
-                      Show it at the event to collect your merch.
-                    </p>
-                  </div>
-                </div>
-              </div>
+                {/* Divider */}
+                <div className="mx-4 h-px bg-[var(--card-border,#2a2a2a)]" />
 
-              {/* Ticket required */}
-              {event && (
-                <div className="rounded-xl border border-[var(--accent,#ff0033)]/15 bg-[var(--accent,#ff0033)]/5 px-4 py-3.5">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 text-base leading-none">&#127915;</span>
-                    <div>
-                      <p className="text-[12px] font-semibold text-[var(--text-primary,#fff)]">
-                        Ticket Required for Collection
+                {/* Event info */}
+                {event && (
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--text-primary,#fff)]/[0.04]">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--text-secondary,#888)]/50">
+                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                        <line x1="16" x2="16" y1="2" y2="6" />
+                        <line x1="8" x2="8" y1="2" y2="6" />
+                        <line x1="3" x2="21" y1="10" y2="10" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-medium text-[var(--text-primary,#fff)]/80">
+                        {event.name}
                       </p>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-secondary,#888)]">
-                        You&apos;ll need a ticket to{" "}
-                        <span className="font-medium text-[var(--text-primary,#fff)]">{event.name}</span>{" "}
-                        to collect your merch.
-                      </p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-secondary,#888)]/50">
+                        {event.date_start && (
+                          <span>
+                            {new Date(event.date_start).toLocaleDateString("en-GB", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </span>
+                        )}
+                        {event.venue_name && (
+                          <>
+                            <span className="text-[var(--card-border,#2a2a2a)]">&middot;</span>
+                            <span>{event.venue_name}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {event.slug && (
                       <Link
                         href={`/event/${event.slug}/`}
-                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--accent,#ff0033)] transition-colors hover:underline"
+                        className="flex-shrink-0 text-[11px] font-medium text-[var(--text-secondary,#888)]/50 transition-colors hover:text-[var(--text-primary,#fff)]"
                       >
-                        Get your ticket &rarr;
+                        Tickets &rarr;
                       </Link>
-                    </div>
+                    )}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Event info */}
-            {event && (
-              <>
-                <div className="my-8 h-px bg-gradient-to-r from-transparent via-[var(--text-secondary,#888)]/15 to-transparent" />
-                <div className="rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] px-5 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]/60 mb-3">
-                    Event
-                  </p>
-                  <p className="font-[var(--font-mono,'Space_Mono',monospace)] text-sm font-bold text-[var(--text-primary,#fff)]">
-                    {event.name}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-[var(--text-secondary,#888)]">
-                    {event.date_start && (
-                      <span>
-                        {new Date(event.date_start).toLocaleDateString("en-GB", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                    )}
-                    {event.venue_name && <span>{event.venue_name}</span>}
-                  </div>
-                </div>
-              </>
+            {/* Max per order notice */}
+            {item.max_per_order && (
+              <p className="mt-3 text-[11px] text-[var(--text-secondary,#888)]/40">
+                Limit {item.max_per_order} per order
+              </p>
             )}
           </div>
         </div>
@@ -413,29 +359,29 @@ export function ProductPage({ item, collection }: ProductPageProps) {
 
       {/* Floating cart bar */}
       {cart.hasItems && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]/95 backdrop-blur-lg safe-area-bottom">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)]/95 backdrop-blur-lg safe-area-bottom">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
             <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--text-primary,#fff)]/10 text-xs font-bold text-[var(--text-primary,#fff)]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--text-primary,#fff)]/8 text-[12px] font-bold text-[var(--text-primary,#fff)]/70">
                 {cart.totalQty}
               </span>
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary,#fff)]">
-                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
-                </p>
-                <p className="text-xs text-[var(--text-secondary,#888)]">
+                <p className="text-[13px] font-medium text-[var(--text-primary,#fff)]">
                   {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-[var(--text-secondary,#888)]/50">
+                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowCheckout(true)}
-              className="rounded-xl px-6 py-2.5 text-[13px] font-bold uppercase tracking-wider transition-all touch-manipulation"
+              className="rounded-xl px-6 py-2.5 text-[12px] font-bold uppercase tracking-[2px] transition-all touch-manipulation"
               style={{
-                backgroundColor: "rgba(255, 255, 255, 0.10)",
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
                 color: "var(--text-primary, #fff)",
-                border: "1px solid rgba(255, 255, 255, 0.12)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), 0 0 20px rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.10)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px rgba(255,255,255,0.02)",
               }}
             >
               Checkout

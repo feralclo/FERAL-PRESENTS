@@ -61,44 +61,46 @@ export function MerchOrderConfirmation({
     <div className="mx-auto max-w-lg px-4 py-8 sm:px-6">
       {/* Success header */}
       <div className="text-center mb-8">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20">
-          <span className="text-3xl">&#10003;</span>
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
         </div>
-        <h1 className="font-[var(--font-mono,'Space_Mono',monospace)] text-2xl font-bold text-[var(--text-primary,#fff)]">
-          Pre-order Confirmed!
+        <h1 className="font-[var(--font-mono,'Space_Mono',monospace)] text-xl font-bold text-[var(--text-primary,#fff)]">
+          Pre-order Confirmed
         </h1>
-        <p className="mt-2 text-sm text-[var(--text-secondary,#888)]">
+        <p className="mt-2 text-[13px] text-[var(--text-secondary,#888)]/60">
           Order {order.order_number}
         </p>
-        <p className="mt-1 text-xs text-[var(--text-secondary,#888)]">
-          A confirmation email has been sent to your inbox.
+        <p className="mt-1 text-[11px] text-[var(--text-secondary,#888)]/40">
+          Confirmation sent to your email
         </p>
       </div>
 
       {/* Order details */}
-      <div className="mb-6 rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary,#888)] mb-3">
+      <div className="mb-5 rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary,#888)]/50 mb-3">
           Order Details
         </p>
         {merchItems.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between py-1.5 text-sm">
-            <div className="text-[var(--text-primary,#fff)]">
-              <span>{item.product_name || "Merch Item"}</span>
+          <div key={idx} className="flex items-center justify-between py-1.5 text-[13px]">
+            <div className="text-[var(--text-primary,#fff)]/80">
+              <span>{item.product_name || "Item"}</span>
               {item.merch_size && (
-                <span className="ml-1.5 text-[var(--text-secondary,#888)]">({item.merch_size})</span>
+                <span className="ml-1.5 text-[var(--text-secondary,#888)]/50">({item.merch_size})</span>
               )}
               {item.qty > 1 && (
-                <span className="ml-1.5 text-[var(--text-secondary,#888)]">&times;{item.qty}</span>
+                <span className="ml-1.5 text-[var(--text-secondary,#888)]/50">&times;{item.qty}</span>
               )}
             </div>
-            <span className="font-[var(--font-mono,'Space_Mono',monospace)] text-[var(--text-primary,#fff)]">
+            <span className="font-[var(--font-mono,'Space_Mono',monospace)] text-[13px] text-[var(--text-primary,#fff)]/80">
               {symbol}{(Number(item.unit_price) * item.qty).toFixed(2)}
             </span>
           </div>
         ))}
         <div className="mt-3 border-t border-[var(--card-border,#2a2a2a)] pt-3 flex items-center justify-between">
-          <span className="text-sm font-semibold text-[var(--text-primary,#fff)]">Total</span>
-          <span className="font-[var(--font-mono,'Space_Mono',monospace)] text-lg font-bold text-[var(--text-primary,#fff)]">
+          <span className="text-[13px] font-semibold text-[var(--text-primary,#fff)]">Total</span>
+          <span className="font-[var(--font-mono,'Space_Mono',monospace)] text-base font-bold text-[var(--text-primary,#fff)]">
             {symbol}{Number(order.total).toFixed(2)}
           </span>
         </div>
@@ -106,9 +108,9 @@ export function MerchOrderConfirmation({
 
       {/* QR codes for collection */}
       {tickets.length > 0 && (
-        <div className="mb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary,#888)] mb-3">
-            Your Collection QR {tickets.length === 1 ? "Code" : "Codes"}
+        <div className="mb-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary,#888)]/50 mb-3">
+            Collection QR {tickets.length === 1 ? "Code" : "Codes"}
           </p>
           <div className="grid gap-3">
             {tickets.map((ticket: { ticket_code: string; merch_size?: string }) => (
@@ -120,26 +122,26 @@ export function MerchOrderConfirmation({
                   {qrCodes[ticket.ticket_code] ? (
                     <img
                       src={qrCodes[ticket.ticket_code]}
-                      alt={`QR code for ${ticket.ticket_code}`}
+                      alt={`QR code ${ticket.ticket_code}`}
                       className="h-20 w-20 rounded-lg"
                     />
                   ) : (
                     <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--bg-dark,#0e0e0e)]">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--text-secondary,#888)] border-t-transparent" />
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--text-secondary,#888)]/30 border-t-[var(--text-secondary,#888)]" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-[var(--font-mono,'Space_Mono',monospace)] text-sm font-bold text-[var(--text-primary,#fff)]">
+                  <p className="font-[var(--font-mono,'Space_Mono',monospace)] text-[13px] font-bold text-[var(--text-primary,#fff)]">
                     {ticket.ticket_code}
                   </p>
                   {ticket.merch_size && (
-                    <p className="mt-0.5 text-xs text-[var(--text-secondary,#888)]">
+                    <p className="mt-0.5 text-[11px] text-[var(--text-secondary,#888)]/60">
                       Size: {ticket.merch_size}
                     </p>
                   )}
-                  <p className="mt-1 text-[10px] text-[var(--text-secondary,#888)]/60">
-                    Show this at the merch stand
+                  <p className="mt-1 text-[10px] text-[var(--text-secondary,#888)]/40">
+                    Show at the merch stand
                   </p>
                 </div>
               </div>
@@ -148,57 +150,55 @@ export function MerchOrderConfirmation({
         </div>
       )}
 
-      {/* Collection instructions */}
-      <div className="mb-6 rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] p-4">
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 text-base">&#128230;</span>
-          <div>
-            <p className="text-[12px] font-semibold text-[var(--text-primary,#fff)]">
-              Collect at {event.name}
-            </p>
-            <p className="mt-0.5 text-[11px] text-[var(--text-secondary,#888)]">
-              {collection.pickup_instructions ||
-                "Present your QR code at the merch stand to collect your order."}
-            </p>
-            {event.venue_name && (
-              <p className="mt-1 text-[11px] text-[var(--text-secondary,#888)]">
-                &#128205; {event.venue_name}
-              </p>
-            )}
-            {event.date_start && (
-              <p className="text-[11px] text-[var(--text-secondary,#888)]">
-                &#128197; {new Date(event.date_start).toLocaleDateString("en-GB", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-            )}
-          </div>
+      {/* Collection info — compact, no emojis */}
+      <div className="mb-5 rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]/60">
+        <div className="px-4 py-3">
+          <p className="text-[12px] font-medium text-[var(--text-primary,#fff)]/80">
+            Collect at {event.name}
+          </p>
+          <p className="mt-0.5 text-[11px] text-[var(--text-secondary,#888)]/50">
+            {collection.pickup_instructions ||
+              "Present your QR code at the merch stand to collect your order."}
+          </p>
+        </div>
+        <div className="mx-4 h-px bg-[var(--card-border,#2a2a2a)]" />
+        <div className="flex items-center gap-3 px-4 py-3 text-[11px] text-[var(--text-secondary,#888)]/50">
+          {event.venue_name && <span>{event.venue_name}</span>}
+          {event.venue_name && event.date_start && (
+            <span className="text-[var(--card-border,#2a2a2a)]">&middot;</span>
+          )}
+          {event.date_start && (
+            <span>
+              {new Date(event.date_start).toLocaleDateString("en-GB", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Need a ticket? */}
+      {/* Ticket CTA */}
       {event.slug && (
-        <div className="mb-6 rounded-xl border border-[var(--accent,#ff0033)]/15 bg-[var(--accent,#ff0033)]/5 p-4">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 text-base">&#127915;</span>
+        <div className="mb-6">
+          <Link
+            href={`/event/${event.slug}/`}
+            className="flex items-center justify-between rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]/60 px-4 py-3.5 transition-all hover:border-[var(--text-secondary,#888)]/20"
+          >
             <div>
-              <p className="text-[12px] font-semibold text-[var(--text-primary,#fff)]">
-                Don&apos;t forget your ticket!
+              <p className="text-[12px] font-medium text-[var(--text-primary,#fff)]/80">
+                Need a ticket?
               </p>
-              <p className="mt-0.5 text-[11px] text-[var(--text-secondary,#888)]">
-                You&apos;ll need a ticket to {event.name} to collect your merch.
+              <p className="mt-0.5 text-[11px] text-[var(--text-secondary,#888)]/50">
+                You&apos;ll need one to collect your merch
               </p>
-              <Link
-                href={`/event/${event.slug}/`}
-                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--accent,#ff0033)] hover:underline"
-              >
-                Get your ticket &rarr;
-              </Link>
             </div>
-          </div>
+            <span className="text-[12px] font-medium text-[var(--text-secondary,#888)]/50">
+              &rarr;
+            </span>
+          </Link>
         </div>
       )}
 
@@ -206,7 +206,7 @@ export function MerchOrderConfirmation({
       <div className="text-center">
         <Link
           href="/shop/"
-          className="inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary,#888)] transition-colors hover:text-[var(--text-primary,#fff)]"
+          className="text-[12px] text-[var(--text-secondary,#888)]/50 transition-colors hover:text-[var(--text-primary,#fff)]"
         >
           &larr; Continue shopping
         </Link>

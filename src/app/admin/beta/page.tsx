@@ -278,7 +278,7 @@ function StepIntro({
 
         {/* Value props */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] text-muted-foreground/50">
-          <span>Instant Stripe payouts</span>
+          <span>Instant payouts</span>
           <span className="text-border">|</span>
           <span>100% white-label</span>
           <span className="text-border">|</span>

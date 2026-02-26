@@ -101,6 +101,11 @@ export function ProductPage({ item, collection }: ProductPageProps) {
           </Link>
         </nav>
 
+        {/* DEBUG: remove after testing */}
+        <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2 font-mono text-xs text-red-400">
+          display_effect = &quot;{product.display_effect ?? "UNDEFINED"}&quot;
+        </div>
+
         <div className="lg:grid lg:grid-cols-2 lg:gap-12 xl:gap-16">
           {/* Image gallery */}
           <div className="lg:sticky lg:top-28 lg:self-start">

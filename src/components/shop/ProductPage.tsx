@@ -83,14 +83,33 @@ export function ProductPage({ item, collection }: ProductPageProps) {
     .filter((i) => i.id !== item.id && i.product)
     .slice(0, 4);
 
+  const isSystemError = product.display_effect === "system_error";
+
   return (
-    <div className="min-h-screen bg-[var(--bg-dark,#0e0e0e)]">
+    <div className="min-h-screen bg-[var(--bg-dark,#0e0e0e)] relative">
+      {/* Display effect — code rain on page background */}
+      {isSystemError && (
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <CodeRainCanvas
+            className="absolute inset-0"
+            fontSize={14}
+            columnGap={22}
+            speed={0.7}
+            opacity={0.4}
+            active
+            color="#ff0033"
+          />
+          {/* Fade out at bottom so it doesn't fight the footer */}
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--bg-dark,#0e0e0e)] to-transparent" />
+        </div>
+      )}
+
       <header className={`header${headerHidden ? " header--hidden" : ""}`} id="header">
         <VerifiedBanner />
         <Header />
       </header>
 
-      <main className={`mx-auto max-w-6xl px-4 pt-24 sm:px-6 sm:pt-28 lg:px-8 ${cart.hasItems ? "pb-28" : "pb-16"}`}>
+      <main className={`relative z-[1] mx-auto max-w-6xl px-4 pt-24 sm:px-6 sm:pt-28 lg:px-8 ${cart.hasItems ? "pb-28" : "pb-16"}`}>
         {/* Back link */}
         <nav className="mb-6">
           <Link
@@ -108,9 +127,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
               className="relative aspect-[4/5] overflow-hidden rounded-2xl"
               style={{
                 backgroundColor: "rgba(255,255,255, 0.025)",
-                border: product.display_effect === "system_error"
-                  ? "1px solid rgba(255, 0, 51, 0.15)"
-                  : "1px solid rgba(255,255,255, 0.06)",
+                border: "1px solid rgba(255,255,255, 0.06)",
               }}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
@@ -126,23 +143,8 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                 <div className="h-full w-full bg-gradient-to-br from-foreground/[0.03] to-transparent" />
               )}
 
-              {/* Display effect — code rain overlay on top of image */}
-              {product.display_effect === "system_error" && (
-                <div className="absolute inset-0 z-[1] pointer-events-none" style={{ mixBlendMode: "screen" }}>
-                  <CodeRainCanvas
-                    className="absolute inset-0"
-                    fontSize={14}
-                    columnGap={20}
-                    speed={0.8}
-                    opacity={0.7}
-                    active
-                    color="#ff0033"
-                  />
-                </div>
-              )}
-
               {item.is_limited_edition && (
-                <div className="absolute top-4 left-4 z-[3]">
+                <div className="absolute top-4 left-4">
                   <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-black/60 px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-amber-300 backdrop-blur-sm">
                     {item.limited_edition_label || collection.limited_edition_label || "Limited Edition"}
                   </span>
@@ -151,7 +153,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
 
               {/* Image dots (mobile) */}
               {images.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 z-[3] lg:hidden">
+                <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 lg:hidden">
                   {images.map((_, i) => (
                     <button
                       key={i}

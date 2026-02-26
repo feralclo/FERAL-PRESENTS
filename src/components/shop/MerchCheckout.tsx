@@ -9,9 +9,9 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import type { Stripe, StripeElementsOptions } from "@stripe/stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
 import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
-import { getCurrencySymbol, toSmallestUnit, getPaymentErrorMessage } from "@/lib/stripe/config";
+import { getCurrencySymbol, getPaymentErrorMessage } from "@/lib/stripe/config";
 import { useBranding } from "@/hooks/useBranding";
 import type { ShopCartItem } from "@/hooks/useShopCart";
 import type { MerchCollection } from "@/types/merch-store";
@@ -466,13 +466,10 @@ export function MerchCheckout(props: MerchCheckoutProps) {
       });
   }, []);
 
-  const safeAmount = Math.max(toSmallestUnit(props.totalPrice), 50); // Stripe minimum is 50 (£0.50)
-
-  const elementsOptions: StripeElementsOptions = useMemo(
+  // Individual card elements (CardNumberElement etc.) don't need deferred intents.
+  // Only appearance is needed — mode/amount/currency is for PaymentElement.
+  const elementsOptions = useMemo(
     () => ({
-      mode: "payment" as const,
-      amount: safeAmount,
-      currency: (props.currency || "GBP").toLowerCase(),
       appearance: {
         theme: "night" as const,
         variables: {
@@ -484,8 +481,14 @@ export function MerchCheckout(props: MerchCheckoutProps) {
           borderRadius: "8px",
         },
       },
+      fonts: [
+        {
+          cssSrc:
+            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap",
+        },
+      ],
     }),
-    [safeAmount, props.currency]
+    []
   );
 
   // Empty cart guard

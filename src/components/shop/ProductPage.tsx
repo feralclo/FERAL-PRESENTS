@@ -122,11 +122,11 @@ export function ProductPage({ item, collection }: ProductPageProps) {
 
         <div className="lg:grid lg:grid-cols-2 lg:gap-12 xl:gap-16">
           {/* Image gallery */}
-          <div className="lg:sticky lg:top-28 lg:self-start">
+          <div className={`lg:sticky lg:top-28 lg:self-start ${isSystemError ? "rounded-2xl bg-[#0c0c10] p-2" : ""}`}>
             <div
               className="relative aspect-[4/5] overflow-hidden rounded-2xl"
               style={{
-                backgroundColor: "rgba(255,255,255, 0.025)",
+                backgroundColor: isSystemError ? "rgba(255,255,255, 0.03)" : "rgba(255,255,255, 0.025)",
                 border: "1px solid rgba(255,255,255, 0.06)",
               }}
               onTouchStart={handleTouchStart}
@@ -194,7 +194,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
           </div>
 
           {/* Product info */}
-          <div className="mt-8 lg:mt-0">
+          <div className={`mt-8 lg:mt-0 ${isSystemError ? "rounded-2xl bg-[#0c0c10] p-5 max-md:p-4" : ""}`}>
             {/* Type */}
             {product.type && (
               <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
@@ -514,7 +514,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
 
         {/* More from this collection */}
         {otherItems.length > 0 && (
-          <section className="mt-16 sm:mt-20">
+          <section className={`mt-16 sm:mt-20 ${isSystemError ? "rounded-2xl bg-[#0c0c10] p-5 max-md:p-4" : ""}`}>
             <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-10" />
             <div className="flex items-center gap-3 mb-6">
               <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 shrink-0">

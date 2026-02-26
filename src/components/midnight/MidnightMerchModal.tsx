@@ -200,8 +200,8 @@ export function MidnightMerchModal({
                 active={isOpen}
                 color="#ff0033"
               />
-              {/* Darken slightly for text readability */}
-              <div className="absolute inset-0 bg-[#08080c]/50" />
+              {/* Darken for text readability — enough to block rain behind modules */}
+              <div className="absolute inset-0 bg-[#08080c]/70" />
             </div>
           )}
 

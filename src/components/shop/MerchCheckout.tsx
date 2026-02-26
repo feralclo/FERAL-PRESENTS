@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
 import {
   Elements,
   CardNumberElement,
@@ -12,7 +12,6 @@ import {
 import type { Stripe } from "@stripe/stripe-js";
 import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import { getCurrencySymbol, getPaymentErrorMessage } from "@/lib/stripe/config";
-import { useBranding } from "@/hooks/useBranding";
 import type { ShopCartItem } from "@/hooks/useShopCart";
 import type { MerchCollection } from "@/types/merch-store";
 import type { Event } from "@/types/events";
@@ -153,7 +152,6 @@ function CheckoutForm({
   onBack,
   stripeAccountId,
 }: MerchCheckoutProps & { stripeAccountId: string | null }) {
-  const branding = useBranding();
   const symbol = getCurrencySymbol(currency);
 
   // Form state
@@ -168,12 +166,12 @@ function CheckoutForm({
   const [error, setError] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [completedOrder, setCompletedOrder] = useState<any>(null);
-  const [cardRef, setCardRef] = useState<CardFieldsHandle | null>(null);
+  const cardRef = useRef<CardFieldsHandle>(null);
 
   const isValid = firstName.trim() && lastName.trim() && email.trim() && email.includes("@");
 
   const handleSubmit = useCallback(async () => {
-    if (!isValid || processing || !cardRef) return;
+    if (!isValid || processing || !cardRef.current) return;
 
     setProcessing(true);
     setError(null);
@@ -208,7 +206,7 @@ function CheckoutForm({
       }
 
       // 2. Confirm payment with Stripe
-      const result = await cardRef.confirmPayment(piData.client_secret, {
+      const result = await cardRef.current!.confirmPayment(piData.client_secret, {
         name: `${firstName.trim()} ${lastName.trim()}`,
         email: email.trim().toLowerCase(),
         address: { country },
@@ -253,7 +251,7 @@ function CheckoutForm({
     }
 
     setProcessing(false);
-  }, [isValid, processing, cardRef, collection.slug, cartItems, email, firstName, lastName, phone, country, stripeAccountId, event.id]);
+  }, [isValid, processing, collection.slug, cartItems, email, firstName, lastName, phone, country, stripeAccountId, event.id]);
 
   // Show order confirmation
   if (completedOrder) {
@@ -369,7 +367,7 @@ function CheckoutForm({
         <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary,#888)]">
           Payment
         </p>
-        <CardFields ref={setCardRef} />
+        <CardFields ref={cardRef} />
         <div>
           <label className="block text-[11px] font-semibold uppercase tracking-[2px] text-[var(--text-secondary,#888)] mb-1.5">
             Country

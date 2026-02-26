@@ -253,12 +253,19 @@ export async function generateTicketsPDF(
     doc.setDrawColor(40, 40, 40);
     doc.line(24, bottomDividerY, 124, bottomDividerY);
 
-    // Disclaimer
+    // Disclaimer — override for merch-only pre-orders
     if (s.show_disclaimer) {
+      const isMerchOnly = t.orderType === "merch_preorder";
+      const line1 = isMerchOnly
+        ? "THIS QR CODE IS FOR MERCH COLLECTION ONLY"
+        : s.disclaimer_line1;
+      const line2 = isMerchOnly
+        ? "PRESENT AT THE MERCH STAND — NOT VALID FOR EVENT ENTRY"
+        : s.disclaimer_line2;
       doc.setFontSize(7);
       doc.setTextColor(secR, secG, secB);
-      doc.text(s.disclaimer_line1, centerX, disclaimerY1, { align: "center" });
-      doc.text(s.disclaimer_line2, centerX, disclaimerY2, { align: "center" });
+      doc.text(line1, centerX, disclaimerY1, { align: "center" });
+      doc.text(line2, centerX, disclaimerY2, { align: "center" });
     }
 
     // Bottom accent line

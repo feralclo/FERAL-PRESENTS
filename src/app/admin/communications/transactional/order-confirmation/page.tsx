@@ -116,14 +116,20 @@ function EmailPreview({ settings, showMerch, previewMode = "tickets" }: { settin
   const accent = settings.accent_color || "#8B5CF6";
   const logoH = Math.min(settings.logo_height || 48, 100);
 
-  const previewSubject = settings.order_confirmation_subject
-    .replace("{{event_name}}", "Summer Festival").replace("{{order_number}}", "DEMO-00042");
-  const previewHeading = settings.order_confirmation_heading
-    .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "Summer Festival");
-  const previewMessage = settings.order_confirmation_message
-    .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "Summer Festival")
-    .replace("{{venue_name}}", "Invisible Wind Factory").replace("{{event_date}}", "Thursday 27 March 2026")
-    .replace("{{order_number}}", "DEMO-00042").replace("{{ticket_count}}", "2");
+  const previewSubject = isMerchPreorder
+    ? "Merch pre-order confirmed — Summer Festival"
+    : settings.order_confirmation_subject
+      .replace("{{event_name}}", "Summer Festival").replace("{{order_number}}", "DEMO-00042");
+  const previewHeading = isMerchPreorder
+    ? "Pre-order confirmed."
+    : settings.order_confirmation_heading
+      .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "Summer Festival");
+  const previewMessage = isMerchPreorder
+    ? "Your merch pre-order for Summer Festival is confirmed. Your collection QR code is below."
+    : settings.order_confirmation_message
+      .replace("{{customer_name}}", "Alex").replace("{{event_name}}", "Summer Festival")
+      .replace("{{venue_name}}", "Invisible Wind Factory").replace("{{event_date}}", "Thursday 27 March 2026")
+      .replace("{{order_number}}", "DEMO-00042").replace("{{ticket_count}}", "2");
 
   return (
     <div className="mx-auto max-w-2xl">

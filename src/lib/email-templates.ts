@@ -81,9 +81,18 @@ export function buildOrderConfirmationEmail(
     ticket_count: String(order.tickets.length),
   };
 
-  const subject = replaceTemplateVars(s.order_confirmation_subject, vars);
-  const heading = replaceTemplateVars(s.order_confirmation_heading, vars);
-  const message = replaceTemplateVars(s.order_confirmation_message, vars);
+  // Detect order type early so we can override subject/heading
+  const isMerchPreorder = order.order_type === "merch_preorder";
+
+  const subject = isMerchPreorder
+    ? `Merch pre-order confirmed — ${order.event_name}`
+    : replaceTemplateVars(s.order_confirmation_subject, vars);
+  const heading = isMerchPreorder
+    ? "Pre-order confirmed."
+    : replaceTemplateVars(s.order_confirmation_heading, vars);
+  const message = isMerchPreorder
+    ? `Your merch pre-order for ${order.event_name} is confirmed. Your collection QR ${order.tickets.length === 1 ? "code is" : "codes are"} below.`
+    : replaceTemplateVars(s.order_confirmation_message, vars);
 
   // Event details line
   const eventDetails = [order.event_date, order.venue_name]
@@ -91,8 +100,6 @@ export function buildOrderConfirmationEmail(
     .join(" · ");
   const doorsLine = order.doors_time ? `Doors ${order.doors_time}` : "";
 
-  // Detect order type
-  const isMerchPreorder = order.order_type === "merch_preorder";
   const hasMerch = isMerchPreorder || order.tickets.some((t) => t.merch_size);
 
   // Build ticket rows HTML

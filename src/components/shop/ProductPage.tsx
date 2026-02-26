@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Component, type ReactNode, type ErrorInfo } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { MidnightFooter } from "@/components/midnight/MidnightFooter";
@@ -13,6 +13,44 @@ import { ProductCard } from "./ProductCard";
 import { MerchCheckout } from "./MerchCheckout";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Event } from "@/types/events";
+
+/* ── Error boundary to catch Stripe/payment crashes ── */
+class CheckoutErrorBoundary extends Component<
+  { children: ReactNode; onBack: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; onBack: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Checkout error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="mx-auto max-w-lg px-4 py-16 text-center">
+          <p className="text-sm font-medium text-[var(--text-primary,#fff)]">
+            Something went wrong loading checkout.
+          </p>
+          <p className="mt-2 text-xs text-[var(--text-secondary,#888)]">
+            Please go back and try again. If the problem persists, refresh the page.
+          </p>
+          <button
+            onClick={this.props.onBack}
+            className="mt-4 text-sm text-[var(--text-primary,#fff)] underline underline-offset-4"
+          >
+            Back to collection
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -85,14 +123,16 @@ export function ProductPage({ item, collection }: ProductPageProps) {
           <VerifiedBanner />
           <Header />
         </header>
-        <MerchCheckout
-          collection={collection}
-          event={event}
-          cartItems={cart.items}
-          totalPrice={cart.totalPrice}
-          currency={currency}
-          onBack={() => setShowCheckout(false)}
-        />
+        <CheckoutErrorBoundary onBack={() => setShowCheckout(false)}>
+          <MerchCheckout
+            collection={collection}
+            event={event}
+            cartItems={cart.items}
+            totalPrice={cart.totalPrice}
+            currency={currency}
+            onBack={() => setShowCheckout(false)}
+          />
+        </CheckoutErrorBoundary>
         <MidnightFooter />
       </div>
     );

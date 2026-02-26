@@ -452,19 +452,26 @@ function CheckoutForm({
 export function MerchCheckout(props: MerchCheckoutProps) {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch connected account and load Stripe
-    preloadStripeAccount().then((accountId) => {
-      setStripeAccountId(accountId || null);
-      setStripePromise(getStripeClient(accountId));
-    });
+    preloadStripeAccount()
+      .then((accountId) => {
+        setStripeAccountId(accountId || null);
+        setStripePromise(getStripeClient(accountId));
+      })
+      .catch(() => {
+        setLoadError("Unable to load payment system. Please refresh and try again.");
+      });
   }, []);
+
+  const safeAmount = Math.max(toSmallestUnit(props.totalPrice), 50); // Stripe minimum is 50 (£0.50)
 
   const elementsOptions: StripeElementsOptions = useMemo(
     () => ({
       mode: "payment" as const,
-      amount: toSmallestUnit(props.totalPrice),
+      amount: safeAmount,
       currency: (props.currency || "GBP").toLowerCase(),
       appearance: {
         theme: "night" as const,
@@ -478,8 +485,37 @@ export function MerchCheckout(props: MerchCheckoutProps) {
         },
       },
     }),
-    [props.totalPrice, props.currency]
+    [safeAmount, props.currency]
   );
+
+  // Empty cart guard
+  if (!props.cartItems || props.cartItems.length === 0 || props.totalPrice <= 0) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="text-sm text-[var(--text-secondary,#888)]">Your cart is empty.</p>
+        <button
+          onClick={props.onBack}
+          className="mt-4 text-sm text-[var(--text-primary,#fff)] underline underline-offset-4"
+        >
+          Back to collection
+        </button>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="text-sm text-red-400">{loadError}</p>
+        <button
+          onClick={props.onBack}
+          className="mt-4 text-sm text-[var(--text-primary,#fff)] underline underline-offset-4"
+        >
+          Back to collection
+        </button>
+      </div>
+    );
+  }
 
   if (!stripePromise) {
     return (

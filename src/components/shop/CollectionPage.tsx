@@ -15,14 +15,14 @@ import type { Event } from "@/types/events";
 /* ── Error boundary to catch Stripe/payment crashes ── */
 class CheckoutErrorBoundary extends Component<
   { children: ReactNode; onBack: () => void },
-  { hasError: boolean }
+  { hasError: boolean; errorMsg: string }
 > {
   constructor(props: { children: ReactNode; onBack: () => void }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorMsg: "" };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMsg: error?.message || "Unknown error" };
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Checkout error:", error, info);
@@ -36,6 +36,9 @@ class CheckoutErrorBoundary extends Component<
           </p>
           <p className="mt-2 text-xs text-[var(--text-secondary,#888)]">
             Please go back and try again. If the problem persists, refresh the page.
+          </p>
+          <p className="mt-2 text-[10px] font-mono text-red-400/60 break-all">
+            {this.state.errorMsg}
           </p>
           <button
             onClick={this.props.onBack}

@@ -530,15 +530,20 @@ export function ProductPage({ item, collection }: ProductPageProps) {
           <div className="mx-auto max-w-6xl px-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6 lg:px-8">
             <button
               onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
-              className="w-full flex items-center justify-center gap-3 h-[56px] rounded-2xl text-[14px] font-bold tracking-[0.02em] text-[#0e0e0e] transition-all duration-200 touch-manipulation active:scale-[0.98] hover:-translate-y-px"
+              className="w-full flex items-center justify-between h-[56px] rounded-2xl px-6 transition-all duration-200 touch-manipulation active:scale-[0.98] hover:-translate-y-px"
               style={{
                 background: "linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%)",
                 boxShadow: "0 2px 4px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
               }}
             >
-              <span>Checkout</span>
-              <span className="font-[family-name:var(--font-mono)] text-[13px] font-bold" style={{ opacity: 0.5 }}>
-                {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"} &middot; {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+              <span className="flex items-center gap-2">
+                <span className="text-[14px] font-bold tracking-[0.02em] text-[#0e0e0e]">Checkout</span>
+                <span className="font-[family-name:var(--font-mono)] text-[12px] font-semibold text-[#0e0e0e]/40">
+                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
+                </span>
+              </span>
+              <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tracking-[-0.01em] text-[#0e0e0e]">
+                {cart.currSymbol}{cart.totalPrice.toFixed(2)}
               </span>
             </button>
           </div>

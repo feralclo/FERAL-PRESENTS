@@ -19,6 +19,7 @@ export async function generateMetadata({
   const supabase = await getSupabaseAdmin();
   let orgName = "Entry";
   let collectionTitle = "Shop";
+  let faviconUrl: string | undefined;
 
   if (supabase) {
     try {
@@ -38,6 +39,7 @@ export async function generateMetadata({
       ]);
       const branding = brandingRes.data?.data as BrandingSettings | undefined;
       if (branding?.org_name) orgName = branding.org_name;
+      if (branding?.favicon_url) faviconUrl = branding.favicon_url;
       if (collectionRes.data?.title) collectionTitle = collectionRes.data.title;
     } catch {
       // Use defaults
@@ -47,6 +49,7 @@ export async function generateMetadata({
   return {
     title: `${collectionTitle} | ${orgName}`,
     description: `Pre-order merch for ${collectionTitle}. Collect at the event.`,
+    ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
   };
 }
 

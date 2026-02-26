@@ -19,6 +19,7 @@ export async function generateMetadata({
   const orgId = await getOrgId();
   const supabase = await getSupabaseAdmin();
   let orgName = "Entry";
+  let faviconUrl: string | undefined;
 
   if (supabase) {
     try {
@@ -30,6 +31,7 @@ export async function generateMetadata({
       if (data?.data) {
         const branding = data.data as BrandingSettings;
         if (branding.org_name) orgName = branding.org_name;
+        if (branding.favicon_url) faviconUrl = branding.favicon_url;
       }
     } catch {}
   }
@@ -38,6 +40,7 @@ export async function generateMetadata({
     title: `Checkout — ${orgName}`,
     description: `Complete your merch pre-order with ${orgName}. Secure checkout powered by Stripe.`,
     robots: { index: false, follow: false },
+    ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
   };
 }
 

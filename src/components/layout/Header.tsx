@@ -30,7 +30,7 @@ export function Header() {
     // Hydrate from sessionStorage for instant render (no layout shift)
     if (typeof window === "undefined") return null;
     try {
-      const cached = sessionStorage.getItem("entry_store_settings");
+      const cached = sessionStorage.getItem(`entry_store_settings_${orgId}`);
       if (cached) return JSON.parse(cached);
     } catch { /* ignore */ }
     return null;
@@ -48,7 +48,7 @@ export function Header() {
           const json = await res.json();
           const settings = json.data || DEFAULT_MERCH_STORE_SETTINGS;
           setStoreSettings(settings);
-          try { sessionStorage.setItem("entry_store_settings", JSON.stringify(settings)); } catch { /* ignore */ }
+          try { sessionStorage.setItem(`entry_store_settings_${orgId}`, JSON.stringify(settings)); } catch { /* ignore */ }
         }
       } catch {
         // Silently ignore — store link simply won't show

@@ -13,6 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const orgId = await getOrgId();
   const supabase = await getSupabaseAdmin();
   let orgName = "Entry";
+  let faviconUrl: string | undefined;
 
   if (supabase) {
     try {
@@ -23,6 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
         .single();
       const branding = data?.data as BrandingSettings | undefined;
       if (branding?.org_name) orgName = branding.org_name;
+      if (branding?.favicon_url) faviconUrl = branding.favicon_url;
     } catch {
       // Use default
     }
@@ -31,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `Shop | ${orgName}`,
     description: `Pre-order exclusive merch for ${orgName} events.`,
+    ...(faviconUrl ? { icons: { icon: faviconUrl, apple: faviconUrl } } : {}),
   };
 }
 

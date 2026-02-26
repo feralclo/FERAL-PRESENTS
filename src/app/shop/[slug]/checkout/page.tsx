@@ -68,11 +68,12 @@ export default async function MerchCheckoutRoute({
     redirect("/");
   }
 
-  // Fetch collection with event
+  // Fetch collection with event + items (items needed for product images in checkout)
   const { data: collection } = await supabase
     .from(TABLES.MERCH_COLLECTIONS)
     .select(`
       *,
+      items:merch_collection_items(*, product:products(*)),
       event:events!merch_collections_event_id_fkey(
         *, ticket_types(*, product:products(*))
       )

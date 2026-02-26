@@ -9,6 +9,8 @@ interface CheckoutTimerProps {
   active: boolean;
   /** Called once when time runs out */
   onExpire?: () => void;
+  /** When true, shows "Items held for" instead of "Tickets held for" */
+  merchMode?: boolean;
 }
 
 /**
@@ -17,7 +19,7 @@ interface CheckoutTimerProps {
  * Clean, inline design: clock icon + "Tickets held for" + time + progress track.
  * Turns amber under 2 minutes, red when expired.
  */
-export function CheckoutTimer({ active, onExpire }: CheckoutTimerProps) {
+export function CheckoutTimer({ active, onExpire, merchMode }: CheckoutTimerProps) {
   const [remaining, setRemaining] = useState(TOTAL_SECONDS);
   const [started, setStarted] = useState(false);
   const expireFired = useRef(false);
@@ -83,7 +85,9 @@ export function CheckoutTimer({ active, onExpire }: CheckoutTimerProps) {
               <path d="M16.5 6.5l1-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
             <span className={`font-[family-name:var(--font-sans)] text-[13px] ${stateColor} tracking-[0.1px]`}>
-              {isExpired ? "Time\u2019s up \u2014 tickets released" : "Tickets held for"}
+              {isExpired
+                ? merchMode ? "Time\u2019s up \u2014 items released" : "Time\u2019s up \u2014 tickets released"
+                : merchMode ? "Items held for" : "Tickets held for"}
             </span>
             {!isExpired && (
               <span className={`font-[family-name:var(--font-mono)] text-[13px] font-semibold tracking-[0.5px] min-w-[40px] ${isUrgent ? "text-[#f59e0b]" : "text-foreground"}`}>

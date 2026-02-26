@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useShopCart } from "@/hooks/useShopCart";
 import { NativeCheckout } from "@/components/checkout/NativeCheckout";
 import type { MerchCheckoutData } from "@/components/checkout/NativeCheckout";
 import type { Event } from "@/types/events";
-import type { MerchCollection } from "@/types/merch-store";
+import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
+import { normalizeMerchImages } from "@/lib/merch-images";
 
 interface MerchCheckoutWrapperProps {
   collection: MerchCollection;
@@ -19,6 +20,19 @@ export function MerchCheckoutWrapper({ collection, event }: MerchCheckoutWrapper
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  // Build a map of collection_item_id → first product image
+  const imageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const items = (collection.items || []) as MerchCollectionItem[];
+    for (const item of items) {
+      if (item.product?.images) {
+        const imgs = normalizeMerchImages(item.product.images);
+        if (imgs[0]) map.set(item.id, imgs[0]);
+      }
+    }
+    return map;
+  }, [collection.items]);
 
   // Don't render until sessionStorage is hydrated
   if (!hydrated) {
@@ -39,6 +53,7 @@ export function MerchCheckoutWrapper({ collection, event }: MerchCheckoutWrapper
       qty: item.qty,
       price: item.unit_price,
       merch_size: item.merch_size,
+      image: imageMap.get(item.collection_item_id),
     })),
     merchItems: cart.items.map((item) => ({
       collection_item_id: item.collection_item_id,

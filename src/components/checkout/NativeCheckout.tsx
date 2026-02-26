@@ -67,6 +67,8 @@ interface CartLine {
   qty: number;
   price: number;
   merch_size?: string;
+  /** Product image URL (used for merch-only checkout) */
+  image?: string;
 }
 
 /** Merch checkout data — when present, NativeCheckout operates in merch pre-order mode */
@@ -781,10 +783,12 @@ function StripeCheckoutPage({
     ],
   };
 
+  const isMerch = !!merchData;
+
   return (
     <div className="midnight-checkout min-h-screen flex flex-col">
       <CheckoutHeader slug={slug} backUrl={merchData ? `/shop/${merchData.collectionSlug}/` : undefined} />
-      <CheckoutTimer active={true} />
+      <CheckoutTimer active={true} merchMode={isMerch} />
 
       {/* Mobile: always-visible order summary */}
       <OrderSummaryMobile
@@ -792,10 +796,11 @@ function StripeCheckoutPage({
         symbol={symbol}
         subtotal={subtotal}
         event={event}
-        discount={merchData ? null : appliedDiscount}
-        onApplyDiscount={merchData ? () => {} : setAppliedDiscount}
-        onRemoveDiscount={merchData ? () => {} : () => setAppliedDiscount(null)}
+        discount={isMerch ? null : appliedDiscount}
+        onApplyDiscount={isMerch ? () => {} : setAppliedDiscount}
+        onRemoveDiscount={isMerch ? () => {} : () => setAppliedDiscount(null)}
         vatSettings={vatSettings}
+        merchMode={isMerch}
       />
 
       <div className="flex-1 relative lg:bg-[linear-gradient(to_right,transparent_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+221px),transparent_calc(50%+221px))]">
@@ -828,10 +833,11 @@ function StripeCheckoutPage({
               symbol={symbol}
               subtotal={subtotal}
               event={event}
-              discount={merchData ? null : appliedDiscount}
-              onApplyDiscount={merchData ? () => {} : setAppliedDiscount}
-              onRemoveDiscount={merchData ? () => {} : () => setAppliedDiscount(null)}
+              discount={isMerch ? null : appliedDiscount}
+              onApplyDiscount={isMerch ? () => {} : setAppliedDiscount}
+              onRemoveDiscount={isMerch ? () => {} : () => setAppliedDiscount(null)}
               vatSettings={vatSettings}
+              merchMode={isMerch}
             />
           </aside>
         </div>
@@ -2272,6 +2278,7 @@ function OrderSummaryMobile({
   onApplyDiscount,
   onRemoveDiscount,
   vatSettings,
+  merchMode,
 }: {
   cartLines: CartLine[];
   symbol: string;
@@ -2281,6 +2288,7 @@ function OrderSummaryMobile({
   onApplyDiscount?: (d: DiscountInfo) => void;
   onRemoveDiscount?: () => void;
   vatSettings?: VatSettings | null;
+  merchMode?: boolean;
 }) {
   const discountAmt = discount?.amount || 0;
   const afterDiscount = Math.max(subtotal - discountAmt, 0);
@@ -2292,7 +2300,7 @@ function OrderSummaryMobile({
   return (
     <div className="border-b border-white/[0.06] bg-[rgba(20,20,20,0.4)] lg:hidden">
       <div className="max-w-[1200px] mx-auto py-4 px-6 pb-5">
-        <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+        <OrderItems cartLines={cartLines} symbol={symbol} event={event} merchMode={merchMode} />
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent my-5" />
         {event && onApplyDiscount && onRemoveDiscount && (
           <DiscountCodeInput
@@ -2331,6 +2339,7 @@ function OrderSummaryDesktop({
   onApplyDiscount,
   onRemoveDiscount,
   vatSettings,
+  merchMode,
 }: {
   cartLines: CartLine[];
   symbol: string;
@@ -2340,6 +2349,7 @@ function OrderSummaryDesktop({
   onApplyDiscount?: (d: DiscountInfo) => void;
   onRemoveDiscount?: () => void;
   vatSettings?: VatSettings | null;
+  merchMode?: boolean;
 }) {
   const discountAmt = discount?.amount || 0;
   const afterDiscount = Math.max(subtotal - discountAmt, 0);
@@ -2350,7 +2360,7 @@ function OrderSummaryDesktop({
 
   return (
     <div className="pb-8">
-      <OrderItems cartLines={cartLines} symbol={symbol} event={event} />
+      <OrderItems cartLines={cartLines} symbol={symbol} event={event} merchMode={merchMode} />
       <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent my-5" />
       {event && onApplyDiscount && onRemoveDiscount && (
         <DiscountCodeInput
@@ -2441,10 +2451,12 @@ function OrderItems({
   cartLines,
   symbol,
   event,
+  merchMode,
 }: {
   cartLines: CartLine[];
   symbol: string;
   event?: Event & { ticket_types: TicketTypeRow[] };
+  merchMode?: boolean;
 }) {
   const getTicketType = (id: string): TicketTypeRow | undefined =>
     event?.ticket_types?.find((t) => t.id === id);
@@ -2467,6 +2479,62 @@ function OrderItems({
 
   const eventMeta = [eventDate, event?.venue_name].filter(Boolean).join(" \u00B7 ");
 
+  // ── Merch-only checkout: product-focused layout ──
+  if (merchMode) {
+    return (
+      <div className="flex flex-col">
+        {cartLines.map((line, i) => (
+          <div key={i} className={i > 0 ? "border-t border-white/[0.06] mt-3.5 pt-3.5" : ""}>
+            <div className="flex items-start gap-3">
+              {/* Product image */}
+              <div className="w-14 h-14 shrink-0 bg-white/[0.04] border border-white/[0.06] rounded-lg overflow-hidden flex items-center justify-center">
+                {line.image ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={line.image} alt="" className="w-full h-full object-contain p-1" loading="eager" decoding="async" />
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-foreground/20">
+                    <path d="M12 3l-2 3h4l-2-3zM6 6h12l1 3H5l1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                    <path d="M5 9h14v10a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="1.2"/>
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col gap-0.5 pt-0.5">
+                <span className="font-[family-name:var(--font-sans)] text-[13px] font-semibold text-foreground leading-snug overflow-hidden text-ellipsis whitespace-nowrap">
+                  {line.name}
+                </span>
+                {line.merch_size && (
+                  <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/50 leading-snug">
+                    Size: {line.merch_size}
+                  </span>
+                )}
+                <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35 leading-snug">
+                  Qty: {line.qty}
+                </span>
+              </div>
+              <span className="shrink-0 font-[family-name:var(--font-mono)] text-[13px] font-semibold text-foreground pt-0.5">
+                {symbol}{(line.price * line.qty).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        ))}
+        {/* Collection info below items */}
+        {event?.name && (
+          <div className="mt-4 pt-3 border-t border-white/[0.04]">
+            <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[1.5px] uppercase text-foreground/30">
+              Collect at {event.name}
+            </span>
+            {eventMeta && (
+              <span className="block font-[family-name:var(--font-sans)] text-[11px] text-foreground/25 mt-0.5">
+                {eventMeta}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Ticket checkout: original layout ──
   return (
     <div className="flex flex-col">
       {cartLines.map((line, i) => {

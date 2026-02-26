@@ -15,6 +15,8 @@ export interface MerchOrderLineItem {
   collection_item_id: string;
   product_id: string;
   product_name: string;
+  product_type?: string;
+  product_image?: string;
   qty: number;
   unit_price: number;
   merch_size?: string;
@@ -211,6 +213,8 @@ export async function createMerchOrder(
       merch_items: items.map((i) => ({
         product_id: i.product_id,
         product_name: i.product_name,
+        product_type: i.product_type,
+        product_image: i.product_image,
         qty: i.qty,
         unit_price: i.unit_price,
         merch_size: i.merch_size,

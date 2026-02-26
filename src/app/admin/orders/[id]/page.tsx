@@ -652,40 +652,67 @@ export default function OrderDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="space-y-2">
+            <div className="space-y-3">
               {merchItems.map((item, idx) => {
-                // For merch pre-orders, get the actual product name from order metadata
+                // For merch pre-orders, get the actual product details from order metadata
                 const merchMeta = (isMerchPreorder && Array.isArray(orderMeta.merch_items))
-                  ? (orderMeta.merch_items as { product_name?: string; merch_size?: string }[])[idx]
+                  ? (orderMeta.merch_items as { product_name?: string; product_type?: string; product_image?: string; merch_size?: string }[])[idx]
                   : null;
                 const displayName = merchMeta?.product_name
                   || (item.ticket_type?.name === "Merch Pre-order" ? "Merchandise" : item.ticket_type?.name)
                   || "Merchandise";
+                const productType = merchMeta?.product_type;
+                const productImage = merchMeta?.product_image;
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
+                    className="flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                        <Shirt size={14} className="text-muted-foreground" />
+                    {/* Product image or fallback */}
+                    {productImage ? (
+                      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={productImage}
+                          alt={displayName}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {displayName}
-                        </p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {item.qty} x {formatCurrency(Number(item.unit_price))}
-                          <span className="ml-2">
-                            Size {item.merch_size}
-                          </span>
-                        </p>
+                    ) : (
+                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-muted border border-border">
+                        <Shirt size={22} className="text-muted-foreground/40" />
+                      </div>
+                    )}
+
+                    {/* Product details */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {displayName}
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            {productType && (
+                              <Badge variant="secondary" className="text-[10px] font-medium">
+                                {productType}
+                              </Badge>
+                            )}
+                            {item.merch_size && (
+                              <Badge variant="secondary" className="text-[10px] font-semibold">
+                                Size {item.merch_size}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              Qty {item.qty} &times; {formatCurrency(Number(item.unit_price))}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="font-mono text-sm font-bold text-foreground flex-shrink-0">
+                          {formatCurrency(Number(item.unit_price) * item.qty)}
+                        </span>
                       </div>
                     </div>
-                    <span className="font-mono text-sm font-bold text-foreground">
-                      {formatCurrency(Number(item.unit_price) * item.qty)}
-                    </span>
                   </div>
                 );
               })}
@@ -706,6 +733,13 @@ export default function OrderDetailPage() {
           <CardContent className="p-4">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {order.tickets.map((ticket) => {
+                // For merch, find the matching product name from order metadata
+                const merchProduct = isMerchPreorder && ticket.merch_size && Array.isArray(orderMeta.merch_items)
+                  ? (orderMeta.merch_items as { product_name?: string; merch_size?: string }[]).find(
+                      (mi) => mi.merch_size === ticket.merch_size
+                    )
+                  : null;
+
                 return (
                   <div
                     key={ticket.id}
@@ -736,10 +770,19 @@ export default function OrderDetailPage() {
                         )}
                       </div>
 
-                      {/* Holder name */}
-                      <p className="mt-1.5 text-xs text-muted-foreground">
-                        {ticket.holder_first_name} {ticket.holder_last_name}
-                      </p>
+                      {/* Product name (merch) or holder name */}
+                      {merchProduct?.product_name ? (
+                        <p className="mt-1.5 text-xs text-foreground/80 font-medium">
+                          {merchProduct.product_name}
+                          <span className="ml-1.5 text-muted-foreground font-normal">
+                            — {ticket.holder_first_name} {ticket.holder_last_name}
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                          {ticket.holder_first_name} {ticket.holder_last_name}
+                        </p>
+                      )}
 
                       {/* Scan status */}
                       <div className="mt-2">

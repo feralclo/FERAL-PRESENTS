@@ -125,6 +125,8 @@ export async function POST(request: NextRequest) {
       collection_item_id: string;
       product_id: string;
       product_name: string;
+      product_type?: string;
+      product_image?: string;
       qty: number;
       unit_price: number;
       merch_size?: string;
@@ -159,10 +161,21 @@ export async function POST(request: NextRequest) {
       const price = ci.custom_price ?? ci.product?.price ?? 0;
       subtotal += price * item.qty;
 
+      // Get first product image for order metadata
+      let productImage: string | undefined;
+      if (ci.product?.images) {
+        const imgs = Array.isArray(ci.product.images)
+          ? ci.product.images
+          : [ci.product.images.front, ci.product.images.back].filter(Boolean);
+        if (imgs.length > 0) productImage = imgs[0];
+      }
+
       validatedItems.push({
         collection_item_id: item.collection_item_id,
         product_id: ci.product_id,
         product_name: ci.product?.name || "Merch Item",
+        product_type: ci.product?.type || undefined,
+        product_image: productImage,
         qty: item.qty,
         unit_price: price,
         merch_size: item.merch_size,

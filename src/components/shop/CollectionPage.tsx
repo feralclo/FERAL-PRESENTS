@@ -58,7 +58,6 @@ export function CollectionPage({ collection }: CollectionPageProps) {
 
   return (
     <div className="min-h-screen bg-[var(--bg-dark,#0e0e0e)]">
-      {/* Header */}
       <header
         className={`header${headerHidden ? " header--hidden" : ""}`}
         id="header"
@@ -67,9 +66,8 @@ export function CollectionPage({ collection }: CollectionPageProps) {
         <Header />
       </header>
 
-      {/* Hero section */}
+      {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* Background image */}
         <div className="absolute inset-0">
           {heroImage ? (
             <img
@@ -80,17 +78,13 @@ export function CollectionPage({ collection }: CollectionPageProps) {
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-[var(--card-bg,#1a1a1a)] to-[var(--bg-dark,#0e0e0e)]" />
           )}
-          {/* Overlays */}
           <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-dark,#0e0e0e)]/60 via-[var(--bg-dark,#0e0e0e)]/40 to-[var(--bg-dark,#0e0e0e)]" />
         </div>
 
-        {/* Hero content */}
-        <div className="relative z-10 mx-auto max-w-4xl px-4 pt-32 pb-16 text-center sm:px-6 sm:pt-40 sm:pb-20">
-          {/* Limited edition badge */}
+        <div className="relative z-10 mx-auto max-w-4xl px-4 pt-32 pb-14 text-center sm:px-6 sm:pt-40 sm:pb-20">
           {collection.is_limited_edition && (
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-1.5 backdrop-blur-sm">
-              <span className="text-amber-400 text-sm">&#9830;</span>
-              <span className="text-[12px] font-semibold uppercase tracking-[2px] text-amber-300">
+            <div className="mb-4 inline-flex items-center rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 backdrop-blur-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-[2px] text-amber-300">
                 {collection.limited_edition_label || "Limited Edition"}
               </span>
             </div>
@@ -101,75 +95,54 @@ export function CollectionPage({ collection }: CollectionPageProps) {
           </h1>
 
           {collection.description && (
-            <p className="mt-4 text-base text-[var(--text-secondary,#888)] max-w-2xl mx-auto sm:text-lg">
+            <p className="mt-4 text-[15px] text-[var(--text-secondary,#888)]/65 max-w-xl mx-auto sm:text-base">
               {collection.description}
             </p>
           )}
 
-          {/* Event info bar */}
+          {/* Event info — quiet, inline */}
           {event && (
-            <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]/80 px-5 py-3 backdrop-blur-sm">
-              <span className="text-[13px] font-medium text-[var(--text-primary,#fff)]">
-                {event.name}
-              </span>
-              <span className="h-3 w-px bg-[var(--card-border,#2a2a2a)]" />
-              <span className="text-[12px] text-[var(--text-secondary,#888)]">
-                {new Date(event.date_start).toLocaleDateString("en-GB", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-3 text-[12px] text-[var(--text-secondary,#888)]/50">
+              <span>{event.name}</span>
+              {event.date_start && (
+                <>
+                  <span>&middot;</span>
+                  <span>
+                    {new Date(event.date_start).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </>
+              )}
               {event.venue_name && (
                 <>
-                  <span className="h-3 w-px bg-[var(--card-border,#2a2a2a)]" />
-                  <span className="text-[12px] text-[var(--text-secondary,#888)]">
-                    {event.venue_name}
-                    {event.city ? `, ${event.city}` : ""}
-                  </span>
+                  <span>&middot;</span>
+                  <span>{event.venue_name}</span>
                 </>
               )}
             </div>
           )}
-        </div>
-      </section>
 
-      {/* Pre-order info banner */}
-      <section className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="rounded-xl border border-[var(--accent,#ff0033)]/15 bg-[var(--accent,#ff0033)]/5 px-5 py-4 sm:px-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[13px] font-semibold text-[var(--text-primary,#fff)]">
-                Pre-order &amp; Collect at the Event
-              </p>
-              <p className="mt-0.5 text-[12px] text-[var(--text-secondary,#888)]">
-                {collection.pickup_instructions ||
-                  "Collect at the merch stand when you arrive at the event."}
-                {" "}You&apos;ll receive a QR code to present for collection.
-              </p>
-            </div>
-            {event && (
-              <Link
-                href={`/event/${event.slug}/`}
-                className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-[var(--accent,#ff0033)]/30 bg-[var(--accent,#ff0033)]/10 px-4 py-2 text-[12px] font-semibold text-[var(--accent,#ff0033)] transition-all hover:bg-[var(--accent,#ff0033)]/20"
-              >
-                Need a ticket? Get one here &rarr;
-              </Link>
-            )}
-          </div>
+          {/* Subtle pre-order note */}
+          <p className="mt-3 text-[11px] text-[var(--text-secondary,#888)]/30">
+            Pre-order &middot; Collect at the event
+          </p>
         </div>
       </section>
 
       {/* Products */}
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-        {/* Featured items — larger cards */}
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+        {/* Featured */}
         {featuredItems.length > 0 && (
           <div className="mb-10">
-            <h2 className="mb-5 font-[var(--font-mono,'Space_Mono',monospace)] text-xs font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]">
-              Featured
-            </h2>
-            <div className="grid gap-5 sm:grid-cols-2">
+            {items.length > featuredItems.length && (
+              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]/30">
+                Featured
+              </p>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
               {featuredItems.map((item) => (
                 <ProductCard
                   key={item.id}
@@ -182,15 +155,15 @@ export function CollectionPage({ collection }: CollectionPageProps) {
           </div>
         )}
 
-        {/* Regular items */}
+        {/* All items */}
         {regularItems.length > 0 && (
           <div>
             {featuredItems.length > 0 && (
-              <h2 className="mb-5 font-[var(--font-mono,'Space_Mono',monospace)] text-xs font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]">
+              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]/30">
                 All Items
-              </h2>
+              </p>
             )}
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {regularItems.map((item) => (
                 <ProductCard
                   key={item.id}
@@ -203,37 +176,35 @@ export function CollectionPage({ collection }: CollectionPageProps) {
           </div>
         )}
 
-        {/* No items state */}
         {items.length === 0 && (
-          <div className="py-16 text-center">
-            <p className="text-[var(--text-secondary,#888)] text-sm">
-              This collection is being prepared. Check back soon.
+          <div className="py-20 text-center">
+            <p className="text-[13px] text-[var(--text-secondary,#888)]/40">
+              Coming soon
             </p>
           </div>
         )}
       </section>
 
-      {/* Floating cart bar */}
+      {/* Cart bar */}
       {cart.hasItems && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)]/95 backdrop-blur-lg safe-area-bottom">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)]/95 backdrop-blur-lg safe-area-bottom">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
             <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent,#ff0033)] text-xs font-bold text-white">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-white/60">
                 {cart.totalQty}
               </span>
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary,#fff)]">
-                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
-                </p>
-                <p className="text-xs text-[var(--text-secondary,#888)]">
+                <p className="text-[13px] font-medium text-[var(--text-primary,#fff)]">
                   {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-[var(--text-secondary,#888)]/40">
+                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowCheckout(true)}
-              className="rounded-xl px-6 py-2.5 text-sm font-bold uppercase tracking-wider text-white transition-all"
-              style={{ backgroundColor: "var(--accent, #ff0033)" }}
+              className="rounded-xl bg-white px-6 py-2.5 text-[12px] font-bold uppercase tracking-[2px] text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
             >
               Checkout
             </button>

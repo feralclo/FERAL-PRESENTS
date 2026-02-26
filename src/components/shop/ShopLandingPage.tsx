@@ -32,28 +32,28 @@ export function ShopLandingPage({ collections, storeSettings }: ShopLandingPageP
       </header>
 
       {/* Page content */}
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pt-36 pb-24 sm:px-6 sm:pt-40 lg:pt-44">
         {/* Heading */}
-        <div className="mb-10 sm:mb-14">
-          <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 mb-3">
+        <div className="mb-14 sm:mb-20">
+          <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/25 mb-4">
             Pre-order
           </p>
           <h1
             className="font-[family-name:var(--font-sans)] font-black text-foreground"
             style={{
-              fontSize: "clamp(1.75rem, 5vw, 3rem)",
-              letterSpacing: "-0.03em",
-              lineHeight: 1.1,
+              fontSize: "clamp(2rem, 6vw, 3.5rem)",
+              letterSpacing: "-0.035em",
+              lineHeight: 1.05,
             }}
           >
             {storeSettings.store_heading || "Shop"}
           </h1>
           {storeSettings.store_description && (
-            <p className="mt-4 max-w-md font-[family-name:var(--font-display)] text-[15px] leading-relaxed text-foreground/50">
+            <p className="mt-5 max-w-lg font-[family-name:var(--font-display)] text-[15px] leading-[1.8] text-foreground/45">
               {storeSettings.store_description}
             </p>
           )}
-          <div className="mt-6 h-px bg-gradient-to-r from-foreground/[0.08] to-transparent" />
+          <div className="mt-8 h-px bg-gradient-to-r from-foreground/[0.06] via-foreground/[0.04] to-transparent" />
         </div>
 
         {/* Collections grid */}

@@ -26,19 +26,29 @@ export function Header() {
   const branding = useBranding();
   const orgId = useOrgId();
   const [phase, setPhase] = useState<MenuPhase>("closed");
-  const [storeSettings, setStoreSettings] = useState<MerchStoreSettings | null>(null);
+  const [storeSettings, setStoreSettings] = useState<MerchStoreSettings | null>(() => {
+    // Hydrate from sessionStorage for instant render (no layout shift)
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = sessionStorage.getItem("entry_store_settings");
+      if (cached) return JSON.parse(cached);
+    } catch { /* ignore */ }
+    return null;
+  });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isActive = phase !== "closed";
 
-  // Fetch merch store settings to determine if Shop link should appear
+  // Fetch merch store settings (updates cache silently)
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/merch-store/settings");
         if (res.ok) {
           const json = await res.json();
-          setStoreSettings(json.data || DEFAULT_MERCH_STORE_SETTINGS);
+          const settings = json.data || DEFAULT_MERCH_STORE_SETTINGS;
+          setStoreSettings(settings);
+          try { sessionStorage.setItem("entry_store_settings", JSON.stringify(settings)); } catch { /* ignore */ }
         }
       } catch {
         // Silently ignore — store link simply won't show

@@ -89,7 +89,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
         <Header />
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pt-24 pb-16 sm:px-6 sm:pt-28 lg:px-8">
+      <main className={`mx-auto max-w-6xl px-4 pt-24 sm:px-6 sm:pt-28 lg:px-8 ${cart.hasItems ? "pb-28" : "pb-16"}`}>
         {/* Back link */}
         <nav className="mb-6">
           <Link
@@ -209,16 +209,9 @@ export function ProductPage({ item, collection }: ProductPageProps) {
             {/* Size selector */}
             {hasSizes && (
               <div className="mb-6">
-                <div className="flex items-baseline justify-between mb-3">
-                  <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
-                    Size
-                  </p>
-                  {selectedSize && (
-                    <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/50">
-                      {selectedSize}
-                    </p>
-                  )}
-                </div>
+                <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 mb-3">
+                  Size
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((size) => {
                     const isSelected = size === selectedSize;
@@ -329,7 +322,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
               </button>
             )}
 
-            {/* Cart summary — shows when items in cart */}
+            {/* Cart summary — inline preview when items in cart */}
             {cart.hasItems && (
               <div
                 className="mt-4 rounded-xl overflow-hidden"
@@ -338,36 +331,23 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                   border: "1px solid rgba(255,255,255, 0.06)",
                 }}
               >
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
-                      Your Cart
-                    </p>
-                    <p className="mt-1 font-[family-name:var(--font-mono)] text-[13px] text-foreground/60">
-                      {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"} &middot; {cart.currSymbol}{cart.totalPrice.toFixed(2)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
-                    className="h-10 rounded-xl bg-white px-6 text-[12px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
-                  >
-                    Checkout
-                  </button>
+                <div className="px-4 py-3">
+                  <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
+                    Your Cart
+                  </p>
                 </div>
-
-                {/* Cart items preview */}
                 <div style={{ borderTop: "1px solid rgba(255,255,255, 0.04)" }}>
                   {cart.items.map((cartItem) => (
                     <div
                       key={`${cartItem.collection_item_id}-${cartItem.merch_size || ""}`}
-                      className="flex items-center justify-between px-4 py-2"
+                      className="flex items-center justify-between px-4 py-2.5"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-[family-name:var(--font-sans)] text-[12px] text-foreground/60 truncate">
+                        <span className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/70 truncate">
                           {cartItem.product_name}
                         </span>
                         {cartItem.merch_size && (
-                          <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/30">
+                          <span className="rounded-md px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[10px] text-foreground/40" style={{ backgroundColor: "rgba(255,255,255, 0.04)", border: "1px solid rgba(255,255,255, 0.06)" }}>
                             {cartItem.merch_size}
                           </span>
                         )}
@@ -376,7 +356,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                         <div className="flex items-center gap-0">
                           <button
                             onClick={() => cart.removeItem(cartItem.collection_item_id, cartItem.merch_size)}
-                            className="flex h-7 w-7 items-center justify-center text-[12px] text-foreground/35 transition-colors hover:text-foreground/60 touch-manipulation"
+                            className="flex h-7 w-7 items-center justify-center text-[13px] text-foreground/35 transition-colors hover:text-foreground/60 touch-manipulation"
                           >
                             &minus;
                           </button>
@@ -385,12 +365,12 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                           </span>
                           <button
                             onClick={() => cart.addItem(item, cartItem.merch_size)}
-                            className="flex h-7 w-7 items-center justify-center text-[12px] text-foreground/35 transition-colors hover:text-foreground/60 touch-manipulation"
+                            className="flex h-7 w-7 items-center justify-center text-[13px] text-foreground/35 transition-colors hover:text-foreground/60 touch-manipulation"
                           >
                             +
                           </button>
                         </div>
-                        <span className="font-[family-name:var(--font-mono)] text-[12px] text-foreground/50 w-14 text-right">
+                        <span className="font-[family-name:var(--font-mono)] text-[12px] font-medium text-foreground/50 w-14 text-right">
                           {cart.currSymbol}{(cartItem.unit_price * cartItem.qty).toFixed(2)}
                         </span>
                       </div>
@@ -537,6 +517,33 @@ export function ProductPage({ item, collection }: ProductPageProps) {
       </main>
 
       <MidnightFooter />
+
+      {/* Sticky bottom checkout bar — prominent CTA when cart has items */}
+      {cart.hasItems && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50"
+          style={{
+            background: "linear-gradient(to top, rgba(14,14,14, 0.98) 60%, rgba(14,14,14, 0.90) 80%, transparent 100%)",
+            paddingTop: "24px",
+          }}
+        >
+          <div className="mx-auto max-w-6xl px-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6 lg:px-8">
+            <button
+              onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
+              className="w-full flex items-center justify-center gap-3 h-[56px] rounded-2xl text-[14px] font-bold tracking-[0.02em] text-[#0e0e0e] transition-all duration-200 touch-manipulation active:scale-[0.98] hover:-translate-y-px"
+              style={{
+                background: "linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%)",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
+              }}
+            >
+              <span>Checkout</span>
+              <span className="font-[family-name:var(--font-mono)] text-[13px] font-bold" style={{ opacity: 0.5 }}>
+                {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"} &middot; {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

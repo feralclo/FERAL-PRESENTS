@@ -267,72 +267,34 @@ export function CollectionPage({ collection }: CollectionPageProps) {
         )}
       </section>
 
-      {/* Inline cart summary — replaces sticky bar */}
-      {cart.hasItems && (
-        <section className="relative z-10 mx-auto max-w-6xl px-4 pb-10 sm:px-6">
-          <div
-            className="rounded-xl overflow-hidden"
-            style={{
-              backgroundColor: "rgba(255,255,255, 0.025)",
-              border: "1px solid rgba(255,255,255, 0.06)",
-            }}
-          >
-            <div className="px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
-                  Your Cart
-                </p>
-                <p className="mt-1">
-                  <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold tracking-[0.01em] text-foreground">
-                    {cart.currSymbol}{cart.totalPrice.toFixed(2)}
-                  </span>
-                  <span className="ml-2 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
-                    {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
-                  </span>
-                </p>
-              </div>
-              <button
-                onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
-                className="h-11 rounded-xl bg-white px-7 text-[13px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
-              >
-                Checkout
-              </button>
-            </div>
-
-            {/* Cart items */}
-            <div style={{ borderTop: "1px solid rgba(255,255,255, 0.04)" }}>
-              {cart.items.map((cartItem) => (
-                <div
-                  key={`${cartItem.collection_item_id}-${cartItem.merch_size || ""}`}
-                  className="flex items-center justify-between px-5 py-2.5"
-                  style={{ borderBottom: "1px solid rgba(255,255,255, 0.02)" }}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/60 truncate">
-                      {cartItem.product_name}
-                    </span>
-                    {cartItem.merch_size && (
-                      <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/30">
-                        {cartItem.merch_size}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                    <span className="font-[family-name:var(--font-mono)] text-[12px] text-foreground/40">
-                      &times;{cartItem.qty}
-                    </span>
-                    <span className="font-[family-name:var(--font-mono)] text-[13px] font-medium text-foreground/60 w-16 text-right">
-                      {cart.currSymbol}{(cartItem.unit_price * cartItem.qty).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       <MidnightFooter />
+
+      {/* Sticky bottom checkout bar */}
+      {cart.hasItems && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50"
+          style={{
+            background: "linear-gradient(to top, rgba(14,14,14, 0.98) 60%, rgba(14,14,14, 0.90) 80%, transparent 100%)",
+            paddingTop: "24px",
+          }}
+        >
+          <div className="mx-auto max-w-6xl px-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6">
+            <button
+              onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
+              className="w-full flex items-center justify-center gap-3 h-[56px] rounded-2xl text-[14px] font-bold tracking-[0.02em] text-[#0e0e0e] transition-all duration-200 touch-manipulation active:scale-[0.98] hover:-translate-y-px"
+              style={{
+                background: "linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%)",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
+              }}
+            >
+              <span>Checkout</span>
+              <span className="font-[family-name:var(--font-mono)] text-[13px] font-bold" style={{ opacity: 0.5 }}>
+                {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"} &middot; {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

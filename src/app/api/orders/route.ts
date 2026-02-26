@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const paymentRef = searchParams.get("payment_ref");
     const customerId = searchParams.get("customer_id");
     const orderType = searchParams.get("order_type"); // "merch_preorder" or "tickets"
+    const search = searchParams.get("search");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const page = parseInt(searchParams.get("page") || "1", 10);
@@ -49,6 +50,11 @@ export async function GET(request: NextRequest) {
     if (customerId) query = query.eq("customer_id", customerId);
     if (from) query = query.gte("created_at", from);
     if (to) query = query.lte("created_at", to);
+
+    // Full-text search across order_number (server-side ilike)
+    if (search) {
+      query = query.ilike("order_number", `%${search}%`);
+    }
 
     // Filter by order type (stored in JSONB metadata)
     if (orderType === "merch_preorder") {

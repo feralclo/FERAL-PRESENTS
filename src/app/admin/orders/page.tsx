@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table";
 import {
-  ShoppingBag, DollarSign, Ticket, Shirt, Download, Package, ArrowLeft, Tag, Search, X, ChevronDown,
+  ShoppingBag, DollarSign, Ticket, Shirt, Download, Package, ArrowLeft, Tag, Search, X,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -26,7 +26,7 @@ interface OrderRow {
   currency: string;
   payment_method: string;
   created_at: string;
-  customer: { first_name: string; last_name: string; email: string } | null;
+  customer: { id: string; first_name: string; last_name: string; email: string } | null;
   event: { name: string; slug: string } | null;
   ticket_count: number;
   metadata?: Record<string, unknown>;
@@ -89,106 +89,305 @@ function PeriodSelector({
   );
 }
 
-/* ── Searchable event combobox ── */
-function EventSearch({
+/* ── Unified search bar ── */
+interface SuggestionItem {
+  type: "order" | "customer" | "event";
+  id: string;
+  label: string;
+  detail?: string;
+  secondary?: string;
+}
+
+function OrdersSearch({
+  orders,
   events,
-  value,
-  onChange,
+  onSelectEvent,
+  onSelectCustomer,
+  onSelectOrder,
+  onTextSearch,
+  searchQuery,
 }: {
+  orders: OrderRow[];
   events: { id: string; name: string }[];
-  value: string;
-  onChange: (id: string) => void;
+  onSelectEvent: (id: string) => void;
+  onSelectCustomer: (id: string, name: string) => void;
+  onSelectOrder: (id: string) => void;
+  onTextSearch: (query: string) => void;
+  searchQuery: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  const selectedName = value === "__all__" ? "" : events.find((e) => e.id === value)?.name || "";
-  const filtered = search
-    ? events.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()))
-    : events;
+  // Debounce the search query
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!inputValue.trim()) {
+      setDebouncedQuery("");
+      return;
+    }
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(inputValue.trim());
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [inputValue]);
+
+  // Build suggestions from existing data
+  const suggestions = (() => {
+    if (!debouncedQuery) return [];
+    const q = debouncedQuery.toLowerCase();
+    const results: SuggestionItem[] = [];
+
+    // Orders — match by order_number
+    const matchedOrders = orders
+      .filter((o) => o.order_number.toLowerCase().includes(q))
+      .slice(0, 3);
+    for (const o of matchedOrders) {
+      const custName = o.customer
+        ? `${o.customer.first_name} ${o.customer.last_name}`
+        : "Unknown";
+      results.push({
+        type: "order",
+        id: o.id,
+        label: o.order_number,
+        detail: custName,
+        secondary: formatCurrency(Number(o.total)),
+      });
+    }
+
+    // Customers — deduplicate by email, match name or email
+    const seenEmails = new Set<string>();
+    const matchedCustomers: { id: string; name: string; email: string }[] = [];
+    for (const o of orders) {
+      if (!o.customer) continue;
+      const cust = o.customer;
+      const email = cust.email.toLowerCase();
+      if (seenEmails.has(email)) continue;
+      seenEmails.add(email);
+      const fullName = `${cust.first_name} ${cust.last_name}`.toLowerCase();
+      if (fullName.includes(q) || email.includes(q)) {
+        matchedCustomers.push({
+          id: cust.id,
+          name: `${cust.first_name} ${cust.last_name}`,
+          email: cust.email,
+        });
+      }
+      if (matchedCustomers.length >= 4) break;
+    }
+    for (const c of matchedCustomers) {
+      results.push({
+        type: "customer",
+        id: c.id,
+        label: c.name,
+        detail: c.email,
+      });
+    }
+
+    // Events — match by name
+    const matchedEvents = events
+      .filter((e) => e.name.toLowerCase().includes(q))
+      .slice(0, 3);
+    for (const e of matchedEvents) {
+      results.push({
+        type: "event",
+        id: e.id,
+        label: e.name,
+      });
+    }
+
+    return results;
+  })();
+
+  const flatSuggestions = suggestions;
 
   // Close on click outside
   useEffect(() => {
-    if (!open) return;
+    if (!showSuggestions) return;
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        setShowSuggestions(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [showSuggestions]);
+
+  const selectSuggestion = useCallback((item: SuggestionItem) => {
+    setShowSuggestions(false);
+    setInputValue("");
+    setDebouncedQuery("");
+    setHighlightIndex(-1);
+    if (item.type === "event") {
+      onSelectEvent(item.id);
+    } else if (item.type === "customer") {
+      onSelectCustomer(item.id, item.label);
+    } else if (item.type === "order") {
+      onSelectOrder(item.id);
+    }
+  }, [onSelectEvent, onSelectCustomer, onSelectOrder]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSuggestions(false);
+        setHighlightIndex(-1);
+        inputRef.current?.blur();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightIndex((prev) =>
+          prev < flatSuggestions.length - 1 ? prev + 1 : 0
+        );
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightIndex((prev) =>
+          prev > 0 ? prev - 1 : flatSuggestions.length - 1
+        );
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (highlightIndex >= 0 && highlightIndex < flatSuggestions.length) {
+          selectSuggestion(flatSuggestions[highlightIndex]);
+        } else if (inputValue.trim()) {
+          // Text search — filter client-side
+          onTextSearch(inputValue.trim());
+          setShowSuggestions(false);
+        }
+        return;
+      }
+    },
+    [flatSuggestions, highlightIndex, inputValue, onTextSearch, selectSuggestion]
+  );
+
+  const handleClear = useCallback(() => {
+    setInputValue("");
+    setDebouncedQuery("");
+    setShowSuggestions(false);
+    setHighlightIndex(-1);
+    onTextSearch("");
+    onSelectEvent("__all__");
+    inputRef.current?.focus();
+  }, [onTextSearch, onSelectEvent]);
+
+  // Group suggestions by type for rendering
+  const groupedSections: { type: string; label: string; items: SuggestionItem[] }[] = [];
+  const orderItems = flatSuggestions.filter((s) => s.type === "order");
+  const customerItems = flatSuggestions.filter((s) => s.type === "customer");
+  const eventItems = flatSuggestions.filter((s) => s.type === "event");
+  if (orderItems.length > 0) groupedSections.push({ type: "order", label: "Orders", items: orderItems });
+  if (customerItems.length > 0) groupedSections.push({ type: "customer", label: "Customers", items: customerItems });
+  if (eventItems.length > 0) groupedSections.push({ type: "event", label: "Events", items: eventItems });
+
+  const hasActiveFilter = searchQuery || inputValue;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative w-full">
       <div
-        className={`flex h-9 items-center gap-2 rounded-md border bg-background px-3 transition-colors ${
-          open ? "border-primary/50 ring-1 ring-primary/20" : "border-border hover:border-muted-foreground/30"
+        className={`flex h-10 items-center gap-2.5 rounded-lg border bg-background px-3.5 transition-all duration-150 ${
+          showSuggestions
+            ? "border-primary/50 ring-1 ring-primary/20"
+            : "border-border hover:border-muted-foreground/30"
         }`}
-        style={{ width: "220px" }}
       >
-        <Search size={13} className="shrink-0 text-muted-foreground/50" />
+        <Search size={15} className="shrink-0 text-muted-foreground/40" />
         <input
           ref={inputRef}
           type="text"
-          value={open ? search : selectedName}
-          placeholder="All events"
+          value={inputValue}
+          placeholder="Search orders, customers, events..."
           onChange={(e) => {
-            setSearch(e.target.value);
-            if (!open) setOpen(true);
+            setInputValue(e.target.value);
+            setHighlightIndex(-1);
+            if (e.target.value.trim()) {
+              setShowSuggestions(true);
+            } else {
+              setShowSuggestions(false);
+            }
           }}
-          onFocus={() => {
-            setOpen(true);
-            setSearch("");
-          }}
-          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
+          onKeyDown={handleKeyDown}
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none"
         />
-        {value !== "__all__" ? (
+        {hasActiveFilter && (
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange("__all__");
-              setSearch("");
-              setOpen(false);
-            }}
-            className="shrink-0 text-muted-foreground/50 transition-colors hover:text-foreground"
+            onClick={handleClear}
+            className="shrink-0 rounded-sm p-0.5 text-muted-foreground/40 transition-all duration-150 hover:bg-muted/50 hover:text-foreground"
           >
-            <X size={13} />
+            <X size={14} />
           </button>
-        ) : (
-          <ChevronDown size={13} className={`shrink-0 text-muted-foreground/30 transition-transform ${open ? "rotate-180" : ""}`} />
         )}
       </div>
 
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[220px] overflow-hidden rounded-md border border-border bg-background shadow-lg">
-          <div className="max-h-[240px] overflow-y-auto py-1">
-            <button
-              className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
-                value === "__all__" ? "bg-muted/30 text-foreground font-medium" : "text-muted-foreground"
-              }`}
-              onClick={() => { onChange("__all__"); setSearch(""); setOpen(false); }}
-            >
-              All events
-            </button>
-            {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-muted-foreground/50">No events match</div>
-            ) : (
-              filtered.map((evt) => (
+      {/* Suggestions dropdown */}
+      {showSuggestions && debouncedQuery && (
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-full overflow-hidden rounded-lg border border-border bg-background shadow-xl shadow-black/10">
+          {flatSuggestions.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-muted-foreground/50">
+              No results for &lsquo;{debouncedQuery}&rsquo;
+            </div>
+          ) : (
+            <div className="max-h-[320px] overflow-y-auto py-1">
+              {groupedSections.map((section) => (
+                <div key={section.type}>
+                  <div className="px-3 pb-1 pt-2.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                    {section.label}
+                  </div>
+                  {section.items.map((item) => {
+                    const globalIdx = flatSuggestions.indexOf(item);
+                    const isHighlighted = globalIdx === highlightIndex;
+                    return (
+                      <button
+                        key={`${item.type}-${item.id}`}
+                        className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-all duration-150 ${
+                          isHighlighted
+                            ? "bg-muted/60 text-foreground"
+                            : "text-foreground/80 hover:bg-muted/40"
+                        }`}
+                        onMouseEnter={() => setHighlightIndex(globalIdx)}
+                        onClick={() => selectSuggestion(item)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className={`text-sm ${item.type === "order" ? "font-mono text-[13px] font-semibold" : "font-medium"}`}>
+                            {item.label}
+                          </span>
+                          {item.detail && (
+                            <span className="ml-2 text-xs text-muted-foreground/60">
+                              {item.detail}
+                            </span>
+                          )}
+                        </div>
+                        {item.secondary && (
+                          <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
+                            {item.secondary}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+              <div className="border-t border-border/50 px-3 py-2">
                 <button
-                  key={evt.id}
-                  className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
-                    value === evt.id ? "bg-muted/30 text-foreground font-medium" : "text-foreground/80"
-                  }`}
-                  onClick={() => { onChange(evt.id); setSearch(""); setOpen(false); }}
+                  className="w-full text-left text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+                  onClick={() => {
+                    onTextSearch(inputValue.trim());
+                    setShowSuggestions(false);
+                  }}
                 >
-                  <span className="truncate">{evt.name}</span>
+                  Press <kbd className="mx-0.5 rounded border border-border/60 bg-muted/40 px-1 py-0.5 font-mono text-[10px]">Enter</kbd> to search all orders for &lsquo;{debouncedQuery}&rsquo;
                 </button>
-              ))
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -239,6 +438,7 @@ export default function OrdersPage() {
 }
 
 function OrdersContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const customerIdParam = searchParams.get("customer_id");
   const customerNameParam = searchParams.get("customer_name");
@@ -253,6 +453,7 @@ function OrdersContent() {
   const [filterOrderType, setFilterOrderType] = useState<OrderTypeFilter>("");
   const [period, setPeriod] = useState<Period>("today");
   const [statsLoading, setStatsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Period-filtered stats
   const [orderCount, setOrderCount] = useState(0);
@@ -363,6 +564,21 @@ function OrdersContent() {
     loadOrders();
   }, [loadOrders]);
 
+  // Client-side text search filtering
+  const filteredOrders = searchQuery
+    ? orders.filter((o) => {
+        const q = searchQuery.toLowerCase();
+        if (o.order_number.toLowerCase().includes(q)) return true;
+        if (o.customer) {
+          const fullName = `${o.customer.first_name} ${o.customer.last_name}`.toLowerCase();
+          if (fullName.includes(q)) return true;
+          if (o.customer.email.toLowerCase().includes(q)) return true;
+        }
+        if (o.event?.name.toLowerCase().includes(q)) return true;
+        return false;
+      })
+    : orders;
+
   const v = (n: string) => (statsLoading ? "..." : n);
 
   return (
@@ -437,44 +653,88 @@ function OrdersContent() {
         />
       </div>
 
-      {/* Filters */}
-      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Status + Order type tabs */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setFilterStatus(tab.key)}
-                className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
-                  filterStatus === tab.key
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
-            {ORDER_TYPE_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setFilterOrderType(tab.key)}
-                className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
-                  filterOrderType === tab.key
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Search Bar */}
+      <div className="mt-6">
+        <OrdersSearch
+          orders={orders}
+          events={events}
+          onSelectEvent={(id) => {
+            setFilterEvent(id);
+            setSearchQuery("");
+          }}
+          onSelectCustomer={(id, name) => {
+            router.push(`/admin/orders?customer_id=${id}&customer_name=${encodeURIComponent(name)}`);
+          }}
+          onSelectOrder={(id) => {
+            router.push(`/admin/orders/${id}/`);
+          }}
+          onTextSearch={setSearchQuery}
+          searchQuery={searchQuery}
+        />
+      </div>
 
-        {/* Event search */}
-        <EventSearch events={events} value={filterEvent} onChange={setFilterEvent} />
+      {/* Active search / event filter badges */}
+      {(searchQuery || filterEvent !== "__all__") && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {searchQuery && (
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground/80">
+              <Search size={11} className="text-muted-foreground/50" />
+              <span className="font-medium">&ldquo;{searchQuery}&rdquo;</span>
+              <button
+                onClick={() => setSearchQuery("")}
+                className="ml-0.5 rounded-sm text-muted-foreground/50 transition-colors hover:text-foreground"
+              >
+                <X size={11} />
+              </button>
+            </span>
+          )}
+          {filterEvent !== "__all__" && (
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground/80">
+              <span className="text-muted-foreground/50">Event:</span>
+              <span className="font-medium">{events.find((e) => e.id === filterEvent)?.name || "Unknown"}</span>
+              <button
+                onClick={() => setFilterEvent("__all__")}
+                className="ml-0.5 rounded-sm text-muted-foreground/50 transition-colors hover:text-foreground"
+              >
+                <X size={11} />
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilterStatus(tab.key)}
+              className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
+                filterStatus === tab.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
+          {ORDER_TYPE_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilterOrderType(tab.key)}
+              className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
+                filterOrderType === tab.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Orders Table */}
@@ -504,11 +764,21 @@ function OrdersContent() {
               </div>
             </CardContent>
           </Card>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-20">
               <Package size={28} className="text-muted-foreground/30" />
-              <p className="mt-3 text-sm text-muted-foreground">No orders found</p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {searchQuery ? `No orders matching "${searchQuery}"` : "No orders found"}
+              </p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="mt-2 text-xs text-primary transition-colors hover:text-primary/80"
+                >
+                  Clear search
+                </button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -527,7 +797,7 @@ function OrdersContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <TableRow key={order.id} className="cursor-pointer">
                     <TableCell>
                       <Link

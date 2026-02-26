@@ -733,9 +733,9 @@ export default function OrderDetailPage() {
           <CardContent className="p-4">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {order.tickets.map((ticket) => {
-                // For merch, find the matching product name from order metadata
+                // For merch, find the matching product from order metadata
                 const merchProduct = isMerchPreorder && ticket.merch_size && Array.isArray(orderMeta.merch_items)
-                  ? (orderMeta.merch_items as { product_name?: string; merch_size?: string }[]).find(
+                  ? (orderMeta.merch_items as { product_name?: string; product_image?: string; merch_size?: string }[]).find(
                       (mi) => mi.merch_size === ticket.merch_size
                     )
                   : null;
@@ -743,46 +743,65 @@ export default function OrderDetailPage() {
                 return (
                   <div
                     key={ticket.id}
-                    className="rounded-lg border border-border bg-muted/10 px-4 py-3.5"
+                    className="flex gap-3 rounded-lg border border-border bg-muted/10 p-3"
                   >
-                      {/* Top row: code + status */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[12px] font-bold text-foreground">
-                            {ticket.ticket_code}
-                          </span>
-                          <Badge
-                            variant={STATUS_VARIANT[ticket.status] || "secondary"}
-                            className="text-[9px]"
-                          >
-                            {ticket.status}
-                          </Badge>
-                        </div>
-                        {ticket.merch_size && (
-                          <Badge
-                            variant={ticket.merch_collected ? "success" : "warning"}
-                            className="gap-1 text-[9px]"
-                          >
-                            <Shirt size={9} />
-                            {ticket.merch_size}
-                            {ticket.merch_collected ? " Collected" : " Pending"}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Product name (merch) or holder name */}
-                      {merchProduct?.product_name ? (
-                        <p className="mt-1.5 text-xs text-foreground/80 font-medium">
-                          {merchProduct.product_name}
-                          <span className="ml-1.5 text-muted-foreground font-normal">
-                            — {ticket.holder_first_name} {ticket.holder_last_name}
-                          </span>
-                        </p>
-                      ) : (
-                        <p className="mt-1.5 text-xs text-muted-foreground">
-                          {ticket.holder_first_name} {ticket.holder_last_name}
-                        </p>
+                      {/* Product image for merch tickets */}
+                      {isMerchPreorder && (
+                        merchProduct?.product_image ? (
+                          <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md border border-border">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={merchProduct.product_image}
+                              alt={merchProduct.product_name || ""}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-md bg-muted border border-border">
+                            <Shirt size={16} className="text-muted-foreground/40" />
+                          </div>
+                        )
                       )}
+
+                      <div className="min-w-0 flex-1">
+                        {/* Top row: code + status */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[12px] font-bold text-foreground">
+                              {ticket.ticket_code}
+                            </span>
+                            <Badge
+                              variant={STATUS_VARIANT[ticket.status] || "secondary"}
+                              className="text-[9px]"
+                            >
+                              {ticket.status}
+                            </Badge>
+                          </div>
+                          {ticket.merch_size && (
+                            <Badge
+                              variant={ticket.merch_collected ? "success" : "warning"}
+                              className="gap-1 text-[9px]"
+                            >
+                              <Shirt size={9} />
+                              {ticket.merch_size}
+                              {ticket.merch_collected ? " Collected" : " Pending"}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Product name (merch) or holder name */}
+                        {merchProduct?.product_name ? (
+                          <p className="mt-1 text-xs text-foreground/80 font-medium">
+                            {merchProduct.product_name}
+                            <span className="ml-1.5 text-muted-foreground font-normal">
+                              — {ticket.holder_first_name} {ticket.holder_last_name}
+                            </span>
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {ticket.holder_first_name} {ticket.holder_last_name}
+                          </p>
+                        )}
 
                       {/* Scan status */}
                       <div className="mt-2">
@@ -808,6 +827,7 @@ export default function OrderDetailPage() {
                             </span>
                           </div>
                         )}
+                      </div>
                       </div>
                   </div>
                 );

@@ -293,10 +293,10 @@ function OrdersSearch({
   return (
     <div ref={containerRef} className="relative w-full">
       <div
-        className={`flex h-10 items-center gap-2.5 rounded-lg border bg-background px-3.5 transition-all duration-150 ${
+        className={`flex h-10 items-center gap-2.5 rounded-lg px-3.5 transition-all duration-150 ${
           showSuggestions
-            ? "border-primary/50 ring-1 ring-primary/20"
-            : "border-border hover:border-muted-foreground/30"
+            ? "bg-muted/80 ring-1 ring-primary/20"
+            : "bg-muted/50 hover:bg-muted/70"
         }`}
       >
         <Search size={15} className="shrink-0 text-muted-foreground/40" />
@@ -791,7 +791,7 @@ function OrdersContent() {
                   <TableHead>Customer</TableHead>
                   <TableHead>Event</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-center">Tickets</TableHead>
+                  <TableHead className="text-center">Type</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
@@ -826,14 +826,27 @@ function OrdersContent() {
                         {order.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-sm tabular-nums text-foreground">
+                    <TableCell className="text-center">
                       {order.metadata?.order_type === "merch_preorder" ? (
-                        <Badge variant="secondary" className="gap-1 text-[9px]">
-                          <Shirt size={9} />
+                        <Badge variant="secondary" className="gap-1 text-[10px]">
+                          <Shirt size={10} />
                           Merch
                         </Badge>
+                      ) : order.metadata?.includes_merch ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <Badge variant="secondary" className="gap-1 text-[10px]">
+                            <Ticket size={10} />
+                            {order.ticket_count || 0}
+                          </Badge>
+                          <Badge variant="secondary" className="gap-0.5 text-[10px]">
+                            <Shirt size={9} />
+                          </Badge>
+                        </div>
                       ) : (
-                        order.ticket_count || 0
+                        <Badge variant="secondary" className="gap-1 text-[10px]">
+                          <Ticket size={10} />
+                          {order.ticket_count || 0}
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">

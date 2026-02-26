@@ -98,12 +98,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (event.payment_method !== "stripe") {
-      return NextResponse.json(
-        { error: "This event does not use Stripe payments" },
-        { status: 400 }
-      );
-    }
+    // Note: no payment_method check here — merch pre-orders always use Stripe
+    // even when the event itself uses external ticketing.
 
     // Fetch collection items with products
     const itemIds = items.map((i: { collection_item_id: string }) => i.collection_item_id);

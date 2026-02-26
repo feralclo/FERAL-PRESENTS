@@ -18,6 +18,7 @@ export interface MerchCollection {
   is_limited_edition: boolean;
   limited_edition_label: string | null;
   hero_image: string | null;
+  tile_image: string | null;
   custom_cta_text: string | null;
   pickup_instructions: string | null;
   sort_order: number;

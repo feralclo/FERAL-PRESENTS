@@ -125,28 +125,32 @@ export function CollectionPage({ collection }: CollectionPageProps) {
             </p>
           )}
 
-          {/* Event info — quiet inline text */}
+          {/* Event info — date & location prominent */}
           {event && (
-            <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
-              <span>{event.name}</span>
-              {event.date_start && (
-                <>
-                  <span className="text-foreground/15">/</span>
-                  <span>
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                {event.date_start && (
+                  <span className="font-[family-name:var(--font-sans)] text-[14px] font-semibold tracking-[-0.01em] text-foreground/70">
                     {new Date(event.date_start).toLocaleDateString("en-GB", {
+                      weekday: "long",
                       day: "numeric",
-                      month: "short",
+                      month: "long",
                       year: "numeric",
                     })}
                   </span>
-                </>
-              )}
-              {event.venue_name && (
-                <>
-                  <span className="text-foreground/15">/</span>
-                  <span>{event.venue_name}</span>
-                </>
-              )}
+                )}
+                {event.venue_name && (
+                  <>
+                    <span className="text-foreground/20 hidden sm:inline">&middot;</span>
+                    <span className="font-[family-name:var(--font-sans)] text-[14px] font-semibold tracking-[-0.01em] text-foreground/70">
+                      {event.venue_name}
+                    </span>
+                  </>
+                )}
+              </div>
+              <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/30">
+                {event.name}
+              </p>
             </div>
           )}
 
@@ -288,37 +292,69 @@ export function CollectionPage({ collection }: CollectionPageProps) {
         )}
       </section>
 
-      {/* Cart bar */}
+      {/* Inline cart summary — replaces sticky bar */}
       {cart.hasItems && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-[997] will-change-transform"
-          style={{
-            background: "linear-gradient(to top, var(--bg-dark, #0e0e0e) 0%, rgba(14,14,14,0.97) 100%)",
-            borderTop: "1px solid rgba(255,255,255, 0.06)",
-          }}
-        >
+        <section className="relative z-10 mx-auto max-w-6xl px-4 pb-10 sm:px-6">
           <div
-            className="mx-auto flex max-w-6xl items-center justify-between px-5"
-            style={{ paddingTop: "14px", paddingBottom: "max(14px, calc(12px + env(safe-area-inset-bottom)))" }}
+            className="rounded-xl overflow-hidden"
+            style={{
+              backgroundColor: "rgba(255,255,255, 0.025)",
+              border: "1px solid rgba(255,255,255, 0.06)",
+            }}
           >
-            <div className="flex items-center gap-3">
+            <div className="px-5 py-4 flex items-center justify-between">
               <div>
-                <p className="font-[family-name:var(--font-mono)] text-[17px] font-bold tracking-[0.01em] text-foreground">
-                  {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
+                  Your Cart
                 </p>
-                <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
-                  {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
+                <p className="mt-1">
+                  <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold tracking-[0.01em] text-foreground">
+                    {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                  </span>
+                  <span className="ml-2 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
+                    {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
+                  </span>
                 </p>
               </div>
+              <button
+                onClick={() => setShowCheckout(true)}
+                className="h-11 rounded-xl bg-white px-7 text-[13px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
+              >
+                Checkout
+              </button>
             </div>
-            <button
-              onClick={() => setShowCheckout(true)}
-              className="h-11 rounded-xl bg-white px-7 text-[13px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
-            >
-              Checkout
-            </button>
+
+            {/* Cart items */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255, 0.04)" }}>
+              {cart.items.map((cartItem) => (
+                <div
+                  key={`${cartItem.collection_item_id}-${cartItem.merch_size || ""}`}
+                  className="flex items-center justify-between px-5 py-2.5"
+                  style={{ borderBottom: "1px solid rgba(255,255,255, 0.02)" }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-[family-name:var(--font-sans)] text-[13px] text-foreground/60 truncate">
+                      {cartItem.product_name}
+                    </span>
+                    {cartItem.merch_size && (
+                      <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/30">
+                        {cartItem.merch_size}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                    <span className="font-[family-name:var(--font-mono)] text-[12px] text-foreground/40">
+                      &times;{cartItem.qty}
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-[13px] font-medium text-foreground/60 w-16 text-right">
+                      {cart.currSymbol}{(cartItem.unit_price * cartItem.qty).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
       )}
 
       <MidnightFooter />

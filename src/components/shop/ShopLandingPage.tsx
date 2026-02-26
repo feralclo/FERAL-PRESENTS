@@ -34,30 +34,40 @@ export function ShopLandingPage({ collections, storeSettings }: ShopLandingPageP
       {/* Page content */}
       <main className="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6">
         {/* Heading */}
-        <div className="mb-12 text-center">
+        <div className="mb-10 sm:mb-14">
+          <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 mb-3">
+            Pre-order
+          </p>
           <h1
-            className="font-[var(--font-mono,'Space_Mono',monospace)] text-3xl font-bold tracking-tight text-[var(--text-primary,#fff)] sm:text-4xl"
+            className="font-[family-name:var(--font-sans)] font-black text-foreground"
+            style={{
+              fontSize: "clamp(1.75rem, 5vw, 3rem)",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.1,
+            }}
           >
             {storeSettings.store_heading || "Shop"}
           </h1>
           {storeSettings.store_description && (
-            <p className="mt-3 text-base text-[var(--text-secondary,#888)] max-w-lg mx-auto">
+            <p className="mt-4 max-w-md font-[family-name:var(--font-display)] text-[15px] leading-relaxed text-foreground/50">
               {storeSettings.store_description}
             </p>
           )}
+          <div className="mt-6 h-px bg-gradient-to-r from-foreground/[0.08] to-transparent" />
         </div>
 
         {/* Collections grid */}
         {collections.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-[var(--text-secondary,#888)] text-sm">
-              No collections available yet. Check back soon.
+          <div className="py-24 text-center">
+            <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.15em] text-foreground/25">
+              Coming soon
             </p>
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {collections.map((collection) => {
               const event = collection.event as Event | undefined;
+              const tileImage = collection.tile_image;
               const heroImage = collection.hero_image || event?.cover_image || event?.hero_image;
 
               // Get first product image as fallback
@@ -65,77 +75,93 @@ export function ShopLandingPage({ collections, storeSettings }: ShopLandingPageP
                 ? normalizeMerchImages(collection.items[0].product.images)[0]
                 : null;
 
-              const displayImage = heroImage || firstProductImage;
+              const displayImage = tileImage || heroImage || firstProductImage;
               const itemCount = collection.items?.length || 0;
 
               return (
                 <Link
                   key={collection.id}
                   href={`/shop/${collection.slug}/`}
-                  className="group relative overflow-hidden rounded-2xl border border-[var(--card-border,#2a2a2a)] bg-[var(--card-bg,#1a1a1a)] transition-all duration-300 hover:border-[var(--accent,#ff0033)]/30 hover:shadow-xl hover:shadow-[var(--accent,#ff0033)]/5"
+                  className="group relative overflow-hidden rounded-xl transition-all duration-200"
+                  style={{
+                    backgroundColor: "rgba(255,255,255, 0.025)",
+                    border: "1px solid rgba(255,255,255, 0.06)",
+                  }}
                 >
+                  {/* Hover overlay */}
+                  <div
+                    className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-10"
+                    style={{
+                      backgroundColor: "rgba(255,255,255, 0.015)",
+                      border: "1px solid rgba(255,255,255, 0.12)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 0 16px rgba(255,255,255,0.02)",
+                    }}
+                  />
+
                   {/* Image */}
                   <div className="relative aspect-[4/3] overflow-hidden">
                     {displayImage ? (
                       <img
                         src={displayImage}
                         alt={collection.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[var(--card-bg,#1a1a1a)] to-[var(--bg-dark,#0e0e0e)]">
-                        <span className="text-4xl text-[var(--text-secondary,#888)]/20">
-                          &#9670;
-                        </span>
-                      </div>
+                      <div className="h-full w-full bg-gradient-to-br from-foreground/[0.03] to-transparent" />
                     )}
 
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg,#1a1a1a)] via-transparent to-transparent opacity-80" />
+                    {/* Bottom gradient */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.6) 80%, rgba(0,0,0,0.85) 100%)",
+                      }}
+                    />
 
                     {/* Limited edition badge */}
                     {collection.is_limited_edition && (
-                      <div className="absolute top-3 right-3">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-300 backdrop-blur-sm">
-                          <span className="text-amber-400">&#9830;</span>
+                      <div className="absolute top-3 left-3 z-10">
+                        <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-black/60 px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.12em] text-amber-300 backdrop-blur-sm">
                           {collection.limited_edition_label || "Limited Edition"}
                         </span>
                       </div>
                     )}
+
+                    {/* Overlay content — positioned inside the image */}
+                    <div className="absolute bottom-0 left-0 right-0 z-10 px-5 pb-4">
+                      <h3 className="font-[family-name:var(--font-sans)] text-base font-bold tracking-[-0.01em] text-white">
+                        {collection.title}
+                      </h3>
+
+                      {event && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.04em] text-white/50">
+                          {event.date_start && (
+                            <span>
+                              {new Date(event.date_start).toLocaleDateString("en-GB", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </span>
+                          )}
+                          {event.venue_name && (
+                            <>
+                              <span className="text-white/20">/</span>
+                              <span>{event.venue_name}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="px-5 py-4">
-                    <h3 className="font-[var(--font-mono,'Space_Mono',monospace)] text-base font-bold text-[var(--text-primary,#fff)] group-hover:text-[var(--accent,#ff0033)] transition-colors">
-                      {collection.title}
-                    </h3>
-
-                    {event && (
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--text-secondary,#888)]">
-                        <span>
-                          {new Date(event.date_start).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {event.venue_name && (
-                          <>
-                            <span className="text-[var(--text-secondary,#888)]/40">|</span>
-                            <span>{event.venue_name}</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="text-[11px] text-[var(--text-secondary,#888)]/60">
-                        {itemCount} {itemCount === 1 ? "item" : "items"}
-                      </span>
-                      <span className="text-[12px] font-semibold text-[var(--accent,#ff0033)] opacity-0 transition-opacity group-hover:opacity-100">
-                        View Collection &rarr;
-                      </span>
-                    </div>
+                  {/* Footer */}
+                  <div className="flex items-center justify-between px-5 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255, 0.04)" }}>
+                    <span className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
+                      {itemCount} {itemCount === 1 ? "item" : "items"}
+                    </span>
+                    <span className="font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-foreground/25 transition-colors group-hover:text-foreground/50">
+                      View &rarr;
+                    </span>
                   </div>
                 </Link>
               );

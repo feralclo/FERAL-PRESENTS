@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const updateFields: Record<string, unknown> = {};
     const allowedFields = [
       "title", "description", "status", "is_limited_edition",
-      "limited_edition_label", "hero_image", "custom_cta_text",
+      "limited_edition_label", "hero_image", "tile_image", "custom_cta_text",
       "pickup_instructions", "sort_order", "slug", "event_id",
     ];
 

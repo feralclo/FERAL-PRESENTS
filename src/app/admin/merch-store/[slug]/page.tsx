@@ -40,6 +40,7 @@ import {
   ExternalLink,
   ImageIcon,
 } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Product } from "@/types/products";
 import type { Event } from "@/types/events";
@@ -168,6 +169,7 @@ export default function CollectionEditorPage() {
           is_limited_edition: collection.is_limited_edition,
           limited_edition_label: collection.limited_edition_label,
           hero_image: collection.hero_image,
+          tile_image: collection.tile_image,
           custom_cta_text: collection.custom_cta_text,
           pickup_instructions: collection.pickup_instructions,
           items: items.map((item, index) => ({
@@ -387,24 +389,33 @@ export default function CollectionEditorPage() {
                   rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>CTA Button Text</Label>
-                  <Input
-                    value={collection.custom_cta_text || ""}
-                    onChange={(e) => updateField("custom_cta_text", e.target.value)}
-                    placeholder="Pre-order Now"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Hero Image URL</Label>
-                  <Input
-                    value={collection.hero_image || ""}
-                    onChange={(e) => updateField("hero_image", e.target.value || null)}
-                    placeholder="Uses event cover if empty"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>CTA Button Text</Label>
+                <Input
+                  value={collection.custom_cta_text || ""}
+                  onChange={(e) => updateField("custom_cta_text", e.target.value)}
+                  placeholder="Pre-order Now"
+                />
               </div>
+
+              {/* Image uploads */}
+              <div className="grid grid-cols-2 gap-4">
+                <ImageUpload
+                  label="Hero / Banner Image"
+                  value={collection.hero_image || ""}
+                  onChange={(v) => updateField("hero_image", v || null)}
+                  uploadKey={`merch_collection_hero_${collection.id}`}
+                />
+                <ImageUpload
+                  label="Tile Image (Shop Grid)"
+                  value={collection.tile_image || ""}
+                  onChange={(v) => updateField("tile_image", v || null)}
+                  uploadKey={`merch_collection_tile_${collection.id}`}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground/60">
+                Hero image appears at the top of the collection page. Tile image appears on the shop grid. Both default to the event cover if left empty.
+              </p>
               <div className="space-y-2">
                 <Label>Pickup Instructions</Label>
                 <Textarea

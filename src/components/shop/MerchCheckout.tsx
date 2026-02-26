@@ -335,7 +335,7 @@ function CheckoutForm({
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="First name *"
-              className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-[var(--accent,#ff0033)]"
+              className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-white/30"
             />
           </div>
           <div>
@@ -344,7 +344,7 @@ function CheckoutForm({
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               placeholder="Last name *"
-              className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-[var(--accent,#ff0033)]"
+              className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-white/30"
             />
           </div>
         </div>
@@ -353,14 +353,14 @@ function CheckoutForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email address *"
-          className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-[var(--accent,#ff0033)]"
+          className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-white/30"
         />
         <input
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="Phone (optional)"
-          className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-[var(--accent,#ff0033)]"
+          className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] placeholder:text-[var(--text-secondary,#888)]/40 outline-none focus:border-white/30"
         />
       </div>
 
@@ -377,7 +377,7 @@ function CheckoutForm({
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] outline-none focus:border-[var(--accent,#ff0033)]"
+            className="w-full rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-3 py-2.5 text-sm text-[var(--text-primary,#fff)] outline-none focus:border-white/30"
           >
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>
@@ -398,7 +398,13 @@ function CheckoutForm({
       {/* Pre-order info */}
       <div className="mb-6 rounded-lg border border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)] px-4 py-3">
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 text-base">&#128230;</span>
+          <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-secondary,#888)]">
+              <rect x="1" y="3" width="15" height="13" rx="2" />
+              <path d="m16 8 5 3-5 3V8Z" />
+              <line x1="6" y1="12" x2="10" y2="12" />
+            </svg>
+          </div>
           <div>
             <p className="text-[12px] font-semibold text-[var(--text-primary,#fff)]">
               Collect at the Event
@@ -415,10 +421,10 @@ function CheckoutForm({
       <button
         onClick={handleSubmit}
         disabled={!isValid || processing}
-        className="w-full rounded-xl py-3.5 text-sm font-bold uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full rounded-xl py-3.5 text-sm font-bold uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation active:scale-[0.98]"
         style={{
-          backgroundColor: processing ? "transparent" : "var(--accent, #ff0033)",
-          color: "var(--text-primary, #fff)",
+          backgroundColor: processing ? "transparent" : "#fff",
+          color: processing ? "var(--text-primary, #fff)" : "#0e0e0e",
           border: processing ? "1px solid var(--card-border, #2a2a2a)" : "none",
         }}
       >

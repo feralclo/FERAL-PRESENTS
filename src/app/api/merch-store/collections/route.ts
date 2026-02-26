@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
       is_limited_edition = false,
       limited_edition_label,
       hero_image,
+      tile_image,
       custom_cta_text,
       pickup_instructions,
       items = [],
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
         is_limited_edition,
         limited_edition_label: limited_edition_label || null,
         hero_image: hero_image || null,
+        tile_image: tile_image || null,
         custom_cta_text: custom_cta_text || "Pre-order Now",
         pickup_instructions: pickup_instructions || "Collect at the merch stand when you arrive at the event",
       })

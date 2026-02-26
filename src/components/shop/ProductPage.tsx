@@ -35,10 +35,12 @@ export function ProductPage({ item, collection }: ProductPageProps) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
+  const [qty, setQty] = useState(1);
 
   const price = item.custom_price ?? product?.price ?? 0;
   const hasSizes = product?.sizes && product.sizes.length > 0;
   const canAdd = !hasSizes || selectedSize !== null;
+  const maxQty = item.max_per_order || 10;
 
   // Touch swipe
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -65,10 +67,13 @@ export function ProductPage({ item, collection }: ProductPageProps) {
 
   const handleAddToCart = useCallback(() => {
     if (!canAdd) return;
-    cart.addItem(item, selectedSize || undefined);
+    for (let i = 0; i < qty; i++) {
+      cart.addItem(item, selectedSize || undefined);
+    }
     setAddedFeedback(true);
+    setQty(1);
     setTimeout(() => setAddedFeedback(false), 1800);
-  }, [canAdd, cart, item, selectedSize]);
+  }, [canAdd, cart, item, selectedSize, qty]);
 
   if (!product) return null;
 
@@ -105,7 +110,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
         <Header />
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pt-24 pb-32 sm:px-6 sm:pt-28 lg:px-8">
+      <main className="mx-auto max-w-6xl px-4 pt-24 pb-16 sm:px-6 sm:pt-28 lg:px-8">
         {/* Back link */}
         <nav className="mb-6">
           <Link
@@ -266,7 +271,49 @@ export function ProductPage({ item, collection }: ProductPageProps) {
               </div>
             )}
 
-            {/* Add to cart — proper glass CTA */}
+            {/* Quantity selector */}
+            {price > 0 && (
+              <div className="mb-4">
+                <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 mb-3">
+                  Quantity
+                </p>
+                <div
+                  className="inline-flex items-center rounded-xl"
+                  style={{
+                    backgroundColor: "rgba(255,255,255, 0.025)",
+                    border: "1px solid rgba(255,255,255, 0.06)",
+                  }}
+                >
+                  <button
+                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    disabled={qty <= 1}
+                    className="flex h-11 w-11 items-center justify-center text-[16px] text-foreground/50 transition-colors touch-manipulation active:scale-[0.95] disabled:text-foreground/15"
+                  >
+                    &minus;
+                  </button>
+                  <span
+                    className="flex h-11 w-10 items-center justify-center font-[family-name:var(--font-mono)] text-[14px] font-bold text-foreground"
+                    style={{ borderLeft: "1px solid rgba(255,255,255, 0.06)", borderRight: "1px solid rgba(255,255,255, 0.06)" }}
+                  >
+                    {qty}
+                  </span>
+                  <button
+                    onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                    disabled={qty >= maxQty}
+                    className="flex h-11 w-11 items-center justify-center text-[16px] text-foreground/50 transition-colors touch-manipulation active:scale-[0.95] disabled:text-foreground/15"
+                  >
+                    +
+                  </button>
+                </div>
+                {item.max_per_order && (
+                  <p className="mt-2 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-foreground/25">
+                    Max {item.max_per_order} per order
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Add to cart — glass CTA */}
             {price > 0 && (
               <button
                 onClick={handleAddToCart}
@@ -297,8 +344,81 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                   ? "Added to cart"
                   : !canAdd
                     ? "Select a size"
-                    : "Add to Cart"}
+                    : qty > 1
+                      ? `Add ${qty} to Cart`
+                      : "Add to Cart"}
               </button>
+            )}
+
+            {/* Cart summary — shows when items in cart */}
+            {cart.hasItems && (
+              <div
+                className="mt-4 rounded-xl overflow-hidden"
+                style={{
+                  backgroundColor: "rgba(255,255,255, 0.025)",
+                  border: "1px solid rgba(255,255,255, 0.06)",
+                }}
+              >
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
+                      Your Cart
+                    </p>
+                    <p className="mt-1 font-[family-name:var(--font-mono)] text-[13px] text-foreground/60">
+                      {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"} &middot; {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowCheckout(true)}
+                    className="h-10 rounded-xl bg-white px-6 text-[12px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
+                  >
+                    Checkout
+                  </button>
+                </div>
+
+                {/* Cart items preview */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255, 0.04)" }}>
+                  {cart.items.map((cartItem) => (
+                    <div
+                      key={`${cartItem.collection_item_id}-${cartItem.merch_size || ""}`}
+                      className="flex items-center justify-between px-4 py-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-[family-name:var(--font-sans)] text-[12px] text-foreground/60 truncate">
+                          {cartItem.product_name}
+                        </span>
+                        {cartItem.merch_size && (
+                          <span className="font-[family-name:var(--font-mono)] text-[10px] text-foreground/30">
+                            {cartItem.merch_size}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                        <div className="flex items-center gap-0">
+                          <button
+                            onClick={() => cart.removeItem(cartItem.collection_item_id, cartItem.merch_size)}
+                            className="flex h-7 w-7 items-center justify-center text-[12px] text-foreground/35 transition-colors hover:text-foreground/60 touch-manipulation"
+                          >
+                            &minus;
+                          </button>
+                          <span className="w-5 text-center font-[family-name:var(--font-mono)] text-[12px] font-medium text-foreground/60">
+                            {cartItem.qty}
+                          </span>
+                          <button
+                            onClick={() => cart.addItem(item, cartItem.merch_size)}
+                            className="flex h-7 w-7 items-center justify-center text-[12px] text-foreground/35 transition-colors hover:text-foreground/60 touch-manipulation"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="font-[family-name:var(--font-mono)] text-[12px] text-foreground/50 w-14 text-right">
+                          {cart.currSymbol}{(cartItem.unit_price * cartItem.qty).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* How it works — 3-step flow */}
@@ -357,14 +477,6 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                     </p>
                   </div>
                 </div>
-
-                {item.max_per_order && (
-                  <div className="px-4 pb-3">
-                    <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-foreground/25 text-center">
-                      Max {item.max_per_order} per order
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -444,37 +556,6 @@ export function ProductPage({ item, collection }: ProductPageProps) {
           </section>
         )}
       </main>
-
-      {/* Cart bar — matches MidnightCartSummary bottom bar pattern */}
-      {cart.hasItems && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-[997] will-change-transform"
-          style={{
-            background: "linear-gradient(to top, var(--bg-dark, #0e0e0e) 0%, rgba(14,14,14,0.97) 100%)",
-            borderTop: "1px solid rgba(255,255,255, 0.06)",
-          }}
-        >
-          <div
-            className="mx-auto flex max-w-6xl items-center justify-between px-5"
-            style={{ paddingTop: "14px", paddingBottom: "max(14px, calc(12px + env(safe-area-inset-bottom)))" }}
-          >
-            <div>
-              <p className="font-[family-name:var(--font-mono)] text-[17px] font-bold tracking-[0.01em] text-foreground">
-                {cart.currSymbol}{cart.totalPrice.toFixed(2)}
-              </p>
-              <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
-                {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowCheckout(true)}
-              className="h-11 rounded-xl bg-white px-7 text-[13px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
-            >
-              Checkout
-            </button>
-          </div>
-        </div>
-      )}
 
       <MidnightFooter />
     </div>

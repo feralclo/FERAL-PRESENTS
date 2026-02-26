@@ -301,30 +301,82 @@ export function ProductPage({ item, collection }: ProductPageProps) {
               </button>
             )}
 
-            {/* Meta info line */}
-            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-foreground/25">
-              <span>Pre-order</span>
-              <span className="text-foreground/10">/</span>
-              <span>Collect at event</span>
-              {item.max_per_order && (
-                <>
-                  <span className="text-foreground/10">/</span>
-                  <span>Max {item.max_per_order} per order</span>
-                </>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div className="my-6 h-px bg-gradient-to-r from-foreground/[0.06] to-transparent" />
-
-            {/* Event card */}
-            {event && (
-              <Link
-                href={`/event/${event.slug}/`}
-                className="group/event block rounded-xl overflow-hidden transition-all duration-200"
+            {/* How it works — 3-step flow */}
+            <div className="mt-5">
+              <div
+                className="rounded-xl overflow-hidden"
                 style={{
                   backgroundColor: "rgba(255,255,255, 0.025)",
                   border: "1px solid rgba(255,255,255, 0.06)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+                }}
+              >
+                <div className="px-4 pt-4 pb-1">
+                  <p className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30">
+                    How it works
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3">
+                  {/* Step 1 */}
+                  <div className="px-4 py-4 text-center">
+                    <div className="mx-auto mb-2.5 flex h-8 w-8 items-center justify-center rounded-full font-[family-name:var(--font-mono)] text-[12px] font-bold text-foreground/60" style={{ backgroundColor: "rgba(255,255,255, 0.05)", border: "1px solid rgba(255,255,255, 0.08)" }}>
+                      1
+                    </div>
+                    <p className="font-[family-name:var(--font-sans)] text-[12px] font-semibold text-foreground/75">
+                      Pre-order
+                    </p>
+                    <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.04em] text-foreground/30">
+                      Secure yours now
+                    </p>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="px-4 py-4 text-center" style={{ borderLeft: "1px solid rgba(255,255,255, 0.04)", borderRight: "1px solid rgba(255,255,255, 0.04)" }}>
+                    <div className="mx-auto mb-2.5 flex h-8 w-8 items-center justify-center rounded-full font-[family-name:var(--font-mono)] text-[12px] font-bold text-foreground/60" style={{ backgroundColor: "rgba(255,255,255, 0.05)", border: "1px solid rgba(255,255,255, 0.08)" }}>
+                      2
+                    </div>
+                    <p className="font-[family-name:var(--font-sans)] text-[12px] font-semibold text-foreground/75">
+                      Get QR code
+                    </p>
+                    <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.04em] text-foreground/30">
+                      Sent to your email
+                    </p>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="px-4 py-4 text-center">
+                    <div className="mx-auto mb-2.5 flex h-8 w-8 items-center justify-center rounded-full font-[family-name:var(--font-mono)] text-[12px] font-bold text-foreground/60" style={{ backgroundColor: "rgba(255,255,255, 0.05)", border: "1px solid rgba(255,255,255, 0.08)" }}>
+                      3
+                    </div>
+                    <p className="font-[family-name:var(--font-sans)] text-[12px] font-semibold text-foreground/75">
+                      Collect at event
+                    </p>
+                    <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[10px] tracking-[0.04em] text-foreground/30">
+                      Scan &amp; pick up
+                    </p>
+                  </div>
+                </div>
+
+                {item.max_per_order && (
+                  <div className="px-4 pb-3">
+                    <p className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] text-foreground/25 text-center">
+                      Max {item.max_per_order} per order
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Event attendance — you MUST be going */}
+            {event && (
+              <Link
+                href={`/event/${event.slug}/`}
+                className="group/event mt-3 block rounded-xl overflow-hidden transition-all duration-200 hover:border-foreground/[0.12]"
+                style={{
+                  backgroundColor: "rgba(255,255,255, 0.025)",
+                  border: "1px solid rgba(255,255,255, 0.06)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
                 }}
               >
                 <div className="flex items-center gap-4 p-4">
@@ -339,8 +391,8 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-[family-name:var(--font-sans)] text-[14px] font-semibold tracking-[0.04em] text-foreground truncate">
-                      {event.name}
+                    <p className="font-[family-name:var(--font-sans)] text-[13px] font-semibold text-foreground/75">
+                      You&apos;ll need a ticket to {event.name}
                     </p>
                     <div className="mt-1 flex items-center gap-2 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
                       {event.date_start && (
@@ -361,7 +413,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                     </div>
                   </div>
                   <span className="flex-shrink-0 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-foreground/25 transition-colors group-hover/event:text-foreground/50">
-                    Tickets &rarr;
+                    Get tickets &rarr;
                   </span>
                 </div>
               </Link>

@@ -150,25 +150,87 @@ export function CollectionPage({ collection }: CollectionPageProps) {
             </div>
           )}
 
-          {/* Pre-order + ticket link */}
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <span className="font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.15em] text-foreground/25">
-              Pre-order &middot; Collect at event
-            </span>
-            {event?.slug && (
+        </div>
+      </section>
+
+      {/* How it works — 3-step flow */}
+      <section className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{
+            backgroundColor: "rgba(255,255,255, 0.025)",
+            border: "1px solid rgba(255,255,255, 0.06)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+          }}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3">
+            {/* Step 1 */}
+            <div className="flex items-center gap-4 px-5 py-4 sm:flex-col sm:text-center sm:px-4 sm:py-5">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full font-[family-name:var(--font-mono)] text-[13px] font-bold text-foreground/60 sm:mx-auto sm:mb-1" style={{ backgroundColor: "rgba(255,255,255, 0.05)", border: "1px solid rgba(255,255,255, 0.08)" }}>
+                1
+              </div>
+              <div className="sm:text-center">
+                <p className="font-[family-name:var(--font-sans)] text-[13px] font-semibold text-foreground/75">
+                  Pre-order online
+                </p>
+                <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.04em] text-foreground/30">
+                  Secure your merch before the event
+                </p>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex items-center gap-4 px-5 py-4 sm:flex-col sm:text-center sm:px-4 sm:py-5 border-y sm:border-y-0 sm:border-x" style={{ borderColor: "rgba(255,255,255, 0.04)" }}>
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full font-[family-name:var(--font-mono)] text-[13px] font-bold text-foreground/60 sm:mx-auto sm:mb-1" style={{ backgroundColor: "rgba(255,255,255, 0.05)", border: "1px solid rgba(255,255,255, 0.08)" }}>
+                2
+              </div>
+              <div className="sm:text-center">
+                <p className="font-[family-name:var(--font-sans)] text-[13px] font-semibold text-foreground/75">
+                  Receive your QR code
+                </p>
+                <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.04em] text-foreground/30">
+                  Confirmation and QR sent to your email
+                </p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex items-center gap-4 px-5 py-4 sm:flex-col sm:text-center sm:px-4 sm:py-5">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full font-[family-name:var(--font-mono)] text-[13px] font-bold text-foreground/60 sm:mx-auto sm:mb-1" style={{ backgroundColor: "rgba(255,255,255, 0.05)", border: "1px solid rgba(255,255,255, 0.08)" }}>
+                3
+              </div>
+              <div className="sm:text-center">
+                <p className="font-[family-name:var(--font-sans)] text-[13px] font-semibold text-foreground/75">
+                  Collect at the event
+                </p>
+                <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.04em] text-foreground/30">
+                  Scan your QR at the merch stand
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Event attendance callout */}
+          {event && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255, 0.04)" }}>
               <Link
                 href={`/event/${event.slug}/`}
-                className="font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.15em] text-foreground/35 transition-colors hover:text-foreground/60"
+                className="group/event flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-foreground/[0.015]"
               >
-                Get tickets &rarr;
+                <p className="font-[family-name:var(--font-sans)] text-[12px] text-foreground/50">
+                  You&apos;ll need a ticket to <span className="font-semibold text-foreground/70">{event.name}</span> to collect your order
+                </p>
+                <span className="flex-shrink-0 ml-4 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.12em] text-foreground/25 transition-colors group-hover/event:text-foreground/50">
+                  Get tickets &rarr;
+                </span>
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 
       {/* Products */}
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-14">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         {/* Featured */}
         {featuredItems.length > 0 && (
           <div className="mb-12">

@@ -18,6 +18,8 @@ import type {
   StripeExpressCheckoutElementClickEvent,
 } from "@stripe/stripe-js";
 import { OrderConfirmation } from "./OrderConfirmation";
+import { MerchOrderConfirmation } from "@/components/shop/MerchOrderConfirmation";
+import type { MerchCollection } from "@/types/merch-store";
 import { CheckoutTimer } from "./CheckoutTimer";
 import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import type { Event, TicketTypeRow } from "@/types/events";
@@ -55,6 +57,8 @@ interface NativeCheckoutProps {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
   restoreData?: RestoreData | null;
+  /** When present, checkout operates in merch pre-order mode */
+  merchData?: MerchCheckoutData | null;
 }
 
 interface CartLine {
@@ -63,6 +67,22 @@ interface CartLine {
   qty: number;
   price: number;
   merch_size?: string;
+}
+
+/** Merch checkout data — when present, NativeCheckout operates in merch pre-order mode */
+export interface MerchCheckoutData {
+  collectionSlug: string;
+  collectionTitle: string;
+  pickupInstructions?: string;
+  /** Cart lines already mapped to CartLine shape for display */
+  cartLines: CartLine[];
+  /** Original merch items for API calls (need collection_item_id) */
+  merchItems: Array<{
+    collection_item_id: string;
+    qty: number;
+    merch_size?: string;
+  }>;
+  currency: string;
 }
 
 interface CardFieldsHandle {
@@ -198,7 +218,7 @@ function reportCheckoutError(params: {
    MAIN CHECKOUT COMPONENT
    ================================================================ */
 
-export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps) {
+export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCheckoutProps) {
   const searchParams = useSearchParams();
   const cartParam = restoreData?.cartParam || searchParams.get("cart");
   const piParam = searchParams.get("pi");
@@ -301,8 +321,12 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     });
   }, [event.ticket_types]);
 
-  // Parse cart from URL
+  // Parse cart from URL (or use merch data directly)
   const cartLines: CartLine[] = useMemo(() => {
+    // Merch mode: cart lines provided directly
+    if (merchData) return merchData.cartLines;
+
+    // Ticket mode: parse from URL
     if (!cartParam) return [];
     const ttMap = new Map(
       (event.ticket_types || []).map((tt) => [tt.id, tt])
@@ -325,7 +349,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       }
     }
     return lines;
-  }, [cartParam, event.ticket_types]);
+  }, [cartParam, event.ticket_types, merchData]);
 
   const subtotal = cartLines.reduce((sum, l) => sum + l.price * l.qty, 0);
   const totalQty = cartLines.reduce((sum, l) => sum + l.qty, 0);
@@ -386,7 +410,8 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
     if (piParam && !completedOrder) {
       (async () => {
         try {
-          const res = await fetch("/api/stripe/confirm-order", {
+          const confirmUrl = merchData ? "/api/merch-store/confirm-order" : "/api/stripe/confirm-order";
+          const res = await fetch(confirmUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ payment_intent_id: piParam, event_id: event.id }),
@@ -406,7 +431,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   if (piParam && !completedOrder) {
     return (
       <div className="midnight-checkout min-h-screen flex flex-col">
-        <CheckoutHeader slug={slug} />
+        <CheckoutHeader slug={slug} backUrl={merchData ? `/shop/${merchData.collectionSlug}/` : undefined} />
         <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 gap-4" style={{ minHeight: "60vh" }}>
           <div className="w-6 h-6 border-2 border-white/[0.08] border-t-white rounded-full midnight-spinner" />
           <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[2px] uppercase text-foreground/35">
@@ -419,6 +444,16 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
 
   // Show confirmation
   if (completedOrder) {
+    if (merchData) {
+      return (
+        <MerchOrderConfirmation
+          order={completedOrder}
+          collection={{ slug: merchData.collectionSlug, title: merchData.collectionTitle, pickup_instructions: merchData.pickupInstructions } as MerchCollection}
+          event={event}
+          currency={merchData.currency}
+        />
+      );
+    }
     return (
       <OrderConfirmation
         order={completedOrder}
@@ -438,19 +473,19 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
   if (cartLines.length === 0) {
     return (
       <div className="midnight-checkout min-h-screen flex flex-col">
-        <CheckoutHeader slug={slug} />
+        <CheckoutHeader slug={slug} backUrl={merchData ? `/shop/${merchData.collectionSlug}/` : undefined} />
         <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 text-center">
           <h2 className="font-[family-name:var(--font-mono)] text-sm tracking-[2.5px] uppercase text-foreground font-bold">
             Your cart is empty
           </h2>
           <p className="text-foreground/50 text-sm mt-3 mb-6">
-            No tickets selected. Head back to pick your tickets.
+            {merchData ? "No items in your cart." : "No tickets selected. Head back to pick your tickets."}
           </p>
           <a
-            href={`/event/${slug}/#tickets`}
+            href={merchData ? `/shop/${merchData.collectionSlug}/` : `/event/${slug}/#tickets`}
             className="inline-block w-full max-w-[320px] bg-white text-[#111] font-[family-name:var(--font-sans)] text-[15px] font-semibold tracking-[0.3px] py-4 px-6 rounded-[10px] text-center no-underline transition-all duration-150 hover:bg-[#f5f5f5] active:bg-[#ebebeb] active:scale-[0.99]"
           >
-            BROWSE TICKETS
+            {merchData ? "BROWSE MERCH" : "BROWSE TICKETS"}
           </a>
         </div>
         <CheckoutFooter />
@@ -492,6 +527,7 @@ export function NativeCheckout({ slug, event, restoreData }: NativeCheckoutProps
       restoreData={restoreData}
       stripeReady={stripeReady}
       stripePromise={stripePromise}
+      merchData={merchData}
     />
   );
 }
@@ -622,6 +658,7 @@ function StripeCheckoutPage({
   restoreData,
   stripeReady,
   stripePromise,
+  merchData,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -636,6 +673,7 @@ function StripeCheckoutPage({
   restoreData?: RestoreData | null;
   stripeReady: boolean;
   stripePromise: Promise<Stripe | null> | null;
+  merchData?: MerchCheckoutData | null;
 }) {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
 
@@ -700,7 +738,7 @@ function StripeCheckoutPage({
   if (!stripeReady || !stripePromise) {
     return (
       <div className="midnight-checkout min-h-screen flex flex-col">
-        <CheckoutHeader slug={slug} />
+        <CheckoutHeader slug={slug} backUrl={merchData ? `/shop/${merchData.collectionSlug}/` : undefined} />
         <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 gap-4" style={{ minHeight: "60vh" }}>
           <div className="w-6 h-6 border-2 border-white/[0.08] border-t-white rounded-full midnight-spinner" />
           <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[2px] uppercase text-foreground/35">
@@ -745,7 +783,7 @@ function StripeCheckoutPage({
 
   return (
     <div className="midnight-checkout min-h-screen flex flex-col">
-      <CheckoutHeader slug={slug} />
+      <CheckoutHeader slug={slug} backUrl={merchData ? `/shop/${merchData.collectionSlug}/` : undefined} />
       <CheckoutTimer active={true} />
 
       {/* Mobile: always-visible order summary */}
@@ -754,9 +792,9 @@ function StripeCheckoutPage({
         symbol={symbol}
         subtotal={subtotal}
         event={event}
-        discount={appliedDiscount}
-        onApplyDiscount={setAppliedDiscount}
-        onRemoveDiscount={() => setAppliedDiscount(null)}
+        discount={merchData ? null : appliedDiscount}
+        onApplyDiscount={merchData ? () => {} : setAppliedDiscount}
+        onRemoveDiscount={merchData ? () => {} : () => setAppliedDiscount(null)}
         vatSettings={vatSettings}
       />
 
@@ -778,6 +816,7 @@ function StripeCheckoutPage({
                 capturedEmail={capturedEmail}
                 onChangeEmail={onChangeEmail}
                 restoreData={restoreData}
+                merchData={merchData}
               />
             </Elements>
           </div>
@@ -789,9 +828,9 @@ function StripeCheckoutPage({
               symbol={symbol}
               subtotal={subtotal}
               event={event}
-              discount={appliedDiscount}
-              onApplyDiscount={setAppliedDiscount}
-              onRemoveDiscount={() => setAppliedDiscount(null)}
+              discount={merchData ? null : appliedDiscount}
+              onApplyDiscount={merchData ? () => {} : setAppliedDiscount}
+              onRemoveDiscount={merchData ? () => {} : () => setAppliedDiscount(null)}
               vatSettings={vatSettings}
             />
           </aside>
@@ -821,6 +860,7 @@ function SinglePageCheckoutForm({
   capturedEmail,
   onChangeEmail,
   restoreData,
+  merchData,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -835,6 +875,7 @@ function SinglePageCheckoutForm({
   capturedEmail: string;
   onChangeEmail: () => void;
   restoreData?: RestoreData | null;
+  merchData?: MerchCheckoutData | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -941,25 +982,40 @@ function SinglePageCheckoutForm({
           { em: walletEmail.toLowerCase(), fn: walletFirstName, ln: walletLastName }
         );
 
-        const res = await fetch("/api/stripe/payment-intent", {
+        const piUrl = merchData ? "/api/merch-store/payment-intent" : "/api/stripe/payment-intent";
+        const piBody = merchData
+          ? {
+              collection_slug: merchData.collectionSlug,
+              items: merchData.merchItems,
+              customer: {
+                first_name: walletFirstName,
+                last_name: walletLastName,
+                email: walletEmail.toLowerCase(),
+                phone: walletPhone || undefined,
+                marketing_consent: marketingConsent,
+              },
+            }
+          : {
+              event_id: event.id,
+              items: cartLines.map((l) => ({
+                ticket_type_id: l.ticket_type_id,
+                qty: l.qty,
+                merch_size: l.merch_size,
+              })),
+              customer: {
+                first_name: walletFirstName,
+                last_name: walletLastName,
+                email: walletEmail.toLowerCase(),
+                phone: walletPhone || undefined,
+                marketing_consent: marketingConsent,
+              },
+              discount_code: discountCode || undefined,
+            };
+
+        const res = await fetch(piUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event_id: event.id,
-            items: cartLines.map((l) => ({
-              ticket_type_id: l.ticket_type_id,
-              qty: l.qty,
-              merch_size: l.merch_size,
-            })),
-            customer: {
-              first_name: walletFirstName,
-              last_name: walletLastName,
-              email: walletEmail.toLowerCase(),
-              phone: walletPhone || undefined,
-              marketing_consent: marketingConsent,
-            },
-            discount_code: discountCode || undefined,
-          }),
+          body: JSON.stringify(piBody),
         });
 
         const data = await res.json();
@@ -973,7 +1029,7 @@ function SinglePageCheckoutForm({
           elements,
           clientSecret: data.client_secret,
           confirmParams: {
-            return_url: `${window.location.origin}/event/${slug}/checkout/?pi=${data.payment_intent_id}`,
+            return_url: `${window.location.origin}${merchData ? `/shop/${merchData.collectionSlug}/checkout` : `/event/${slug}/checkout`}/?pi=${data.payment_intent_id}`,
           },
           redirect: "if_required",
         });
@@ -984,7 +1040,8 @@ function SinglePageCheckoutForm({
           return;
         }
 
-        const orderRes = await fetch("/api/stripe/confirm-order", {
+        const confirmUrl = merchData ? "/api/merch-store/confirm-order" : "/api/stripe/confirm-order";
+        const orderRes = await fetch(confirmUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1022,7 +1079,7 @@ function SinglePageCheckoutForm({
         reportCheckoutError({ errorCode: "express_checkout_error", errorMessage: msg, eventId: event.id, eventSlug: slug, customerEmail: email });
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty, orgId]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty, orgId, merchData]
   );
 
   const handleSubmit = useCallback(
@@ -1063,24 +1120,39 @@ function SinglePageCheckoutForm({
       trackEngagement("payment_processing");
 
       try {
-        const res = await fetch("/api/stripe/payment-intent", {
+        const piUrl = merchData ? "/api/merch-store/payment-intent" : "/api/stripe/payment-intent";
+        const piBody = merchData
+          ? {
+              collection_slug: merchData.collectionSlug,
+              items: merchData.merchItems,
+              customer: {
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                email: email.trim().toLowerCase(),
+                phone: undefined,
+                marketing_consent: marketingConsent,
+              },
+            }
+          : {
+              event_id: event.id,
+              items: cartLines.map((l) => ({
+                ticket_type_id: l.ticket_type_id,
+                qty: l.qty,
+                merch_size: l.merch_size,
+              })),
+              customer: {
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                email: email.trim().toLowerCase(),
+                marketing_consent: marketingConsent,
+              },
+              discount_code: discountCode || undefined,
+            };
+
+        const res = await fetch(piUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event_id: event.id,
-            items: cartLines.map((l) => ({
-              ticket_type_id: l.ticket_type_id,
-              qty: l.qty,
-              merch_size: l.merch_size,
-            })),
-            customer: {
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-              email: email.trim().toLowerCase(),
-              marketing_consent: marketingConsent,
-            },
-            discount_code: discountCode || undefined,
-          }),
+          body: JSON.stringify(piBody),
         });
 
         const data = await res.json();
@@ -1146,7 +1218,7 @@ function SinglePageCheckoutForm({
                   address: { country },
                 },
               },
-              return_url: `${window.location.origin}/event/${slug}/checkout/?pi=${data.payment_intent_id}`,
+              return_url: `${window.location.origin}${merchData ? `/shop/${merchData.collectionSlug}/checkout` : `/event/${slug}/checkout`}/?pi=${data.payment_intent_id}`,
             }
           );
 
@@ -1161,7 +1233,8 @@ function SinglePageCheckoutForm({
           return;
         }
 
-        const orderRes = await fetch("/api/stripe/confirm-order", {
+        const confirmUrl2 = merchData ? "/api/merch-store/confirm-order" : "/api/stripe/confirm-order";
+        const orderRes = await fetch(confirmUrl2, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1220,6 +1293,7 @@ function SinglePageCheckoutForm({
       discountCode,
       trackEngagement,
       orgId,
+      merchData,
     ]
   );
 
@@ -1333,7 +1407,7 @@ function SinglePageCheckoutForm({
                 />
                 <p className="flex items-center gap-1.5 -mt-2 font-[family-name:var(--font-sans)] text-xs text-foreground/40 tracking-[0.2px]">
                   <EmailIcon className="w-3.5 h-3.5 text-foreground/35 shrink-0" />
-                  Your tickets will be sent to this email
+                  {merchData ? "Your order confirmation will be sent to this email" : "Your tickets will be sent to this email"}
                 </p>
               </>
             )}
@@ -1537,7 +1611,9 @@ function SinglePageCheckoutForm({
               ? "Processing\u2026"
               : paymentMethod === "klarna"
                 ? "Continue to Klarna"
-                : `Pay ${symbol}${totalAmount.toFixed(2)}`}
+                : merchData
+                  ? `Pre-order ${symbol}${totalAmount.toFixed(2)}`
+                  : `Pay ${symbol}${totalAmount.toFixed(2)}`}
           </button>
 
           {/* Trust Signal */}
@@ -2151,16 +2227,17 @@ function EmailCapture({
    SHARED UI COMPONENTS
    ================================================================ */
 
-function CheckoutHeader({ slug }: { slug: string }) {
+function CheckoutHeader({ slug, backUrl }: { slug: string; backUrl?: string }) {
   const branding = useBranding();
+  const href = backUrl || `/event/${slug}/`;
 
   return (
     <div className="bg-[rgba(0,0,0,0.9)] backdrop-blur-[16px] border-b border-white/[0.04] px-6 h-20 flex items-center justify-center sticky top-0 z-[100]">
-      <a href={`/event/${slug}/`} className="absolute left-6 top-1/2 -translate-y-1/2 font-[family-name:var(--font-mono)] text-[10px] tracking-[1px] uppercase text-foreground/35 no-underline transition-colors duration-150 flex items-center gap-1.5 hover:text-foreground">
+      <a href={href} className="absolute left-6 top-1/2 -translate-y-1/2 font-[family-name:var(--font-mono)] text-[10px] tracking-[1px] uppercase text-foreground/35 no-underline transition-colors duration-150 flex items-center gap-1.5 hover:text-foreground">
         <span className="text-sm leading-none">&larr;</span>
         <span>Back</span>
       </a>
-      <a href={`/event/${slug}/`}>
+      <a href={href}>
         {branding.logo_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img

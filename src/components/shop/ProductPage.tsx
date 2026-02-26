@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, Component, type ReactNode, type ErrorInfo } from "react";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { MidnightFooter } from "@/components/midnight/MidnightFooter";
@@ -10,50 +11,8 @@ import { useShopCart } from "@/hooks/useShopCart";
 import { normalizeMerchImages } from "@/lib/merch-images";
 import { getCurrencySymbol } from "@/lib/stripe/config";
 import { ProductCard } from "./ProductCard";
-import { MerchCheckout } from "./MerchCheckout";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Event } from "@/types/events";
-
-/* ── Error boundary to catch Stripe/payment crashes ── */
-class CheckoutErrorBoundary extends Component<
-  { children: ReactNode; onBack: () => void },
-  { hasError: boolean; errorMsg: string }
-> {
-  constructor(props: { children: ReactNode; onBack: () => void }) {
-    super(props);
-    this.state = { hasError: false, errorMsg: "" };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, errorMsg: error?.message || "Unknown error" };
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("Checkout error:", error, info);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="mx-auto max-w-lg px-4 py-16 text-center">
-          <p className="text-sm font-medium text-[var(--text-primary,#fff)]">
-            Something went wrong loading checkout.
-          </p>
-          <p className="mt-2 text-xs text-[var(--text-secondary,#888)]">
-            Please go back and try again. If the problem persists, refresh the page.
-          </p>
-          <p className="mt-2 text-[10px] font-mono text-red-400/60 break-all">
-            {this.state.errorMsg}
-          </p>
-          <button
-            onClick={this.props.onBack}
-            className="mt-4 text-sm text-[var(--text-primary,#fff)] underline underline-offset-4"
-          >
-            Back to collection
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 import "@/styles/midnight.css";
 import "@/styles/midnight-effects.css";
@@ -65,6 +24,7 @@ interface ProductPageProps {
 
 export function ProductPage({ item, collection }: ProductPageProps) {
   const headerHidden = useHeaderScroll();
+  const router = useRouter();
   const product = item.product;
   const event = collection.event as Event | undefined;
   const currency = event?.currency || "GBP";
@@ -74,7 +34,6 @@ export function ProductPage({ item, collection }: ProductPageProps) {
   const images = product ? normalizeMerchImages(product.images) : [];
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [showCheckout, setShowCheckout] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [qty, setQty] = useState(1);
 
@@ -117,29 +76,6 @@ export function ProductPage({ item, collection }: ProductPageProps) {
   }, [canAdd, cart, item, selectedSize, qty]);
 
   if (!product) return null;
-
-  // Checkout view
-  if (showCheckout && event) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-dark,#0e0e0e)]">
-        <header className={`header${headerHidden ? " header--hidden" : ""}`} id="header">
-          <VerifiedBanner />
-          <Header />
-        </header>
-        <CheckoutErrorBoundary onBack={() => setShowCheckout(false)}>
-          <MerchCheckout
-            collection={collection}
-            event={event}
-            cartItems={cart.items}
-            totalPrice={cart.totalPrice}
-            currency={currency}
-            onBack={() => setShowCheckout(false)}
-          />
-        </CheckoutErrorBoundary>
-        <MidnightFooter />
-      </div>
-    );
-  }
 
   // Other items in this collection (for "More from this collection")
   const otherItems = ((collection.items || []) as MerchCollectionItem[])
@@ -412,7 +348,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                     </p>
                   </div>
                   <button
-                    onClick={() => setShowCheckout(true)}
+                    onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
                     className="h-10 rounded-xl bg-white px-6 text-[12px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
                   >
                     Checkout

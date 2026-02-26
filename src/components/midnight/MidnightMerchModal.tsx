@@ -180,7 +180,7 @@ export function MidnightMerchModal({
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent
           data-theme="midnight"
-          className="midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col bg-[#08080c] border-[rgba(255,255,255,0.06)]"
+          className={`midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col border-[rgba(255,255,255,0.06)] ${displayEffect === "system_error" ? "bg-transparent" : "bg-[#08080c]"}`}
           style={{ maxHeight: "85dvh" }}
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
@@ -211,7 +211,7 @@ export function MidnightMerchModal({
 
               {/* Image area — with swipe + nav arrows */}
               <div
-                className="relative bg-white/[0.02]"
+                className={`relative ${displayEffect === "system_error" ? "" : "bg-white/[0.02]"}`}
                 onTouchStart={onMainTouchStart}
                 onTouchEnd={onMainTouchEnd}
               >

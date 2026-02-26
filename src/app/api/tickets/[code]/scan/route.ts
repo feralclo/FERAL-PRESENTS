@@ -52,6 +52,29 @@ export async function POST(
       );
     }
 
+    // Reject merch-only passes — these are for the merch stand, not venue entry.
+    // Merch-only pre-orders use a hidden "Merch Pre-order" ticket type at price 0.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ticketTypeName = (ticket.ticket_type as any)?.name || "";
+    if (ticketTypeName === "Merch Pre-order") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "This is a merch collection QR code, not an entry ticket. Direct to the merch stand.",
+          status: "merch_only",
+          ticket: {
+            ticket_code: ticket.ticket_code,
+            holder_first_name: ticket.holder_first_name,
+            holder_last_name: ticket.holder_last_name,
+            merch_size: ticket.merch_size,
+            ticket_type: ticket.ticket_type,
+            event: ticket.event,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     // Check if already scanned
     if (ticket.status === "used") {
       return NextResponse.json(

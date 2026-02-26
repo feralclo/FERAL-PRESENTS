@@ -458,7 +458,14 @@ function OrdersContent() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center font-mono text-sm tabular-nums text-foreground">
-                      {order.ticket_count || 0}
+                      {order.metadata?.order_type === "merch_preorder" ? (
+                        <Badge variant="secondary" className="gap-1 text-[9px]">
+                          <Shirt size={9} />
+                          Merch
+                        </Badge>
+                      ) : (
+                        order.ticket_count || 0
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
                       {order.payment_method}

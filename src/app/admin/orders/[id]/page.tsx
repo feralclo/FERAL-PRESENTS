@@ -61,6 +61,8 @@ interface TimelineEntry {
 
 function buildTimeline(order: Order): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
+  const orderMetadata = (order.metadata || {}) as Record<string, unknown>;
+  const isMerch = orderMetadata.order_type === "merch_preorder";
   const fmt = (d: string) =>
     new Date(d).toLocaleString("en-GB", {
       day: "numeric",
@@ -71,10 +73,10 @@ function buildTimeline(order: Order): TimelineEntry[] {
     });
 
   entries.push({
-    label: "Order placed",
+    label: isMerch ? "Merch pre-order placed" : "Order placed",
     detail: `${order.order_number} — £${Number(order.total).toFixed(2)}`,
     time: fmt(order.created_at),
-    icon: ShoppingBag,
+    icon: isMerch ? Shirt : ShoppingBag,
     color: "text-muted-foreground",
     sortDate: new Date(order.created_at),
   });
@@ -304,6 +306,10 @@ export default function OrderDetailPage() {
   const event = order.event;
   const timeline = buildTimeline(order);
 
+  // Detect merch-only pre-order from metadata
+  const orderMeta = (order.metadata || {}) as Record<string, unknown>;
+  const isMerchPreorder = orderMeta.order_type === "merch_preorder";
+
   // Separate ticket items from merch items
   const ticketItems = (order.items || []).filter((item) => !item.merch_size);
   const merchItems = (order.items || []).filter((item) => item.merch_size);
@@ -334,6 +340,12 @@ export default function OrderDetailPage() {
                   >
                     {order.status}
                   </Badge>
+                  {isMerchPreorder && (
+                    <Badge variant="secondary" className="gap-1 text-[10px] font-semibold uppercase">
+                      <Shirt size={10} />
+                      Merch Pre-order
+                    </Badge>
+                  )}
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
@@ -641,44 +653,54 @@ export default function OrderDetailPage() {
           </CardHeader>
           <CardContent className="p-4">
             <div className="space-y-2">
-              {merchItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                      <Shirt size={14} className="text-muted-foreground" />
+              {merchItems.map((item, idx) => {
+                // For merch pre-orders, get the actual product name from order metadata
+                const merchMeta = (isMerchPreorder && Array.isArray(orderMeta.merch_items))
+                  ? (orderMeta.merch_items as { product_name?: string; merch_size?: string }[])[idx]
+                  : null;
+                const displayName = merchMeta?.product_name
+                  || (item.ticket_type?.name === "Merch Pre-order" ? "Merchandise" : item.ticket_type?.name)
+                  || "Merchandise";
+
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                        <Shirt size={14} className="text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {displayName}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {item.qty} x {formatCurrency(Number(item.unit_price))}
+                          <span className="ml-2">
+                            Size {item.merch_size}
+                          </span>
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {item.ticket_type?.name || "Merchandise"}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {item.qty} x {formatCurrency(Number(item.unit_price))}
-                        <span className="ml-2">
-                          Size {item.merch_size}
-                        </span>
-                      </p>
-                    </div>
+                    <span className="font-mono text-sm font-bold text-foreground">
+                      {formatCurrency(Number(item.unit_price) * item.qty)}
+                    </span>
                   </div>
-                  <span className="font-mono text-sm font-bold text-foreground">
-                    {formatCurrency(Number(item.unit_price) * item.qty)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Individual Tickets */}
+      {/* Individual Tickets / Collection QR Codes */}
       {order.tickets && order.tickets.length > 0 && (
         <Card className="mt-4 overflow-hidden">
           <CardHeader className="border-b border-border pb-4">
             <CardTitle className="flex items-center gap-2 text-sm">
               <QrCode size={15} className="text-muted-foreground" />
-              Individual Tickets ({order.tickets.length})
+              {isMerchPreorder ? "Collection QR Codes" : "Individual Tickets"} ({order.tickets.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
@@ -739,7 +761,7 @@ export default function OrderDetailPage() {
                           <div className="flex items-center gap-1.5">
                             <QrCode size={11} className="text-muted-foreground/30" />
                             <span className="font-mono text-[10px] text-muted-foreground/40">
-                              Awaiting scan
+                              {isMerchPreorder ? "Awaiting collection" : "Awaiting scan"}
                             </span>
                           </div>
                         )}

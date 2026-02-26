@@ -665,6 +665,11 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
           ticketDescription={teeModalTicketType.description}
           vipBadge={`Includes ${teeModalTicketType.name} \u2014 ${event.name}`}
           discount={activeDiscount}
+          displayEffect={
+            teeModalTicketType.product_id && teeModalTicketType.product
+              ? teeModalTicketType.product.display_effect
+              : undefined
+          }
         />
       )}
 

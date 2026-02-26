@@ -33,7 +33,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { Product, ProductType, ProductStatus } from "@/types/products";
+import type { Product, ProductType, ProductStatus, DisplayEffect } from "@/types/products";
+import { DisplayEffectPicker } from "@/components/admin/DisplayEffectPicker";
 
 interface LinkedTicketType {
   id: string;
@@ -81,6 +82,7 @@ export default function MerchEditorPage() {
   const [deleteError, setDeleteError] = useState("");
   const [customSize, setCustomSize] = useState("");
   const [linkedTickets, setLinkedTickets] = useState<LinkedTicketType[]>([]);
+  const [showEffectPicker, setShowEffectPicker] = useState(false);
 
   const loadProduct = useCallback(async () => {
     try {
@@ -140,6 +142,7 @@ export default function MerchEditorPage() {
           images: product.images,
           status: product.status,
           sku: product.sku || null,
+          display_effect: product.display_effect || "default",
         }),
       });
 
@@ -495,8 +498,60 @@ export default function MerchEditorPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Display Effect */}
+          <Card className="py-0 gap-0">
+            <CardHeader className="px-6 pt-5 pb-4">
+              <CardTitle className="text-sm">Display Effect</CardTitle>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <button
+                type="button"
+                onClick={() => setShowEffectPicker(true)}
+                className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:border-primary/20 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  {(product.display_effect || "default") === "system_error" ? (
+                    <div className="w-8 h-8 rounded-md bg-[#ff0033]/10 border border-[#ff0033]/20 flex items-center justify-center shrink-0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff0033" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-md bg-muted/50 border border-border flex items-center justify-center shrink-0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/50">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground">
+                      {(product.display_effect || "default") === "system_error"
+                        ? "System Error"
+                        : "Default"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {(product.display_effect || "default") === "system_error"
+                        ? "Cyberpunk code rain"
+                        : "Standard display"}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Display Effect Picker */}
+      <DisplayEffectPicker
+        open={showEffectPicker}
+        onOpenChange={setShowEffectPicker}
+        value={(product.display_effect as DisplayEffect) || "default"}
+        onChange={(effect) => update("display_effect", effect)}
+      />
 
       {/* Delete Dialog */}
       <Dialog open={showDelete} onOpenChange={setShowDelete}>

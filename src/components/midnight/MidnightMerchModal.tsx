@@ -14,6 +14,7 @@ import { TEE_SIZES } from "@/types/tickets";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountedPrice } from "./discount-utils";
 import { formatPrice } from "@/lib/stripe/config";
+import { CodeRainCanvas } from "./CodeRainCanvas";
 
 interface MidnightMerchModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ interface MidnightMerchModalProps {
   ticketDescription?: string;
   vipBadge?: string;
   discount?: DiscountDisplay | null;
+  displayEffect?: string;
 }
 
 export function MidnightMerchModal({
@@ -45,6 +47,7 @@ export function MidnightMerchModal({
   ticketDescription,
   vipBadge,
   discount,
+  displayEffect,
 }: MidnightMerchModalProps) {
   const images = useMemo(() => {
     return normalizeMerchImages(merchImages).map((src, i) => ({
@@ -185,8 +188,25 @@ export function MidnightMerchModal({
             Merch details and size selection for {title}
           </DialogDescription>
 
+          {/* ── Display effect background layer ─────── */}
+          {displayEffect === "system_error" && isOpen && (
+            <>
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-2xl">
+                <CodeRainCanvas
+                  className="absolute inset-0"
+                  fontSize={12}
+                  columnGap={18}
+                  speed={0.8}
+                  opacity={0.45}
+                  active={isOpen}
+                />
+              </div>
+              <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl bg-[#08080c]/40" />
+            </>
+          )}
+
           {/* ── Scrollable content ─────────────────── */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${displayEffect === "system_error" ? "relative z-[1]" : ""}`}>
             <div className="md:grid md:grid-cols-[1.1fr_1fr]">
 
               {/* Image area — with swipe + nav arrows */}
@@ -332,7 +352,7 @@ export function MidnightMerchModal({
           </div>
 
           {/* ── CTA bar — qty stepper + buttons ── */}
-          <div className="shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.04)]">
+          <div className={`shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.04)] ${displayEffect === "system_error" ? "relative z-[1]" : ""}`}>
             <div className="flex items-center gap-3">
               {/* Qty stepper — compact */}
               <div className="flex items-center gap-1.5 shrink-0">

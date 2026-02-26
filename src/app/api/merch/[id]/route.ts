@@ -78,6 +78,7 @@ export async function PUT(
       "images",
       "status",
       "sku",
+      "display_effect",
     ];
 
     for (const field of allowedFields) {

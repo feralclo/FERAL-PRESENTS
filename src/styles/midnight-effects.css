@@ -1235,6 +1235,16 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
+   DISPLAY EFFECTS — Product modal visual treatments
+   ═══════════════════════════════════════════════ */
+
+/* Code rain canvas container — ensure no pointer interaction */
+[data-theme="midnight"] .midnight-merch-dialog canvas {
+  pointer-events: none;
+}
+
+
+/* ═══════════════════════════════════════════════
    REDUCED MOTION — Accessibility
    ═══════════════════════════════════════════════ */
 
@@ -1282,6 +1292,10 @@ html.checkout-active .noise {
   [data-theme="midnight"] [data-reveal] {
     opacity: 1;
     transform: none;
+  }
+  /* Display effect canvases — static frame only (handled in component) */
+  [data-theme="midnight"] .midnight-merch-dialog canvas {
+    animation: none;
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,34 +8,15 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ShoppingBag,
-  DollarSign,
-  Ticket,
-  Shirt,
-  Download,
-  Filter,
-  Package,
-  ArrowLeft,
-  Tag,
+  ShoppingBag, DollarSign, Ticket, Shirt, Download, Package, ArrowLeft, Tag, Search, X, ChevronDown,
 } from "lucide-react";
 
 /* ── Types ── */
 type Period = "today" | "7d" | "30d";
+type OrderTypeFilter = "" | "tickets" | "merch_preorder";
 
 interface OrderRow {
   id: string;
@@ -69,6 +50,12 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
+const ORDER_TYPE_TABS: { key: OrderTypeFilter; label: string }[] = [
+  { key: "", label: "All Types" },
+  { key: "tickets", label: "Tickets" },
+  { key: "merch_preorder", label: "Merch" },
+];
+
 const PERIODS: { key: Period; label: string }[] = [
   { key: "today", label: "Today" },
   { key: "7d", label: "7 Days" },
@@ -98,6 +85,112 @@ function PeriodSelector({
           {p.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ── Searchable event combobox ── */
+function EventSearch({
+  events,
+  value,
+  onChange,
+}: {
+  events: { id: string; name: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedName = value === "__all__" ? "" : events.find((e) => e.id === value)?.name || "";
+  const filtered = search
+    ? events.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()))
+    : events;
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div
+        className={`flex h-9 items-center gap-2 rounded-md border bg-background px-3 transition-colors ${
+          open ? "border-primary/50 ring-1 ring-primary/20" : "border-border hover:border-muted-foreground/30"
+        }`}
+        style={{ width: "220px" }}
+      >
+        <Search size={13} className="shrink-0 text-muted-foreground/50" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={open ? search : selectedName}
+          placeholder="All events"
+          onChange={(e) => {
+            setSearch(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setSearch("");
+          }}
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
+        />
+        {value !== "__all__" ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("__all__");
+              setSearch("");
+              setOpen(false);
+            }}
+            className="shrink-0 text-muted-foreground/50 transition-colors hover:text-foreground"
+          >
+            <X size={13} />
+          </button>
+        ) : (
+          <ChevronDown size={13} className={`shrink-0 text-muted-foreground/30 transition-transform ${open ? "rotate-180" : ""}`} />
+        )}
+      </div>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[220px] overflow-hidden rounded-md border border-border bg-background shadow-lg">
+          <div className="max-h-[240px] overflow-y-auto py-1">
+            <button
+              className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
+                value === "__all__" ? "bg-muted/30 text-foreground font-medium" : "text-muted-foreground"
+              }`}
+              onClick={() => { onChange("__all__"); setSearch(""); setOpen(false); }}
+            >
+              All events
+            </button>
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-muted-foreground/50">No events match</div>
+            ) : (
+              filtered.map((evt) => (
+                <button
+                  key={evt.id}
+                  className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
+                    value === evt.id ? "bg-muted/30 text-foreground font-medium" : "text-foreground/80"
+                  }`}
+                  onClick={() => { onChange(evt.id); setSearch(""); setOpen(false); }}
+                >
+                  <span className="truncate">{evt.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -157,6 +250,7 @@ function OrdersContent() {
   const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
   const [filterEvent, setFilterEvent] = useState("__all__");
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("");
+  const [filterOrderType, setFilterOrderType] = useState<OrderTypeFilter>("");
   const [period, setPeriod] = useState<Period>("today");
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -174,6 +268,7 @@ function OrdersContent() {
     const params = new URLSearchParams();
     if (activeEventFilter) params.set("event_id", activeEventFilter);
     if (filterStatus) params.set("status", filterStatus);
+    if (filterOrderType) params.set("order_type", filterOrderType);
     if (customerIdParam) params.set("customer_id", customerIdParam);
     params.set("limit", "100");
 
@@ -192,7 +287,7 @@ function OrdersContent() {
       setError(`Network error: ${e instanceof Error ? e.message : "Failed to fetch orders"}`);
     }
     setLoading(false);
-  }, [activeEventFilter, filterStatus, customerIdParam]);
+  }, [activeEventFilter, filterStatus, filterOrderType, customerIdParam]);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -230,6 +325,7 @@ function OrdersContent() {
       const params = new URLSearchParams();
       if (activeEventFilter) params.set("event_id", activeEventFilter);
       if (filterStatus) params.set("status", filterStatus);
+      if (filterOrderType) params.set("order_type", filterOrderType);
 
       const res = await fetch(`/api/orders/export?${params}`);
       if (!res.ok) {
@@ -242,7 +338,8 @@ function OrdersContent() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `orders-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      const suffix = filterOrderType === "merch_preorder" ? "merch" : "orders";
+      a.download = `${suffix}-export-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -251,7 +348,7 @@ function OrdersContent() {
       alert("Export failed. Please try again.");
     }
     setExporting(false);
-  }, [activeEventFilter, filterStatus]);
+  }, [activeEventFilter, filterStatus, filterOrderType]);
 
   useEffect(() => {
     loadEvents();
@@ -342,40 +439,42 @@ function OrdersContent() {
 
       {/* Filters */}
       <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Status tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setFilterStatus(tab.key)}
-              className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
-                filterStatus === tab.key
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Status + Order type tabs */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setFilterStatus(tab.key)}
+                className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
+                  filterStatus === tab.key
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 overflow-x-auto rounded-lg bg-secondary p-1">
+            {ORDER_TYPE_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setFilterOrderType(tab.key)}
+                className={`shrink-0 rounded-md px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-150 ${
+                  filterOrderType === tab.key
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Event filter */}
-        <div className="flex items-center gap-3">
-          <Filter size={14} className="text-muted-foreground" />
-          <Select value={filterEvent} onValueChange={setFilterEvent}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="All Events" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All Events</SelectItem>
-              {events.map((evt) => (
-                <SelectItem key={evt.id} value={evt.id}>
-                  {evt.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Event search */}
+        <EventSearch events={events} value={filterEvent} onChange={setFilterEvent} />
       </div>
 
       {/* Orders Table */}

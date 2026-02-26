@@ -26,18 +26,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const eventId = searchParams.get("event_id");
     const status = searchParams.get("status");
+    const orderType = searchParams.get("order_type");
 
     // Fetch orders with all related data
     let query = supabase
       .from(TABLES.ORDERS)
       .select(
-        "*, customer:customers(email, first_name, last_name, phone), event:events(name, slug, date_start, venue_name, city), order_items:order_items(qty, unit_price, merch_size, ticket_type:ticket_types(name)), tickets:tickets(ticket_code, status, holder_first_name, holder_last_name, holder_email, merch_size, scanned_at)"
+        "*, customer:customers(email, first_name, last_name, phone), event:events(name, slug, date_start, venue_name, city), order_items:order_items(qty, unit_price, merch_size, ticket_type:ticket_types(name)), tickets:tickets(ticket_code, status, holder_first_name, holder_last_name, holder_email, merch_size, scanned_at, merch_collected, merch_collected_at)"
       )
       .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
     if (eventId) query = query.eq("event_id", eventId);
     if (status) query = query.eq("status", status);
+
+    // Filter by order type (stored in JSONB metadata)
+    if (orderType === "merch_preorder") {
+      query = query.eq("metadata->>order_type", "merch_preorder");
+    } else if (orderType === "tickets") {
+      query = query.or("metadata->order_type.is.null,metadata->>order_type.neq.merch_preorder");
+    }
 
     const { data: orders, error } = await query;
 
@@ -54,6 +62,7 @@ export async function GET(request: NextRequest) {
       "Order Number",
       "Order Date",
       "Order Status",
+      "Order Type",
       "Event Name",
       "Event Date",
       "Venue",
@@ -65,7 +74,9 @@ export async function GET(request: NextRequest) {
       "Ticket Code (QR Value)",
       "Ticket Status",
       "Validation API URL",
+      "Merch Product",
       "Merch Size",
+      "Merch Collected",
       "Scanned At",
       "Unit Price",
       "Order Total",
@@ -98,6 +109,8 @@ export async function GET(request: NextRequest) {
         holder_email: string;
         merch_size?: string;
         scanned_at?: string;
+        merch_collected?: boolean;
+        merch_collected_at?: string;
       }[];
       const orderItems = (order.order_items || []) as {
         qty: number;
@@ -106,29 +119,46 @@ export async function GET(request: NextRequest) {
         ticket_type: { name: string } | null;
       }[];
 
+      // Detect order type from metadata
+      const meta = (order.metadata || {}) as Record<string, unknown>;
+      const isMerchPreorder = meta.order_type === "merch_preorder";
+      const orderTypeLabel = isMerchPreorder ? "Merch Pre-order" : "Ticket";
+
+      // Product names from merch metadata
+      const merchItemsMeta = (isMerchPreorder && Array.isArray(meta.merch_items))
+        ? (meta.merch_items as { product_name?: string; merch_size?: string }[])
+        : [];
+
       // Build a map of ticket type names from order items
       const ticketTypeNames = orderItems.map(
         (oi) => oi.ticket_type?.name || "Ticket"
       );
 
+      const commonFields = [
+        order.order_number,
+        new Date(order.created_at).toISOString(),
+        order.status,
+        orderTypeLabel,
+        event?.name || "",
+        event?.date_start
+          ? new Date(event.date_start).toLocaleDateString("en-GB")
+          : "",
+        [event?.venue_name, event?.city].filter(Boolean).join(", "),
+        customer?.first_name || "",
+        customer?.last_name || "",
+        customer?.email || "",
+        customer?.phone || "",
+      ];
+
       if (tickets.length === 0) {
         // Order with no tickets yet (edge case)
         rows.push([
-          order.order_number,
-          new Date(order.created_at).toISOString(),
-          order.status,
-          event?.name || "",
-          event?.date_start
-            ? new Date(event.date_start).toLocaleDateString("en-GB")
-            : "",
-          [event?.venue_name, event?.city].filter(Boolean).join(", "),
-          customer?.first_name || "",
-          customer?.last_name || "",
-          customer?.email || "",
-          customer?.phone || "",
+          ...commonFields,
           ticketTypeNames.join(", "),
           "",
           "",
+          "",
+          merchItemsMeta.map((m) => m.product_name || "").join(", "),
           "",
           "",
           "",
@@ -141,26 +171,26 @@ export async function GET(request: NextRequest) {
           order.payment_ref || "",
         ]);
       } else {
-        // One row per ticket
-        for (const ticket of tickets) {
+        // One row per ticket/QR code
+        for (let i = 0; i < tickets.length; i++) {
+          const ticket = tickets[i];
+          // For merch pre-orders, get the product name from metadata
+          const merchProduct = isMerchPreorder
+            ? (merchItemsMeta.find((m) => m.merch_size === ticket.merch_size)?.product_name || merchItemsMeta[0]?.product_name || "")
+            : "";
+          const merchCollected = ticket.merch_collected
+            ? (ticket.merch_collected_at ? `Yes (${new Date(ticket.merch_collected_at).toLocaleString("en-GB")})` : "Yes")
+            : (ticket.merch_size ? "No" : "");
+
           rows.push([
-            order.order_number,
-            new Date(order.created_at).toISOString(),
-            order.status,
-            event?.name || "",
-            event?.date_start
-              ? new Date(event.date_start).toLocaleDateString("en-GB")
-              : "",
-            [event?.venue_name, event?.city].filter(Boolean).join(", "),
-            customer?.first_name || "",
-            customer?.last_name || "",
-            customer?.email || "",
-            customer?.phone || "",
+            ...commonFields,
             ticketTypeNames[0] || "Ticket",
             ticket.ticket_code,
             ticket.status,
             `${BASE_URL}/api/tickets/${ticket.ticket_code}`,
+            merchProduct,
             ticket.merch_size || "",
+            merchCollected,
             ticket.scanned_at || "",
             orderItems.length > 0
               ? Number(orderItems[0].unit_price).toFixed(2)

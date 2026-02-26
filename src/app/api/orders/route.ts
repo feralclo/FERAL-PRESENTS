@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const paymentRef = searchParams.get("payment_ref");
     const customerId = searchParams.get("customer_id");
+    const orderType = searchParams.get("order_type"); // "merch_preorder" or "tickets"
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const page = parseInt(searchParams.get("page") || "1", 10);
@@ -48,6 +49,14 @@ export async function GET(request: NextRequest) {
     if (customerId) query = query.eq("customer_id", customerId);
     if (from) query = query.gte("created_at", from);
     if (to) query = query.lte("created_at", to);
+
+    // Filter by order type (stored in JSONB metadata)
+    if (orderType === "merch_preorder") {
+      query = query.eq("metadata->>order_type", "merch_preorder");
+    } else if (orderType === "tickets") {
+      // Ticket orders: order_type is either null or not "merch_preorder"
+      query = query.or("metadata->order_type.is.null,metadata->>order_type.neq.merch_preorder");
+    }
 
     const { data, error, count } = await query;
 

@@ -200,6 +200,8 @@ export async function sendOrderConfirmationEmail(params: {
     inclusive: boolean;
     vat_number?: string;
   };
+  /** "merch_preorder" for shop-only merch orders */
+  order_type?: string;
 }): Promise<void> {
   try {
     const resend = getResendClient();
@@ -230,6 +232,7 @@ export async function sendOrderConfirmationEmail(params: {
       doors_time: params.event.doors_time,
       currency_symbol: symbol,
       total: params.order.total.toFixed(2),
+      order_type: params.order_type,
       tickets: params.tickets.map((t) => ({
         ticket_code: t.ticket_code,
         ticket_type: t.ticket_type_name,
@@ -340,6 +343,7 @@ export async function sendOrderConfirmationEmail(params: {
       orderNumber: params.order.order_number,
       merchSize: t.merch_size,
       merchName: t.merch_name,
+      orderType: params.order_type,
     }));
 
     const pdfSettings = await getPdfTicketSettings(params.orgId);
@@ -366,7 +370,7 @@ export async function sendOrderConfirmationEmail(params: {
     // Build attachments — PDF always included
     const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [
       {
-        filename: `${params.order.order_number}-tickets.pdf`,
+        filename: `${params.order.order_number}-${params.order_type === "merch_preorder" ? "merch-collection" : "tickets"}.pdf`,
         content: pdfBuffer,
         contentType: "application/pdf",
       },

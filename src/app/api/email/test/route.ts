@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const to = body.to;
     const includeMerch = body.includeMerch === true;
+    const orderType: string | undefined = body.orderType || undefined;
 
     if (!to || typeof to !== "string" || !to.includes("@")) {
       return NextResponse.json({ error: "Valid email address required" }, { status: 400 });
@@ -101,6 +102,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Sample order data for the test email
+    // Three scenarios: tickets only, bundle (ticket + merch), merch pre-order only
+    const isMerchPreorder = orderType === "merch_preorder";
+
+    const sampleTickets: OrderEmailData["tickets"] = isMerchPreorder
+      ? [
+          { ticket_code: "DEMO-M1N2O3P4", ticket_type: "Merch Pre-order", merch_size: "L", merch_name: "Event Hoodie" },
+        ]
+      : includeMerch
+        ? [
+            { ticket_code: "DEMO-A1B2C3D4", ticket_type: "GA + Tee", merch_size: "M", merch_name: "Event Tee" },
+            { ticket_code: "DEMO-E5F6G7H8", ticket_type: "General Release" },
+          ]
+        : [
+            { ticket_code: "DEMO-A1B2C3D4", ticket_type: "General Release" },
+            { ticket_code: "DEMO-E5F6G7H8", ticket_type: "General Release" },
+          ];
+
     const sampleOrder: OrderEmailData = {
       order_number: "DEMO-00042",
       customer_first_name: "Alex",
@@ -111,22 +129,15 @@ export async function POST(request: NextRequest) {
       event_date: "Thursday 27 March 2026",
       doors_time: "9:30PM — 4:00AM",
       currency_symbol: "£",
-      total: "52.92",
-      tickets: includeMerch
-        ? [
-            { ticket_code: "DEMO-A1B2C3D4", ticket_type: "GA + Tee", merch_size: "M", merch_name: "Event Tee" },
-            { ticket_code: "DEMO-E5F6G7H8", ticket_type: "General Release" },
-          ]
-        : [
-            { ticket_code: "DEMO-A1B2C3D4", ticket_type: "General Release" },
-            { ticket_code: "DEMO-E5F6G7H8", ticket_type: "General Release" },
-          ],
+      total: isMerchPreorder ? "35.00" : "52.92",
+      tickets: sampleTickets,
+      order_type: orderType,
     };
 
     const { subject, html, text } = buildOrderConfirmationEmail(emailSettings, sampleOrder);
 
     // Generate demo PDF ticket
-    const sampleTickets: TicketPDFData[] = sampleOrder.tickets.map((t) => ({
+    const pdfTickets: TicketPDFData[] = sampleOrder.tickets.map((t) => ({
       ticketCode: t.ticket_code,
       eventName: sampleOrder.event_name,
       eventDate: sampleOrder.event_date,
@@ -136,14 +147,18 @@ export async function POST(request: NextRequest) {
       orderNumber: sampleOrder.order_number,
       merchSize: t.merch_size,
       merchName: t.merch_name,
+      orderType,
     }));
 
-    const pdfBuffer = await generateTicketsPDF(sampleTickets, pdfSettings, pdfLogoBase64);
+    const pdfBuffer = await generateTicketsPDF(pdfTickets, pdfSettings, pdfLogoBase64);
 
     // Build attachments
+    const pdfFilename = isMerchPreorder
+      ? `${sampleOrder.order_number}-merch-collection.pdf`
+      : `${sampleOrder.order_number}-tickets.pdf`;
     const attachments: { filename: string; content: Buffer; contentType?: string; contentId?: string }[] = [
       {
-        filename: `${sampleOrder.order_number}-tickets.pdf`,
+        filename: pdfFilename,
         content: pdfBuffer,
         contentType: "application/pdf",
       },

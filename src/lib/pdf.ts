@@ -13,6 +13,8 @@ export interface TicketPDFData {
   orderNumber: string;
   merchSize?: string;
   merchName?: string;
+  /** "merch_preorder" = shop-only merch (QR for collection only, not entry) */
+  orderType?: string;
 }
 
 /** Parse hex color to [r, g, b] tuple */
@@ -192,10 +194,11 @@ export async function generateTicketsPDF(
 
     // Merch info (above QR — customer reads this before scanning)
     if (t.merchSize) {
-      // "INCLUDES MERCH" label
+      const isMerchOnly = t.orderType === "merch_preorder";
+      // Label: "MERCH PRE-ORDER" for shop orders, "INCLUDES MERCH" for bundles
       doc.setFontSize(7);
       doc.setTextColor(acR, acG, acB);
-      doc.text("INCLUDES MERCH", centerX, typeY + 7, { align: "center" });
+      doc.text(isMerchOnly ? "MERCH PRE-ORDER" : "INCLUDES MERCH", centerX, typeY + 7, { align: "center" });
       // Merch item name + size
       const merchDetail = t.merchName
         ? `${t.merchName} · Size ${t.merchSize}`
@@ -203,9 +206,16 @@ export async function generateTicketsPDF(
       doc.setFontSize(8);
       doc.setTextColor(secR, secG, secB);
       doc.text(merchDetail, centerX, typeY + 12, { align: "center" });
-      // Instruction — makes clear QR is for both entry AND merch
+      // Instruction — merch-only = collection only, bundle = entry + collection
       doc.setFontSize(6);
-      doc.text("Present QR for entry & merch collection", centerX, typeY + 17, { align: "center" });
+      doc.text(
+        isMerchOnly
+          ? "Present QR at the merch stand to collect"
+          : "Present QR for entry & merch collection",
+        centerX,
+        typeY + 17,
+        { align: "center" }
+      );
     }
 
     // QR Code

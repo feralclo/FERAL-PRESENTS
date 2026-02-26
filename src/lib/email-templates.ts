@@ -91,8 +91,11 @@ export function buildOrderConfirmationEmail(
     .join(" · ");
   const doorsLine = order.doors_time ? `Doors ${order.doors_time}` : "";
 
+  // Detect order type
+  const isMerchPreorder = order.order_type === "merch_preorder";
+  const hasMerch = isMerchPreorder || order.tickets.some((t) => t.merch_size);
+
   // Build ticket rows HTML
-  const hasMerch = order.tickets.some((t) => t.merch_size);
   const ticketRowsHtml = order.tickets
     .map(
       (t) => {
@@ -101,18 +104,19 @@ export function buildOrderConfirmationEmail(
             ? `${escapeHtml(t.merch_name)} · Size ${escapeHtml(t.merch_size)}`
             : `Size ${escapeHtml(t.merch_size)}`
           : "";
+        const merchLabel = isMerchPreorder ? "MERCH PRE-ORDER" : "INCLUDES MERCH";
         return `
       <tr>
         <td style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
           <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #666; margin-bottom: 2px;">
-            ${escapeHtml(t.ticket_type)}
+            ${escapeHtml(isMerchPreorder && t.merch_name ? t.merch_name : t.ticket_type)}
           </div>
           <div style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: ${accent}; letter-spacing: 1px;">
             ${escapeHtml(t.ticket_code)}
           </div>${t.merch_size ? `
           <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #e8e8e8;">
             <div style="font-family: 'Courier New', monospace; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: ${accent}; margin-bottom: 2px;">
-              INCLUDES MERCH
+              ${merchLabel}
             </div>
             <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #666;">
               ${merchLine}
@@ -128,6 +132,10 @@ export function buildOrderConfirmationEmail(
   const ticketCodesText = order.tickets
     .map(
       (t) => {
+        if (isMerchPreorder && t.merch_size) {
+          const itemName = t.merch_name || "Merch item";
+          return `  ${itemName} (Size ${t.merch_size}): ${t.ticket_code}`;
+        }
         const merchInfo = t.merch_size
           ? t.merch_name
             ? ` — Includes merch: ${t.merch_name}, Size ${t.merch_size}`
@@ -267,7 +275,7 @@ export function buildOrderConfirmationEmail(
                       </tr>
                       <tr>
                         <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #666; padding: 4px 0;">
-                          Tickets
+                          ${isMerchPreorder ? "Items" : "Tickets"}
                         </td>
                         <td style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #111; text-align: right; padding: 4px 0;">
                           ${order.tickets.length}
@@ -308,14 +316,17 @@ export function buildOrderConfirmationEmail(
             </td>
           </tr>
 
-          <!-- Tickets -->
+          <!-- Tickets / QR Codes -->
           <tr>
             <td style="padding: 24px 32px 16px;">
               <div style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #999; margin-bottom: 12px;">
-                YOUR TICKETS
+                ${isMerchPreorder ? "YOUR COLLECTION QR CODES" : "YOUR TICKETS"}
               </div>
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #888; margin-bottom: 16px;">
-                Your PDF tickets with QR codes are attached to this email.
+                ${isMerchPreorder
+                  ? "Your QR codes for collecting your merch are attached to this email as a PDF."
+                  : "Your PDF tickets with QR codes are attached to this email."
+                }
               </div>
             </td>
           </tr>
@@ -329,12 +340,21 @@ export function buildOrderConfirmationEmail(
             </td>
           </tr>
 
-          ${hasMerch ? `
-          <!-- Merch collection note -->
+          ${isMerchPreorder ? `
+          <!-- Merch pre-order note -->
           <tr>
             <td style="padding: 0 32px 24px;">
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888; background: #fafafa; border-radius: 6px; border: 1px solid #f0f0f0; padding: 12px 16px;">
-                <strong style="color: #666;">Merch collection</strong> — Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.
+                <strong style="color: #666;">How to collect your merch</strong> — Present your QR code at the merch stand at the event. This is a merch pre-order only — you will need a separate event ticket to attend.
+              </div>
+            </td>
+          </tr>
+          ` : hasMerch ? `
+          <!-- Merch bundle note -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888; background: #fafafa; border-radius: 6px; border: 1px solid #f0f0f0; padding: 12px 16px;">
+                <strong style="color: #666;">Merch collection</strong> — Your ticket includes merch. Present the same QR code at the merch stand to collect your items.
               </div>
             </td>
           </tr>
@@ -400,7 +420,10 @@ export function buildOrderConfirmationEmail(
           <tr>
             <td style="padding: ${walletLinks?.appleWalletUrl || walletLinks?.googleWalletUrl ? "16px" : "0"} 32px 32px; text-align: center;">
               <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #999; margin-bottom: 12px;">
-                Present your QR code at the door for scanning.
+                ${isMerchPreorder
+                  ? "Present your QR code at the merch stand to collect your items."
+                  : "Present your QR code at the door for scanning."
+                }
               </div>
             </td>
           </tr>
@@ -443,15 +466,21 @@ ${eventDetails}${doorsLine ? `\n${doorsLine}` : ""}
 
 ORDER DETAILS
 Order: ${order.order_number}
-Tickets: ${order.tickets.length}
+${isMerchPreorder ? "Items" : "Tickets"}: ${order.tickets.length}
 Total: ${order.currency_symbol}${order.total}${order.vat ? `\n${order.vat.inclusive ? `Includes VAT (${order.vat.rate}%)` : `VAT (${order.vat.rate}%)`}: ${order.currency_symbol}${order.vat.amount}${order.vat.vat_number ? `\nVAT No: ${order.vat.vat_number}` : ""}` : ""}
 
-YOUR TICKETS
+${isMerchPreorder ? "YOUR COLLECTION QR CODES" : "YOUR TICKETS"}
 ${ticketCodesText}
 
-Your PDF tickets with QR codes are attached to this email.
-${hasMerch ? "\nMERCH COLLECTION: Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.\n" : ""}${walletTextSection}
-Present your QR code at the door for scanning.
+${isMerchPreorder
+  ? "Your QR codes for collecting your merch are attached to this email as a PDF."
+  : "Your PDF tickets with QR codes are attached to this email."
+}
+${isMerchPreorder ? "\nHOW TO COLLECT: Present your QR code at the merch stand at the event. This is a merch pre-order only — you will need a separate event ticket to attend.\n" : hasMerch ? "\nMERCH COLLECTION: Your ticket includes merch. Present the same QR code at the merch stand to collect your items.\n" : ""}${walletTextSection}
+${isMerchPreorder
+  ? "Present your QR code at the merch stand to collect your items."
+  : "Present your QR code at the door for scanning."
+}
 
 ---
 ${s.footer_text || s.from_name}`;

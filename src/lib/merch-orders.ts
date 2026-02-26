@@ -368,6 +368,7 @@ export async function createMerchOrder(
           )?.product_name,
         })),
         vat: vat && vat.amount > 0 ? vat : undefined,
+        order_type: "merch_preorder",
       });
     } catch {
       // Email failure must never affect the order response

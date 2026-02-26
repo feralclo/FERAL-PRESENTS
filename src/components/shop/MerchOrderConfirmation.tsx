@@ -192,7 +192,7 @@ export function MerchOrderConfirmation({
                 Need a ticket?
               </p>
               <p className="mt-0.5 text-[11px] text-[var(--text-secondary,#888)]/50">
-                You&apos;ll need one to collect your merch
+                Get your event ticket to attend
               </p>
             </div>
             <span className="text-[12px] font-medium text-[var(--text-secondary,#888)]/50">

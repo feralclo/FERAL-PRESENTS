@@ -50,6 +50,12 @@ export interface OrderEmailData {
   doors_time?: string;
   currency_symbol: string;
   total: string;
+  /**
+   * Distinguishes email copy:
+   * - "merch_preorder" = shop-only merch (no event ticket, QR for collection only)
+   * - undefined/other = regular ticket order (may or may not include merch bundle)
+   */
+  order_type?: string;
   tickets: {
     ticket_code: string;
     ticket_type: string;

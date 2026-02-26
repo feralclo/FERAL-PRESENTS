@@ -109,7 +109,10 @@ const TEMPLATE_VARS = [
 ];
 
 /* ── Email preview ── */
-function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMerch?: boolean }) {
+type PreviewMode = "tickets" | "bundle" | "merch_preorder";
+function EmailPreview({ settings, showMerch, previewMode = "tickets" }: { settings: EmailSettings; showMerch?: boolean; previewMode?: PreviewMode }) {
+  const isMerchPreorder = previewMode === "merch_preorder";
+  const showMerchInfo = showMerch || isMerchPreorder;
   const accent = settings.accent_color || "#8B5CF6";
   const logoH = Math.min(settings.logo_height || 48, 100);
 
@@ -175,36 +178,58 @@ function EmailPreview({ settings, showMerch }: { settings: EmailSettings; showMe
             <div className="px-8 py-5">
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 12 }}>Order Details</div>
               <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>DEMO-00042</span></div>
-              <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Tickets</span><span style={{ color: "#111" }}>2</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>{isMerchPreorder ? "Items" : "Tickets"}</span><span style={{ color: "#111" }}>{isMerchPreorder ? "1" : "2"}</span></div>
               <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#6666a0" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>£52.92</span></div>
             </div>
             <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
             <div className="px-8 pt-5 pb-2">
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>Your Tickets</div>
-              <div style={{ fontSize: 13, color: "#8888a0", marginBottom: 16 }}>Your PDF tickets with QR codes are attached to this email.</div>
+              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>{isMerchPreorder ? "Your Collection QR Codes" : "Your Tickets"}</div>
+              <div style={{ fontSize: 13, color: "#8888a0", marginBottom: 16 }}>{isMerchPreorder ? "Your QR codes for collecting your merch are attached to this email as a PDF." : "Your PDF tickets with QR codes are attached to this email."}</div>
             </div>
             <div className="px-8 pb-6">
               <div style={{ background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0" }}>
-                <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
-                  <div style={{ fontSize: 13, color: "#6666a0" }}>{showMerch ? "GA + Tee" : "General Release"}</div>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>DEMO-A1B2C3D4</div>
-                  {showMerch && (
+                {isMerchPreorder ? (
+                  /* Merch pre-order: show merch item with QR */
+                  <div style={{ padding: "12px 16px" }}>
+                    <div style={{ fontSize: 13, color: "#6666a0" }}>Event Tee</div>
+                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>DEMO-A1B2C3D4</div>
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed #e8e8e8" }}>
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: accent, marginBottom: 2 }}>INCLUDES MERCH</div>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: accent, marginBottom: 2 }}>MERCH PRE-ORDER</div>
                       <div style={{ fontSize: 12, color: "#6666a0" }}>Event Tee · Size M</div>
                     </div>
-                  )}
-                </div>
-                <div style={{ padding: "12px 16px" }}>
-                  <div style={{ fontSize: 13, color: "#6666a0" }}>General Release</div>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>DEMO-E5F6G7H8</div>
-                </div>
+                  </div>
+                ) : (
+                  /* Regular tickets (with optional bundle merch) */
+                  <>
+                    <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
+                      <div style={{ fontSize: 13, color: "#6666a0" }}>{showMerchInfo ? "GA + Tee" : "General Release"}</div>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>DEMO-A1B2C3D4</div>
+                      {showMerchInfo && (
+                        <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed #e8e8e8" }}>
+                          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: accent, marginBottom: 2 }}>INCLUDES MERCH</div>
+                          <div style={{ fontSize: 12, color: "#6666a0" }}>Event Tee · Size M</div>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: "12px 16px" }}>
+                      <div style={{ fontSize: 13, color: "#6666a0" }}>General Release</div>
+                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1, color: accent }}>DEMO-E5F6G7H8</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-            {showMerch && (
+            {isMerchPreorder && (
               <div className="px-8 pb-6">
                 <div style={{ fontSize: 12, lineHeight: 1.5, color: "#8888a0", background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0", padding: "12px 16px" }}>
-                  <strong style={{ color: "#6666a0" }}>Merch collection</strong> — Your order includes merch. Present the QR code on your ticket at the merch desk to collect your items.
+                  <strong style={{ color: "#6666a0" }}>How to collect your merch</strong> — Present your QR code at the merch stand at the event. This is a merch pre-order only — you will need a separate event ticket to attend.
+                </div>
+              </div>
+            )}
+            {!isMerchPreorder && showMerchInfo && (
+              <div className="px-8 pb-6">
+                <div style={{ fontSize: 12, lineHeight: 1.5, color: "#8888a0", background: "#fafafa", borderRadius: 8, border: "1px solid #f0f0f0", padding: "12px 16px" }}>
+                  <strong style={{ color: "#6666a0" }}>Merch collection</strong> — Your ticket includes merch. Present the same QR code at the merch stand to collect your items.
                 </div>
               </div>
             )}
@@ -237,7 +262,8 @@ export default function OrderConfirmationPage() {
   const [testEmail, setTestEmail] = useState("");
   const [testSending, setTestSending] = useState(false);
   const [testStatus, setTestStatus] = useState("");
-  const [previewMerch, setPreviewMerch] = useState(false);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("tickets");
+  const previewMerch = previewMode === "bundle";
   const [resendStatus, setResendStatus] = useState<{ configured: boolean; verified: boolean; loading: boolean }>({ configured: false, verified: false, loading: true });
   const [globalLogoUrl, setGlobalLogoUrl] = useState<string | null>(null);
   const [logoOverride, setLogoOverride] = useState(false);
@@ -380,12 +406,12 @@ export default function OrderConfirmationPage() {
     if (!testEmail) { setTestStatus("Enter an email address"); return; }
     setTestSending(true); setTestStatus("");
     try {
-      const res = await fetch("/api/email/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: testEmail, includeMerch: previewMerch }) });
+      const res = await fetch("/api/email/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: testEmail, includeMerch: previewMerch, orderType: previewMode === "merch_preorder" ? "merch_preorder" : undefined }) });
       const json = await res.json();
       setTestStatus(res.ok ? "Test email sent — check your inbox" : json.error || "Failed to send");
     } catch { setTestStatus("Network error"); }
     setTestSending(false);
-  }, [testEmail, previewMerch]);
+  }, [testEmail, previewMerch, previewMode]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -678,9 +704,22 @@ export default function OrderConfirmationPage() {
                     onChange={(e) => { setTestEmail(e.target.value); setTestStatus(""); }}
                     placeholder="your@email.com"
                   />
-                  <div className="flex items-center gap-2">
-                    <Switch checked={previewMerch} onCheckedChange={setPreviewMerch} />
-                    <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setPreviewMerch(v => !v)}>Include merch in test</Label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Preview as:</span>
+                    {(["tickets", "bundle", "merch_preorder"] as PreviewMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setPreviewMode(mode)}
+                        className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
+                          previewMode === mode
+                            ? "bg-primary/10 text-primary border border-primary/30"
+                            : "text-muted-foreground border border-border hover:border-primary/20"
+                        }`}
+                      >
+                        {mode === "tickets" ? "Tickets Only" : mode === "bundle" ? "Ticket + Merch" : "Merch Pre-order"}
+                      </button>
+                    ))}
                   </div>
                   <Button onClick={handleSendTest} disabled={testSending || !resendStatus.verified} className="w-full">
                     {testSending ? "Sending..." : "Send Test"}
@@ -699,10 +738,23 @@ export default function OrderConfirmationPage() {
 
         <TabsContent value="preview">
           <div className="flex flex-col items-center gap-4">
-            <EmailPreview settings={logoOverride ? settings : { ...settings, logo_url: globalLogoUrl || settings.logo_url }} showMerch={previewMerch} />
-            <div className="flex items-center gap-2">
-              <Switch checked={previewMerch} onCheckedChange={setPreviewMerch} />
-              <Label className="text-xs text-muted-foreground cursor-pointer" onClick={() => setPreviewMerch(v => !v)}>Preview with merch</Label>
+            <EmailPreview settings={logoOverride ? settings : { ...settings, logo_url: globalLogoUrl || settings.logo_url }} showMerch={previewMerch} previewMode={previewMode} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Preview as:</span>
+              {(["tickets", "bundle", "merch_preorder"] as PreviewMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setPreviewMode(mode)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
+                    previewMode === mode
+                      ? "bg-primary/10 text-primary border border-primary/30"
+                      : "text-muted-foreground border border-border hover:border-primary/20"
+                  }`}
+                >
+                  {mode === "tickets" ? "Tickets Only" : mode === "bundle" ? "Ticket + Merch" : "Merch Pre-order"}
+                </button>
+              ))}
             </div>
           </div>
         </TabsContent>

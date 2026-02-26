@@ -356,7 +356,9 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   const subtotal = cartLines.reduce((sum, l) => sum + l.price * l.qty, 0);
   const totalQty = cartLines.reduce((sum, l) => sum + l.qty, 0);
   const symbol = getCurrencySymbol(event.currency);
-  const isStripe = event.payment_method === "stripe";
+  // Merch pre-orders always use Stripe, regardless of the event's payment method
+  // (an event can use external ticketing but still have a Stripe-powered merch store)
+  const isStripe = !!merchData || event.payment_method === "stripe";
 
   // Fire capture API when popup email was used to skip the email gate.
   // The normal EmailCapture onContinue handler fires this, but when we
@@ -762,7 +764,7 @@ function StripeCheckoutPage({
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",
     amount: amountInSmallest || 100,
-    currency: event.currency.toLowerCase(),
+    currency: (merchData?.currency || event.currency || "GBP").toLowerCase(),
     appearance: {
       theme: "night",
       variables: {

@@ -70,43 +70,68 @@ export function CollectionPage({ collection }: CollectionPageProps) {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
           {heroImage ? (
-            <img
-              src={heroImage}
-              alt={collection.title}
-              className="h-full w-full object-cover"
-            />
+            <>
+              <img
+                src={heroImage}
+                alt={collection.title}
+                className="h-full w-full object-cover"
+                style={{ filter: "saturate(1.15)", transform: "scale(1.05)" }}
+              />
+              {/* Cinematic dissolve — matches MidnightHero */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(180deg,
+                    rgba(0,0,0,0.25) 0%,
+                    rgba(0,0,0,0.05) 10%,
+                    transparent 22%,
+                    transparent 38%,
+                    rgba(0,0,0,0.2) 50%,
+                    rgba(0,0,0,0.5) 62%,
+                    rgba(0,0,0,0.78) 75%,
+                    var(--bg-dark, #0e0e0e) 92%
+                  )`,
+                }}
+              />
+            </>
           ) : (
-            <div className="h-full w-full bg-gradient-to-br from-[var(--card-bg,#1a1a1a)] to-[var(--bg-dark,#0e0e0e)]" />
+            <div className="h-full w-full bg-gradient-to-br from-foreground/[0.03] to-transparent" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-dark,#0e0e0e)]/60 via-[var(--bg-dark,#0e0e0e)]/40 to-[var(--bg-dark,#0e0e0e)]" />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-4xl px-4 pt-32 pb-14 text-center sm:px-6 sm:pt-40 sm:pb-20">
+        <div className="relative z-10 mx-auto max-w-4xl px-6 pt-36 pb-16 text-center sm:pt-44 sm:pb-24">
           {collection.is_limited_edition && (
             <div className="mb-4 inline-flex items-center rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 backdrop-blur-sm">
-              <span className="text-[11px] font-semibold uppercase tracking-[2px] text-amber-300">
+              <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
                 {collection.limited_edition_label || "Limited Edition"}
               </span>
             </div>
           )}
 
-          <h1 className="font-[var(--font-mono,'Space_Mono',monospace)] text-3xl font-bold tracking-tight text-[var(--text-primary,#fff)] sm:text-5xl">
+          <h1
+            className="font-[family-name:var(--font-sans)] font-black text-foreground"
+            style={{
+              fontSize: "clamp(2rem, 7vw, 4rem)",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.05,
+            }}
+          >
             {collection.title}
           </h1>
 
           {collection.description && (
-            <p className="mt-4 text-[15px] text-[var(--text-secondary,#888)]/65 max-w-xl mx-auto sm:text-base">
+            <p className="mt-5 text-[15px] leading-relaxed text-foreground/60 max-w-lg mx-auto">
               {collection.description}
             </p>
           )}
 
-          {/* Event info — quiet, inline */}
+          {/* Event info — quiet inline text */}
           {event && (
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-3 text-[12px] text-[var(--text-secondary,#888)]/50">
+            <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
               <span>{event.name}</span>
               {event.date_start && (
                 <>
-                  <span>&middot;</span>
+                  <span className="text-foreground/15">/</span>
                   <span>
                     {new Date(event.date_start).toLocaleDateString("en-GB", {
                       day: "numeric",
@@ -118,29 +143,42 @@ export function CollectionPage({ collection }: CollectionPageProps) {
               )}
               {event.venue_name && (
                 <>
-                  <span>&middot;</span>
+                  <span className="text-foreground/15">/</span>
                   <span>{event.venue_name}</span>
                 </>
               )}
             </div>
           )}
 
-          {/* Subtle pre-order note */}
-          <p className="mt-3 text-[11px] text-[var(--text-secondary,#888)]/30">
-            Pre-order &middot; Collect at the event
-          </p>
+          {/* Pre-order + ticket link */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <span className="font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.15em] text-foreground/25">
+              Pre-order &middot; Collect at event
+            </span>
+            {event?.slug && (
+              <Link
+                href={`/event/${event.slug}/`}
+                className="font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.15em] text-foreground/35 transition-colors hover:text-foreground/60"
+              >
+                Get tickets &rarr;
+              </Link>
+            )}
+          </div>
         </div>
       </section>
 
       {/* Products */}
-      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-14">
         {/* Featured */}
         {featuredItems.length > 0 && (
-          <div className="mb-10">
+          <div className="mb-12">
             {items.length > featuredItems.length && (
-              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]/30">
-                Featured
-              </p>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 shrink-0">
+                  Featured
+                </span>
+                <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.06] to-transparent" />
+              </div>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               {featuredItems.map((item) => (
@@ -159,9 +197,12 @@ export function CollectionPage({ collection }: CollectionPageProps) {
         {regularItems.length > 0 && (
           <div>
             {featuredItems.length > 0 && (
-              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[3px] text-[var(--text-secondary,#888)]/30">
-                All Items
-              </p>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/30 shrink-0">
+                  All Items
+                </span>
+                <div className="flex-1 h-px bg-gradient-to-r from-foreground/[0.06] to-transparent" />
+              </div>
             )}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {regularItems.map((item) => (
@@ -177,8 +218,8 @@ export function CollectionPage({ collection }: CollectionPageProps) {
         )}
 
         {items.length === 0 && (
-          <div className="py-20 text-center">
-            <p className="text-[13px] text-[var(--text-secondary,#888)]/40">
+          <div className="py-24 text-center">
+            <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.15em] text-foreground/25">
               Coming soon
             </p>
           </div>
@@ -187,24 +228,30 @@ export function CollectionPage({ collection }: CollectionPageProps) {
 
       {/* Cart bar */}
       {cart.hasItems && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--card-border,#2a2a2a)] bg-[var(--bg-dark,#0e0e0e)]/95 backdrop-blur-lg safe-area-bottom">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        <div
+          className="fixed bottom-0 left-0 right-0 z-[997] will-change-transform"
+          style={{
+            background: "linear-gradient(to top, var(--bg-dark, #0e0e0e) 0%, rgba(14,14,14,0.97) 100%)",
+            borderTop: "1px solid rgba(255,255,255, 0.06)",
+          }}
+        >
+          <div
+            className="mx-auto flex max-w-6xl items-center justify-between px-5"
+            style={{ paddingTop: "14px", paddingBottom: "max(14px, calc(12px + env(safe-area-inset-bottom)))" }}
+          >
             <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-white/60">
-                {cart.totalQty}
-              </span>
               <div>
-                <p className="text-[13px] font-medium text-[var(--text-primary,#fff)]">
+                <p className="font-[family-name:var(--font-mono)] text-[17px] font-bold tracking-[0.01em] text-foreground">
                   {cart.currSymbol}{cart.totalPrice.toFixed(2)}
                 </p>
-                <p className="text-[11px] text-[var(--text-secondary,#888)]/40">
+                <p className="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.08em] text-foreground/35">
                   {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowCheckout(true)}
-              className="rounded-xl bg-white px-6 py-2.5 text-[12px] font-bold uppercase tracking-[2px] text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
+              className="h-11 rounded-xl bg-white px-7 text-[13px] font-bold tracking-[0.03em] uppercase text-[#0e0e0e] transition-all touch-manipulation active:scale-[0.97] hover:bg-white/90"
             >
               Checkout
             </button>

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const orgId = getOrgIdFromRequest(request);
     const stripe = getStripe();
     const body = await request.json();
-    const { collection_slug, items, customer } = body;
+    const { collection_slug, items, customer, discount_code } = body;
 
     if (!collection_slug || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -180,6 +180,79 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate and apply discount code if provided
+    let discountAmount = 0;
+    let discountMeta: { code: string; type: string; value: number; amount: number } | null = null;
+
+    if (discount_code && typeof discount_code === "string" && discount_code.trim()) {
+      const { data: discount } = await supabase
+        .from(TABLES.DISCOUNTS)
+        .select("*")
+        .eq("org_id", orgId)
+        .ilike("code", discount_code.trim())
+        .eq("status", "active")
+        .single();
+
+      if (!discount) {
+        return NextResponse.json(
+          { error: "Invalid discount code" },
+          { status: 400 }
+        );
+      }
+
+      const now = new Date();
+      if (discount.starts_at && new Date(discount.starts_at) > now) {
+        return NextResponse.json(
+          { error: "Discount code is not yet active" },
+          { status: 400 }
+        );
+      }
+      if (discount.expires_at && new Date(discount.expires_at) < now) {
+        return NextResponse.json(
+          { error: "Discount code has expired" },
+          { status: 400 }
+        );
+      }
+      if (discount.max_uses != null && discount.used_count >= discount.max_uses) {
+        return NextResponse.json(
+          { error: "Discount code has reached its usage limit" },
+          { status: 400 }
+        );
+      }
+      if (
+        discount.applicable_event_ids &&
+        discount.applicable_event_ids.length > 0 &&
+        !discount.applicable_event_ids.includes(event.id)
+      ) {
+        return NextResponse.json(
+          { error: "Discount code is not valid for this event" },
+          { status: 400 }
+        );
+      }
+      if (discount.min_order_amount != null && subtotal < discount.min_order_amount) {
+        return NextResponse.json(
+          { error: `Minimum order of £${Number(discount.min_order_amount).toFixed(2)} required` },
+          { status: 400 }
+        );
+      }
+
+      // Calculate discount
+      if (discount.type === "percentage") {
+        discountAmount = Math.round((subtotal * discount.value) / 100 * 100) / 100;
+      } else {
+        discountAmount = Math.min(discount.value, subtotal);
+      }
+
+      discountMeta = {
+        code: discount.code,
+        type: discount.type,
+        value: discount.value,
+        amount: discountAmount,
+      };
+    }
+
+    const afterDiscount = Math.max(subtotal - discountAmount, 0);
+
     // Determine connected Stripe account
     let stripeAccountId: string | null = event.stripe_account_id || null;
 
@@ -200,7 +273,7 @@ export async function POST(request: NextRequest) {
 
     stripeAccountId = await verifyConnectedAccount(stripeAccountId, orgId);
 
-    // Resolve VAT (same 3-tier logic as ticket checkout)
+    // Resolve VAT (same 3-tier logic as ticket checkout — calculated on discounted amount)
     let vatAmount = 0;
     let vatRate = 0;
     let vatInclusive = true;
@@ -217,7 +290,7 @@ export async function POST(request: NextRequest) {
           vat_rate: evtRate,
           prices_include_vat: evtInclusive,
         };
-        const breakdown = calculateCheckoutVat(subtotal, vat);
+        const breakdown = calculateCheckoutVat(afterDiscount, vat);
         if (breakdown) vatAmount = breakdown.vat;
       }
     } else if (event.vat_registered == null) {
@@ -232,13 +305,13 @@ export async function POST(request: NextRequest) {
         if (vat.vat_registered && vat.vat_rate > 0) {
           vatRate = vat.vat_rate;
           vatInclusive = vat.prices_include_vat;
-          const breakdown = calculateCheckoutVat(subtotal, vat);
+          const breakdown = calculateCheckoutVat(afterDiscount, vat);
           if (breakdown) vatAmount = breakdown.vat;
         }
       }
     }
 
-    const chargeAmount = vatInclusive ? subtotal : subtotal + vatAmount;
+    const chargeAmount = vatInclusive ? afterDiscount : afterDiscount + vatAmount;
     const amountInSmallestUnit = toSmallestUnit(chargeAmount);
     const currency = (event.currency || "GBP").toLowerCase();
 
@@ -275,6 +348,13 @@ export async function POST(request: NextRequest) {
       metadata.customer_marketing_consent = customer.marketing_consent ? "true" : "false";
     }
 
+    if (discountMeta) {
+      metadata.discount_code = discountMeta.code;
+      metadata.discount_type = discountMeta.type;
+      metadata.discount_value = String(discountMeta.value);
+      metadata.discount_amount = String(discountMeta.amount);
+    }
+
     if (vatAmount > 0) {
       metadata.vat_amount = String(vatAmount);
       metadata.vat_rate = String(vatRate);
@@ -295,6 +375,11 @@ export async function POST(request: NextRequest) {
         { stripeAccount: stripeAccountId }
       );
 
+      // Increment discount used_count (fire-and-forget — never blocks the payment)
+      if (discountMeta) {
+        incrementDiscountUsed(supabase, discountMeta.code, orgId);
+      }
+
       return NextResponse.json({
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
@@ -303,6 +388,7 @@ export async function POST(request: NextRequest) {
         currency,
         application_fee: applicationFee,
         subtotal,
+        discount: discountMeta,
         vat: vatAmount > 0 ? { amount: vatAmount, rate: vatRate, inclusive: vatInclusive } : null,
       });
     }
@@ -316,6 +402,11 @@ export async function POST(request: NextRequest) {
       automatic_payment_methods: { enabled: true },
     });
 
+    // Increment discount used_count (fire-and-forget)
+    if (discountMeta) {
+      incrementDiscountUsed(supabase, discountMeta.code, orgId);
+    }
+
     return NextResponse.json({
       client_secret: paymentIntent.client_secret,
       payment_intent_id: paymentIntent.id,
@@ -324,6 +415,7 @@ export async function POST(request: NextRequest) {
       currency,
       application_fee: 0,
       subtotal,
+      discount: discountMeta,
       vat: vatAmount > 0 ? { amount: vatAmount, rate: vatRate, inclusive: vatInclusive } : null,
     });
   } catch (err) {
@@ -340,4 +432,32 @@ export async function POST(request: NextRequest) {
       err instanceof Error ? err.message : "Failed to create payment";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * Fire-and-forget increment of discount used_count.
+ * Uses a simple read-then-write; acceptable for discount tracking
+ * (the hard enforcement happens at validation time).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function incrementDiscountUsed(supabase: any, code: string, orgId: string) {
+  supabase
+    .from(TABLES.DISCOUNTS)
+    .select("id, used_count")
+    .eq("org_id", orgId)
+    .ilike("code", code)
+    .single()
+    .then(({ data }: { data: { id: string; used_count: number } | null }) => {
+      if (data) {
+        supabase
+          .from(TABLES.DISCOUNTS)
+          .update({
+            used_count: (data.used_count || 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", data.id)
+          .then(() => {});
+      }
+    })
+    .catch(() => {});
 }

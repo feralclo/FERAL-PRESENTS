@@ -798,9 +798,9 @@ function StripeCheckoutPage({
         symbol={symbol}
         subtotal={subtotal}
         event={event}
-        discount={isMerch ? null : appliedDiscount}
-        onApplyDiscount={isMerch ? () => {} : setAppliedDiscount}
-        onRemoveDiscount={isMerch ? () => {} : () => setAppliedDiscount(null)}
+        discount={appliedDiscount}
+        onApplyDiscount={setAppliedDiscount}
+        onRemoveDiscount={() => setAppliedDiscount(null)}
         vatSettings={vatSettings}
         merchMode={isMerch}
       />
@@ -835,9 +835,9 @@ function StripeCheckoutPage({
               symbol={symbol}
               subtotal={subtotal}
               event={event}
-              discount={isMerch ? null : appliedDiscount}
-              onApplyDiscount={isMerch ? () => {} : setAppliedDiscount}
-              onRemoveDiscount={isMerch ? () => {} : () => setAppliedDiscount(null)}
+              discount={appliedDiscount}
+              onApplyDiscount={setAppliedDiscount}
+              onRemoveDiscount={() => setAppliedDiscount(null)}
               vatSettings={vatSettings}
               merchMode={isMerch}
             />
@@ -1002,6 +1002,7 @@ function SinglePageCheckoutForm({
                 phone: walletPhone || undefined,
                 marketing_consent: marketingConsent,
               },
+              discount_code: discountCode || undefined,
             }
           : {
               event_id: event.id,
@@ -1140,6 +1141,7 @@ function SinglePageCheckoutForm({
                 phone: undefined,
                 marketing_consent: marketingConsent,
               },
+              discount_code: discountCode || undefined,
             }
           : {
               event_id: event.id,

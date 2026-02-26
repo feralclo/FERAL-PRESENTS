@@ -101,82 +101,16 @@ export function ProductPage({ item, collection }: ProductPageProps) {
           </Link>
         </nav>
 
-        {/* DEBUG: remove after testing */}
-        <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2 font-mono text-xs text-red-400">
-          display_effect = &quot;{product.display_effect ?? "UNDEFINED"}&quot;
-        </div>
-
         <div className="lg:grid lg:grid-cols-2 lg:gap-12 xl:gap-16">
           {/* Image gallery */}
           <div className="lg:sticky lg:top-28 lg:self-start">
-            {/* Display effect — code rain frame around image */}
-            {product.display_effect === "system_error" && (
-              <div className="relative rounded-2xl overflow-hidden p-[3px] mb-[-3px]">
-                <div className="absolute inset-0 pointer-events-none">
-                  <CodeRainCanvas
-                    className="absolute inset-0"
-                    fontSize={11}
-                    columnGap={16}
-                    speed={0.6}
-                    opacity={0.6}
-                    active
-                  />
-                </div>
-                {/* Inner container matches the image area */}
-                <div className="relative rounded-[13px] overflow-hidden">
-                  <div
-                    className="relative aspect-[4/5] overflow-hidden"
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    {images.length > 0 ? (
-                      <img
-                        src={images[selectedImage]}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-opacity duration-500"
-                        key={selectedImage}
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-gradient-to-br from-foreground/[0.03] to-transparent" />
-                    )}
-
-                    {item.is_limited_edition && (
-                      <div className="absolute top-4 left-4 z-[2]">
-                        <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-black/60 px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-amber-300 backdrop-blur-sm">
-                          {item.limited_edition_label || collection.limited_edition_label || "Limited Edition"}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Image dots (mobile) */}
-                    {images.length > 1 && (
-                      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 z-[2] lg:hidden">
-                        {images.map((_, i) => (
-                          <button
-                            key={i}
-                            onClick={() => setSelectedImage(i)}
-                            className={`h-1.5 rounded-full transition-all ${
-                              i === selectedImage
-                                ? "w-5 bg-white"
-                                : "w-1.5 bg-white/30"
-                            }`}
-                            aria-label={`Image ${i + 1}`}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Default — no effect */}
-            {product.display_effect !== "system_error" && (
             <div
               className="relative aspect-[4/5] overflow-hidden rounded-2xl"
               style={{
                 backgroundColor: "rgba(255,255,255, 0.025)",
-                border: "1px solid rgba(255,255,255, 0.06)",
+                border: product.display_effect === "system_error"
+                  ? "1px solid rgba(255, 0, 51, 0.15)"
+                  : "1px solid rgba(255,255,255, 0.06)",
               }}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
@@ -192,8 +126,23 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                 <div className="h-full w-full bg-gradient-to-br from-foreground/[0.03] to-transparent" />
               )}
 
+              {/* Display effect — code rain overlay on top of image */}
+              {product.display_effect === "system_error" && (
+                <div className="absolute inset-0 z-[1] pointer-events-none" style={{ mixBlendMode: "screen" }}>
+                  <CodeRainCanvas
+                    className="absolute inset-0"
+                    fontSize={14}
+                    columnGap={20}
+                    speed={0.8}
+                    opacity={0.7}
+                    active
+                    color="#ff0033"
+                  />
+                </div>
+              )}
+
               {item.is_limited_edition && (
-                <div className="absolute top-4 left-4">
+                <div className="absolute top-4 left-4 z-[3]">
                   <span className="inline-flex items-center rounded-full border border-amber-400/30 bg-black/60 px-3 py-1.5 font-[family-name:var(--font-mono)] text-[10px] font-bold uppercase tracking-[0.15em] text-amber-300 backdrop-blur-sm">
                     {item.limited_edition_label || collection.limited_edition_label || "Limited Edition"}
                   </span>
@@ -202,7 +151,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
 
               {/* Image dots (mobile) */}
               {images.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 lg:hidden">
+                <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 z-[3] lg:hidden">
                   {images.map((_, i) => (
                     <button
                       key={i}
@@ -218,7 +167,6 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                 </div>
               )}
             </div>
-            )}
 
             {/* Thumbnails */}
             {images.length > 1 && (

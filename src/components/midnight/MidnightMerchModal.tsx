@@ -180,7 +180,7 @@ export function MidnightMerchModal({
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent
           data-theme="midnight"
-          className={`midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col border-[rgba(255,255,255,0.06)] ${displayEffect === "system_error" ? "bg-transparent" : "bg-[#08080c]"}`}
+          className="midnight-merch-dialog max-w-[420px] md:max-w-[680px] max-h-[85vh] p-0 gap-0 rounded-2xl overflow-hidden flex flex-col bg-[#08080c] border-[rgba(255,255,255,0.06)]"
           style={{ maxHeight: "85dvh" }}
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
@@ -188,30 +188,13 @@ export function MidnightMerchModal({
             Merch details and size selection for {title}
           </DialogDescription>
 
-          {/* ── Display effect background layer ─────── */}
-          {displayEffect === "system_error" && isOpen && (
-            <>
-              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-2xl">
-                <CodeRainCanvas
-                  className="absolute inset-0"
-                  fontSize={12}
-                  columnGap={18}
-                  speed={0.8}
-                  opacity={0.45}
-                  active={isOpen}
-                />
-              </div>
-              <div className="absolute inset-0 z-0 pointer-events-none rounded-2xl bg-[#08080c]/40" />
-            </>
-          )}
-
           {/* ── Scrollable content ─────────────────── */}
-          <div className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${displayEffect === "system_error" ? "relative z-[1]" : ""}`}>
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="md:grid md:grid-cols-[1.1fr_1fr]">
 
               {/* Image area — with swipe + nav arrows */}
               <div
-                className={`relative ${displayEffect === "system_error" ? "" : "bg-white/[0.02]"}`}
+                className="relative bg-white/[0.02]"
                 onTouchStart={onMainTouchStart}
                 onTouchEnd={onMainTouchEnd}
               >
@@ -235,6 +218,21 @@ export function MidnightMerchModal({
                     </div>
                   )}
                 </div>
+
+                {/* Display effect — code rain overlay on image area */}
+                {displayEffect === "system_error" && isOpen && (
+                  <div className="absolute inset-0 pointer-events-none z-[1]" style={{ mixBlendMode: "screen" }}>
+                    <CodeRainCanvas
+                      className="absolute inset-0"
+                      fontSize={12}
+                      columnGap={18}
+                      speed={0.8}
+                      opacity={0.6}
+                      active={isOpen}
+                      color="#ff0033"
+                    />
+                  </div>
+                )}
 
                 {/* Navigation arrows — only when multiple images */}
                 {images.length > 1 && (
@@ -352,7 +350,7 @@ export function MidnightMerchModal({
           </div>
 
           {/* ── CTA bar — qty stepper + buttons ── */}
-          <div className={`shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.04)] ${displayEffect === "system_error" ? "relative z-[1]" : ""}`}>
+          <div className="shrink-0 px-5 py-3.5 max-md:px-4 max-md:py-3 border-t border-[rgba(255,255,255,0.04)]">
             <div className="flex items-center gap-3">
               {/* Qty stepper — compact */}
               <div className="flex items-center gap-1.5 shrink-0">

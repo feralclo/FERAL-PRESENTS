@@ -124,5 +124,20 @@ export default async function ShopProductPage({
     ),
   };
 
-  return <ProductPage item={collectionItem} collection={sortedCollection} />;
+  // Check if multi-currency is enabled for this event
+  let multiCurrencyEnabled = false;
+  const event = collection.event as { slug?: string } | undefined;
+  if (event?.slug) {
+    const eventSettingsKey = `${orgId}_event_${event.slug}`;
+    const { data: eventSettings } = await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .select("data")
+      .eq("key", eventSettingsKey)
+      .single();
+    if (eventSettings?.data && typeof eventSettings.data === "object") {
+      multiCurrencyEnabled = !!(eventSettings.data as Record<string, unknown>).multi_currency_enabled;
+    }
+  }
+
+  return <ProductPage item={collectionItem} collection={sortedCollection} multiCurrencyEnabled={multiCurrencyEnabled} />;
 }

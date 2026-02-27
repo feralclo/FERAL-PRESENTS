@@ -57,6 +57,14 @@ export interface MerchOrderVat {
   vat_number?: string;
 }
 
+/** Currency conversion info for cross-currency merch orders. */
+export interface MerchOrderConversion {
+  baseCurrency: string;
+  baseTotal: number;
+  exchangeRate: number;
+  rateLocked: string;
+}
+
 /** Full params for createMerchOrder(). */
 export interface CreateMerchOrderParams {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,6 +80,8 @@ export interface CreateMerchOrderParams {
   merchPassTicketTypeId: string;
   vat?: MerchOrderVat;
   sendEmail?: boolean;
+  /** Multi-currency conversion data (when charged in presentment currency). */
+  conversion?: MerchOrderConversion;
 }
 
 /** Result returned on success. */
@@ -125,6 +135,7 @@ export async function createMerchOrder(
     merchPassTicketTypeId,
     vat,
     sendEmail = true,
+    conversion,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -227,22 +238,32 @@ export async function createMerchOrder(
       if (vat.vat_number) orderMetadata.vat_number = vat.vat_number;
     }
 
+    const orderRow: Record<string, unknown> = {
+      org_id: orgId,
+      order_number: orderNumber,
+      event_id: event.id,
+      customer_id: customerId,
+      status: "completed",
+      subtotal,
+      fees,
+      total,
+      currency: (event.currency || "GBP").toUpperCase(),
+      payment_method: payment.method,
+      payment_ref: payment.ref,
+      metadata: orderMetadata,
+    };
+
+    // Store multi-currency conversion data
+    if (conversion) {
+      orderRow.base_currency = conversion.baseCurrency;
+      orderRow.base_total = conversion.baseTotal;
+      orderRow.exchange_rate = conversion.exchangeRate;
+      orderRow.rate_locked_at = conversion.rateLocked;
+    }
+
     const { data, error } = await supabase
       .from(TABLES.ORDERS)
-      .insert({
-        org_id: orgId,
-        order_number: orderNumber,
-        event_id: event.id,
-        customer_id: customerId,
-        status: "completed",
-        subtotal,
-        fees,
-        total,
-        currency: (event.currency || "GBP").toUpperCase(),
-        payment_method: payment.method,
-        payment_ref: payment.ref,
-        metadata: orderMetadata,
-      })
+      .insert(orderRow)
       .select()
       .single();
 

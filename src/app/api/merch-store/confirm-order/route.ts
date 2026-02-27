@@ -155,6 +155,17 @@ export async function POST(request: NextRequest) {
       ? metadata.customer_marketing_consent === "true"
       : undefined;
 
+    // Extract multi-currency conversion info
+    let conversion: { baseCurrency: string; baseTotal: number; exchangeRate: number; rateLocked: string } | undefined;
+    if (metadata.exchange_rate && metadata.base_currency) {
+      conversion = {
+        baseCurrency: metadata.base_currency,
+        baseTotal: Number(metadata.base_total || 0),
+        exchangeRate: Number(metadata.exchange_rate),
+        rateLocked: metadata.rate_locked_at || new Date().toISOString(),
+      };
+    }
+
     // Create merch order
     const result = await createMerchOrder({
       supabase,
@@ -163,7 +174,7 @@ export async function POST(request: NextRequest) {
         id: event.id,
         name: event.name,
         slug: event.slug,
-        currency: event.currency,
+        currency: metadata.presentment_currency || event.currency,
         venue_name: event.venue_name,
         date_start: event.date_start,
         doors_time: event.doors_time,
@@ -185,6 +196,7 @@ export async function POST(request: NextRequest) {
       },
       merchPassTicketTypeId,
       vat: vatInfo,
+      conversion,
     });
 
     // Fetch full order for response

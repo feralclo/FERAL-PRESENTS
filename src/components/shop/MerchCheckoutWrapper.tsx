@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useShopCart } from "@/hooks/useShopCart";
 import { NativeCheckout } from "@/components/checkout/NativeCheckout";
 import type { MerchCheckoutData } from "@/components/checkout/NativeCheckout";
@@ -14,7 +15,12 @@ interface MerchCheckoutWrapperProps {
 }
 
 export function MerchCheckoutWrapper({ collection, event }: MerchCheckoutWrapperProps) {
-  const cart = useShopCart(event.currency || "GBP");
+  const searchParams = useSearchParams();
+  const currencyParam = searchParams.get("currency");
+  const baseCurrency = event.currency || "GBP";
+  // Use presentment currency from URL param (matches ticket checkout pattern)
+  const presentmentCurrency = currencyParam?.toUpperCase() || null;
+  const cart = useShopCart(presentmentCurrency || baseCurrency);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -60,7 +66,7 @@ export function MerchCheckoutWrapper({ collection, event }: MerchCheckoutWrapper
       qty: item.qty,
       merch_size: item.merch_size,
     })),
-    currency: event.currency || "GBP",
+    currency: presentmentCurrency || baseCurrency,
   };
 
   return (

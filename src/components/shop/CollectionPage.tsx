@@ -7,6 +7,7 @@ import { MidnightFooter } from "@/components/midnight/MidnightFooter";
 import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useShopCart } from "@/hooks/useShopCart";
+import { CurrencyProvider, useCurrencyContext } from "@/components/CurrencyProvider";
 import { ProductCard } from "./ProductCard";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Event } from "@/types/events";
@@ -16,11 +17,24 @@ import "@/styles/midnight-effects.css";
 
 interface CollectionPageProps {
   collection: MerchCollection;
+  multiCurrencyEnabled?: boolean;
 }
 
-export function CollectionPage({ collection }: CollectionPageProps) {
+export function CollectionPage({ collection, multiCurrencyEnabled = false }: CollectionPageProps) {
+  const event = collection.event as Event | undefined;
+  const baseCurrency = event?.currency || "GBP";
+
+  return (
+    <CurrencyProvider baseCurrency={baseCurrency} enabled={multiCurrencyEnabled}>
+      <CollectionPageInner collection={collection} />
+    </CurrencyProvider>
+  );
+}
+
+function CollectionPageInner({ collection }: { collection: MerchCollection }) {
   const headerHidden = useHeaderScroll();
   const router = useRouter();
+  const { currency, convertPrice, formatPrice } = useCurrencyContext();
 
   const event = collection.event as Event | undefined;
   const heroImage = collection.hero_image || event?.hero_image || event?.cover_image;
@@ -28,7 +42,6 @@ export function CollectionPage({ collection }: CollectionPageProps) {
   const featuredItems = items.filter((i) => i.is_featured);
   const regularItems = items.filter((i) => !i.is_featured);
 
-  const currency = event?.currency || "GBP";
   const cart = useShopCart(currency);
 
   return (
@@ -280,7 +293,11 @@ export function CollectionPage({ collection }: CollectionPageProps) {
         >
           <div className="mx-auto max-w-6xl px-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6">
             <button
-              onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
+              onClick={() => {
+                const base = (event?.currency || "GBP").toUpperCase();
+                const qs = currency !== base ? `?currency=${currency.toLowerCase()}` : "";
+                router.push(`/shop/${collection.slug}/checkout${qs}`);
+              }}
               className="w-full flex items-center justify-between h-[56px] rounded-2xl px-6 transition-all duration-200 touch-manipulation active:scale-[0.98] hover:-translate-y-px"
               style={{
                 background: "linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%)",
@@ -294,7 +311,7 @@ export function CollectionPage({ collection }: CollectionPageProps) {
                 </span>
               </span>
               <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tracking-[-0.01em] text-[#0e0e0e]">
-                {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                {formatPrice(convertPrice(cart.totalPrice))}
               </span>
             </button>
           </div>

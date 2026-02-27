@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { normalizeMerchImages } from "@/lib/merch-images";
+import { useCurrencyContext } from "@/components/CurrencyProvider";
 import type { MerchCollectionItem } from "@/types/merch-store";
 
 interface ProductCardProps {
@@ -12,6 +13,7 @@ interface ProductCardProps {
 
 export function ProductCard({ item, variant, collectionSlug }: ProductCardProps) {
   const product = item.product;
+  const { convertPrice, formatPrice } = useCurrencyContext();
   if (!product) return null;
 
   const images = normalizeMerchImages(product.images);
@@ -94,7 +96,7 @@ export function ProductCard({ item, variant, collectionSlug }: ProductCardProps)
         <div className="mt-2.5 flex items-center justify-between">
           {price > 0 ? (
             <span className="font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.5px] text-foreground">
-              {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(Number(price))}
+              {formatPrice(convertPrice(Number(price)))}
             </span>
           ) : (
             <span className="font-[family-name:var(--font-mono)] text-[12px] tracking-[0.08em] text-foreground/35">

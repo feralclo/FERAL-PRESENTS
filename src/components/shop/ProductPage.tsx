@@ -8,8 +8,8 @@ import { MidnightFooter } from "@/components/midnight/MidnightFooter";
 import { VerifiedBanner } from "@/components/layout/VerifiedBanner";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
 import { useShopCart } from "@/hooks/useShopCart";
+import { CurrencyProvider, useCurrencyContext } from "@/components/CurrencyProvider";
 import { normalizeMerchImages } from "@/lib/merch-images";
-import { getCurrencySymbol } from "@/lib/stripe/config";
 import { ProductCard } from "./ProductCard";
 import { CodeRainCanvas } from "@/components/midnight/CodeRainCanvas";
 import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
@@ -21,15 +21,26 @@ import "@/styles/midnight-effects.css";
 interface ProductPageProps {
   item: MerchCollectionItem;
   collection: MerchCollection;
+  multiCurrencyEnabled?: boolean;
 }
 
-export function ProductPage({ item, collection }: ProductPageProps) {
+export function ProductPage({ item, collection, multiCurrencyEnabled = false }: ProductPageProps) {
+  const event = collection.event as Event | undefined;
+  const baseCurrency = event?.currency || "GBP";
+
+  return (
+    <CurrencyProvider baseCurrency={baseCurrency} enabled={multiCurrencyEnabled}>
+      <ProductPageInner item={item} collection={collection} />
+    </CurrencyProvider>
+  );
+}
+
+function ProductPageInner({ item, collection }: { item: MerchCollectionItem; collection: MerchCollection }) {
   const headerHidden = useHeaderScroll();
   const router = useRouter();
   const product = item.product;
   const event = collection.event as Event | undefined;
-  const currency = event?.currency || "GBP";
-  const currSymbol = getCurrencySymbol(currency);
+  const { currency, convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   const cart = useShopCart(currency);
 
   const images = product ? normalizeMerchImages(product.images) : [];
@@ -210,7 +221,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
             {/* Price */}
             {price > 0 && (
               <p className="mt-3 font-[family-name:var(--font-mono)] text-xl font-bold tracking-[0.5px] text-foreground">
-                {currSymbol}{Number(price).toFixed(2)}
+                {fmtPrice(convertPrice(Number(price)))}
               </p>
             )}
 
@@ -391,7 +402,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                           </button>
                         </div>
                         <span className="font-[family-name:var(--font-mono)] text-[12px] font-medium text-foreground/50 w-14 text-right">
-                          {cart.currSymbol}{(cartItem.unit_price * cartItem.qty).toFixed(2)}
+                          {fmtPrice(convertPrice(cartItem.unit_price * cartItem.qty))}
                         </span>
                       </div>
                     </div>
@@ -549,7 +560,11 @@ export function ProductPage({ item, collection }: ProductPageProps) {
         >
           <div className="mx-auto max-w-6xl px-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6 lg:px-8">
             <button
-              onClick={() => router.push(`/shop/${collection.slug}/checkout`)}
+              onClick={() => {
+                const base = event?.currency?.toUpperCase() || "GBP";
+                const qs = currency !== base ? `?currency=${currency.toLowerCase()}` : "";
+                router.push(`/shop/${collection.slug}/checkout${qs}`);
+              }}
               className="w-full flex items-center justify-between h-[56px] rounded-2xl px-6 transition-all duration-200 touch-manipulation active:scale-[0.98] hover:-translate-y-px"
               style={{
                 background: "linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%)",
@@ -563,7 +578,7 @@ export function ProductPage({ item, collection }: ProductPageProps) {
                 </span>
               </span>
               <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tracking-[-0.01em] text-[#0e0e0e]">
-                {cart.currSymbol}{cart.totalPrice.toFixed(2)}
+                {fmtPrice(convertPrice(cart.totalPrice))}
               </span>
             </button>
           </div>

@@ -1029,6 +1029,7 @@ function SinglePageCheckoutForm({
                 marketing_consent: marketingConsent,
               },
               discount_code: discountCode || undefined,
+              ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
             }
           : {
               event_id: event.id,
@@ -1178,6 +1179,7 @@ function SinglePageCheckoutForm({
                 marketing_consent: marketingConsent,
               },
               discount_code: discountCode || undefined,
+              ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
             }
           : {
               event_id: event.id,

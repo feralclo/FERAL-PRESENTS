@@ -1062,10 +1062,11 @@ function SinglePageCheckoutForm({
         }
 
         // Handle currency fallback — connected account may not support the presentment currency
-        // TEMPORARY: Show debug info instead of silently redirecting
+        // Silently redirect to base currency checkout
         if (data.currency_fallback) {
-          setError(`[DEBUG] Currency fallback: ${data.stripe_error || "unknown"} | ${JSON.stringify(data.debug || {})}`);
-          setProcessing(false);
+          const params = new URLSearchParams(window.location.search);
+          params.delete("currency");
+          window.location.assign(window.location.pathname + "?" + params.toString());
           return;
         }
 
@@ -1212,10 +1213,11 @@ function SinglePageCheckoutForm({
         }
 
         // Handle currency fallback — connected account may not support the presentment currency
-        // TEMPORARY: Show debug info instead of silently redirecting
+        // Silently redirect to base currency checkout
         if (data.currency_fallback) {
-          setError(`[DEBUG] Currency fallback: ${data.stripe_error || "unknown"} | ${JSON.stringify(data.debug || {})}`);
-          setProcessing(false);
+          const params = new URLSearchParams(window.location.search);
+          params.delete("currency");
+          window.location.assign(window.location.pathname + "?" + params.toString());
           return;
         }
 

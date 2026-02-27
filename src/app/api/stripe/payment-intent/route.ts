@@ -317,13 +317,6 @@ export async function POST(request: NextRequest) {
       SUPPORTED_CURRENCIES.includes(presentment_currency.toLowerCase() as typeof SUPPORTED_CURRENCIES[number])
     ) {
       const rates = await getExchangeRates();
-      console.log("[payment-intent] Multi-currency:", {
-        presentment_currency,
-        baseCurrency,
-        ratesAvailable: !!rates,
-        ratesFresh: rates ? areRatesFreshForCheckout(rates) : false,
-        fetched_at: rates?.fetched_at,
-      });
       if (rates && areRatesFreshForCheckout(rates)) {
         const pCurrency = presentment_currency.toUpperCase();
         const bCurrency = baseCurrency.toUpperCase();
@@ -415,7 +408,6 @@ export async function POST(request: NextRequest) {
     const amountInSmallestUnit = toSmallestUnit(chargeAmount, chargeCurrency);
     const currency = chargeCurrency;
 
-    console.log("[payment-intent] Calculation:", { subtotal, discountAmount, afterDiscount, convertedSubtotal, chargeAmount, amountInSmallestUnit, chargeCurrency });
 
     // Build PaymentIntent parameters — fee rates determined by org's plan
     const plan = await getOrgPlan(orgId);
@@ -469,7 +461,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Helper to create the PI (shared between connected + platform paths)
-    console.log("[payment-intent] Creating PI:", { amount: amountInSmallestUnit, currency, chargeCurrency, exchangeRate, stripeAccountId: stripeAccountId || "platform" });
     const createPI = async () => {
       try {
         if (stripeAccountId) {
@@ -493,29 +484,21 @@ export async function POST(request: NextRequest) {
           automatic_payment_methods: { enabled: true },
         });
       } catch (piErr) {
-        // If Stripe rejects the currency (unsupported on connected account),
-        // tell the client to retry in the base currency
-        const errMsg = piErr instanceof Error ? piErr.message : String(piErr);
-        console.error("[payment-intent] PI creation failed:", errMsg);
+        // If Stripe rejects the currency (e.g. unsupported on connected account),
+        // fall back to base currency so checkout still works
         if (exchangeRate) {
-          // Any PI creation failure during multi-currency → fallback to base
-          piCreateError = errMsg;
           return null;
         }
         throw piErr;
       }
     };
 
-    let piCreateError = "";
     const paymentIntent = await createPI();
 
     if (!paymentIntent) {
-      console.error("[payment-intent] Currency fallback triggered:", piCreateError, "charge:", chargeCurrency, "base:", baseCurrency);
       return NextResponse.json({
         currency_fallback: true,
         currency: baseCurrency,
-        stripe_error: piCreateError || "unknown",
-        debug: { subtotal, afterDiscount, convertedSubtotal: convertedSubtotal, chargeAmount, chargeCurrency, baseCurrency, amount: amountInSmallestUnit, exchangeRate },
       });
     }
 

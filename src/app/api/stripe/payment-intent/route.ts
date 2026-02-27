@@ -331,8 +331,9 @@ export async function POST(request: NextRequest) {
         return tt?.price_overrides && pCurrency in (tt.price_overrides as Record<string, number>);
       });
 
-      // Only need rates if some items don't have overrides
-      const rates = allHaveOverrides ? null : await getExchangeRates();
+      // Need rates if some items don't have overrides, or if there's a fixed discount to convert
+      const hasFixedDiscount = discountAmount > 0 && discountMeta?.type === "fixed";
+      const rates = (allHaveOverrides && !hasFixedDiscount) ? null : await getExchangeRates();
       const ratesValid = allHaveOverrides || (rates && areRatesFreshForCheckout(rates));
 
       if (ratesValid) {

@@ -345,12 +345,9 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
       if (presentmentCurrency && presentmentCurrency.toUpperCase() !== (event.currency || "GBP").toUpperCase()) {
         const pc = presentmentCurrency.toUpperCase();
         return merchData.cartLines.map((line) => {
-          // Check for product-level price override
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const overrides = (line as any).price_overrides as Record<string, number> | null | undefined;
-          if (overrides && pc in overrides) {
-            return { ...line, price: overrides[pc] };
-          }
+          // Note: merch cart lines don't carry price_overrides (stripped in useShopCart).
+          // The payment intent API reads overrides from the DB, so charge amounts are correct.
+          // Checkout display uses auto-conversion here — a minor display gap for overridden merch.
           if (hasPresentmentConversion && exchangeRates) {
             return {
               ...line,

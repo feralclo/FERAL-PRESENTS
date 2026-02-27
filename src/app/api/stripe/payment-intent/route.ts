@@ -408,6 +408,13 @@ export async function POST(request: NextRequest) {
     const amountInSmallestUnit = toSmallestUnit(chargeAmount, chargeCurrency);
     const currency = chargeCurrency;
 
+    // Guard: Stripe requires a minimum charge amount (typically 50 cents / 30p)
+    if (amountInSmallestUnit <= 0) {
+      return NextResponse.json(
+        { error: "Order total is too low to process." },
+        { status: 400 }
+      );
+    }
 
     // Build PaymentIntent parameters — fee rates determined by org's plan
     const plan = await getOrgPlan(orgId);
@@ -443,7 +450,7 @@ export async function POST(request: NextRequest) {
       metadata.base_currency = baseCurrency.toUpperCase();
       metadata.exchange_rate = String(exchangeRate);
       metadata.base_subtotal = String(afterDiscount);
-      metadata.base_total = String(vatInclusive ? afterDiscount : afterDiscount + (discountAmount > 0 ? vatAmount : 0));
+      metadata.base_total = String(vatInclusive ? afterDiscount : afterDiscount + vatAmount);
       if (rateLocked) metadata.rate_locked_at = rateLocked;
     }
 

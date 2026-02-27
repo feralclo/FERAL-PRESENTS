@@ -342,11 +342,23 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   const cartLines: CartLine[] = useMemo(() => {
     // Merch mode: cart lines provided directly (convert if multi-currency)
     if (merchData) {
-      if (hasPresentmentConversion && exchangeRates && presentmentCurrency) {
-        return merchData.cartLines.map((line) => ({
-          ...line,
-          price: roundPresentmentPrice(convertCurrency(line.price, event.currency || "GBP", presentmentCurrency, exchangeRates)),
-        }));
+      if (presentmentCurrency && presentmentCurrency.toUpperCase() !== (event.currency || "GBP").toUpperCase()) {
+        const pc = presentmentCurrency.toUpperCase();
+        return merchData.cartLines.map((line) => {
+          // Check for product-level price override
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const overrides = (line as any).price_overrides as Record<string, number> | null | undefined;
+          if (overrides && pc in overrides) {
+            return { ...line, price: overrides[pc] };
+          }
+          if (hasPresentmentConversion && exchangeRates) {
+            return {
+              ...line,
+              price: roundPresentmentPrice(convertCurrency(line.price, event.currency || "GBP", presentmentCurrency, exchangeRates)),
+            };
+          }
+          return line;
+        });
       }
       return merchData.cartLines;
     }
@@ -365,8 +377,10 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
         const size = segments[2] || undefined;
         const tt = ttMap.get(ticketTypeId);
         let price = tt ? Number(tt.price) : 0;
-        // Convert price to presentment currency for display
-        if (hasPresentmentConversion && exchangeRates && presentmentCurrency) {
+        // Check for manual price override first, then auto-convert
+        if (presentmentCurrency && tt?.price_overrides?.[presentmentCurrency.toUpperCase()]) {
+          price = tt.price_overrides[presentmentCurrency.toUpperCase()];
+        } else if (hasPresentmentConversion && exchangeRates && presentmentCurrency) {
           price = roundPresentmentPrice(convertCurrency(price, event.currency || "GBP", presentmentCurrency, exchangeRates));
         }
         lines.push({
@@ -834,6 +848,7 @@ function StripeCheckoutPage({
         onRemoveDiscount={() => setAppliedDiscount(null)}
         vatSettings={vatSettings}
         merchMode={isMerch}
+        currencyLabel={presentmentCurrency || event.currency}
       />
 
       <div className="flex-1 relative lg:bg-[linear-gradient(to_right,transparent_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+220px),rgba(255,255,255,0.06)_calc(50%+221px),transparent_calc(50%+221px))]">
@@ -872,6 +887,7 @@ function StripeCheckoutPage({
               onRemoveDiscount={() => setAppliedDiscount(null)}
               vatSettings={vatSettings}
               merchMode={isMerch}
+              currencyLabel={presentmentCurrency || event.currency}
             />
           </aside>
         </div>
@@ -2340,6 +2356,7 @@ function OrderSummaryMobile({
   onRemoveDiscount,
   vatSettings,
   merchMode,
+  currencyLabel,
 }: {
   cartLines: CartLine[];
   symbol: string;
@@ -2350,6 +2367,7 @@ function OrderSummaryMobile({
   onRemoveDiscount?: () => void;
   vatSettings?: VatSettings | null;
   merchMode?: boolean;
+  currencyLabel?: string;
 }) {
   const discountAmt = discount?.amount || 0;
   const afterDiscount = Math.max(subtotal - discountAmt, 0);
@@ -2380,7 +2398,7 @@ function OrderSummaryMobile({
           vatBreakdown={vatBreakdown}
           vatSettings={vatSettings}
           total={total}
-          currency={presentmentCurrency || event?.currency}
+          currency={currencyLabel || event?.currency}
         />
       </div>
     </div>
@@ -2401,6 +2419,7 @@ function OrderSummaryDesktop({
   onRemoveDiscount,
   vatSettings,
   merchMode,
+  currencyLabel,
 }: {
   cartLines: CartLine[];
   symbol: string;
@@ -2411,6 +2430,7 @@ function OrderSummaryDesktop({
   onRemoveDiscount?: () => void;
   vatSettings?: VatSettings | null;
   merchMode?: boolean;
+  currencyLabel?: string;
 }) {
   const discountAmt = discount?.amount || 0;
   const afterDiscount = Math.max(subtotal - discountAmt, 0);
@@ -2440,7 +2460,7 @@ function OrderSummaryDesktop({
         vatBreakdown={vatBreakdown}
         vatSettings={vatSettings}
         total={total}
-        currency={presentmentCurrency || event?.currency}
+        currency={currencyLabel || event?.currency}
       />
     </div>
   );

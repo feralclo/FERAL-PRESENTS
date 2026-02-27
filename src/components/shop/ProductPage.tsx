@@ -221,7 +221,7 @@ function ProductPageInner({ item, collection }: { item: MerchCollectionItem; col
             {/* Price */}
             {price > 0 && (
               <p className="mt-3 font-[family-name:var(--font-mono)] text-xl font-bold tracking-[0.5px] text-foreground">
-                {fmtPrice(convertPrice(Number(price)))}
+                {fmtPrice(convertPrice(Number(price), product?.price_overrides))}
               </p>
             )}
 
@@ -402,7 +402,7 @@ function ProductPageInner({ item, collection }: { item: MerchCollectionItem; col
                           </button>
                         </div>
                         <span className="font-[family-name:var(--font-mono)] text-[12px] font-medium text-foreground/50 w-14 text-right">
-                          {fmtPrice(convertPrice(cartItem.unit_price * cartItem.qty))}
+                          {fmtPrice(convertPrice(cartItem.unit_price) * cartItem.qty)}
                         </span>
                       </div>
                     </div>
@@ -578,7 +578,8 @@ function ProductPageInner({ item, collection }: { item: MerchCollectionItem; col
                 </span>
               </span>
               <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tracking-[-0.01em] text-[#0e0e0e]">
-                {fmtPrice(convertPrice(cart.totalPrice))}
+                {fmtPrice(convertPrice(cart.totalPrice))
+                  /* Note: shop cart totalPrice is base currency; convertPrice handles conversion */}
               </span>
             </button>
           </div>

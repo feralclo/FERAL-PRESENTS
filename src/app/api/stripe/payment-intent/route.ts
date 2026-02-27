@@ -304,44 +304,83 @@ export async function POST(request: NextRequest) {
     // ── Multi-currency conversion ──────────────────────────────────────
     // When presentment_currency differs from the event's base currency,
     // convert the entire charge to the buyer's preferred currency.
+    // Manual price_overrides per ticket type take priority over auto-conversion.
     const baseCurrency = (event.currency || "GBP").toLowerCase();
     let chargeCurrency = baseCurrency;
     let exchangeRate: number | null = null;
     let rateLocked: string | null = null;
     let convertedSubtotal = afterDiscount;
     let convertedDiscountAmount = discountAmount;
+    let priceSource: "auto" | "override" | "mixed" = "auto";
 
     if (
       presentment_currency &&
       presentment_currency.toLowerCase() !== baseCurrency &&
       SUPPORTED_CURRENCIES.includes(presentment_currency.toLowerCase() as typeof SUPPORTED_CURRENCIES[number])
     ) {
-      const rates = await getExchangeRates();
-      if (rates && areRatesFreshForCheckout(rates)) {
-        const pCurrency = presentment_currency.toUpperCase();
-        const bCurrency = baseCurrency.toUpperCase();
+      const pCurrency = presentment_currency.toUpperCase();
+      const bCurrency = baseCurrency.toUpperCase();
 
-        // Convert subtotal (after discount) to presentment currency
-        convertedSubtotal = roundPresentmentPrice(
-          convertCurrency(afterDiscount, bCurrency, pCurrency, rates)
-        );
+      // Check if ALL items have overrides (skip rate fetch if so)
+      const allHaveOverrides = (items as { ticket_type_id: string; qty: number }[]).every((item) => {
+        const tt = ttMap.get(item.ticket_type_id);
+        return tt?.price_overrides && pCurrency in (tt.price_overrides as Record<string, number>);
+      });
+      const anyHasOverride = (items as { ticket_type_id: string; qty: number }[]).some((item) => {
+        const tt = ttMap.get(item.ticket_type_id);
+        return tt?.price_overrides && pCurrency in (tt.price_overrides as Record<string, number>);
+      });
 
-        // Convert discount amount for metadata tracking
-        convertedDiscountAmount = discountAmount > 0
-          ? roundPresentmentPrice(convertCurrency(discountAmount, bCurrency, pCurrency, rates))
-          : 0;
+      // Only need rates if some items don't have overrides
+      const rates = allHaveOverrides ? null : await getExchangeRates();
+      const ratesValid = allHaveOverrides || (rates && areRatesFreshForCheckout(rates));
 
-        // Calculate the exchange rate (1 base = rate * presentment)
-        const fromRate = rates.rates[bCurrency];
-        const toRate = rates.rates[pCurrency];
-        if (fromRate && toRate) {
-          exchangeRate = toRate / fromRate;
+      if (ratesValid) {
+        // Calculate per-item converted subtotal
+        let perItemTotal = 0;
+        for (const item of items as { ticket_type_id: string; qty: number }[]) {
+          const tt = ttMap.get(item.ticket_type_id);
+          if (!tt) continue;
+          const overrides = tt.price_overrides as Record<string, number> | null;
+          if (overrides && pCurrency in overrides) {
+            perItemTotal += overrides[pCurrency] * item.qty;
+          } else if (rates) {
+            perItemTotal += roundPresentmentPrice(
+              convertCurrency(Number(tt.price), bCurrency, pCurrency, rates)
+            ) * item.qty;
+          }
+        }
+
+        // Apply discount in presentment currency
+        if (discountAmount > 0 && discountMeta) {
+          if (discountMeta.type === "percentage") {
+            convertedDiscountAmount = Math.round((perItemTotal * discountMeta.value) / 100 * 100) / 100;
+          } else if (rates) {
+            convertedDiscountAmount = roundPresentmentPrice(convertCurrency(discountAmount, bCurrency, pCurrency, rates));
+          } else {
+            // Fixed discount with all overrides but no rates — convert proportionally
+            convertedDiscountAmount = roundPresentmentPrice(discountAmount * (perItemTotal / subtotal));
+          }
+        } else {
+          convertedDiscountAmount = 0;
+        }
+
+        convertedSubtotal = Math.max(perItemTotal - convertedDiscountAmount, 0);
+
+        // Calculate exchange rate for metadata
+        if (rates) {
+          const fromRate = rates.rates[bCurrency];
+          const toRate = rates.rates[pCurrency];
+          if (fromRate && toRate) {
+            exchangeRate = toRate / fromRate;
+          }
+          rateLocked = rates.fetched_at;
         }
 
         chargeCurrency = presentment_currency.toLowerCase();
-        rateLocked = rates.fetched_at;
+        priceSource = allHaveOverrides ? "override" : anyHasOverride ? "mixed" : "auto";
       }
-      // If rates unavailable/stale, fall through to base currency (safe default)
+      // If rates unavailable/stale and not all overridden, fall through to base currency (safe default)
     }
 
     // Resolve VAT settings: event-level overrides take priority over org-level.
@@ -393,7 +432,7 @@ export async function POST(request: NextRequest) {
     // else: event.vat_registered === false → no VAT (vatAmount stays 0)
 
     // For multi-currency: recalculate VAT on converted amount if applicable
-    if (exchangeRate && vatAmount > 0) {
+    if (chargeCurrency !== baseCurrency && vatAmount > 0) {
       // VAT rate is a percentage — apply to converted subtotal
       if (vatInclusive) {
         // VAT is already inside the converted price — just recalculate the amount
@@ -445,10 +484,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Multi-currency metadata (for order creation)
-    if (exchangeRate && chargeCurrency !== baseCurrency) {
+    if (priceSource !== "auto") {
+      metadata.price_source = priceSource;
+    }
+    if (chargeCurrency !== baseCurrency) {
       metadata.presentment_currency = chargeCurrency.toUpperCase();
       metadata.base_currency = baseCurrency.toUpperCase();
-      metadata.exchange_rate = String(exchangeRate);
+      if (exchangeRate) metadata.exchange_rate = String(exchangeRate);
       metadata.base_subtotal = String(afterDiscount);
       metadata.base_total = String(vatInclusive ? afterDiscount : afterDiscount + vatAmount);
       if (rateLocked) metadata.rate_locked_at = rateLocked;
@@ -493,7 +535,7 @@ export async function POST(request: NextRequest) {
       } catch (piErr) {
         // If Stripe rejects the currency (e.g. unsupported on connected account),
         // fall back to base currency so checkout still works
-        if (exchangeRate) {
+        if (chargeCurrency !== baseCurrency) {
           return null;
         }
         throw piErr;
@@ -524,10 +566,11 @@ export async function POST(request: NextRequest) {
       discount: discountMeta,
       vat: vatAmount > 0 ? { amount: vatAmount, rate: vatRate, inclusive: vatInclusive } : null,
       // Multi-currency info for the client
-      ...(exchangeRate ? {
+      ...(chargeCurrency !== baseCurrency ? {
         presentment_currency: chargeCurrency.toUpperCase(),
         base_currency: baseCurrency.toUpperCase(),
-        exchange_rate: exchangeRate,
+        ...(exchangeRate ? { exchange_rate: exchangeRate } : {}),
+        price_source: priceSource,
       } : {}),
     });
   } catch (err) {

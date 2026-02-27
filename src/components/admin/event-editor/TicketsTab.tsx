@@ -336,6 +336,7 @@ export function TicketsTab({
                       waitingFor={waitingForMap[tt.id]}
                       isSequentialGroup={sequentialGroups.has("__ungrouped__")}
                       sequencePosition={sequencePositionMap[tt.id]}
+                      multiCurrencyEnabled={!!settings.multi_currency_enabled}
                     />
                   );
                 })}
@@ -392,6 +393,7 @@ export function TicketsTab({
                           waitingFor={waitingForMap[tt.id]}
                           isSequentialGroup={sequentialGroups.has(gName)}
                           sequencePosition={sequencePositionMap[tt.id]}
+                          multiCurrencyEnabled={!!settings.multi_currency_enabled}
                         />
                       );
                     })

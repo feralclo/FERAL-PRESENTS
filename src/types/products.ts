@@ -22,6 +22,8 @@ export interface Product {
   status: ProductStatus;
   sku?: string;
   display_effect: DisplayEffect;
+  /** Manual price overrides per currency, e.g. { "EUR": 50, "USD": 55 }. NULL/empty = auto-convert. */
+  price_overrides?: Record<string, number> | null;
   created_at: string;
   updated_at: string;
 }

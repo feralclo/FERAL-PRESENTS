@@ -90,10 +90,14 @@ export function MidnightTicketWidget({
     handleCheckout,
   } = cart;
 
-  // Compute discounted total for CTA display
+  // Compute override-aware total in presentment currency
+  const convertedTotal = useMemo(
+    () => cartItems.reduce((sum, item) => sum + convertPrice(item.unitPrice, item.price_overrides) * item.qty, 0),
+    [cartItems, convertPrice]
+  );
   const discountedTotal = discount
-    ? Math.max(0, Math.round((totalPrice - getDiscountAmount(totalPrice, discount)) * 100) / 100)
-    : totalPrice;
+    ? Math.max(0, Math.round((convertedTotal - getDiscountAmount(convertedTotal, discount)) * 100) / 100)
+    : convertedTotal;
 
   // Detect first item added → trigger one-shot CTA glow + express reveal
   useEffect(() => {
@@ -341,7 +345,7 @@ export function MidnightTicketWidget({
                 : <span className="flex items-center justify-center gap-2.5">
                     <span>Checkout</span>
                     <span className="w-px h-3.5 bg-white/20" />
-                    <span key={discountedTotal} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{fmtPrice(convertPrice(discountedTotal))}</span>
+                    <span key={discountedTotal} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{fmtPrice(discountedTotal)}</span>
                   </span>}
             </button>
 

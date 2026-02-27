@@ -42,7 +42,7 @@ export interface UseCartResult {
   /** Total price in cart */
   totalPrice: number;
   /** Cart line items (for display + parent notification) */
-  cartItems: { name: string; qty: number; size?: string; unitPrice: number }[];
+  cartItems: { name: string; qty: number; size?: string; unitPrice: number; price_overrides?: Record<string, number> | null }[];
   /** Items formatted for Express Checkout */
   expressItems: { ticket_type_id: string; qty: number; merch_size?: string }[];
   /** Minimum price across active types */
@@ -234,17 +234,17 @@ export function useCart({
   }, [activeTypes, quantities, merchSizes]);
 
   const cartItems = useMemo(() => {
-    const items: { name: string; qty: number; size?: string; unitPrice: number }[] = [];
+    const items: { name: string; qty: number; size?: string; unitPrice: number; price_overrides?: Record<string, number> | null }[] = [];
     for (const tt of activeTypes) {
       const qty = quantities[tt.id] || 0;
       if (qty <= 0) continue;
       const price = Number(tt.price);
       if (tt.includes_merch && merchSizes[tt.id]) {
         for (const [size, sQty] of Object.entries(merchSizes[tt.id])) {
-          if (sQty > 0) items.push({ name: tt.name, qty: sQty, size, unitPrice: price });
+          if (sQty > 0) items.push({ name: tt.name, qty: sQty, size, unitPrice: price, price_overrides: tt.price_overrides });
         }
       } else {
-        items.push({ name: tt.name, qty, unitPrice: price });
+        items.push({ name: tt.name, qty, unitPrice: price, price_overrides: tt.price_overrides });
       }
     }
     return items;

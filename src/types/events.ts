@@ -113,6 +113,8 @@ export interface TicketTypeRow {
   product_id?: string;
   /** Joined product data (populated when fetched with join) */
   product?: import("./products").Product;
+  /** Manual price overrides per currency, e.g. { "EUR": 50, "USD": 55 }. NULL/empty = auto-convert. */
+  price_overrides?: Record<string, number> | null;
   created_at: string;
   updated_at: string;
 }

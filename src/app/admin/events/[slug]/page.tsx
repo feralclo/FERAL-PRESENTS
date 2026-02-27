@@ -203,6 +203,7 @@ export default function EventEditorPage() {
             sale_end: tt.sale_end || null,
             tier: tt.tier || "standard",
             product_id: tt.product_id || null,
+            price_overrides: tt.price_overrides || null,
           })),
           deleted_ticket_type_ids: deletedTypeIds,
         }),

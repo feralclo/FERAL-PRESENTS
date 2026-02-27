@@ -330,6 +330,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Multi-currency conversion ──────────────────────────────────────
+    // Manual price_overrides per product take priority over auto-conversion.
     const baseCurrency = (event.currency || "GBP").toUpperCase();
     let exchangeRate: number | null = null;
     let rateLocked: string | null = null;
@@ -344,20 +345,41 @@ export async function POST(request: NextRequest) {
     ) {
       const pc = presentment_currency.toUpperCase();
       if (SUPPORTED_CURRENCIES.includes(pc.toLowerCase() as typeof SUPPORTED_CURRENCIES[number])) {
-        const rates = await getExchangeRates();
-        if (rates && areRatesFreshForCheckout(rates)) {
-          const rate = rates.rates[pc] / (rates.rates[baseCurrency] || 1);
-          exchangeRate = rate;
-          rateLocked = rates.fetched_at;
+        // Check if all items have manual price overrides for this currency
+        const allHaveOverrides = validatedItems.every((item) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ci = ciMap.get(item.collection_item_id) as any;
+          const overrides = ci?.product?.price_overrides as Record<string, number> | null;
+          return overrides && pc in overrides;
+        });
+
+        const rates = allHaveOverrides ? null : await getExchangeRates();
+        const ratesValid = allHaveOverrides || (rates && areRatesFreshForCheckout(rates));
+
+        if (ratesValid) {
+          if (rates) {
+            const rate = rates.rates[pc] / (rates.rates[baseCurrency] || 1);
+            exchangeRate = rate;
+            rateLocked = rates.fetched_at;
+          }
           chargeCurrency = pc;
 
-          // Convert each item price individually then sum (same as ticket flow)
+          // Convert each item price individually then sum
           convertedSubtotal = 0;
           for (const item of validatedItems) {
-            const convertedPrice = roundPresentmentPrice(
-              convertCurrency(item.unit_price, baseCurrency, pc, rates)
-            );
-            convertedSubtotal += convertedPrice * item.qty;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const ci = ciMap.get(item.collection_item_id) as any;
+            const overrides = ci?.product?.price_overrides as Record<string, number> | null;
+
+            if (overrides && pc in overrides) {
+              // Manual override — already in target currency
+              convertedSubtotal += overrides[pc] * item.qty;
+            } else if (rates) {
+              const convertedPrice = roundPresentmentPrice(
+                convertCurrency(item.unit_price, baseCurrency, pc, rates)
+              );
+              convertedSubtotal += convertedPrice * item.qty;
+            }
           }
 
           // Apply discount in presentment currency
@@ -368,10 +390,15 @@ export async function POST(request: NextRequest) {
               ) / 100;
               convertedSubtotal = Math.max(convertedSubtotal - convertedDiscountAmt, 0);
               discountMeta.amount = convertedDiscountAmt;
-            } else {
+            } else if (rates) {
               const convertedFixedDiscount = roundPresentmentPrice(
                 convertCurrency(discountMeta.value, baseCurrency, pc, rates)
               );
+              convertedSubtotal = Math.max(convertedSubtotal - convertedFixedDiscount, 0);
+              discountMeta.amount = convertedFixedDiscount;
+            } else {
+              // Fixed discount with all overrides but no rates
+              const convertedFixedDiscount = roundPresentmentPrice(discountMeta.value * (convertedSubtotal / subtotal));
               convertedSubtotal = Math.max(convertedSubtotal - convertedFixedDiscount, 0);
               discountMeta.amount = convertedFixedDiscount;
             }
@@ -449,12 +476,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Store conversion metadata for order creation
-    if (exchangeRate !== null) {
+    if (chargeCurrency !== baseCurrency) {
       metadata.presentment_currency = chargeCurrency;
       metadata.base_currency = baseCurrency;
-      metadata.exchange_rate = String(exchangeRate);
+      if (exchangeRate !== null) metadata.exchange_rate = String(exchangeRate);
       metadata.base_total = String(vatInclusive ? afterDiscount : afterDiscount + vatAmount);
-      metadata.rate_locked_at = rateLocked || new Date().toISOString();
+      if (rateLocked) metadata.rate_locked_at = rateLocked;
     }
 
     // Create PaymentIntent (with currency fallback for connected accounts)
@@ -475,7 +502,7 @@ export async function POST(request: NextRequest) {
         );
       } catch (piErr) {
         // If currency not supported by connected account, fall back to base currency
-        if (exchangeRate) {
+        if (chargeCurrency !== baseCurrency) {
           return NextResponse.json({
             currency_fallback: true,
             currency: baseCurrency.toLowerCase(),

@@ -11,6 +11,7 @@ interface CartItem {
   qty: number;
   size?: string;
   unitPrice: number;
+  price_overrides?: Record<string, number> | null;
 }
 
 interface MidnightCartSummaryProps {
@@ -30,10 +31,16 @@ export function MidnightCartSummary({
 }: MidnightCartSummaryProps) {
   const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   const isEmpty = totalQty === 0;
-  const discountAmt = discount ? getDiscountAmount(totalPrice, discount) : 0;
+
+  // Calculate converted total from individual items (respects per-item overrides)
+  const convertedTotal = items.reduce(
+    (sum, item) => sum + convertPrice(item.unitPrice, item.price_overrides) * item.qty,
+    0
+  );
+  const discountAmt = discount ? getDiscountAmount(convertedTotal, discount) : 0;
   const discountedTotal = discount
-    ? Math.max(0, Math.round((totalPrice - discountAmt) * 100) / 100)
-    : totalPrice;
+    ? Math.max(0, Math.round((convertedTotal - discountAmt) * 100) / 100)
+    : convertedTotal;
 
   return (
     <div
@@ -76,7 +83,7 @@ export function MidnightCartSummary({
                   {item.name}
                 </span>
                 <span className="font-[family-name:var(--font-mono)] text-[11px] font-medium text-foreground/50 shrink-0">
-                  {fmtPrice(convertPrice(item.unitPrice * item.qty))}
+                  {fmtPrice(convertPrice(item.unitPrice, item.price_overrides) * item.qty)}
                 </span>
               </div>
               {item.size && (
@@ -102,7 +109,7 @@ export function MidnightCartSummary({
               </span>
             </div>
             <span className="font-[family-name:var(--font-mono)] text-[11px] font-medium text-emerald-400/60 shrink-0">
-              &minus;{fmtPrice(convertPrice(discountAmt))}
+              &minus;{fmtPrice(discountAmt)}
             </span>
           </div>
         )}
@@ -113,7 +120,7 @@ export function MidnightCartSummary({
             Total
           </span>
           <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground tracking-[0.5px]">
-            {fmtPrice(convertPrice(discountedTotal))}
+            {fmtPrice(discountedTotal)}
           </span>
         </div>
       </div>

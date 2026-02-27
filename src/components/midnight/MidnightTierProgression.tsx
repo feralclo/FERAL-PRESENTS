@@ -50,7 +50,7 @@ export function MidnightTierProgression({
                 soldOut ? "line-through text-muted-foreground" : "text-foreground",
               )}
             >
-              {fmtPrice(convertPrice(Number(tt.price)))}
+              {fmtPrice(convertPrice(Number(tt.price), tt.price_overrides))}
             </span>
             <Badge
               variant={isActive ? "default" : "secondary"}

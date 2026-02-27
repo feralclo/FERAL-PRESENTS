@@ -79,6 +79,7 @@ export async function PUT(
       "status",
       "sku",
       "display_effect",
+      "price_overrides",
     ];
 
     for (const field of allowedFields) {

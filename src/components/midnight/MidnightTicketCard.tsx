@@ -52,7 +52,7 @@ export function MidnightTicketCard({
   const tierEffect = TIER_EFFECT[tier] || "";
   const isSoldOut = tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity;
   const isActive = qty > 0;
-  const priceDisplay = fmtPrice(convertPrice(Number(tt.price)));
+  const priceDisplay = fmtPrice(convertPrice(Number(tt.price), tt.price_overrides));
 
   const merchImgs = tt.includes_merch
     ? (tt.product_id && tt.product ? tt.product.images : tt.merch_images)
@@ -125,7 +125,7 @@ export function MidnightTicketCard({
                 TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
               )}
             >
-              {fmtPrice(convertPrice(getDiscountedPrice(Number(tt.price), discount)))}
+              {fmtPrice(getDiscountedPrice(convertPrice(Number(tt.price), tt.price_overrides), discount))}
             </span>
           </div>
         ) : (

@@ -96,7 +96,7 @@ export function ProductCard({ item, variant, collectionSlug }: ProductCardProps)
         <div className="mt-2.5 flex items-center justify-between">
           {price > 0 ? (
             <span className="font-[family-name:var(--font-mono)] text-base font-bold tracking-[0.5px] text-foreground">
-              {formatPrice(convertPrice(Number(price)))}
+              {formatPrice(convertPrice(Number(price), product.price_overrides))}
             </span>
           ) : (
             <span className="font-[family-name:var(--font-mono)] text-[12px] tracking-[0.08em] text-foreground/35">

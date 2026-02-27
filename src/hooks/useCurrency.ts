@@ -33,8 +33,9 @@ export interface UseCurrencyResult {
   isConverted: boolean;
   /** Switch presentment currency */
   setCurrency: (c: string) => void;
-  /** Convert a base-currency price to presentment currency (rounds if converted) */
-  convertPrice: (basePrice: number) => number;
+  /** Convert a base-currency price to presentment currency (rounds if converted).
+   *  When `overrides` contains the current currency, uses that exact price instead. */
+  convertPrice: (basePrice: number, overrides?: Record<string, number> | null) => number;
   /** Format a price with the presentment currency symbol */
   formatPrice: (amount: number) => string;
   /** Current exchange rate (1 base = rate * presentment) */
@@ -124,7 +125,11 @@ export function useCurrency(baseCurrency: string, enabled: boolean = true): UseC
   const isConverted = currency !== base && rates !== null && exchangeRate !== 1;
 
   const convertPrice = useCallback(
-    (basePrice: number): number => {
+    (basePrice: number, overrides?: Record<string, number> | null): number => {
+      // Manual override takes priority — already in target currency
+      if (overrides && currency in overrides) {
+        return overrides[currency];
+      }
       if (!isConverted || !rates) return basePrice;
       const converted = convertCurrency(basePrice, base, currency, rates);
       return roundPresentmentPrice(converted);

@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import type { Product, ProductType, ProductStatus, DisplayEffect } from "@/types/products";
 import { DisplayEffectPicker } from "@/components/admin/DisplayEffectPicker";
+import { CurrencyPriceOverrides } from "@/components/admin/CurrencyPriceOverrides";
 
 interface LinkedTicketType {
   id: string;
@@ -143,6 +144,7 @@ export default function MerchEditorPage() {
           status: product.status,
           sku: product.sku || null,
           display_effect: product.display_effect || "default",
+          price_overrides: product.price_overrides || null,
         }),
       });
 
@@ -462,6 +464,12 @@ export default function MerchEditorPage() {
                 For future standalone sales. Ticket-bundled products use the
                 ticket price.
               </p>
+              <CurrencyPriceOverrides
+                baseCurrency="GBP"
+                basePrice={Number(product.price)}
+                overrides={product.price_overrides || null}
+                onChange={(val) => update("price_overrides" as keyof Product, val)}
+              />
             </CardContent>
           </Card>
 

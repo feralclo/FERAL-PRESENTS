@@ -25,6 +25,7 @@ import { normalizeMerchImages } from "@/lib/merch-images";
 import { toDatetimeLocal, fromDatetimeLocal } from "@/lib/date-utils";
 import { AlertTriangle, ChevronDown, GripVertical, Lock, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CurrencyPriceOverrides } from "@/components/admin/CurrencyPriceOverrides";
 import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
 import type { EventSettings } from "@/types/settings";
@@ -49,6 +50,8 @@ interface TicketCardProps {
   isSequentialGroup?: boolean;
   /** Position in the sequential release (1-based), e.g. 1 = first to release */
   sequencePosition?: number;
+  /** Whether multi-currency is enabled (shows price overrides UI) */
+  multiCurrencyEnabled?: boolean;
 }
 
 export function TicketCard({
@@ -67,6 +70,7 @@ export function TicketCard({
   waitingFor,
   isSequentialGroup,
   sequencePosition,
+  multiCurrencyEnabled,
 }: TicketCardProps) {
   const [open, setOpen] = useState(false);
   const currSym = CURRENCY_SYMBOLS[currency] || currency;
@@ -239,6 +243,15 @@ export function TicketCard({
                 )}
               </div>
             </div>
+
+            {multiCurrencyEnabled && (
+              <CurrencyPriceOverrides
+                baseCurrency={currency}
+                basePrice={Number(ticket.price)}
+                overrides={ticket.price_overrides || null}
+                onChange={(val) => onUpdate(index, "price_overrides", val)}
+              />
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

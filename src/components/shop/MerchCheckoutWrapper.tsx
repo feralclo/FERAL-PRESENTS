@@ -60,6 +60,7 @@ export function MerchCheckoutWrapper({ collection, event }: MerchCheckoutWrapper
       price: item.unit_price,
       merch_size: item.merch_size,
       image: imageMap.get(item.collection_item_id),
+      price_overrides: item.price_overrides || null,
     })),
     merchItems: cart.items.map((item) => ({
       collection_item_id: item.collection_item_id,

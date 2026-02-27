@@ -402,7 +402,7 @@ function ProductPageInner({ item, collection }: { item: MerchCollectionItem; col
                           </button>
                         </div>
                         <span className="font-[family-name:var(--font-mono)] text-[12px] font-medium text-foreground/50 w-14 text-right">
-                          {fmtPrice(convertPrice(cartItem.unit_price) * cartItem.qty)}
+                          {fmtPrice(convertPrice(cartItem.unit_price, cartItem.price_overrides) * cartItem.qty)}
                         </span>
                       </div>
                     </div>
@@ -578,8 +578,7 @@ function ProductPageInner({ item, collection }: { item: MerchCollectionItem; col
                 </span>
               </span>
               <span className="font-[family-name:var(--font-mono)] text-[15px] font-bold tracking-[-0.01em] text-[#0e0e0e]">
-                {fmtPrice(convertPrice(cart.totalPrice))
-                  /* Note: shop cart totalPrice is base currency; convertPrice handles conversion */}
+                {fmtPrice(cart.items.reduce((sum, ci) => sum + convertPrice(ci.unit_price, ci.price_overrides) * ci.qty, 0))}
               </span>
             </button>
           </div>

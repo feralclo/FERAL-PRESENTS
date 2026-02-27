@@ -14,6 +14,7 @@ export interface ShopCartItem {
   unit_price: number;
   merch_size?: string;
   max_per_order: number | null;
+  price_overrides?: Record<string, number> | null;
 }
 
 export interface UseShopCartResult {
@@ -101,6 +102,7 @@ export function useShopCart(currency: string = "GBP"): UseShopCartResult {
           unit_price: price,
           merch_size: size,
           max_per_order: collectionItem.max_per_order,
+          price_overrides: product.price_overrides || null,
         },
       ];
     });

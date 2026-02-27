@@ -71,6 +71,8 @@ interface CartLine {
   merch_size?: string;
   /** Product image URL (used for merch-only checkout) */
   image?: string;
+  /** Manual currency price overrides from the product */
+  price_overrides?: Record<string, number> | null;
 }
 
 /** Merch checkout data — when present, NativeCheckout operates in merch pre-order mode */
@@ -345,9 +347,10 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
       if (presentmentCurrency && presentmentCurrency.toUpperCase() !== (event.currency || "GBP").toUpperCase()) {
         const pc = presentmentCurrency.toUpperCase();
         return merchData.cartLines.map((line) => {
-          // Note: merch cart lines don't carry price_overrides (stripped in useShopCart).
-          // The payment intent API reads overrides from the DB, so charge amounts are correct.
-          // Checkout display uses auto-conversion here — a minor display gap for overridden merch.
+          // Check for product-level price override
+          if (line.price_overrides && pc in line.price_overrides) {
+            return { ...line, price: line.price_overrides[pc] };
+          }
           if (hasPresentmentConversion && exchangeRates) {
             return {
               ...line,

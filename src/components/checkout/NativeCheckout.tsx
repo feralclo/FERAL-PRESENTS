@@ -224,6 +224,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   const searchParams = useSearchParams();
   const cartParam = restoreData?.cartParam || searchParams.get("cart");
   const piParam = searchParams.get("pi");
+  const presentmentCurrency = searchParams.get("currency")?.toUpperCase() || null;
   const { trackPageView } = useMetaTracking();
   const orgId = useOrgId();
 
@@ -532,6 +533,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
       stripeReady={stripeReady}
       stripePromise={stripePromise}
       merchData={merchData}
+      presentmentCurrency={presentmentCurrency}
     />
   );
 }
@@ -661,6 +663,7 @@ function StripeCheckoutPage({
   onChangeEmail,
   restoreData,
   stripeReady,
+  presentmentCurrency,
   stripePromise,
   merchData,
 }: {
@@ -678,6 +681,7 @@ function StripeCheckoutPage({
   stripeReady: boolean;
   stripePromise: Promise<Stripe | null> | null;
   merchData?: MerchCheckoutData | null;
+  presentmentCurrency?: string | null;
 }) {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountInfo | null>(null);
 
@@ -764,7 +768,7 @@ function StripeCheckoutPage({
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",
     amount: amountInSmallest || 100,
-    currency: (merchData?.currency || event.currency || "GBP").toLowerCase(),
+    currency: (merchData?.currency || presentmentCurrency || event.currency || "GBP").toLowerCase(),
     appearance: {
       theme: "night",
       variables: {
@@ -824,6 +828,7 @@ function StripeCheckoutPage({
                 onChangeEmail={onChangeEmail}
                 restoreData={restoreData}
                 merchData={merchData}
+                presentmentCurrency={presentmentCurrency}
               />
             </Elements>
           </div>
@@ -869,6 +874,7 @@ function SinglePageCheckoutForm({
   onChangeEmail,
   restoreData,
   merchData,
+  presentmentCurrency,
 }: {
   slug: string;
   event: Event & { ticket_types: TicketTypeRow[] };
@@ -884,6 +890,7 @@ function SinglePageCheckoutForm({
   onChangeEmail: () => void;
   restoreData?: RestoreData | null;
   merchData?: MerchCheckoutData | null;
+  presentmentCurrency?: string | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -1019,6 +1026,7 @@ function SinglePageCheckoutForm({
                 marketing_consent: marketingConsent,
               },
               discount_code: discountCode || undefined,
+              ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
             };
 
         const res = await fetch(piUrl, {
@@ -1030,6 +1038,13 @@ function SinglePageCheckoutForm({
         const data = await res.json();
         if (!res.ok) {
           setError(data.error || "Failed to create payment.");
+          setProcessing(false);
+          return;
+        }
+
+        // Handle currency fallback — connected account may not support the presentment currency
+        if (data.currency_fallback) {
+          setError("This currency is not supported for this event. Please refresh and try again.");
           setProcessing(false);
           return;
         }
@@ -1088,7 +1103,7 @@ function SinglePageCheckoutForm({
         reportCheckoutError({ errorCode: "express_checkout_error", errorMessage: msg, eventId: event.id, eventSlug: slug, customerEmail: email });
       }
     },
-    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty, orgId, merchData]
+    [stripe, elements, event, cartLines, slug, subtotal, onComplete, discountCode, trackAddPaymentInfo, totalAmount, totalQty, orgId, merchData, presentmentCurrency]
   );
 
   const handleSubmit = useCallback(
@@ -1157,6 +1172,7 @@ function SinglePageCheckoutForm({
                 marketing_consent: marketingConsent,
               },
               discount_code: discountCode || undefined,
+              ...(presentmentCurrency ? { presentment_currency: presentmentCurrency.toLowerCase() } : {}),
             };
 
         const res = await fetch(piUrl, {
@@ -1172,6 +1188,14 @@ function SinglePageCheckoutForm({
           setError(errMsg);
           setProcessing(false);
           reportCheckoutError({ errorCode: "payment_intent_failed", errorMessage: errMsg, eventId: event.id, eventSlug: slug, customerEmail: email });
+          return;
+        }
+
+        // Handle currency fallback — connected account may not support the presentment currency
+        if (data.currency_fallback) {
+          trackEngagement("payment_failed");
+          setError("This currency is not supported for this event. Please refresh and try again.");
+          setProcessing(false);
           return;
         }
 
@@ -1304,6 +1328,7 @@ function SinglePageCheckoutForm({
       trackEngagement,
       orgId,
       merchData,
+      presentmentCurrency,
     ]
   );
 

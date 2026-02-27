@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { fmtMoney } from "@/lib/format";
 import {
   Loader2,
   ArrowLeft,
@@ -106,10 +107,7 @@ interface TenantDetail {
 /* ------------------------------------------------------------------ */
 
 function formatCurrency(pence: number): string {
-  return `£${(pence / 100).toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return fmtMoney(pence / 100);
 }
 
 function relativeDate(iso: string): string {

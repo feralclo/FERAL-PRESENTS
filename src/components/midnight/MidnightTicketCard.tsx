@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { hasMerchImages } from "@/lib/merch-images";
 import { formatPrice } from "@/lib/stripe/config";
+import { useCurrencyContext } from "@/components/CurrencyProvider";
 import { MidnightFloatingHearts } from "./MidnightFloatingHearts";
 import {
   TIER_TEXT_CLASSES,
@@ -46,11 +47,12 @@ export function MidnightTicketCard({
   onViewMerch,
   discount,
 }: MidnightTicketCardProps) {
+  const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   const tier = tt.tier || "standard";
   const tierEffect = TIER_EFFECT[tier] || "";
   const isSoldOut = tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity;
   const isActive = qty > 0;
-  const priceDisplay = `${currSymbol}${formatPrice(Number(tt.price))}`;
+  const priceDisplay = fmtPrice(convertPrice(Number(tt.price)));
 
   const merchImgs = tt.includes_merch
     ? (tt.product_id && tt.product ? tt.product.images : tt.merch_images)
@@ -123,7 +125,7 @@ export function MidnightTicketCard({
                 TIER_PRICE_CLASSES[tier] || TIER_PRICE_CLASSES.standard,
               )}
             >
-              {currSymbol}{formatPrice(getDiscountedPrice(Number(tt.price), discount))}
+              {fmtPrice(convertPrice(getDiscountedPrice(Number(tt.price), discount)))}
             </span>
           </div>
         ) : (

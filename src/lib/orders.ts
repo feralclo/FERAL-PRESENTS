@@ -72,6 +72,14 @@ export interface OrderDiscount {
   value?: number;
 }
 
+/** Multi-currency conversion details. */
+export interface OrderConversion {
+  baseCurrency: string;
+  baseTotal: number;
+  exchangeRate: number;
+  rateLocked: string;
+}
+
 /** Full set of parameters for createOrder(). */
 export interface CreateOrderParams {
   /** Supabase server client (already initialized by the caller). */
@@ -90,6 +98,8 @@ export interface CreateOrderParams {
   discountCode?: string;
   /** Discount details for financial tracking. */
   discount?: OrderDiscount;
+  /** Multi-currency conversion details (when presentment != base currency). */
+  conversion?: OrderConversion;
 }
 
 /** A ticket row as created by createOrder(). */
@@ -167,6 +177,7 @@ export async function createOrder(
     sendEmail = true,
     discountCode,
     discount,
+    conversion,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -300,6 +311,13 @@ export async function createOrder(
         currency: (event.currency || "GBP").toUpperCase(),
         payment_method: payment.method,
         payment_ref: payment.ref,
+        // Multi-currency: store base currency equivalent for revenue aggregation
+        base_currency: conversion?.baseCurrency || (event.currency || "GBP").toUpperCase(),
+        base_total: conversion?.baseTotal ?? total,
+        ...(conversion ? {
+          exchange_rate: conversion.exchangeRate,
+          rate_locked_at: conversion.rateLocked,
+        } : {}),
         ...(Object.keys(orderMetadata).length > 0 ? { metadata: orderMetadata } : {}),
       })
       .select()

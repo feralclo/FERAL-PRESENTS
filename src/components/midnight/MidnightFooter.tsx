@@ -2,6 +2,7 @@
 
 import { useBranding } from "@/hooks/useBranding";
 import { PaymentMethodsStrip } from "@/components/layout/PaymentMethodsStrip";
+import { MidnightCurrencySelector } from "./MidnightCurrencySelector";
 
 export function MidnightFooter() {
   const branding = useBranding();
@@ -12,6 +13,9 @@ export function MidnightFooter() {
         <div className="h-px bg-gradient-to-r from-transparent via-foreground/[0.08] to-transparent mb-8 max-md:mb-6" />
         <div className="mb-6 max-md:mb-5">
           <PaymentMethodsStrip variant="midnight" />
+        </div>
+        <div className="mb-4 max-md:mb-3">
+          <MidnightCurrencySelector />
         </div>
         <div className="flex items-center justify-between">
           <span

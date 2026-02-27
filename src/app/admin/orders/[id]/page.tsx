@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import type { Order } from "@/types/orders";
+import { fmtMoney } from "@/lib/format";
 import {
   ArrowLeft,
   Download,
@@ -74,7 +75,7 @@ function buildTimeline(order: Order): TimelineEntry[] {
 
   entries.push({
     label: isMerch ? "Merch pre-order placed" : "Order placed",
-    detail: `${order.order_number} — £${Number(order.total).toFixed(2)}`,
+    detail: `${order.order_number} — ${fmtMoney(Number(order.total), order.currency)}`,
     time: fmt(order.created_at),
     icon: isMerch ? Shirt : ShoppingBag,
     color: "text-muted-foreground",
@@ -146,9 +147,6 @@ function buildTimeline(order: Order): TimelineEntry[] {
 }
 
 /* ── Helpers ── */
-function formatCurrency(amount: number) {
-  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function formatDateTime(d: string) {
   return new Date(d).toLocaleString("en-GB", {
@@ -452,7 +450,7 @@ export default function OrderDetailPage() {
                   <div className="flex items-center justify-between px-5 py-3.5">
                     <span className="text-sm text-muted-foreground">Subtotal</span>
                     <span className="font-mono text-sm text-foreground">
-                      {formatCurrency(Number(order.subtotal))}
+                      {fmtMoney(Number(order.subtotal), order.currency)}
                     </span>
                   </div>
                   {discountAmount != null && discountAmount > 0 && (
@@ -467,7 +465,7 @@ export default function OrderDetailPage() {
                         )}
                       </span>
                       <span className="font-mono text-sm text-success">
-                        -{formatCurrency(discountAmount)}
+                        -{fmtMoney(discountAmount, order.currency)}
                       </span>
                     </div>
                   )}
@@ -483,7 +481,7 @@ export default function OrderDetailPage() {
                         )}
                       </span>
                       <span className="font-mono text-sm text-foreground">
-                        {formatCurrency(vatAmount)}
+                        {fmtMoney(vatAmount, order.currency)}
                       </span>
                     </div>
                   )}
@@ -491,14 +489,14 @@ export default function OrderDetailPage() {
                     <div className="flex items-center justify-between px-5 py-3.5">
                       <span className="text-sm text-muted-foreground">Fees</span>
                       <span className="font-mono text-sm text-foreground">
-                        {formatCurrency(fees)}
+                        {fmtMoney(fees, order.currency)}
                       </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between bg-muted/30 px-5 py-4">
                     <span className="text-sm font-semibold text-foreground">Total</span>
                     <span className="font-mono text-xl font-bold text-foreground">
-                      {formatCurrency(Number(order.total))}
+                      {fmtMoney(Number(order.total), order.currency)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between px-5 py-3.5">
@@ -579,7 +577,7 @@ export default function OrderDetailPage() {
                       <DollarSign size={12} className="text-muted-foreground" />
                     </div>
                     <span className="text-sm text-foreground/80">
-                      {formatCurrency(Number(customer.total_spent || 0))} lifetime
+                      {fmtMoney(Number(customer.total_spent || 0), order.currency)} lifetime
                     </span>
                   </div>
                 </div>
@@ -628,12 +626,12 @@ export default function OrderDetailPage() {
                         {item.ticket_type?.name || "Ticket"}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {item.qty} x {formatCurrency(Number(item.unit_price))}
+                        {item.qty} x {fmtMoney(Number(item.unit_price), order.currency)}
                       </p>
                     </div>
                   </div>
                   <span className="font-mono text-sm font-bold text-foreground">
-                    {formatCurrency(Number(item.unit_price) * item.qty)}
+                    {fmtMoney(Number(item.unit_price) * item.qty, order.currency)}
                   </span>
                 </div>
               ))}
@@ -704,12 +702,12 @@ export default function OrderDetailPage() {
                               </Badge>
                             )}
                             <span className="text-xs text-muted-foreground">
-                              Qty {item.qty} &times; {formatCurrency(Number(item.unit_price))}
+                              Qty {item.qty} &times; {fmtMoney(Number(item.unit_price), order.currency)}
                             </span>
                           </div>
                         </div>
                         <span className="font-mono text-sm font-bold text-foreground flex-shrink-0">
-                          {formatCurrency(Number(item.unit_price) * item.qty)}
+                          {fmtMoney(Number(item.unit_price) * item.qty, order.currency)}
                         </span>
                       </div>
                     </div>

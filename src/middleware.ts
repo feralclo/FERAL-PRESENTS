@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware";
 import { SUPABASE_URL } from "@/lib/constants";
+import { getDefaultCurrency } from "@/lib/currency/country-currency-map";
 
 /**
  * Security headers applied to all responses.
@@ -196,6 +197,7 @@ const PUBLIC_API_EXACT_GETS = [
   "/api/merch-store",
   "/api/branding",
   "/api/themes",
+  "/api/currency/rates",
 ];
 
 function isPublicApiRoute(pathname: string, method: string): boolean {
@@ -407,6 +409,20 @@ export async function middleware(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 30, // 30 days — match middleware client
     });
   });
+
+  // ── Geo-detection: set buyer_currency cookie from Vercel IP country header ──
+  // Only set if the cookie doesn't already exist (respect user's manual override)
+  if (!request.cookies.get("buyer_currency")) {
+    const country = request.headers.get("x-vercel-ip-country");
+    if (country) {
+      const detectedCurrency = getDefaultCurrency(country);
+      response.cookies.set("buyer_currency", detectedCurrency, {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24, // 24h
+      });
+    }
+  }
 
   return applySecurityHeaders(response);
 }

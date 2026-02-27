@@ -24,8 +24,14 @@ export const DEFAULT_PLATFORM_FEE_PERCENT = 5;
 export const MIN_PLATFORM_FEE = 50;
 
 /** Supported currencies */
-export const SUPPORTED_CURRENCIES = ["gbp", "eur", "usd"] as const;
+export const SUPPORTED_CURRENCIES = ["gbp", "eur", "usd", "cad", "aud", "chf", "sek", "nok", "dkk"] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
+
+/** Zero-decimal currencies (amount in whole units, not cents). None in our current set, but future-proof. */
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga",
+  "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
+]);
 
 /** Default connected account type */
 export const DEFAULT_ACCOUNT_TYPE = "custom" as const;
@@ -45,15 +51,23 @@ export function calculateApplicationFee(
 
 /**
  * Convert a display price (e.g., 26.50) to smallest currency unit (e.g., 2650).
+ * Respects zero-decimal currencies (e.g. JPY: 2650 → 2650, not 265000).
  */
-export function toSmallestUnit(amount: number): number {
+export function toSmallestUnit(amount: number, currency?: string): number {
+  if (currency && ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase())) {
+    return Math.round(amount);
+  }
   return Math.round(amount * 100);
 }
 
 /**
  * Convert smallest currency unit (e.g., 2650) to display price (e.g., 26.50).
+ * Respects zero-decimal currencies.
  */
-export function fromSmallestUnit(amount: number): number {
+export function fromSmallestUnit(amount: number, currency?: string): number {
+  if (currency && ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase())) {
+    return amount;
+  }
   return amount / 100;
 }
 
@@ -68,6 +82,16 @@ export function getCurrencySymbol(currency: string): string {
       return "€";
     case "usd":
       return "$";
+    case "cad":
+      return "CA$";
+    case "aud":
+      return "A$";
+    case "chf":
+      return "CHF ";
+    case "sek":
+    case "nok":
+    case "dkk":
+      return `${currency.toUpperCase()} `;
     default:
       return currency.toUpperCase();
   }
@@ -81,6 +105,24 @@ export function formatPrice(price: number, currency?: string): string {
   const symbol = currency ? getCurrencySymbol(currency) : "";
   const display = price % 1 === 0 ? String(price) : price.toFixed(2);
   return `${symbol}${display}`;
+}
+
+/**
+ * Format a price using Intl.NumberFormat for locale-aware display.
+ * Handles symbol placement, decimal separators, and grouping per currency.
+ */
+export function formatPriceIntl(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    // Fallback for unknown currency codes
+    return `${getCurrencySymbol(currency)}${amount % 1 === 0 ? String(amount) : amount.toFixed(2)}`;
+  }
 }
 
 /**

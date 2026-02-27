@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { fmtMoney } from "@/lib/format";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -197,8 +198,8 @@ function formatTimestamp(dateStr: string): string {
 
 function formatPence(pence: number): string {
   const pounds = pence / 100;
-  if (pounds >= 1000) return `£${(pounds / 1000).toFixed(1)}k`;
-  return pounds % 1 === 0 ? `£${pounds}` : `£${pounds.toFixed(2)}`;
+  if (pounds >= 1000) return fmtMoney(Number((pounds / 1000).toFixed(1))).replace(/0$/, "") + "k";
+  return fmtMoney(pounds);
 }
 
 function friendlyEventType(type: string): string {
@@ -472,7 +473,7 @@ function AIDigestCard() {
                       <span>{digest.raw_stats.payments_succeeded} succeeded</span>
                       <span>{digest.raw_stats.payments_failed} failed</span>
                       <span>{(digest.raw_stats.failure_rate * 100).toFixed(1)}% rate</span>
-                      <span>£{digest.raw_stats.amount_failed_gbp.toFixed(2)} lost</span>
+                      <span>{fmtMoney(digest.raw_stats.amount_failed_gbp)} lost</span>
                       <span>{digest.raw_stats.incomplete_checkouts} incomplete</span>
                     </div>
                   </div>

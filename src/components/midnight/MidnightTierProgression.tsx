@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/stripe/config";
+import { useCurrencyContext } from "@/components/CurrencyProvider";
 import type { TicketTypeRow } from "@/types/events";
 
 interface MidnightTierProgressionProps {
@@ -14,6 +15,7 @@ export function MidnightTierProgression({
   tickets,
   currSymbol,
 }: MidnightTierProgressionProps) {
+  const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   if (tickets.length <= 1) return null;
 
   const firstActiveIdx = tickets.findIndex(
@@ -48,7 +50,7 @@ export function MidnightTierProgression({
                 soldOut ? "line-through text-muted-foreground" : "text-foreground",
               )}
             >
-              {currSymbol}{formatPrice(Number(tt.price))}
+              {fmtPrice(convertPrice(Number(tt.price)))}
             </span>
             <Badge
               variant={isActive ? "default" : "secondary"}

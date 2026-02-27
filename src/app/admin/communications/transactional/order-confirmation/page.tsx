@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { fmtMoney } from "@/lib/format";
 import {
   ChevronLeft,
   AlertTriangle,
@@ -185,7 +186,7 @@ function EmailPreview({ settings, showMerch, previewMode = "tickets" }: { settin
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#999", marginBottom: 12 }}>Order Details</div>
               <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>Order</span><span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: "#111" }}>DEMO-00042</span></div>
               <div className="flex justify-between" style={{ fontSize: 14, color: "#6666a0", padding: "4px 0" }}><span>{isMerchPreorder ? "Items" : "Tickets"}</span><span style={{ color: "#111" }}>{isMerchPreorder ? "1" : "2"}</span></div>
-              <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#6666a0" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>£52.92</span></div>
+              <div className="flex justify-between" style={{ fontSize: 14, padding: "4px 0", borderTop: "1px solid #eee", marginTop: 4, paddingTop: 8 }}><span style={{ color: "#6666a0" }}>Total</span><span style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: "#111" }}>{fmtMoney(52.92)}</span></div>
             </div>
             <div className="px-8"><div style={{ height: 1, background: "#eee" }} /></div>
             <div className="px-8 pt-5 pb-2">

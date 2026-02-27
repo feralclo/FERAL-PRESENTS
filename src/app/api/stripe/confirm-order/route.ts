@@ -231,6 +231,22 @@ export async function POST(request: NextRequest) {
       ? metadata.customer_marketing_consent === "true"
       : undefined;
 
+    // Extract multi-currency conversion metadata
+    let conversionInfo: {
+      baseCurrency: string;
+      baseTotal: number;
+      exchangeRate: number;
+      rateLocked: string;
+    } | undefined;
+    if (metadata.base_currency && metadata.exchange_rate) {
+      conversionInfo = {
+        baseCurrency: metadata.base_currency,
+        baseTotal: Number(metadata.base_total || metadata.base_subtotal || 0),
+        exchangeRate: Number(metadata.exchange_rate),
+        rateLocked: metadata.rate_locked_at || new Date().toISOString(),
+      };
+    }
+
     // Create order via shared function
     const result = await createOrder({
       supabase,
@@ -260,6 +276,7 @@ export async function POST(request: NextRequest) {
       vat: vatInfo,
       discountCode: metadata.discount_code || undefined,
       discount: discountInfo,
+      conversion: conversionInfo,
     });
 
     // Fetch the full order with relations to return

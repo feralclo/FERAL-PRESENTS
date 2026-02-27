@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { fmtMoney } from "@/lib/format";
 
 // 20 validations per minute per IP — prevents brute-force code guessing
 const validateLimiter = createRateLimiter("discount-validate", {
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           valid: false,
-          error: `Minimum order of £${Number(discount.min_order_amount).toFixed(2)} required`,
+          error: `Minimum order of ${fmtMoney(Number(discount.min_order_amount))} required`,
         },
         { status: 200 }
       );

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useCurrencyContext } from "@/components/CurrencyProvider";
 
 interface MidnightHeroProps {
   title: string;
@@ -25,6 +26,7 @@ export function MidnightHero({
   minPrice,
   currSymbol,
 }: MidnightHeroProps) {
+  const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   return (
     <section className="midnight-hero midnight-hero-glass-border relative flex items-end justify-center text-center overflow-hidden bg-background">
       {/* Background image via CSS — avoids iOS Safari <img> + object-fit
@@ -103,9 +105,9 @@ export function MidnightHero({
           </div>
         )}
 
-        {minPrice != null && minPrice > 0 && currSymbol && (
+        {minPrice != null && minPrice > 0 && (
           <p className="mt-7 max-md:mt-5 max-[480px]:mt-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.12em] uppercase text-foreground/40">
-            From {currSymbol}{minPrice % 1 === 0 ? minPrice : minPrice.toFixed(2)}
+            From {fmtPrice(convertPrice(minPrice))}
           </p>
         )}
 

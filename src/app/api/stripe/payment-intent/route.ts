@@ -6,7 +6,14 @@ import { getOrgIdFromRequest } from "@/lib/org";
 import {
   calculateApplicationFee,
   toSmallestUnit,
+  SUPPORTED_CURRENCIES,
 } from "@/lib/stripe/config";
+import {
+  getExchangeRates,
+  convertCurrency,
+  roundPresentmentPrice,
+  areRatesFreshForCheckout,
+} from "@/lib/currency/exchange-rates";
 import { getOrgPlan } from "@/lib/plans";
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
     const orgId = getOrgIdFromRequest(request);
     const stripe = getStripe();
     const body = await request.json();
-    const { event_id, items, customer, discount_code } = body;
+    const { event_id, items, customer, discount_code, presentment_currency } = body;
 
     if (!event_id || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -269,8 +276,10 @@ export async function POST(request: NextRequest) {
         );
       }
       if (discount.min_order_amount != null && subtotal < discount.min_order_amount) {
+        const { getCurrencySymbol } = await import("@/lib/stripe/config");
+        const sym = getCurrencySymbol(event.currency || "GBP");
         return NextResponse.json(
-          { error: `Minimum order of £${Number(discount.min_order_amount).toFixed(2)} required` },
+          { error: `Minimum order of ${sym}${Number(discount.min_order_amount).toFixed(2)} required` },
           { status: 400 }
         );
       }
@@ -291,6 +300,49 @@ export async function POST(request: NextRequest) {
     }
 
     const afterDiscount = Math.max(subtotal - discountAmount, 0);
+
+    // ── Multi-currency conversion ──────────────────────────────────────
+    // When presentment_currency differs from the event's base currency,
+    // convert the entire charge to the buyer's preferred currency.
+    const baseCurrency = (event.currency || "GBP").toLowerCase();
+    let chargeCurrency = baseCurrency;
+    let exchangeRate: number | null = null;
+    let rateLocked: string | null = null;
+    let convertedSubtotal = afterDiscount;
+    let convertedDiscountAmount = discountAmount;
+
+    if (
+      presentment_currency &&
+      presentment_currency.toLowerCase() !== baseCurrency &&
+      SUPPORTED_CURRENCIES.includes(presentment_currency.toLowerCase() as typeof SUPPORTED_CURRENCIES[number])
+    ) {
+      const rates = await getExchangeRates();
+      if (rates && areRatesFreshForCheckout(rates)) {
+        const pCurrency = presentment_currency.toUpperCase();
+        const bCurrency = baseCurrency.toUpperCase();
+
+        // Convert subtotal (after discount) to presentment currency
+        convertedSubtotal = roundPresentmentPrice(
+          convertCurrency(afterDiscount, bCurrency, pCurrency, rates)
+        );
+
+        // Convert discount amount for metadata tracking
+        convertedDiscountAmount = discountAmount > 0
+          ? roundPresentmentPrice(convertCurrency(discountAmount, bCurrency, pCurrency, rates))
+          : 0;
+
+        // Calculate the exchange rate (1 base = rate * presentment)
+        const fromRate = rates.rates[bCurrency];
+        const toRate = rates.rates[pCurrency];
+        if (fromRate && toRate) {
+          exchangeRate = toRate / fromRate;
+        }
+
+        chargeCurrency = presentment_currency.toLowerCase();
+        rateLocked = rates.fetched_at;
+      }
+      // If rates unavailable/stale, fall through to base currency (safe default)
+    }
 
     // Resolve VAT settings: event-level overrides take priority over org-level.
     // event.vat_registered === true  → use event fields (skip org lookup)
@@ -340,10 +392,21 @@ export async function POST(request: NextRequest) {
     }
     // else: event.vat_registered === false → no VAT (vatAmount stays 0)
 
+    // For multi-currency: recalculate VAT on converted amount if applicable
+    if (exchangeRate && vatAmount > 0) {
+      // VAT rate is a percentage — apply to converted subtotal
+      if (vatInclusive) {
+        // VAT is already inside the converted price — just recalculate the amount
+        vatAmount = Number((convertedSubtotal - convertedSubtotal / (1 + vatRate / 100)).toFixed(2));
+      } else {
+        vatAmount = Number((convertedSubtotal * vatRate / 100).toFixed(2));
+      }
+    }
+
     // VAT-exclusive: add VAT on top. VAT-inclusive: total unchanged.
-    const chargeAmount = vatInclusive ? afterDiscount : afterDiscount + vatAmount;
-    const amountInSmallestUnit = toSmallestUnit(chargeAmount);
-    const currency = (event.currency || "GBP").toLowerCase();
+    const chargeAmount = vatInclusive ? convertedSubtotal : convertedSubtotal + vatAmount;
+    const amountInSmallestUnit = toSmallestUnit(chargeAmount, chargeCurrency);
+    const currency = chargeCurrency;
 
     // Build PaymentIntent parameters — fee rates determined by org's plan
     const plan = await getOrgPlan(orgId);
@@ -373,6 +436,16 @@ export async function POST(request: NextRequest) {
       metadata.customer_marketing_consent = customer.marketing_consent ? "true" : "false";
     }
 
+    // Multi-currency metadata (for order creation)
+    if (exchangeRate && chargeCurrency !== baseCurrency) {
+      metadata.presentment_currency = chargeCurrency.toUpperCase();
+      metadata.base_currency = baseCurrency.toUpperCase();
+      metadata.exchange_rate = String(exchangeRate);
+      metadata.base_subtotal = String(afterDiscount);
+      metadata.base_total = String(vatInclusive ? afterDiscount : afterDiscount + (discountAmount > 0 ? vatAmount : 0));
+      if (rateLocked) metadata.rate_locked_at = rateLocked;
+    }
+
     if (discountMeta) {
       metadata.discount_code = discountMeta.code;
       metadata.discount_type = discountMeta.type;
@@ -386,53 +459,55 @@ export async function POST(request: NextRequest) {
       metadata.vat_inclusive = vatInclusive ? "true" : "false";
     }
 
-    if (stripeAccountId) {
-      // Direct charge on connected account
-      const paymentIntent = await stripe.paymentIntents.create(
-        {
+    // Helper to create the PI (shared between connected + platform paths)
+    const createPI = async () => {
+      try {
+        if (stripeAccountId) {
+          return await stripe.paymentIntents.create(
+            {
+              amount: amountInSmallestUnit,
+              currency,
+              application_fee_amount: applicationFee,
+              description: `${event.name} — ${description}`,
+              metadata,
+              automatic_payment_methods: { enabled: true },
+            },
+            { stripeAccount: stripeAccountId }
+          );
+        }
+        return await stripe.paymentIntents.create({
           amount: amountInSmallestUnit,
           currency,
-          application_fee_amount: applicationFee,
           description: `${event.name} — ${description}`,
           metadata,
-          automatic_payment_methods: {
-            enabled: true,
-          },
-        },
-        {
-          stripeAccount: stripeAccountId,
+          automatic_payment_methods: { enabled: true },
+        });
+      } catch (piErr) {
+        // If Stripe rejects the currency (unsupported on connected account),
+        // tell the client to retry in the base currency
+        if (
+          exchangeRate &&
+          piErr instanceof Error &&
+          piErr.message?.includes("currency")
+        ) {
+          return null; // signal currency fallback
         }
-      );
-
-      // Increment discount used_count (fire-and-forget — never blocks the payment)
-      if (discountMeta) {
-        incrementDiscountUsed(supabase, discountMeta.code, orgId);
+        throw piErr;
       }
+    };
 
+    const paymentIntent = await createPI();
+
+    if (!paymentIntent) {
+      // Currency not supported — tell client to fall back
       return NextResponse.json({
-        client_secret: paymentIntent.client_secret,
-        payment_intent_id: paymentIntent.id,
-        stripe_account_id: stripeAccountId,
-        amount: amountInSmallestUnit,
-        currency,
-        application_fee: applicationFee,
-        discount: discountMeta,
-        vat: vatAmount > 0 ? { amount: vatAmount, rate: vatRate, inclusive: vatInclusive } : null,
+        currency_fallback: true,
+        currency: baseCurrency,
+        error: "This currency is not supported for this event. Please try again.",
       });
     }
 
-    // Platform-only charge (no Connect — for testing or platform-as-seller)
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInSmallestUnit,
-      currency,
-      description: `${event.name} — ${description}`,
-      metadata,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
-
-    // Increment discount used_count (fire-and-forget)
+    // Increment discount used_count (fire-and-forget — never blocks the payment)
     if (discountMeta) {
       incrementDiscountUsed(supabase, discountMeta.code, orgId);
     }
@@ -440,11 +515,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       client_secret: paymentIntent.client_secret,
       payment_intent_id: paymentIntent.id,
-      stripe_account_id: null,
+      stripe_account_id: stripeAccountId || null,
       amount: amountInSmallestUnit,
       currency,
-      application_fee: 0,
+      application_fee: stripeAccountId ? applicationFee : 0,
       discount: discountMeta,
+      vat: vatAmount > 0 ? { amount: vatAmount, rate: vatRate, inclusive: vatInclusive } : null,
+      // Multi-currency info for the client
+      ...(exchangeRate ? {
+        presentment_currency: chargeCurrency.toUpperCase(),
+        base_currency: baseCurrency.toUpperCase(),
+        exchange_rate: exchangeRate,
+      } : {}),
     });
   } catch (err) {
     console.error("PaymentIntent creation error:", err);

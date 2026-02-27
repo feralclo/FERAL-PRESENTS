@@ -41,6 +41,7 @@ import {
   Check,
 } from "lucide-react";
 import type { Discount, DiscountType, DiscountStatus } from "@/types/discounts";
+import { fmtMoney } from "@/lib/format";
 
 type FilterTab = "all" | DiscountStatus;
 
@@ -50,7 +51,7 @@ const STATUS_VARIANT: Record<DiscountStatus, "success" | "secondary"> = {
 };
 
 function formatValue(type: DiscountType, value: number): string {
-  return type === "percentage" ? `${value}%` : `£${Number(value).toFixed(2)}`;
+  return type === "percentage" ? `${value}%` : fmtMoney(value);
 }
 
 function formatDate(iso: string | null | undefined): string {

@@ -14,6 +14,7 @@ import { TEE_SIZES } from "@/types/tickets";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountedPrice } from "./discount-utils";
 import { formatPrice } from "@/lib/stripe/config";
+import { useCurrencyContext } from "@/components/CurrencyProvider";
 import { CodeRainCanvas } from "./CodeRainCanvas";
 
 interface MidnightMerchModalProps {
@@ -49,6 +50,7 @@ export function MidnightMerchModal({
   discount,
   displayEffect,
 }: MidnightMerchModalProps) {
+  const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   const images = useMemo(() => {
     return normalizeMerchImages(merchImages).map((src, i) => ({
       src,
@@ -292,15 +294,15 @@ export function MidnightMerchModal({
                   {discount && discount.type === "percentage" ? (
                     <div className="flex flex-col items-end shrink-0">
                       <span className="font-[family-name:var(--font-mono)] text-[11px] max-md:text-[10px] font-medium tracking-[0.02em] text-white/25 line-through">
-                        {currencySymbol}{price.toFixed(2)}
+                        {fmtPrice(convertPrice(price))}
                       </span>
                       <span className="font-[family-name:var(--font-mono)] text-lg max-md:text-base font-bold text-white tracking-[0.02em]">
-                        {currencySymbol}{formatPrice(getDiscountedPrice(price, discount))}
+                        {fmtPrice(convertPrice(getDiscountedPrice(price, discount)))}
                       </span>
                     </div>
                   ) : (
                     <span className="font-[family-name:var(--font-mono)] text-lg max-md:text-base font-bold text-white tracking-[0.02em] shrink-0">
-                      {currencySymbol}{price.toFixed(2)}
+                      {fmtPrice(convertPrice(price))}
                     </span>
                   )}
                 </div>
@@ -381,7 +383,7 @@ export function MidnightMerchModal({
                 className="flex-1 h-11 bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.10)] text-white font-[family-name:var(--font-sans)] text-[13px] max-md:text-xs font-bold tracking-[0.03em] uppercase rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_0_20px_rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.18)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_0_24px_rgba(255,255,255,0.04)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 onClick={handleAdd}
               >
-                Add to Cart &mdash; {currencySymbol}{formatPrice((discount && discount.type === "percentage" ? getDiscountedPrice(price, discount) : price) * qty)}
+                Add to Cart &mdash; {fmtPrice(convertPrice((discount && discount.type === "percentage" ? getDiscountedPrice(price, discount) : price) * qty))}
               </button>
             </div>
           </div>

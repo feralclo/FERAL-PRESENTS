@@ -57,8 +57,8 @@ export interface UseCartResult {
   handleSizeConfirm: () => void;
   /** Add merch from external source (TeeModal) — stable callback */
   addMerchExternal: (ticketTypeId: string, size: string, qty: number) => void;
-  /** Build checkout URL (null if cart empty) */
-  getCheckoutUrl: () => string | null;
+  /** Build checkout URL (null if cart empty). Pass presentmentCurrency for multi-currency. */
+  getCheckoutUrl: (presentmentCurrency?: string) => string | null;
   /** Navigate to checkout */
   handleCheckout: () => void;
 }
@@ -186,7 +186,7 @@ export function useCart({
     [quantities, activeTypes]
   );
 
-  const getCheckoutUrl = useCallback(() => {
+  const getCheckoutUrl = useCallback((presentmentCurrency?: string) => {
     const items: string[] = [];
     for (const tt of activeTypes) {
       const qty = getQty(tt.id);
@@ -200,8 +200,12 @@ export function useCart({
       }
     }
     if (items.length === 0) return null;
-    return `/event/${eventSlug}/checkout/?cart=${encodeURIComponent(items.join(","))}`;
-  }, [activeTypes, quantities, merchSizes, eventSlug]);
+    let url = `/event/${eventSlug}/checkout/?cart=${encodeURIComponent(items.join(","))}`;
+    if (presentmentCurrency && presentmentCurrency.toUpperCase() !== currency.toUpperCase()) {
+      url += `&currency=${encodeURIComponent(presentmentCurrency.toLowerCase())}`;
+    }
+    return url;
+  }, [activeTypes, quantities, merchSizes, eventSlug, currency]);
 
   const handleCheckout = useCallback(() => {
     const url = getCheckoutUrl();

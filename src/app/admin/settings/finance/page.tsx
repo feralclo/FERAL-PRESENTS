@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Info,
 } from "lucide-react";
+import { fmtMoney } from "@/lib/format";
 
 export default function FinancePage() {
   return (
@@ -413,7 +414,7 @@ function TaxTab() {
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between text-foreground/80">
                     <span>Subtotal</span>
-                    <span>£26.50</span>
+                    <span>{fmtMoney(26.50)}</span>
                   </div>
                   {vat.prices_include_vat ? (
                     <div className="flex justify-between text-muted-foreground text-xs">
@@ -421,11 +422,10 @@ function TaxTab() {
                         Includes VAT ({vat.vat_rate}%)
                       </span>
                       <span>
-                        £
-                        {(
+                        {fmtMoney(
                           26.5 -
                           26.5 / (1 + vat.vat_rate / 100)
-                        ).toFixed(2)}
+                        )}
                       </span>
                     </div>
                   ) : (
@@ -434,17 +434,18 @@ function TaxTab() {
                         VAT ({vat.vat_rate}%)
                       </span>
                       <span>
-                        £{((26.5 * vat.vat_rate) / 100).toFixed(2)}
+                        {fmtMoney((26.5 * vat.vat_rate) / 100)}
                       </span>
                     </div>
                   )}
                   <div className="border-t border-border/50 pt-1.5 flex justify-between font-medium text-foreground">
                     <span>Total</span>
                     <span>
-                      £
-                      {vat.prices_include_vat
-                        ? "26.50"
-                        : (26.5 + (26.5 * vat.vat_rate) / 100).toFixed(2)}
+                      {fmtMoney(
+                        vat.prices_include_vat
+                          ? 26.50
+                          : 26.5 + (26.5 * vat.vat_rate) / 100
+                      )}
                     </span>
                   </div>
                 </div>

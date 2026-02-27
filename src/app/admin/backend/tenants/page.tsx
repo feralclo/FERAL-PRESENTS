@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { fmtMoney } from "@/lib/format";
 import {
   Loader2,
   Users,
@@ -84,7 +85,7 @@ type SortDir = "asc" | "desc";
 /* ------------------------------------------------------------------ */
 
 function formatCurrency(pence: number): string {
-  return `£${(pence / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return fmtMoney(pence / 100);
 }
 
 function relativeDate(iso: string): string {

@@ -81,6 +81,9 @@ export async function GET(request: NextRequest) {
       "Unit Price",
       "Order Total",
       "Currency",
+      "Base Currency",
+      "Base Total",
+      "Exchange Rate",
       "Payment Method",
       "Payment Ref",
     ];
@@ -167,6 +170,9 @@ export async function GET(request: NextRequest) {
             .join(", "),
           Number(order.total).toFixed(2),
           order.currency,
+          order.base_currency || order.currency,
+          order.base_total != null ? Number(order.base_total).toFixed(2) : Number(order.total).toFixed(2),
+          order.exchange_rate != null ? String(order.exchange_rate) : "",
           order.payment_method,
           order.payment_ref || "",
         ]);
@@ -197,6 +203,9 @@ export async function GET(request: NextRequest) {
               : "",
             Number(order.total).toFixed(2),
             order.currency,
+            order.base_currency || order.currency,
+            order.base_total != null ? Number(order.base_total).toFixed(2) : Number(order.total).toFixed(2),
+            order.exchange_rate != null ? String(order.exchange_rate) : "",
             order.payment_method,
             order.payment_ref || "",
           ]);

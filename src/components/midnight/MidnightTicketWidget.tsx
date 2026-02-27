@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ExpressCheckout } from "@/components/checkout/ExpressCheckout";
 import { preloadStripe } from "@/lib/stripe/client";
+import { useCurrencyContext } from "@/components/CurrencyProvider";
 import { MidnightTicketCard } from "./MidnightTicketCard";
 import { MidnightCartSummary } from "./MidnightCartSummary";
 import { MidnightTierProgression } from "./MidnightTierProgression";
@@ -56,6 +57,7 @@ export function MidnightTicketWidget({
   discount,
   onApplyDiscount,
 }: MidnightTicketWidgetProps) {
+  const { convertPrice, formatPrice: fmtPrice, isConverted, currency: presentmentCurrency } = useCurrencyContext();
   const isStripe = paymentMethod === "stripe";
   const [expressError, setExpressError] = useState("");
 
@@ -323,14 +325,23 @@ export function MidnightTicketWidget({
                 ctaGlow ? "midnight-cta-ready" : "",
               )}
               disabled={totalQty === 0}
-              onClick={handleCheckout}
+              onClick={() => {
+                if (isConverted) {
+                  // Pass presentment currency in checkout URL for multi-currency flow
+                  const url = cart.getCheckoutUrl(presentmentCurrency);
+                  if (!url) return;
+                  window.location.assign(url);
+                } else {
+                  handleCheckout();
+                }
+              }}
             >
               {totalQty === 0
                 ? "Select tickets to continue"
                 : <span className="flex items-center justify-center gap-2.5">
                     <span>Checkout</span>
                     <span className="w-px h-3.5 bg-white/20" />
-                    <span key={discountedTotal} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{currSymbol}{discountedTotal.toFixed(2)}</span>
+                    <span key={discountedTotal} className="midnight-qty-pop inline-block font-[family-name:var(--font-mono)] tracking-[0.04em]">{fmtPrice(convertPrice(discountedTotal))}</span>
                   </span>}
             </button>
 

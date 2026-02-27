@@ -13,6 +13,7 @@ import {
 import {
   ShoppingBag, DollarSign, Ticket, Shirt, Download, Package, ArrowLeft, Tag, Search, X,
 } from "lucide-react";
+import { fmtMoney } from "@/lib/format";
 
 /* ── Types ── */
 type Period = "today" | "7d" | "30d";
@@ -157,7 +158,7 @@ function OrdersSearch({
         id: o.id,
         label: o.order_number,
         detail: custName,
-        secondary: formatCurrency(Number(o.total)),
+        secondary: fmtMoney(Number(o.total), o.currency),
       });
     }
 
@@ -407,10 +408,6 @@ function getDateStart(period: Period): string {
   }
 }
 
-function formatCurrency(amount: number) {
-  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -637,7 +634,7 @@ function OrdersContent() {
         />
         <StatCard
           label="Revenue"
-          value={v(formatCurrency(revenue))}
+          value={v(fmtMoney(revenue))}
           icon={DollarSign}
         />
         <StatCard
@@ -647,7 +644,7 @@ function OrdersContent() {
         />
         <StatCard
           label="Merch Revenue"
-          value={v(formatCurrency(merchRevenue))}
+          value={v(fmtMoney(merchRevenue))}
           icon={Shirt}
           detail={statsLoading ? undefined : `${merchItems} item${merchItems !== 1 ? "s" : ""}`}
         />
@@ -861,7 +858,7 @@ function OrdersContent() {
                           </Badge>
                         )}
                         <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                          {formatCurrency(Number(order.total))}
+                          {fmtMoney(Number(order.total), order.currency)}
                         </span>
                       </div>
                     </TableCell>

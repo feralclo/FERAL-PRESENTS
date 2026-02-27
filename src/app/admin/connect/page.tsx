@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { DEFAULT_PLATFORM_FEE_PERCENT, MIN_PLATFORM_FEE } from "@/lib/stripe/config";
+import { fmtMoney } from "@/lib/format";
 import {
   Select,
   SelectTrigger,
@@ -203,7 +204,7 @@ export default function StripeConnectPage() {
             Minimum Fee
           </div>
           <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, color: "#8B5CF6", marginBottom: 4 }}>
-            £{(MIN_PLATFORM_FEE / 100).toFixed(2)}
+            {fmtMoney(MIN_PLATFORM_FEE / 100)}
           </div>
           <div style={{ color: "#55557a", fontSize: 11 }}>
             Floor per transaction
@@ -227,7 +228,7 @@ export default function StripeConnectPage() {
       <div className="admin-card" style={{ marginBottom: 32 }}>
         <h2 className="admin-card__title">Revenue Split Example</h2>
         <p style={{ color: "#6666a0", fontSize: 12, marginBottom: 16 }}>
-          How a £30 ticket sale is split with the default {DEFAULT_PLATFORM_FEE_PERCENT}% platform fee:
+          How a {fmtMoney(30)} ticket sale is split with the default {DEFAULT_PLATFORM_FEE_PERCENT}% platform fee:
         </p>
         <div style={{ display: "flex", gap: 0, height: 40, borderRadius: 4, overflow: "hidden", marginBottom: 16 }}>
           <div style={{
@@ -241,7 +242,7 @@ export default function StripeConnectPage() {
             color: "#34D399",
             borderRight: "2px solid #111117",
           }}>
-            Promoter: £{(30 * (1 - DEFAULT_PLATFORM_FEE_PERCENT / 100)).toFixed(2)}
+            Promoter: {fmtMoney(30 * (1 - DEFAULT_PLATFORM_FEE_PERCENT / 100))}
           </div>
           <div style={{
             flex: DEFAULT_PLATFORM_FEE_PERCENT,
@@ -253,7 +254,7 @@ export default function StripeConnectPage() {
             fontSize: 11,
             color: "#8B5CF6",
           }}>
-            Platform: £{(30 * DEFAULT_PLATFORM_FEE_PERCENT / 100).toFixed(2)}
+            Platform: {fmtMoney(30 * DEFAULT_PLATFORM_FEE_PERCENT / 100)}
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>

@@ -125,6 +125,11 @@ export function merchStoreKey(orgId: string): string {
   return `${orgId}_merch_store`;
 }
 
+/** Platform-level exchange rates cache key */
+export function exchangeRatesKey(): string {
+  return "platform_exchange_rates";
+}
+
 /** Platform-level Stripe billing config key (stores product_id + price_id) */
 export function platformBillingKey(): string {
   return "platform_stripe_billing";

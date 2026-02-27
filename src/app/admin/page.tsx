@@ -11,6 +11,7 @@ import { TopEventsTable } from "@/components/admin/dashboard/TopEventsTable";
 import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConnectionBanner";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
+import { fmtMoney } from "@/lib/format";
 import {
   Ticket,
   DollarSign,
@@ -246,7 +247,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <LiveStatCard
             label="Revenue"
-            value={isLoading ? "\u00A0" : `£${today.revenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            value={isLoading ? "\u00A0" : fmtMoney(today.revenue)}
             icon={DollarSign}
             detail="vs yesterday"
             trend={{ value: today.revenue - yesterday.revenue, format: "currency", currencySymbol: "£" }}
@@ -267,7 +268,7 @@ export default function AdminDashboard() {
           />
           <LiveStatCard
             label="Avg Order Value"
-            value={isLoading ? "\u00A0" : `£${today.avgOrderValue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            value={isLoading ? "\u00A0" : fmtMoney(today.avgOrderValue)}
             icon={DollarSign}
             detail="vs yesterday"
             trend={{ value: today.avgOrderValue - yesterday.avgOrderValue, format: "currency", currencySymbol: "£" }}

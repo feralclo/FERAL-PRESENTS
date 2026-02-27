@@ -17,6 +17,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import { generateNickname } from "@/lib/nicknames";
+import { fmtMoney } from "@/lib/format";
 import type { Customer, AbandonedCart, CustomerSegment } from "@/types/orders";
 import {
   ArrowLeft,
@@ -184,10 +185,6 @@ const JOURNEY_TIERS: {
 ];
 
 /* ── Helpers ── */
-function formatCurrency(amount: number) {
-  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -293,7 +290,7 @@ function buildCustomerTimeline(
     const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
     entries.push({
       label: "Cart abandoned",
-      detail: `${itemCount} item${itemCount !== 1 ? "s" : ""} — ${formatCurrency(cart.subtotal)}${cart.event?.name ? ` for ${cart.event.name}` : ""}`,
+      detail: `${itemCount} item${itemCount !== 1 ? "s" : ""} — ${fmtMoney(cart.subtotal)}${cart.event?.name ? ` for ${cart.event.name}` : ""}`,
       time: fmt(cart.created_at),
       icon: ShoppingCart,
       sortDate: new Date(cart.created_at),
@@ -315,7 +312,7 @@ function buildCustomerTimeline(
   for (const order of orders) {
     entries.push({
       label: `Order ${order.order_number} placed`,
-      detail: `${formatCurrency(Number(order.total))}${order.event?.name ? ` — ${order.event.name}` : ""}`,
+      detail: `${fmtMoney(Number(order.total), order.currency)}${order.event?.name ? ` — ${order.event.name}` : ""}`,
       time: fmt(order.created_at),
       icon: ShoppingBag,
       sortDate: new Date(order.created_at),
@@ -355,7 +352,7 @@ function buildCustomerTimeline(
     if (order.status === "refunded") {
       entries.push({
         label: `Order ${order.order_number} refunded`,
-        detail: formatCurrency(Number(order.total)),
+        detail: fmtMoney(Number(order.total), order.currency),
         time: fmt(order.created_at),
         icon: DollarSign,
         sortDate: new Date(new Date(order.created_at).getTime() + 2000),
@@ -595,7 +592,7 @@ function TierCard({
                       <span className="text-muted-foreground">{item.label}</span>
                       <span className={isComplete ? "font-semibold text-emerald-400" : "font-mono text-foreground/70"}>
                         {item.unit === "£"
-                          ? `${formatCurrency(item.current)} / ${formatCurrency(item.target)}`
+                          ? `${fmtMoney(item.current)} / ${fmtMoney(item.target)}`
                           : `${item.current} / ${item.target}`
                         }
                       </span>
@@ -1019,7 +1016,7 @@ function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
             className="font-mono text-lg font-bold tabular-nums"
             style={{ color: isRecovered ? "#10b981" : urgency.color }}
           >
-            {formatCurrency(cart.subtotal)}
+            {fmtMoney(cart.subtotal)}
           </span>
           <ChevronDown
             size={16}
@@ -1158,12 +1155,12 @@ function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
                         {item.name}
                       </p>
                       <p className="text-[10px] text-muted-foreground/60">
-                        {item.qty}x @ {formatCurrency(item.price)}
+                        {item.qty}x @ {fmtMoney(item.price)}
                         {item.merch_size && ` — Size ${item.merch_size}`}
                       </p>
                     </div>
                     <span className="ml-3 shrink-0 font-mono text-[12px] font-semibold tabular-nums text-foreground/70">
-                      {formatCurrency(item.price * item.qty)}
+                      {fmtMoney(item.price * item.qty)}
                     </span>
                   </div>
                 ))}
@@ -1175,7 +1172,7 @@ function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
                   {isRecovered ? "Recovered Value" : "Revenue at Risk"}
                 </span>
                 <span className="font-mono text-sm font-bold tabular-nums" style={{ color: urgency.color }}>
-                  {formatCurrency(cart.subtotal)}
+                  {fmtMoney(cart.subtotal)}
                 </span>
               </div>
 
@@ -1250,7 +1247,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
               </div>
               {activeCarts.length > 0 && (
                 <p className="mt-0.5 text-[11px] text-amber-400/70">
-                  {formatCurrency(totalAtRisk)} revenue at risk
+                  {fmtMoney(totalAtRisk)} revenue at risk
                 </p>
               )}
             </div>
@@ -1260,7 +1257,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
           <div className="flex items-center gap-4">
             {recoveredCarts.length > 0 && (
               <div className="text-right">
-                <p className="font-mono text-sm font-bold text-emerald-400">{formatCurrency(totalRecovered)}</p>
+                <p className="font-mono text-sm font-bold text-emerald-400">{fmtMoney(totalRecovered)}</p>
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-400/50">
                   Recovered
                 </p>
@@ -1544,13 +1541,13 @@ export default function CustomerProfilePage() {
         <StatCard
           size="compact"
           label="Lifetime Value"
-          value={formatCurrency(totalSpent)}
+          value={fmtMoney(totalSpent)}
           icon={DollarSign}
         />
         <StatCard
           size="compact"
           label="Avg Order"
-          value={formatCurrency(avgOrderValue)}
+          value={fmtMoney(avgOrderValue)}
           icon={TrendingUp}
         />
         <StatCard
@@ -1569,7 +1566,7 @@ export default function CustomerProfilePage() {
         <StatCard
           size="compact"
           label={activeAbandonedCarts.length > 0 ? "Abandoned Carts" : "Merch Spend"}
-          value={activeAbandonedCarts.length > 0 ? activeAbandonedCarts.length.toString() : formatCurrency(merchSpend)}
+          value={activeAbandonedCarts.length > 0 ? activeAbandonedCarts.length.toString() : fmtMoney(merchSpend)}
           icon={activeAbandonedCarts.length > 0 ? ShoppingCart : Shirt}
         />
       </div>
@@ -1664,7 +1661,7 @@ export default function CustomerProfilePage() {
                     </Badge>
                   </div>
                   <span className="font-mono text-lg font-bold text-foreground">
-                    {formatCurrency(Number(latestOrder.total))}
+                    {fmtMoney(Number(latestOrder.total), latestOrder.currency)}
                   </span>
                 </div>
 
@@ -1706,7 +1703,7 @@ export default function CustomerProfilePage() {
                           )}
                           <div>
                             <span className="text-sm text-foreground">
-                              {item.qty}x @ {formatCurrency(Number(item.unit_price))}
+                              {item.qty}x @ {fmtMoney(Number(item.unit_price), latestOrder.currency)}
                             </span>
                             {item.merch_size && (
                               <span className="ml-2 text-xs text-muted-foreground">
@@ -1716,7 +1713,7 @@ export default function CustomerProfilePage() {
                           </div>
                         </div>
                         <span className="font-mono text-sm text-foreground">
-                          {formatCurrency(Number(item.unit_price) * item.qty)}
+                          {fmtMoney(Number(item.unit_price) * item.qty, latestOrder.currency)}
                         </span>
                       </div>
                     ))}

@@ -24,6 +24,7 @@ import { normalizeMerchImages } from "@/lib/merch-images";
 
 import { MidnightArtistModal } from "./MidnightArtistModal";
 import { MidnightFooter } from "./MidnightFooter";
+import { CurrencyProvider, useCurrencyContext } from "@/components/CurrencyProvider";
 import { isMuxPlaybackId, getMuxStreamUrl, getMuxThumbnailUrl } from "@/lib/mux";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Artist, EventArtist } from "@/types/artists";
@@ -38,6 +39,18 @@ interface MidnightEventPageProps {
 }
 
 export function MidnightEventPage({ event }: MidnightEventPageProps) {
+  const { settings } = useSettings();
+  const multiCurrencyEnabled = settings?.multi_currency_enabled === true;
+
+  return (
+    <CurrencyProvider baseCurrency={event.currency || "GBP"} enabled={multiCurrencyEnabled}>
+      <MidnightEventPageInner event={event} />
+    </CurrencyProvider>
+  );
+}
+
+function MidnightEventPageInner({ event }: MidnightEventPageProps) {
+  const { convertPrice, formatPrice: fmtPrice, isConverted, currency: presentmentCurrency } = useCurrencyContext();
   const tracking = useEventTracking();
   const { settings } = useSettings();
   const headerHidden = useHeaderScroll();
@@ -298,10 +311,13 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
     return () => window.removeEventListener("feral_popup_email_captured", handlePopupCapture);
   }, [cart.totalQty, cart.totalPrice, cart.expressItems, event.id, event.ticket_types, event.currency, activeDiscount]);
 
-  // Compute discounted total for bottom bar
+  // Compute discounted total for bottom bar (base currency — display converts below)
   const discountedTotal = activeDiscount
     ? Math.max(0, Math.round((cart.totalPrice - getDiscountAmount(cart.totalPrice, activeDiscount)) * 100) / 100)
     : cart.totalPrice;
+
+  // Convert for display
+  const displayTotal = convertPrice(discountedTotal);
 
   // Artist profiles — build a name→Artist map for the lineup component
   const artistProfiles = useMemo(() => {
@@ -612,7 +628,7 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-baseline gap-2 min-w-0">
                 <span className="font-[family-name:var(--font-mono)] text-[17px] font-bold text-foreground tracking-[0.01em]">
-                  {currSymbol}{discountedTotal.toFixed(2)}
+                  {fmtPrice(displayTotal)}
                 </span>
                 <span className="font-[family-name:var(--font-sans)] text-[11px] text-foreground/35">
                   {cart.totalQty} {cart.totalQty === 1 ? "item" : "items"}
@@ -621,7 +637,15 @@ export function MidnightEventPage({ event }: MidnightEventPageProps) {
               <button
                 type="button"
                 className="h-11 px-7 text-[13px] font-bold tracking-[0.03em] rounded-xl shrink-0 bg-white text-[#0e0e0e] active:scale-[0.97] transition-transform duration-150 cursor-pointer"
-                onClick={cart.handleCheckout}
+                onClick={() => {
+                  const url = cart.getCheckoutUrl(isConverted ? presentmentCurrency : undefined);
+                  if (!url) return;
+                  const ids = cart.activeTypes
+                    .filter((tt) => (cart.quantities[tt.id] || 0) > 0)
+                    .map((tt) => tt.id);
+                  tracking.trackInitiateCheckout(ids, cart.totalPrice, cart.totalQty, event.currency || "GBP");
+                  window.location.assign(url);
+                }}
               >
                 Checkout
               </button>

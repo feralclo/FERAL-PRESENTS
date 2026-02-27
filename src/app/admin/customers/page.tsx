@@ -30,13 +30,10 @@ import {
   MailX,
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
+import { fmtMoney } from "@/lib/format";
 import type { Customer } from "@/types/orders";
 
 /* ── Helpers ── */
-function formatCurrency(amount: number) {
-  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -160,12 +157,12 @@ export default function CustomersPage() {
         />
         <StatCard
           label="Total Revenue"
-          value={formatCurrency(totalRevenue)}
+          value={fmtMoney(totalRevenue)}
           icon={DollarSign}
         />
         <StatCard
           label="Avg Spend"
-          value={formatCurrency(avgSpend)}
+          value={fmtMoney(avgSpend)}
           icon={TrendingUp}
           detail="Per customer lifetime"
         />
@@ -340,7 +337,7 @@ export default function CustomersPage() {
                         {cust.total_orders}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold tabular-nums text-foreground">
-                        {formatCurrency(Number(cust.total_spent))}
+                        {fmtMoney(Number(cust.total_spent))}
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
                         {cust.last_order_at ? formatDate(cust.last_order_at) : "—"}

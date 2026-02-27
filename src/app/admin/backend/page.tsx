@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { FunnelChart } from "@/components/admin/dashboard/FunnelChart";
+import { fmtMoney } from "@/lib/format";
 import {
   Users,
   PoundSterling,
@@ -50,14 +51,15 @@ interface DashboardData {
 function formatCurrency(pence: number): string {
   const pounds = pence / 100;
   if (pounds >= 1000) {
-    return `£${(pounds / 1000).toFixed(1)}k`;
+    // Use fmtMoney for the symbol, trim trailing zeros for compact display
+    const val = (pounds / 1000).toFixed(1);
+    return fmtMoney(Number(val)).replace(/0$/, "") + "k";
   }
-  return pounds % 1 === 0 ? `£${pounds}` : `£${pounds.toFixed(2)}`;
+  return fmtMoney(pounds);
 }
 
 function formatCurrencyFull(pence: number): string {
-  const pounds = pence / 100;
-  return `£${pounds.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return fmtMoney(pence / 100);
 }
 
 function timeAgo(dateStr: string): string {

@@ -36,6 +36,7 @@ import {
   Loader2,
 } from "lucide-react";
 import type { Product, ProductStatus, ProductType } from "@/types/products";
+import { fmtMoney } from "@/lib/format";
 
 const STATUS_VARIANT: Record<ProductStatus, "success" | "warning" | "secondary"> = {
   active: "success",
@@ -262,7 +263,7 @@ export default function MerchPage() {
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs tabular-nums">
                     {product.price > 0
-                      ? `£${Number(product.price).toFixed(2)}`
+                      ? fmtMoney(product.price)
                       : "—"}
                   </TableCell>
                 </TableRow>

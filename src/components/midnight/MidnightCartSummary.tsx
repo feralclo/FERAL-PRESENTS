@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/stripe/config";
+import { useCurrencyContext } from "@/components/CurrencyProvider";
 import type { DiscountDisplay } from "./discount-utils";
 import { getDiscountAmount } from "./discount-utils";
 
@@ -27,6 +28,7 @@ export function MidnightCartSummary({
   currSymbol,
   discount,
 }: MidnightCartSummaryProps) {
+  const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   const isEmpty = totalQty === 0;
   const discountAmt = discount ? getDiscountAmount(totalPrice, discount) : 0;
   const discountedTotal = discount
@@ -74,7 +76,7 @@ export function MidnightCartSummary({
                   {item.name}
                 </span>
                 <span className="font-[family-name:var(--font-mono)] text-[11px] font-medium text-foreground/50 shrink-0">
-                  {currSymbol}{formatPrice(item.unitPrice * item.qty)}
+                  {fmtPrice(convertPrice(item.unitPrice * item.qty))}
                 </span>
               </div>
               {item.size && (
@@ -100,7 +102,7 @@ export function MidnightCartSummary({
               </span>
             </div>
             <span className="font-[family-name:var(--font-mono)] text-[11px] font-medium text-emerald-400/60 shrink-0">
-              &minus;{currSymbol}{formatPrice(discountAmt)}
+              &minus;{fmtPrice(convertPrice(discountAmt))}
             </span>
           </div>
         )}
@@ -111,7 +113,7 @@ export function MidnightCartSummary({
             Total
           </span>
           <span className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground tracking-[0.5px]">
-            {currSymbol}{discountedTotal.toFixed(2)}
+            {fmtPrice(convertPrice(discountedTotal))}
           </span>
         </div>
       </div>

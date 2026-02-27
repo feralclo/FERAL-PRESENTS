@@ -29,6 +29,11 @@ export interface Order {
   refunded_at?: string;
   notes?: string;
   metadata?: Record<string, unknown>;
+  // Multi-currency fields (populated when presentment currency differs from base)
+  base_currency?: string;
+  base_total?: number;
+  exchange_rate?: number;
+  rate_locked_at?: string;
   created_at: string;
   updated_at: string;
   // Joined fields

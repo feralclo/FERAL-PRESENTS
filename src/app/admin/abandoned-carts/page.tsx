@@ -29,11 +29,12 @@ import {
   Settings2,
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
+import { fmtMoney } from "@/lib/format";
 import type { AbandonedCart } from "@/types/orders";
 
 /* ── Helpers ── */
 function formatCurrency(amount: number) {
-  return `£${Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return fmtMoney(amount);
 }
 
 function formatDate(d: string) {

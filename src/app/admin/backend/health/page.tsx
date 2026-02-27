@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { fmtMoney } from "@/lib/format";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -180,8 +181,8 @@ function timeAgo(dateStr: string): string {
 
 function formatPence(pence: number): string {
   const pounds = pence / 100;
-  if (pounds >= 1000) return `£${(pounds / 1000).toFixed(1)}k`;
-  return pounds % 1 === 0 ? `£${pounds}` : `£${pounds.toFixed(2)}`;
+  if (pounds >= 1000) return fmtMoney(Number((pounds / 1000).toFixed(1))).replace(/0$/, "") + "k";
+  return fmtMoney(pounds);
 }
 
 function sentryIssueUrl(issueId: string): string {

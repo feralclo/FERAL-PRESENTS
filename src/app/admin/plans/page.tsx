@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { fmtMoney } from "@/lib/format";
 import { Loader2, Check, Zap, Rocket } from "lucide-react";
 
 interface OrgPlanRow {
@@ -199,7 +200,7 @@ export function PlansPage() {
                   <span className="text-2xl font-bold text-foreground">
                     {plan.monthly_price === 0
                       ? "Free"
-                      : `£${(plan.monthly_price / 100).toFixed(0)}`}
+                      : fmtMoney(plan.monthly_price / 100).replace(/\.00$/, "")}
                   </span>
                   {plan.monthly_price > 0 && (
                     <span className="text-xs text-muted-foreground">
@@ -209,7 +210,7 @@ export function PlansPage() {
                 </div>
                 <div className="rounded-md border border-border/50 bg-muted/20 p-3">
                   <p className="text-xs font-medium text-foreground">
-                    {plan.fee_percent}% + £{(plan.min_fee / 100).toFixed(2)} min
+                    {plan.fee_percent}% + {fmtMoney(plan.min_fee / 100)} min
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     Per transaction platform fee
@@ -284,8 +285,7 @@ export function PlansPage() {
                       </td>
                       <td className="py-3 pr-4">
                         <span className="text-xs text-muted-foreground">
-                          {editPlan?.fee_percent}% + £
-                          {((editPlan?.min_fee ?? 50) / 100).toFixed(2)} min
+                          {editPlan?.fee_percent}% + {fmtMoney((editPlan?.min_fee ?? 50) / 100)} min
                         </span>
                       </td>
                       <td className="py-3 pr-4">

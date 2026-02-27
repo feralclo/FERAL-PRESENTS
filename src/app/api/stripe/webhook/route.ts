@@ -329,6 +329,22 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
     };
   }
 
+  // Extract multi-currency conversion metadata
+  let conversionInfo: {
+    baseCurrency: string;
+    baseTotal: number;
+    exchangeRate: number;
+    rateLocked: string;
+  } | undefined;
+  if (metadata.base_currency && metadata.exchange_rate) {
+    conversionInfo = {
+      baseCurrency: metadata.base_currency,
+      baseTotal: Number(metadata.base_total || metadata.base_subtotal || 0),
+      exchangeRate: Number(metadata.exchange_rate),
+      rateLocked: metadata.rate_locked_at || new Date().toISOString(),
+    };
+  }
+
   try {
     const result = await createOrder({
       supabase,
@@ -357,6 +373,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
       vat: vatInfo,
       discountCode: metadata.discount_code || undefined,
       discount: discountInfo,
+      conversion: conversionInfo,
     });
 
     console.log(

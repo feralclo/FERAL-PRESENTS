@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { saveSettings } from "@/lib/settings";
+import { fmtMoney } from "@/lib/format";
 import {
   ChevronDown,
   ChevronLeft,
@@ -235,7 +236,7 @@ function SaveToast({ saving, status }: { saving: boolean; status: "idle" | "save
 
 /* ── Helpers ── */
 function formatCurrency(amount: number) {
-  return `£${Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return fmtMoney(amount);
 }
 
 /* ── Logo processing: auto-trim transparent pixels + resize ── */

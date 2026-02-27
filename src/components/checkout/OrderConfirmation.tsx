@@ -239,9 +239,16 @@ export function OrderConfirmation({
               <span className="font-[family-name:var(--font-mono)] text-[9px] tracking-[2px] uppercase text-foreground/35">
                 Total
               </span>
-              <span className="font-[family-name:var(--font-mono)] text-base tracking-[1px] text-foreground font-bold">
-                {symbol}{Number(order.total).toFixed(2)}
-              </span>
+              <div className="text-right">
+                <span className="font-[family-name:var(--font-mono)] text-base tracking-[1px] text-foreground font-bold">
+                  {symbol}{Number(order.total).toFixed(2)}
+                </span>
+                {order.base_currency && order.base_total != null && order.base_currency !== order.currency && (
+                  <div className="font-[family-name:var(--font-mono)] text-[9px] tracking-[1px] text-foreground/30 mt-0.5">
+                    ≈ {getCurrencySymbol(order.base_currency)}{Number(order.base_total).toFixed(2)} {order.base_currency}
+                  </div>
+                )}
+              </div>
             </div>
             {vatMeta && (
               <div className="flex items-center justify-between py-2 border-t border-white/[0.04]">

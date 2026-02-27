@@ -28,6 +28,9 @@ export interface EventSettings {
   /** Show sticky checkout bar on mobile (default: true) */
   sticky_checkout_bar?: boolean;
 
+  /** Enable multi-currency support (geo-detected currency conversion) for this event */
+  multi_currency_enabled?: boolean;
+
   // Any additional dynamic fields
   [key: string]: unknown;
 }

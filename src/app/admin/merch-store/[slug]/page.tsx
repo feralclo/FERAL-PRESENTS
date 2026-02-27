@@ -45,6 +45,7 @@ import type { MerchCollection, MerchCollectionItem } from "@/types/merch-store";
 import type { Product } from "@/types/products";
 import type { Event } from "@/types/events";
 import { normalizeMerchImages } from "@/lib/merch-images";
+import { fmtMoney } from "@/lib/format";
 
 type CollectionStatus = "draft" | "active" | "archived";
 
@@ -793,8 +794,8 @@ export default function CollectionEditorPage() {
                           const min = Math.min(...prices);
                           const max = Math.max(...prices);
                           return min === max
-                            ? `£${min.toFixed(2)}`
-                            : `£${min.toFixed(2)} – £${max.toFixed(2)}`;
+                            ? fmtMoney(min)
+                            : `${fmtMoney(min)} – ${fmtMoney(max)}`;
                         })()
                       : "—"}
                   </span>
@@ -863,7 +864,7 @@ export default function CollectionEditorPage() {
                       </div>
                       {product.price > 0 && (
                         <span className="shrink-0 text-xs font-mono text-muted-foreground">
-                          £{Number(product.price).toFixed(2)}
+                          {fmtMoney(product.price)}
                         </span>
                       )}
                       <Plus size={14} className="shrink-0 text-primary/60" />

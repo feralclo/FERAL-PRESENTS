@@ -493,13 +493,11 @@ export async function POST(request: NextRequest) {
       } catch (piErr) {
         // If Stripe rejects the currency (unsupported on connected account),
         // tell the client to retry in the base currency
-        console.error("[payment-intent] PI creation failed:", piErr instanceof Error ? piErr.message : piErr);
-        if (
-          exchangeRate &&
-          piErr instanceof Error &&
-          (piErr.message?.includes("currency") || piErr.message?.includes("presentment"))
-        ) {
-          return null; // signal currency fallback
+        const errMsg = piErr instanceof Error ? piErr.message : String(piErr);
+        console.error("[payment-intent] PI creation failed:", errMsg);
+        if (exchangeRate) {
+          // Any PI creation failure during multi-currency → fallback to base
+          return { __fallback: true, __reason: errMsg };
         }
         throw piErr;
       }
@@ -507,12 +505,14 @@ export async function POST(request: NextRequest) {
 
     const paymentIntent = await createPI();
 
-    if (!paymentIntent) {
-      // Currency not supported — tell client to fall back
+    if (!paymentIntent || (paymentIntent as { __fallback?: boolean }).__fallback) {
+      const reason = (paymentIntent as { __reason?: string })?.__reason || "unknown";
+      console.error("[payment-intent] Currency fallback triggered:", reason, "charge:", chargeCurrency, "base:", baseCurrency);
       return NextResponse.json({
         currency_fallback: true,
         currency: baseCurrency,
-        error: "This currency is not supported for this event. Please try again.",
+        stripe_error: reason,
+        debug: { chargeCurrency, baseCurrency, amount: amountInSmallestUnit, exchangeRate },
       });
     }
 

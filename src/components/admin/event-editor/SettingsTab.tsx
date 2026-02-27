@@ -413,68 +413,66 @@ export function SettingsTab({ event, updateEvent, settings, updateSetting, artis
           </div>
 
           {/* Multi-currency checkout */}
-          {event.payment_method !== "external" && (
-            <>
-              <div className="h-px bg-border/50" />
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Multi-currency checkout</Label>
-                    <p className="text-[10px] text-muted-foreground/60 max-w-sm">
-                      Sell to international audiences in their local currency. Visitors see converted prices automatically based on their location, with a currency selector on the event page.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={!!settings.multi_currency_enabled}
-                    onCheckedChange={(checked) => {
-                      updateSetting("multi_currency_enabled", checked);
-                    }}
-                  />
-                </div>
-
-                {settings.multi_currency_enabled && (
-                  <div className="rounded-lg border border-primary/15 bg-primary/[0.03] p-3 space-y-2.5">
-                    <div className="flex items-center gap-2">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M2 12h20" />
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                      </svg>
-                      <span className="text-[11px] font-medium text-foreground">Active — prices auto-convert for international visitors</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        { code: "GBP", symbol: "£", flag: "\u{1F1EC}\u{1F1E7}" },
-                        { code: "EUR", symbol: "\u20ac", flag: "\u{1F1EA}\u{1F1FA}" },
-                        { code: "USD", symbol: "$", flag: "\u{1F1FA}\u{1F1F8}" },
-                        { code: "CAD", symbol: "CA$", flag: "\u{1F1E8}\u{1F1E6}" },
-                        { code: "AUD", symbol: "A$", flag: "\u{1F1E6}\u{1F1FA}" },
-                        { code: "CHF", symbol: "CHF", flag: "\u{1F1E8}\u{1F1ED}" },
-                        { code: "SEK", symbol: "kr", flag: "\u{1F1F8}\u{1F1EA}" },
-                        { code: "NOK", symbol: "kr", flag: "\u{1F1F3}\u{1F1F4}" },
-                        { code: "DKK", symbol: "kr", flag: "\u{1F1E9}\u{1F1F0}" },
-                      ].map((c) => (
-                        <span
-                          key={c.code}
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] border ${
-                            c.code === (event.currency || "GBP").toUpperCase()
-                              ? "border-primary/30 bg-primary/10 text-primary font-medium"
-                              : "border-border/50 bg-background/50 text-muted-foreground/70"
-                          }`}
-                        >
-                          <span className="text-xs leading-none">{c.flag}</span>
-                          {c.code}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground/50 leading-relaxed">
-                      Exchange rates update every 6 hours. Payments settle in your account&apos;s default currency — Stripe handles the conversion automatically. Your base currency ({(event.currency || "GBP").toUpperCase()}) is highlighted above.
-                    </p>
-                  </div>
-                )}
+          <div className="h-px bg-border/50" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Multi-currency checkout</Label>
+                <p className="text-[10px] text-muted-foreground/60 max-w-sm">
+                  {event.payment_method === "external"
+                    ? "Enable multi-currency for merch pre-orders linked to this event. Visitors see converted prices in the merch store based on their location."
+                    : "Sell to international audiences in their local currency. Visitors see converted prices automatically based on their location, with a currency selector on the event page."}
+                </p>
               </div>
-            </>
-          )}
+              <Switch
+                checked={!!settings.multi_currency_enabled}
+                onCheckedChange={(checked) => {
+                  updateSetting("multi_currency_enabled", checked);
+                }}
+              />
+            </div>
+
+            {settings.multi_currency_enabled && (
+              <div className="rounded-lg border border-primary/15 bg-primary/[0.03] p-3 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M2 12h20" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                  <span className="text-[11px] font-medium text-foreground">Active — prices auto-convert for international visitors</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { code: "GBP", symbol: "£", flag: "\u{1F1EC}\u{1F1E7}" },
+                    { code: "EUR", symbol: "\u20ac", flag: "\u{1F1EA}\u{1F1FA}" },
+                    { code: "USD", symbol: "$", flag: "\u{1F1FA}\u{1F1F8}" },
+                    { code: "CAD", symbol: "CA$", flag: "\u{1F1E8}\u{1F1E6}" },
+                    { code: "AUD", symbol: "A$", flag: "\u{1F1E6}\u{1F1FA}" },
+                    { code: "CHF", symbol: "CHF", flag: "\u{1F1E8}\u{1F1ED}" },
+                    { code: "SEK", symbol: "kr", flag: "\u{1F1F8}\u{1F1EA}" },
+                    { code: "NOK", symbol: "kr", flag: "\u{1F1F3}\u{1F1F4}" },
+                    { code: "DKK", symbol: "kr", flag: "\u{1F1E9}\u{1F1F0}" },
+                  ].map((c) => (
+                    <span
+                      key={c.code}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] border ${
+                        c.code === (event.currency || "GBP").toUpperCase()
+                          ? "border-primary/30 bg-primary/10 text-primary font-medium"
+                          : "border-border/50 bg-background/50 text-muted-foreground/70"
+                      }`}
+                    >
+                      <span className="text-xs leading-none">{c.flag}</span>
+                      {c.code}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground/50 leading-relaxed">
+                  Exchange rates update every 6 hours. Payments settle in your account&apos;s default currency — Stripe handles the conversion automatically. Your base currency ({(event.currency || "GBP").toUpperCase()}) is highlighted above.
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* External link — platform owner only (since only they can set external) */}
           {isPlatformOwner && event.payment_method === "external" && (

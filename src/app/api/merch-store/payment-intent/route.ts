@@ -345,7 +345,7 @@ export async function POST(request: NextRequest) {
       const pc = presentment_currency.toUpperCase();
       if (SUPPORTED_CURRENCIES.includes(pc.toLowerCase() as typeof SUPPORTED_CURRENCIES[number])) {
         const rates = await getExchangeRates();
-        if (rates && areRatesFreshForCheckout(rates.fetched_at)) {
+        if (rates && areRatesFreshForCheckout(rates)) {
           const rate = rates.rates[pc] / (rates.rates[baseCurrency] || 1);
           exchangeRate = rate;
           rateLocked = rates.fetched_at;

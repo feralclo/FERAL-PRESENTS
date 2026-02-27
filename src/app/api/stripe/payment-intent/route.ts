@@ -415,6 +415,8 @@ export async function POST(request: NextRequest) {
     const amountInSmallestUnit = toSmallestUnit(chargeAmount, chargeCurrency);
     const currency = chargeCurrency;
 
+    console.log("[payment-intent] Calculation:", { subtotal, discountAmount, afterDiscount, convertedSubtotal, chargeAmount, amountInSmallestUnit, chargeCurrency });
+
     // Build PaymentIntent parameters — fee rates determined by org's plan
     const plan = await getOrgPlan(orgId);
     const applicationFee = calculateApplicationFee(amountInSmallestUnit, plan.fee_percent, plan.min_fee);
@@ -513,7 +515,7 @@ export async function POST(request: NextRequest) {
         currency_fallback: true,
         currency: baseCurrency,
         stripe_error: piCreateError || "unknown",
-        debug: { chargeCurrency, baseCurrency, amount: amountInSmallestUnit, exchangeRate },
+        debug: { subtotal, afterDiscount, convertedSubtotal: convertedSubtotal, chargeAmount, chargeCurrency, baseCurrency, amount: amountInSmallestUnit, exchangeRate },
       });
     }
 

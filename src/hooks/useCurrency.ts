@@ -5,7 +5,7 @@ import { getCurrencySymbol, formatPriceIntl } from "@/lib/stripe/config";
 import {
   convertCurrency,
   roundPresentmentPrice,
-} from "@/lib/currency/exchange-rates";
+} from "@/lib/currency/conversion";
 import type { ExchangeRates } from "@/lib/currency/types";
 
 const LOCAL_STORAGE_KEY = "entry_currency_pref";

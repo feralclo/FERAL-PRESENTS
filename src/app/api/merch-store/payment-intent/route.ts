@@ -364,7 +364,8 @@ export async function POST(request: NextRequest) {
           }
           chargeCurrency = pc;
 
-          // Convert each item price individually then sum
+          // Convert each item price individually then sum.
+          // Also update validatedItems.unit_price so order metadata stores presentment prices.
           convertedSubtotal = 0;
           for (const item of validatedItems) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -373,12 +374,15 @@ export async function POST(request: NextRequest) {
 
             if (overrides && pc in overrides) {
               // Manual override — already in target currency
-              convertedSubtotal += overrides[pc] * item.qty;
+              const resolvedPrice = overrides[pc];
+              convertedSubtotal += resolvedPrice * item.qty;
+              item.unit_price = resolvedPrice;
             } else if (rates) {
               const convertedPrice = roundPresentmentPrice(
                 convertCurrency(item.unit_price, baseCurrency, pc, rates)
               );
               convertedSubtotal += convertedPrice * item.qty;
+              item.unit_price = convertedPrice;
             }
           }
 

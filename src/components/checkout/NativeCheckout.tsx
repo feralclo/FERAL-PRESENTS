@@ -1062,9 +1062,11 @@ function SinglePageCheckoutForm({
         }
 
         // Handle currency fallback — connected account may not support the presentment currency
+        // Silently redirect to base currency checkout instead of showing an error
         if (data.currency_fallback) {
-          setError("This currency is not supported for this event. Please refresh and try again.");
-          setProcessing(false);
+          const params = new URLSearchParams(window.location.search);
+          params.delete("currency");
+          window.location.assign(window.location.pathname + "?" + params.toString());
           return;
         }
 
@@ -1211,10 +1213,11 @@ function SinglePageCheckoutForm({
         }
 
         // Handle currency fallback — connected account may not support the presentment currency
+        // Silently redirect to base currency checkout instead of showing an error
         if (data.currency_fallback) {
-          trackEngagement("payment_failed");
-          setError("This currency is not supported for this event. Please refresh and try again.");
-          setProcessing(false);
+          const params = new URLSearchParams(window.location.search);
+          params.delete("currency");
+          window.location.assign(window.location.pathname + "?" + params.toString());
           return;
         }
 

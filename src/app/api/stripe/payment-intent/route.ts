@@ -317,6 +317,13 @@ export async function POST(request: NextRequest) {
       SUPPORTED_CURRENCIES.includes(presentment_currency.toLowerCase() as typeof SUPPORTED_CURRENCIES[number])
     ) {
       const rates = await getExchangeRates();
+      console.log("[payment-intent] Multi-currency:", {
+        presentment_currency,
+        baseCurrency,
+        ratesAvailable: !!rates,
+        ratesFresh: rates ? areRatesFreshForCheckout(rates) : false,
+        fetched_at: rates?.fetched_at,
+      });
       if (rates && areRatesFreshForCheckout(rates)) {
         const pCurrency = presentment_currency.toUpperCase();
         const bCurrency = baseCurrency.toUpperCase();
@@ -460,6 +467,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Helper to create the PI (shared between connected + platform paths)
+    console.log("[payment-intent] Creating PI:", { amount: amountInSmallestUnit, currency, chargeCurrency, exchangeRate, stripeAccountId: stripeAccountId || "platform" });
     const createPI = async () => {
       try {
         if (stripeAccountId) {
@@ -485,10 +493,11 @@ export async function POST(request: NextRequest) {
       } catch (piErr) {
         // If Stripe rejects the currency (unsupported on connected account),
         // tell the client to retry in the base currency
+        console.error("[payment-intent] PI creation failed:", piErr instanceof Error ? piErr.message : piErr);
         if (
           exchangeRate &&
           piErr instanceof Error &&
-          piErr.message?.includes("currency")
+          (piErr.message?.includes("currency") || piErr.message?.includes("presentment"))
         ) {
           return null; // signal currency fallback
         }

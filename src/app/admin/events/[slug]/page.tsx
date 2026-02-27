@@ -392,6 +392,8 @@ export default function EventEditorPage() {
           <SettingsTab
             event={event}
             updateEvent={updateEvent}
+            settings={settings}
+            updateSetting={updateSetting}
             artistNames={eventArtists.map((ea) => ea.artist?.name).filter(Boolean) as string[]}
           />
         </TabsContent>

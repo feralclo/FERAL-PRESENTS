@@ -497,21 +497,22 @@ export async function POST(request: NextRequest) {
         console.error("[payment-intent] PI creation failed:", errMsg);
         if (exchangeRate) {
           // Any PI creation failure during multi-currency → fallback to base
-          return { __fallback: true, __reason: errMsg };
+          piCreateError = errMsg;
+          return null;
         }
         throw piErr;
       }
     };
 
+    let piCreateError = "";
     const paymentIntent = await createPI();
 
-    if (!paymentIntent || (paymentIntent as { __fallback?: boolean }).__fallback) {
-      const reason = (paymentIntent as { __reason?: string })?.__reason || "unknown";
-      console.error("[payment-intent] Currency fallback triggered:", reason, "charge:", chargeCurrency, "base:", baseCurrency);
+    if (!paymentIntent) {
+      console.error("[payment-intent] Currency fallback triggered:", piCreateError, "charge:", chargeCurrency, "base:", baseCurrency);
       return NextResponse.json({
         currency_fallback: true,
         currency: baseCurrency,
-        stripe_error: reason,
+        stripe_error: piCreateError || "unknown",
         debug: { chargeCurrency, baseCurrency, amount: amountInSmallestUnit, exchangeRate },
       });
     }

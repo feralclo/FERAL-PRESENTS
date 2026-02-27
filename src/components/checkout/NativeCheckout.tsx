@@ -340,8 +340,16 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
 
   // Parse cart from URL (or use merch data directly)
   const cartLines: CartLine[] = useMemo(() => {
-    // Merch mode: cart lines provided directly
-    if (merchData) return merchData.cartLines;
+    // Merch mode: cart lines provided directly (convert if multi-currency)
+    if (merchData) {
+      if (hasPresentmentConversion && exchangeRates && presentmentCurrency) {
+        return merchData.cartLines.map((line) => ({
+          ...line,
+          price: roundPresentmentPrice(convertCurrency(line.price, event.currency || "GBP", presentmentCurrency, exchangeRates)),
+        }));
+      }
+      return merchData.cartLines;
+    }
 
     // Ticket mode: parse from URL
     if (!cartParam) return [];
@@ -2372,7 +2380,7 @@ function OrderSummaryMobile({
           vatBreakdown={vatBreakdown}
           vatSettings={vatSettings}
           total={total}
-          currency={event?.currency}
+          currency={presentmentCurrency || event?.currency}
         />
       </div>
     </div>
@@ -2432,7 +2440,7 @@ function OrderSummaryDesktop({
         vatBreakdown={vatBreakdown}
         vatSettings={vatSettings}
         total={total}
-        currency={event?.currency}
+        currency={presentmentCurrency || event?.currency}
       />
     </div>
   );

@@ -25,6 +25,8 @@ import { getStripeClient, preloadStripeAccount } from "@/lib/stripe/client";
 import type { Event, TicketTypeRow } from "@/types/events";
 import type { Order } from "@/types/orders";
 import { getCurrencySymbol, toSmallestUnit, getPaymentErrorMessage } from "@/lib/stripe/config";
+import { convertCurrency, roundPresentmentPrice } from "@/lib/currency/conversion";
+import type { ExchangeRates } from "@/lib/currency/types";
 import { useBranding } from "@/hooks/useBranding";
 import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
@@ -271,6 +273,18 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   const [walletPassEnabled, setWalletPassEnabled] = useState<{ apple?: boolean; google?: boolean }>({});
   const [vatSettings, setVatSettings] = useState<VatSettings | null>(null);
 
+  // Multi-currency: fetch exchange rates when presentment currency differs from base
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates | null>(null);
+  const hasPresentmentConversion = presentmentCurrency != null && presentmentCurrency !== event.currency?.toUpperCase();
+
+  useEffect(() => {
+    if (!hasPresentmentConversion) return;
+    fetch("/api/currency/rates")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setExchangeRates(data); })
+      .catch(() => {});
+  }, [hasPresentmentConversion]);
+
   // Wrap setCompletedOrder to clean up popup discount after successful purchase
   const handleOrderComplete = useCallback((order: Order) => {
     setCompletedOrder(order);
@@ -342,21 +356,26 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
         const qty = parseInt(segments[1], 10) || 1;
         const size = segments[2] || undefined;
         const tt = ttMap.get(ticketTypeId);
+        let price = tt ? Number(tt.price) : 0;
+        // Convert price to presentment currency for display
+        if (hasPresentmentConversion && exchangeRates && presentmentCurrency) {
+          price = roundPresentmentPrice(convertCurrency(price, event.currency || "GBP", presentmentCurrency, exchangeRates));
+        }
         lines.push({
           ticket_type_id: ticketTypeId,
           name: tt?.name || "Ticket",
           qty,
-          price: tt ? Number(tt.price) : 0,
+          price,
           merch_size: size,
         });
       }
     }
     return lines;
-  }, [cartParam, event.ticket_types, merchData]);
+  }, [cartParam, event.ticket_types, merchData, hasPresentmentConversion, exchangeRates, presentmentCurrency, event.currency]);
 
   const subtotal = cartLines.reduce((sum, l) => sum + l.price * l.qty, 0);
   const totalQty = cartLines.reduce((sum, l) => sum + l.qty, 0);
-  const symbol = getCurrencySymbol(event.currency);
+  const symbol = getCurrencySymbol(presentmentCurrency || event.currency);
   // Merch pre-orders always use Stripe, regardless of the event's payment method
   // (an event can use external ticketing but still have a Stripe-powered merch store)
   const isStripe = !!merchData || event.payment_method === "stripe";

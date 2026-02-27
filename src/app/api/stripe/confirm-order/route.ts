@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
                   id: fullOrder.id,
                   order_number: fullOrder.order_number,
                   total: Number(fullOrder.total),
-                  currency: (ev.currency || fullOrder.currency || "GBP").toUpperCase(),
+                  currency: (fullOrder.currency || ev.currency || "GBP").toUpperCase(),
                 },
                 customer: {
                   first_name: orderCustomer.first_name || "",
@@ -277,6 +277,7 @@ export async function POST(request: NextRequest) {
       discountCode: metadata.discount_code || undefined,
       discount: discountInfo,
       conversion: conversionInfo,
+      presentmentCurrency: metadata.presentment_currency || undefined,
     });
 
     // Fetch the full order with relations to return

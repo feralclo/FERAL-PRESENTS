@@ -495,9 +495,21 @@ export default function OrderDetailPage() {
                   )}
                   <div className="flex items-center justify-between bg-muted/30 px-5 py-4">
                     <span className="text-sm font-semibold text-foreground">Total</span>
-                    <span className="font-mono text-xl font-bold text-foreground">
-                      {fmtMoney(Number(order.total), order.currency)}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-mono text-xl font-bold text-foreground">
+                        {fmtMoney(Number(order.total), order.currency)}
+                      </span>
+                      {order.base_currency && order.base_currency !== order.currency && order.base_total != null && (
+                        <div className="mt-0.5 font-mono text-xs text-muted-foreground/60">
+                          &asymp; {fmtMoney(Number(order.base_total), order.base_currency)} {order.base_currency}
+                          {order.exchange_rate && (
+                            <span className="ml-1 text-[10px]">
+                              (rate: {Number(order.exchange_rate).toFixed(4)})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between px-5 py-3.5">
                     <span className="text-sm text-muted-foreground">Payment Method</span>

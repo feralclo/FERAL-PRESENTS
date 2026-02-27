@@ -82,6 +82,8 @@ export interface CreateMerchOrderParams {
   sendEmail?: boolean;
   /** Multi-currency conversion data (when charged in presentment currency). */
   conversion?: MerchOrderConversion;
+  /** Presentment currency the buyer paid in (e.g. "EUR"). When omitted, defaults to event.currency. */
+  presentmentCurrency?: string;
 }
 
 /** Result returned on success. */
@@ -136,6 +138,7 @@ export async function createMerchOrder(
     vat,
     sendEmail = true,
     conversion,
+    presentmentCurrency,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -247,16 +250,16 @@ export async function createMerchOrder(
       subtotal,
       fees,
       total,
-      currency: (event.currency || "GBP").toUpperCase(),
+      currency: (presentmentCurrency || event.currency || "GBP").toUpperCase(),
       payment_method: payment.method,
       payment_ref: payment.ref,
       metadata: orderMetadata,
     };
 
-    // Store multi-currency conversion data
+    // Store multi-currency conversion data (always set base_currency for consistency)
+    orderRow.base_currency = conversion?.baseCurrency || (event.currency || "GBP").toUpperCase();
+    orderRow.base_total = conversion?.baseTotal ?? total;
     if (conversion) {
-      orderRow.base_currency = conversion.baseCurrency;
-      orderRow.base_total = conversion.baseTotal;
       orderRow.exchange_rate = conversion.exchangeRate;
       orderRow.rate_locked_at = conversion.rateLocked;
     }
@@ -363,13 +366,15 @@ export async function createMerchOrder(
   // ------------------------------------------------------------------
   if (sendEmail) {
     try {
+      const chargedCcy = (presentmentCurrency || event.currency || "GBP").toUpperCase();
+      const baseCcy = (event.currency || "GBP").toUpperCase();
       await sendOrderConfirmationEmail({
         orgId,
         order: {
           id: order.id,
           order_number: order.order_number,
           total,
-          currency: (event.currency || "GBP").toUpperCase(),
+          currency: chargedCcy,
         },
         customer: {
           first_name: customer.first_name,
@@ -394,6 +399,13 @@ export async function createMerchOrder(
         })),
         vat: vat && vat.amount > 0 ? vat : undefined,
         order_type: "merch_preorder",
+        ...(conversion && chargedCcy !== baseCcy ? {
+          crossCurrency: {
+            baseCurrency: baseCcy,
+            baseTotal: conversion.baseTotal,
+            exchangeRate: conversion.exchangeRate,
+          },
+        } : {}),
       });
     } catch {
       // Email failure must never affect the order response

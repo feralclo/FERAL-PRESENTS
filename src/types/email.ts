@@ -69,6 +69,13 @@ export interface OrderEmailData {
     inclusive: boolean;
     vat_number?: string;
   };
+  /** Cross-currency info (only present when buyer paid in a different currency). */
+  cross_currency?: {
+    base_symbol: string;
+    base_total: string;
+    base_currency_code: string;
+    exchange_rate: string;
+  };
 }
 
 /**

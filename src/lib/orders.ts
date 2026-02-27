@@ -100,6 +100,8 @@ export interface CreateOrderParams {
   discount?: OrderDiscount;
   /** Multi-currency conversion details (when presentment != base currency). */
   conversion?: OrderConversion;
+  /** Presentment currency the buyer paid in (e.g. "EUR"). When omitted, defaults to event.currency. */
+  presentmentCurrency?: string;
 }
 
 /** A ticket row as created by createOrder(). */
@@ -178,6 +180,7 @@ export async function createOrder(
     discountCode,
     discount,
     conversion,
+    presentmentCurrency,
   } = params;
 
   const email = customer.email.toLowerCase();
@@ -308,7 +311,7 @@ export async function createOrder(
         subtotal,
         fees,
         total,
-        currency: (event.currency || "GBP").toUpperCase(),
+        currency: (presentmentCurrency || event.currency || "GBP").toUpperCase(),
         payment_method: payment.method,
         payment_ref: payment.ref,
         // Multi-currency: store base currency equivalent for revenue aggregation
@@ -450,13 +453,15 @@ export async function createOrder(
   // ------------------------------------------------------------------
   if (sendEmail) {
     try {
+      const chargedCurrency = (presentmentCurrency || event.currency || "GBP").toUpperCase();
+      const baseCcy = (event.currency || "GBP").toUpperCase();
       await sendOrderConfirmationEmail({
         orgId,
         order: {
           id: order.id,
           order_number: order.order_number,
           total,
-          currency: (event.currency || "GBP").toUpperCase(),
+          currency: chargedCurrency,
         },
         customer: {
           first_name: customer.first_name,
@@ -483,6 +488,13 @@ export async function createOrder(
           };
         }),
         vat: vat && vat.amount > 0 ? vat : undefined,
+        ...(conversion && chargedCurrency !== baseCcy ? {
+          crossCurrency: {
+            baseCurrency: baseCcy,
+            baseTotal: conversion.baseTotal,
+            exchangeRate: conversion.exchangeRate,
+          },
+        } : {}),
       });
     } catch {
       // Email failure must never affect the order response

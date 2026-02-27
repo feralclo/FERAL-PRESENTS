@@ -202,6 +202,12 @@ export async function sendOrderConfirmationEmail(params: {
   };
   /** "merch_preorder" for shop-only merch orders */
   order_type?: string;
+  /** Cross-currency info (when buyer paid in a different currency than the event base). */
+  crossCurrency?: {
+    baseCurrency: string;
+    baseTotal: number;
+    exchangeRate: number;
+  };
 }): Promise<void> {
   try {
     const resend = getResendClient();
@@ -217,7 +223,8 @@ export async function sendOrderConfirmationEmail(params: {
       return;
     }
 
-    const currency = params.event.currency || params.order.currency || "GBP";
+    // Use order currency (presentment — what buyer paid) over event currency (base)
+    const currency = params.order.currency || params.event.currency || "GBP";
     const symbol = getCurrencySymbol(currency);
 
     // Build email data
@@ -249,6 +256,14 @@ export async function sendOrderConfirmationEmail(params: {
             },
           }
         : {}),
+      ...(params.crossCurrency ? {
+        cross_currency: {
+          base_symbol: getCurrencySymbol(params.crossCurrency.baseCurrency),
+          base_total: params.crossCurrency.baseTotal.toFixed(2),
+          base_currency_code: params.crossCurrency.baseCurrency.toUpperCase(),
+          exchange_rate: params.crossCurrency.exchangeRate.toFixed(4),
+        },
+      } : {}),
     };
 
     let emailLogoBase64: string | null = null;

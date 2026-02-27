@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
         id: event.id,
         name: event.name,
         slug: event.slug,
-        currency: metadata.presentment_currency || event.currency,
+        currency: event.currency,
         venue_name: event.venue_name,
         date_start: event.date_start,
         doors_time: event.doors_time,
@@ -197,6 +197,7 @@ export async function POST(request: NextRequest) {
       merchPassTicketTypeId,
       vat: vatInfo,
       conversion,
+      presentmentCurrency: metadata.presentment_currency || undefined,
     });
 
     // Fetch full order for response

@@ -374,6 +374,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
       discountCode: metadata.discount_code || undefined,
       discount: discountInfo,
       conversion: conversionInfo,
+      presentmentCurrency: metadata.presentment_currency || undefined,
     });
 
     console.log(

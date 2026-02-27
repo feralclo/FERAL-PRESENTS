@@ -308,12 +308,7 @@ export function buildOrderConfirmationEmail(
                         <td colspan="2" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #bbb; padding: 2px 0;">
                           VAT No: ${escapeHtml(order.vat.vat_number)}
                         </td>
-                      </tr>` : ""}` : ""}${order.cross_currency ? `
-                      <tr>
-                        <td colspan="2" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #999; padding: 6px 0 2px; border-top: 1px dashed #eee;">
-                          Charged in ${escapeHtml(order.currency_symbol)}${escapeHtml(order.total)} &middot; Approx. ${escapeHtml(order.cross_currency.base_symbol)}${escapeHtml(order.cross_currency.base_total)} ${escapeHtml(order.cross_currency.base_currency_code)}
-                        </td>
-                      </tr>` : ""}
+                      </tr>` : ""}` : ""}
                     </table>
                   </td>
                 </tr>
@@ -479,7 +474,7 @@ ${eventDetails}${doorsLine ? `\n${doorsLine}` : ""}
 ORDER DETAILS
 Order: ${order.order_number}
 ${isMerchPreorder ? "Items" : "Tickets"}: ${order.tickets.length}
-Total: ${order.currency_symbol}${order.total}${order.vat ? `\n${order.vat.inclusive ? `Includes VAT (${order.vat.rate}%)` : `VAT (${order.vat.rate}%)`}: ${order.currency_symbol}${order.vat.amount}${order.vat.vat_number ? `\nVAT No: ${order.vat.vat_number}` : ""}` : ""}${order.cross_currency ? `\nCharged in ${order.currency_symbol}${order.total} · Approx. ${order.cross_currency.base_symbol}${order.cross_currency.base_total} ${order.cross_currency.base_currency_code}` : ""}
+Total: ${order.currency_symbol}${order.total}${order.vat ? `\n${order.vat.inclusive ? `Includes VAT (${order.vat.rate}%)` : `VAT (${order.vat.rate}%)`}: ${order.currency_symbol}${order.vat.amount}${order.vat.vat_number ? `\nVAT No: ${order.vat.vat_number}` : ""}` : ""}
 
 ${isMerchPreorder ? "YOUR COLLECTION QR CODES" : "YOUR TICKETS"}
 ${ticketCodesText}

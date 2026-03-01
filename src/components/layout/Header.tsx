@@ -28,8 +28,8 @@ export function Header() {
   const orgId = useOrgId();
   const pathname = usePathname();
 
-  // On event/shop/checkout pages, hide landing-page nav (Events/About/Contact)
-  // and make the logo non-navigating (stays on current page).
+  // On event/shop/checkout pages, swap landing-page nav (Events/About/Contact)
+  // for a simplified menu with just the homepage link.
   const isEventPage = pathname.startsWith("/event/") || pathname.startsWith("/checkout/") || pathname.startsWith("/shop/");
   const [phase, setPhase] = useState<MenuPhase>("closed");
   const [storeSettings, setStoreSettings] = useState<MerchStoreSettings | null>(() => {
@@ -149,44 +149,40 @@ export function Header() {
         )}
       </Link>
 
-      {!isEventPage && (
-        <button
-          className={`nav__toggle${isActive ? " active" : ""}`}
-          onClick={toggleMenu}
-          aria-label="Toggle menu"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      )}
+      <button
+        className={`nav__toggle${isActive ? " active" : ""}`}
+        onClick={toggleMenu}
+        aria-label="Toggle menu"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
 
-      {!isEventPage && (
-        <div className={menuClassName}>
-          <ul className="nav__list">
-            {navLinks.map((link, i) => (
-              <li
-                key={link.href}
-                className="nav__item"
-                style={{ "--stagger": i } as React.CSSProperties}
-              >
-                <Link href={link.href} className="nav__link" onClick={closeMenu}>
-                  <span className="nav__link-index">{link.index}</span>
-                  <span className="nav__link-slash">//</span>
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <Link
-            href="/#events"
-            className="nav__cta"
-            onClick={closeMenu}
-          >
-            Book Tickets
-          </Link>
-        </div>
-      )}
+      <div className={menuClassName}>
+        <ul className="nav__list">
+          {(isEventPage ? [{ href: "/", label: "Home", index: "01" }] : navLinks).map((link, i) => (
+            <li
+              key={link.href}
+              className="nav__item"
+              style={{ "--stagger": i } as React.CSSProperties}
+            >
+              <Link href={link.href} className="nav__link" onClick={closeMenu}>
+                <span className="nav__link-index">{link.index}</span>
+                <span className="nav__link-slash">//</span>
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <Link
+          href={isEventPage ? "/" : "/#events"}
+          className="nav__cta"
+          onClick={closeMenu}
+        >
+          {isEventPage ? "All Events" : "Book Tickets"}
+        </Link>
+      </div>
     </nav>
   );
 }

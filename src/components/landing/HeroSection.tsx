@@ -65,12 +65,17 @@ export function HeroSection({ settings }: HeroSectionProps) {
       {/* Background image + atmospheric effects */}
       <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={settings.hero_image_url || "/images/banner-1.jpg"}
-          alt=""
-          className="hero__bg-image w-full h-full object-cover block"
-          style={{ objectPosition: `${focalX}% ${focalY}%` }}
-        />
+        {settings.hero_image_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={settings.hero_image_url}
+            alt=""
+            className="hero__bg-image w-full h-full object-cover block"
+            style={{ objectPosition: `${focalX}% ${focalY}%` }}
+          />
+        ) : (
+          <div className="w-full h-full bg-[var(--bg-dark,#0e0e0e)]" />
+        )}
         {/* Atmospheric mist + bokeh */}
         <div className="hero__bg-mist absolute inset-0 z-[1] pointer-events-none overflow-hidden" />
         {/* Spotlight sweep — concert-style beams crossing the frame */}
@@ -93,8 +98,8 @@ export function HeroSection({ settings }: HeroSectionProps) {
       {/* Content — w-full ensures centering works on all screen sizes */}
       <div className="relative z-[2] w-full text-center px-6">
         <HeroGlitchText
-          line1={settings.hero_title_line1 || "BORN ON THE"}
-          line2={settings.hero_title_line2 || "DANCE FLOOR"}
+          line1={settings.hero_title_line1 || "UPCOMING"}
+          line2={settings.hero_title_line2 || "EVENTS"}
         />
         <a
           href="#events"

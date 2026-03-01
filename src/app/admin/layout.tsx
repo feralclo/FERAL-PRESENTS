@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -8,6 +8,7 @@ import { useBranding } from "@/hooks/useBranding";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { CommandPalette } from "@/components/admin/CommandPalette";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 import {
@@ -166,6 +167,7 @@ function EntryWordmark({ size = "default" }: { size?: "default" | "sm" }) {
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -233,6 +235,35 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [userMenuOpen, isBypassRoute]);
 
+  // Global keyboard shortcut: "/" and Cmd+K to open command palette
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Cmd+K / Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen(true);
+        return;
+      }
+      // "/" when not focused on an input
+      if (e.key === "/" && !commandOpen) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        const isEditable =
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          (e.target as HTMLElement)?.isContentEditable;
+        if (!isEditable) {
+          e.preventDefault();
+          setCommandOpen(true);
+        }
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [commandOpen]);
+
+  const closeCommand = useCallback(() => setCommandOpen(false), []);
+
   if (isLoginPage) return <>{children}</>;
 
   // Invite acceptance is a standalone page (unauthenticated)
@@ -248,13 +279,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (isOnboardingPage) return <>{children}</>;
 
   // Editor is full-screen — no sidebar, just the data-admin scope for Tailwind
-  if (isEditorPage) return <>{children}</>;
+  if (isEditorPage) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;
 
   // Backend has its own standalone layout
-  if (isBackendRoute) return <>{children}</>;
+  if (isBackendRoute) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;
 
   // Settings has its own standalone layout
-  if (isSettingsRoute) return <>{children}</>;
+  if (isSettingsRoute) return <><CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />{children}</>;
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();
@@ -267,6 +298,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div data-admin className="flex min-h-screen bg-background">
+      <CommandPalette open={commandOpen} onClose={closeCommand} isPlatformOwner={isPlatformOwner} />
       {/* ── Mobile overlay ── */}
       {open && (
         <div
@@ -300,7 +332,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Search hint */}
         <div className="px-3 pt-3 pb-1">
-          <button className="flex w-full items-center gap-2.5 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/30 px-3 py-2 text-[12px] text-sidebar-foreground/40 transition-colors hover:border-sidebar-border hover:text-sidebar-foreground/60">
+          <button onClick={() => setCommandOpen(true)} className="flex w-full items-center gap-2.5 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/30 px-3 py-2 text-[12px] text-sidebar-foreground/40 transition-colors hover:border-sidebar-border hover:text-sidebar-foreground/60">
             <Search size={13} strokeWidth={1.5} />
             <span>Search...</span>
             <kbd className="ml-auto rounded border border-sidebar-border/60 bg-sidebar px-1.5 py-0.5 font-mono text-[10px] leading-none text-sidebar-foreground/30">

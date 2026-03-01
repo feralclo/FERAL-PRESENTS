@@ -88,6 +88,7 @@ export default async function HomePage() {
   let events: LandingEvent[] = [];
   let heroSettings: HomepageSettings = DEFAULT_HERO;
   let aboutSection: BrandingSettings["about_section"] | undefined;
+  let branding: BrandingSettings | null = null;
 
   try {
     const supabase = await getSupabaseAdmin();
@@ -120,7 +121,7 @@ export default async function HomePage() {
         heroSettings = { ...DEFAULT_HERO, ...settingsResult.data.data as HomepageSettings };
       }
       if (brandingResult.data?.data) {
-        const branding = brandingResult.data.data as BrandingSettings;
+        branding = brandingResult.data.data as BrandingSettings;
         aboutSection = branding.about_section;
       }
     }
@@ -128,5 +129,5 @@ export default async function HomePage() {
     // Fall through with defaults
   }
 
-  return <LandingPage events={events} heroSettings={heroSettings} orgId={orgId} aboutSection={aboutSection} />;
+  return <LandingPage events={events} heroSettings={heroSettings} orgId={orgId} aboutSection={aboutSection} branding={branding} />;
 }

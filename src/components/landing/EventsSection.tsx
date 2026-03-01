@@ -109,11 +109,11 @@ function EventCard({ event }: { event: LandingEvent }) {
     <Link
       href={href}
       {...linkProps}
-      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_rgba(255,0,51,0.1),0_0_0_1px_rgba(255,0,51,0.12)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[calc(100vw-80px)]"
+      className="group block relative rounded-2xl border border-foreground/[0.06] bg-foreground/[0.03] overflow-hidden transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-[0_8px_40px_color-mix(in_srgb,var(--accent)_10%,transparent),0_0_0_1px_color-mix(in_srgb,var(--accent)_12%,transparent)] max-lg:snap-start max-lg:shrink-0 max-lg:w-[calc(100vw-80px)]"
       data-reveal=""
     >
       {/* Date badge */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col items-center bg-background/95 border border-foreground/[0.10] px-3.5 py-2.5 rounded-lg transition-[border-color,box-shadow] duration-300 group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(255,0,51,0.1)]">
+      <div className="absolute top-4 right-4 z-10 flex flex-col items-center bg-background/95 border border-foreground/[0.10] px-3.5 py-2.5 rounded-lg transition-[border-color,box-shadow] duration-300 group-hover:border-primary/30 group-hover:shadow-[0_0_20px_color-mix(in_srgb,var(--accent)_10%,transparent)]">
         <span className="font-[family-name:var(--font-mono)] text-[22px] font-bold leading-none tracking-[0.02em]">
           {day}
         </span>
@@ -180,7 +180,7 @@ function EventCard({ event }: { event: LandingEvent }) {
       </div>
 
       {/* Inner border glow on hover */}
-      <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-500 group-hover:opacity-100 shadow-[inset_0_0_30px_rgba(255,0,51,0.06)]" />
+      <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-500 group-hover:opacity-100 shadow-[inset_0_0_30px_color-mix(in_srgb,var(--accent)_6%,transparent)]" />
     </Link>
   );
 }

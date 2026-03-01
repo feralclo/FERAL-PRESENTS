@@ -88,7 +88,7 @@ export function ContactSection() {
             />
             <button
               type="submit"
-              className="whitespace-nowrap px-7 py-4 max-md:w-full bg-primary text-foreground font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.02em] uppercase transition-all duration-300 hover:brightness-110 cursor-pointer"
+              className="whitespace-nowrap px-7 py-4 max-md:w-full bg-primary text-background font-[family-name:var(--font-sans)] text-xs font-bold tracking-[0.02em] uppercase transition-all duration-300 hover:brightness-110 cursor-pointer"
             >
               SUBMIT
             </button>
@@ -108,7 +108,7 @@ export function ContactSection() {
               <a
                 key={link.text}
                 href={link.href}
-                className="font-[family-name:var(--font-mono)] text-xs tracking-[0.25em] text-foreground/40 px-3 py-2 border border-foreground/[0.08] transition-all duration-300 hover:text-primary hover:border-primary hover:shadow-[0_0_20px_rgba(255,0,51,0.15)]"
+                className="font-[family-name:var(--font-mono)] text-xs tracking-[0.25em] text-foreground/40 px-3 py-2 border border-foreground/[0.08] transition-all duration-300 hover:text-primary hover:border-primary hover:shadow-[0_0_20px_color-mix(in_srgb,var(--accent)_15%,transparent)]"
                 aria-label={link.label}
                 target="_blank"
                 rel="noopener noreferrer"

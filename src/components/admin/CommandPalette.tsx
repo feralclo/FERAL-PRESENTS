@@ -26,6 +26,8 @@ import {
   ArrowUp,
   ArrowDown,
   CornerDownLeft,
+  User as UserIcon,
+  Hash,
 } from "lucide-react";
 
 /* ── Types ── */
@@ -39,6 +41,15 @@ interface CommandItem {
   platformOwnerOnly?: boolean;
 }
 
+interface LiveResult {
+  id: string;
+  label: string;
+  detail: string;
+  secondary?: string;
+  href: string;
+  section: "Orders" | "Customers";
+}
+
 /* ── Section icons ── */
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
@@ -48,6 +59,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   Growth: TrendingUp,
   Settings: Settings,
   Backend: Shield,
+  Orders: Hash,
+  Customers: UserIcon,
 };
 
 /* ── Search registry ── */
@@ -128,32 +141,16 @@ function scoreItem(item: CommandItem, query: string): number {
   const label = item.label.toLowerCase();
   const desc = item.description.toLowerCase();
 
-  // Exact label match
   if (label === q) return 100;
-
-  // Label starts with query
   if (label.startsWith(q)) return 90;
-
-  // Label word starts with query
   const labelWords = label.split(/\s+/);
   if (labelWords.some((w) => w.startsWith(q))) return 80;
-
-  // Label contains query
   if (label.includes(q)) return 70;
-
-  // Keyword exact match
   if (item.keywords.some((k) => k === q)) return 65;
-
-  // Keyword starts with query
   if (item.keywords.some((k) => k.startsWith(q))) return 60;
-
-  // Keyword contains query
   if (item.keywords.some((k) => k.includes(q))) return 50;
-
-  // Description contains query
   if (desc.includes(q)) return 40;
 
-  // Multi-word: all query words match somewhere
   const queryWords = q.split(/\s+/).filter(Boolean);
   if (queryWords.length > 1) {
     const allText = `${label} ${desc} ${item.keywords.join(" ")}`;
@@ -161,6 +158,62 @@ function scoreItem(item: CommandItem, query: string): number {
   }
 
   return 0;
+}
+
+/* ── Live search fetcher ── */
+
+async function fetchLiveResults(query: string): Promise<LiveResult[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const results: LiveResult[] = [];
+
+  try {
+    const [ordersRes, customersRes] = await Promise.all([
+      fetch(`/api/orders?search=${encodeURIComponent(q)}&limit=5`).catch(() => null),
+      fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=5`).catch(() => null),
+    ]);
+
+    if (ordersRes?.ok) {
+      const json = await ordersRes.json();
+      const orders = json.data || json || [];
+      for (const o of orders.slice(0, 5)) {
+        const name = o.customer
+          ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim()
+          : "";
+        const total = o.total != null
+          ? `${o.currency === "EUR" ? "\u20AC" : o.currency === "USD" ? "$" : "\u00A3"}${(o.total / 100).toFixed(2)}`
+          : "";
+        results.push({
+          id: o.id,
+          label: o.order_number,
+          detail: name || o.customer?.email || "Unknown customer",
+          secondary: total,
+          href: `/admin/orders/${o.id}/`,
+          section: "Orders",
+        });
+      }
+    }
+
+    if (customersRes?.ok) {
+      const json = await customersRes.json();
+      const customers = json.data || json || [];
+      for (const c of customers.slice(0, 5)) {
+        const name = `${c.first_name || ""} ${c.last_name || ""}`.trim();
+        results.push({
+          id: c.id,
+          label: name || c.email,
+          detail: name ? c.email : "",
+          href: `/admin/customers/${c.id}/`,
+          section: "Customers",
+        });
+      }
+    }
+  } catch {
+    // Silently fail — live results are supplementary
+  }
+
+  return results;
 }
 
 /* ── Component ── */
@@ -174,12 +227,15 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [liveResults, setLiveResults] = useState<LiveResult[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const router = useRouter();
 
-  // Filter and score results
-  const results = useMemo(() => {
+  // Filter and score page results
+  const pageResults = useMemo(() => {
     const items = isPlatformOwner
       ? REGISTRY
       : REGISTRY.filter((item) => !item.platformOwnerOnly);
@@ -195,29 +251,78 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
       .map(({ item }) => item);
   }, [query, isPlatformOwner]);
 
-  // Group results by section
-  const grouped = useMemo(() => {
-    const groups: { section: string; items: CommandItem[] }[] = [];
+  // Debounced live search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const q = query.trim();
+    if (q.length < 2) {
+      setLiveResults([]);
+      setLiveLoading(false);
+      return;
+    }
+
+    setLiveLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      const results = await fetchLiveResults(q);
+      setLiveResults(results);
+      setLiveLoading(false);
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
+  // Build grouped display: live results first, then pages
+  const allGroups = useMemo(() => {
+    const groups: { section: string; items: { label: string; detail: string; secondary?: string; href: string }[] }[] = [];
+
+    // Live results grouped by section
+    if (query.trim().length >= 2) {
+      const liveOrders = liveResults.filter((r) => r.section === "Orders");
+      const liveCustomers = liveResults.filter((r) => r.section === "Customers");
+
+      if (liveOrders.length > 0) {
+        groups.push({
+          section: "Orders",
+          items: liveOrders.map((r) => ({ label: r.label, detail: r.detail, secondary: r.secondary, href: r.href })),
+        });
+      }
+      if (liveCustomers.length > 0) {
+        groups.push({
+          section: "Customers",
+          items: liveCustomers.map((r) => ({ label: r.label, detail: r.detail, href: r.href })),
+        });
+      }
+    }
+
+    // Page results grouped by section
     const seen = new Set<string>();
-    for (const item of results) {
+    for (const item of pageResults) {
       if (!seen.has(item.section)) {
         seen.add(item.section);
         groups.push({ section: item.section, items: [] });
       }
-      groups.find((g) => g.section === item.section)!.items.push(item);
+      groups.find((g) => g.section === item.section)!.items.push({
+        label: item.label,
+        detail: item.description,
+        href: item.href,
+      });
     }
+
     return groups;
-  }, [results]);
+  }, [pageResults, liveResults, query]);
 
   // Flat list for keyboard navigation
-  const flatResults = useMemo(() => grouped.flatMap((g) => g.items), [grouped]);
+  const flatItems = useMemo(() => allGroups.flatMap((g) => g.items), [allGroups]);
 
-  // Reset on open/close
+  // Reset on open
   useEffect(() => {
     if (open) {
       setQuery("");
       setSelectedIndex(0);
-      // Focus input after a tick so the dialog is mounted
+      setLiveResults([]);
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
@@ -247,16 +352,16 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          setSelectedIndex((i) => (i + 1) % Math.max(flatResults.length, 1));
+          setSelectedIndex((i) => (i + 1) % Math.max(flatItems.length, 1));
           break;
         case "ArrowUp":
           e.preventDefault();
-          setSelectedIndex((i) => (i - 1 + flatResults.length) % Math.max(flatResults.length, 1));
+          setSelectedIndex((i) => (i - 1 + flatItems.length) % Math.max(flatItems.length, 1));
           break;
         case "Enter":
           e.preventDefault();
-          if (flatResults[selectedIndex]) {
-            navigate(flatResults[selectedIndex].href);
+          if (flatItems[selectedIndex]) {
+            navigate(flatItems[selectedIndex].href);
           }
           break;
         case "Escape":
@@ -265,7 +370,7 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
           break;
       }
     },
-    [flatResults, selectedIndex, navigate, onClose]
+    [flatItems, selectedIndex, navigate, onClose]
   );
 
   if (!open) return null;
@@ -292,8 +397,8 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search pages, settings, features..."
-              className="flex-1 bg-transparent py-3.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+              placeholder="Search pages, orders, customers..."
+              className="flex-1 border-0 bg-transparent py-3.5 text-sm text-foreground shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 placeholder:text-muted-foreground/60"
               autoComplete="off"
               spellCheck={false}
             />
@@ -304,9 +409,15 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
 
           {/* Results */}
           <div ref={listRef} className="max-h-[min(60vh,400px)] overflow-y-auto p-2">
-            {flatResults.length === 0 && query.trim() && (
+            {flatItems.length === 0 && query.trim() && !liveLoading && (
               <div className="px-3 py-8 text-center text-sm text-muted-foreground">
                 No results for &ldquo;{query}&rdquo;
+              </div>
+            )}
+
+            {flatItems.length === 0 && liveLoading && (
+              <div className="px-3 py-8 text-center text-sm text-muted-foreground/50">
+                Searching...
               </div>
             )}
 
@@ -316,7 +427,7 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
               </div>
             )}
 
-            {grouped.map((group) => (
+            {allGroups.map((group) => (
               <div key={group.section}>
                 {query.trim() && (
                   <div className="mb-1 mt-2 flex items-center gap-2 px-3 first:mt-0">
@@ -344,7 +455,7 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
 
                   return (
                     <button
-                      key={item.href}
+                      key={`${group.section}-${item.href}`}
                       data-index={idx}
                       onClick={() => navigate(item.href)}
                       onMouseEnter={() => setSelectedIndex(idx)}
@@ -358,11 +469,18 @@ export function CommandPalette({ open, onClose, isPlatformOwner }: CommandPalett
                         <div className="truncate text-[13px] font-medium">
                           {item.label}
                         </div>
-                        <div className="truncate text-[11px] text-muted-foreground/60">
-                          {item.description}
-                        </div>
+                        {item.detail && (
+                          <div className="truncate text-[11px] text-muted-foreground/60">
+                            {item.detail}
+                          </div>
+                        )}
                       </div>
-                      {isSelected && (
+                      {item.secondary && (
+                        <span className="shrink-0 font-mono text-[12px] text-muted-foreground/70">
+                          {item.secondary}
+                        </span>
+                      )}
+                      {isSelected && !item.secondary && (
                         <CornerDownLeft
                           size={12}
                           className="shrink-0 text-primary/60"

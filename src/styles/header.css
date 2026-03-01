@@ -63,6 +63,16 @@
   opacity: 0.8;
 }
 
+.nav__logo-text {
+  display: block;
+  color: var(--text-primary, #fff);
+  transition: opacity var(--transition-base);
+}
+
+.nav__logo:hover .nav__logo-text {
+  opacity: 0.8;
+}
+
 
 .nav__menu {
   display: flex;

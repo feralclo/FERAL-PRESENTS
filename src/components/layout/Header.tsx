@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useBranding } from "@/hooks/useBranding";
 import { useOrgId } from "@/components/OrgProvider";
 import type { MerchStoreSettings } from "@/types/merch-store";
@@ -25,6 +26,11 @@ const BASE_NAV_LINKS: NavLink[] = [
 export function Header() {
   const branding = useBranding();
   const orgId = useOrgId();
+  const pathname = usePathname();
+
+  // On event/shop/checkout pages, hide landing-page nav (Events/About/Contact)
+  // and make the logo non-navigating (stays on current page).
+  const isEventPage = pathname.startsWith("/event/") || pathname.startsWith("/checkout/") || pathname.startsWith("/shop/");
   const [phase, setPhase] = useState<MenuPhase>("closed");
   const [storeSettings, setStoreSettings] = useState<MerchStoreSettings | null>(() => {
     // Hydrate from sessionStorage for instant render (no layout shift)
@@ -127,50 +133,60 @@ export function Header() {
   return (
     <nav className="nav">
       <Link href="/" className="nav__logo" onClick={closeMenu}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={branding.logo_url || "/images/FERAL LOGO.svg"}
-          alt={branding.org_name || "Entry"}
-          className="nav__logo-img"
-          data-branding="logo"
-          style={branding.logo_height ? { height: Math.min(branding.logo_height, 48) } : undefined}
-        />
+        {branding.logo_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={branding.logo_url}
+            alt={branding.org_name || "Entry"}
+            className="nav__logo-img"
+            data-branding="logo"
+            style={branding.logo_height ? { height: Math.min(branding.logo_height, 48) } : undefined}
+          />
+        ) : (
+          <span className="nav__logo-text" data-branding="logo">
+            {branding.org_name || "Entry"}
+          </span>
+        )}
       </Link>
 
-      <button
-        className={`nav__toggle${isActive ? " active" : ""}`}
-        onClick={toggleMenu}
-        aria-label="Toggle menu"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-
-      <div className={menuClassName}>
-        <ul className="nav__list">
-          {navLinks.map((link, i) => (
-            <li
-              key={link.href}
-              className="nav__item"
-              style={{ "--stagger": i } as React.CSSProperties}
-            >
-              <Link href={link.href} className="nav__link" onClick={closeMenu}>
-                <span className="nav__link-index">{link.index}</span>
-                <span className="nav__link-slash">//</span>
-                {link.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <Link
-          href="/#events"
-          className="nav__cta"
-          onClick={closeMenu}
+      {!isEventPage && (
+        <button
+          className={`nav__toggle${isActive ? " active" : ""}`}
+          onClick={toggleMenu}
+          aria-label="Toggle menu"
         >
-          Book Tickets
-        </Link>
-      </div>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      )}
+
+      {!isEventPage && (
+        <div className={menuClassName}>
+          <ul className="nav__list">
+            {navLinks.map((link, i) => (
+              <li
+                key={link.href}
+                className="nav__item"
+                style={{ "--stagger": i } as React.CSSProperties}
+              >
+                <Link href={link.href} className="nav__link" onClick={closeMenu}>
+                  <span className="nav__link-index">{link.index}</span>
+                  <span className="nav__link-slash">//</span>
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/#events"
+            className="nav__cta"
+            onClick={closeMenu}
+          >
+            Book Tickets
+          </Link>
+        </div>
+      )}
     </nav>
   );
 }

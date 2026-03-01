@@ -1,4 +1,4 @@
-import { TABLES, planKey } from "@/lib/constants";
+import { TABLES, planKey, brandingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -199,6 +199,22 @@ export async function provisionOrg(params: ProvisionOrgParams): Promise<{
     await supabase.from(TABLES.DOMAINS).delete().eq("org_id", orgSlug).eq("type", "subdomain");
     await supabase.from(TABLES.ORG_USERS).delete().eq("auth_user_id", authUserId).eq("org_id", orgSlug);
     throw new Error("Failed to initialize organization plan");
+  }
+
+  // Step 4: Create initial branding with org name (non-critical — don't fail signup)
+  try {
+    await supabase
+      .from(TABLES.SITE_SETTINGS)
+      .upsert(
+        {
+          key: brandingKey(orgSlug),
+          data: { org_name: orgName },
+          updated_at: now,
+        },
+        { onConflict: "key" }
+      );
+  } catch (e) {
+    console.error("[signup] Failed to create initial branding (non-critical):", e);
   }
 
   return { orgSlug, orgName };

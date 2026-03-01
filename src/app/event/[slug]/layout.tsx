@@ -153,9 +153,22 @@ export default async function EventLayout({
     </>
   );
 
+  // Serialize branding for client-side hydration (avoids FOUC for logo/org_name).
+  // The useBranding hook reads this on module load before any component renders.
+  const brandingJson = branding
+    ? JSON.stringify(branding)
+    : null;
+
   return (
     <>
       {preconnectHints}
+      {brandingJson && (
+        <script
+          id="__BRANDING_DATA__"
+          type="application/json"
+          dangerouslySetInnerHTML={{ __html: brandingJson }}
+        />
+      )}
       <div
         data-theme-root
         data-theme={dataThemeAttr}

@@ -20,6 +20,25 @@ const DEFAULT_BRANDING: BrandingSettings = {
 let _cachedBranding: BrandingSettings | null = null;
 let _fetchPromise: Promise<BrandingSettings> | null = null;
 
+/**
+ * Hydrate branding from server-side data embedded in the page.
+ * Called once on module load — if the server injected __BRANDING__ into
+ * the DOM, we use it immediately so the first render has correct data.
+ */
+if (typeof window !== "undefined" && !_cachedBranding) {
+  try {
+    const el = document.getElementById("__BRANDING_DATA__");
+    if (el?.textContent) {
+      const parsed = JSON.parse(el.textContent);
+      if (parsed && typeof parsed === "object" && parsed.org_name) {
+        _cachedBranding = { ...DEFAULT_BRANDING, ...parsed };
+      }
+    }
+  } catch {
+    // Ignore — will fetch client-side as usual
+  }
+}
+
 function fetchBranding(): Promise<BrandingSettings> {
   if (_fetchPromise) return _fetchPromise;
 

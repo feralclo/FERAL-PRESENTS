@@ -44,7 +44,7 @@ import {
   X,
   Users,
 } from "lucide-react";
-import { COLOR_PRESETS } from "@/lib/color-presets";
+import { THEME_VIBES, getVibeCssVars } from "@/lib/theme-vibes";
 import { FONT_PAIRINGS, buildGoogleFontsUrl } from "@/lib/font-pairings";
 import type { BrandingSettings, ThemeStore, StoreTheme, HomepageSettings } from "@/types/settings";
 import "@/styles/tailwind.css";
@@ -269,13 +269,21 @@ function TicketStoreEditorPage() {
 
   /* Push all branding to iframe at once */
   const pushAllToIframe = useCallback(() => {
-    const vars: Record<string, string> = {};
-    if (branding.accent_color) vars["--accent"] = branding.accent_color;
-    if (branding.background_color) vars["--bg-dark"] = branding.background_color;
-    if (branding.card_color) vars["--card-bg"] = branding.card_color;
-    if (branding.text_color) vars["--text-primary"] = branding.text_color;
-    if (branding.card_border_color) vars["--card-border"] = branding.card_border_color;
-    pushToIframe(vars);
+    // If a vibe is active, push all vars (colors + structural) at once
+    if (branding.color_preset) {
+      const vibe = THEME_VIBES.find((v) => v.id === branding.color_preset);
+      if (vibe) {
+        pushToIframe(getVibeCssVars(vibe));
+      }
+    } else {
+      const vars: Record<string, string> = {};
+      if (branding.accent_color) vars["--accent"] = branding.accent_color;
+      if (branding.background_color) vars["--bg-dark"] = branding.background_color;
+      if (branding.card_color) vars["--card-bg"] = branding.card_color;
+      if (branding.text_color) vars["--text-primary"] = branding.text_color;
+      if (branding.card_border_color) vars["--card-border"] = branding.card_border_color;
+      pushToIframe(vars);
+    }
     if (branding.heading_font) pushFontToIframe("--font-mono", branding.heading_font);
     if (branding.body_font) pushFontToIframe("--font-sans", branding.body_font);
     if (branding.logo_url) pushLogoToIframe(branding.logo_url, branding.logo_width);
@@ -400,18 +408,25 @@ function TicketStoreEditorPage() {
     setBranding({ ...savedBranding });
     // Reset iframe to saved state
     setTimeout(() => {
-      const vars: Record<string, string> = {};
-      if (savedBranding.accent_color)
-        vars["--accent"] = savedBranding.accent_color;
-      if (savedBranding.background_color)
-        vars["--bg-dark"] = savedBranding.background_color;
-      if (savedBranding.card_color)
-        vars["--card-bg"] = savedBranding.card_color;
-      if (savedBranding.text_color)
-        vars["--text-primary"] = savedBranding.text_color;
-      if (savedBranding.card_border_color)
-        vars["--card-border"] = savedBranding.card_border_color;
-      pushToIframe(vars);
+      if (savedBranding.color_preset) {
+        const vibe = THEME_VIBES.find((v) => v.id === savedBranding.color_preset);
+        if (vibe) {
+          pushToIframe(getVibeCssVars(vibe));
+        }
+      } else {
+        const vars: Record<string, string> = {};
+        if (savedBranding.accent_color)
+          vars["--accent"] = savedBranding.accent_color;
+        if (savedBranding.background_color)
+          vars["--bg-dark"] = savedBranding.background_color;
+        if (savedBranding.card_color)
+          vars["--card-bg"] = savedBranding.card_color;
+        if (savedBranding.text_color)
+          vars["--text-primary"] = savedBranding.text_color;
+        if (savedBranding.card_border_color)
+          vars["--card-border"] = savedBranding.card_border_color;
+        pushToIframe(vars);
+      }
       if (savedBranding.heading_font)
         pushFontToIframe("--font-mono", savedBranding.heading_font);
       if (savedBranding.body_font)
@@ -545,35 +560,29 @@ function TicketStoreEditorPage() {
               }
             >
               <div className="space-y-4">
-                {/* Color Presets */}
+                {/* Vibes */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                    Color Presets
+                    Vibe
                   </span>
                   <div className="space-y-2">
-                    {COLOR_PRESETS.map((preset) => {
-                      const isActive = branding.color_preset === preset.id;
+                    {THEME_VIBES.map((vibe) => {
+                      const isActive = branding.color_preset === vibe.id;
                       return (
                         <button
-                          key={preset.id}
+                          key={vibe.id}
                           type="button"
                           onClick={() => {
                             setBranding((prev) => ({
                               ...prev,
-                              accent_color: preset.colors.accent,
-                              background_color: preset.colors.background,
-                              card_color: preset.colors.card,
-                              text_color: preset.colors.text,
-                              card_border_color: preset.colors.border,
-                              color_preset: preset.id,
+                              accent_color: vibe.colors.accent,
+                              background_color: vibe.colors.background,
+                              card_color: vibe.colors.card,
+                              text_color: vibe.colors.text,
+                              card_border_color: vibe.colors.border,
+                              color_preset: vibe.id,
                             }));
-                            pushToIframe({
-                              "--accent": preset.colors.accent,
-                              "--bg-dark": preset.colors.background,
-                              "--card-bg": preset.colors.card,
-                              "--text-primary": preset.colors.text,
-                              "--card-border": preset.colors.border,
-                            });
+                            pushToIframe(getVibeCssVars(vibe));
                           }}
                           className={`relative w-full rounded-lg border p-2.5 text-left transition-all ${
                             isActive
@@ -585,24 +594,24 @@ function TicketStoreEditorPage() {
                             {/* Mini color preview */}
                             <div
                               className="h-8 w-10 shrink-0 rounded-md p-1 flex items-center justify-center"
-                              style={{ backgroundColor: preset.colors.background }}
+                              style={{ backgroundColor: vibe.colors.background }}
                             >
                               <div
                                 className="h-4 w-6 rounded border"
                                 style={{
-                                  backgroundColor: preset.colors.card,
-                                  borderColor: preset.colors.border,
+                                  backgroundColor: vibe.colors.card,
+                                  borderColor: vibe.colors.border,
                                 }}
                               >
                                 <div
                                   className="mx-auto mt-1 h-1.5 w-3 rounded-full"
-                                  style={{ backgroundColor: preset.colors.accent }}
+                                  style={{ backgroundColor: vibe.colors.accent }}
                                 />
                               </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <span className="text-[11px] font-medium block">{preset.name}</span>
-                              <span className="text-[9px] text-muted-foreground block">{preset.mood}</span>
+                              <span className="text-[11px] font-medium block">{vibe.name}</span>
+                              <span className="text-[9px] text-muted-foreground block">{vibe.mood}</span>
                             </div>
                             {isActive && <Check size={12} className="text-primary shrink-0" />}
                           </div>

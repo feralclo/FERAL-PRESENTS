@@ -128,16 +128,47 @@
   }
 }
 
+/* ── Vibe structural defaults ──
+   These CSS vars control glass, effects, and animation independently
+   of the accent color. Each "vibe" preset overrides them all, creating
+   dramatically different visual personalities from the same components.
+   Defaults match the Neon Mint vibe (current baseline behavior). */
+[data-theme="midnight"] {
+  /* Glass treatment */
+  --vibe-glass-blur: 40px;
+  --vibe-glass-saturation: 140%;
+  --vibe-glass-shadow: 0.6;
+
+  /* Effect intensity */
+  --vibe-mist-opacity: 1;
+  --vibe-bokeh-opacity: 1;
+  --vibe-ember-opacity: 1;
+  --vibe-glow-opacity: 1;
+  --vibe-warmth-opacity: 1;
+  --vibe-grain-opacity: 1;
+
+  /* Animation speed */
+  --vibe-mist-speed: 18s;
+  --vibe-bokeh-speed: 30s;
+  --vibe-float-speed: 25s;
+
+  /* Accent cascade strength */
+  --vibe-accent-mist: 14%;
+  --vibe-accent-bokeh: 16%;
+  --vibe-accent-glow: 40%;
+}
+
 /* ── Accent-derived hero & effect vars ──
    When a preset changes --accent, the hero atmosphere, particles,
    and CTA effects all transform automatically via color-mix().
    Structural surfaces (glass, cards, borders) use --color-card /
-   --color-border directly — NOT accent tints. */
+   --color-border directly — NOT accent tints.
+   Accent intensity controlled by --vibe-accent-* percentages. */
 [data-theme="midnight"] {
   /* Hero atmosphere — mist, bokeh, spotlight, breathe */
-  --hero-mist-primary: color-mix(in srgb, var(--accent, #ff0033) 14%, transparent);
+  --hero-mist-primary: color-mix(in srgb, var(--accent, #ff0033) var(--vibe-accent-mist, 14%), transparent);
   --hero-mist-secondary: color-mix(in srgb, var(--accent, #ff0033) 10%, transparent);
-  --hero-bokeh-strong: color-mix(in srgb, var(--accent, #ff0033) 16%, transparent);
+  --hero-bokeh-strong: color-mix(in srgb, var(--accent, #ff0033) var(--vibe-accent-bokeh, 16%), transparent);
   --hero-bokeh-medium: color-mix(in srgb, var(--accent, #ff0033) 11%, transparent);
   --hero-spotlight: color-mix(in srgb, var(--accent, #ff0033) 7%, transparent);
   --hero-spotlight-edge: color-mix(in srgb, var(--accent, #ff0033) 4%, transparent);
@@ -146,7 +177,7 @@
   --hero-warmth-soft: color-mix(in srgb, var(--accent, #ff0033) 6%, transparent);
 
   /* Glitch text effects */
-  --hero-glow-strong: color-mix(in srgb, var(--accent, #ff0033) 40%, transparent);
+  --hero-glow-strong: color-mix(in srgb, var(--accent, #ff0033) var(--vibe-accent-glow, 40%), transparent);
   --hero-glow-medium: color-mix(in srgb, var(--accent, #ff0033) 15%, transparent);
   --hero-glow-soft: color-mix(in srgb, var(--accent, #ff0033) 5%, transparent);
   --hero-glow-bg: color-mix(in srgb, var(--accent, #ff0033) 10%, transparent);

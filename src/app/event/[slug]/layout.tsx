@@ -4,6 +4,7 @@ import { getOrgId } from "@/lib/org";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getActiveTemplate } from "@/lib/themes";
 import { setSentryEventContext } from "@/lib/sentry";
+import { getVibeById, getVibeCssVars } from "@/lib/theme-vibes";
 import { SettingsProvider } from "@/hooks/useSettings";
 import { ThemeEditorBridge } from "@/components/event/ThemeEditorBridge";
 import type { BrandingSettings } from "@/types/settings";
@@ -132,6 +133,20 @@ export default async function EventLayout({
   if (branding?.card_border_color) cssVars["--card-border"] = branding.card_border_color;
   if (branding?.heading_font) cssVars["--font-mono"] = `'${branding.heading_font}', monospace`;
   if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
+
+  // Inject vibe structural vars (glass, effects, animation) if a preset is active
+  if (branding?.color_preset) {
+    const vibe = getVibeById(branding.color_preset);
+    if (vibe) {
+      const vibeVars = getVibeCssVars(vibe);
+      // Only inject structural vars — color vars already set above from branding fields
+      for (const [key, value] of Object.entries(vibeVars)) {
+        if (key.startsWith("--vibe-")) {
+          cssVars[key] = value;
+        }
+      }
+    }
+  }
 
   const dataThemeAttr = activeTemplate || "midnight";
 

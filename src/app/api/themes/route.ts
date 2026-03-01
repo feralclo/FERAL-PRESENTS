@@ -3,11 +3,11 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, themesKey, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
-import { COLOR_PRESETS } from "@/lib/color-presets";
+import { THEME_VIBES } from "@/lib/theme-vibes";
 import type { BrandingSettings, StoreTheme, ThemeStore } from "@/types/settings";
 
 /** Get Entry Dark preset colors for the default theme baseline */
-const entryDark = COLOR_PRESETS.find((p) => p.id === "entry-dark")!;
+const entryDark = THEME_VIBES.find((p) => p.id === "entry-dark")!;
 
 /** Platform-neutral default branding — the Entry Dark theme baseline */
 const DEFAULT_BRANDING: BrandingSettings = {

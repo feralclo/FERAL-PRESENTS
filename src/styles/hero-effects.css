@@ -19,7 +19,11 @@
    scale(1.05+) prevents edge gaps. `alternate` reverses each cycle
    so there's never a loop-seam pop. */
 .hero__bg-image {
-  animation: heroFloat 25s ease-in-out infinite alternate;
+  animation-name: heroFloat;
+  animation-duration: var(--vibe-float-speed, 25s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
   will-change: transform;
 }
 
@@ -36,7 +40,12 @@
   background:
     radial-gradient(ellipse at 20% 50%, var(--hero-mist-primary, rgba(255, 0, 51, 0.14)) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 35%, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
-  animation: mistDrift 18s ease-in-out infinite alternate;
+  animation-name: mistDrift;
+  animation-duration: var(--vibe-mist-speed, 18s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  opacity: var(--vibe-mist-opacity, 1);
   mix-blend-mode: screen;
 }
 
@@ -61,7 +70,12 @@
     radial-gradient(circle 110px at 40% 80%, var(--hero-bokeh-medium, rgba(255, 0, 51, 0.11)) 0%, transparent 70%),
     radial-gradient(circle 70px at 88% 65%, var(--accent-complement-soft, rgba(200, 160, 255, 0.07)) 0%, transparent 70%),
     radial-gradient(circle 60px at 55% 15%, var(--ember-dim, rgba(255, 100, 50, 0.06)) 0%, transparent 70%);
-  animation: bokehFloat 30s ease-in-out infinite alternate;
+  animation-name: bokehFloat;
+  animation-duration: var(--vibe-bokeh-speed, 30s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  opacity: var(--vibe-bokeh-opacity, 1);
   mix-blend-mode: screen;
 }
 
@@ -160,6 +174,7 @@
     transparent 40%
   );
   animation: warmthPulse 6s ease-in-out infinite;
+  opacity: var(--vibe-warmth-opacity, 1);
 }
 
 @keyframes warmthPulse {
@@ -172,6 +187,7 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 128px 128px;
   animation: grainShift 0.3s steps(4) infinite;
+  opacity: var(--vibe-grain-opacity, 1);
 }
 
 @keyframes grainShift {
@@ -186,6 +202,7 @@
    Uses box-shadows as particles on a tall pseudo-element that scrolls up. */
 .hero__bg-embers {
   overflow: hidden;
+  opacity: var(--vibe-ember-opacity, 1);
 }
 
 .hero__bg-embers::before,
@@ -273,6 +290,7 @@
     0 0 40px var(--hero-glow-strong, rgba(255, 0, 51, 0.4)),
     0 0 80px var(--hero-glow-medium, rgba(255, 0, 51, 0.15)),
     0 0 120px var(--hero-glow-soft, rgba(255, 0, 51, 0.05));
+  --glow-opacity: var(--vibe-glow-opacity, 1);
 }
 
 /* Chromatic aberration on each line */
@@ -420,8 +438,8 @@
 }
 
 @keyframes glowPulse {
-  0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(0.95); }
-  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  0%, 100% { opacity: calc(0.4 * var(--glow-opacity, 1)); transform: translate(-50%, -50%) scale(0.95); }
+  50% { opacity: var(--glow-opacity, 1); transform: translate(-50%, -50%) scale(1.08); }
 }
 
 /* --- CTA Button Effects --- */

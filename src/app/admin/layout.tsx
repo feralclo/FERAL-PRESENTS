@@ -92,11 +92,10 @@ const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        href: "/admin/homepage/",
+        href: "/admin/event-page/",
         label: "Storefront",
         icon: Store,
         children: [
-          { href: "/admin/homepage/", label: "Homepage" },
           { href: "/admin/event-page/", label: "Event Page" },
           { href: "/admin/ticketstore/", label: "Themes" },
         ],

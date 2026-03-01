@@ -82,8 +82,7 @@ const REGISTRY: CommandItem[] = [
   { label: "Merch Products", href: "/admin/merch/", section: "Commerce", keywords: ["merch", "merchandise", "products", "inventory", "catalog", "tshirt", "apparel", "sizes"], description: "Merch product catalog" },
   { label: "Event Pre-orders", href: "/admin/merch-store/", section: "Commerce", keywords: ["pre-order", "preorder", "merch store", "event merch", "bundle"], description: "Event-linked merch pre-orders" },
   { label: "Online Store", href: "/admin/merch-store/online/", section: "Commerce", keywords: ["online", "store", "shop", "ecommerce", "standalone"], description: "Standalone online merch store" },
-  { label: "Homepage", href: "/admin/homepage/", section: "Commerce", keywords: ["homepage", "landing", "hero", "storefront", "front page", "cta", "banner"], description: "Homepage hero and layout" },
-  { label: "Event Page", href: "/admin/event-page/", section: "Commerce", keywords: ["event page", "theme", "design", "hero image", "focal point", "preview"], description: "Event page appearance settings" },
+{ label: "Event Page", href: "/admin/event-page/", section: "Commerce", keywords: ["event page", "theme", "design", "hero image", "focal point", "preview"], description: "Event page appearance settings" },
   { label: "Themes", href: "/admin/ticketstore/", section: "Commerce", keywords: ["themes", "template", "midnight", "ticket store", "design", "look"], description: "Theme selection and customization" },
 
   // Growth

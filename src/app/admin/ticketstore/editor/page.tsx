@@ -20,8 +20,11 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { useOrgId } from "@/components/OrgProvider";
+import { homepageKey } from "@/lib/constants";
 import {
   ArrowLeft,
   Monitor,
@@ -31,17 +34,19 @@ import {
   Loader2,
   Check,
   ChevronRight,
-  Palette,
   Type,
   Image,
   Globe,
   User,
   Undo2,
   Sparkles,
+  FileText,
+  Plus,
+  X,
 } from "lucide-react";
 import { COLOR_PRESETS } from "@/lib/color-presets";
 import { FONT_PAIRINGS, buildGoogleFontsUrl } from "@/lib/font-pairings";
-import type { BrandingSettings, ThemeStore, StoreTheme } from "@/types/settings";
+import type { BrandingSettings, ThemeStore, StoreTheme, HomepageSettings } from "@/types/settings";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 
@@ -92,7 +97,7 @@ interface EventOption {
 }
 
 /* ─── Editor section IDs ─── */
-type SectionId = "style" | "colors" | "typography" | "logo" | "identity" | "social";
+type SectionId = "style" | "typography" | "logo" | "identity" | "social" | "content";
 
 /* ═══════════════════════════════════════════════════════
    TICKET STORE EDITOR — Full-screen, Shopify-style
@@ -141,16 +146,35 @@ function TicketStoreEditorPage() {
   const [device, setDevice] = useState<DeviceMode>("desktop");
   const [openSection, setOpenSection] = useState<SectionId>("style");
   const [bridgeReady, setBridgeReady] = useState(false);
+  const [previewPage, setPreviewPage] = useState<"homepage" | "event">("event");
+  const [contentVersion, setContentVersion] = useState(0);
 
   const hasChanges = JSON.stringify(branding) !== JSON.stringify(savedBranding);
+
+  /* ── Content section state (homepage editing) ── */
+  const orgId = useOrgId();
+  const [homepageSettings, setHomepageSettings] = useState<HomepageSettings>({
+    hero_title_line1: "YOUR BRAND",
+    hero_title_line2: "STARTS HERE",
+    hero_cta_text: "EXPLORE",
+    hero_image_url: "",
+    hero_focal_x: 50,
+    hero_focal_y: 50,
+  });
+  const [aboutSection, setAboutSection] = useState<BrandingSettings["about_section"]>(undefined);
+  const [contentSaving, setContentSaving] = useState(false);
+  const [contentSaved, setContentSaved] = useState(false);
+  const contentSaveRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   /* ── Initial data fetch ── */
   useEffect(() => {
     Promise.all([
       fetch("/api/themes").then((r) => r.json()),
       fetch("/api/events").then((r) => r.json()),
+      fetch(`/api/settings?key=${homepageKey(orgId)}`).then((r) => r.json()).catch(() => ({})),
+      fetch("/api/branding").then((r) => r.json()).catch(() => ({})),
     ])
-      .then(([themesRes, eventsRes]) => {
+      .then(([themesRes, eventsRes, homepageRes, brandingRes]) => {
         const store = themesRes.data as ThemeStore;
         setThemeStore(store);
 
@@ -173,10 +197,18 @@ function TicketStoreEditorPage() {
           }));
         setEvents(list);
         if (list.length > 0) setSelectedSlug(list[0].slug);
+
+        // Homepage content
+        if (homepageRes?.data) {
+          setHomepageSettings((prev) => ({ ...prev, ...homepageRes.data }));
+        }
+        if (brandingRes?.data?.about_section) {
+          setAboutSection(brandingRes.data.about_section);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [themeId]);
+  }, [themeId, orgId]);
 
   /* ── Listen for bridge ready ── */
   useEffect(() => {
@@ -267,6 +299,62 @@ function TicketStoreEditorPage() {
     }));
   }, []);
 
+  /* ── Content auto-save helpers ── */
+  const saveContentDebounced = useCallback(
+    (type: "homepage" | "about", data: unknown) => {
+      if (contentSaveRef.current) clearTimeout(contentSaveRef.current);
+      contentSaveRef.current = setTimeout(async () => {
+        setContentSaving(true);
+        try {
+          if (type === "homepage") {
+            await fetch("/api/settings", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ key: homepageKey(orgId), data }),
+            });
+          } else {
+            await fetch("/api/branding", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ about_section: data }),
+            });
+          }
+          setContentSaved(true);
+          setContentVersion((v) => v + 1);
+          setBridgeReady(false);
+          setTimeout(() => setContentSaved(false), 2000);
+        } catch {
+          // silent
+        }
+        setContentSaving(false);
+      }, 800);
+    },
+    [orgId]
+  );
+
+  const updateHomepage = useCallback(
+    (patch: Partial<HomepageSettings>) => {
+      setHomepageSettings((prev) => {
+        const updated = { ...prev, ...patch };
+        saveContentDebounced("homepage", updated);
+        return updated;
+      });
+    },
+    [saveContentDebounced]
+  );
+
+  const updateAbout = useCallback(
+    (patch: Partial<NonNullable<BrandingSettings["about_section"]>>) => {
+      setAboutSection((prev) => {
+        const current = prev || { heading_line1: "", heading_line2: "", pillars: [], closer: "" };
+        const updated = { ...current, ...patch };
+        saveContentDebounced("about", updated);
+        return updated;
+      });
+    },
+    [saveContentDebounced]
+  );
+
   /* ── Save / Discard ── */
   const handleSave = async () => {
     if (!currentTheme) return;
@@ -336,9 +424,12 @@ function TicketStoreEditorPage() {
   }
 
   const isActive = themeStore?.active_theme_id === currentTheme?.id;
-  const previewUrl = selectedSlug
-    ? `/event/${selectedSlug}?editor=1&template=${currentTheme?.template || "midnight"}`
-    : "";
+  const previewUrl =
+    previewPage === "homepage"
+      ? `/?editor=1`
+      : selectedSlug
+        ? `/event/${selectedSlug}?editor=1&template=${currentTheme?.template || "midnight"}`
+        : "";
 
   return (
     <div data-admin className="flex h-screen flex-col bg-background text-foreground">
@@ -510,6 +601,42 @@ function TicketStoreEditorPage() {
 
                 <Separator />
 
+                {/* Custom Colors */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                    Custom Colors
+                  </span>
+                  <div className="space-y-2">
+                    <ColorField
+                      label="Accent"
+                      value={branding.accent_color || "#8B5CF6"}
+                      onChange={(v) => updateColor("accent_color", "--accent", v)}
+                    />
+                    <ColorField
+                      label="Background"
+                      value={branding.background_color || "#0e0e0e"}
+                      onChange={(v) => updateColor("background_color", "--bg-dark", v)}
+                    />
+                    <ColorField
+                      label="Card"
+                      value={branding.card_color || "#1a1a1a"}
+                      onChange={(v) => updateColor("card_color", "--card-bg", v)}
+                    />
+                    <ColorField
+                      label="Text"
+                      value={branding.text_color || "#ffffff"}
+                      onChange={(v) => updateColor("text_color", "--text-primary", v)}
+                    />
+                    <ColorField
+                      label="Border"
+                      value={branding.card_border_color || "#2a2a2a"}
+                      onChange={(v) => updateColor("card_border_color", "--card-border", v)}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
                 {/* Font Pairings */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
@@ -561,50 +688,6 @@ function TicketStoreEditorPage() {
                     })}
                   </div>
                 </div>
-              </div>
-            </EditorSection>
-
-            <EditorSection
-              id="colors"
-              label="Colors"
-              icon={<Palette size={14} />}
-              open={openSection === "colors"}
-              onToggle={() =>
-                setOpenSection(openSection === "colors" ? null! : "colors")
-              }
-            >
-              <div className="space-y-3">
-                <ColorField
-                  label="Accent"
-                  value={branding.accent_color || "#8B5CF6"}
-                  onChange={(v) => updateColor("accent_color", "--accent", v)}
-                />
-                <ColorField
-                  label="Background"
-                  value={branding.background_color || "#0e0e0e"}
-                  onChange={(v) =>
-                    updateColor("background_color", "--bg-dark", v)
-                  }
-                />
-                <ColorField
-                  label="Card"
-                  value={branding.card_color || "#1a1a1a"}
-                  onChange={(v) => updateColor("card_color", "--card-bg", v)}
-                />
-                <ColorField
-                  label="Text"
-                  value={branding.text_color || "#ffffff"}
-                  onChange={(v) =>
-                    updateColor("text_color", "--text-primary", v)
-                  }
-                />
-                <ColorField
-                  label="Border"
-                  value={branding.card_border_color || "#2a2a2a"}
-                  onChange={(v) =>
-                    updateColor("card_border_color", "--card-border", v)
-                  }
-                />
               </div>
             </EditorSection>
 
@@ -769,11 +852,202 @@ function TicketStoreEditorPage() {
                 </FieldRow>
               </div>
             </EditorSection>
+
+            {/* Content section — only visible on homepage preview for non-FERAL orgs */}
+            {previewPage === "homepage" && orgId !== "feral" && (
+              <EditorSection
+                id="content"
+                label="Content"
+                icon={<FileText size={14} />}
+                open={openSection === "content"}
+                onToggle={() =>
+                  setOpenSection(openSection === "content" ? null! : "content")
+                }
+              >
+                <div className="space-y-4">
+                  {/* Save indicator */}
+                  {(contentSaving || contentSaved) && (
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      {contentSaving ? (
+                        <span className="text-muted-foreground animate-pulse">Saving...</span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-success">
+                          <Check size={10} /> Saved
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Hero Text */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                      Hero Text
+                    </span>
+                    <FieldRow label="Title Line 1">
+                      <Input
+                        value={homepageSettings.hero_title_line1 || ""}
+                        onChange={(e) => updateHomepage({ hero_title_line1: e.target.value })}
+                        className="h-8 text-xs font-mono uppercase"
+                        placeholder="YOUR BRAND"
+                      />
+                    </FieldRow>
+                    <FieldRow label="Title Line 2">
+                      <Input
+                        value={homepageSettings.hero_title_line2 || ""}
+                        onChange={(e) => updateHomepage({ hero_title_line2: e.target.value })}
+                        className="h-8 text-xs font-mono uppercase"
+                        placeholder="STARTS HERE"
+                      />
+                    </FieldRow>
+                    <FieldRow label="CTA Text">
+                      <Input
+                        value={homepageSettings.hero_cta_text || ""}
+                        onChange={(e) => updateHomepage({ hero_cta_text: e.target.value })}
+                        className="h-8 text-xs font-mono uppercase"
+                        placeholder="EXPLORE"
+                      />
+                    </FieldRow>
+                  </div>
+
+                  <Separator />
+
+                  {/* About Section */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                      About Section
+                    </span>
+                    <FieldRow label="Heading Line 1">
+                      <Input
+                        value={aboutSection?.heading_line1 || ""}
+                        onChange={(e) => updateAbout({ heading_line1: e.target.value })}
+                        className="h-8 text-xs"
+                        placeholder="ABOUT"
+                      />
+                    </FieldRow>
+                    <FieldRow label="Heading Line 2">
+                      <Input
+                        value={aboutSection?.heading_line2 || ""}
+                        onChange={(e) => updateAbout({ heading_line2: e.target.value })}
+                        className="h-8 text-xs"
+                        placeholder="US"
+                      />
+                    </FieldRow>
+
+                    {/* Pillars */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Pillars</span>
+                        {(aboutSection?.pillars?.length || 0) < 3 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const pillars = [...(aboutSection?.pillars || []), { title: "", text: "" }];
+                              updateAbout({ pillars });
+                            }}
+                            className="flex items-center gap-0.5 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                          >
+                            <Plus size={10} /> Add
+                          </button>
+                        )}
+                      </div>
+                      {(aboutSection?.pillars || []).map((pillar, i) => (
+                        <div key={i} className="rounded-md border border-border/30 p-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] text-muted-foreground/60 font-mono">0{i + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const pillars = (aboutSection?.pillars || []).filter((_, idx) => idx !== i);
+                                updateAbout({ pillars });
+                              }}
+                              className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                          <Input
+                            value={pillar.title}
+                            onChange={(e) => {
+                              const pillars = [...(aboutSection?.pillars || [])];
+                              pillars[i] = { ...pillars[i], title: e.target.value };
+                              updateAbout({ pillars });
+                            }}
+                            className="h-7 text-[11px]"
+                            placeholder="Pillar title"
+                          />
+                          <Textarea
+                            value={pillar.text}
+                            onChange={(e) => {
+                              const pillars = [...(aboutSection?.pillars || [])];
+                              pillars[i] = { ...pillars[i], text: e.target.value };
+                              updateAbout({ pillars });
+                            }}
+                            className="text-[11px] min-h-[50px]"
+                            placeholder="Description..."
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <FieldRow label="Closer Tagline">
+                      <Input
+                        value={aboutSection?.closer || ""}
+                        onChange={(e) => updateAbout({ closer: e.target.value })}
+                        className="h-8 text-xs"
+                        placeholder="Join us"
+                      />
+                    </FieldRow>
+                  </div>
+                </div>
+              </EditorSection>
+            )}
           </div>
         </aside>
 
         {/* ── Live preview ── */}
-        <div className="flex-1 bg-[#18181b] overflow-hidden flex items-start justify-center p-4">
+        <div className="flex-1 bg-[#18181b] overflow-hidden flex flex-col">
+          {/* Page selector + event selector bar */}
+          <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+            <div className="flex items-center rounded-lg border border-zinc-700/60 bg-zinc-800/50 p-0.5">
+              {(
+                [
+                  { id: "homepage" as const, label: "Homepage" },
+                  { id: "event" as const, label: "Event Page" },
+                ] as const
+              ).map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setPreviewPage(id);
+                    setBridgeReady(false);
+                  }}
+                  className={`rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
+                    previewPage === id
+                      ? "bg-zinc-700 text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {previewPage === "event" && events.length > 0 && (
+              <Select value={selectedSlug} onValueChange={setSelectedSlug}>
+                <SelectTrigger className="h-7 w-[200px] border-zinc-700/60 bg-zinc-800/50 text-xs text-zinc-300">
+                  <SelectValue placeholder="Select event" />
+                </SelectTrigger>
+                <SelectContent>
+                  {events.map((e) => (
+                    <SelectItem key={e.slug} value={e.slug}>
+                      {e.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-hidden flex items-start justify-center p-4 pt-0">
           {previewUrl ? (
             <div
               className="h-full transition-all duration-300 ease-out"
@@ -812,6 +1086,7 @@ function TicketStoreEditorPage() {
                   </div>
                 )}
                 <iframe
+                  key={previewPage + selectedSlug + contentVersion}
                   ref={iframeRef}
                   src={previewUrl}
                   className="h-full w-full border-0 bg-[#0e0e0e]"
@@ -845,6 +1120,7 @@ function TicketStoreEditorPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

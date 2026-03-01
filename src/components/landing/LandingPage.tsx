@@ -14,6 +14,7 @@ import { useMetaTracking } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { ThemeEditorBridge, isEditorPreview } from "@/components/event/ThemeEditorBridge";
 import type { LandingEvent } from "@/types/events";
 import type { HomepageSettings } from "@/types/settings";
 
@@ -45,8 +46,9 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection }: Landi
   useScrollReveal();
   const headerHidden = useHeaderScroll();
 
-  // Track view_content on mount
+  // Track view_content on mount (suppress in editor preview)
   useEffect(() => {
+    if (isEditorPreview()) return;
     push({
       event: "view_content",
       content_name: "Home",
@@ -70,8 +72,11 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection }: Landi
       {/* Hero — Tailwind layout + hero-effects.css for animations */}
       <HeroSection settings={heroSettings} />
 
+      {/* Theme editor bridge for live preview in admin */}
+      <ThemeEditorBridge />
+
       {/* Everything below hero: Midnight Tailwind theme */}
-      <div data-theme="midnight" className="overflow-x-hidden">
+      <div data-theme="midnight" data-theme-root className="overflow-x-hidden">
         <EventsSection events={events} />
         {orgId === "feral" ? (
           <AboutSection />
@@ -82,9 +87,7 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection }: Landi
             pillars={aboutSection.pillars}
             closer={aboutSection.closer}
           />
-        ) : (
-          <AboutSection />
-        )}
+        ) : null}
         <ContactSection />
         <MidnightFooter />
       </div>

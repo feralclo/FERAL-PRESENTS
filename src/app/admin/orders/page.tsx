@@ -293,40 +293,33 @@ function OrdersSearch({
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div
-        className={`flex h-10 items-center gap-2.5 rounded-lg px-3.5 transition-all duration-150 ${
-          showSuggestions
-            ? "bg-muted/80 ring-1 ring-primary/20"
-            : "bg-muted/50 hover:bg-muted/70"
-        }`}
-      >
-        <Search size={15} className="shrink-0 text-muted-foreground/40" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          placeholder="Search orders, customers, events..."
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            setHighlightIndex(-1);
-            if (e.target.value.trim()) {
-              setShowSuggestions(true);
-            } else {
-              setShowSuggestions(false);
-            }
-          }}
-          onKeyDown={handleKeyDown}
-          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none"
-        />
-        {hasActiveFilter && (
-          <button
-            onClick={handleClear}
-            className="shrink-0 rounded-sm p-0.5 text-muted-foreground/40 transition-all duration-150 hover:bg-muted/50 hover:text-foreground"
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
+      <Search size={14} className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground" />
+      <input
+        ref={inputRef}
+        type="text"
+        data-slot="input"
+        value={inputValue}
+        placeholder="Search orders, customers, events..."
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          setHighlightIndex(-1);
+          if (e.target.value.trim()) {
+            setShowSuggestions(true);
+          } else {
+            setShowSuggestions(false);
+          }
+        }}
+        onKeyDown={handleKeyDown}
+        className="text-foreground placeholder:text-muted-foreground/60 border-input bg-background/50 h-9 w-full min-w-0 rounded-md border pl-9 pr-8 py-1 text-sm transition-all duration-200 outline-none focus-visible:border-primary/50 focus-visible:ring-primary/15 focus-visible:ring-[3px] focus-visible:bg-background"
+      />
+      {hasActiveFilter && (
+        <button
+          onClick={handleClear}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground/40 transition-all duration-150 hover:text-foreground"
+        >
+          <X size={14} />
+        </button>
+      )}
 
       {/* Suggestions dropdown */}
       {showSuggestions && debouncedQuery && (

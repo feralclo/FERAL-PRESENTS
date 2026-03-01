@@ -28,7 +28,7 @@ import type { StoreTheme, ThemeStore } from "@/types/settings";
 const TEMPLATES = [
   {
     id: "midnight" as const,
-    name: "Midnight",
+    name: "Entry Dark",
     description: "Deep dark theme designed for nightlife and events.",
     tags: ["Dark", "Nightlife", "Events"],
     gradient: "from-[#0e0e0e] via-[#1a0a0a] to-[#0e0e0e]",

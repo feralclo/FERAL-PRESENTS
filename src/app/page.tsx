@@ -87,12 +87,13 @@ export default async function HomePage() {
   const orgId = await getOrgId();
   let events: LandingEvent[] = [];
   let heroSettings: HomepageSettings = DEFAULT_HERO;
+  let aboutSection: BrandingSettings["about_section"] | undefined;
 
   try {
     const supabase = await getSupabaseAdmin();
     if (supabase) {
-      // Fetch events and homepage settings in parallel
-      const [eventsResult, settingsResult] = await Promise.all([
+      // Fetch events, homepage settings, and branding in parallel
+      const [eventsResult, settingsResult, brandingResult] = await Promise.all([
         supabase
           .from(TABLES.EVENTS)
           .select(
@@ -107,16 +108,25 @@ export default async function HomePage() {
           .select("data")
           .eq("key", homepageKey(orgId))
           .single(),
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single(),
       ]);
 
       if (eventsResult.data) events = eventsResult.data as LandingEvent[];
       if (settingsResult.data?.data) {
         heroSettings = { ...DEFAULT_HERO, ...settingsResult.data.data as HomepageSettings };
       }
+      if (brandingResult.data?.data) {
+        const branding = brandingResult.data.data as BrandingSettings;
+        aboutSection = branding.about_section;
+      }
     }
   } catch {
     // Fall through with defaults
   }
 
-  return <LandingPage events={events} heroSettings={heroSettings} />;
+  return <LandingPage events={events} heroSettings={heroSettings} orgId={orgId} aboutSection={aboutSection} />;
 }

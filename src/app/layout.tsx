@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { Scanlines } from "@/components/layout/Scanlines";
-import { GTM_ID, TABLES, marketingKey } from "@/lib/constants";
+import { GTM_ID, TABLES, marketingKey, brandingKey } from "@/lib/constants";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getOrgId } from "@/lib/org";
 import { OrgProvider } from "@/components/OrgProvider";
+import { buildGoogleFontsUrlFromNames, DEFAULT_HEADING_FONT, DEFAULT_BODY_FONT } from "@/lib/font-pairings";
 import type { MarketingSettings } from "@/types/marketing";
+import type { BrandingSettings } from "@/types/settings";
 import "@/styles/base.css";
 import "@/styles/effects.css";
 import "@/styles/cookie.css";
@@ -24,28 +26,46 @@ export default async function RootLayout({
 }) {
   const orgId = await getOrgId();
 
-  // Fetch marketing settings — Meta Pixel + GTM ID per tenant.
-  // Single lightweight query, cached for the request lifecycle.
+  // Fetch marketing settings + branding in parallel.
+  // Lightweight queries, cached for the request lifecycle.
   let pixelId: string | null = null;
   let gtmId: string | null = GTM_ID || null;
+  let extraFontsUrl: string | null = null;
   try {
     const supabase = await getSupabaseAdmin();
     if (supabase) {
-      const { data } = await supabase
-        .from(TABLES.SITE_SETTINGS)
-        .select("data")
-        .eq("key", marketingKey(orgId))
-        .single();
-      const marketing = data?.data as MarketingSettings | null;
+      const [marketingResult, brandingResult] = await Promise.all([
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", marketingKey(orgId))
+          .single(),
+        supabase
+          .from(TABLES.SITE_SETTINGS)
+          .select("data")
+          .eq("key", brandingKey(orgId))
+          .single(),
+      ]);
+      const marketing = marketingResult.data?.data as MarketingSettings | null;
       if (marketing?.meta_tracking_enabled && marketing.meta_pixel_id) {
         pixelId = marketing.meta_pixel_id;
       }
       if (marketing?.gtm_id) {
         gtmId = marketing.gtm_id;
       }
+      // Load extra fonts if branding uses non-default font pair
+      const branding = brandingResult.data?.data as BrandingSettings | null;
+      if (branding) {
+        const heading = branding.heading_font || DEFAULT_HEADING_FONT;
+        const body = branding.body_font || DEFAULT_BODY_FONT;
+        const isDefault = heading === DEFAULT_HEADING_FONT && body === DEFAULT_BODY_FONT;
+        if (!isDefault) {
+          extraFontsUrl = buildGoogleFontsUrlFromNames(heading, body);
+        }
+      }
     }
   } catch {
-    // Silent — pixel/GTM are non-critical, page must still render
+    // Silent — pixel/GTM/fonts are non-critical, page must still render
   }
 
   return (
@@ -85,6 +105,10 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        {/* Extra fonts — loaded when tenant branding uses non-default font pair */}
+        {extraFontsUrl && (
+          <link href={extraFontsUrl} rel="stylesheet" />
+        )}
 
         {/* GTM Consent Mode defaults — track by default, revoke on explicit opt-out */}
         {gtmId && (

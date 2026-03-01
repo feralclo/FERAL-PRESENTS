@@ -65,6 +65,17 @@ export interface BrandingSettings {
   copyright_text?: string;
   /** Favicon URL — small icon shown in browser tabs, bookmarks, home screen */
   favicon_url?: string;
+  /** Card/section border color (hex) — defaults to #2a2a2a */
+  card_border_color?: string;
+  /** ID of the color preset currently applied (cleared when colors are manually edited) */
+  color_preset?: string;
+  /** About section content for the landing page */
+  about_section?: {
+    heading_line1: string;
+    heading_line2: string;
+    pillars: Array<{ title: string; text: string }>;
+    closer: string;
+  };
   /** Support email for the org */
   support_email?: string;
   /** Social links */

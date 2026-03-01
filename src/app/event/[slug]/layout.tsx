@@ -129,6 +129,7 @@ export default async function EventLayout({
   if (branding?.background_color) cssVars["--bg-dark"] = branding.background_color;
   if (branding?.card_color) cssVars["--card-bg"] = branding.card_color;
   if (branding?.text_color) cssVars["--text-primary"] = branding.text_color;
+  if (branding?.card_border_color) cssVars["--card-border"] = branding.card_border_color;
   if (branding?.heading_font) cssVars["--font-mono"] = `'${branding.heading_font}', monospace`;
   if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
 

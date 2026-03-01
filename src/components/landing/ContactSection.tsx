@@ -21,6 +21,13 @@ export function ContactSection() {
 
       const result = await subscribeToKlaviyo(email);
 
+      // Fire-and-forget: capture to DB as a customer record
+      fetch("/api/popup/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "landing_contact" }),
+      }).catch(() => {});
+
       if (result.success) {
         setStatus("> TRANSMISSION RECEIVED. STAND BY.");
         setIsSuccess(true);

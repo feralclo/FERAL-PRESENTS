@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
   try {
     const orgId = getOrgIdFromRequest(request);
     const body = await request.json();
-    const { email } = body;
+    const { email, source: bodySource } = body;
+    const source = bodySource || "popup";
 
     if (!email) {
       return NextResponse.json(
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
       if (existing.marketing_consent === null || existing.marketing_consent === undefined) {
         updates.marketing_consent = true;
         updates.marketing_consent_at = new Date().toISOString();
-        updates.marketing_consent_source = "popup";
+        updates.marketing_consent_source = source;
       }
 
       await supabase
@@ -82,14 +83,14 @@ export async function POST(request: NextRequest) {
         org_id: orgId,
         email: normalizedEmail,
         nickname,
-        source: "popup",
+        source,
         total_orders: 0,
         total_spent: 0,
         city: geoCity ? decodeURIComponent(geoCity) : null,
         country: geoCountry || null,
         marketing_consent: true,
         marketing_consent_at: new Date().toISOString(),
-        marketing_consent_source: "popup",
+        marketing_consent_source: source,
       })
       .select("id")
       .single();

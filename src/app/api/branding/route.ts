@@ -67,6 +67,52 @@ export async function POST(request: NextRequest) {
     const orgId = auth.orgId;
 
     const body = await request.json();
+
+    // Validate about_section if present
+    if (body.about_section) {
+      const about = body.about_section;
+      if (about.pillars && Array.isArray(about.pillars)) {
+        if (about.pillars.length > 3) {
+          return NextResponse.json(
+            { error: "Maximum 3 pillars allowed" },
+            { status: 400 }
+          );
+        }
+        for (const pillar of about.pillars) {
+          if (pillar.title && pillar.title.length > 100) {
+            return NextResponse.json(
+              { error: "Pillar title must be under 100 characters" },
+              { status: 400 }
+            );
+          }
+          if (pillar.text && pillar.text.length > 500) {
+            return NextResponse.json(
+              { error: "Pillar text must be under 500 characters" },
+              { status: 400 }
+            );
+          }
+        }
+      }
+      if (about.heading_line1 && about.heading_line1.length > 50) {
+        return NextResponse.json(
+          { error: "Heading line 1 must be under 50 characters" },
+          { status: 400 }
+        );
+      }
+      if (about.heading_line2 && about.heading_line2.length > 50) {
+        return NextResponse.json(
+          { error: "Heading line 2 must be under 50 characters" },
+          { status: 400 }
+        );
+      }
+      if (about.closer && about.closer.length > 100) {
+        return NextResponse.json(
+          { error: "Closer must be under 100 characters" },
+          { status: 400 }
+        );
+      }
+    }
+
     const supabase = await getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json(

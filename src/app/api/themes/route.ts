@@ -3,16 +3,21 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, themesKey, brandingKey } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
+import { COLOR_PRESETS } from "@/lib/color-presets";
 import type { BrandingSettings, StoreTheme, ThemeStore } from "@/types/settings";
 
-/** Platform-neutral default branding — the Midnight theme baseline */
+/** Get Crimson Night preset colors for the default theme baseline */
+const crimsonNight = COLOR_PRESETS.find((p) => p.id === "crimson-night")!;
+
+/** Platform-neutral default branding — the Entry Dark theme baseline */
 const DEFAULT_BRANDING: BrandingSettings = {
   org_name: "Entry",
   logo_url: "",
-  accent_color: "#8B5CF6",
-  background_color: "#0e0e0e",
-  card_color: "#1a1a1a",
-  text_color: "#ffffff",
+  accent_color: crimsonNight.colors.accent,
+  background_color: crimsonNight.colors.background,
+  card_color: crimsonNight.colors.card,
+  text_color: crimsonNight.colors.text,
+  card_border_color: crimsonNight.colors.border,
   heading_font: "Space Mono",
   body_font: "Inter",
   copyright_text: "",
@@ -264,12 +269,12 @@ async function syncBrandingToLive(
   );
 }
 
-/** Generate default theme store — creates one Midnight theme from existing branding or defaults */
+/** Generate default theme store — creates one Entry Dark theme from existing branding or defaults */
 function getDefaultThemeStore(existingBranding?: BrandingSettings): ThemeStore {
   const now = new Date().toISOString();
   const midnightTheme: StoreTheme = {
     id: "default_midnight",
-    name: "Midnight",
+    name: "Entry Dark",
     template: "midnight",
     branding: { ...DEFAULT_BRANDING, ...(existingBranding || {}) },
     created_at: now,

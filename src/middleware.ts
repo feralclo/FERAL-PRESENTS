@@ -212,9 +212,9 @@ function isPublicApiRoute(pathname: string, method: string): boolean {
     if (pathname.startsWith(prefix)) return true;
   }
 
-  // Wallet pass downloads — public GET only (order UUID = unguessable access token)
-  // Matches: /api/orders/[uuid]/wallet/apple and /api/orders/[uuid]/wallet/google
-  if (method === "GET" && /^\/api\/orders\/[^/]+\/wallet\/(apple|google)$/.test(pathname)) {
+  // Wallet pass & PDF downloads — public GET only (order UUID = unguessable access token)
+  // Matches: /api/orders/[uuid]/wallet/apple, /api/orders/[uuid]/wallet/google, /api/orders/[uuid]/pdf
+  if (method === "GET" && /^\/api\/orders\/[^/]+\/(wallet\/(apple|google)|pdf)$/.test(pathname)) {
     return true;
   }
 

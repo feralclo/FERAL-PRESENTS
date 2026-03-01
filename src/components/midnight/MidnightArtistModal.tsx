@@ -50,7 +50,18 @@ export function MidnightArtistModal({
   if (artist?.id !== lastArtistIdRef.current) {
     lastArtistIdRef.current = artist?.id;
     if (videoReady) setVideoReady(false);
+    if (videoError) setVideoError(false);
   }
+
+  // Fallback: if onPlaying never fires (MuxPlayer can be unreliable),
+  // force-reveal the video after a timeout to prevent permanently frozen thumbnail
+  useEffect(() => {
+    if (videoReady || videoError || !artist?.video_url) return;
+    const timer = setTimeout(() => {
+      setVideoReady(true);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [artist?.id, videoReady, videoError, artist?.video_url]);
 
   // ── Swipe state ──
   const [phase, setPhase] = useState<SwipePhase>("idle");
@@ -516,7 +527,9 @@ export function MidnightArtistModal({
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           {...({
                             autoPlay: "any",
+                            muted: true,
                             onPlaying: () => setVideoReady(true),
+                            onCanPlay: () => setVideoReady(true),
                             style: {
                               width: "100%",
                               height: "100%",
@@ -535,9 +548,11 @@ export function MidnightArtistModal({
                           className="absolute inset-0 w-full h-full object-cover"
                           playsInline
                           autoPlay
+                          muted
                           loop
                           preload="auto"
                           onPlaying={() => setVideoReady(true)}
+                          onCanPlay={() => setVideoReady(true)}
                           onError={() => setVideoError(true)}
                         />
                       )}

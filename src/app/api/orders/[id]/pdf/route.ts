@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
-import { requireAuth } from "@/lib/auth";
+import { getOrgIdFromRequest } from "@/lib/org";
 import type { PdfTicketSettings } from "@/types/email";
 import { DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
 
@@ -10,13 +10,11 @@ import { DEFAULT_PDF_TICKET_SETTINGS } from "@/types/email";
  * GET /api/orders/[id]/pdf — Generate and download PDF tickets for an order
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth();
-    if (auth.error) return auth.error;
-    const orgId = auth.orgId;
+    const orgId = getOrgIdFromRequest(request);
 
     const { id } = await params;
     const supabase = await getSupabaseAdmin();

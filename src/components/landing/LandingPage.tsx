@@ -70,7 +70,7 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection }: Landi
       </header>
 
       {/* Hero — Tailwind layout + hero-effects.css for animations */}
-      <HeroSection settings={heroSettings} />
+      <HeroSection settings={heroSettings} orgId={orgId} />
 
       {/* Theme editor bridge for live preview in admin */}
       <ThemeEditorBridge />

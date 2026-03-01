@@ -7,11 +7,13 @@ import type { HomepageSettings } from "@/types/settings";
 
 interface HeroSectionProps {
   settings: HomepageSettings;
+  orgId?: string;
 }
 
-export function HeroSection({ settings }: HeroSectionProps) {
+export function HeroSection({ settings, orgId }: HeroSectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const trackerRef = useRef<HTMLDivElement>(null);
+  const isFeral = orgId === "feral";
 
   const focalX = settings.hero_focal_x ?? 50;
   const focalY = settings.hero_focal_y ?? 50;
@@ -59,8 +61,8 @@ export function HeroSection({ settings }: HeroSectionProps) {
     <section
       ref={sectionRef}
       className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseMove={isFeral ? handleMouseMove : undefined}
+      onMouseLeave={isFeral ? handleMouseLeave : undefined}
     >
       {/* Background image + atmospheric effects */}
       <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
@@ -70,37 +72,44 @@ export function HeroSection({ settings }: HeroSectionProps) {
           <img
             src={settings.hero_image_url}
             alt=""
-            className="hero__bg-image w-full h-full object-cover block"
+            className={`w-full h-full object-cover block${isFeral ? " hero__bg-image" : ""}`}
             style={{ objectPosition: `${focalX}% ${focalY}%` }}
           />
         ) : (
           <div className="w-full h-full bg-[var(--bg-dark,#0e0e0e)]" />
         )}
-        {/* Atmospheric mist + bokeh */}
-        <div className="hero__bg-mist absolute inset-0 z-[1] pointer-events-none overflow-hidden" />
-        {/* Spotlight sweep — concert-style beams crossing the frame */}
-        <div className="hero__bg-spotlight absolute inset-0 z-[1] pointer-events-none" />
-        {/* Light breathing — warm/cool color shift */}
-        <div className="hero__bg-breathe absolute inset-0 z-[1] pointer-events-none" />
-        {/* Bottom warmth — stage footlights bleeding up */}
-        <div className="hero__bg-warmth absolute inset-0 z-[1] pointer-events-none" />
-        {/* Rising embers — tiny warm particles drifting upward */}
-        <div className="hero__bg-embers absolute inset-0 z-[1] pointer-events-none" />
-        {/* Film grain — subtle texture for cinematic feel */}
-        <div className="hero__bg-grain absolute inset-0 z-[1] pointer-events-none opacity-[0.035]" />
-        {/* Cinematic vignette */}
+        {/* FERAL-only cinematic effects */}
+        {isFeral && (
+          <>
+            <div className="hero__bg-mist absolute inset-0 z-[1] pointer-events-none overflow-hidden" />
+            <div className="hero__bg-spotlight absolute inset-0 z-[1] pointer-events-none" />
+            <div className="hero__bg-breathe absolute inset-0 z-[1] pointer-events-none" />
+            <div className="hero__bg-warmth absolute inset-0 z-[1] pointer-events-none" />
+            <div className="hero__bg-embers absolute inset-0 z-[1] pointer-events-none" />
+            <div className="hero__bg-grain absolute inset-0 z-[1] pointer-events-none opacity-[0.035]" />
+          </>
+        )}
+        {/* Vignette — subtle darkening for all tenants */}
         <div className="hero__bg-overlay absolute inset-0 z-[2]" />
       </div>
 
-      {/* Particle canvas — positioned absolutely via .hero__canvas CSS */}
-      <ParticleCanvas />
+      {/* Particle canvas — FERAL only */}
+      {isFeral && <ParticleCanvas />}
 
-      {/* Content — w-full ensures centering works on all screen sizes */}
+      {/* Content */}
       <div className="relative z-[2] w-full text-center px-6">
-        <HeroGlitchText
-          line1={settings.hero_title_line1 || "UPCOMING"}
-          line2={settings.hero_title_line2 || "EVENTS"}
-        />
+        {isFeral ? (
+          <HeroGlitchText
+            line1={settings.hero_title_line1 || "UPCOMING"}
+            line2={settings.hero_title_line2 || "EVENTS"}
+          />
+        ) : (
+          /* Non-FERAL: clean static text, no glitch/scramble */
+          <div className="flex flex-col items-center gap-0 font-[family-name:var(--font-mono)] text-[clamp(36px,9vw,100px)] font-bold tracking-[clamp(4px,1vw,12px)] leading-[1.1] uppercase text-white opacity-0 translate-y-10 animate-[heroReveal_1s_cubic-bezier(0.16,1,0.3,1)_0.3s_forwards]">
+            <span className="block">{settings.hero_title_line1 || "YOUR BRAND"}</span>
+            <span className="block">{settings.hero_title_line2 || "STARTS HERE"}</span>
+          </div>
+        )}
         <a
           href="#events"
           className="hero__cta inline-block relative mt-12 px-12 py-[18px] font-[family-name:var(--font-mono)] text-sm font-bold tracking-[4px] uppercase text-white no-underline bg-transparent border border-[var(--red)] overflow-hidden opacity-0 translate-y-10 cursor-pointer"
@@ -109,8 +118,12 @@ export function HeroSection({ settings }: HeroSectionProps) {
           <span className="relative z-[2]" data-text={settings.hero_cta_text || "SEE EVENTS"}>
             {settings.hero_cta_text || "SEE EVENTS"}
           </span>
-          <span className="hero__cta-glitch absolute inset-0 opacity-0 pointer-events-none" />
-          <span className="hero__cta-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-0 pointer-events-none" />
+          {isFeral && (
+            <>
+              <span className="hero__cta-glitch absolute inset-0 opacity-0 pointer-events-none" />
+              <span className="hero__cta-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-0 pointer-events-none" />
+            </>
+          )}
         </a>
       </div>
 
@@ -122,17 +135,21 @@ export function HeroSection({ settings }: HeroSectionProps) {
         <span className="font-[family-name:var(--font-mono)] text-[8px] tracking-[3px] pl-[3px] text-white/25 uppercase">
           SCROLL
         </span>
-        <div className="flex flex-col items-center gap-px">
-          <span className="hero__scroll-arrow block w-2 h-2 border-r border-b border-[rgba(255,0,51,0.6)] rotate-45 opacity-0" />
-          <span className="hero__scroll-arrow block w-2 h-2 border-r border-b border-[rgba(255,0,51,0.6)] rotate-45 opacity-0" />
-        </div>
+        {isFeral && (
+          <div className="flex flex-col items-center gap-px">
+            <span className="hero__scroll-arrow block w-2 h-2 border-r border-b border-[rgba(255,0,51,0.6)] rotate-45 opacity-0" />
+            <span className="hero__scroll-arrow block w-2 h-2 border-r border-b border-[rgba(255,0,51,0.6)] rotate-45 opacity-0" />
+          </div>
+        )}
       </div>
 
-      {/* Mouse glow tracker */}
-      <div
-        className="hero__mouse-tracker absolute w-[200px] h-[200px] rounded-full pointer-events-none z-[1] opacity-0 -translate-x-1/2 -translate-y-1/2"
-        ref={trackerRef}
-      />
+      {/* Mouse glow tracker — FERAL only */}
+      {isFeral && (
+        <div
+          className="hero__mouse-tracker absolute w-[200px] h-[200px] rounded-full pointer-events-none z-[1] opacity-0 -translate-x-1/2 -translate-y-1/2"
+          ref={trackerRef}
+        />
+      )}
     </section>
   );
 }

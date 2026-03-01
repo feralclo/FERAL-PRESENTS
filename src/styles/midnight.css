@@ -23,11 +23,11 @@
   --color-card-foreground: var(--text-primary, #ffffff);
   --color-primary: var(--accent, #ff0033);
   --color-primary-foreground: #ffffff;
-  --color-secondary: color-mix(in srgb, var(--accent, #ff0033) 3%, #1e1e24);
+  --color-secondary: var(--card-bg, #1e1e24);
   --color-secondary-foreground: var(--text-primary, #ffffff);
-  --color-muted: color-mix(in srgb, var(--accent, #ff0033) 3%, #1e1e24);
+  --color-muted: var(--card-bg, #1e1e24);
   --color-muted-foreground: var(--text-secondary, #888888);
-  --color-accent: color-mix(in srgb, var(--accent, #ff0033) 3%, #1e1e24);
+  --color-accent: var(--card-bg, #1e1e24);
   --color-accent-foreground: var(--text-primary, #ffffff);
   --color-border: var(--card-border, #2a2a2a);
   --color-input: var(--card-border, #2a2a2a);
@@ -128,18 +128,12 @@
   }
 }
 
-/* ── Accent bleed — derive tinted variants from the accent color ──
-   These let glass borders, card edges, section dividers, hero effects,
-   and particle systems all carry the accent flavor. When a preset
-   changes --accent, the ENTIRE visual layer transforms. */
+/* ── Accent-derived hero & effect vars ──
+   When a preset changes --accent, the hero atmosphere, particles,
+   and CTA effects all transform automatically via color-mix().
+   Structural surfaces (glass, cards, borders) use --color-card /
+   --color-border directly — NOT accent tints. */
 [data-theme="midnight"] {
-  /* Glass & card accents */
-  --accent-glow: color-mix(in srgb, var(--accent, #ff0033) 12%, transparent);
-  --accent-border: color-mix(in srgb, var(--accent, #ff0033) 15%, rgba(255, 255, 255, 0.06));
-  --accent-border-hover: color-mix(in srgb, var(--accent, #ff0033) 30%, rgba(255, 255, 255, 0.08));
-  --accent-glass: color-mix(in srgb, var(--accent, #ff0033) 4%, transparent);
-  --accent-glass-hover: color-mix(in srgb, var(--accent, #ff0033) 8%, transparent);
-
   /* Hero atmosphere — mist, bokeh, spotlight, breathe */
   --hero-mist-primary: color-mix(in srgb, var(--accent, #ff0033) 14%, transparent);
   --hero-mist-secondary: color-mix(in srgb, var(--accent, #ff0033) 10%, transparent);
@@ -181,9 +175,9 @@
   --header-bg: color-mix(in srgb, var(--bg-dark, #0e0e0e) 94%, transparent);
 }
 
-/* ── Card accent edge — subtle top highlight using accent color ── */
+/* ── Glass top edge — subtle light catch, uses border color not accent ── */
 [data-theme="midnight"] .glass {
-  border-top-color: var(--accent-border-hover, rgba(255, 255, 255, 0.08));
+  border-top-color: color-mix(in srgb, var(--color-border, #2a2a2a) 100%, rgba(255, 255, 255, 0.04));
 }
 
 /* ── Button shadow fix: shared Button hardcodes purple glow, override to match red primary ── */

@@ -921,6 +921,20 @@ function TicketStoreEditorPage() {
 
                   <Separator />
 
+                  {/* Hero Background Image */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                      Hero Background
+                    </span>
+                    <ImageUpload
+                      value={homepageSettings.hero_image_url || ""}
+                      onChange={(url) => updateHomepage({ hero_image_url: url })}
+                      label="Background Image"
+                    />
+                  </div>
+
+                  <Separator />
+
                   {/* About Section */}
                   <div className="space-y-2">
                     <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
@@ -1030,6 +1044,10 @@ function TicketStoreEditorPage() {
                   onClick={() => {
                     setPreviewPage(id);
                     setBridgeReady(false);
+                    // Auto-open Content section when switching to homepage
+                    if (id === "homepage" && orgId !== "feral") {
+                      setOpenSection("content");
+                    }
                   }}
                   className={`rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${
                     previewPage === id

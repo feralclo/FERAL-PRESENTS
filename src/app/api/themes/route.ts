@@ -6,18 +6,18 @@ import { requireAuth } from "@/lib/auth";
 import { COLOR_PRESETS } from "@/lib/color-presets";
 import type { BrandingSettings, StoreTheme, ThemeStore } from "@/types/settings";
 
-/** Get Crimson Night preset colors for the default theme baseline */
-const crimsonNight = COLOR_PRESETS.find((p) => p.id === "crimson-night")!;
+/** Get Entry Dark preset colors for the default theme baseline */
+const entryDark = COLOR_PRESETS.find((p) => p.id === "entry-dark")!;
 
 /** Platform-neutral default branding — the Entry Dark theme baseline */
 const DEFAULT_BRANDING: BrandingSettings = {
   org_name: "Entry",
   logo_url: "",
-  accent_color: crimsonNight.colors.accent,
-  background_color: crimsonNight.colors.background,
-  card_color: crimsonNight.colors.card,
-  text_color: crimsonNight.colors.text,
-  card_border_color: crimsonNight.colors.border,
+  accent_color: entryDark.colors.accent,
+  background_color: entryDark.colors.background,
+  card_color: entryDark.colors.card,
+  text_color: entryDark.colors.text,
+  card_border_color: entryDark.colors.border,
   heading_font: "Space Mono",
   body_font: "Inter",
   copyright_text: "",

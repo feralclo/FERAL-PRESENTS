@@ -28,9 +28,6 @@ export function Header() {
   const orgId = useOrgId();
   const pathname = usePathname();
 
-  // On event/shop/checkout pages, swap landing-page nav (Events/About/Contact)
-  // for a simplified menu with just the homepage link.
-  const isEventPage = pathname.startsWith("/event/") || pathname.startsWith("/checkout/") || pathname.startsWith("/shop/");
   const [phase, setPhase] = useState<MenuPhase>("closed");
   const [storeSettings, setStoreSettings] = useState<MerchStoreSettings | null>(() => {
     // Hydrate from sessionStorage for instant render (no layout shift)
@@ -161,7 +158,7 @@ export function Header() {
 
       <div className={menuClassName}>
         <ul className="nav__list">
-          {(isEventPage ? [{ href: "/", label: "Home", index: "01" }] : navLinks).map((link, i) => (
+          {navLinks.map((link, i) => (
             <li
               key={link.href}
               className="nav__item"
@@ -176,11 +173,11 @@ export function Header() {
           ))}
         </ul>
         <Link
-          href={isEventPage ? "/" : "/#events"}
+          href="/#events"
           className="nav__cta"
           onClick={closeMenu}
         >
-          {isEventPage ? "All Events" : "Book Tickets"}
+          Book Tickets
         </Link>
       </div>
     </nav>

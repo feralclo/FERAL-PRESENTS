@@ -40,9 +40,9 @@ import {
   User,
   Undo2,
   Sparkles,
-  FileText,
   Plus,
   X,
+  Users,
 } from "lucide-react";
 import { COLOR_PRESETS } from "@/lib/color-presets";
 import { FONT_PAIRINGS, buildGoogleFontsUrl } from "@/lib/font-pairings";
@@ -97,7 +97,7 @@ interface EventOption {
 }
 
 /* ─── Editor section IDs ─── */
-type SectionId = "style" | "typography" | "logo" | "identity" | "social" | "content";
+type SectionId = "style" | "typography" | "logo" | "identity" | "social" | "content" | "hero-banner" | "about-section";
 
 /* ═══════════════════════════════════════════════════════
    TICKET STORE EDITOR — Full-screen, Shopify-style
@@ -204,6 +204,9 @@ function TicketStoreEditorPage() {
         }
         if (brandingRes?.data?.about_section) {
           setAboutSection(brandingRes.data.about_section);
+        } else {
+          // Pre-populate with empty structure so the section is discoverable
+          setAboutSection({ heading_line1: "", heading_line2: "", pillars: [{ title: "", text: "" }], closer: "" });
         }
       })
       .catch(() => {})
@@ -701,198 +704,199 @@ function TicketStoreEditorPage() {
               </div>
             </EditorSection>
 
-            <EditorSection
-              id="typography"
-              label="Typography"
-              icon={<Type size={14} />}
-              open={openSection === "typography"}
-              onToggle={() =>
-                setOpenSection(
-                  openSection === "typography" ? null! : "typography"
-                )
-              }
-            >
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] text-muted-foreground">
-                    Heading Font
-                  </Label>
-                  <FontSelect
-                    value={branding.heading_font || "Space Mono"}
-                    onChange={(v) => updateFont("heading_font", "--font-mono", v)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] text-muted-foreground">
-                    Body Font
-                  </Label>
-                  <FontSelect
-                    value={branding.body_font || "Inter"}
-                    onChange={(v) => updateFont("body_font", "--font-sans", v)}
-                  />
-                </div>
-              </div>
-            </EditorSection>
-
-            <EditorSection
-              id="logo"
-              label="Logo"
-              icon={<Image size={14} />}
-              open={openSection === "logo"}
-              onToggle={() =>
-                setOpenSection(openSection === "logo" ? null! : "logo")
-              }
-            >
-              <div className="space-y-3">
-                <ImageUpload
-                  label="Logo Image"
-                  value={branding.logo_url || ""}
-                  onChange={(v) => {
-                    updateField("logo_url", v);
-                    pushLogoToIframe(v, branding.logo_width);
-                  }}
-                  uploadKey="branding-logo"
-                />
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] text-muted-foreground">
-                    Logo Width (px)
-                  </Label>
-                  <Input
-                    type="number"
-                    value={branding.logo_width ?? ""}
-                    onChange={(e) => {
-                      const w = e.target.value ? Number(e.target.value) : undefined;
-                      updateField("logo_width", w);
-                      pushLogoToIframe(branding.logo_url || "", w);
-                    }}
-                    placeholder="Auto"
-                    className="h-8 text-xs"
-                    min={20}
-                    max={400}
-                  />
-                </div>
-              </div>
-            </EditorSection>
-
-            <EditorSection
-              id="identity"
-              label="Identity"
-              icon={<User size={14} />}
-              open={openSection === "identity"}
-              onToggle={() =>
-                setOpenSection(
-                  openSection === "identity" ? null! : "identity"
-                )
-              }
-            >
-              <div className="space-y-3">
-                <FieldRow label="Organisation Name">
-                  <Input
-                    value={branding.org_name || ""}
-                    onChange={(e) => updateField("org_name", e.target.value)}
-                    className="h-8 text-xs"
-                    placeholder="Your brand name"
-                  />
-                </FieldRow>
-                <FieldRow label="Copyright Text">
-                  <Input
-                    value={branding.copyright_text || ""}
-                    onChange={(e) =>
-                      updateField("copyright_text", e.target.value)
-                    }
-                    className="h-8 text-xs"
-                    placeholder="BRAND. ALL RIGHTS RESERVED."
-                  />
-                </FieldRow>
-                <FieldRow label="Support Email">
-                  <Input
-                    type="email"
-                    value={branding.support_email || ""}
-                    onChange={(e) =>
-                      updateField("support_email", e.target.value)
-                    }
-                    className="h-8 text-xs"
-                    placeholder="support@yourbrand.com"
-                  />
-                </FieldRow>
-              </div>
-            </EditorSection>
-
-            <EditorSection
-              id="social"
-              label="Social Links"
-              icon={<Globe size={14} />}
-              open={openSection === "social"}
-              onToggle={() =>
-                setOpenSection(openSection === "social" ? null! : "social")
-              }
-            >
-              <div className="space-y-3">
-                <FieldRow label="Instagram">
-                  <Input
-                    value={branding.social_links?.instagram || ""}
-                    onChange={(e) => updateSocial("instagram", e.target.value)}
-                    className="h-8 text-xs"
-                    placeholder="https://instagram.com/..."
-                  />
-                </FieldRow>
-                <FieldRow label="Twitter / X">
-                  <Input
-                    value={branding.social_links?.twitter || ""}
-                    onChange={(e) => updateSocial("twitter", e.target.value)}
-                    className="h-8 text-xs"
-                    placeholder="https://x.com/..."
-                  />
-                </FieldRow>
-                <FieldRow label="TikTok">
-                  <Input
-                    value={branding.social_links?.tiktok || ""}
-                    onChange={(e) => updateSocial("tiktok", e.target.value)}
-                    className="h-8 text-xs"
-                    placeholder="https://tiktok.com/@..."
-                  />
-                </FieldRow>
-                <FieldRow label="Website">
-                  <Input
-                    value={branding.social_links?.website || ""}
-                    onChange={(e) => updateSocial("website", e.target.value)}
-                    className="h-8 text-xs"
-                    placeholder="https://yourbrand.com"
-                  />
-                </FieldRow>
-              </div>
-            </EditorSection>
-
-            {/* Content section — only visible on homepage preview for non-FERAL orgs */}
-            {previewPage === "homepage" && orgId !== "feral" && (
-              <EditorSection
-                id="content"
-                label="Content"
-                icon={<FileText size={14} />}
-                open={openSection === "content"}
-                onToggle={() =>
-                  setOpenSection(openSection === "content" ? null! : "content")
-                }
-              >
-                <div className="space-y-4">
-                  {/* Save indicator */}
-                  {(contentSaving || contentSaved) && (
-                    <div className="flex items-center gap-1.5 text-[10px]">
-                      {contentSaving ? (
-                        <span className="text-muted-foreground animate-pulse">Saving...</span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-success">
-                          <Check size={10} /> Saved
-                        </span>
-                      )}
+            {/* Typography, Logo, Identity, Social — only in event mode */}
+            {previewPage === "event" && (
+              <>
+                <EditorSection
+                  id="typography"
+                  label="Typography"
+                  icon={<Type size={14} />}
+                  open={openSection === "typography"}
+                  onToggle={() =>
+                    setOpenSection(
+                      openSection === "typography" ? null! : "typography"
+                    )
+                  }
+                >
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] text-muted-foreground">
+                        Heading Font
+                      </Label>
+                      <FontSelect
+                        value={branding.heading_font || "Space Mono"}
+                        onChange={(v) => updateFont("heading_font", "--font-mono", v)}
+                      />
                     </div>
-                  )}
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] text-muted-foreground">
+                        Body Font
+                      </Label>
+                      <FontSelect
+                        value={branding.body_font || "Inter"}
+                        onChange={(v) => updateFont("body_font", "--font-sans", v)}
+                      />
+                    </div>
+                  </div>
+                </EditorSection>
 
-                  {/* Hero Text */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                      Hero Text
-                    </span>
+                <EditorSection
+                  id="logo"
+                  label="Logo"
+                  icon={<Image size={14} />}
+                  open={openSection === "logo"}
+                  onToggle={() =>
+                    setOpenSection(openSection === "logo" ? null! : "logo")
+                  }
+                >
+                  <div className="space-y-3">
+                    <ImageUpload
+                      label="Logo Image"
+                      value={branding.logo_url || ""}
+                      onChange={(v) => {
+                        updateField("logo_url", v);
+                        pushLogoToIframe(v, branding.logo_width);
+                      }}
+                      uploadKey="branding-logo"
+                    />
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] text-muted-foreground">
+                        Logo Width (px)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={branding.logo_width ?? ""}
+                        onChange={(e) => {
+                          const w = e.target.value ? Number(e.target.value) : undefined;
+                          updateField("logo_width", w);
+                          pushLogoToIframe(branding.logo_url || "", w);
+                        }}
+                        placeholder="Auto"
+                        className="h-8 text-xs"
+                        min={20}
+                        max={400}
+                      />
+                    </div>
+                  </div>
+                </EditorSection>
+
+                <EditorSection
+                  id="identity"
+                  label="Identity"
+                  icon={<User size={14} />}
+                  open={openSection === "identity"}
+                  onToggle={() =>
+                    setOpenSection(
+                      openSection === "identity" ? null! : "identity"
+                    )
+                  }
+                >
+                  <div className="space-y-3">
+                    <FieldRow label="Organisation Name">
+                      <Input
+                        value={branding.org_name || ""}
+                        onChange={(e) => updateField("org_name", e.target.value)}
+                        className="h-8 text-xs"
+                        placeholder="Your brand name"
+                      />
+                    </FieldRow>
+                    <FieldRow label="Copyright Text">
+                      <Input
+                        value={branding.copyright_text || ""}
+                        onChange={(e) =>
+                          updateField("copyright_text", e.target.value)
+                        }
+                        className="h-8 text-xs"
+                        placeholder="BRAND. ALL RIGHTS RESERVED."
+                      />
+                    </FieldRow>
+                    <FieldRow label="Support Email">
+                      <Input
+                        type="email"
+                        value={branding.support_email || ""}
+                        onChange={(e) =>
+                          updateField("support_email", e.target.value)
+                        }
+                        className="h-8 text-xs"
+                        placeholder="support@yourbrand.com"
+                      />
+                    </FieldRow>
+                  </div>
+                </EditorSection>
+
+                <EditorSection
+                  id="social"
+                  label="Social Links"
+                  icon={<Globe size={14} />}
+                  open={openSection === "social"}
+                  onToggle={() =>
+                    setOpenSection(openSection === "social" ? null! : "social")
+                  }
+                >
+                  <div className="space-y-3">
+                    <FieldRow label="Instagram">
+                      <Input
+                        value={branding.social_links?.instagram || ""}
+                        onChange={(e) => updateSocial("instagram", e.target.value)}
+                        className="h-8 text-xs"
+                        placeholder="https://instagram.com/..."
+                      />
+                    </FieldRow>
+                    <FieldRow label="Twitter / X">
+                      <Input
+                        value={branding.social_links?.twitter || ""}
+                        onChange={(e) => updateSocial("twitter", e.target.value)}
+                        className="h-8 text-xs"
+                        placeholder="https://x.com/..."
+                      />
+                    </FieldRow>
+                    <FieldRow label="TikTok">
+                      <Input
+                        value={branding.social_links?.tiktok || ""}
+                        onChange={(e) => updateSocial("tiktok", e.target.value)}
+                        className="h-8 text-xs"
+                        placeholder="https://tiktok.com/@..."
+                      />
+                    </FieldRow>
+                    <FieldRow label="Website">
+                      <Input
+                        value={branding.social_links?.website || ""}
+                        onChange={(e) => updateSocial("website", e.target.value)}
+                        className="h-8 text-xs"
+                        placeholder="https://yourbrand.com"
+                      />
+                    </FieldRow>
+                  </div>
+                </EditorSection>
+              </>
+            )}
+
+            {/* ─── Homepage Sections ─── */}
+            {previewPage === "homepage" && orgId !== "feral" && (
+              <>
+                {/* Save indicator (shared across homepage sections) */}
+                {(contentSaving || contentSaved) && (
+                  <div className="flex items-center gap-1.5 text-[10px] px-3 pt-2">
+                    {contentSaving ? (
+                      <span className="text-muted-foreground animate-pulse">Saving...</span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-success">
+                        <Check size={10} /> Saved
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <EditorSection
+                  id="hero-banner"
+                  label="Hero Banner"
+                  icon={<Image size={14} />}
+                  open={openSection === "hero-banner"}
+                  onToggle={() =>
+                    setOpenSection(openSection === "hero-banner" ? null! : "hero-banner")
+                  }
+                >
+                  <div className="space-y-3">
                     <FieldRow label="Title Line 1">
                       <Input
                         value={homepageSettings.hero_title_line1 || ""}
@@ -917,29 +921,25 @@ function TicketStoreEditorPage() {
                         placeholder="EXPLORE"
                       />
                     </FieldRow>
-                  </div>
-
-                  <Separator />
-
-                  {/* Hero Background Image */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                      Hero Background
-                    </span>
+                    <Separator />
                     <ImageUpload
                       value={homepageSettings.hero_image_url || ""}
                       onChange={(url) => updateHomepage({ hero_image_url: url })}
                       label="Background Image"
                     />
                   </div>
+                </EditorSection>
 
-                  <Separator />
-
-                  {/* About Section */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                      About Section
-                    </span>
+                <EditorSection
+                  id="about-section"
+                  label="About Section"
+                  icon={<Users size={14} />}
+                  open={openSection === "about-section"}
+                  onToggle={() =>
+                    setOpenSection(openSection === "about-section" ? null! : "about-section")
+                  }
+                >
+                  <div className="space-y-3">
                     <FieldRow label="Heading Line 1">
                       <Input
                         value={aboutSection?.heading_line1 || ""}
@@ -1022,8 +1022,8 @@ function TicketStoreEditorPage() {
                       />
                     </FieldRow>
                   </div>
-                </div>
-              </EditorSection>
+                </EditorSection>
+              </>
             )}
           </div>
         </aside>
@@ -1044,9 +1044,9 @@ function TicketStoreEditorPage() {
                   onClick={() => {
                     setPreviewPage(id);
                     setBridgeReady(false);
-                    // Auto-open Content section when switching to homepage
+                    // Auto-open Hero Banner section when switching to homepage
                     if (id === "homepage" && orgId !== "feral") {
-                      setOpenSection("content");
+                      setOpenSection("hero-banner");
                     }
                   }}
                   className={`rounded-md px-3 py-1 text-[11px] font-medium transition-colors ${

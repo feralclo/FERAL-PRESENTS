@@ -80,7 +80,7 @@ export function LandingPage({ events, heroSettings, orgId, aboutSection }: Landi
         <EventsSection events={events} />
         {orgId === "feral" ? (
           <AboutSection />
-        ) : aboutSection && aboutSection.pillars?.length > 0 ? (
+        ) : aboutSection?.pillars?.some(p => p.title || p.text) ? (
           <GenericAboutSection
             headingLine1={aboutSection.heading_line1}
             headingLine2={aboutSection.heading_line2}

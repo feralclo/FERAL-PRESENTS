@@ -6,10 +6,13 @@
  * (glass borders, hero mist, bokeh, embers, glitch glow, CTA effects)
  * via color-mix(), so changing the accent transforms the ENTIRE visual layer.
  *
+ * Glass surfaces (midnight-effects.css) use color-mix() with --color-card
+ * and --color-background, so preset card/background colors tint the glass.
+ *
  * Presets should feel like completely different UI skins:
- * - Crimson Night: Clean, dark, minimal — the FERAL default
+ * - Entry Dark: Clean neutral — no color, pure platinum elegance
  * - Electric Rose: Hot pink everywhere — fun, girly, festival energy
- * - Clean Slate: Cool indigo — professional, tech, corporate
+ * - Neon Mint: Fresh mint green — energetic, modern, standout
  */
 
 export interface ColorPreset {
@@ -30,19 +33,19 @@ export interface ColorPreset {
 
 export const COLOR_PRESETS: ColorPreset[] = [
   {
-    id: "crimson-night",
-    name: "Crimson Night",
-    description: "Deep dark with subtle red — the classic nightlife look",
-    mood: "Dark / Nightlife",
+    id: "entry-dark",
+    name: "Entry Dark",
+    description: "Clean minimal dark — no color, pure elegance",
+    mood: "Minimal / Platinum",
     colors: {
-      accent: "#ff0033",
-      background: "#0e0e0e",
-      card: "#1a1a1a",
+      accent: "#ffffff",
+      background: "#0a0a0a",
+      card: "#141414",
       text: "#ffffff",
-      border: "#2a2a2a",
+      border: "#222222",
     },
-    preview_gradient: "linear-gradient(135deg, #0e0e0e, #1a0a0a, #0e0e0e)",
-    tags: ["Dark", "Nightlife", "Events"],
+    preview_gradient: "linear-gradient(135deg, #0a0a0a, #141414, #0a0a0a)",
+    tags: ["Minimal", "Dark", "Clean"],
   },
   {
     id: "electric-rose",
@@ -50,29 +53,29 @@ export const COLOR_PRESETS: ColorPreset[] = [
     description: "Hot pink energy — festivals, parties, fun vibes",
     mood: "Pink / Fun / Festival",
     colors: {
-      accent: "#FF1493",
-      background: "#110010",
-      card: "#220822",
-      text: "#fff0fa",
-      border: "#4a1545",
+      accent: "#FF2D8A",
+      background: "#0d0009",
+      card: "#1a0a12",
+      text: "#ffffff",
+      border: "#3a1428",
     },
-    preview_gradient: "linear-gradient(135deg, #110010, #2a0828, #110010)",
+    preview_gradient: "linear-gradient(135deg, #0d0009, #1a0a12, #0d0009)",
     tags: ["Fun", "Festival", "Vibrant"],
   },
   {
-    id: "clean-slate",
-    name: "Clean Slate",
-    description: "Cool indigo — professional, modern, versatile",
-    mood: "Professional / Modern / Universal",
+    id: "neon-mint",
+    name: "Neon Mint",
+    description: "Fresh mint green — energetic, modern, standout",
+    mood: "Fresh / Energetic / Modern",
     colors: {
-      accent: "#6366F1",
-      background: "#0a0a14",
-      card: "#13142a",
-      text: "#e8eaf6",
-      border: "#252850",
+      accent: "#00E5A0",
+      background: "#050f0c",
+      card: "#0c1a16",
+      text: "#f0fff8",
+      border: "#1a3a30",
     },
-    preview_gradient: "linear-gradient(135deg, #0a0a14, #13142a, #0a0a14)",
-    tags: ["Professional", "Minimal", "Universal"],
+    preview_gradient: "linear-gradient(135deg, #050f0c, #0c1a16, #050f0c)",
+    tags: ["Fresh", "Modern", "Energetic"],
   },
 ];
 

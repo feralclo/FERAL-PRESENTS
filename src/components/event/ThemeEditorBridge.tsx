@@ -46,13 +46,39 @@ export function ThemeEditorBridge() {
       themeRoot.setAttribute("data-theme", templateParam);
     }
 
-    // Disable link clicks and navigation inside the preview
-    function blockNav(e: MouseEvent) {
-      const target = (e.target as HTMLElement).closest("a, button");
-      if (target?.tagName === "A") {
-        e.preventDefault();
-        e.stopPropagation();
+    // Intercept link clicks: either navigate to a known page in the editor
+    // or block unknown navigation to keep the preview stable
+    function handleNav(e: MouseEvent) {
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (!anchor) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const href = anchor.getAttribute("href");
+      if (!href) return;
+
+      // Resolve relative URLs against current location
+      let url: URL;
+      try {
+        url = new URL(href, window.location.origin);
+      } catch {
+        return;
       }
+
+      const path = url.pathname.replace(/\/+$/, "") || "/";
+
+      if (path === "" || path === "/") {
+        // Link to homepage → tell editor to switch to homepage preview
+        window.parent.postMessage({ type: "editor-navigate", page: "homepage" }, "*");
+      } else if (path.startsWith("/event/")) {
+        // Link to event page → tell editor to switch to event preview with slug
+        const slug = path.split("/event/")[1]?.replace(/\/+$/, "");
+        if (slug) {
+          window.parent.postMessage({ type: "editor-navigate", page: "event", slug }, "*");
+        }
+      }
+      // All other links are silently blocked (external, admin, etc.)
     }
 
     function handleMessage(e: MessageEvent) {
@@ -102,7 +128,7 @@ export function ThemeEditorBridge() {
       }
     }
 
-    document.addEventListener("click", blockNav, true);
+    document.addEventListener("click", handleNav, true);
     window.addEventListener("message", handleMessage);
 
     // Signal to parent that the bridge is ready
@@ -110,7 +136,7 @@ export function ThemeEditorBridge() {
 
     return () => {
       document.documentElement.removeAttribute("data-editor-preview");
-      document.removeEventListener("click", blockNav, true);
+      document.removeEventListener("click", handleNav, true);
       window.removeEventListener("message", handleMessage);
     };
   }, []);

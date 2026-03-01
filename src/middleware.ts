@@ -15,6 +15,12 @@ const SECURITY_HEADERS: Record<string, string> = {
     "camera=(), microphone=(), geolocation=(), payment=*, interest-cohort=()",
 };
 
+/** Headers for editor preview pages (loaded in theme editor iframe). */
+const EDITOR_PREVIEW_HEADERS: Record<string, string> = {
+  ...SECURITY_HEADERS,
+};
+delete (EDITOR_PREVIEW_HEADERS as Record<string, string>)["X-Frame-Options"];
+
 /* ── Org resolution cache ── */
 
 const FALLBACK_ORG = "feral";
@@ -266,9 +272,13 @@ function isRepUser(user: { app_metadata?: Record<string, unknown> }): boolean {
 
 /**
  * Apply security headers to a response.
+ * Editor preview pages (?editor=1) omit X-Frame-Options so the theme
+ * editor can embed them in an iframe.
  */
-function applySecurityHeaders(response: NextResponse): NextResponse {
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+function applySecurityHeaders(response: NextResponse, request?: NextRequest): NextResponse {
+  const isEditorPreview = request?.nextUrl.searchParams.get("editor") === "1";
+  const headers = isEditorPreview ? EDITOR_PREVIEW_HEADERS : SECURITY_HEADERS;
+  for (const [key, value] of Object.entries(headers)) {
     response.headers.set(key, value);
   }
 
@@ -314,7 +324,7 @@ export async function middleware(request: NextRequest) {
     // Supabase not configured — let the request through but add headers
     const response = NextResponse.next();
     response.headers.set("x-org-id", FALLBACK_ORG);
-    return applySecurityHeaders(response);
+    return applySecurityHeaders(response, request);
   }
 
   const { supabase, response: getResponse } = client;
@@ -424,7 +434,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return applySecurityHeaders(response);
+  return applySecurityHeaders(response, request);
 }
 
 /**

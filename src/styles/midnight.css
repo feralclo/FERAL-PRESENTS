@@ -23,11 +23,11 @@
   --color-card-foreground: var(--text-primary, #ffffff);
   --color-primary: var(--accent, #ff0033);
   --color-primary-foreground: #ffffff;
-  --color-secondary: #1e1e24;
+  --color-secondary: color-mix(in srgb, var(--accent, #ff0033) 3%, #1e1e24);
   --color-secondary-foreground: var(--text-primary, #ffffff);
-  --color-muted: #1e1e24;
+  --color-muted: color-mix(in srgb, var(--accent, #ff0033) 3%, #1e1e24);
   --color-muted-foreground: var(--text-secondary, #888888);
-  --color-accent: #1e1e24;
+  --color-accent: color-mix(in srgb, var(--accent, #ff0033) 3%, #1e1e24);
   --color-accent-foreground: var(--text-primary, #ffffff);
   --color-border: var(--card-border, #2a2a2a);
   --color-input: var(--card-border, #2a2a2a);
@@ -126,6 +126,22 @@
     --midnight-section-gap: 48px;
     --midnight-content-px: 16px;
   }
+}
+
+/* ── Accent bleed — derive tinted variants from the accent color ──
+   These let glass borders, card edges, and section dividers carry
+   the accent flavor without hardcoding any particular color. */
+[data-theme="midnight"] {
+  --accent-glow: color-mix(in srgb, var(--accent, #ff0033) 12%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent, #ff0033) 15%, rgba(255, 255, 255, 0.06));
+  --accent-border-hover: color-mix(in srgb, var(--accent, #ff0033) 30%, rgba(255, 255, 255, 0.08));
+  --accent-glass: color-mix(in srgb, var(--accent, #ff0033) 4%, transparent);
+  --accent-glass-hover: color-mix(in srgb, var(--accent, #ff0033) 8%, transparent);
+}
+
+/* ── Card accent edge — subtle top highlight using accent color ── */
+[data-theme="midnight"] .glass {
+  border-top-color: var(--accent-border-hover, rgba(255, 255, 255, 0.08));
 }
 
 /* ── Button shadow fix: shared Button hardcodes purple glow, override to match red primary ── */

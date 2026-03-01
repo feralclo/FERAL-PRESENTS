@@ -42,12 +42,12 @@ export const COLOR_PRESETS: ColorPreset[] = [
     mood: "Pink / Fun / Festival",
     colors: {
       accent: "#E91E8C",
-      background: "#110b14",
-      card: "#1e1424",
-      text: "#f5f0f8",
-      border: "#2d2235",
+      background: "#120811",
+      card: "#1f0f1e",
+      text: "#f8f0f6",
+      border: "#3d1a38",
     },
-    preview_gradient: "linear-gradient(135deg, #110b14, #1e1424, #110b14)",
+    preview_gradient: "linear-gradient(135deg, #120811, #1f0f1e, #120811)",
     tags: ["Fun", "Festival", "Vibrant"],
   },
   {

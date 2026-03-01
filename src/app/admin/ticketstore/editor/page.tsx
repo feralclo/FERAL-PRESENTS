@@ -210,12 +210,22 @@ function TicketStoreEditorPage() {
       .finally(() => setLoading(false));
   }, [themeId, orgId]);
 
-  /* ── Listen for bridge ready ── */
+  /* ── Listen for bridge ready + in-preview navigation ── */
   useEffect(() => {
     function onMsg(e: MessageEvent) {
       if (e.data?.type === "editor-bridge-ready") {
         setBridgeReady(true);
         pushAllToIframe();
+      }
+      if (e.data?.type === "editor-navigate") {
+        if (e.data.page === "homepage") {
+          setPreviewPage("homepage");
+          setBridgeReady(false);
+        } else if (e.data.page === "event" && e.data.slug) {
+          setPreviewPage("event");
+          setSelectedSlug(e.data.slug);
+          setBridgeReady(false);
+        }
       }
     }
     window.addEventListener("message", onMsg);

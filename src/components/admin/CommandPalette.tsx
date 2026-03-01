@@ -160,6 +160,30 @@ function scoreItem(item: CommandItem, query: string): number {
   return 0;
 }
 
+/* ── Helpers ── */
+
+function formatCurrency(amount: number, currency?: string): string {
+  const sym = currency === "EUR" ? "\u20AC" : currency === "USD" ? "$" : "\u00A3";
+  return `${sym}${(amount / 100).toFixed(2)}`;
+}
+
+function orderToResult(o: Record<string, unknown>): LiveResult {
+  const customer = o.customer as Record<string, string> | null;
+  const name = customer
+    ? `${customer.first_name || ""} ${customer.last_name || ""}`.trim()
+    : "";
+  const event = o.event as Record<string, string> | null;
+  const detail = [name, event?.name].filter(Boolean).join(" \u00B7 ");
+  return {
+    id: o.id as string,
+    label: o.order_number as string,
+    detail: detail || customer?.email || "Unknown customer",
+    secondary: o.total != null ? formatCurrency(o.total as number, o.currency as string) : undefined,
+    href: `/admin/orders/${o.id}/`,
+    section: "Orders",
+  };
+}
+
 /* ── Live search fetcher ── */
 
 async function fetchLiveResults(query: string): Promise<LiveResult[]> {
@@ -167,43 +191,56 @@ async function fetchLiveResults(query: string): Promise<LiveResult[]> {
   if (q.length < 2) return [];
 
   const results: LiveResult[] = [];
+  const seenOrderIds = new Set<string>();
 
   try {
+    // Step 1: Direct order_number search + customer name/email search in parallel
     const [ordersRes, customersRes] = await Promise.all([
       fetch(`/api/orders?search=${encodeURIComponent(q)}&limit=5`).catch(() => null),
       fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=5`).catch(() => null),
     ]);
 
+    // Direct order_number matches (e.g. "FERAL-123")
     if (ordersRes?.ok) {
       const json = await ordersRes.json();
-      const orders = json.data || json || [];
-      for (const o of orders.slice(0, 5)) {
-        const name = o.customer
-          ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim()
-          : "";
-        const total = o.total != null
-          ? `${o.currency === "EUR" ? "\u20AC" : o.currency === "USD" ? "$" : "\u00A3"}${(o.total / 100).toFixed(2)}`
-          : "";
-        results.push({
-          id: o.id,
-          label: o.order_number,
-          detail: name || o.customer?.email || "Unknown customer",
-          secondary: total,
-          href: `/admin/orders/${o.id}/`,
-          section: "Orders",
-        });
+      for (const o of (json.data || []).slice(0, 5)) {
+        seenOrderIds.add(o.id);
+        results.push(orderToResult(o));
       }
     }
 
+    // Customer matches — fetch each customer's most recent order too
+    const customers: Record<string, unknown>[] = [];
     if (customersRes?.ok) {
       const json = await customersRes.json();
-      const customers = json.data || json || [];
-      for (const c of customers.slice(0, 5)) {
-        const name = `${c.first_name || ""} ${c.last_name || ""}`.trim();
+      customers.push(...(json.data || []).slice(0, 5));
+    }
+
+    // Step 2: For matching customers, fetch their most recent orders
+    if (customers.length > 0) {
+      const orderFetches = customers.slice(0, 4).map((c) =>
+        fetch(`/api/orders?customer_id=${c.id}&limit=1`).catch(() => null)
+      );
+      const orderResults = await Promise.all(orderFetches);
+
+      for (let i = 0; i < orderResults.length; i++) {
+        const res = orderResults[i];
+        if (!res?.ok) continue;
+        const json = await res.json();
+        const orders = json.data || [];
+        if (orders.length > 0 && !seenOrderIds.has(orders[0].id)) {
+          seenOrderIds.add(orders[0].id);
+          results.push(orderToResult(orders[0]));
+        }
+      }
+
+      // Add customer results after their orders
+      for (const c of customers) {
+        const name = `${(c.first_name as string) || ""} ${(c.last_name as string) || ""}`.trim();
         results.push({
-          id: c.id,
-          label: name || c.email,
-          detail: name ? c.email : "",
+          id: c.id as string,
+          label: name || (c.email as string),
+          detail: name ? (c.email as string) : "",
           href: `/admin/customers/${c.id}/`,
           section: "Customers",
         });

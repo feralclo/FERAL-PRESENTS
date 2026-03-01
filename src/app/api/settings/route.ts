@@ -46,7 +46,12 @@ export async function GET(request: NextRequest) {
     }
     // Prevent cross-tenant reads: key must start with admin's org_id prefix
     // (mirrors the POST validation at line 93)
-    if (!key.startsWith(`${auth.orgId}_`) && !key.startsWith("media_") && !key.startsWith("entry_platform_") && !key.startsWith("platform_")) {
+    // media_ keys are namespaced as media_{orgId}_{name} — validate ownership
+    if (key.startsWith("media_")) {
+      if (!key.startsWith(`media_${auth.orgId}_`)) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+    } else if (!key.startsWith(`${auth.orgId}_`) && !key.startsWith("entry_platform_") && !key.startsWith("platform_")) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
   }
@@ -95,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Keys must start with the org's ID prefix (e.g., "feral_branding", "acme_email").
     // Only exception: platform-wide keys like "entry_platform_*" for platform owners.
     const orgId = auth.orgId;
-    if (!key.startsWith(`${orgId}_`) && !key.startsWith("media_") && !key.startsWith("entry_platform_")) {
+    if (!key.startsWith(`${orgId}_`) && !key.startsWith(`media_${orgId}_`) && !key.startsWith("entry_platform_")) {
       return NextResponse.json(
         { error: "Unauthorized: cannot write settings for another org" },
         { status: 403 }

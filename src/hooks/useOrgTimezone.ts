@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useOrgId } from "@/components/OrgProvider";
+import { generalKey } from "@/lib/constants";
 import { detectBrowserTimezone } from "@/lib/timezone";
 
 /**
@@ -18,7 +19,7 @@ export function useOrgTimezone(): { timezone: string; loading: boolean } {
 
     (async () => {
       try {
-        const res = await fetch(`/api/settings?key=${orgId}_general`);
+        const res = await fetch(`/api/settings?key=${generalKey(orgId)}`);
         if (!res.ok) throw new Error();
         const { data } = await res.json();
         if (!cancelled && data?.timezone) {

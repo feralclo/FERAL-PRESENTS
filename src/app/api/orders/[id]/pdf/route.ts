@@ -101,8 +101,8 @@ export async function GET(
     // Fetch logo base64 directly from DB (avoids self-fetch on serverless)
     let logoDataUrl: string | null = null;
     if (pdfSettings.logo_url) {
-      const mediaMatch = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
-      if (mediaMatch) {
+      const mediaMatch = pdfSettings.logo_url.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+      if (mediaMatch && mediaMatch[1].startsWith(`${orgId}_`)) {
         try {
           const { data: mediaRow } = await supabase
             .from(TABLES.SITE_SETTINGS)

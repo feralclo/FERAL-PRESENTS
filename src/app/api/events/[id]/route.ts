@@ -157,6 +157,7 @@ export async function PUT(
       .from(TABLES.EVENTS)
       .select("*, ticket_types(*, product:products(*))")
       .eq("id", id)
+      .eq("org_id", orgId)
       .single();
 
     // Verify image persistence

@@ -23,6 +23,7 @@ import {
   Info,
 } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 
 export default function FinancePage() {
   return (
@@ -195,6 +196,7 @@ function PaymentsTab() {
 
 function TaxTab() {
   const orgId = useOrgId();
+  const { currency: orgCurrency } = useOrgCurrency();
   const [vat, setVat] = useState<VatSettings>(DEFAULT_VAT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -414,7 +416,7 @@ function TaxTab() {
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between text-foreground/80">
                     <span>Subtotal</span>
-                    <span>{fmtMoney(26.50)}</span>
+                    <span>{fmtMoney(26.50, orgCurrency)}</span>
                   </div>
                   {vat.prices_include_vat ? (
                     <div className="flex justify-between text-muted-foreground text-xs">
@@ -424,7 +426,8 @@ function TaxTab() {
                       <span>
                         {fmtMoney(
                           26.5 -
-                          26.5 / (1 + vat.vat_rate / 100)
+                          26.5 / (1 + vat.vat_rate / 100),
+                          orgCurrency
                         )}
                       </span>
                     </div>
@@ -434,7 +437,7 @@ function TaxTab() {
                         VAT ({vat.vat_rate}%)
                       </span>
                       <span>
-                        {fmtMoney((26.5 * vat.vat_rate) / 100)}
+                        {fmtMoney((26.5 * vat.vat_rate) / 100, orgCurrency)}
                       </span>
                     </div>
                   )}
@@ -444,7 +447,8 @@ function TaxTab() {
                       {fmtMoney(
                         vat.prices_include_vat
                           ? 26.50
-                          : 26.5 + (26.5 * vat.vat_rate) / 100
+                          : 26.5 + (26.5 * vat.vat_rate) / 100,
+                        orgCurrency
                       )}
                     </span>
                   </div>

@@ -7,7 +7,9 @@ import {
   calculateApplicationFee,
   toSmallestUnit,
   SUPPORTED_CURRENCIES,
+  CROSS_CURRENCY_SURCHARGE_PERCENT,
 } from "@/lib/stripe/config";
+import { getOrgBaseCurrency } from "@/lib/org-settings";
 import {
   getExchangeRates,
   convertCurrency,
@@ -458,7 +460,13 @@ export async function POST(request: NextRequest) {
 
     // Build PaymentIntent parameters — fee rates determined by org's plan
     const plan = await getOrgPlan(orgId);
-    const applicationFee = calculateApplicationFee(amountInSmallestUnit, plan.fee_percent, plan.min_fee);
+    const orgBaseCurrency = await getOrgBaseCurrency(orgId);
+    let effectiveFeePercent = plan.fee_percent;
+    // Cross-currency surcharge: event charges in different currency than org's base
+    if (baseCurrency.toUpperCase() !== orgBaseCurrency.toUpperCase()) {
+      effectiveFeePercent += CROSS_CURRENCY_SURCHARGE_PERCENT;
+    }
+    const applicationFee = calculateApplicationFee(amountInSmallestUnit, effectiveFeePercent, plan.min_fee);
 
     // Build line items description
     const description = items
@@ -495,6 +503,10 @@ export async function POST(request: NextRequest) {
       metadata.base_subtotal = String(afterDiscount);
       metadata.base_total = String(vatInclusive ? afterDiscount : afterDiscount + vatAmount);
       if (rateLocked) metadata.rate_locked_at = rateLocked;
+    }
+
+    if (baseCurrency.toUpperCase() !== orgBaseCurrency.toUpperCase()) {
+      metadata.cross_currency_surcharge = String(CROSS_CURRENCY_SURCHARGE_PERCENT);
     }
 
     if (discountMeta) {

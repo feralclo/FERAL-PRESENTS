@@ -270,11 +270,12 @@ export async function sendOrderConfirmationEmail(params: {
     let pdfLogoBase64: string | null = null;
 
     // Fetch email logo base64 from DB for CID inline embedding
+    // Validate media key belongs to this org (keys are media_{orgId}_{name})
     try {
       const sb = await getSupabaseAdmin();
       if (sb && settings.logo_url) {
-        const m = settings.logo_url.match(/\/api\/media\/(.+)$/);
-        if (m) {
+        const m = settings.logo_url.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+        if (m && m[1].startsWith(`${params.orgId}_`)) {
           const { data: row } = await sb
             .from(TABLES.SITE_SETTINGS).select("data")
             .eq("key", `media_${m[1]}`).single();
@@ -364,9 +365,10 @@ export async function sendOrderConfirmationEmail(params: {
     const pdfSettings = await getPdfTicketSettings(params.orgId);
 
     // Fetch PDF logo from DB (may be different from email logo)
+    // Validate media key belongs to this org (keys are media_{orgId}_{name})
     if (pdfSettings.logo_url) {
-      const m = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
-      if (m) {
+      const m = pdfSettings.logo_url.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+      if (m && m[1].startsWith(`${params.orgId}_`)) {
         try {
           const sb = await getSupabaseAdmin();
           if (sb) {
@@ -583,11 +585,12 @@ export async function sendAbandonedCartRecoveryEmail(params: {
     let emailLogoBase64: string | null = null;
 
     // Fetch email logo base64 from DB for CID inline embedding
+    // Validate media key belongs to this org (keys are media_{orgId}_{name})
     try {
       const sb = await getSupabaseAdmin();
       if (sb && settings.logo_url) {
-        const m = settings.logo_url.match(/\/api\/media\/(.+)$/);
-        if (m) {
+        const m = settings.logo_url.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+        if (m && m[1].startsWith(`${params.orgId}_`)) {
           const { data: row } = await sb
             .from(TABLES.SITE_SETTINGS).select("data")
             .eq("key", `media_${m[1]}`).single();
@@ -765,11 +768,12 @@ export async function sendAnnouncementEmail(params: {
     let emailLogoBase64: string | null = null;
 
     // Fetch email logo for CID inline embedding
+    // Validate media key belongs to this org (keys are media_{orgId}_{name})
     try {
       const sb = await getSupabaseAdmin();
       if (sb && settings.logo_url) {
-        const m = settings.logo_url.match(/\/api\/media\/(.+)$/);
-        if (m) {
+        const m = settings.logo_url.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+        if (m && m[1].startsWith(`${params.orgId}_`)) {
           const { data: row } = await sb
             .from(TABLES.SITE_SETTINGS).select("data")
             .eq("key", `media_${m[1]}`).single();

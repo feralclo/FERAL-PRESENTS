@@ -23,6 +23,7 @@ import { DateTimePicker } from "@/components/ui/date-picker";
 import { Slider } from "@/components/ui/slider";
 import { AlertCircle, Users } from "lucide-react";
 import { useOrgTimezone } from "@/hooks/useOrgTimezone";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import { SeoCard } from "./SeoCard";
 import type { BrandingSettings } from "@/types/settings";
 import type { VatSettings } from "@/types/settings";
@@ -43,6 +44,7 @@ interface SettingsTabProps extends TabWithSettingsProps {
 export function SettingsTab({ event, updateEvent, settings, updateSetting, artistNames = [] }: SettingsTabProps) {
   const orgId = useOrgId();
   const { timezone } = useOrgTimezone();
+  const { currency: orgBaseCurrency } = useOrgCurrency();
   const [stripeAccounts, setStripeAccounts] = useState<StripeAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [orgVat, setOrgVat] = useState<VatSettings | null>(null);
@@ -409,6 +411,15 @@ export function SettingsTab({ event, updateEvent, settings, updateSetting, artis
                   <SelectItem value="USD">USD ($)</SelectItem>
                 </SelectContent>
               </Select>
+              {orgBaseCurrency && (event.currency || "GBP").toUpperCase() === orgBaseCurrency.toUpperCase() ? (
+                <p className="text-[10px] text-muted-foreground/60">
+                  Your org&apos;s default currency
+                </p>
+              ) : orgBaseCurrency ? (
+                <p className="text-[10px] text-warning">
+                  Different from your base currency ({orgBaseCurrency}) — 1.5% cross-currency surcharge applies
+                </p>
+              ) : null}
             </div>
           </div>
 

@@ -273,7 +273,7 @@ export default function WalletPassesPage() {
         if (json.apple && json.google) setConfigStatus(json);
       })
       .catch(() => {});
-  }, []);
+  }, [orgId]);
 
   const update = <K extends keyof WalletPassSettings>(key: K, value: WalletPassSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));

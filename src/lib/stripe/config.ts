@@ -23,6 +23,9 @@ export const DEFAULT_PLATFORM_FEE_PERCENT = 5;
 /** Minimum platform fee in the smallest currency unit (e.g., 50 = £0.50) */
 export const MIN_PLATFORM_FEE = 50;
 
+/** Cross-currency surcharge added to platform fee when event currency differs from org's base currency */
+export const CROSS_CURRENCY_SURCHARGE_PERCENT = 1.5;
+
 /** Supported currencies */
 export const SUPPORTED_CURRENCIES = ["gbp", "eur", "usd", "cad", "aud", "chf", "sek", "nok", "dkk"] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];

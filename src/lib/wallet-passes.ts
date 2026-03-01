@@ -562,8 +562,9 @@ async function fetchImageBuffer(url: string | undefined): Promise<Buffer | null>
     }
 
     // If it's a media key path, fetch from DB directly
+    // Strip query params before extracting key
     if (url.startsWith("/api/media/")) {
-      const key = url.replace("/api/media/", "");
+      const key = url.replace("/api/media/", "").replace(/\?.*$/, "");
       const { getSupabaseAdmin } = await import("@/lib/supabase/admin");
       const { TABLES } = await import("@/lib/constants");
       const supabase = await getSupabaseAdmin();

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES, onboardingKey } from "@/lib/constants";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, TABLES, onboardingKey, generalKey } from "@/lib/constants";
+import { getDefaultCurrency } from "@/lib/country-currency-map";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { slugify, validateSlug, provisionOrg } from "@/lib/signup";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { org_name, event_types, experience_level } = body;
+  const { org_name, event_types, experience_level, country: rawCountry } = body;
 
   // Validate org_name upfront
   if (!org_name || typeof org_name !== "string" || (org_name as string).trim().length < 2 || (org_name as string).trim().length > 50) {
@@ -137,11 +138,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Provisioning failed: ${msg}` }, { status: 500 });
     }
 
-    // Save onboarding data to site_settings
-    if (event_types || experience_level) {
-      try {
-        const supabaseAdmin = await getSupabaseAdmin();
-        if (supabaseAdmin) {
+    // Save onboarding data + general settings to site_settings
+    try {
+      const supabaseAdmin = await getSupabaseAdmin();
+      if (supabaseAdmin) {
+        const countryCode = typeof rawCountry === "string" && rawCountry.trim().length === 2
+          ? rawCountry.trim().toUpperCase()
+          : "GB";
+        const baseCurrency = getDefaultCurrency(countryCode);
+
+        // Save general settings (country + base_currency)
+        await supabaseAdmin.from(TABLES.SITE_SETTINGS).upsert(
+          {
+            key: generalKey(slug),
+            data: {
+              org_name: trimmedName,
+              timezone: "Europe/London",
+              support_email: "",
+              country: countryCode,
+              base_currency: baseCurrency,
+            },
+            org_id: slug,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "key" }
+        );
+
+        // Save onboarding data
+        if (event_types || experience_level) {
           await supabaseAdmin.from(TABLES.SITE_SETTINGS).upsert(
             {
               key: onboardingKey(slug),
@@ -155,10 +179,10 @@ export async function POST(request: NextRequest) {
             { onConflict: "key" }
           );
         }
-      } catch (settingsErr) {
-        // Non-fatal — org was provisioned, just log
-        console.error("[provision-org] Failed to save onboarding data:", settingsErr);
       }
+    } catch (settingsErr) {
+      // Non-fatal — org was provisioned, just log
+      console.error("[provision-org] Failed to save settings:", settingsErr);
     }
 
     return NextResponse.json({

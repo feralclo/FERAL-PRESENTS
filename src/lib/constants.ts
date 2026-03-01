@@ -115,6 +115,11 @@ export function announcementAutomationKey(orgId: string): string {
   return `${orgId}_announcement_automation`;
 }
 
+/** Generate the general settings key for a given org */
+export function generalKey(orgId: string): string {
+  return `${orgId}_general`;
+}
+
 /** Generate the onboarding data key for a given org */
 export function onboardingKey(orgId: string): string {
   return `${orgId}_onboarding`;

@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES } from "@/lib/constants";
 import { getOrgId } from "@/lib/org";
 import { requireAuth } from "@/lib/auth";
+import { getOrgBaseCurrency } from "@/lib/org-settings";
 
 /**
  * GET /api/events — List all events for the org
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
       cover_image,
       hero_image,
       theme,
-      currency = "GBP",
+      currency,
       about_text,
       lineup,
       details_text,
@@ -100,6 +101,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Default currency to org's base currency if not provided
+    const eventCurrency = currency || (await getOrgBaseCurrency(orgId));
+
     // Create event
     const { data: event, error: eventError } = await supabase
       .from(TABLES.EVENTS)
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
         cover_image,
         hero_image,
         theme,
-        currency,
+        currency: eventCurrency,
         about_text,
         lineup,
         details_text,
@@ -205,6 +209,7 @@ export async function POST(request: NextRequest) {
       .from(TABLES.EVENTS)
       .select("*, ticket_types(*)")
       .eq("id", event.id)
+      .eq("org_id", orgId)
       .single();
 
     return NextResponse.json({ data: fullEvent }, { status: 201 });

@@ -45,7 +45,7 @@ export default function HomepageAdmin() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [orgId]);
 
   // Auto-save with debounce
   const persistSettings = useCallback((newSettings: HomepageSettings) => {

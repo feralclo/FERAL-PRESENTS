@@ -445,7 +445,7 @@ export default function PopupConfigPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [orgId]);
 
   // Auto-save with debounce
   const persistSettings = useCallback((newSettings: PopupSettings) => {

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { saveSettings } from "@/lib/settings";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import {
   ChevronDown,
   ChevronLeft,
@@ -235,9 +236,6 @@ function SaveToast({ saving, status }: { saving: boolean; status: "idle" | "save
 }
 
 /* ── Helpers ── */
-function formatCurrency(amount: number) {
-  return fmtMoney(amount);
-}
 
 /* ── Logo processing: auto-trim transparent pixels + resize ── */
 function trimAndResizeLogo(file: File, maxWidth: number): Promise<string | null> {
@@ -313,10 +311,12 @@ function MasterToggle({
   enabled,
   onToggle,
   stats,
+  orgCurrency,
 }: {
   enabled: boolean;
   onToggle: (val: boolean) => void;
   stats: AbandonedCartStats | null;
+  orgCurrency: string;
 }) {
   const potentialRevenue = stats ? stats.total_value - stats.recovered_value : 0;
 
@@ -373,7 +373,7 @@ function MasterToggle({
               {enabled
                 ? "Recovery emails are being sent automatically"
                 : potentialRevenue > 0
-                  ? `Turn on to start recovering ${formatCurrency(potentialRevenue)} in lost revenue`
+                  ? `Turn on to start recovering ${fmtMoney(potentialRevenue, orgCurrency)} in lost revenue`
                   : "Turn on to start recovering abandoned carts automatically"}
             </p>
           </div>
@@ -1436,7 +1436,7 @@ function SendTestEmail({ step }: { step: EmailStep }) {
 /* ═══════════════════════════════════════════════════════════
    PERFORMANCE CARDS — gamified stat cards with urgency colors
    ═══════════════════════════════════════════════════════════ */
-function PerformanceCards({ stats }: { stats: AbandonedCartStats }) {
+function PerformanceCards({ stats, orgCurrency }: { stats: AbandonedCartStats; orgCurrency: string }) {
   const recoveryRate = stats.total > 0
     ? ((stats.recovered / stats.total) * 100)
     : 0;
@@ -1460,7 +1460,7 @@ function PerformanceCards({ stats }: { stats: AbandonedCartStats }) {
           </div>
           <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">Revenue at Risk</span>
         </div>
-        <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-red-400">{formatCurrency(lostRevenue)}</p>
+        <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-red-400">{fmtMoney(lostRevenue, orgCurrency)}</p>
         <p className="mt-1 text-[11px] text-muted-foreground/60">{stats.abandoned} abandoned cart{stats.abandoned !== 1 ? "s" : ""}</p>
         {stats.abandoned > 0 && (
           <div className="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-red-500/5" />
@@ -1483,7 +1483,7 @@ function PerformanceCards({ stats }: { stats: AbandonedCartStats }) {
           </div>
           <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">Recovered</span>
         </div>
-        <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-emerald-400">{formatCurrency(stats.recovered_value)}</p>
+        <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-emerald-400">{fmtMoney(stats.recovered_value, orgCurrency)}</p>
         <p className="mt-1 text-[11px] text-muted-foreground/60">{stats.recovered} cart{stats.recovered !== 1 ? "s" : ""} saved</p>
       </div>
 
@@ -1619,6 +1619,7 @@ function HowItWorks() {
    ════════════════════════════════════════════════════════════ */
 export default function AbandonedCartPage() {
   const orgId = useOrgId();
+  const { currency: orgCurrency } = useOrgCurrency();
   const [stats, setStats] = useState<AbandonedCartStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<AutomationSettings>(DEFAULT_SETTINGS);
@@ -1821,7 +1822,7 @@ export default function AbandonedCartPage() {
       {/* Performance stats */}
       {stats && stats.total > 0 && (
         <div className="mb-6">
-          <PerformanceCards stats={stats} />
+          <PerformanceCards stats={stats} orgCurrency={orgCurrency} />
           <Link
             href="/admin/abandoned-carts/"
             className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
@@ -1838,6 +1839,7 @@ export default function AbandonedCartPage() {
           enabled={settings.enabled}
           onToggle={handleToggleAutomation}
           stats={stats}
+          orgCurrency={orgCurrency}
         />
       </div>
 
@@ -1853,7 +1855,7 @@ export default function AbandonedCartPage() {
               {stats.abandoned} cart{stats.abandoned !== 1 ? "s" : ""} waiting to be recovered
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {formatCurrency(stats.total_value - stats.recovered_value)} in potential revenue. Enable automation above to start recovering sales.
+              {fmtMoney(stats.total_value - stats.recovered_value, orgCurrency)} in potential revenue. Enable automation above to start recovering sales.
             </p>
           </div>
           <Badge variant="warning" className="shrink-0 text-[10px] font-semibold uppercase">

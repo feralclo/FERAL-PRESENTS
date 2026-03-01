@@ -34,7 +34,7 @@ export default function IntegrationsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [orgId]);
 
   // Save settings
   const handleSave = useCallback(async () => {

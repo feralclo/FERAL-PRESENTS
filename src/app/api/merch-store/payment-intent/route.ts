@@ -7,7 +7,9 @@ import {
   calculateApplicationFee,
   toSmallestUnit,
   SUPPORTED_CURRENCIES,
+  CROSS_CURRENCY_SURCHARGE_PERCENT,
 } from "@/lib/stripe/config";
+import { getOrgBaseCurrency } from "@/lib/org-settings";
 import { getOrgPlan } from "@/lib/plans";
 import { calculateCheckoutVat, DEFAULT_VAT_SETTINGS } from "@/lib/vat";
 import type { VatSettings } from "@/types/settings";
@@ -433,9 +435,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get plan fees
+    // Get plan fees — apply cross-currency surcharge if event currency differs from org base
     const plan = await getOrgPlan(orgId);
-    const applicationFee = calculateApplicationFee(amountInSmallestUnit, plan.fee_percent, plan.min_fee);
+    const orgBaseCurrency = await getOrgBaseCurrency(orgId);
+    const eventBaseCurrency = (event.currency || "GBP").toUpperCase();
+    let effectiveFeePercent = plan.fee_percent;
+    if (eventBaseCurrency !== orgBaseCurrency.toUpperCase()) {
+      effectiveFeePercent += CROSS_CURRENCY_SURCHARGE_PERCENT;
+    }
+    const applicationFee = calculateApplicationFee(amountInSmallestUnit, effectiveFeePercent, plan.min_fee);
 
     // Ensure merch pass ticket type exists
     const merchPassTicketTypeId = await ensureMerchPassTicketType(supabase, orgId, event.id);
@@ -464,6 +472,10 @@ export async function POST(request: NextRequest) {
 
     if (typeof customer.marketing_consent === "boolean") {
       metadata.customer_marketing_consent = customer.marketing_consent ? "true" : "false";
+    }
+
+    if (eventBaseCurrency !== orgBaseCurrency.toUpperCase()) {
+      metadata.cross_currency_surcharge = String(CROSS_CURRENCY_SURCHARGE_PERCENT);
     }
 
     if (discountMeta) {

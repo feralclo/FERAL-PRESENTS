@@ -30,12 +30,8 @@ import {
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import type { AbandonedCart } from "@/types/orders";
-
-/* ── Helpers ── */
-function formatCurrency(amount: number) {
-  return fmtMoney(amount);
-}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-GB", {
@@ -262,7 +258,7 @@ function getRecoveryRoadmap(cart: AbandonedCart): RoadmapStep[] {
 }
 
 /* ═══ Expanded cart detail with roadmap ═══ */
-function CartRoadmap({ cart }: { cart: AbandonedCart }) {
+function CartRoadmap({ cart, orgCurrency }: { cart: AbandonedCart; orgCurrency: string }) {
   const roadmap = getRecoveryRoadmap(cart);
   const urgency = getUrgency(cart);
   const isRecovered = cart.status === "recovered";
@@ -356,12 +352,12 @@ function CartRoadmap({ cart }: { cart: AbandonedCart }) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12px] font-medium text-foreground">{item.name}</p>
                   <p className="text-[10px] text-muted-foreground/60">
-                    {item.qty}x @ {formatCurrency(item.price)}
+                    {item.qty}x @ {fmtMoney(item.price, orgCurrency)}
                     {item.merch_size && ` — Size ${item.merch_size}`}
                   </p>
                 </div>
                 <span className="ml-3 shrink-0 font-mono text-[12px] font-semibold tabular-nums text-foreground/70">
-                  {formatCurrency(item.price * item.qty)}
+                  {fmtMoney(item.price * item.qty, orgCurrency)}
                 </span>
               </div>
             ))}
@@ -373,7 +369,7 @@ function CartRoadmap({ cart }: { cart: AbandonedCart }) {
               {isRecovered ? "Recovered Value" : "Revenue at Risk"}
             </span>
             <span className="font-mono text-sm font-bold tabular-nums" style={{ color: urgency.color }}>
-              {formatCurrency(cart.subtotal)}
+              {fmtMoney(cart.subtotal, orgCurrency)}
             </span>
           </div>
 
@@ -430,10 +426,12 @@ function PipelineDashboard({
   pipeline,
   recoveredWithoutEmail,
   totalRecovered,
+  orgCurrency,
 }: {
   pipeline: PipelineStep[];
   recoveredWithoutEmail: number;
   totalRecovered: number;
+  orgCurrency: string;
 }) {
   const totalSent = pipeline.reduce((sum, p) => sum + p.sent, 0);
   const totalRecoveredByEmail = pipeline.reduce((sum, p) => sum + p.recovered, 0);
@@ -542,7 +540,7 @@ function PipelineDashboard({
                   {/* Recovered value */}
                   {pStep.recovered_value > 0 && (
                     <span className="font-mono text-sm font-bold tabular-nums text-emerald-400">
-                      {formatCurrency(pStep.recovered_value)}
+                      {fmtMoney(pStep.recovered_value, orgCurrency)}
                     </span>
                   )}
                 </div>
@@ -578,7 +576,7 @@ function PipelineDashboard({
                 </span>
                 {totalRecoveredValue > 0 && (
                   <span className="font-mono text-sm font-bold tabular-nums text-emerald-400">
-                    {formatCurrency(totalRecoveredValue)}
+                    {fmtMoney(totalRecoveredValue, orgCurrency)}
                   </span>
                 )}
               </div>
@@ -595,6 +593,7 @@ function PipelineDashboard({
    ABANDONED CARTS PAGE — gamified dashboard
    ════════════════════════════════════════════════════════ */
 export default function AbandonedCartsPage() {
+  const { currency: orgCurrency } = useOrgCurrency();
   const [carts, setCarts] = useState<AbandonedCart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -714,7 +713,7 @@ export default function AbandonedCartsPage() {
             </div>
             <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">Revenue at Risk</span>
           </div>
-          <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-red-400">{formatCurrency(lostRevenue)}</p>
+          <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-red-400">{fmtMoney(lostRevenue, orgCurrency)}</p>
           <p className="mt-1 text-[11px] text-muted-foreground/60">{stats.abandoned} abandoned cart{stats.abandoned !== 1 ? "s" : ""}</p>
           {stats.abandoned > 0 && (
             <div className="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-red-500/5" />
@@ -737,7 +736,7 @@ export default function AbandonedCartsPage() {
             </div>
             <span className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">Recovered</span>
           </div>
-          <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-emerald-400">{formatCurrency(stats.recovered_value)}</p>
+          <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-emerald-400">{fmtMoney(stats.recovered_value, orgCurrency)}</p>
           <p className="mt-1 text-[11px] text-muted-foreground/60">{stats.recovered} cart{stats.recovered !== 1 ? "s" : ""} saved</p>
         </div>
 
@@ -784,6 +783,7 @@ export default function AbandonedCartsPage() {
             pipeline={pipeline}
             recoveredWithoutEmail={recoveredWithoutEmail}
             totalRecovered={stats.recovered}
+            orgCurrency={orgCurrency}
           />
         </div>
       )}
@@ -948,7 +948,7 @@ export default function AbandonedCartsPage() {
                       className="font-mono text-lg font-bold tabular-nums"
                       style={{ color: isRecovered ? "#10b981" : urgency.color }}
                     >
-                      {formatCurrency(cart.subtotal)}
+                      {fmtMoney(cart.subtotal, orgCurrency)}
                     </span>
                     <ChevronDown
                       size={16}
@@ -958,7 +958,7 @@ export default function AbandonedCartsPage() {
                 </button>
 
                 {/* Expanded roadmap */}
-                {isExpanded && <CartRoadmap cart={cart} />}
+                {isExpanded && <CartRoadmap cart={cart} orgCurrency={orgCurrency} />}
               </div>
             );
           })

@@ -289,7 +289,7 @@ export default function PdfTicketPage() {
       } catch { /* defaults are fine */ }
       setLoading(false);
     })();
-  }, []);
+  }, [orgId]);
 
   const update = <K extends keyof PdfTicketSettings>(key: K, value: PdfTicketSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));

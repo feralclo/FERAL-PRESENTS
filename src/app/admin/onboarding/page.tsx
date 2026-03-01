@@ -13,7 +13,9 @@ import {
   ArrowLeft,
   Check,
   Loader2,
+  Globe,
 } from "lucide-react";
+import { COUNTRIES, getDefaultCurrency, getCurrencySymbolFromMap, detectCountryFromLocale } from "@/lib/country-currency-map";
 import "@/styles/tailwind.css";
 import "@/styles/admin.css";
 
@@ -261,6 +263,8 @@ function StepBrandName({
   slug,
   slugAvailable,
   slugChecking,
+  country,
+  onCountryChange,
   onSubmit,
   submitting,
   error,
@@ -271,12 +275,16 @@ function StepBrandName({
   slug: string;
   slugAvailable: boolean | null;
   slugChecking: boolean;
+  country: string;
+  onCountryChange: (code: string) => void;
   onSubmit: () => void;
   submitting: boolean;
   error: string;
   onBack: () => void;
 }) {
   const isReady = slug.length >= 3 && slugAvailable === true && !submitting;
+  const derivedCurrency = getDefaultCurrency(country);
+  const derivedSymbol = getCurrencySymbolFromMap(derivedCurrency);
 
   return (
     <div className="animate-in fade-in slide-in-from-right-4 duration-300">
@@ -290,7 +298,7 @@ function StepBrandName({
       </button>
 
       <h1 className="text-2xl font-bold text-foreground">
-        What should we call your brand?
+        Tell us about your brand
       </h1>
       <p className="mt-2 text-[14px] text-muted-foreground">
         This is what your customers will see. You can always change it later.
@@ -302,7 +310,32 @@ function StepBrandName({
         </div>
       )}
 
+      {/* Country */}
       <div className="mt-8">
+        <label className="mb-2 block text-[13px] font-medium text-foreground">
+          Where is your business based?
+        </label>
+        <div className="relative">
+          <Globe size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <select
+            value={country}
+            onChange={(e) => onCountryChange(e.target.value)}
+            className="h-12 w-full appearance-none rounded-xl border border-input bg-background/50 pl-11 pr-4 text-[15px] text-foreground outline-none transition-all duration-200 focus:border-primary/50 focus:bg-background focus:ring-[3px] focus:ring-primary/15"
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="mt-2 text-[12px] text-muted-foreground/60">
+          Your default currency: {derivedCurrency} ({derivedSymbol})
+        </p>
+      </div>
+
+      {/* Brand name */}
+      <div className="mt-6">
         <label className="mb-2 block text-[13px] font-medium text-foreground">
           Brand name
         </label>
@@ -399,6 +432,7 @@ export default function OnboardingPage() {
   const [experienceLevel, setExperienceLevel] = useState<string | null>(null);
 
   // Step C state
+  const [country, setCountry] = useState(() => detectCountryFromLocale(typeof navigator !== "undefined" ? navigator.language : undefined));
   const [brandName, setBrandName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
@@ -513,6 +547,7 @@ export default function OnboardingPage() {
           org_name: brandName.trim(),
           event_types: Array.from(selectedEventTypes),
           experience_level: experienceLevel,
+          country,
         }),
       });
 
@@ -616,6 +651,8 @@ export default function OnboardingPage() {
             slug={slug}
             slugAvailable={slugAvailable}
             slugChecking={slugChecking}
+            country={country}
+            onCountryChange={setCountry}
             onSubmit={handleSubmit}
             submitting={submitting}
             error={error}

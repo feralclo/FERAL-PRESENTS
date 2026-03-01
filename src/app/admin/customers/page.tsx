@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { generateNickname } from "@/lib/nicknames";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import type { Customer } from "@/types/orders";
 
 /* ── Helpers ── */
@@ -90,6 +91,7 @@ function getPeriodDate(period: PeriodOption): string | null {
    ════════════════════════════════════════════════════════ */
 export default function CustomersPage() {
   const router = useRouter();
+  const { currency: orgCurrency } = useOrgCurrency();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,12 +159,12 @@ export default function CustomersPage() {
         />
         <StatCard
           label="Total Revenue"
-          value={fmtMoney(totalRevenue)}
+          value={fmtMoney(totalRevenue, orgCurrency)}
           icon={DollarSign}
         />
         <StatCard
           label="Avg Spend"
-          value={fmtMoney(avgSpend)}
+          value={fmtMoney(avgSpend, orgCurrency)}
           icon={TrendingUp}
           detail="Per customer lifetime"
         />
@@ -337,7 +339,7 @@ export default function CustomersPage() {
                         {cust.total_orders}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold tabular-nums text-foreground">
-                        {fmtMoney(Number(cust.total_spent))}
+                        {fmtMoney(Number(cust.total_spent), orgCurrency)}
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
                         {cust.last_order_at ? formatDate(cust.last_order_at) : "—"}

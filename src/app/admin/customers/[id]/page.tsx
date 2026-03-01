@@ -18,6 +18,7 @@ import { TABLES } from "@/lib/constants";
 import { useOrgId } from "@/components/OrgProvider";
 import { generateNickname } from "@/lib/nicknames";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import type { Customer, AbandonedCart, CustomerSegment } from "@/types/orders";
 import {
   ArrowLeft,
@@ -266,7 +267,8 @@ function buildCustomerTimeline(
   customer: Customer,
   orders: CustomerOrder[],
   tickets: CustomerTicket[],
-  abandonedCarts: AbandonedCart[]
+  abandonedCarts: AbandonedCart[],
+  orgCurrency: string
 ): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   const fmt = (d: string) => formatDateTime(d);
@@ -290,7 +292,7 @@ function buildCustomerTimeline(
     const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
     entries.push({
       label: "Cart abandoned",
-      detail: `${itemCount} item${itemCount !== 1 ? "s" : ""} — ${fmtMoney(cart.subtotal)}${cart.event?.name ? ` for ${cart.event.name}` : ""}`,
+      detail: `${itemCount} item${itemCount !== 1 ? "s" : ""} — ${fmtMoney(cart.subtotal, orgCurrency)}${cart.event?.name ? ` for ${cart.event.name}` : ""}`,
       time: fmt(cart.created_at),
       icon: ShoppingCart,
       sortDate: new Date(cart.created_at),
@@ -410,7 +412,7 @@ function getTierProgress(
       return {
         unlocked,
         progressItems: [
-          { label: "Total spent", current: spendProgress, target: 200, unit: "£" },
+          { label: "Total spent", current: spendProgress, target: 200, unit: "currency" },
           { label: "Orders placed", current: orderProgress, target: 5, unit: "orders" },
         ],
       };
@@ -429,6 +431,7 @@ function TierCard({
   isNext,
   progress,
   totalOrders,
+  orgCurrency,
 }: {
   tier: (typeof JOURNEY_TIERS)[number];
   config: (typeof SEGMENT_CONFIG)[CustomerSegment];
@@ -437,6 +440,7 @@ function TierCard({
   isNext: boolean;
   progress: ReturnType<typeof getTierProgress>;
   totalOrders: number;
+  orgCurrency: string;
 }) {
   const [hovered, setHovered] = useState(false);
   const TierIcon = tier.icon;
@@ -591,8 +595,8 @@ function TierCard({
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="text-muted-foreground">{item.label}</span>
                       <span className={isComplete ? "font-semibold text-emerald-400" : "font-mono text-foreground/70"}>
-                        {item.unit === "£"
-                          ? `${fmtMoney(item.current)} / ${fmtMoney(item.target)}`
+                        {item.unit === "currency"
+                          ? `${fmtMoney(item.current, orgCurrency)} / ${fmtMoney(item.target, orgCurrency)}`
                           : `${item.current} / ${item.target}`
                         }
                       </span>
@@ -654,10 +658,12 @@ function GamifiedJourney({
   segment,
   totalOrders,
   totalSpent,
+  orgCurrency,
 }: {
   segment: CustomerSegment;
   totalOrders: number;
   totalSpent: number;
+  orgCurrency: string;
 }) {
   const tierOrder: CustomerSegment[] = ["discoverer", "new_fan", "fan", "superfan"];
   const currentIndex = tierOrder.indexOf(segment);
@@ -690,6 +696,7 @@ function GamifiedJourney({
                   isNext={isNext}
                   progress={progress}
                   totalOrders={totalOrders}
+                  orgCurrency={orgCurrency}
                 />
               );
             })}
@@ -947,7 +954,7 @@ function getUrgencyLevel(cart: AbandonedCart): {
 }
 
 /* ═══ Single cart card with expandable roadmap ═══ */
-function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
+function AbandonedCartCard({ cart, orgCurrency }: { cart: AbandonedCart; orgCurrency: string }) {
   const [expanded, setExpanded] = useState(false);
   const itemCount = cart.items?.reduce((s, i) => s + i.qty, 0) || 0;
   const isAbandoned = cart.status === "abandoned";
@@ -1016,7 +1023,7 @@ function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
             className="font-mono text-lg font-bold tabular-nums"
             style={{ color: isRecovered ? "#10b981" : urgency.color }}
           >
-            {fmtMoney(cart.subtotal)}
+            {fmtMoney(cart.subtotal, orgCurrency)}
           </span>
           <ChevronDown
             size={16}
@@ -1155,12 +1162,12 @@ function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
                         {item.name}
                       </p>
                       <p className="text-[10px] text-muted-foreground/60">
-                        {item.qty}x @ {fmtMoney(item.price)}
+                        {item.qty}x @ {fmtMoney(item.price, orgCurrency)}
                         {item.merch_size && ` — Size ${item.merch_size}`}
                       </p>
                     </div>
                     <span className="ml-3 shrink-0 font-mono text-[12px] font-semibold tabular-nums text-foreground/70">
-                      {fmtMoney(item.price * item.qty)}
+                      {fmtMoney(item.price * item.qty, orgCurrency)}
                     </span>
                   </div>
                 ))}
@@ -1172,7 +1179,7 @@ function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
                   {isRecovered ? "Recovered Value" : "Revenue at Risk"}
                 </span>
                 <span className="font-mono text-sm font-bold tabular-nums" style={{ color: urgency.color }}>
-                  {fmtMoney(cart.subtotal)}
+                  {fmtMoney(cart.subtotal, orgCurrency)}
                 </span>
               </div>
 
@@ -1197,7 +1204,7 @@ function AbandonedCartCard({ cart }: { cart: AbandonedCart }) {
 /* ════════════════════════════════════════════════════════════
    ABANDONED CARTS — gamified section with urgency + roadmap
    ════════════════════════════════════════════════════════════ */
-function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
+function AbandonedCartsSection({ carts, orgCurrency }: { carts: AbandonedCart[]; orgCurrency: string }) {
   if (carts.length === 0) return null;
 
   const activeCarts = carts.filter((c) => c.status === "abandoned");
@@ -1247,7 +1254,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
               </div>
               {activeCarts.length > 0 && (
                 <p className="mt-0.5 text-[11px] text-amber-400/70">
-                  {fmtMoney(totalAtRisk)} revenue at risk
+                  {fmtMoney(totalAtRisk, orgCurrency)} revenue at risk
                 </p>
               )}
             </div>
@@ -1257,7 +1264,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
           <div className="flex items-center gap-4">
             {recoveredCarts.length > 0 && (
               <div className="text-right">
-                <p className="font-mono text-sm font-bold text-emerald-400">{fmtMoney(totalRecovered)}</p>
+                <p className="font-mono text-sm font-bold text-emerald-400">{fmtMoney(totalRecovered, orgCurrency)}</p>
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-400/50">
                   Recovered
                 </p>
@@ -1278,7 +1285,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
       {/* Cart cards */}
       <CardContent className="space-y-3 p-4">
         {carts.map((cart) => (
-          <AbandonedCartCard key={cart.id} cart={cart} />
+          <AbandonedCartCard key={cart.id} cart={cart} orgCurrency={orgCurrency} />
         ))}
       </CardContent>
     </Card>
@@ -1290,6 +1297,7 @@ function AbandonedCartsSection({ carts }: { carts: AbandonedCart[] }) {
    ════════════════════════════════════════════════════════════ */
 export default function CustomerProfilePage() {
   const orgId = useOrgId();
+  const { currency: orgCurrency } = useOrgCurrency();
   const params = useParams();
   const customerId = params.id as string;
 
@@ -1406,7 +1414,7 @@ export default function CustomerProfilePage() {
   const activeAbandonedCarts = abandonedCarts.filter((c) => c.status === "abandoned");
 
   // Timeline
-  const timeline = buildCustomerTimeline(customer, orders, tickets, abandonedCarts);
+  const timeline = buildCustomerTimeline(customer, orders, tickets, abandonedCarts, orgCurrency);
 
   return (
     <div>
@@ -1527,6 +1535,7 @@ export default function CustomerProfilePage() {
           segment={segment}
           totalOrders={customer.total_orders}
           totalSpent={totalSpent}
+          orgCurrency={orgCurrency}
         />
       </div>
 
@@ -1541,13 +1550,13 @@ export default function CustomerProfilePage() {
         <StatCard
           size="compact"
           label="Lifetime Value"
-          value={fmtMoney(totalSpent)}
+          value={fmtMoney(totalSpent, orgCurrency)}
           icon={DollarSign}
         />
         <StatCard
           size="compact"
           label="Avg Order"
-          value={fmtMoney(avgOrderValue)}
+          value={fmtMoney(avgOrderValue, orgCurrency)}
           icon={TrendingUp}
         />
         <StatCard
@@ -1566,7 +1575,7 @@ export default function CustomerProfilePage() {
         <StatCard
           size="compact"
           label={activeAbandonedCarts.length > 0 ? "Abandoned Carts" : "Merch Spend"}
-          value={activeAbandonedCarts.length > 0 ? activeAbandonedCarts.length.toString() : fmtMoney(merchSpend)}
+          value={activeAbandonedCarts.length > 0 ? activeAbandonedCarts.length.toString() : fmtMoney(merchSpend, orgCurrency)}
           icon={activeAbandonedCarts.length > 0 ? ShoppingCart : Shirt}
         />
       </div>
@@ -1618,7 +1627,7 @@ export default function CustomerProfilePage() {
       {/* Abandoned Carts (if any) */}
       {abandonedCarts.length > 0 && (
         <div className="mt-6">
-          <AbandonedCartsSection carts={abandonedCarts} />
+          <AbandonedCartsSection carts={abandonedCarts} orgCurrency={orgCurrency} />
         </div>
       )}
 

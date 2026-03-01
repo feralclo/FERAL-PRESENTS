@@ -19,7 +19,7 @@ export default function TransactionalPage() {
         if (json?.data?.order_confirmation_enabled) setEmailEnabled(true);
       })
       .catch(() => {});
-  }, []);
+  }, [orgId]);
 
   const templates = [
     {

@@ -12,6 +12,7 @@ import { StripeConnectionBanner } from "@/components/admin/dashboard/StripeConne
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 import { fmtMoney } from "@/lib/format";
+import { useOrgCurrency } from "@/hooks/useOrgCurrency";
 import {
   Ticket,
   DollarSign,
@@ -115,6 +116,7 @@ function WelcomeBanner({
 export default function AdminDashboard() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isPlatformOwner, setIsPlatformOwner] = useState(false);
+  const { currency: orgCurrency, currencySymbol: orgCurrencySymbol } = useOrgCurrency();
   const [stripeStatus, setStripeStatus] = useState<{
     connected: boolean;
     chargesEnabled: boolean;
@@ -247,10 +249,10 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <LiveStatCard
             label="Revenue"
-            value={isLoading ? "\u00A0" : fmtMoney(today.revenue)}
+            value={isLoading ? "\u00A0" : fmtMoney(today.revenue, orgCurrency)}
             icon={DollarSign}
             detail="vs yesterday"
-            trend={{ value: today.revenue - yesterday.revenue, format: "currency", currencySymbol: "£" }}
+            trend={{ value: today.revenue - yesterday.revenue, format: "currency", currencySymbol: orgCurrencySymbol }}
           />
           <LiveStatCard
             label="Orders"
@@ -268,10 +270,10 @@ export default function AdminDashboard() {
           />
           <LiveStatCard
             label="Avg Order Value"
-            value={isLoading ? "\u00A0" : fmtMoney(today.avgOrderValue)}
+            value={isLoading ? "\u00A0" : fmtMoney(today.avgOrderValue, orgCurrency)}
             icon={DollarSign}
             detail="vs yesterday"
-            trend={{ value: today.avgOrderValue - yesterday.avgOrderValue, format: "currency", currencySymbol: "£" }}
+            trend={{ value: today.avgOrderValue - yesterday.avgOrderValue, format: "currency", currencySymbol: orgCurrencySymbol }}
           />
           <LiveStatCard
             label="Conversion"

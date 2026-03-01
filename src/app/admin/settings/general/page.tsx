@@ -8,19 +8,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Save, Loader2, MapPin } from "lucide-react";
+import { Settings, Save, Loader2, MapPin, Globe } from "lucide-react";
 import { TIMEZONES as TZ_LIST, detectBrowserTimezone, formatTimezoneLabel } from "@/lib/timezone";
+import { generalKey } from "@/lib/constants";
+import { COUNTRIES, getDefaultCurrency, getCurrencySymbolFromMap } from "@/lib/country-currency-map";
+
+/** Supported base currencies (subset of Stripe-supported currencies for event payments) */
+const SUPPORTED_BASE_CURRENCIES = [
+  { code: "GBP", label: "GBP (£)" },
+  { code: "EUR", label: "EUR (€)" },
+  { code: "USD", label: "USD ($)" },
+  { code: "CAD", label: "CAD (CA$)" },
+  { code: "AUD", label: "AUD (A$)" },
+  { code: "CHF", label: "CHF" },
+  { code: "SEK", label: "SEK (kr)" },
+  { code: "NOK", label: "NOK (kr)" },
+  { code: "DKK", label: "DKK (kr)" },
+];
 
 interface OrgSettings {
   org_name: string;
   timezone: string;
   support_email: string;
+  country: string;
+  base_currency: string;
 }
 
 const DEFAULT_SETTINGS: OrgSettings = {
   org_name: "",
   timezone: "Europe/London",
   support_email: "",
+  country: "GB",
+  base_currency: "GBP",
 };
 
 const TIMEZONES = TZ_LIST;
@@ -35,7 +54,7 @@ export default function GeneralSettings() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/settings?key=${orgId}_general`);
+        const res = await fetch(`/api/settings?key=${generalKey(orgId)}`);
         if (res.ok) {
           const { data } = await res.json();
           if (data) {
@@ -56,7 +75,7 @@ export default function GeneralSettings() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          key: `${orgId}_general`,
+          key: generalKey(orgId),
           data: settings,
         }),
       });
@@ -159,6 +178,62 @@ export default function GeneralSettings() {
             </div>
             <p className="text-xs text-muted-foreground">
               Used for event times and scheduled automations
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="border-border bg-card p-6">
+        <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-[2px] text-foreground">
+          Country & Currency
+        </h2>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="country">Country</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Globe size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <select
+                  id="country"
+                  value={settings.country}
+                  onChange={(e) => {
+                    const newCountry = e.target.value;
+                    const derived = getDefaultCurrency(newCountry);
+                    setSettings((s) => ({ ...s, country: newCountry, base_currency: derived }));
+                  }}
+                  className="flex h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Where your business is based
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="base-currency">Base Currency</Label>
+            <select
+              id="base-currency"
+              value={settings.base_currency}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, base_currency: e.target.value }))
+              }
+              className="flex h-9 w-full max-w-[200px] rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              {SUPPORTED_BASE_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              New events will default to this currency. Existing events keep their current currency.
             </p>
           </div>
         </div>

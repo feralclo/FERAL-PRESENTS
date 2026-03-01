@@ -60,9 +60,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Fetch email logo base64 directly from DB (avoids serverless self-fetch + URL dependency)
+        // Validate media key belongs to this org (keys are media_{orgId}_{name})
         if (emailSettings.logo_url) {
-          const m = emailSettings.logo_url.match(/\/api\/media\/(.+)$/);
-          if (m) {
+          const m = emailSettings.logo_url.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+          if (m && m[1].startsWith(`${auth.orgId}_`)) {
             const { data: row } = await supabase
               .from(TABLES.SITE_SETTINGS).select("data")
               .eq("key", `media_${m[1]}`).single();
@@ -73,8 +74,8 @@ export async function POST(request: NextRequest) {
 
         // Fetch PDF logo base64 directly from DB
         if (pdfSettings.logo_url) {
-          const m = pdfSettings.logo_url.match(/\/api\/media\/(.+)$/);
-          if (m) {
+          const m = pdfSettings.logo_url.match(/\/api\/media\/(.+?)(?:\?.*)?$/);
+          if (m && m[1].startsWith(`${auth.orgId}_`)) {
             const { data: row } = await supabase
               .from(TABLES.SITE_SETTINGS).select("data")
               .eq("key", `media_${m[1]}`).single();

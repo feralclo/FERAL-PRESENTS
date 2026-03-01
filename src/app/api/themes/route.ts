@@ -251,7 +251,9 @@ async function saveThemeStore(
   );
 }
 
-/** Sync a theme's branding to the live branding key so all event pages use it */
+/** Sync a theme's branding to the live branding key so all event pages use it.
+ *  Merges theme branding on top of existing live branding to preserve fields
+ *  that only exist in the live key (about_section, favicon_url, logo_height, etc). */
 async function syncBrandingToLive(
   supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>,
   branding: BrandingSettings,
@@ -259,10 +261,23 @@ async function syncBrandingToLive(
 ) {
   if (!supabase) return;
   const key = brandingKey(orgId);
+
+  // Read existing live branding first
+  const { data: existing } = await supabase
+    .from(TABLES.SITE_SETTINGS)
+    .select("data")
+    .eq("key", key)
+    .single();
+
+  const existingBranding = (existing?.data as BrandingSettings) || {};
+
+  // Merge: existing fields preserved, theme branding wins for overlapping keys
+  const merged = { ...existingBranding, ...branding };
+
   await supabase.from(TABLES.SITE_SETTINGS).upsert(
     {
       key,
-      data: branding as unknown as Record<string, unknown>,
+      data: merged as unknown as Record<string, unknown>,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "key" }

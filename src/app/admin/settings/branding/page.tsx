@@ -4,15 +4,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useOrgId } from "@/components/OrgProvider";
 import { emailKey } from "@/lib/constants";
-import { COLOR_PRESETS } from "@/lib/color-presets";
-import { FONT_PAIRINGS, buildGoogleFontsUrl } from "@/lib/font-pairings";
 import type { BrandingSettings } from "@/types/settings";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ColorPicker } from "@/components/ui/color-picker";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -22,11 +18,7 @@ import {
   Trash2,
   Save,
   Loader2,
-  ChevronDown,
-  Check,
-  Plus,
-  X,
-  Type,
+  Info,
 } from "lucide-react";
 
 const DEFAULT_BRANDING: BrandingSettings = {
@@ -516,295 +508,19 @@ export default function BrandingSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Color Theme Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Color Theme</CardTitle>
-            <CardDescription>Choose a curated palette or customise individual colors</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid grid-cols-3 gap-3">
-              {COLOR_PRESETS.map((preset) => {
-                const isActive = settings.color_preset === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => {
-                      setSettings((prev) => ({
-                        ...prev,
-                        accent_color: preset.colors.accent,
-                        background_color: preset.colors.background,
-                        card_color: preset.colors.card,
-                        text_color: preset.colors.text,
-                        card_border_color: preset.colors.border,
-                        color_preset: preset.id,
-                      }));
-                      setStatus("");
-                    }}
-                    className={`relative rounded-lg border p-3 text-left transition-all ${
-                      isActive
-                        ? "border-primary ring-1 ring-primary/30"
-                        : "border-border/40 hover:border-border"
-                    }`}
-                  >
-                    {isActive && (
-                      <div className="absolute top-2 right-2">
-                        <Check size={12} className="text-primary" />
-                      </div>
-                    )}
-                    {/* Mini-preview */}
-                    <div
-                      className="h-16 rounded-md mb-2 p-2 flex flex-col gap-1"
-                      style={{ backgroundColor: preset.colors.background }}
-                    >
-                      <div
-                        className="flex-1 rounded border"
-                        style={{ backgroundColor: preset.colors.card, borderColor: preset.colors.border }}
-                      >
-                        <div className="flex items-center gap-1.5 p-1.5">
-                          <div
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: preset.colors.accent }}
-                          />
-                          <div
-                            className="h-1 w-8 rounded-full opacity-60"
-                            style={{ backgroundColor: preset.colors.text }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-medium block">{preset.name}</span>
-                    <span className="text-[10px] text-muted-foreground block mt-0.5">{preset.mood}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Advanced: Edit individual colors */}
-            <details className="group">
-              <summary className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors select-none">
-                <ChevronDown size={12} className="transition-transform group-open:rotate-180" />
-                Advanced: Edit individual colors
-              </summary>
-              <div className="mt-4 space-y-3 pl-0.5">
-                <div className="space-y-2">
-                  <Label className="text-xs">Accent Color</Label>
-                  <ColorPicker
-                    value={settings.accent_color || "#8B5CF6"}
-                    onChange={(v) => { update("accent_color", v); setSettings((prev) => ({ ...prev, color_preset: undefined })); }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Background</Label>
-                  <ColorPicker
-                    value={settings.background_color || "#0e0e0e"}
-                    onChange={(v) => { update("background_color", v); setSettings((prev) => ({ ...prev, color_preset: undefined })); }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Card Background</Label>
-                  <ColorPicker
-                    value={settings.card_color || "#1a1a1a"}
-                    onChange={(v) => { update("card_color", v); setSettings((prev) => ({ ...prev, color_preset: undefined })); }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Text Color</Label>
-                  <ColorPicker
-                    value={settings.text_color || "#ffffff"}
-                    onChange={(v) => { update("text_color", v); setSettings((prev) => ({ ...prev, color_preset: undefined })); }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Border Color</Label>
-                  <ColorPicker
-                    value={settings.card_border_color || "#2a2a2a"}
-                    onChange={(v) => { update("card_border_color", v); setSettings((prev) => ({ ...prev, color_preset: undefined })); }}
-                  />
-                </div>
-              </div>
-            </details>
+        {/* Theme & Typography info card */}
+        <Card className="border-border/40 bg-muted/20">
+          <CardContent className="flex items-start gap-3 py-4">
+            <Info size={16} className="text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Customise your color theme, fonts, and visual style in{" "}
+              <Link href="/admin/ticketstore/" className="text-primary hover:underline font-medium">
+                Themes
+              </Link>{" "}
+              under Storefront.
+            </p>
           </CardContent>
         </Card>
-
-        {/* Typography Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Typography</CardTitle>
-            <CardDescription>Choose a font pairing for headings and body text</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Load all font options */}
-            {FONT_PAIRINGS.map((p) => (
-              <link key={p.id} href={buildGoogleFontsUrl(p)} rel="stylesheet" />
-            ))}
-            <div className="grid gap-3">
-              {FONT_PAIRINGS.map((pairing) => {
-                const isActive = settings.heading_font === pairing.heading && settings.body_font === pairing.body;
-                return (
-                  <button
-                    key={pairing.id}
-                    type="button"
-                    onClick={() => {
-                      setSettings((prev) => ({
-                        ...prev,
-                        heading_font: pairing.heading,
-                        body_font: pairing.body,
-                      }));
-                      setStatus("");
-                    }}
-                    className={`flex items-center gap-4 rounded-lg border p-4 text-left transition-all ${
-                      isActive
-                        ? "border-primary ring-1 ring-primary/30"
-                        : "border-border/40 hover:border-border"
-                    }`}
-                  >
-                    <Type size={14} className="text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="text-base font-bold truncate"
-                        style={{ fontFamily: `'${pairing.heading}', sans-serif` }}
-                      >
-                        {pairing.name}
-                      </p>
-                      <p
-                        className="text-xs text-muted-foreground mt-0.5"
-                        style={{ fontFamily: `'${pairing.body}', sans-serif` }}
-                      >
-                        {pairing.heading} + {pairing.body} — {pairing.style}
-                      </p>
-                    </div>
-                    {isActive && <Check size={14} className="text-primary shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* About Section Card — hidden for FERAL org */}
-        {orgId !== "feral" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>About Section</CardTitle>
-              <CardDescription>Content for the about section on your landing page</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-xs">Heading Line 1</Label>
-                  <Input
-                    value={settings.about_section?.heading_line1 || ""}
-                    onChange={(e) => {
-                      const about = settings.about_section || { heading_line1: "", heading_line2: "", pillars: [], closer: "" };
-                      update("about_section", { ...about, heading_line1: e.target.value });
-                    }}
-                    placeholder="ABOUT"
-                    className="max-w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Heading Line 2</Label>
-                  <Input
-                    value={settings.about_section?.heading_line2 || ""}
-                    onChange={(e) => {
-                      const about = settings.about_section || { heading_line1: "", heading_line2: "", pillars: [], closer: "" };
-                      update("about_section", { ...about, heading_line2: e.target.value });
-                    }}
-                    placeholder="US"
-                    className="max-w-full"
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Pillars */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Pillars</Label>
-                  {(settings.about_section?.pillars?.length || 0) < 3 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-[11px]"
-                      onClick={() => {
-                        const about = settings.about_section || { heading_line1: "ABOUT", heading_line2: "US", pillars: [], closer: "Join us" };
-                        const pillars = [...(about.pillars || []), { title: "", text: "" }];
-                        update("about_section", { ...about, pillars });
-                      }}
-                    >
-                      <Plus size={10} className="mr-1" />
-                      Add Pillar
-                    </Button>
-                  )}
-                </div>
-                {(settings.about_section?.pillars || []).map((pillar, i) => (
-                  <div key={i} className="rounded-lg border border-border/40 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground font-mono">0{i + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const about = settings.about_section!;
-                          const pillars = about.pillars.filter((_, idx) => idx !== i);
-                          update("about_section", { ...about, pillars });
-                        }}
-                        className="text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                    <Input
-                      value={pillar.title}
-                      onChange={(e) => {
-                        const about = settings.about_section!;
-                        const pillars = [...about.pillars];
-                        pillars[i] = { ...pillars[i], title: e.target.value };
-                        update("about_section", { ...about, pillars });
-                      }}
-                      placeholder="Pillar title"
-                      className="h-8 text-sm"
-                    />
-                    <Textarea
-                      value={pillar.text}
-                      onChange={(e) => {
-                        const about = settings.about_section!;
-                        const pillars = [...about.pillars];
-                        pillars[i] = { ...pillars[i], text: e.target.value };
-                        update("about_section", { ...about, pillars });
-                      }}
-                      placeholder="Describe this pillar..."
-                      className="text-sm min-h-[60px]"
-                    />
-                  </div>
-                ))}
-                {(!settings.about_section?.pillars || settings.about_section.pillars.length === 0) && (
-                  <p className="text-[11px] text-muted-foreground/60">
-                    No pillars yet. Add up to 3 pillars to tell visitors what you&apos;re about.
-                  </p>
-                )}
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label className="text-xs">Closer Tagline</Label>
-                <Input
-                  value={settings.about_section?.closer || ""}
-                  onChange={(e) => {
-                    const about = settings.about_section || { heading_line1: "", heading_line2: "", pillars: [], closer: "" };
-                    update("about_section", { ...about, closer: e.target.value });
-                  }}
-                  placeholder="Join us"
-                  className="max-w-sm"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Footer Card */}
         <Card>

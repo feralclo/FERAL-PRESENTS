@@ -130,10 +130,10 @@ export default function TicketStorePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Ticket Store</h2>
+          <h2 className="text-lg font-semibold">Themes</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your ticket store&apos;s themes. Changes apply to all event
-            pages, checkout, and emails.
+            Manage your storefront themes. Changes apply to all event pages,
+            checkout, and emails.
           </p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} size="sm">

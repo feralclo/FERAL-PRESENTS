@@ -129,14 +129,56 @@
 }
 
 /* ── Accent bleed — derive tinted variants from the accent color ──
-   These let glass borders, card edges, and section dividers carry
-   the accent flavor without hardcoding any particular color. */
+   These let glass borders, card edges, section dividers, hero effects,
+   and particle systems all carry the accent flavor. When a preset
+   changes --accent, the ENTIRE visual layer transforms. */
 [data-theme="midnight"] {
+  /* Glass & card accents */
   --accent-glow: color-mix(in srgb, var(--accent, #ff0033) 12%, transparent);
   --accent-border: color-mix(in srgb, var(--accent, #ff0033) 15%, rgba(255, 255, 255, 0.06));
   --accent-border-hover: color-mix(in srgb, var(--accent, #ff0033) 30%, rgba(255, 255, 255, 0.08));
   --accent-glass: color-mix(in srgb, var(--accent, #ff0033) 4%, transparent);
   --accent-glass-hover: color-mix(in srgb, var(--accent, #ff0033) 8%, transparent);
+
+  /* Hero atmosphere — mist, bokeh, spotlight, breathe */
+  --hero-mist-primary: color-mix(in srgb, var(--accent, #ff0033) 14%, transparent);
+  --hero-mist-secondary: color-mix(in srgb, var(--accent, #ff0033) 10%, transparent);
+  --hero-bokeh-strong: color-mix(in srgb, var(--accent, #ff0033) 16%, transparent);
+  --hero-bokeh-medium: color-mix(in srgb, var(--accent, #ff0033) 11%, transparent);
+  --hero-spotlight: color-mix(in srgb, var(--accent, #ff0033) 7%, transparent);
+  --hero-spotlight-edge: color-mix(in srgb, var(--accent, #ff0033) 4%, transparent);
+  --hero-breathe: color-mix(in srgb, var(--accent, #ff0033) 8%, transparent);
+  --hero-warmth-strong: color-mix(in srgb, var(--accent, #ff0033) 12%, transparent);
+  --hero-warmth-soft: color-mix(in srgb, var(--accent, #ff0033) 6%, transparent);
+
+  /* Glitch text effects */
+  --hero-glow-strong: color-mix(in srgb, var(--accent, #ff0033) 40%, transparent);
+  --hero-glow-medium: color-mix(in srgb, var(--accent, #ff0033) 15%, transparent);
+  --hero-glow-soft: color-mix(in srgb, var(--accent, #ff0033) 5%, transparent);
+  --hero-glow-bg: color-mix(in srgb, var(--accent, #ff0033) 10%, transparent);
+  --hero-scanline: color-mix(in srgb, var(--accent, #ff0033) 60%, transparent);
+
+  /* CTA button effects */
+  --hero-cta-hover-bg: color-mix(in srgb, var(--accent, #ff0033) 10%, transparent);
+  --hero-cta-glow-strong: color-mix(in srgb, var(--accent, #ff0033) 40%, transparent);
+  --hero-cta-glow-medium: color-mix(in srgb, var(--accent, #ff0033) 20%, transparent);
+  --hero-cta-glow-soft: color-mix(in srgb, var(--accent, #ff0033) 10%, transparent);
+  --hero-cta-text-glow: color-mix(in srgb, var(--accent, #ff0033) 50%, transparent);
+  --hero-cta-sweep: color-mix(in srgb, var(--accent, #ff0033) 20%, transparent);
+  --hero-cta-radial: color-mix(in srgb, var(--accent, #ff0033) 15%, transparent);
+
+  /* Ember particles — warm tint derived from accent, shifted toward orange */
+  --ember-bright: color-mix(in srgb, var(--accent, #ff0033) 70%, rgba(255, 200, 100, 1));
+  --ember-medium: color-mix(in srgb, var(--accent, #ff0033) 50%, rgba(255, 180, 80, 1));
+  --ember-soft: color-mix(in srgb, var(--accent, #ff0033) 60%, rgba(255, 220, 120, 1));
+  --ember-dim: color-mix(in srgb, var(--accent, #ff0033) 40%, rgba(255, 160, 60, 1));
+
+  /* Complement accent — cool counterpoint for atmospheric depth */
+  --accent-complement: color-mix(in srgb, var(--accent, #ff0033) 7%, rgba(120, 180, 255, 0.7));
+  --accent-complement-soft: color-mix(in srgb, var(--accent, #ff0033) 5%, rgba(100, 150, 255, 0.5));
+
+  /* Header background — derived from page bg */
+  --header-bg: color-mix(in srgb, var(--bg-dark, #0e0e0e) 94%, transparent);
 }
 
 /* ── Card accent edge — subtle top highlight using accent color ── */

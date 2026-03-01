@@ -307,7 +307,9 @@ export async function middleware(request: NextRequest) {
     hostname.includes(".vercel.app");
 
   // admin.entry.events root → redirect to /admin/
-  if (hostname.startsWith("admin.entry.events") && pathname === "/") {
+  // Skip redirect for ?editor=1 — the theme editor iframe loads the homepage preview here
+  const isEditorReq = request.nextUrl.searchParams.get("editor") === "1";
+  if (hostname.startsWith("admin.entry.events") && pathname === "/" && !isEditorReq) {
     return applySecurityHeaders(NextResponse.redirect(new URL("https://admin.entry.events/admin/")));
   }
 

@@ -672,3 +672,71 @@
     animation: none;
   }
 }
+
+
+/* ═══════════════════════════════════════════════
+   BARBIE DREAM VIBE — Hero overrides
+   Warm bright Barbie pink glow, glossy highlights,
+   plastic-sheen CTA, iconic hot pink chromatic shift
+   ═══════════════════════════════════════════════ */
+
+/* Hero glow: warm Barbie pink — bright and glossy, not deep/neon */
+[data-vibe="barbie-dream"] .hero-glitch {
+  text-shadow:
+    0 0 30px rgba(224, 33, 138, 0.8),
+    0 0 60px rgba(255, 105, 180, 0.5),
+    0 0 100px rgba(224, 33, 138, 0.3),
+    0 0 160px rgba(255, 182, 213, 0.15);
+}
+
+/* Chromatic lines: hot Barbie pink / warm magenta shift */
+[data-vibe="barbie-dream"] .hero-glitch__line::before {
+  color: #FF69B4;
+  text-shadow: -2px 0 #E0218A;
+}
+[data-vibe="barbie-dream"] .hero-glitch__line::after {
+  color: #E0218A;
+  text-shadow: 2px 0 #C2185B;
+}
+
+/* Scanline: warm Barbie pink, visible but soft */
+[data-vibe="barbie-dream"] .hero-glitch__scanline {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(224, 33, 138, 0.2),
+    rgba(255, 105, 180, 0.1),
+    transparent);
+}
+
+/* Mist layers: warm pink glow — brighter than other vibes */
+[data-vibe="barbie-dream"] .hero__bg-mist {
+  background:
+    radial-gradient(ellipse at 25% 50%, rgba(224, 33, 138, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 40%, rgba(255, 105, 180, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 90%, rgba(255, 182, 213, 0.08) 0%, transparent 40%);
+}
+
+/* CTA button: glossy Barbie button with plastic highlight */
+[data-vibe="barbie-dream"] .hero__cta {
+  border-color: rgba(224, 33, 138, 0.6);
+  text-shadow: 0 0 12px rgba(224, 33, 138, 0.6);
+  box-shadow:
+    0 0 20px rgba(224, 33, 138, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+[data-vibe="barbie-dream"] .hero__cta:hover {
+  border-color: rgba(224, 33, 138, 0.9);
+  box-shadow:
+    0 0 30px rgba(224, 33, 138, 0.35),
+    0 0 60px rgba(224, 33, 138, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* CTA glow orb: warm Barbie pink */
+[data-vibe="barbie-dream"] .hero__cta-glow {
+  background: radial-gradient(circle,
+    rgba(224, 33, 138, 0.5) 0%,
+    rgba(255, 105, 180, 0.25) 40%,
+    transparent 70%);
+}

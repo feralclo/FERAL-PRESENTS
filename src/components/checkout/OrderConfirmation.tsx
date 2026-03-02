@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMetaTracking, storeMetaMatchData } from "@/hooks/useMetaTracking";
 import { useTraffic } from "@/hooks/useTraffic";
 import { useBranding } from "@/hooks/useBranding";
-import { getCurrencySymbol } from "@/lib/stripe/config";
+import { getCurrencySymbol, isZeroDecimalCurrency } from "@/lib/stripe/config";
 import type { Order } from "@/types/orders";
 
 import "@/styles/midnight.css";
@@ -34,7 +34,10 @@ export function OrderConfirmation({
   const [walletDownloading, setWalletDownloading] = useState<string | null>(null);
   const [googleWalletUrl, setGoogleWalletUrl] = useState<string | null>(null);
   const purchaseTracked = useRef(false);
-  const symbol = getCurrencySymbol(order.currency || "GBP");
+  const orderCurrency = order.currency || "GBP";
+  const symbol = getCurrencySymbol(orderCurrency);
+  const zeroDecimal = isZeroDecimalCurrency(orderCurrency);
+  const fmtAmt = (n: number) => zeroDecimal ? String(Math.round(n)) : n.toFixed(2);
   const year = new Date().getFullYear();
 
   // Track Purchase event once when order confirmation mounts
@@ -241,11 +244,11 @@ export function OrderConfirmation({
               </span>
               <div className="text-right">
                 <span className="font-[family-name:var(--font-mono)] text-base tracking-[1px] text-foreground font-bold">
-                  {symbol}{Number(order.total).toFixed(2)}
+                  {symbol}{fmtAmt(Number(order.total))}
                 </span>
                 {order.base_currency && order.base_total != null && order.base_currency !== order.currency && (
                   <div className="font-[family-name:var(--font-mono)] text-[9px] tracking-[1px] text-foreground/30 mt-0.5">
-                    ≈ {getCurrencySymbol(order.base_currency)}{Number(order.base_total).toFixed(2)} {order.base_currency}
+                    ≈ {getCurrencySymbol(order.base_currency)}{isZeroDecimalCurrency(order.base_currency) ? String(Math.round(Number(order.base_total))) : Number(order.base_total).toFixed(2)} {order.base_currency}
                   </div>
                 )}
               </div>
@@ -256,7 +259,7 @@ export function OrderConfirmation({
                   {vatMeta.inclusive ? `Includes VAT (${vatMeta.rate}%)` : `VAT (${vatMeta.rate}%)`}
                 </span>
                 <span className="font-[family-name:var(--font-mono)] text-xs tracking-[1px] text-foreground">
-                  {symbol}{vatMeta.amount.toFixed(2)}
+                  {symbol}{fmtAmt(vatMeta.amount)}
                 </span>
               </div>
             )}

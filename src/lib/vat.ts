@@ -1,4 +1,5 @@
 import type { VatSettings } from "@/types/settings";
+import { isZeroDecimalCurrency } from "@/lib/stripe/config";
 
 /** Default VAT settings (not registered — no VAT applied). */
 export const DEFAULT_VAT_SETTINGS: VatSettings = {
@@ -29,24 +30,30 @@ export interface VatBreakdown {
 export function calculateVat(
   amount: number,
   rate: number,
-  inclusive: boolean
+  inclusive: boolean,
+  currency?: string
 ): VatBreakdown {
   if (rate <= 0 || amount <= 0) {
     return { net: amount, vat: 0, gross: amount };
   }
 
+  // Zero-decimal currencies (JPY) round to whole units; others round to 2 decimals
+  const roundMoney = currency && isZeroDecimalCurrency(currency)
+    ? (n: number) => Math.round(n)
+    : (n: number) => Math.round(n * 100) / 100;
+
   if (inclusive) {
     // Price includes VAT — extract it: net = gross / (1 + rate/100)
     const gross = amount;
-    const net = Math.round((gross / (1 + rate / 100)) * 100) / 100;
-    const vat = Math.round((gross - net) * 100) / 100;
+    const net = roundMoney(gross / (1 + rate / 100));
+    const vat = roundMoney(gross - net);
     return { net, vat, gross };
   }
 
   // Price excludes VAT — add it on top
   const net = amount;
-  const vat = Math.round((net * (rate / 100)) * 100) / 100;
-  const gross = Math.round((net + vat) * 100) / 100;
+  const vat = roundMoney(net * (rate / 100));
+  const gross = roundMoney(net + vat);
   return { net, vat, gross };
 }
 
@@ -56,10 +63,11 @@ export function calculateVat(
  */
 export function calculateCheckoutVat(
   subtotal: number,
-  vatSettings: VatSettings | null
+  vatSettings: VatSettings | null,
+  currency?: string
 ): VatBreakdown | null {
   if (!vatSettings?.vat_registered || !vatSettings.vat_rate) return null;
-  return calculateVat(subtotal, vatSettings.vat_rate, vatSettings.prices_include_vat);
+  return calculateVat(subtotal, vatSettings.vat_rate, vatSettings.prices_include_vat, currency);
 }
 
 /**

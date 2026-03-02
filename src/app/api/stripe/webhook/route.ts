@@ -8,6 +8,7 @@ import { createOrder, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
 import { updateOrgPlanSettings } from "@/lib/plans";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import { logPaymentEvent } from "@/lib/payment-monitor";
 import type { MetaEventPayload } from "@/types/marketing";
 
@@ -368,7 +369,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
       payment: {
         method: "stripe",
         ref: paymentIntent.id,
-        totalCharged: paymentIntent.amount / 100,
+        totalCharged: fromSmallestUnit(paymentIntent.amount, event.currency),
       },
       vat: vatInfo,
       discountCode: metadata.discount_code || undefined,
@@ -385,7 +386,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
     // Uses deterministic event_id for dedup with client pixel + confirm-order CAPI
     fireWebhookPurchaseEvent(orgId, {
       orderNumber: result.order.order_number,
-      total: paymentIntent.amount / 100,
+      total: fromSmallestUnit(paymentIntent.amount, event.currency),
       currency: event.currency || "GBP",
       ticketTypeIds: items.map((i) => i.ticket_type_id),
       numItems: items.reduce((sum, i) => sum + i.qty, 0),

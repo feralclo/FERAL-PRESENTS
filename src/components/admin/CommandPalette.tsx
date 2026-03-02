@@ -29,6 +29,7 @@ import {
   User as UserIcon,
   Hash,
 } from "lucide-react";
+import { getCurrencySymbol, isZeroDecimalCurrency, fromSmallestUnit } from "@/lib/stripe/config";
 
 /* ── Types ── */
 
@@ -162,8 +163,10 @@ function scoreItem(item: CommandItem, query: string): number {
 /* ── Helpers ── */
 
 function formatCurrency(amount: number, currency?: string): string {
-  const sym = currency === "EUR" ? "\u20AC" : currency === "USD" ? "$" : "\u00A3";
-  return `${sym}${(amount / 100).toFixed(2)}`;
+  const cur = currency || "GBP";
+  const sym = getCurrencySymbol(cur);
+  const display = fromSmallestUnit(amount, cur);
+  return isZeroDecimalCurrency(cur) ? `${sym}${Math.round(display)}` : `${sym}${display.toFixed(2)}`;
 }
 
 function orderToResult(o: Record<string, unknown>): LiveResult {

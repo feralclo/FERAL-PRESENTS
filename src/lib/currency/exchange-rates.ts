@@ -59,7 +59,7 @@ export async function refreshExchangeRates(): Promise<ExchangeRates | null> {
     const allRates = parseResponse(json);
 
     // Filter to our supported currencies only
-    const SUPPORTED = ["GBP", "EUR", "USD", "CAD", "AUD", "CHF", "SEK", "NOK", "DKK"];
+    const SUPPORTED = ["GBP", "EUR", "USD", "CAD", "AUD", "CHF", "SEK", "NOK", "DKK", "JPY"];
     const rates: Record<string, number> = {};
     for (const code of SUPPORTED) {
       if (allRates[code] != null) {

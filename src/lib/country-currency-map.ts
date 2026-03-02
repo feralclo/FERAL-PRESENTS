@@ -29,6 +29,7 @@ export const COUNTRIES: CountryInfo[] = [
   { code: "GR", name: "Greece", currency: "EUR", currencySymbol: "€" },
   { code: "IE", name: "Ireland", currency: "EUR", currencySymbol: "€" },
   { code: "IT", name: "Italy", currency: "EUR", currencySymbol: "€" },
+  { code: "JP", name: "Japan", currency: "JPY", currencySymbol: "¥" },
   { code: "LV", name: "Latvia", currency: "EUR", currencySymbol: "€" },
   { code: "LT", name: "Lithuania", currency: "EUR", currencySymbol: "€" },
   { code: "LU", name: "Luxembourg", currency: "EUR", currencySymbol: "€" },
@@ -88,7 +89,7 @@ export function detectCountryFromLocale(locale?: string): string {
   const lang = parts[0].toLowerCase();
   const langMap: Record<string, string> = {
     en: "GB", de: "DE", fr: "FR", es: "ES", it: "IT", nl: "NL",
-    pt: "PT", sv: "SE", da: "DK", nb: "NO", nn: "NO", fi: "FI",
+    pt: "PT", sv: "SE", da: "DK", nb: "NO", nn: "NO", fi: "FI", ja: "JP",
   };
   return langMap[lang] ?? "GB";
 }

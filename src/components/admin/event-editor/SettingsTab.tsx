@@ -409,6 +409,7 @@ export function SettingsTab({ event, updateEvent, settings, updateSetting, artis
                   <SelectItem value="GBP">GBP (£)</SelectItem>
                   <SelectItem value="EUR">EUR (€)</SelectItem>
                   <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="JPY">JPY (¥)</SelectItem>
                 </SelectContent>
               </Select>
               {orgBaseCurrency && (event.currency || "GBP").toUpperCase() === orgBaseCurrency.toUpperCase() ? (

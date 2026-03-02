@@ -5,6 +5,7 @@ import { TABLES, stripeAccountKey } from "@/lib/constants";
 import { getOrgIdFromRequest } from "@/lib/org";
 import { createMerchOrder, MerchOrderError } from "@/lib/merch-orders";
 import type { MerchOrderVat, MerchOrderLineItem } from "@/lib/merch-orders";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 
 /**
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
       payment: {
         method: "stripe",
         ref: payment_intent_id,
-        totalCharged: paymentIntent.amount / 100,
+        totalCharged: fromSmallestUnit(paymentIntent.amount, event.currency),
       },
       merchPassTicketTypeId,
       vat: vatInfo,

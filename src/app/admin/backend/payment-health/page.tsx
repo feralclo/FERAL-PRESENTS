@@ -8,6 +8,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { fmtMoney } from "@/lib/format";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -197,9 +198,9 @@ function formatTimestamp(dateStr: string): string {
 }
 
 function formatPence(pence: number): string {
-  const pounds = pence / 100;
-  if (pounds >= 1000) return fmtMoney(Number((pounds / 1000).toFixed(1))).replace(/0$/, "") + "k";
-  return fmtMoney(pounds);
+  const display = fromSmallestUnit(pence);
+  if (display >= 1000) return fmtMoney(Number((display / 1000).toFixed(1))).replace(/0$/, "") + "k";
+  return fmtMoney(display);
 }
 
 function friendlyEventType(type: string): string {

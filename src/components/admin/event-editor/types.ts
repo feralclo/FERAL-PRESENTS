@@ -19,6 +19,7 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
   GBP: "\u00a3",
   EUR: "\u20ac",
   USD: "$",
+  JPY: "\u00a5",
 };
 
 /** Shared props for all tab components */

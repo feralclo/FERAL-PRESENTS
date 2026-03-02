@@ -14,6 +14,7 @@ const CURRENCY_LIST = [
   { code: "SEK", symbol: "kr", name: "Swedish Krona", flag: "🇸🇪" },
   { code: "NOK", symbol: "kr", name: "Norwegian Krone", flag: "🇳🇴" },
   { code: "DKK", symbol: "kr", name: "Danish Krone", flag: "🇩🇰" },
+  { code: "JPY", symbol: "¥", name: "Japanese Yen", flag: "🇯🇵" },
 ];
 
 /**

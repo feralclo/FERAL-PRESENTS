@@ -1,6 +1,6 @@
 /**
  * Maps ISO 3166-1 alpha-2 country codes to their default currency
- * from our supported set (GBP, EUR, USD, CAD, AUD, CHF, SEK, NOK, DKK).
+ * from our supported set (GBP, EUR, USD, CAD, AUD, CHF, SEK, NOK, DKK, JPY).
  *
  * Countries not in this map fall back to USD.
  */
@@ -66,6 +66,9 @@ const COUNTRY_CURRENCY: Record<string, string> = {
   DK: "DKK",
   FO: "DKK", // Faroe Islands
   GL: "DKK", // Greenland
+
+  // JPY
+  JP: "JPY",
 };
 
 /**

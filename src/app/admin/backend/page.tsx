@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { FunnelChart } from "@/components/admin/dashboard/FunnelChart";
 import { fmtMoney } from "@/lib/format";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import {
   Users,
   PoundSterling,
@@ -49,17 +50,16 @@ interface DashboardData {
 }
 
 function formatCurrency(pence: number): string {
-  const pounds = pence / 100;
-  if (pounds >= 1000) {
-    // Use fmtMoney for the symbol, trim trailing zeros for compact display
-    const val = (pounds / 1000).toFixed(1);
+  const display = fromSmallestUnit(pence);
+  if (display >= 1000) {
+    const val = (display / 1000).toFixed(1);
     return fmtMoney(Number(val)).replace(/0$/, "") + "k";
   }
-  return fmtMoney(pounds);
+  return fmtMoney(display);
 }
 
 function formatCurrencyFull(pence: number): string {
-  return fmtMoney(pence / 100);
+  return fmtMoney(fromSmallestUnit(pence));
 }
 
 function timeAgo(dateStr: string): string {

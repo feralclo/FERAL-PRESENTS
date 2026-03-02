@@ -53,8 +53,8 @@ function ExpressCheckoutInner({
   // Stripe requires amount > 0; use 50 (smallest-unit minimum) as floor.
   useEffect(() => {
     if (!elements) return;
-    elements.update({ amount: toSmallestUnit(amount) || 50 });
-  }, [elements, amount]);
+    elements.update({ amount: toSmallestUnit(amount, currency) || 50 });
+  }, [elements, amount, currency]);
 
   const handleClick = useCallback(
     (event: StripeExpressCheckoutElementClickEvent) => {
@@ -246,7 +246,7 @@ export function ExpressCheckout(props: ExpressCheckoutProps) {
   }
 
   const stripePromise = getStripeClient(stripeAccountId);
-  const amountInSmallest = toSmallestUnit(props.amount) || 50; // Stripe requires > 0
+  const amountInSmallest = toSmallestUnit(props.amount, props.currency) || 50; // Stripe requires > 0
 
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",

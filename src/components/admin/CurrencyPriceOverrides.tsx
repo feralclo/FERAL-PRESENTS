@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { SUPPORTED_CURRENCIES } from "@/lib/stripe/config";
+import { SUPPORTED_CURRENCIES, isZeroDecimalCurrency } from "@/lib/stripe/config";
 
 /** Currency metadata for the override grid */
 const CURRENCY_META: Record<string, { flag: string; symbol: string; label: string }> = {
@@ -15,6 +15,7 @@ const CURRENCY_META: Record<string, { flag: string; symbol: string; label: strin
   SEK: { flag: "🇸🇪", symbol: "kr", label: "SEK" },
   NOK: { flag: "🇳🇴", symbol: "kr", label: "NOK" },
   DKK: { flag: "🇩🇰", symbol: "kr", label: "DKK" },
+  JPY: { flag: "🇯🇵", symbol: "¥", label: "JPY" },
 };
 
 interface CurrencyPriceOverridesProps {
@@ -115,7 +116,7 @@ export function CurrencyPriceOverrides({
                 onChange={(e) => handleChange(currency, e.target.value)}
                 placeholder="auto"
                 min="0"
-                step="0.01"
+                step={isZeroDecimalCurrency(currency) ? "1" : "0.01"}
                 className="h-7 text-xs font-mono tabular-nums px-2"
               />
             </div>

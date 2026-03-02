@@ -27,14 +27,19 @@ export const MIN_PLATFORM_FEE = 50;
 export const CROSS_CURRENCY_SURCHARGE_PERCENT = 1.5;
 
 /** Supported currencies */
-export const SUPPORTED_CURRENCIES = ["gbp", "eur", "usd", "cad", "aud", "chf", "sek", "nok", "dkk"] as const;
+export const SUPPORTED_CURRENCIES = ["gbp", "eur", "usd", "cad", "aud", "chf", "sek", "nok", "dkk", "jpy"] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
-/** Zero-decimal currencies (amount in whole units, not cents). None in our current set, but future-proof. */
+/** Zero-decimal currencies (amount in whole units, not cents). JPY is in our supported set. */
 const ZERO_DECIMAL_CURRENCIES = new Set([
   "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga",
   "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
 ]);
+
+/** Check if a currency is zero-decimal (e.g. JPY — no fractional units). */
+export function isZeroDecimalCurrency(currency: string): boolean {
+  return ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase());
+}
 
 /** Default connected account type */
 export const DEFAULT_ACCOUNT_TYPE = "custom" as const;
@@ -91,6 +96,8 @@ export function getCurrencySymbol(currency: string): string {
       return "A$";
     case "chf":
       return "CHF ";
+    case "jpy":
+      return "¥";
     case "sek":
     case "nok":
     case "dkk":
@@ -106,7 +113,10 @@ export function getCurrencySymbol(currency: string): string {
  */
 export function formatPrice(price: number, currency?: string): string {
   const symbol = currency ? getCurrencySymbol(currency) : "";
-  const display = price % 1 === 0 ? String(price) : price.toFixed(2);
+  const zeroDecimal = currency ? isZeroDecimalCurrency(currency) : false;
+  const display = zeroDecimal
+    ? String(Math.round(price))
+    : price % 1 === 0 ? String(price) : price.toFixed(2);
   return `${symbol}${display}`;
 }
 
@@ -115,16 +125,18 @@ export function formatPrice(price: number, currency?: string): string {
  * Handles symbol placement, decimal separators, and grouping per currency.
  */
 export function formatPriceIntl(amount: number, currency: string): string {
+  const zeroDecimal = isZeroDecimalCurrency(currency);
   try {
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: currency.toUpperCase(),
-      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: zeroDecimal ? 0 : (amount % 1 === 0 ? 0 : 2),
+      maximumFractionDigits: zeroDecimal ? 0 : 2,
     }).format(amount);
   } catch {
     // Fallback for unknown currency codes
-    return `${getCurrencySymbol(currency)}${amount % 1 === 0 ? String(amount) : amount.toFixed(2)}`;
+    const display = zeroDecimal ? String(Math.round(amount)) : (amount % 1 === 0 ? String(amount) : amount.toFixed(2));
+    return `${getCurrencySymbol(currency)}${display}`;
   }
 }
 

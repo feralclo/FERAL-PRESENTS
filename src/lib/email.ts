@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { TABLES, brandingKey } from "@/lib/constants";
-import { getCurrencySymbol } from "@/lib/stripe/config";
+import { getCurrencySymbol, isZeroDecimalCurrency } from "@/lib/stripe/config";
 import { generateTicketsPDF, type TicketPDFData } from "@/lib/pdf";
 import { buildOrderConfirmationEmail, buildAbandonedCartRecoveryEmail, buildAnnouncementEmail, type EmailWalletLinks, type AbandonedCartEmailData, type AnnouncementEmailOpts } from "@/lib/email-templates";
 import type { EmailSettings, OrderEmailData, PdfTicketSettings, WalletPassSettings } from "@/types/email";
@@ -226,6 +226,8 @@ export async function sendOrderConfirmationEmail(params: {
     // Use order currency (presentment — what buyer paid) over event currency (base)
     const currency = params.order.currency || params.event.currency || "GBP";
     const symbol = getCurrencySymbol(currency);
+    const zd = isZeroDecimalCurrency(currency);
+    const fmtAmt = (n: number) => zd ? String(Math.round(n)) : n.toFixed(2);
 
     // Build email data
     const orderEmailData: OrderEmailData = {
@@ -238,7 +240,7 @@ export async function sendOrderConfirmationEmail(params: {
       event_date: formatEventDate(params.event.date_start),
       doors_time: params.event.doors_time,
       currency_symbol: symbol,
-      total: params.order.total.toFixed(2),
+      total: fmtAmt(params.order.total),
       order_type: params.order_type,
       tickets: params.tickets.map((t) => ({
         ticket_code: t.ticket_code,
@@ -249,7 +251,7 @@ export async function sendOrderConfirmationEmail(params: {
       ...(params.vat && params.vat.amount > 0
         ? {
             vat: {
-              amount: params.vat.amount.toFixed(2),
+              amount: fmtAmt(params.vat.amount),
               rate: params.vat.rate,
               inclusive: params.vat.inclusive,
               vat_number: params.vat.vat_number,
@@ -259,7 +261,7 @@ export async function sendOrderConfirmationEmail(params: {
       ...(params.crossCurrency ? {
         cross_currency: {
           base_symbol: getCurrencySymbol(params.crossCurrency.baseCurrency),
-          base_total: params.crossCurrency.baseTotal.toFixed(2),
+          base_total: isZeroDecimalCurrency(params.crossCurrency.baseCurrency) ? String(Math.round(params.crossCurrency.baseTotal)) : params.crossCurrency.baseTotal.toFixed(2),
           base_currency_code: params.crossCurrency.baseCurrency.toUpperCase(),
           exchange_rate: params.crossCurrency.exchangeRate.toFixed(4),
         },
@@ -562,13 +564,14 @@ export async function sendAbandonedCartRecoveryEmail(params: {
       event_date: formatEventDate(params.event.date_start),
       doors_time: params.event.doors_time,
       currency_symbol: symbol,
+      currency_code: currency,
       cart_items: params.items.map((item) => ({
         name: item.name,
         qty: item.qty,
         unit_price: item.price,
         merch_size: item.merch_size,
       })),
-      subtotal: params.subtotal.toFixed(2),
+      subtotal: isZeroDecimalCurrency(currency) ? String(Math.round(params.subtotal)) : params.subtotal.toFixed(2),
       recovery_url: recoveryUrl,
       unsubscribe_url: unsubscribeUrl,
       ...(params.stepConfig.discount_code

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { fmtMoney } from "@/lib/format";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -180,9 +181,9 @@ function timeAgo(dateStr: string): string {
 }
 
 function formatPence(pence: number): string {
-  const pounds = pence / 100;
-  if (pounds >= 1000) return fmtMoney(Number((pounds / 1000).toFixed(1))).replace(/0$/, "") + "k";
-  return fmtMoney(pounds);
+  const display = fromSmallestUnit(pence);
+  if (display >= 1000) return fmtMoney(Number((display / 1000).toFixed(1))).replace(/0$/, "") + "k";
+  return fmtMoney(display);
 }
 
 function sentryIssueUrl(issueId: string): string {

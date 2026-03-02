@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { fmtMoney } from "@/lib/format";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import {
   Loader2,
   Users,
@@ -85,7 +86,7 @@ type SortDir = "asc" | "desc";
 /* ------------------------------------------------------------------ */
 
 function formatCurrency(pence: number): string {
-  return fmtMoney(pence / 100);
+  return fmtMoney(fromSmallestUnit(pence));
 }
 
 function relativeDate(iso: string): string {

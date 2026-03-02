@@ -808,12 +808,13 @@ function StripeCheckoutPage({
   const total = vatBreakdown && !vatSettings?.prices_include_vat
     ? vatBreakdown.gross
     : afterDiscount;
-  const amountInSmallest = toSmallestUnit(total);
+  const checkoutCurrency = (merchData?.currency || presentmentCurrency || event.currency || "GBP").toLowerCase();
+  const amountInSmallest = toSmallestUnit(total, checkoutCurrency);
 
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",
     amount: amountInSmallest || 100,
-    currency: (merchData?.currency || presentmentCurrency || event.currency || "GBP").toLowerCase(),
+    currency: checkoutCurrency,
     appearance: {
       theme: "night",
       variables: {
@@ -995,9 +996,10 @@ function SinglePageCheckoutForm({
 
   useEffect(() => {
     if (!elements) return;
-    const amountInSmallest = toSmallestUnit(totalAmount) || 100;
+    const cur = (merchData?.currency || presentmentCurrency || event.currency || "GBP").toLowerCase();
+    const amountInSmallest = toSmallestUnit(totalAmount, cur) || 100;
     elements.update({ amount: amountInSmallest });
-  }, [elements, totalAmount]);
+  }, [elements, totalAmount, merchData?.currency, presentmentCurrency, event.currency]);
 
   const handleExpressClick = useCallback(
     (event: StripeExpressCheckoutElementClickEvent) => {

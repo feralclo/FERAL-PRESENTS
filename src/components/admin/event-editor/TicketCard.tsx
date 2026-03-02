@@ -30,6 +30,7 @@ import type { TicketTypeRow } from "@/types/events";
 import type { Product } from "@/types/products";
 import type { EventSettings } from "@/types/settings";
 import { CURRENCY_SYMBOLS } from "./types";
+import { isZeroDecimalCurrency, formatPrice } from "@/lib/stripe/config";
 
 interface TicketCardProps {
   ticket: TicketTypeRow;
@@ -108,8 +109,7 @@ export function TicketCard({
               {ticket.name || "Untitled"}
             </span>
             <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              {currSym}
-              {Number(ticket.price).toFixed(2)}
+              {formatPrice(Number(ticket.price), currency)}
             </span>
             <Badge variant="outline" className="text-[10px] font-mono uppercase">
               {tierLabel}
@@ -215,7 +215,7 @@ export function TicketCard({
                     onUpdate(index, "price", Number(e.target.value))
                   }
                   min="0"
-                  step="0.01"
+                  step={isZeroDecimalCurrency(currency) ? "1" : "0.01"}
                 />
               </div>
               <div className="space-y-2">

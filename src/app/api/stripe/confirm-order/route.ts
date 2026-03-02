@@ -6,6 +6,7 @@ import { getOrgIdFromRequest } from "@/lib/org";
 import { createOrder, OrderCreationError, type OrderVat, type OrderDiscount } from "@/lib/orders";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { fetchMarketingSettings, hashSHA256, sendMetaEvents } from "@/lib/meta";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import { logPaymentEvent, getClientIp } from "@/lib/payment-monitor";
 import type { MetaEventPayload } from "@/types/marketing";
 
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest) {
       payment: {
         method: "stripe",
         ref: payment_intent_id,
-        totalCharged: paymentIntent.amount / 100,
+        totalCharged: fromSmallestUnit(paymentIntent.amount, event.currency),
       },
       vat: vatInfo,
       discountCode: metadata.discount_code || undefined,
@@ -298,7 +299,7 @@ export async function POST(request: NextRequest) {
     // deduplicates with the client-side pixel Purchase event.
     fireServerPurchaseEvent(request, metaOrgId, {
       orderNumber: result.order.order_number,
-      total: paymentIntent.amount / 100,
+      total: fromSmallestUnit(paymentIntent.amount, event.currency),
       currency: event.currency || "GBP",
       ticketTypeIds: items.map((i) => i.ticket_type_id),
       numItems: items.reduce((sum, i) => sum + i.qty, 0),

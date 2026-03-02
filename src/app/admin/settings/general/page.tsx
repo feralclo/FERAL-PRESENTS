@@ -24,6 +24,7 @@ const SUPPORTED_BASE_CURRENCIES = [
   { code: "SEK", label: "SEK (kr)" },
   { code: "NOK", label: "NOK (kr)" },
   { code: "DKK", label: "DKK (kr)" },
+  { code: "JPY", label: "JPY (¥)" },
 ];
 
 interface OrgSettings {

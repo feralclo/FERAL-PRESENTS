@@ -11,6 +11,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { fmtMoney } from "@/lib/format";
+import { fromSmallestUnit } from "@/lib/stripe/config";
 import {
   Loader2,
   ArrowLeft,
@@ -107,7 +108,7 @@ interface TenantDetail {
 /* ------------------------------------------------------------------ */
 
 function formatCurrency(pence: number): string {
-  return fmtMoney(pence / 100);
+  return fmtMoney(fromSmallestUnit(pence));
 }
 
 function relativeDate(iso: string): string {

@@ -4,6 +4,14 @@ import type {
   OrderEmailData,
 } from "@/types/email";
 import { DEFAULT_EMAIL_SETTINGS } from "@/types/email";
+import { isZeroDecimalCurrency } from "@/lib/stripe/config";
+
+/** Format a monetary amount — zero decimals for JPY etc, 2 otherwise. */
+function fmtMoneyAmt(n: number, currencyCode?: string): string {
+  return currencyCode && isZeroDecimalCurrency(currencyCode)
+    ? String(Math.round(n))
+    : n.toFixed(2);
+}
 
 /**
  * Replace {{variable}} placeholders in a template string.
@@ -507,6 +515,8 @@ export interface AbandonedCartEmailData {
   event_date: string;
   doors_time?: string;
   currency_symbol: string;
+  /** ISO 4217 currency code (e.g. "GBP", "JPY") — used for zero-decimal formatting */
+  currency_code?: string;
   cart_items: {
     name: string;
     qty: number;
@@ -565,7 +575,7 @@ export function buildAbandonedCartRecoveryEmail(
   const isFixed = (cart.discount_type || "percentage") === "fixed";
   // Human-readable discount label: "10%" or "£5.00"
   const discountLabel = isFixed
-    ? `${cart.currency_symbol}${(cart.discount_fixed_amount || 0).toFixed(2)}`
+    ? `${cart.currency_symbol}${fmtMoneyAmt(cart.discount_fixed_amount || 0, cart.currency_code)}`
     : `${cart.discount_percent || 0}%`;
   function replaceVars(text: string): string {
     let result = text
@@ -623,7 +633,7 @@ export function buildAbandonedCartRecoveryEmail(
         </td>
         <td style="padding: 10px 0;${!isLast ? " border-bottom: 1px solid #f0f0f0;" : ""} text-align: right; vertical-align: top; white-space: nowrap;">
           <div style="font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #333;">
-            ${cart.currency_symbol}${lineTotal.toFixed(2)}
+            ${cart.currency_symbol}${fmtMoneyAmt(lineTotal, cart.currency_code)}
           </div>
         </td>
       </tr>`;
@@ -635,7 +645,7 @@ export function buildAbandonedCartRecoveryEmail(
     .map((item) => {
       const lineTotal = item.unit_price * item.qty;
       const merch = item.merch_size ? ` (includes merch: Size ${item.merch_size})` : "";
-      return `  ${item.name} x ${item.qty}${merch} \u2014 ${cart.currency_symbol}${lineTotal.toFixed(2)}`;
+      return `  ${item.name} x ${item.qty}${merch} \u2014 ${cart.currency_symbol}${fmtMoneyAmt(lineTotal, cart.currency_code)}`;
     })
     .join("\n");
 
@@ -773,7 +783,7 @@ export function buildAbandonedCartRecoveryEmail(
                           Subtotal
                         </td>
                         <td style="font-family: 'Courier New', monospace; font-size: 14px; color: #555; text-align: right; padding: 3px 0;">
-                          ${cart.currency_symbol}${subtotalNum.toFixed(2)}
+                          ${cart.currency_symbol}${fmtMoneyAmt(subtotalNum, cart.currency_code)}
                         </td>
                       </tr>
                       <tr>
@@ -781,7 +791,7 @@ export function buildAbandonedCartRecoveryEmail(
                           Discount (${escapeHtml(cart.discount_code!)})
                         </td>
                         <td style="font-family: 'Courier New', monospace; font-size: 14px; color: ${accent}; text-align: right; padding: 3px 0;">
-                          -${cart.currency_symbol}${discountAmt.toFixed(2)}
+                          -${cart.currency_symbol}${fmtMoneyAmt(discountAmt, cart.currency_code)}
                         </td>
                       </tr>` : ""}
                       <tr>
@@ -789,7 +799,7 @@ export function buildAbandonedCartRecoveryEmail(
                           Total
                         </td>
                         <td style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #111; text-align: right; padding: 12px 0 4px;${hasDiscount ? " border-top: 1px solid #eeeeee;" : ""}">
-                          ${cart.currency_symbol}${total.toFixed(2)}
+                          ${cart.currency_symbol}${fmtMoneyAmt(total, cart.currency_code)}
                         </td>
                       </tr>
                     </table>
@@ -810,8 +820,8 @@ export function buildAbandonedCartRecoveryEmail(
                           </div>
                           <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #4ade80; margin-top: 6px; letter-spacing: 0.5px;">
                             ${cart.is_original_discount
-                              ? `Your code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> still applies &middot; saving you ${cart.currency_symbol}${discountAmt.toFixed(2)}`
-                              : `Code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> &middot; saving you ${cart.currency_symbol}${discountAmt.toFixed(2)}`}
+                              ? `Your code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> still applies &middot; saving you ${cart.currency_symbol}${fmtMoneyAmt(discountAmt, cart.currency_code)}`
+                              : `Code <span style="font-weight: 700; letter-spacing: 1px;">${escapeHtml(cart.discount_code!)}</span> &middot; saving you ${cart.currency_symbol}${fmtMoneyAmt(discountAmt, cart.currency_code)}`}
                           </div>
                         </td>
                       </tr>
@@ -879,11 +889,11 @@ ${eventDetails}${doorsLine ? `\n${doorsLine}` : ""}
 ${hasItems ? `
 YOUR ORDER
 ${cartItemsText}
-${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${subtotalNum.toFixed(2)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${discountAmt.toFixed(2)}` : ""}
-Total: ${cart.currency_symbol}${total.toFixed(2)}
+${hasDiscount ? `\nSubtotal: ${cart.currency_symbol}${fmtMoneyAmt(subtotalNum, cart.currency_code)}\nDiscount (${cart.discount_code}): -${cart.currency_symbol}${fmtMoneyAmt(discountAmt, cart.currency_code)}` : ""}
+Total: ${cart.currency_symbol}${fmtMoneyAmt(total, cart.currency_code)}
 ${hasDiscount ? (cart.is_original_discount
-  ? `\n✓ Your ${discountLabel} discount is still active (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n`
-  : `\n✓ ${discountLabel} off — discount automatically applied (code: ${cart.discount_code}, saving ${cart.currency_symbol}${discountAmt.toFixed(2)})\n`) : ""}` : ""}
+  ? `\n✓ Your ${discountLabel} discount is still active (code: ${cart.discount_code}, saving ${cart.currency_symbol}${fmtMoneyAmt(discountAmt, cart.currency_code)})\n`
+  : `\n✓ ${discountLabel} off — discount automatically applied (code: ${cart.discount_code}, saving ${cart.currency_symbol}${fmtMoneyAmt(discountAmt, cart.currency_code)})\n`) : ""}` : ""}
 ${ctaText}: ${cart.recovery_url}
 
 ---

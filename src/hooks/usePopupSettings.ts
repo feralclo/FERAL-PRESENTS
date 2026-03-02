@@ -15,7 +15,7 @@ export const DEFAULT_POPUP_SETTINGS: PopupSettings = {
   dismiss_text: "No Thanks",
   email_subheadline: "We\u2019ll send your exclusive code",
   email_cta_text: "Get My Discount",
-  cta_color: "#8B5CF6",
+  cta_color: "#ff0033",
   mobile_delay: 6000,
   desktop_delay: 12000,
   dismiss_days: 30,

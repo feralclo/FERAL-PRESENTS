@@ -676,21 +676,23 @@
 
 /* ═══════════════════════════════════════════════
    BARBIE DREAM VIBE — Hero overrides
-   Bright hot pink glow flooding the hero. Glossy
-   plastic feel. Everything screams Barbie pink.
+   The hero should feel like stepping into a Barbie
+   world. Pink fog, pink glow, pink text shadow,
+   pink everything. The vignette fades to pink bg,
+   not black. The mist is hot pink.
    ═══════════════════════════════════════════════ */
 
-/* Hero glow: massive bright Barbie pink — lights up the hero */
+/* Hero glow: massive Barbie pink — the text RADIATES pink */
 [data-vibe="barbie-dream"] .hero-glitch {
   text-shadow:
-    0 0 20px rgba(224, 33, 138, 0.9),
-    0 0 50px rgba(224, 33, 138, 0.6),
+    0 0 20px rgba(224, 33, 138, 0.95),
+    0 0 50px rgba(224, 33, 138, 0.65),
     0 0 90px rgba(255, 105, 180, 0.4),
     0 0 140px rgba(224, 33, 138, 0.2),
-    0 0 200px rgba(255, 105, 180, 0.1);
+    0 0 200px rgba(255, 133, 200, 0.1);
 }
 
-/* Chromatic lines: hot Barbie pink / magenta shift */
+/* Chromatic lines: Barbie pink shift */
 [data-vibe="barbie-dream"] .hero-glitch__line::before {
   color: #FF69B4;
   text-shadow: -2px 0 #E0218A;
@@ -700,47 +702,47 @@
   text-shadow: 2px 0 #C2185B;
 }
 
-/* Scanline: bright visible Barbie pink */
+/* Scanline: visible Barbie pink band */
 [data-vibe="barbie-dream"] .hero-glitch__scanline {
   background: linear-gradient(90deg,
     transparent,
-    rgba(224, 33, 138, 0.25),
-    rgba(255, 105, 180, 0.15),
+    rgba(224, 33, 138, 0.3),
+    rgba(255, 105, 180, 0.2),
     transparent);
 }
 
-/* Mist layers: strong bright pink fog — the hero GLOWS pink */
+/* Mist: heavy pink fog — the hero bathes in pink light */
 [data-vibe="barbie-dream"] .hero__bg-mist {
   background:
-    radial-gradient(ellipse at 20% 40%, rgba(224, 33, 138, 0.28) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 35%, rgba(255, 105, 180, 0.2) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 85%, rgba(224, 33, 138, 0.15) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 20%, rgba(255, 133, 200, 0.1) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 40%, rgba(224, 33, 138, 0.3) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 30%, rgba(255, 105, 180, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 85%, rgba(224, 33, 138, 0.2) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 15%, rgba(255, 133, 200, 0.15) 0%, transparent 50%);
 }
 
-/* CTA: glossy Barbie button with bright border + plastic shine */
+/* Hero CTA: bright Barbie border with plastic shine */
 [data-vibe="barbie-dream"] .hero__cta {
-  border-color: rgba(224, 33, 138, 0.7);
-  text-shadow: 0 0 14px rgba(224, 33, 138, 0.7);
+  border-color: rgba(224, 33, 138, 0.8);
+  text-shadow: 0 0 16px rgba(224, 33, 138, 0.7);
   box-shadow:
-    0 0 20px rgba(224, 33, 138, 0.25),
-    0 0 50px rgba(224, 33, 138, 0.08),
+    0 0 24px rgba(224, 33, 138, 0.3),
+    0 0 56px rgba(224, 33, 138, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 [data-vibe="barbie-dream"] .hero__cta:hover {
   border-color: rgba(224, 33, 138, 1);
   box-shadow:
-    0 0 30px rgba(224, 33, 138, 0.4),
-    0 0 70px rgba(224, 33, 138, 0.15),
+    0 0 32px rgba(224, 33, 138, 0.45),
+    0 0 80px rgba(224, 33, 138, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* CTA glow orb: big bright Barbie pink pool */
+/* CTA glow orb: big bright Barbie pink pool of light */
 [data-vibe="barbie-dream"] .hero__cta-glow {
   background: radial-gradient(circle,
-    rgba(224, 33, 138, 0.6) 0%,
-    rgba(255, 105, 180, 0.3) 35%,
-    rgba(224, 33, 138, 0.1) 60%,
+    rgba(224, 33, 138, 0.65) 0%,
+    rgba(255, 105, 180, 0.35) 30%,
+    rgba(224, 33, 138, 0.12) 60%,
     transparent 80%);
 }

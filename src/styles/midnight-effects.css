@@ -1583,133 +1583,318 @@ html.checkout-active .noise {
 
 
 /* ═══════════════════════════════════════════════
-   BARBIE DREAM VIBE — Glossy, warm, iconic pink
-   True Barbie energy: plastic sheen, hot pink glow,
-   bright glass, gloss reflections, warm highlights.
-   NOT dark rose — BRIGHT iconic Barbie pink.
+   BARBIE DREAM VIBE — Total Barbie takeover
+   Not pink tint on dark — the entire page IS pink.
+   Bright pink cards, hot pink glass, glossy plastic
+   sheen, visible pink borders, pink ambient light
+   flooding from everywhere. Screams Barbie.
    ═══════════════════════════════════════════════ */
 
-/* Glass: warm glossy pink — brighter than other vibes, with gloss highlight */
+/* ---- Glass: VISIBLY pink, not subtle tint ---- */
 [data-vibe="barbie-dream"] .glass {
   background: linear-gradient(
     160deg,
-    rgba(224, 33, 138, 0.12) 0%,
-    rgba(255, 105, 180, 0.08) 30%,
-    rgba(224, 33, 138, 0.06) 60%,
-    rgba(255, 182, 213, 0.1) 100%
+    rgba(224, 33, 138, 0.18) 0%,
+    rgba(255, 105, 180, 0.12) 40%,
+    rgba(224, 33, 138, 0.15) 100%
   );
-  border-color: rgba(224, 33, 138, 0.25);
+  border-color: rgba(224, 33, 138, 0.35);
   box-shadow:
-    0 20px 60px rgba(100, 0, 60, var(--vibe-glass-shadow, 0.6)),
-    0 4px 20px rgba(224, 33, 138, 0.12),
-    inset 0 1px 0 rgba(255, 200, 230, 0.2),
-    inset 0 -1px 0 rgba(224, 33, 138, 0.05);
+    0 16px 48px rgba(140, 20, 80, 0.5),
+    0 4px 16px rgba(224, 33, 138, 0.2),
+    inset 0 1px 0 rgba(255, 200, 230, 0.25),
+    inset 0 -1px 0 rgba(224, 33, 138, 0.08);
 }
 
-/* Cards: warm pink base with glossy top highlight */
+/* Mobile glass: also pink (normally goes flat) */
+@media (max-width: 1023px) {
+  [data-vibe="barbie-dream"] .glass {
+    background: rgba(61, 18, 48, 0.95);
+    border-color: rgba(224, 33, 138, 0.25);
+  }
+}
+
+/* ---- Cards: bright pink, glossy plastic feel ---- */
 [data-vibe="barbie-dream"] .midnight-metallic-platinum,
 [data-vibe="barbie-dream"] .midnight-metallic-obsidian {
-  background: linear-gradient(165deg,
-    rgba(255, 182, 213, 0.1) 0%,
-    rgba(224, 33, 138, 0.06) 30%,
-    rgba(180, 20, 110, 0.04) 70%,
-    rgba(224, 33, 138, 0.08) 100%);
-  border-color: rgba(224, 33, 138, 0.3);
+  background: linear-gradient(155deg,
+    rgba(224, 33, 138, 0.14) 0%,
+    rgba(255, 105, 180, 0.08) 40%,
+    rgba(180, 20, 110, 0.1) 100%);
+  border: 1px solid rgba(224, 33, 138, 0.4);
   box-shadow:
-    0 8px 32px rgba(100, 0, 60, 0.3),
-    inset 0 1px 0 rgba(255, 200, 230, 0.15);
-}
-
-/* Active card: bright pink glow ring — unmissable */
-[data-vibe="barbie-dream"] .midnight-metallic-platinum.midnight-active,
-[data-vibe="barbie-dream"] .midnight-metallic-obsidian.midnight-active {
-  border-color: rgba(224, 33, 138, 0.7);
-  box-shadow:
-    0 0 20px rgba(224, 33, 138, 0.25),
-    0 0 50px rgba(224, 33, 138, 0.1),
+    0 8px 32px rgba(100, 0, 60, 0.35),
     inset 0 1px 0 rgba(255, 200, 230, 0.2);
 }
 
-/* Shimmer: glossy plastic sheen — brighter, wider, more visible */
+[data-vibe="barbie-dream"] .midnight-metallic-platinum:hover,
+[data-vibe="barbie-dream"] .midnight-metallic-obsidian:hover {
+  border-color: rgba(224, 33, 138, 0.55);
+  box-shadow:
+    0 8px 32px rgba(100, 0, 60, 0.35),
+    0 0 20px rgba(224, 33, 138, 0.12),
+    inset 0 1px 0 rgba(255, 200, 230, 0.25);
+}
+
+/* Active card: strong Barbie glow ring */
+[data-vibe="barbie-dream"] .midnight-metallic-platinum.midnight-active,
+[data-vibe="barbie-dream"] .midnight-metallic-obsidian.midnight-active {
+  border-color: rgba(224, 33, 138, 0.8);
+  box-shadow:
+    0 0 24px rgba(224, 33, 138, 0.3),
+    0 0 60px rgba(224, 33, 138, 0.12),
+    inset 0 1px 0 rgba(255, 200, 230, 0.25);
+}
+
+/* Shimmer: glossy plastic reflection — bright white sweep */
 [data-vibe="barbie-dream"] .midnight-metallic-platinum::after,
 [data-vibe="barbie-dream"] .midnight-metallic-obsidian::after {
   background: linear-gradient(
     105deg,
-    transparent 15%,
-    rgba(255, 220, 240, 0.04) 30%,
-    rgba(255, 200, 230, 0.1) 42%,
-    rgba(255, 255, 255, 0.14) 50%,
-    rgba(255, 200, 230, 0.1) 58%,
-    rgba(255, 220, 240, 0.04) 70%,
-    transparent 85%
+    transparent 10%,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 200, 230, 0.12) 40%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 200, 230, 0.12) 60%,
+    rgba(255, 255, 255, 0.03) 75%,
+    transparent 90%
   );
 }
 
-/* Left accent bar: Barbie pink gradient with bright highlight */
+/* Left accent bar: Barbie pink, glowing */
 [data-vibe="barbie-dream"] .midnight-metallic-platinum::before,
 [data-vibe="barbie-dream"] .midnight-metallic-obsidian::before {
   background: linear-gradient(180deg,
-    #FF69B4 0%,
-    #E0218A 40%,
-    #C2185B 60%,
+    #FF85C8 0%,
+    #E0218A 35%,
+    #C2185B 65%,
     #E0218A 100%);
-  box-shadow: 0 0 12px rgba(224, 33, 138, 0.4);
+  box-shadow: 0 0 16px rgba(224, 33, 138, 0.5);
 }
 
-/* CTA button: glossy Barbie pink with plastic sheen */
+/* ---- Hero: pink-tinted vignette + frame ---- */
+[data-vibe="barbie-dream"] .midnight-hero-vignette {
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 40%,
+    transparent 20%,
+    rgba(42, 10, 30, 0.6) 100%
+  );
+}
+
+[data-vibe="barbie-dream"] .midnight-hero-frame {
+  box-shadow:
+    inset 0 0 120px 40px rgba(42, 10, 30, 0.5),
+    inset 0 0 60px 20px rgba(224, 33, 138, 0.08),
+    inset 0 1px 0 rgba(255, 200, 230, 0.06),
+    inset 0 -1px 0 rgba(42, 10, 30, 0.5);
+}
+
+[data-vibe="barbie-dream"] .midnight-hero-reflection {
+  background: linear-gradient(
+    125deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255, 200, 230, 0.02) 42%,
+    rgba(255, 200, 230, 0.06) 47%,
+    rgba(255, 255, 255, 0.08) 49%,
+    rgba(255, 200, 230, 0.06) 51%,
+    rgba(255, 200, 230, 0.02) 56%,
+    transparent 60%,
+    transparent 100%
+  );
+}
+
+@media (min-width: 1024px) {
+  [data-vibe="barbie-dream"] .midnight-hero-glass-border {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 200, 230, 0.08),
+      inset 0 -2px 0 rgba(42, 10, 30, 0.5),
+      0 16px 64px rgba(100, 0, 60, 0.5),
+      0 0 40px rgba(224, 33, 138, 0.08);
+  }
+}
+
+/* ---- CTA: glossy Barbie button with plastic shine ---- */
 [data-vibe="barbie-dream"] .midnight-metallic-cta {
   background: linear-gradient(135deg,
-    #FF69B4 0%,
-    #E0218A 40%,
-    #FF69B4 100%);
+    #FF85C8 0%,
+    #E0218A 45%,
+    #C2185B 100%);
   color: #fff;
-  text-shadow: 0 1px 3px rgba(100, 0, 60, 0.5);
+  text-shadow: 0 1px 3px rgba(80, 0, 50, 0.6);
   box-shadow:
-    0 4px 16px rgba(224, 33, 138, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 200, 230, 0.3);
+    0 6px 20px rgba(224, 33, 138, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 200, 230, 0.35);
 }
 
 [data-vibe="barbie-dream"] .midnight-metallic-cta:hover {
   background: linear-gradient(135deg,
-    #FF85C8 0%,
+    #FF9DD6 0%,
     #E0218A 50%,
     #FF85C8 100%);
   box-shadow:
-    0 6px 24px rgba(224, 33, 138, 0.4),
-    0 0 40px rgba(224, 33, 138, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 8px 28px rgba(224, 33, 138, 0.5),
+    0 0 48px rgba(224, 33, 138, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-/* Express checkout glass: Barbie pink-tinted */
+/* ---- Buttons: pink-tinted glass + nav ---- */
+[data-vibe="barbie-dream"] .midnight-btn-glass {
+  background: linear-gradient(145deg,
+    rgba(224, 33, 138, 0.12) 0%,
+    rgba(224, 33, 138, 0.04) 100%);
+  border-color: rgba(224, 33, 138, 0.2);
+}
+
+[data-vibe="barbie-dream"] .midnight-btn-glass:hover {
+  background: linear-gradient(145deg,
+    rgba(224, 33, 138, 0.2) 0%,
+    rgba(224, 33, 138, 0.08) 100%);
+  border-color: rgba(224, 33, 138, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 230, 0.12),
+    0 0 14px rgba(224, 33, 138, 0.15);
+}
+
+[data-vibe="barbie-dream"] .midnight-btn-nav {
+  border-color: rgba(224, 33, 138, 0.25);
+  box-shadow: 0 0 8px rgba(224, 33, 138, 0.06);
+}
+
+[data-vibe="barbie-dream"] .midnight-btn-nav:hover {
+  border-color: rgba(224, 33, 138, 0.5);
+  box-shadow: 0 0 18px rgba(224, 33, 138, 0.2);
+}
+
+/* ---- Lineup pills: pink border + glow ---- */
+[data-vibe="barbie-dream"] .midnight-lineup-pill {
+  border-color: rgba(224, 33, 138, 0.25);
+}
+
+[data-vibe="barbie-dream"] button.midnight-lineup-pill:hover {
+  border-color: rgba(224, 33, 138, 0.5);
+  background: rgba(224, 33, 138, 0.08);
+  box-shadow: 0 0 12px rgba(224, 33, 138, 0.1);
+  color: #fff5fa;
+}
+
+/* ---- Express checkout: pink glass enclosure ---- */
 [data-vibe="barbie-dream"] .midnight-express-glass {
   background: linear-gradient(165deg,
-    rgba(224, 33, 138, 0.08) 0%,
-    rgba(180, 20, 110, 0.04) 100%);
-  border-color: rgba(224, 33, 138, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 200, 230, 0.1);
+    rgba(224, 33, 138, 0.12) 0%,
+    rgba(180, 20, 110, 0.06) 100%);
+  border-color: rgba(224, 33, 138, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 230, 0.15),
+    0 4px 20px rgba(100, 0, 60, 0.3);
 }
 
-/* Bottom bar: warm pink fade */
+[data-vibe="barbie-dream"] .midnight-express-glass::before {
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(224, 33, 138, 0.08) 0%,
+    transparent 70%
+  );
+}
+
+[data-vibe="barbie-dream"] .midnight-express-btn-frame {
+  box-shadow:
+    inset 0 0 0 1px rgba(224, 33, 138, 0.15),
+    inset 0 1px 0 rgba(255, 200, 230, 0.2),
+    0 0 12px rgba(224, 33, 138, 0.06);
+}
+
+/* Checkout page express glass */
+[data-vibe="barbie-dream"] .native-checkout .express-checkout {
+  background: linear-gradient(180deg,
+    rgba(61, 18, 48, 0.4) 0%,
+    rgba(224, 33, 138, 0.06) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 230, 0.1),
+    0 4px 20px rgba(100, 0, 60, 0.3);
+}
+
+/* ---- Content zone: warm pink atmosphere ---- */
+@media (max-width: 1023px) {
+  [data-vibe="barbie-dream"] .midnight-content-zone {
+    background:
+      linear-gradient(180deg, rgba(61, 18, 48, 1) 0%, rgba(42, 10, 30, 1) 100%);
+    border-top: 1px solid rgba(224, 33, 138, 0.2);
+    box-shadow: inset 0 1px 0 rgba(255, 200, 230, 0.06);
+  }
+}
+
+/* ---- Bottom bar: Barbie pink fade ---- */
 [data-vibe="barbie-dream"] .midnight-bottom-bar {
   background: linear-gradient(180deg,
     transparent 0%,
-    rgba(28, 6, 20, 0.95) 30%,
-    rgba(28, 6, 20, 0.99) 100%);
+    rgba(42, 10, 30, 0.95) 25%,
+    rgba(42, 10, 30, 0.99) 100%);
 }
 
-/* Announcement card: glossy Barbie glass */
+/* ---- Announcement card: pink glass ---- */
 [data-vibe="barbie-dream"] .midnight-announcement-card {
   background: linear-gradient(165deg,
-    rgba(224, 33, 138, 0.1) 0%,
-    rgba(180, 20, 110, 0.05) 100%);
-  border-color: rgba(224, 33, 138, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 200, 230, 0.12);
+    rgba(224, 33, 138, 0.14) 0%,
+    rgba(180, 20, 110, 0.07) 100%);
+  border-color: rgba(224, 33, 138, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 230, 0.15),
+    0 8px 32px rgba(100, 0, 60, 0.3);
 }
 
-/* Gloss overlay — the signature Barbie "plastic shine" on the whole page.
-   A subtle diagonal highlight stripe that makes everything feel glossy. */
+/* ---- Checkout Stripe elements: pink-tinted ---- */
+[data-vibe="barbie-dream"] .midnight-checkout .StripeElement {
+  border-color: rgba(224, 33, 138, 0.25);
+}
+
+[data-vibe="barbie-dream"] .midnight-checkout .StripeElement--focus {
+  border-color: rgba(224, 33, 138, 0.5);
+  box-shadow: 0 0 8px rgba(224, 33, 138, 0.15);
+}
+
+/* ---- Qty pop animation: pink ---- */
+[data-vibe="barbie-dream"] .midnight-qty-pop {
+  color: #E0218A;
+}
+
+/* ---- GLOBAL OVERLAYS — the Barbie world effect ---- */
+
+/* Top + bottom ambient pink glow — floods the page with pink light */
+[data-vibe="barbie-dream"] [data-theme-root]::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 100% 40% at 50% -5%,
+      rgba(224, 33, 138, 0.18) 0%,
+      rgba(224, 33, 138, 0.06) 50%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 100% 35% at 50% 105%,
+      rgba(224, 33, 138, 0.2) 0%,
+      rgba(224, 33, 138, 0.08) 50%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 50% 50% at 15% 50%,
+      rgba(255, 105, 180, 0.06) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 50% 50% at 85% 50%,
+      rgba(255, 105, 180, 0.06) 0%,
+      transparent 100%
+    );
+}
+
+/* Glossy plastic sheen — diagonal light sweep across the page */
 [data-vibe="barbie-dream"] [data-theme-root]::after {
   content: '';
   position: fixed;
@@ -1718,43 +1903,24 @@ html.checkout-active .noise {
   z-index: 9999;
   background:
     linear-gradient(
-      135deg,
+      130deg,
       transparent 0%,
-      transparent 35%,
-      rgba(255, 200, 230, 0.03) 40%,
-      rgba(255, 255, 255, 0.05) 45%,
-      rgba(255, 200, 230, 0.03) 50%,
-      transparent 55%,
+      transparent 30%,
+      rgba(255, 200, 230, 0.04) 36%,
+      rgba(255, 255, 255, 0.07) 42%,
+      rgba(255, 200, 230, 0.04) 48%,
+      transparent 54%,
       transparent 100%
     );
-  animation: barbieDreamGloss 8s ease-in-out infinite alternate;
+  animation: barbieDreamGloss 6s ease-in-out infinite alternate;
 }
 
 @keyframes barbieDreamGloss {
-  0%   { opacity: 0.6; transform: translateX(-5%); }
-  100% { opacity: 1;   transform: translateX(5%); }
+  0%   { opacity: 0.5; transform: translateX(-8%) translateY(-2%); }
+  100% { opacity: 1;   transform: translateX(8%) translateY(2%); }
 }
 
-/* Pink ambient glow — warm radial light from bottom center */
-[data-vibe="barbie-dream"] [data-theme-root]::before {
-  content: '';
-  position: fixed;
-  bottom: -20%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120%;
-  height: 60%;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    rgba(224, 33, 138, 0.15) 0%,
-    rgba(224, 33, 138, 0.08) 30%,
-    transparent 70%
-  );
-}
-
-/* Reduced motion */
+/* ---- Reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
   [data-vibe="barbie-dream"] [data-theme-root]::after {
     animation: none;

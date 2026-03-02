@@ -114,6 +114,18 @@ export function ThemeEditorBridge() {
         themeRoot?.style.setProperty(variable, val);
       }
 
+      // Vibe attribute — sets/removes data-vibe for CSS rule scoping
+      if (e.data.type === "theme-vibe") {
+        const vibeId = e.data.vibeId as string | null;
+        if (vibeId) {
+          document.documentElement.setAttribute("data-vibe", vibeId);
+          themeRoot?.setAttribute("data-vibe", vibeId);
+        } else {
+          document.documentElement.removeAttribute("data-vibe");
+          themeRoot?.removeAttribute("data-vibe");
+        }
+      }
+
       // Logo update
       if (e.data.type === "theme-logo") {
         const imgs = document.querySelectorAll<HTMLImageElement>(

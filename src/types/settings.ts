@@ -69,6 +69,9 @@ export interface BrandingSettings {
   card_border_color?: string;
   /** ID of the color preset currently applied (cleared when colors are manually edited) */
   color_preset?: string;
+  /** ID of the active vibe — persists through colour edits (controls structural vars + data-vibe).
+   *  Cleared only when user explicitly selects a different vibe or "None". */
+  active_vibe?: string;
   /** About section content for the landing page */
   about_section?: {
     heading_line1: string;

@@ -540,3 +540,48 @@
 .hero--paused *::after {
   animation-play-state: paused !important;
 }
+
+
+/* ═══════════════════════════════════════════════
+   GIRLY POP VIBE — Hero overrides
+   Pink glow, warm chromatic aberration, soft scanline
+   ═══════════════════════════════════════════════ */
+
+/* Hero glow: pink instead of accent-derived */
+[data-vibe="girly-pop"] .hero-glitch {
+  text-shadow:
+    0 0 40px rgba(255, 105, 180, 0.6),
+    0 0 80px rgba(255, 105, 180, 0.3),
+    0 0 120px rgba(255, 20, 147, 0.15);
+}
+
+/* Chromatic lines: pink/magenta shift instead of cyan/magenta */
+[data-vibe="girly-pop"] .hero-glitch__line::before {
+  color: #FF69B4;
+}
+[data-vibe="girly-pop"] .hero-glitch__line::after {
+  color: #FF1493;
+}
+
+/* Scanline: pink tint */
+[data-vibe="girly-pop"] .hero-glitch__scanline {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 105, 180, 0.15),
+    transparent);
+}
+
+/* CTA button: pink glow pulse */
+[data-vibe="girly-pop"] .hero__cta {
+  border-color: rgba(255, 105, 180, 0.4);
+  text-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
+}
+
+[data-vibe="girly-pop"] .hero__cta:hover {
+  border-color: rgba(255, 105, 180, 0.8);
+  box-shadow: 0 0 30px rgba(255, 105, 180, 0.2);
+}
+
+[data-vibe="girly-pop"] .hero__cta-glow {
+  background: radial-gradient(circle, rgba(255, 105, 180, 0.4), transparent 70%);
+}

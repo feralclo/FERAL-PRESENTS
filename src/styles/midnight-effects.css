@@ -1308,3 +1308,103 @@ html.checkout-active .noise {
 [data-editor-preview] .dp-overlay {
   display: none !important;
 }
+
+
+/* ═══════════════════════════════════════════════
+   GIRLY POP VIBE — Scoped overrides
+   Soft pink glass, sparkle effects, warm glow
+   ═══════════════════════════════════════════════ */
+
+/* Glass: warm pink tint instead of neutral black */
+[data-vibe="girly-pop"] .glass {
+  background: linear-gradient(
+    165deg,
+    rgba(255, 105, 180, 0.08) 0%,
+    rgba(255, 20, 147, 0.04) 50%,
+    rgba(200, 60, 120, 0.06) 100%
+  );
+  border-color: rgba(255, 105, 180, 0.15);
+  box-shadow:
+    0 16px 56px rgba(80, 0, 40, var(--vibe-glass-shadow, 0.5)),
+    0 2px 16px rgba(255, 105, 180, 0.08),
+    inset 0 1px 0 rgba(255, 182, 213, 0.12);
+}
+
+/* Card borders: pink-tinted */
+[data-vibe="girly-pop"] .midnight-metallic-platinum,
+[data-vibe="girly-pop"] .midnight-metallic-obsidian {
+  background: linear-gradient(145deg,
+    rgba(255, 105, 180, 0.06),
+    rgba(200, 60, 120, 0.03),
+    rgba(255, 20, 147, 0.05));
+  border-color: rgba(255, 105, 180, 0.2);
+}
+
+/* Active card: pink glow ring */
+[data-vibe="girly-pop"] .midnight-metallic-platinum.midnight-active,
+[data-vibe="girly-pop"] .midnight-metallic-obsidian.midnight-active {
+  border-color: rgba(255, 105, 180, 0.5);
+  box-shadow: 0 0 20px rgba(255, 105, 180, 0.15),
+              0 0 40px rgba(255, 105, 180, 0.05);
+}
+
+/* Shimmer: pink hue */
+[data-vibe="girly-pop"] .midnight-metallic-platinum::after,
+[data-vibe="girly-pop"] .midnight-metallic-obsidian::after {
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 182, 213, 0.06) 40%,
+    rgba(255, 105, 180, 0.1) 50%,
+    rgba(255, 182, 213, 0.06) 60%,
+    transparent 80%
+  );
+}
+
+/* Left accent bar: hot pink */
+[data-vibe="girly-pop"] .midnight-metallic-platinum::before,
+[data-vibe="girly-pop"] .midnight-metallic-obsidian::before {
+  background: linear-gradient(180deg, #FF69B4, #FF1493, #FF69B4);
+}
+
+/* CTA button: pink gradient instead of platinum */
+[data-vibe="girly-pop"] .midnight-metallic-cta {
+  background: linear-gradient(135deg, #FF69B4, #FF1493, #FF69B4);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-vibe="girly-pop"] .midnight-metallic-cta:hover {
+  background: linear-gradient(135deg, #FF85C8, #FF3CAC, #FF85C8);
+  box-shadow: 0 0 24px rgba(255, 105, 180, 0.3);
+}
+
+/* Express checkout glass: pink-tinted */
+[data-vibe="girly-pop"] .midnight-express-glass {
+  background: linear-gradient(165deg,
+    rgba(255, 105, 180, 0.06) 0%,
+    rgba(200, 60, 120, 0.03) 100%);
+  border-color: rgba(255, 105, 180, 0.12);
+}
+
+/* Bottom bar: pink gradient edge */
+[data-vibe="girly-pop"] .midnight-bottom-bar {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(18, 0, 8, 0.95) 30%,
+    rgba(18, 0, 8, 0.99) 100%);
+}
+
+/* Sparkle keyframe — replaces ember fire with pink sparkles */
+@keyframes girlypopSparkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+/* Announcement card: pink glass */
+[data-vibe="girly-pop"] .midnight-announcement-card {
+  background: linear-gradient(165deg,
+    rgba(255, 105, 180, 0.08) 0%,
+    rgba(200, 60, 120, 0.04) 100%);
+  border-color: rgba(255, 105, 180, 0.15);
+}

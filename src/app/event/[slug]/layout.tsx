@@ -134,9 +134,12 @@ export default async function EventLayout({
   if (branding?.heading_font) cssVars["--font-mono"] = `'${branding.heading_font}', monospace`;
   if (branding?.body_font) cssVars["--font-sans"] = `'${branding.body_font}', sans-serif`;
 
-  // Inject vibe structural vars (glass, effects, animation) if a preset is active
-  if (branding?.color_preset) {
-    const vibe = getVibeById(branding.color_preset);
+  // Inject vibe structural vars (glass, effects, animation) if a vibe is active.
+  // active_vibe persists through colour edits; color_preset is backwards compat.
+  const vibeId = branding?.active_vibe || branding?.color_preset;
+  let dataVibeAttr: string | undefined;
+  if (vibeId) {
+    const vibe = getVibeById(vibeId);
     if (vibe) {
       const vibeVars = getVibeCssVars(vibe);
       // Only inject structural vars — color vars already set above from branding fields
@@ -145,6 +148,7 @@ export default async function EventLayout({
           cssVars[key] = value;
         }
       }
+      dataVibeAttr = vibeId;
     }
   }
 
@@ -188,6 +192,7 @@ export default async function EventLayout({
       <div
         data-theme-root
         data-theme={dataThemeAttr}
+        data-vibe={dataVibeAttr || undefined}
         className={themeClasses || undefined}
         style={cssVars as React.CSSProperties}
       >

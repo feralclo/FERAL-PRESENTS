@@ -267,13 +267,41 @@ function TicketStoreEditorPage() {
     []
   );
 
+  const pushVibeToIframe = useCallback(
+    (vibeId: string | null) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "theme-vibe", vibeId },
+        "*"
+      );
+    },
+    []
+  );
+
   /* Push all branding to iframe at once */
   const pushAllToIframe = useCallback(() => {
     // If a vibe is active, push all vars (colors + structural) at once
-    if (branding.color_preset) {
-      const vibe = THEME_VIBES.find((v) => v.id === branding.color_preset);
+    const activeVibe = branding.active_vibe || branding.color_preset;
+    if (activeVibe) {
+      const vibe = THEME_VIBES.find((v) => v.id === activeVibe);
       if (vibe) {
-        pushToIframe(getVibeCssVars(vibe));
+        // If colors are customized (no color_preset), only push structural vars + custom colors
+        if (branding.color_preset) {
+          pushToIframe(getVibeCssVars(vibe));
+        } else {
+          // Push structural vars from active_vibe + custom color overrides
+          const vibeVars = getVibeCssVars(vibe);
+          const structuralVars: Record<string, string> = {};
+          for (const [key, value] of Object.entries(vibeVars)) {
+            if (key.startsWith("--vibe-")) structuralVars[key] = value;
+          }
+          if (branding.accent_color) structuralVars["--accent"] = branding.accent_color;
+          if (branding.background_color) structuralVars["--bg-dark"] = branding.background_color;
+          if (branding.card_color) structuralVars["--card-bg"] = branding.card_color;
+          if (branding.text_color) structuralVars["--text-primary"] = branding.text_color;
+          if (branding.card_border_color) structuralVars["--card-border"] = branding.card_border_color;
+          pushToIframe(structuralVars);
+        }
+        pushVibeToIframe(activeVibe);
       }
     } else {
       const vars: Record<string, string> = {};
@@ -283,17 +311,19 @@ function TicketStoreEditorPage() {
       if (branding.text_color) vars["--text-primary"] = branding.text_color;
       if (branding.card_border_color) vars["--card-border"] = branding.card_border_color;
       pushToIframe(vars);
+      pushVibeToIframe(null);
     }
     if (branding.heading_font) pushFontToIframe("--font-mono", branding.heading_font);
     if (branding.body_font) pushFontToIframe("--font-sans", branding.body_font);
     if (branding.logo_url) pushLogoToIframe(branding.logo_url, branding.logo_width);
-  }, [branding, pushToIframe, pushFontToIframe, pushLogoToIframe]);
+  }, [branding, pushToIframe, pushFontToIframe, pushLogoToIframe, pushVibeToIframe]);
 
   /* ── Update helpers ── */
   const updateColor = useCallback(
     (field: keyof BrandingSettings, cssVar: string, value: string) => {
       setBranding((prev) => ({ ...prev, [field]: value, color_preset: undefined }));
       pushToIframe({ [cssVar]: value });
+      // Don't clear data-vibe — active_vibe persists through colour edits
     },
     [pushToIframe]
   );
@@ -408,10 +438,27 @@ function TicketStoreEditorPage() {
     setBranding({ ...savedBranding });
     // Reset iframe to saved state
     setTimeout(() => {
-      if (savedBranding.color_preset) {
-        const vibe = THEME_VIBES.find((v) => v.id === savedBranding.color_preset);
+      const activeVibe = savedBranding.active_vibe || savedBranding.color_preset;
+      if (activeVibe) {
+        const vibe = THEME_VIBES.find((v) => v.id === activeVibe);
         if (vibe) {
-          pushToIframe(getVibeCssVars(vibe));
+          if (savedBranding.color_preset) {
+            pushToIframe(getVibeCssVars(vibe));
+          } else {
+            // Structural vars from vibe + custom colors
+            const vibeVars = getVibeCssVars(vibe);
+            const structuralVars: Record<string, string> = {};
+            for (const [key, value] of Object.entries(vibeVars)) {
+              if (key.startsWith("--vibe-")) structuralVars[key] = value;
+            }
+            if (savedBranding.accent_color) structuralVars["--accent"] = savedBranding.accent_color;
+            if (savedBranding.background_color) structuralVars["--bg-dark"] = savedBranding.background_color;
+            if (savedBranding.card_color) structuralVars["--card-bg"] = savedBranding.card_color;
+            if (savedBranding.text_color) structuralVars["--text-primary"] = savedBranding.text_color;
+            if (savedBranding.card_border_color) structuralVars["--card-border"] = savedBranding.card_border_color;
+            pushToIframe(structuralVars);
+          }
+          pushVibeToIframe(activeVibe);
         }
       } else {
         const vars: Record<string, string> = {};
@@ -426,6 +473,7 @@ function TicketStoreEditorPage() {
         if (savedBranding.card_border_color)
           vars["--card-border"] = savedBranding.card_border_color;
         pushToIframe(vars);
+        pushVibeToIframe(null);
       }
       if (savedBranding.heading_font)
         pushFontToIframe("--font-mono", savedBranding.heading_font);
@@ -567,7 +615,7 @@ function TicketStoreEditorPage() {
                   </span>
                   <div className="space-y-2">
                     {THEME_VIBES.map((vibe) => {
-                      const isActive = branding.color_preset === vibe.id;
+                      const isVibeActive = branding.active_vibe === vibe.id || (!branding.active_vibe && branding.color_preset === vibe.id);
                       return (
                         <button
                           key={vibe.id}
@@ -581,11 +629,13 @@ function TicketStoreEditorPage() {
                               text_color: vibe.colors.text,
                               card_border_color: vibe.colors.border,
                               color_preset: vibe.id,
+                              active_vibe: vibe.id,
                             }));
                             pushToIframe(getVibeCssVars(vibe));
+                            pushVibeToIframe(vibe.id);
                           }}
                           className={`relative w-full rounded-lg border p-2.5 text-left transition-all ${
-                            isActive
+                            isVibeActive
                               ? "border-primary ring-1 ring-primary/30"
                               : "border-border/40 hover:border-border"
                           }`}
@@ -613,7 +663,7 @@ function TicketStoreEditorPage() {
                               <span className="text-[11px] font-medium block">{vibe.name}</span>
                               <span className="text-[9px] text-muted-foreground block">{vibe.mood}</span>
                             </div>
-                            {isActive && <Check size={12} className="text-primary shrink-0" />}
+                            {isVibeActive && <Check size={12} className="text-primary shrink-0" />}
                           </div>
                         </button>
                       );
@@ -655,6 +705,32 @@ function TicketStoreEditorPage() {
                       onChange={(v) => updateColor("card_border_color", "--card-border", v)}
                     />
                   </div>
+                  {/* Reset colours link — shown when vibe is active but colours are customized */}
+                  {branding.active_vibe && !branding.color_preset && (() => {
+                    const activeVibe = THEME_VIBES.find((v) => v.id === branding.active_vibe);
+                    if (!activeVibe) return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBranding((prev) => ({
+                            ...prev,
+                            accent_color: activeVibe.colors.accent,
+                            background_color: activeVibe.colors.background,
+                            card_color: activeVibe.colors.card,
+                            text_color: activeVibe.colors.text,
+                            card_border_color: activeVibe.colors.border,
+                            color_preset: activeVibe.id,
+                          }));
+                          pushToIframe(getVibeCssVars(activeVibe));
+                        }}
+                        className="text-[10px] text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                      >
+                        <Undo2 size={10} />
+                        Reset colours to {activeVibe.name}
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 <Separator />

@@ -230,6 +230,7 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   const piParam = searchParams.get("pi");
   const presentmentCurrency = searchParams.get("currency")?.toUpperCase() || null;
   const { trackPageView } = useMetaTracking();
+  const { trackEngagement: trackTrafficEvent } = useTraffic();
   const orgId = useOrgId();
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
@@ -288,13 +289,16 @@ export function NativeCheckout({ slug, event, restoreData, merchData }: NativeCh
   }, [hasPresentmentConversion]);
 
   // Wrap setCompletedOrder to clean up popup discount after successful purchase
+  // Also centralizes purchase tracking — all completion paths (card, Express Checkout,
+  // Klarna redirect, piParam redirect) flow through here.
   const handleOrderComplete = useCallback((order: Order) => {
+    trackTrafficEvent("purchase");
     setCompletedOrder(order);
     try {
       sessionStorage.removeItem("feral_popup_discount");
       sessionStorage.removeItem("feral_popup_email");
     } catch {}
-  }, []);
+  }, [trackTrafficEvent]);
 
   // Track PageView on checkout page load
   useEffect(() => {
@@ -1329,11 +1333,9 @@ function SinglePageCheckoutForm({
         const orderData = await orderRes.json();
         if (orderRes.ok && orderData.data) {
           trackEngagement("payment_success");
-          trackEngagement("purchase");
           onComplete(orderData.data);
         } else {
           trackEngagement("payment_success");
-          trackEngagement("purchase");
           onComplete({
             id: "",
             org_id: orgId,

@@ -585,3 +585,90 @@
 [data-vibe="girly-pop"] .hero__cta-glow {
   background: radial-gradient(circle, rgba(255, 105, 180, 0.4), transparent 70%);
 }
+
+
+/* ═══════════════════════════════════════════════
+   GIRLY POP 2 VIBE — Hero overrides
+   Neon pink overload, extreme glow, pulsing CTA
+   ═══════════════════════════════════════════════ */
+
+/* Hero glow: massive neon pink text shadow */
+[data-vibe="girly-pop-2"] .hero-glitch {
+  text-shadow:
+    0 0 30px rgba(255, 20, 147, 0.9),
+    0 0 60px rgba(255, 20, 147, 0.6),
+    0 0 100px rgba(255, 20, 147, 0.4),
+    0 0 160px rgba(255, 20, 147, 0.2),
+    0 0 220px rgba(255, 0, 128, 0.1);
+}
+
+/* Chromatic lines: hot pink / deep magenta shift */
+[data-vibe="girly-pop-2"] .hero-glitch__line::before {
+  color: #FF1493;
+  text-shadow: -3px 0 #FF69B4;
+}
+[data-vibe="girly-pop-2"] .hero-glitch__line::after {
+  color: #FF007F;
+  text-shadow: 3px 0 #FF1493;
+}
+
+/* Scanline: hot pink, more visible */
+[data-vibe="girly-pop-2"] .hero-glitch__scanline {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 20, 147, 0.25),
+    rgba(255, 0, 128, 0.15),
+    transparent);
+}
+
+/* Mist layers: neon pink fog */
+[data-vibe="girly-pop-2"] .hero__bg-mist {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(255, 20, 147, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 35%, rgba(255, 105, 180, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(255, 0, 128, 0.1) 0%, transparent 40%);
+}
+
+/* CTA button: neon pink border with glow pulse */
+[data-vibe="girly-pop-2"] .hero__cta {
+  border-color: rgba(255, 20, 147, 0.7);
+  text-shadow: 0 0 14px rgba(255, 20, 147, 0.8);
+  animation: girlypop2HeroCta 2s ease-in-out infinite;
+}
+
+@keyframes girlypop2HeroCta {
+  0%, 100% {
+    box-shadow:
+      0 0 15px rgba(255, 20, 147, 0.3),
+      0 0 30px rgba(255, 20, 147, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 25px rgba(255, 20, 147, 0.5),
+      0 0 50px rgba(255, 20, 147, 0.25),
+      0 0 80px rgba(255, 0, 128, 0.1);
+  }
+}
+
+[data-vibe="girly-pop-2"] .hero__cta:hover {
+  border-color: rgba(255, 20, 147, 1);
+  box-shadow:
+    0 0 30px rgba(255, 20, 147, 0.5),
+    0 0 60px rgba(255, 20, 147, 0.25);
+  animation: none;
+}
+
+/* CTA glow orb: stronger, wider */
+[data-vibe="girly-pop-2"] .hero__cta-glow {
+  background: radial-gradient(circle,
+    rgba(255, 20, 147, 0.6) 0%,
+    rgba(255, 105, 180, 0.3) 40%,
+    transparent 70%);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  [data-vibe="girly-pop-2"] .hero__cta {
+    animation: none;
+  }
+}

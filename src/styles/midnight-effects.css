@@ -1408,3 +1408,175 @@ html.checkout-active .noise {
     rgba(200, 60, 120, 0.04) 100%);
   border-color: rgba(255, 105, 180, 0.15);
 }
+
+
+/* ═══════════════════════════════════════════════
+   GIRLY POP 2 VIBE — Maximum pink, zero restraint
+   Neon glow borders, bubblegum glass, sparkle overlay,
+   pulsing CTA, hot magenta everything
+   ═══════════════════════════════════════════════ */
+
+/* Glass: heavy pink frost — actually looks pink, not just tinted */
+[data-vibe="girly-pop-2"] .glass {
+  background: linear-gradient(
+    165deg,
+    rgba(255, 20, 147, 0.14) 0%,
+    rgba(255, 105, 180, 0.08) 40%,
+    rgba(200, 40, 120, 0.12) 100%
+  );
+  border: 1px solid rgba(255, 20, 147, 0.25);
+  box-shadow:
+    0 16px 56px rgba(100, 0, 50, 0.7),
+    0 0 20px rgba(255, 20, 147, 0.12),
+    0 2px 16px rgba(255, 105, 180, 0.1),
+    inset 0 1px 0 rgba(255, 182, 213, 0.18);
+}
+
+/* Cards: neon pink border glow — visible pink outline */
+[data-vibe="girly-pop-2"] .midnight-metallic-platinum,
+[data-vibe="girly-pop-2"] .midnight-metallic-obsidian {
+  background: linear-gradient(145deg,
+    rgba(255, 20, 147, 0.1),
+    rgba(200, 40, 120, 0.05),
+    rgba(255, 105, 180, 0.08));
+  border-color: rgba(255, 20, 147, 0.3);
+  box-shadow: 0 0 12px rgba(255, 20, 147, 0.08);
+}
+
+/* Active card: screaming pink glow */
+[data-vibe="girly-pop-2"] .midnight-metallic-platinum.midnight-active,
+[data-vibe="girly-pop-2"] .midnight-metallic-obsidian.midnight-active {
+  border-color: rgba(255, 20, 147, 0.7);
+  box-shadow:
+    0 0 24px rgba(255, 20, 147, 0.25),
+    0 0 48px rgba(255, 20, 147, 0.1),
+    inset 0 0 12px rgba(255, 20, 147, 0.05);
+}
+
+/* Shimmer: hot pink sweep */
+[data-vibe="girly-pop-2"] .midnight-metallic-platinum::after,
+[data-vibe="girly-pop-2"] .midnight-metallic-obsidian::after {
+  background: linear-gradient(
+    110deg,
+    transparent 15%,
+    rgba(255, 105, 180, 0.08) 35%,
+    rgba(255, 20, 147, 0.15) 50%,
+    rgba(255, 105, 180, 0.08) 65%,
+    transparent 85%
+  );
+}
+
+/* Left accent bar: neon magenta pulse gradient */
+[data-vibe="girly-pop-2"] .midnight-metallic-platinum::before,
+[data-vibe="girly-pop-2"] .midnight-metallic-obsidian::before {
+  background: linear-gradient(180deg, #FF1493, #FF69B4, #FF1493, #FF69B4);
+  background-size: 100% 200%;
+  animation: girlypop2AccentPulse 3s ease-in-out infinite;
+}
+
+@keyframes girlypop2AccentPulse {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 0% 100%; }
+}
+
+/* CTA button: neon pink with glow pulse */
+[data-vibe="girly-pop-2"] .midnight-metallic-cta {
+  background: linear-gradient(135deg, #FF1493, #FF69B4, #FF1493);
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 0 16px rgba(255, 20, 147, 0.4),
+    0 0 32px rgba(255, 20, 147, 0.15);
+  animation: girlypop2CtaPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes girlypop2CtaPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 16px rgba(255, 20, 147, 0.4),
+      0 0 32px rgba(255, 20, 147, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 24px rgba(255, 20, 147, 0.6),
+      0 0 48px rgba(255, 20, 147, 0.25),
+      0 0 64px rgba(255, 105, 180, 0.1);
+  }
+}
+
+[data-vibe="girly-pop-2"] .midnight-metallic-cta:hover {
+  background: linear-gradient(135deg, #FF3CAC, #FF85C8, #FF3CAC);
+  box-shadow:
+    0 0 32px rgba(255, 20, 147, 0.5),
+    0 0 64px rgba(255, 20, 147, 0.2);
+  animation: none;
+}
+
+/* Express checkout glass: heavy pink frost */
+[data-vibe="girly-pop-2"] .midnight-express-glass {
+  background: linear-gradient(165deg,
+    rgba(255, 20, 147, 0.1) 0%,
+    rgba(200, 40, 120, 0.06) 100%);
+  border-color: rgba(255, 20, 147, 0.2);
+  box-shadow: 0 0 12px rgba(255, 20, 147, 0.06);
+}
+
+/* Bottom bar: deep magenta fade */
+[data-vibe="girly-pop-2"] .midnight-bottom-bar {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(26, 0, 18, 0.96) 25%,
+    rgba(26, 0, 18, 1) 100%);
+  border-top-color: rgba(255, 20, 147, 0.15);
+}
+
+/* Announcement card: neon pink glass */
+[data-vibe="girly-pop-2"] .midnight-announcement-card {
+  background: linear-gradient(165deg,
+    rgba(255, 20, 147, 0.12) 0%,
+    rgba(200, 40, 120, 0.06) 100%);
+  border-color: rgba(255, 20, 147, 0.2);
+  box-shadow: 0 0 24px rgba(255, 20, 147, 0.08);
+}
+
+/* Sparkle overlay — floating pink sparkle dots across the content area */
+[data-vibe="girly-pop-2"] [data-theme-root]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 105, 180, 0.6) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 30% 65%, rgba(255, 20, 147, 0.5) 50%, transparent 50%),
+    radial-gradient(1px 1px at 55% 15%, rgba(255, 182, 213, 0.7) 50%, transparent 50%),
+    radial-gradient(2px 2px at 70% 45%, rgba(255, 105, 180, 0.4) 50%, transparent 50%),
+    radial-gradient(1px 1px at 85% 75%, rgba(255, 20, 147, 0.6) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 20% 85%, rgba(255, 182, 213, 0.5) 50%, transparent 50%),
+    radial-gradient(1px 1px at 45% 40%, rgba(255, 105, 180, 0.5) 50%, transparent 50%),
+    radial-gradient(2px 2px at 90% 10%, rgba(255, 20, 147, 0.4) 50%, transparent 50%),
+    radial-gradient(1px 1px at 65% 90%, rgba(255, 182, 213, 0.6) 50%, transparent 50%),
+    radial-gradient(1.5px 1.5px at 5% 50%, rgba(255, 105, 180, 0.5) 50%, transparent 50%);
+  animation: girlypop2Sparkle 4s ease-in-out infinite;
+}
+
+@keyframes girlypop2Sparkle {
+  0%, 100% { opacity: 0.3; }
+  25% { opacity: 0.7; }
+  50% { opacity: 0.4; }
+  75% { opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-vibe="girly-pop-2"] [data-theme-root]::after {
+    animation: none;
+    opacity: 0.4;
+  }
+  [data-vibe="girly-pop-2"] .midnight-metallic-cta {
+    animation: none;
+  }
+  [data-vibe="girly-pop-2"] .midnight-metallic-platinum::before,
+  [data-vibe="girly-pop-2"] .midnight-metallic-obsidian::before {
+    animation: none;
+  }
+}

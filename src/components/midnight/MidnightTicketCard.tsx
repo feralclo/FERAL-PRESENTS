@@ -50,7 +50,7 @@ export function MidnightTicketCard({
   const { convertPrice, formatPrice: fmtPrice } = useCurrencyContext();
   const tier = tt.tier || "standard";
   const tierEffect = TIER_EFFECT[tier] || "";
-  const isSoldOut = tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity;
+  const isSoldOut = tt.status === "sold_out" || (tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity);
   const isActive = qty > 0;
   const priceDisplay = fmtPrice(convertPrice(Number(tt.price), tt.price_overrides));
 

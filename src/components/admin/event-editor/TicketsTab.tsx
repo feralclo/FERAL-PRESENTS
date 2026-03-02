@@ -188,7 +188,7 @@ export function TicketsTab({
       // (only if the preceding ticket isn't already sold out)
       for (let i = 1; i < gTickets.length; i++) {
         const prev = gTickets[i - 1];
-        const isSoldOut = prev.capacity != null && prev.capacity > 0 && prev.sold >= prev.capacity;
+        const isSoldOut = prev.status === "sold_out" || (prev.capacity != null && prev.capacity > 0 && prev.sold >= prev.capacity);
         if (!isSoldOut) {
           result[gTickets[i].id] = prev.name || "previous ticket";
         }

@@ -10,8 +10,9 @@ import type { TicketTypeRow } from "@/types/events";
 
 const UNGROUPED_KEY = "__ungrouped__";
 
-/** A ticket is sold out when capacity is defined and sold >= capacity. */
+/** A ticket is sold out when manually marked or when capacity is filled. */
 function isSoldOut(tt: TicketTypeRow): boolean {
+  if (tt.status === "sold_out") return true;
   return tt.capacity != null && tt.capacity > 0 && tt.sold >= tt.capacity;
 }
 

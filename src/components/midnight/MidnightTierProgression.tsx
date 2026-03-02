@@ -25,7 +25,7 @@ export function MidnightTierProgression({
   return (
     <div className="flex gap-1.5 max-[480px]:gap-1 mb-5 max-[480px]:mb-4 pb-5 max-[480px]:pb-4 border-b border-foreground/[0.05]">
       {tickets.map((tt, i) => {
-        const soldOut = (tt.sold || 0) >= (tt.capacity || Infinity);
+        const soldOut = tt.status === "sold_out" || (tt.sold || 0) >= (tt.capacity || Infinity);
         const isActive = i === firstActiveIdx;
         const isNext = i > firstActiveIdx && !soldOut;
 

@@ -115,31 +115,83 @@ interface DiscountInfo {
 
 /* ================================================================
    COUNTRIES LIST — for billing country dropdown
+   Comprehensive list: tenant's default country floats to top.
    ================================================================ */
 
-const COUNTRIES = [
-  { code: "GB", name: "United Kingdom" },
-  { code: "US", name: "United States" },
-  { code: "IE", name: "Ireland" },
-  { code: "DE", name: "Germany" },
-  { code: "FR", name: "France" },
-  { code: "NL", name: "Netherlands" },
-  { code: "BE", name: "Belgium" },
-  { code: "ES", name: "Spain" },
-  { code: "IT", name: "Italy" },
-  { code: "PT", name: "Portugal" },
+const ALL_BILLING_COUNTRIES = [
+  { code: "AU", name: "Australia" },
   { code: "AT", name: "Austria" },
-  { code: "CH", name: "Switzerland" },
-  { code: "SE", name: "Sweden" },
-  { code: "NO", name: "Norway" },
+  { code: "BE", name: "Belgium" },
+  { code: "BR", name: "Brazil" },
+  { code: "CA", name: "Canada" },
+  { code: "CN", name: "China" },
+  { code: "CZ", name: "Czech Republic" },
   { code: "DK", name: "Denmark" },
   { code: "FI", name: "Finland" },
-  { code: "PL", name: "Poland" },
-  { code: "CZ", name: "Czech Republic" },
-  { code: "AU", name: "Australia" },
-  { code: "CA", name: "Canada" },
+  { code: "FR", name: "France" },
+  { code: "DE", name: "Germany" },
+  { code: "HK", name: "Hong Kong" },
+  { code: "IN", name: "India" },
+  { code: "ID", name: "Indonesia" },
+  { code: "IE", name: "Ireland" },
+  { code: "IT", name: "Italy" },
+  { code: "JP", name: "Japan" },
+  { code: "KR", name: "South Korea" },
+  { code: "MY", name: "Malaysia" },
+  { code: "MX", name: "Mexico" },
+  { code: "NL", name: "Netherlands" },
   { code: "NZ", name: "New Zealand" },
+  { code: "NO", name: "Norway" },
+  { code: "PH", name: "Philippines" },
+  { code: "PL", name: "Poland" },
+  { code: "PT", name: "Portugal" },
+  { code: "SG", name: "Singapore" },
+  { code: "ES", name: "Spain" },
+  { code: "SE", name: "Sweden" },
+  { code: "CH", name: "Switzerland" },
+  { code: "TW", name: "Taiwan" },
+  { code: "TH", name: "Thailand" },
+  { code: "AE", name: "United Arab Emirates" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "US", name: "United States" },
+  { code: "VN", name: "Vietnam" },
 ];
+
+/** Map event currency → most likely default billing country */
+const CURRENCY_DEFAULT_COUNTRY: Record<string, string> = {
+  GBP: "GB", USD: "US", JPY: "JP", AUD: "AU", CAD: "CA",
+  NZD: "NZ", CHF: "CH", SEK: "SE", NOK: "NO", DKK: "DK",
+  EUR: "DE", // EUR fallback — refined by browser locale below
+};
+
+/** Klarna is available in these countries only */
+const KLARNA_COUNTRIES = new Set([
+  "AT", "AU", "BE", "CA", "CH", "CZ", "DE", "DK", "ES", "FI",
+  "FR", "GB", "IE", "IT", "NL", "NO", "NZ", "PL", "PT", "SE", "US",
+]);
+
+/** Derive default billing country from event currency + browser locale */
+function getDefaultBillingCountry(currency: string): string {
+  const upper = currency?.toUpperCase() || "GBP";
+  const fromCurrency = CURRENCY_DEFAULT_COUNTRY[upper];
+  // For EUR, try to pick the right EU country from browser locale
+  if (upper === "EUR" && typeof navigator !== "undefined") {
+    const locale = navigator.language || "";
+    const parts = locale.split("-");
+    if (parts.length >= 2) {
+      const region = parts[parts.length - 1].toUpperCase();
+      if (ALL_BILLING_COUNTRIES.some((c) => c.code === region)) return region;
+    }
+  }
+  return fromCurrency || "GB";
+}
+
+/** Return country list with the default country floated to the top */
+function getBillingCountries(defaultCode: string): { code: string; name: string }[] {
+  const top = ALL_BILLING_COUNTRIES.find((c) => c.code === defaultCode);
+  if (!top) return ALL_BILLING_COUNTRIES;
+  return [top, ...ALL_BILLING_COUNTRIES.filter((c) => c.code !== defaultCode)];
+}
 
 /* ================================================================
    CARD ELEMENT STYLE — shared across all card inputs
@@ -950,7 +1002,7 @@ function SinglePageCheckoutForm({
   const [firstName, setFirstName] = useState(restoreData?.firstName || "");
   const [lastName, setLastName] = useState(restoreData?.lastName || "");
   const [nameOnCard, setNameOnCard] = useState("");
-  const [country, setCountry] = useState(event.currency === "EUR" ? "BE" : "GB");
+  const [country, setCountry] = useState(() => getDefaultBillingCountry(event.currency));
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [cardReady, setCardReady] = useState(false);
@@ -958,6 +1010,12 @@ function SinglePageCheckoutForm({
   const [expressLoaded, setExpressLoaded] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "klarna">("card");
   const [marketingConsent, setMarketingConsent] = useState(true);
+
+  // Billing country list — tenant's default floated to top
+  const billingCountries = useMemo(() => getBillingCountries(getDefaultBillingCountry(event.currency)), [event.currency]);
+
+  // Klarna only available in supported regions
+  const klarnaAvailable = useMemo(() => KLARNA_COUNTRIES.has(getDefaultBillingCountry(event.currency)), [event.currency]);
   const cardRef = useRef<CardFieldsHandle>(null);
   const nameCaptureTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -1558,15 +1616,17 @@ function SinglePageCheckoutForm({
             <div className="border border-white/[0.10] rounded-lg overflow-hidden">
               {/* Card option */}
               <div
-                className={`cursor-pointer transition-colors duration-150 ${paymentMethod === "card" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
-                onClick={() => { if (paymentMethod !== "card") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
-                role="radio"
-                aria-checked={paymentMethod === "card"}
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
+                className={`${klarnaAvailable ? "cursor-pointer" : ""} transition-colors duration-150 ${paymentMethod === "card" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
+                onClick={() => { if (klarnaAvailable && paymentMethod !== "card") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
+                role={klarnaAvailable ? "radio" : undefined}
+                aria-checked={klarnaAvailable ? paymentMethod === "card" : undefined}
+                tabIndex={klarnaAvailable ? 0 : undefined}
+                onKeyDown={(e) => { if (klarnaAvailable && e.key === "Enter") { setPaymentMethod("card"); trackEngagement("payment_method_selected"); } }}
               >
                 <div className="flex items-center gap-3 py-3.5 px-4">
+                  {klarnaAvailable && (
                   <span className={`w-[18px] h-[18px] border-2 rounded-full shrink-0 relative transition-colors duration-200 ${paymentMethod === "card" ? "border-white midnight-radio--checked" : "border-white/20"}`} />
+                  )}
                   <span className={`flex-1 font-[family-name:var(--font-sans)] text-sm font-medium tracking-[0.2px] whitespace-nowrap transition-colors duration-150 ${paymentMethod === "card" ? "text-foreground" : "text-foreground/50"}`}>
                     Credit / Debit Card
                   </span>
@@ -1621,7 +1681,7 @@ function SinglePageCheckoutForm({
                       onChange={(e) => setCountry(e.target.value)}
                       autoComplete="country"
                     >
-                      {COUNTRIES.map((c) => (
+                      {billingCountries.map((c) => (
                         <option key={c.code} value={c.code}>
                           {c.name}
                         </option>
@@ -1632,7 +1692,8 @@ function SinglePageCheckoutForm({
                 </div>
               </div>
 
-              {/* Klarna option */}
+              {/* Klarna option — only in supported regions */}
+              {klarnaAvailable && (
               <div
                 className={`cursor-pointer transition-colors duration-150 border-t border-white/[0.08] ${paymentMethod === "klarna" ? "bg-white/[0.02] cursor-default" : "hover:bg-white/[0.015]"}`}
                 onClick={() => { if (paymentMethod !== "klarna") { setPaymentMethod("klarna"); trackEngagement("payment_method_selected"); } }}
@@ -1678,6 +1739,7 @@ function SinglePageCheckoutForm({
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
 

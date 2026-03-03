@@ -382,6 +382,21 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, fallbac
       `Order ${result.order.order_number} created for PI ${paymentIntent.id} (${result.tickets.length} tickets)`
     );
 
+    // ── Server-side traffic event for dashboard live activity (backup) ──
+    // The confirm-order route also inserts this; Supabase will just add a row
+    // (no unique constraint on session_id), so at worst we get a duplicate —
+    // harmless and preferable to missing a purchase.
+    supabase
+      .from(TABLES.TRAFFIC_EVENTS)
+      .insert({
+        org_id: orgId,
+        event_type: "purchase",
+        page_path: `/event/${event.slug}/checkout/`,
+        event_name: event.slug,
+        session_id: `webhook_${result.order.order_number}`,
+      })
+      .then(() => {}, () => {});
+
     // Fire server-side CAPI Purchase event as backup
     // Uses deterministic event_id for dedup with client pixel + confirm-order CAPI
     fireWebhookPurchaseEvent(orgId, {

@@ -213,6 +213,19 @@ export async function POST(request: NextRequest) {
       .eq("id", result.order.id)
       .single();
 
+    // ── Server-side traffic event for dashboard live activity ──
+    // Client-side tracking can fail (devmode, ad blockers, navigation).
+    supabase
+      .from(TABLES.TRAFFIC_EVENTS)
+      .insert({
+        org_id: metaOrgId,
+        event_type: "purchase",
+        page_path: `/shop/${metadata.collection_slug || "merch"}/checkout/`,
+        event_name: event.slug,
+        session_id: `order_${result.order.order_number}`,
+      })
+      .then(() => {}, () => {});
+
     return NextResponse.json({ data: fullOrder });
   } catch (err) {
     if (err instanceof MerchOrderError) {

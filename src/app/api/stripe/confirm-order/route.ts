@@ -293,6 +293,20 @@ export async function POST(request: NextRequest) {
       .eq("id", result.order.id)
       .single();
 
+    // ── Server-side traffic event for dashboard live activity ──
+    // Client-side tracking can fail (devmode, ad blockers, navigation).
+    // Use order_number as session_id to avoid duplicates with client events.
+    supabase
+      .from(TABLES.TRAFFIC_EVENTS)
+      .insert({
+        org_id: metaOrgId,
+        event_type: "purchase",
+        page_path: `/event/${event.slug}/checkout/`,
+        event_name: event.slug,
+        session_id: `order_${result.order.order_number}`,
+      })
+      .then(() => {}, () => {});
+
     // ── Server-side CAPI Purchase event ──
     // Fire in the background — don't block the response.
     // Uses deterministic event_id (`purchase-{order_number}`) so Meta

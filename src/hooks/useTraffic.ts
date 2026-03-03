@@ -69,7 +69,9 @@ function detectEventType(path: string): TrafficEventType {
   if (/\/event\/[^/]+\/checkout\/?/.test(path)) return "checkout";
   if (/\/event\/[^/]+\/tickets\/?/.test(path)) return "tickets";
   if (/\/event\/[^/]+\/?$/.test(path)) return "landing";
-  if (/[?&]purchase=success/.test(window.location.search)) return "purchase";
+  // NOTE: purchase events are tracked explicitly via trackEngagement("purchase")
+  // in handleOrderComplete AND server-side in confirm-order routes.
+  // Do NOT auto-detect from ?purchase=success — causes ghost events on page refresh.
   return "page_view";
 }
 
